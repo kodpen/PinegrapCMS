@@ -1144,12 +1144,14 @@ function ws_mcp_host($url)
 /**
  * A form on the settings screen: a server added, changed, asked for its tools
  * again, turned off or on, removed, its tools turned on and off, the site's
- * sign-in to it connected or ended, or the viewer's own account connected or
- * ended (anybody who may open the screen).
+ * sign-in to it connected or ended, a ready-made connector added or an
+ * address checked (mcp_catalogue.php), or the viewer's own account connected
+ * or ended (anybody who may open the screen).
  *
  * @param array    $viewer
  * @param string   $action mcp_save | mcp_refresh | mcp_toggle | mcp_delete |
  *                         mcp_tools | mcp_connect | mcp_disconnect |
+ *                         mcp_catalogue_add | mcp_probe |
  *                         mcp_connect_me | mcp_disconnect_me
  * @param liveform $liveform
  * @return string the anchor to go back to
@@ -1214,6 +1216,10 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
     switch ($action) {
         case 'mcp_save':
             return ws_mcp_settings_save($viewer, $server, $liveform, $username);
+
+        case 'mcp_catalogue_add':
+        case 'mcp_probe':
+            return ws_mcp_catalogue_post($viewer, $action, $liveform, $username);
 
         case 'mcp_refresh':
             if (!$server) {
@@ -1342,20 +1348,23 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
 
 /**
  * A server added or changed. A new server, or one whose address or
- * credential changed, is asked for its tools at once.
+ * credential changed, is asked for its tools at once; a new one people sign
+ * in to sends the administrator to the service's sign-in at once.
  *
  * @param array      $viewer
  * @param array|null $server
  * @param liveform   $liveform
  * @param string     $username
+ * @param array|null $input    the form's fields (null: what was posted)
  * @return string the anchor to go back to
  */
-function ws_mcp_settings_save($viewer, $server, $liveform, $username)
+function ws_mcp_settings_save($viewer, $server, $liveform, $username, $input = null)
 {
-    $alias = ws_mcp_alias_clean($_POST['mcp_alias'] ?? '');
-    $name = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($_POST['mcp_name'] ?? '')), 0, 100));
-    $url = trim((string) ($_POST['mcp_url'] ?? ''));
-    $kind = (string) ($_POST['mcp_auth'] ?? 'none');
+    $post = is_array($input) ? $input : $_POST;
+    $alias = ws_mcp_alias_clean($post['mcp_alias'] ?? '');
+    $name = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) ($post['mcp_name'] ?? '')), 0, 100));
+    $url = trim((string) ($post['mcp_url'] ?? ''));
+    $kind = (string) ($post['mcp_auth'] ?? 'none');
     $anchor = $server ? '#ws-mcp-' . (int) $server['id'] : '#ws-mcp';
 
     if (!$server && (count(ws_mcp_servers()) >= WS_MCP_MAX_SERVERS)) {
@@ -1383,7 +1392,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     if ($problem === '') {
         switch ($kind) {
             case 'bearer':
-                $token = trim((string) ($_POST['mcp_token'] ?? ''));
+                $token = trim((string) ($post['mcp_token'] ?? ''));
                 $secret = array('token' => ($token !== '') ? $token : (string) ($kept['token'] ?? ''));
 
                 if ($secret['token'] === '') {
@@ -1392,8 +1401,8 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
                 break;
 
             case 'header':
-                $header = trim((string) ($_POST['mcp_header_name'] ?? ''));
-                $value = trim((string) ($_POST['mcp_header_value'] ?? ''));
+                $header = trim((string) ($post['mcp_header_name'] ?? ''));
+                $value = trim((string) ($post['mcp_header_value'] ?? ''));
                 $secret = array('name' => $header, 'value' => ($value !== '') ? $value : (string) ($kept['value'] ?? ''));
                 $problem = ws_mcp_header_name_problem($header);
 
@@ -1403,8 +1412,8 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
                 break;
 
             case 'basic':
-                $user = trim((string) ($_POST['mcp_user'] ?? ''));
-                $password = (string) ($_POST['mcp_password'] ?? '');
+                $user = trim((string) ($post['mcp_user'] ?? ''));
+                $password = (string) ($post['mcp_password'] ?? '');
                 $secret = array('user' => $user, 'password' => ($password !== '') ? $password : (string) ($kept['password'] ?? ''));
 
                 if (($user === '') || (strpos($user, ':') !== false)) {
@@ -1415,8 +1424,8 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
             // Nothing is kept on the row: the application goes to connect_apps
             // once the server is saved (ws_mcp_oauth_setup()).
             case 'oauth':
-                $oauth_client_id = trim((string) ($_POST['mcp_client_id'] ?? ''));
-                $oauth_client_secret = trim((string) ($_POST['mcp_client_secret'] ?? ''));
+                $oauth_client_id = trim((string) ($post['mcp_client_id'] ?? ''));
+                $oauth_client_secret = trim((string) ($post['mcp_client_secret'] ?? ''));
 
                 if (preg_match('/[\r\n]/', $oauth_client_id . $oauth_client_secret)) {
                     $problem = lang('A credential cannot hold a line break.');
@@ -1434,7 +1443,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     }
 
     if ($problem !== '') {
-        ws_mcp_settings_keep($liveform, $server, $problem);
+        ws_mcp_settings_keep($liveform, $server, $problem, $post);
         $liveform->add_error($problem);
         return $anchor;
     }
@@ -1496,6 +1505,15 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
         }
 
         if (!ws_mcp_oauth_headers($saved, false, (int) $viewer['id'])) {
+            // A new server goes on to the service's sign-in, as Add and
+            // connect says; the site's tools are read when it comes back
+            // (ws_mcp_settings_returned()). The page is left there.
+            if (!$server) {
+                $liveform->add_notice(lang(array('string' => '@{var:1} was saved.', 'vars' => $alias)));
+                ws_mcp_settings_connect($viewer, $saved, $liveform);
+                return '#ws-mcp-' . $id;
+            }
+
             $liveform->add_notice(lang(array('string' => '@{var:1} was saved. Connect the site to it with the Connect button; its tools are read once it is connected.', 'vars' => $alias)));
             return '#ws-mcp-' . $id;
         }
@@ -1555,29 +1573,41 @@ function ws_mcp_settings_keep_values($post)
  * screen the request goes back to (the liveform's session, emptied by
  * remove_form() once that screen is drawn).
  *
+ * The ready-made connector the form was filled from is kept too, for the link
+ * to the page where its token is made.
+ *
  * @param liveform   $liveform
  * @param array|null $server  the server the form was for, null for a new one
- * @param string     $problem
+ * @param string     $problem '' when the form only opens filled
+ * @param array|null $input   the form's fields (null: what was posted)
  */
-function ws_mcp_settings_keep($liveform, $server, $problem)
+function ws_mcp_settings_keep($liveform, $server, $problem, $input = null)
 {
-    foreach (ws_mcp_settings_keep_values($_POST) as $field => $value) {
+    $post = is_array($input) ? $input : $_POST;
+
+    foreach (ws_mcp_settings_keep_values($post) as $field => $value) {
         $liveform->assign_field_value($field, $value);
     }
 
+    $catalogue = (function_exists('ws_mcp_catalogue_entry') && ws_mcp_catalogue_entry($post['mcp_catalogue'] ?? '')) ? (string) $post['mcp_catalogue'] : '';
+
     $liveform->assign_field_value('mcp_kept_problem', (string) $problem);
+    $liveform->assign_field_value('mcp_kept_catalogue', $catalogue);
     $liveform->assign_field_value('mcp_kept_for', $server ? (string) (int) $server['id'] : 'new');
 }
 
 /**
- * What ws_mcp_settings_keep() kept, for the card.
+ * What ws_mcp_settings_keep() kept, for the card, or what the check of an
+ * address found (ws_mcp_catalogue_post(), for 'probe').
  *
  * @param liveform|null $liveform
- * @return array for ('new', a server's id, '' when nothing was kept), values, problem
+ * @return array for ('new', 'probe', a server's id, '' when nothing was
+ *               kept), values, problem, catalogue (the connector the form
+ *               was filled from), state and text (what the check found)
  */
 function ws_mcp_settings_kept($liveform)
 {
-    $kept = array('for' => '', 'values' => array(), 'problem' => '');
+    $kept = array('for' => '', 'values' => array(), 'problem' => '', 'catalogue' => '', 'state' => '', 'text' => '');
 
     if (!$liveform || ((string) $liveform->get_field_value('mcp_kept_for') === '')) {
         return $kept;
@@ -1585,6 +1615,9 @@ function ws_mcp_settings_kept($liveform)
 
     $kept['for'] = (string) $liveform->get_field_value('mcp_kept_for');
     $kept['problem'] = (string) $liveform->get_field_value('mcp_kept_problem');
+    $kept['catalogue'] = (string) $liveform->get_field_value('mcp_kept_catalogue');
+    $kept['state'] = (string) $liveform->get_field_value('mcp_probe_state');
+    $kept['text'] = (string) $liveform->get_field_value('mcp_probe_text');
 
     foreach (ws_mcp_settings_keep_fields() as $field) {
         $kept['values'][$field] = (string) $liveform->get_field_value($field);
@@ -1708,17 +1741,21 @@ function ws_mcp_settings_returned($viewer, $liveform)
 /**
  * The form a server is added or changed with. After a check refused it, it
  * comes back with what was typed (ws_mcp_settings_kept()), the secrets
- * excepted, and the reason above the fields.
+ * excepted, and the reason above the fields. Filled from a ready-made
+ * connector that takes a token, it opens at the token, with the link to the
+ * page where one is made.
  *
  * @param string     $self_url
  * @param array|null $server
  * @param bool       $admin
- * @param array      $typed   field => text kept from the refused post
- * @param string     $problem why it was refused
+ * @param array      $typed     field => text kept from the refused post
+ * @param string     $problem   why it was refused
+ * @param string     $catalogue the ready-made connector it was filled from
  * @return string
  */
-function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $problem = '')
+function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $problem = '', $catalogue = '')
 {
+    $entry = (!$server && function_exists('ws_mcp_catalogue_entry')) ? ws_mcp_catalogue_entry($catalogue) : null;
     $id = $server ? (int) $server['id'] : 0;
     $prefix = 'ws_mcp_' . ($id ?: 'new') . '_';
     // The kind the stored credential is for: only that one is kept when its
@@ -1751,6 +1788,7 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mcp_save">
             <input type="hidden" name="mcp_id" value="' . $id . '">
+            ' . ($entry ? '<input type="hidden" name="mcp_catalogue" value="' . h($catalogue) . '">' : '') . '
             ' . (($problem !== '') ? '<div class="alert alert-danger small py-2" role="alert">' . h($problem) . '</div>' : '') . '
             <div class="row g-2">
                 <div class="col-sm-4">
@@ -1775,7 +1813,8 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
                 </div>
                 <div class="col-sm-7' . (($kind === 'bearer') ? '' : ' d-none') . '" data-ws-mcp-auth-for="bearer">
                     <label class="form-label small" for="' . $prefix . 'token">' . h(lang('Access token')) . '</label>
-                    <input class="form-control form-control-sm" type="password" name="mcp_token" id="' . $prefix . 'token" autocomplete="new-password"' . (($stored_kind === 'bearer') ? $kept : '') . $disabled . '>
+                    <input class="form-control form-control-sm" type="password" name="mcp_token" id="' . $prefix . 'token" autocomplete="new-password"' . (($stored_kind === 'bearer') ? $kept : '') . (($entry && ($entry['token_url'] !== '') && ($kind === 'bearer')) ? ' autofocus' : '') . $disabled . '>
+                    ' . (($entry && ($entry['token_url'] !== '')) ? '<div class="form-text">' . h(lang(array('string' => 'Make a token on {var:1} and paste it here. A read-only one is enough for the tools that read.', 'vars' => $entry['name']))) . ' <a href="' . h($entry['token_url']) . '" target="_blank" rel="noopener noreferrer">' . h(lang('Open the token page')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></div>' : '') . '
                 </div>
                 <div class="col-sm-7' . (($kind === 'header') ? '' : ' d-none') . '" data-ws-mcp-auth-for="header">
                     <div class="row g-2">
@@ -2102,7 +2141,10 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
             </div>';
     }
 
-    if ($list === '') {
+    // An administrator's empty list is the catalogue below it.
+    if ($list !== '') {
+        $list = '<h3 class="h6">' . h(lang('Added servers')) . '</h3>' . $list . '<div class="mb-4"></div>';
+    } elseif (!$admin) {
         $list = '<div class="ws-empty py-3"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div>';
     }
 
@@ -2121,23 +2163,40 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
             . '<div class="mt-1 text-body-secondary">' . h((string) ws_ai_config()['error']) . '</div></div>';
     }
 
-    $typed_new = ($kept['for'] === 'new') ? $kept['values'] : array();
+    // Adding: the ready-made connectors, then a server by its address, with
+    // the whole form behind More settings. A form a check refused, or one a
+    // connector that takes a token filled, opens with its values; what the
+    // check of an address found fills it too, closed.
+    $add = '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>';
+
+    if ($admin) {
+        $refused = ($kept['for'] === 'new');
+        $typed_new = ($refused || ($kept['for'] === 'probe')) ? $kept['values'] : array();
+        $add = (function_exists('ws_mcp_settings_catalogue') ? ws_mcp_settings_catalogue($self_url, $servers) : '')
+            . (function_exists('ws_mcp_settings_custom')
+                ? ws_mcp_settings_custom($self_url, $kept, ws_mcp_settings_form($self_url, null, true, $typed_new, $refused ? $kept['problem'] : '', $refused ? $kept['catalogue'] : ''))
+                : '');
+    }
 
     return '
         <div class="card mt-4" id="ws-mcp">
             <div class="card-header d-flex align-items-center gap-2">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</h2>
                 <a class="btn btn-sm btn-ghost" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
-                ' . ($admin ? '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new" aria-controls="ws-mcp-new" aria-expanded="' . ($typed_new ? 'true' : 'false') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</button>' : '') . '
+                ' . ($admin ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="#ws-mcp-catalogue"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</a>' : '') . '
             </div>
             <div class="card-body">
-                <p class="small text-body-secondary">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. The tools the server marks as reading only are turned on when its tools are first read; the others stay off until you turn them on here.'))
+                <p class="small mb-1">' . h(lang('Connect another service\'s tools under an alias, then ask in a channel: "@github which pull requests wait for a review?" Add a ready-made connector with one click, or any other by its address.')) . '</p>
+                <details class="small text-body-secondary mb-3">
+                    <summary>' . h(lang('How it works')) . '</summary>
+                    <p class="mt-2 mb-0">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. The tools the server marks as reading only are turned on when its tools are first read; the others stay off until you turn them on here.'))
                     . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.'))
                     . ((function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready()) ? ' ' . h(lang('A server that is an agent itself can answer on its own, without Pinegrap AI: choose the tool that takes the messages under Tools and settings.')) : '')
                     . ' ' . h(lang('On a server people sign in to (OAuth), everybody may connect their own account, and tools that write can be turned on too: each call waits under the answer until the person who asked approves it, and runs with their own account.')) . '</p>
+                </details>
                 ' . $ai_alert . '
-                ' . ($admin ? '<div class="collapse mb-3' . ($typed_new ? ' show' : '') . '" id="ws-mcp-new">' . ws_mcp_settings_form($self_url, null, true, $typed_new, $typed_new ? $kept['problem'] : '') . '</div>' : '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>') . '
                 ' . $list . '
+                ' . $add . '
             </div>
         </div>
         <script>

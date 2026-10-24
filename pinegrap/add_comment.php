@@ -92,8 +92,10 @@ $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 // visual editor shows a submitted form through its form_item_view widget
 // rather than a page type, and its comments are that record's: for the checks
 // below it is a form item view page, and the widget's access setting is its
-// submitter security (see pg_sw_record_comment_context()). A refusal is
-// answered further down, after the page's own gates.
+// submitter security (see pg_sw_record_comment_context()). A classic catalog,
+// catalog detail or calendar event view page takes only a product, product
+// group or calendar event it shows (pg_comment_classic_item_shown()). A
+// refusal is answered further down, after the page's own gates.
 $comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);
 $comment_record = null;
 if ($comment_thread['accept']) {
@@ -285,12 +287,28 @@ if ($comment_thread['refusal'] === 'record') {
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
-// If the page type or item type is not valid for a form item view/submitted form
-// (a legacy form item view page takes only a submitted form, a page without a
-// form_item_view widget never one), then log activity and output error.
+// If the item type is not valid for the page type (a legacy form item view
+// page takes only a submitted form, a page without a form_item_view widget
+// never one, and a page takes a product, product group or calendar event only
+// when its page type shows that kind of item), then log activity and output
+// error.
 if ($comment_thread['refusal'] === 'page_type') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// A product, product group or calendar event this classic page does not show
+// (it was deleted, the event is not published or not in this view's
+// calendars, or the id names nothing) is refused on an error page, as a
+// record the page does not show is: the page answers that item's address with
+// an error of its own, so there is no form to go back to. The form state is
+// dropped first: a hidden field prints the session value first, so the next
+// comment form of this page, about another item, would carry the refused item
+// and the typed text and post them again.
+if ($comment_thread['refusal'] === 'item') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->remove_form();
+    output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // If the item type is submitted form then prepare for that type of comment.
@@ -435,62 +453,19 @@ if (
 ) {
     $name = $name;
 
-// else if user is allowed to select name, then set the name that the user selected
-} elseif ($comments_allow_user_to_select_name == 1) {
-    // if a certain type of name was selected, then get name for user, because we will need it below.
-    if (
-        ($name_type == 'first_name')
-        || ($name_type == 'first_name_last_initial')
-        || ($name_type == 'first_initial_last_name')
-        || ($name_type == 'first_initial_last_initial')
-        || ($name_type == 'full_name')
-    ) {
-        // get name for the user because we might need it below
-        $query =
-            "SELECT
-                contacts.first_name,
-                contacts.last_name
-            FROM user
-            LEFT JOIN contacts ON user_contact = contacts.id
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        $contact = mysqli_fetch_assoc($result);
-    }
-    
-    // prepare the name differently based on the type of name that was selected
-    switch ($name_type) {
-        case 'username':
-            $name = $_SESSION['sessionusername'];
-            break;
-            
-        case 'first_name':
-            $name = $contact['first_name'];
-            break;
-            
-        case 'first_name_last_initial':
-            $name = $contact['first_name'] . ' ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'first_initial_last_name':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . $contact['last_name'];
-            break;
-            
-        case 'first_initial_last_initial':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'full_name':
-            $name = $contact['first_name'] . ' ' . $contact['last_name'];
-            break;
-            
-        case 'anonymous':
-            $name = 'Anonymous';
-            break;
-    }
-
-// else save the user's username
+// A signed-in member who may not type a name gets the name
+// pg_comment_member_name() decides: on a page of a visual design the
+// contact's display name, elsewhere the login username. The posted name
+// field is never read for them, and with the page's name select on, a
+// name_type the form does not offer this member counts as no choice.
 } else {
-    $name = $_SESSION['sessionusername'];
+    $name = pg_comment_member_name(
+        (string) ($_SESSION['sessionusername'] ?? ''),
+        pg_comment_member_contact($user_id),
+        pg_sw_page_is_visual($page_id),
+        ($comments_allow_user_to_select_name == 1),
+        $name_type
+    );
 }
 
 // if there is not a name to save, then save anonymous

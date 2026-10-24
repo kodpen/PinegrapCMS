@@ -1267,11 +1267,12 @@ function pg_og_default_image()
 /**
  * Who wrote a submitted form, for the BlogPosting author.
  *
- * Only the linked contact's name is used. The account's login username is
- * never printed: it is half of a credential, and the account that signs a
- * template's sample records (the setup administrator) has no contact. An
- * anonymous submission, or one whose contact has no name, returns nothing,
- * and the caller falls back to naming the site.
+ * Only the linked contact's name is used (pg_contact_display_name(),
+ * includes/fn/contacts.php). The account's login username is never printed:
+ * it is half of a credential, and the account that signs a template's sample
+ * records (the setup administrator) has no contact. An anonymous submission,
+ * or one whose contact has no name, returns nothing, and the caller falls
+ * back to naming the site.
  */
 function pg_submitted_form_author_name($submitted_form_id)
 {
@@ -1291,11 +1292,7 @@ function pg_submitted_form_author_name($submitted_form_id)
             LIMIT 1");
 
         if (is_array($contact)) {
-            $name = trim(trim((string) ($contact['first_name'] ?? '')) . ' ' . trim((string) ($contact['last_name'] ?? '')));
-
-            if ($name === '') {
-                $name = trim((string) ($contact['nickname'] ?? ''));
-            }
+            $name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
 
             if ($name !== '') {
                 return $name;
