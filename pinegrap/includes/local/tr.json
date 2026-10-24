@@ -28064,5 +28064,6 @@
     "Through the payment service": "Ödeme hizmeti üzerinden",
     "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
     "The payment service gave no clear answer; check the refund on its screen.": "Ödeme hizmeti net bir cevap vermedi; iadeyi hizmetin kendi ekranında kontrol edin.",
-    "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş."
+    "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş.",
+    "Marked as refunded: the money went back from the order screen.": "Ücreti iade edildi olarak işaretlendi: para sipariş ekranından geri ödendi."
 }

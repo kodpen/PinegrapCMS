@@ -194,6 +194,15 @@ function test_returns_refund_columns_staff_move_holds_the_order_lock()
 	pg_assert_true(($release !== false) && (strpos($staff, "pg_return_announce('order.return.' . \$to", $release) !== false), 'approved and received are announced after the lock is let go');
 }
 
+// A refund recorded as 0 means the money went back from the order screen;
+// the panel says so instead of showing an amount of 0.
+function test_returns_refund_columns_panel_says_a_zero_refund_went_back_from_the_order_screen()
+{
+	$panel = returns_refund_columns_test_source('view_return.php');
+
+	pg_assert_contains("lang('Marked as refunded: the money went back from the order screen.')", $panel);
+}
+
 // The step is called from the open version with its label, adds the four
 // columns with the idempotent helper and fills the old refunds in again
 // only where nothing is kept yet.

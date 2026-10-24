@@ -439,15 +439,25 @@ $refund_due = pg_return_refund_due($return);
 
 // The refund the return keeps (11.0.34), once it was refunded: how much, how
 // it was made, the reference and a warning when the payment service gave no
-// clear answer. A return refunded before the refund was kept, whose refund
-// could not be found again, says so.
+// clear answer. A refund recorded as 0 says the money went back from the
+// order screen rather than showing an amount of 0. A return refunded before
+// the refund was kept, whose refund could not be found again, says so.
 $output_refund = '';
 
 if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $return)) {
     $refund_method = (string) $return['refund_method'];
     $refund_reference = (string) $return['refund_reference'];
 
-    if (in_array($refund_method, array('driver', 'manual'), true)) {
+    if (($refund_method === 'manual') && ((int) $return['refund_amount'] === 0)) {
+        $output_refund = '
+                        <div class="mt-3 small">
+                            <p class="mb-1">' . h(lang('Marked as refunded: the money went back from the order screen.')) . '</p>
+                            ' . (($refund_reference !== '') ? '<div class="row">
+                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col text-end text-break">' . h($refund_reference) . '</span>
+                            </div>' : '') . '
+                        </div>';
+    } elseif (in_array($refund_method, array('driver', 'manual'), true)) {
         $output_refund = '
                         <div class="mt-3 small">
                             <div class="row">
