@@ -5,7 +5,7 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 
 ## What does it ship?
 - 55 pages: home, forum, board, topic, tag, member, unanswered, docs, docs_section, doc, search, guidelines, FAQ, about, contact, legal, error, sign-in; members' new_topic, doc_new, report, my_topics, my_docs, doc_submission, account, inbox; moderators' pages ([[design-template-forum-moderation]]); 11 e-mails.
-- Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
+- Version 1.0.1 (1.0.0 had no followed topics). Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
 
 ## What do the forms hold?
 - Forum Topics (`new_topic`): board (category role), kind (Question or Discussion), title, body (rich), tags, attachment (`public` folder), guidelines box. Office: status Open/Solved/Closed/Hidden, pinned, announcement (No/Yes), staff_note.
@@ -15,7 +15,7 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 
 ## What keeps a record public?
 - A topic: `status is not equal to Hidden` on every open list and both topic views; live once sent. A guide: `status is equal to Live on the site`. A report: no view outside `private`.
-- Viewer filters and `submitter_only` views sit on `registration` pages and show the member's own (editor off).
+- Viewer filters and `submitter_only` views sit on `registration` pages and show the member's own (editor off). My topics: started (submitter) and Topics you follow (watcher alone, detail `{{tab:topic}}`, live rule, newest activity, 20 without paging; [[form-list-viewer-filter]]).
 - Unanswered is `number_of_comments is less than 1`, never `is equal to 0` ([[form-list-filters-fail-closed]]).
 
 ## How do the archives and feeds work?
@@ -31,7 +31,6 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 - A topic's author gets every reply by e-mail, others when they tick the box. Moves to the comments widget later ([[designable-comments]]).
 
 ## What can the platform not do yet?
-- No "Topics you follow" list: the watcher clause in `widgets.php` wants `page_type = 'form item view'`, a designed topic page is `standard`, so the list would stay empty (a test forbids one). After the platform fix, add it to My topics.
 - A reply is signed with the user name until #1490 lands; then update the staff note and the FAQ.
 - My replies and replies awaiting approval wait for the comments widget.
 

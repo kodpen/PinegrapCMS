@@ -3047,10 +3047,9 @@ $pages[] = array(
 );
 
 // The member's own topics: the ones they started, the most recently active
-// first (the page's one list with page links). Live topics only: a topic
-// the moderators hid opens nowhere, so it leaves this page too. No list of
-// the topics they follow: a form list's watcher filter finds only a legacy
-// form item view page, never a designed topic page, so it would stay empty.
+// first (the page's one list with page links), and the ones they follow.
+// Both hold live topics only: a topic the moderators hid opens nowhere, so
+// it leaves this page too.
 $pages[] = array(
     'key'     => 'my_topics',
     'name'    => lang('my-topics'),
@@ -3060,22 +3059,26 @@ $pages[] = array(
     'sitemap' => false,
     'noindex' => true,
     'tree'    => $page(array(
-        $page_header(lang('My topics'), lang('The topics you started, the most recently active first.'), array(
+        $page_header(lang('My topics'), lang('The topics you started and the topics you follow, the most recently active first.'), array(
             $breadcrumb(array(array(lang('My Account'), '{{page:my_account}}'), array(lang('My topics'), ''))),
         )),
         $band(lang('Content'), array(
             $row(array(
                 $col(array(
-                    $el('section', '', lang('Started'), array(
+                    $el('section', 'mb-5', lang('Started'), array(
                         $sec_head(lang('Topics you started'), lang('Start a topic'), '{{page:new_topic}}', 'pf-started'),
                         $widget('my_topics_started'),
                     ), array('_attrs' => array($attr('aria-labelledby', 'pf-started')))),
+                    $el('section', '', lang('Followed'), array(
+                        $sec_head(lang('Topics you follow'), '', '', 'pf-followed'),
+                        $widget('my_topics_followed'),
+                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-followed')))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', '', lang('Side Column'), array(
                         $side_card(lang('Following'), lang('How following works'), array(
                             $para(lang('Every reply to a topic you started comes to you by e-mail.'), 'small'),
-                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: its new replies then come to you by e-mail.'), 'small mb-0'),
+                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), 'small mb-0'),
                         ), 'pf-card pf-tint mb-4'),
                         $side_card(lang('Missing Topic'), lang('A topic is missing?'), array(
                             $para(lang('A topic the moderators hid no longer shows anywhere, this page included. If you think that was a mistake, write to them.'), 'small text-body-secondary mb-3'),
@@ -4495,6 +4498,13 @@ $own = function ($submitter, $watcher) {
 $widgets['my_topics_started'] = $topic_list('my_topics', 20, 0, array(),
     lang('You have not started a topic yet. Ask a question or start a discussion: the community will help.'),
     array($topic_rows($topic_sample(2))), $own(true, false));
+// The live topics the member follows: the ones under whose reply form they
+// ticked the box, the twenty most recently active. A follower is kept per
+// topic page, the list's detail page, whose record view shows the topics'
+// form (pg_sw_list_watcher_page_id()).
+$widgets['my_topics_followed'] = $topic_list('my_topics', 20, 20, array(),
+    lang('You follow no topic yet. Tick the box under the reply form when you reply, and the topic appears here.'),
+    array($topic_rows($topic_sample(7))), $own(false, true));
 
 // A list of the docs desk or the moderators' desks: the records in their
 // state on the desk. No live rule: these lists sit on the member's own page
@@ -5205,7 +5215,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

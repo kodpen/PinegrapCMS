@@ -28049,5 +28049,10 @@
     "Report Details": "Şikâyet Ayrıntıları",
     "What is your message about?": "Mesajınız ne hakkında?",
     "Choose one…": "Birini seçin…",
-    "Topics desk": "Konu masası"
+    "Topics desk": "Konu masası",
+    "The topics you started and the topics you follow, the most recently active first.": "Açtığınız ve takip ettiğiniz konular, en son hareket görenler önce.",
+    "Followed": "Takip Edilenler",
+    "Topics you follow": "Takip ettiğiniz konular",
+    "To follow someone else's topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.": "Başka birinin konusunu takip etmek için yanıt yazarken yanıt formunun altındaki kutuyu işaretleyin: konu burada görünür, yeni yanıtları da size e-postayla gelir.",
+    "You follow no topic yet. Tick the box under the reply form when you reply, and the topic appears here.": "Henüz hiçbir konuyu takip etmiyorsunuz. Yanıt yazarken yanıt formunun altındaki kutuyu işaretleyin, konu burada görünür."
 }
