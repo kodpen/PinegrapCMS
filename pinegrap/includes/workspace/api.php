@@ -42,6 +42,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -182,6 +183,7 @@ function ws_openapi_objects()
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
+        'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
     );
 }
 
@@ -1837,6 +1839,19 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.catalogue',
+            'method'      => 'GET',
+            'path'        => '/workspace/mcp-servers/catalogue',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mcp_catalogue',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceMcpConnector'),
+            'summary'     => 'Ready-made MCP connectors',
+            'description' => 'The other services\' MCP servers the Workspace Settings add with one click, for an application whose owner is an administrator (403 for anybody else). auth says how the site signs in: none (the server answers without an account), oauth (the service registers the site on its own and an administrator signs in once) or bearer (a token made on token_url). alias is the one offered when it is free; tools read_only means the first read of the tools turns on the ones the server marks as reading only. added says whether the site already has a server at url, under server_alias. The list is bundled with the site, not fetched. Adding a server, its credential and its sign-in are done in the Workspace Settings only; no MCP tool lists this.',
+            'params'      => array(),
         ),
 
     );
