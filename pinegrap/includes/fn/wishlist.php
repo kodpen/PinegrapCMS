@@ -39,7 +39,9 @@
  *                            null when refused
  *   pg_wishlist_owner()      the owner of the request's list, or null
  *
- * wishlist.php is the endpoint the heart buttons use. A daily pass
+ * wishlist.php is the endpoint the heart buttons use; a page holding one
+ * gets their script (assets/js/pg_wishlist.js) from pg_wishlist_inject().
+ * A daily pass
  * (pg_wishlist_trim_daily(), from job.php) removes visitor lists no cookie
  * can name any more and rows of deleted products and accounts; deleting an
  * account or a product removes its rows at once (pg_wishlist_forget_user(),
@@ -934,4 +936,60 @@ function pg_wishlist_trim_daily()
     @file_put_contents($path, (string) time(), LOCK_EX);
 
     return pg_wishlist_trim();
+}
+
+/**
+ * The favourite hearts' script (assets/js/pg_wishlist.js), for a page whose
+ * HTML holds a heart: a catalog widget's button bound to catalog_wishlist
+ * or wishlist, which the binding pass marks with data-pg-wishlist. Asked
+ * once every shared component and system widget is drawn in
+ * (get_page_content.php), so the file follows the heart wherever it was
+ * placed. Its settings, the endpoint's address and the words the script may
+ * show in the page's language, are the same for every visitor: the page can
+ * still come from the page cache, and the script asks the endpoint for the
+ * visitor's list.
+ *
+ * @param string      $content page HTML
+ * @param string|null $src     the script's address; null builds it from the
+ *                             software directory and the file's time
+ * @param string|null $url     the endpoint's address; null builds it
+ * @return string
+ */
+function pg_wishlist_inject($content, $src = null, $url = null)
+{
+    if (!preg_match('/\sdata-pg-wishlist="/', $content)) {
+        return $content;
+    }
+
+    if (strpos($content, '/assets/js/pg_wishlist.js') !== false) {
+        return $content;
+    }
+
+    if ($src === null) {
+        $src = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_wishlist.js?v='
+            . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_wishlist.js');
+    }
+
+    if ($url === null) {
+        $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/wishlist.php';
+    }
+
+    $settings = array(
+        'url'    => (string) $url,
+        'labels' => array(
+            // Read out when a change fails and the server gave no words.
+            'failed' => lang('Something went wrong. Please try again.'),
+        ),
+    );
+
+    $file = '<script>window.pgWishlist = '
+        . json_encode($settings, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        . ';</script>' . "\n"
+        . '<script src="' . h($src) . '" defer></script>' . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
 }

@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, wishlist core done): designer tokens, heart, Favourites page next; back-in-stock, bundles later
+description: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, wishlist core, heart done): designer tokens, Favourites page next; back-in-stock, bundles later
 ---
 
 ## Why?
@@ -18,10 +18,10 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 2a. (PR #698) Review gate (comment form, `add_comment.php`), "Verified purchase" badge, rating refreshed on writes and daily, `aggregateRating` in legacy detail markup, store reply (moderation, under the review) (`includes/fn/reviews.php`).
 2b. (PR #1316) `order_review_request` e-mail once per order when an account's order ships, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
 3a. (PR #1583) Wishlist core: owners, visitor cookie, `wishlist.php`, merge at sign-in, privacy export, trim (`commerce/wishlist.md`).
+3b. (PR #TBD) Catalog hearts, `pg_wishlist.js` (`commerce/wishlist-heart.md`).
 
 ## What remains?
 2c. Designer: `__rating_avg`, `__rating_count`, `__reviews` tokens and a review form on designer product pages (comments are page-level there), then aggregateRating in `_pg_build_product_jsonld()` (M).
-3b. Heart in catalog widgets, state from `wishlist.php?action=state` (S–M).
 3c. Favourites widget and page, My Account link (M).
 4. Back-in-stock capture + listener + templates (S–M).
 5. API: `/products/{id}/reviews`, `/customers/{id}/wishlist`, webhook `product.review.created`, `verified` on comments (S).
@@ -32,4 +32,4 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 - Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
-- Step 2c, 3b or 3c; read `commerce/product-reviews-verified.md` or `commerce/wishlist.md`.
+- Step 2c or 3c; read `commerce/product-reviews-verified.md` or `commerce/wishlist.md`.

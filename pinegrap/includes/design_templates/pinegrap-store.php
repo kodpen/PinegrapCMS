@@ -147,6 +147,19 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
 $add_to_cart = function ($text, $variant, $class = '', $outline = false) use ($button) {
     return $button($text, $variant, $class, array('size' => 'sm', 'outline' => $outline, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
+// The favourite heart in the corner of a product card, above the card's
+// stretched link: the listing marks it with the card's product and draws it
+// hidden, the page's script shows it, filled for a product the visitor
+// saved. A product group's card has none.
+$heart = function () use ($button, $el, $span, $attr) {
+    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+        array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
+    $node['children'] = array(
+        $el('i', 'bi bi-heart', '', array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+        $span(lang('Add to favourites'), 'visually-hidden', lang('Screen Reader Text')),
+    );
+    return $node;
+};
 
 // The sample picture a product card shows until the widget fills it in.
 $sample_product = 'https://picsum.photos/seed/pinegrap-store-product/600/600';
@@ -462,10 +475,11 @@ $price = function ($class) use ($span, $bind) {
 };
 
 // Grid: a picture, the category, the name, the price and the button.
-$card_grid = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_grid = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 bg-body-tertiary'),
+            $heart(),
             $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
                 $product_title('h3', 'h6 card-title mb-3'),
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mt-auto position-relative z-2', lang('Price and Button'), array(
@@ -478,9 +492,10 @@ $card_grid = function () use ($el, $col, $product_title, $product_picture, $pric
 };
 
 // List: the picture beside the words, two to a row.
-$card_list = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_list = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 bg-body-tertiary overflow-hidden', lang('Product Card'), array(
+            $heart(),
             $el('div', 'row g-0 h-100 align-items-stretch', lang('Card Row'), array(
                 $el('div', 'col-5', lang('Picture'), array(
                     $product_picture('ratio ratio-1x1 h-100'),
@@ -501,10 +516,11 @@ $card_list = function () use ($el, $col, $product_title, $product_picture, $pric
 
 // Lookbook: a square picture with the name and the price on a frosted
 // label.
-$card_lookbook = function () use ($el, $col, $product_title, $product_picture, $price) {
+$card_lookbook = function () use ($el, $col, $product_title, $product_picture, $price, $heart) {
     return $col(array(
         $el('div', 'position-relative rounded-4 overflow-hidden h-100', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1'),
+            $heart(),
             $el('div', 'position-absolute bottom-0 start-0 end-0 m-3 p-3 rounded-3 bg-body bg-opacity-75 shadow-sm', lang('Label'), array(
                 $product_title('h3', 'h6 mb-1 text-truncate'),
                 $price('small fw-semibold text-body-secondary'),
@@ -514,10 +530,11 @@ $card_lookbook = function () use ($el, $col, $product_title, $product_picture, $
 };
 
 // Strip: small cards side by side, scrolled sideways on a phone.
-$card_strip = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_strip = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border shadow-none', lang('Product Card'), array(
             $product_picture('ratio ratio-4x3 bg-body-tertiary'),
+            $heart(),
             $el('div', 'card-body', lang('Card Body'), array(
                 $product_title('h3', 'h6 card-title mb-1'),
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 position-relative z-2', lang('Price and Button'), array(

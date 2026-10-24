@@ -184,6 +184,110 @@ function _pg_catalog_binding_disabled($node, $context)
     return false;
 }
 
+// The favourite heart (assets/js/pg_wishlist.js), on a button bound to
+// `catalog_wishlist` (a listing card) or `wishlist` (the product page):
+//   - a plain <button type="button">: the product page's heart sits inside
+//     the add-to-cart form and must never submit it
+//   - data-pg-wishlist = $product, the token the row or the page fills in
+//     with the product's id
+//   - aria-pressed="false", and an aria-label when the button has no words
+//     of its own (an icon alone)
+//   - d-none, which the script takes away once it knows the visitor's list:
+//     a page without the script shows no control that does nothing.
+//     $hidden is false for the editor's Preview and the canvas cards the
+//     server draws, where no script runs and the heart shows as designed.
+// No token and no form: the script reads the visitor's list and the session
+// token from wishlist.php?action=state, so the page is the same for every
+// visitor and stays cacheable. A component button and a <button> are
+// hearts; the editor offers the actions on nothing else.
+// Answers whether the node was made a heart.
+function _pg_catalog_wishlist_heart(&$node, $product, $hidden = true)
+{
+    if (!is_array($node) || !isset($node['type'])) return false;
+
+    $is_btn = ($node['type'] === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn');
+    $is_tag = ($node['type'] === 'semantic' && isset($node['props']['tag']) && strtolower((string)$node['props']['tag']) === 'button');
+    if (!$is_btn && !$is_tag) return false;
+
+    $managed = array('data-pg-wishlist' => 1, 'aria-pressed' => 1, 'aria-label' => 1);
+    if ($is_tag) $managed['type'] = 1;
+
+    $existing = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    $kept     = array();
+    $label    = '';
+    foreach ($existing as $a) {
+        if (!is_array($a) || !isset($a['name'])) continue;
+        $name = strtolower((string)$a['name']);
+        // A name the button already has (the designer's, or ours from an
+        // earlier pass) is kept and written again last.
+        if ($name === 'aria-label') $label = trim(isset($a['value']) ? (string)$a['value'] : '');
+        if (isset($managed[$name])) continue;
+        $kept[] = $a;
+    }
+
+    if ($is_btn) {
+        $node['props']['btnElement'] = 'button';
+        $node['props']['btnType']    = 'button';
+        $node['props']['href']       = '';
+        // A freshly dropped button still says "Click Me": it gets the words
+        // of the action instead, as add-to-cart does.
+        $text = isset($node['props']['text']) && is_string($node['props']['text']) ? trim($node['props']['text']) : '';
+        if ($text === 'Click Me' || $text === 'Button') $node['props']['text'] = lang('Add to favourites');
+    } else {
+        $kept[] = array('name' => 'type', 'value' => 'button');
+    }
+
+    $kept[] = array('name' => 'data-pg-wishlist', 'value' => (string)$product);
+    $kept[] = array('name' => 'aria-pressed',     'value' => 'false');
+    if ($label === '' && !_pg_catalog_node_has_words($node)) $label = lang('Add to favourites');
+    if ($label !== '') $kept[] = array('name' => 'aria-label', 'value' => $label);
+    $node['props']['_attrs'] = $kept;
+
+    if ($hidden) {
+        $class = isset($node['props']['cssClass']) ? trim((string)$node['props']['cssClass']) : '';
+        if (!preg_match('/(^|\s)d-none(\s|$)/', $class)) $node['props']['cssClass'] = trim($class . ' d-none');
+    }
+
+    return true;
+}
+
+// Whether a node or anything inside it carries words a screen reader reads
+// as its name: its text, the text of a child (a visually hidden label), a
+// bound text or the words of a custom HTML piece. An icon has none.
+function _pg_catalog_node_has_words($node)
+{
+    if (!is_array($node)) return false;
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    foreach (array('text', 'html') as $key) {
+        if (isset($props[$key]) && is_string($props[$key]) && trim(strip_tags($props[$key])) !== '') return true;
+    }
+    if (!empty($props['_bindings']['text'])) return true;
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            if (_pg_catalog_node_has_words($child)) return true;
+        }
+    }
+    return false;
+}
+
+// Whether a node is a heart bound to $action that the page must not draw:
+// the wishlist table is not there yet, so the script could neither read nor
+// save the list.
+function _pg_catalog_wishlist_dropped($node, $context, $action)
+{
+    if (!empty($context['wishlist_ready']) || !is_array($node)) return false;
+    $b = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    return isset($b['action']) && $b['action'] === $action;
+}
+
+// Takes the hearts out of a rendered card: a product group's card has no
+// single product to save.
+function _pg_catalog_wishlist_strip($html)
+{
+    if (strpos($html, 'data-pg-wishlist=') === false) return $html;
+    return preg_replace('/<button\b[^>]*\sdata-pg-wishlist="[^"]*"[^>]*>.*?<\/button>/is', '', $html);
+}
+
 function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = null)
 {
     if (!is_array($node)) return;
@@ -296,6 +400,14 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             );
             return;  // wrapper preserved; no further recursion into the now-replaced inner.
         }
+    }
+
+    // ── Favourite heart, per card ───────────────────────────────────────
+    // The row's product fills the mark (^^__id^^); a product group's card
+    // loses the heart in the group loop. See _pg_catalog_wishlist_heart().
+    if (isset($bindings['action']) && $bindings['action'] === 'catalog_wishlist'
+        && _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']))) {
+        $bindings_used['action_catalog_wishlist'] = true;
     }
 
     // ── Component btn: action bindings ──────────────────────────────────
@@ -469,6 +581,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
         $kept_children = array();
         foreach ($node['children'] as $child) {
             if (is_array($child) && _pg_catalog_binding_disabled($child, $context)) continue;
+            if (_pg_catalog_wishlist_dropped($child, $context, 'catalog_wishlist')) continue;
             $kept_children[] = $child;
         }
         $node['children'] = $kept_children;
@@ -766,6 +879,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // dropped from the output entirely (see _pg_catalog_binding_disabled).
         'search_ui_enabled'    => $search_enabled,
         'filters_ui_enabled'   => ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled),
+        // The favourite heart: left out without the wishlist table, drawn
+        // as designed in the editor's Preview (_pg_catalog_wishlist_heart()).
+        'wishlist_ready'       => pg_wishlist_ready(),
+        'wishlist_preview'     => (bool)pg_sw_preview_overrides(),
     ), $_pg_bindings_used);
 
     $split = _split_widget_tree($tree_decoded);
@@ -2081,6 +2198,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     '',
                     $g_rendered
                 );
+                // The favourite heart too: the list keeps products, and a
+                // group's card carries the group's id, no product of it. A
+                // select group's page has the heart of the variant chosen.
+                $g_rendered = _pg_catalog_wishlist_strip($g_rendered);
 
                 // Same treatment the product loop forty lines up already gets:
                 // without it every group card repeats the same ids, and a
@@ -2444,6 +2565,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 //   - On a btn component:
 //       _bindings.action === 'add_to_cart'
 //         → renders as <button type="submit"> inside the auto-wrapped form.
+//   - On a btn component or a semantic <button>:
+//       _bindings.action === 'wishlist'
+//         → the favourite heart, a <button type="button"> that never
+//           submits the form (_pg_catalog_wishlist_heart()).
 //   - On a semantic <input> node:
 //       _bindings.value === 'quantity'
 //         → renders as <input type="number" name="quantity" min="1" …>
@@ -3760,6 +3885,14 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         $node['props']['_attrs'][] = array('name' => 'data-pg-civ-action', 'value' => 'add_to_cart');
     }
 
+    // ── Button: favourite heart ──────────────────────────────────────────────
+    // The product shown fills the mark (^^__id^^). On a select group's page
+    // pg_civ_variants.js announces the variant picked, and pg_wishlist.js
+    // moves the heart to it. type="button": it sits in the add-to-cart form.
+    if (isset($bindings['action']) && $bindings['action'] === 'wishlist') {
+        _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']));
+    }
+
     // ── Input: recipient_name (free-form new recipient) ─────────────────────
     // The new-recipient input is HIDDEN by default — only revealed when the
     // user picks "+ Yeni alıcı ekle" from the recipient_select dropdown. The
@@ -3923,6 +4056,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         $kept = array();
         foreach ($node['children'] as &$child) {
             if (is_array($child) && _civ_should_skip_node($child, $context)) continue;
+            if (_pg_catalog_wishlist_dropped($child, $context, 'wishlist')) continue;
             _apply_catalog_item_view_bindings($child, $context);
             $kept[] = $child;
         }
@@ -4109,6 +4243,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'multi_recipient_active' => $_civ_multi_recip,
             'recipient_options'      => $_civ_recip_opts,
             'gallery'                => $_civ_gallery,
+            // The favourite heart, as in the listing.
+            'wishlist_ready'         => pg_wishlist_ready(),
+            'wishlist_preview'       => (bool)pg_sw_preview_overrides(),
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($_civ_remuxed !== false) $tree_json = $_civ_remuxed;
@@ -5275,7 +5412,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '4';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '5';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

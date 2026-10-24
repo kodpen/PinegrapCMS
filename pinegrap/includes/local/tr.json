@@ -28156,5 +28156,9 @@
     "Off — only a button sends the comment": "Kapalı — yorumu yalnızca bir düğme gönderir",
     "Remembers the products you saved to your favourites before signing in.": "Oturum açmadan önce favorilerinize eklediğiniz ürünleri hatırlar.",
     "Your session has expired. Reload the page and try again.": "Oturumunuzun süresi doldu. Sayfayı yenileyip tekrar deneyin.",
-    "Favourites are not available on this site yet.": "Favoriler bu sitede henüz kullanılamıyor."
+    "Favourites are not available on this site yet.": "Favoriler bu sitede henüz kullanılamıyor.",
+    "Add to favourites": "Favorilere ekle",
+    "Favourite": "Favori",
+    "Favourite (heart)": "Favori (kalp)",
+    "Favourite (heart) — per card (catalog_listing loop)": "Favori (kalp) — kart başına (catalog_listing döngüsü)"
 }
