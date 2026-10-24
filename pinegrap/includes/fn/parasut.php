@@ -103,13 +103,19 @@ function parasut_throttle()
 /**
  * Make a cURL request to the Parasut API.
  *
- * @param string $method  GET | POST | PUT | PATCH | DELETE
- * @param string $url     Full URL
- * @param array  $body    Associative array (will be JSON-encoded) or null
- * @param string $token   Bearer token (omit for OAuth token endpoint)
+ * A 429 (over the rate limit, another process calling too) is sent once
+ * more after a full rate window, as the e-document driver does
+ * (erp_edoc_parasut_request()): Paraşüt did not process the request, so
+ * repeating it cannot create a second record.
+ *
+ * @param string $method     GET | POST | PUT | PATCH | DELETE
+ * @param string $url        Full URL
+ * @param array  $body       Associative array (will be JSON-encoded) or null
+ * @param string $token      Bearer token (omit for OAuth token endpoint)
+ * @param bool   $retry_429  false for the repeated request, so a second 429 is returned
  * @return array ['http_code' => int, 'body' => mixed]
  */
-function _parasut_request($method, $url, $body = null, $token = null)
+function _parasut_request($method, $url, $body = null, $token = null, $retry_429 = true)
 {
     parasut_throttle();
 
@@ -159,6 +165,12 @@ function _parasut_request($method, $url, $body = null, $token = null)
             $curl_error .= pg_curl_tls_hint($curl_errno);
         }
         return ['http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => $curl_error];
+    }
+
+    if (($http_code === 429) && $retry_429) {
+        sleep((int) ceil(PARASUT_RATE_WINDOW));
+
+        return _parasut_request($method, $url, $body, $token, false);
     }
 
     return ['http_code' => $http_code, 'body' => json_decode($response, true), 'raw' => (string) $response];
@@ -1299,7 +1311,42 @@ function parasut_sync_product($product_id, $token)
 }
 
 /**
- * Ensure an existing Parasut product has inventory tracking enabled (physical + inventory_tracking=true)
+ * One line of a shipment document: a stock movement of the product in the
+ * warehouse. Paraşüt takes the lines as relationships.stock_movements and
+ * refuses shipment_document_details lines with 422 "Stok kalemleri
+ * doldurulmalı". The document's inflow attribute gives the direction.
+ *
+ * @param string|int $product_id    Paraşüt product id
+ * @param string|int $warehouse_id  Paraşüt warehouse id
+ * @param int        $quantity
+ * @return array
+ */
+function parasut_shipment_stock_movement($product_id, $warehouse_id, $quantity)
+{
+    return [
+        'type' => 'stock_movements',
+        'attributes' => ['quantity' => $quantity],
+        'relationships' => [
+            'product' => ['data' => ['type' => 'products', 'id' => (string) $product_id]],
+            'warehouse' => ['data' => ['type' => 'warehouses', 'id' => (string) $warehouse_id]],
+        ],
+    ];
+}
+
+/**
+ * Whether a Paraşüt product keeps stock. v4 products carry inventory_tracking
+ * and no product_type (a GET answers null for it).
+ *
+ * @param array|null $attributes  data.attributes of GET /products/{id}
+ * @return bool
+ */
+function parasut_product_stock_tracked($attributes)
+{
+    return !empty($attributes['inventory_tracking']);
+}
+
+/**
+ * Ensure an existing Parasut product has inventory tracking enabled (inventory_tracking=true)
  * AND has at least $needed_qty available stock at the given warehouse.
  *
  * Parasut's documented way to add stock to an existing product via API is to create an inflow
@@ -1323,19 +1370,16 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
         return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product fetch failed: {var:1}', 'vars' => array(_parasut_extract_error($get))))];
     }
     $attrs = $get['body']['data']['attributes'] ?? [];
-    $is_tracked = !empty($attrs['inventory_tracking']) && (($attrs['product_type'] ?? '') === 'physical');
+    $is_tracked = parasut_product_stock_tracked($attrs);
     $current_stock = (float) ($attrs['stock_count'] ?? 0);
 
-    // 2) Enable inventory tracking if it's off (was originally created as 'service').
+    // 2) Enable inventory tracking if it's off (the product was created without stock).
     if (!$is_tracked) {
         $patch_body = [
             'data' => [
                 'id' => (string) $parasut_product_id,
                 'type' => 'products',
-                'attributes' => [
-                    'product_type' => 'physical',
-                    'inventory_tracking' => true,
-                ],
+                'attributes' => ['inventory_tracking' => true],
             ],
         ];
         $patch = _parasut_request('PUT', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), $patch_body, $token);
@@ -1346,8 +1390,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
     }
 
     // If the product already has stock movements (e.g. from sales_invoices), Parasut allows
-    // negative stock outflow — no seeding needed. Skip the seed in that case so the main
-    // shipment POST runs and its schema probes can fire.
+    // negative stock outflow — no seeding needed.
     $has_movements = !empty($attrs['has_stock_movements']);
     if ($has_movements) {
         return ['success' => true, 'current_stock' => $current_stock, 'error' => ''];
@@ -1369,21 +1412,8 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                     'contact' => [
                         'data' => ['type' => 'contacts', 'id' => (string) $seed_contact_id],
                     ],
-                    'details' => [
-                        'data' => [
-                            [
-                                'type' => 'shipment_document_details',
-                                'attributes' => [
-                                    'quantity' => $seed_qty,
-                                    'unit' => 'Adet',
-                                    'description' => lang('Opening stock'),
-                                ],
-                                'relationships' => [
-                                    'product' => ['data' => ['type' => 'products', 'id' => (string) $parasut_product_id]],
-                                    'warehouse' => ['data' => ['type' => 'warehouses', 'id' => (string) $warehouse_id]],
-                                ],
-                            ]
-                        ],
+                    'stock_movements' => [
+                        'data' => [parasut_shipment_stock_movement($parasut_product_id, $warehouse_id, $seed_qty)],
                     ],
                 ],
             ],
@@ -2231,7 +2261,7 @@ function parasut_create_shipment($order_id)
 
     $default_parasut_product_id = defined('PARASUT_DEFAULT_PRODUCT_ID') ? PARASUT_DEFAULT_PRODUCT_ID : '';
 
-    // Warehouse is required on every shipment_document_detail AND to seed stock for newly
+    // Warehouse is required on every stock movement AND to seed stock for newly
     // tracked products — fetch it once up front.
     $warehouse_result = parasut_ensure_default_warehouse($token);
     $default_warehouse_id = $warehouse_result['success'] ? $warehouse_result['warehouse_id'] : '';
@@ -2239,11 +2269,11 @@ function parasut_create_shipment($order_id)
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'No Parasut warehouse available: {var:1}', 'vars' => array(($warehouse_result['error'] ?? ''))))];
     }
 
-    $details = [];
+    $stock_movements = [];
     $skipped_count = 0;
     while ($item = mysqli_fetch_assoc($items_result)) {
         // Skip non-shippable items — Parasut shipment_documents can only contain
-        // stock-tracked (physical + inventory_tracking) products. Non-inventory items
+        // stock-tracked (inventory_tracking) products. Non-inventory items
         // (services, digital goods, etc.) are silently excluded from the e-irsaliye
         // (the e-waybill).
         if (empty($item['inventory'])) {
@@ -2254,49 +2284,46 @@ function parasut_create_shipment($order_id)
         $item_name = $item['short_description'] ?: ($item['product_name'] ?: lang('No Product Name'));
         $item_qty = max(1, (int) $item['quantity']);
 
-        $item_parasut_product_id = $item['parasut_product_id'];
-        if (!$item_parasut_product_id && $item['product_id']) {
+        $item_parasut_product_id = (string) $item['parasut_product_id'];
+        $sync_error = '';
+        if (($item_parasut_product_id === '') && $item['product_id']) {
             $sync = parasut_sync_product($item['product_id'], $token);
-            $item_parasut_product_id = $sync['success'] ? $sync['parasut_product_id'] : '';
-        }
-        // Guarantee the Parasut product is physical + inventory_tracking=true AND has
-        // enough stock. If stock is short, seed it via an inflow shipment_document
-        // (the documented Parasut way to add stock to a product via API).
-        if ($item_parasut_product_id) {
-            $ensure = parasut_ensure_product_stock_tracking(
-                $item_parasut_product_id,
-                $item_qty,
-                $parasut_contact_id,
-                $default_warehouse_id,
-                $token
-            );
-            if (!$ensure['success']) {
-                return [
-                    'success' => false,
-                    'parasut_shipment_id' => null,
-                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $ensure['error']))),
-                ];
-            }
+            $item_parasut_product_id = $sync['success'] ? (string) $sync['parasut_product_id'] : '';
+            $sync_error = (string) $sync['error'];
         }
 
-        $detail = [
-            'type' => 'shipment_document_details',
-            'attributes' => [
-                'quantity' => $item_qty,
-                'unit' => 'Adet',
-                'description' => $item_name,
-            ],
-            'relationships' => [
-                'warehouse' => ['data' => ['type' => 'warehouses', 'id' => (string) $default_warehouse_id]],
-            ],
-        ];
-        if ($item_parasut_product_id) {
-            $detail['relationships']['product'] = ['data' => ['type' => 'products', 'id' => $item_parasut_product_id]];
+        // A stock movement names its product, so a line Paraşüt has no product
+        // for cannot go on the document.
+        if ($item_parasut_product_id === '') {
+            return [
+                'success' => false,
+                'parasut_shipment_id' => null,
+                'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $sync_error))),
+            ];
         }
-        $details[] = $detail;
+
+        // Guarantee the Parasut product has inventory_tracking=true AND enough
+        // stock. If stock is short, seed it via an inflow shipment_document
+        // (the documented Parasut way to add stock to a product via API).
+        $ensure = parasut_ensure_product_stock_tracking(
+            $item_parasut_product_id,
+            $item_qty,
+            $parasut_contact_id,
+            $default_warehouse_id,
+            $token
+        );
+        if (!$ensure['success']) {
+            return [
+                'success' => false,
+                'parasut_shipment_id' => null,
+                'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $ensure['error']))),
+            ];
+        }
+
+        $stock_movements[] = parasut_shipment_stock_movement($item_parasut_product_id, $default_warehouse_id, $item_qty);
     }
 
-    if (empty($details)) {
+    if (empty($stock_movements)) {
         return [
             'success' => false,
             'parasut_shipment_id' => null,
@@ -2325,7 +2352,7 @@ function parasut_create_shipment($order_id)
                 'contact' => [
                     'data' => ['type' => 'contacts', 'id' => $parasut_contact_id],
                 ],
-                'details' => ['data' => $details],
+                'stock_movements' => ['data' => $stock_movements],
             ],
         ],
     ];

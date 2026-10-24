@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-order-buttons
-description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): when they give way to the ERP's documents card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#1418)
+description: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): the ERP's card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#1418), stock movement lines (#PR)
 ---
 
 ## What are the legacy Paraşüt buttons?
@@ -16,8 +16,16 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 ## Which VKN/TCKN does "E-Shipment" check? (#1418)
 - `_parasut_shipment_identity_refusal()`, skipped for an order already shipped: with `PARASUT_TC_IN_FIELD` custom_field_1/2, the order's field (what the buyer card is opened with, `_parasut_order_identity()`), named as on the order screen ("Custom Field #1"); with "do not use" (the default) or tax_number, the contact's `tax_number`, as before. Before, custom-field stores were refused although the number was on the order.
 
+## What does "E-Shipment" send? (#PR)
+- `POST shipment_documents` (`inflow` false) with the stock-tracked lines as `relationships.stock_movements`, each `parasut_shipment_stock_movement()`: `quantity`, `product`, `warehouse`. A line without a Paraşüt product is refused before the POST. Before #PR the lines went as `details` (`shipment_document_details`), which Paraşüt answers 422 "Stok kalemleri doldurulmalı": the button never created a document. Paraşüt has no `include=details` on shipment documents; read them with `include=stock_movements`.
+- Short stock is first seeded by an inflow document (`inflow` true) with the same line (`parasut_ensure_product_stock_tracking()`).
+- A product counts as tracked by `inventory_tracking` alone (`parasut_product_stock_tracked()`); v4 has no `product_type`, so the old check failed and every press PUT the product, once into a 429. Now only an untracked one gets PUT `{inventory_tracking: true}`.
+- `_parasut_request()` sends a 429 once more after a full rate window, as the ERP driver does.
+- Probed on the demo company (2026-10-24): `details` 422, `stock_movements` 201 for inflow and outflow.
+
 ## What is left?
 - Removing the invoice and shipment code from `includes/fn/parasut.php` once no store relies on it (plans/erp-edocument-leftovers.md); `view_parasut_inbox.php` keeps working.
 
 ## Tests
 - `tests/parasut_test.php`: the buttons' rule, the error text, E-Shipment on a sent order, E-Shipment's identity check.
+- `tests/parasut_shipment_test.php`: the stock movement line, both shipment requests, the tracking check, the 429 retry.
