@@ -16,6 +16,11 @@
  * [text](address), tables with pipes, "- [ ]" items, ``` fences, and tags as
  * <@user:12> / <#order:1045>. This file turns the box into that text and back.
  *
+ * The marks are made here on the nodes themselves (format()), never with
+ * document.execCommand(), and the rows of tools under a box (the channel's,
+ * a note's, a task's) are built here from the names of their tools
+ * (toolbar()), so every box formats, undoes and labels its buttons alike.
+ *
  * assets/js/workspace.js asks for the box through window.PGWsEditor; every
  * text comes from the #ws-config block.
  *
@@ -106,6 +111,9 @@
         return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     }
 
+    // The browser's own editing commands, for what behaves as typing does
+    // (text, a line break, a chip or a card at the caret): the caret lands
+    // where the browser puts it after typing. Marks never come this way.
     function command(name, value) {
         try {
             return document.execCommand(name, false, (value === undefined) ? null : value);
@@ -642,6 +650,734 @@
         card.classList.add('ws-rich-block-shown');
     }
 
+    // ── Marks: bold, italic, strikethrough, code, links ────────────────
+    //
+    // Made on the nodes themselves rather than with document.execCommand():
+    // the browsers' commands differ (<b> or <strong>, spans with styles),
+    // keep undo steps of their own that the box's history cannot follow, and
+    // are deprecated. Only what the markup carries is made: <b>, <i>, <s>,
+    // <code> and <a href>; <strong>, <em>, <del> from elsewhere are read as
+    // the same marks.
+
+    var MARKS = {
+        bold: { tag: 'b', match: /^(B|STRONG)$/ },
+        italic: { tag: 'i', match: /^(I|EM)$/ },
+        strike: { tag: 's', match: /^(S|STRIKE|DEL)$/ },
+        code: { tag: 'code', match: /^CODE$/ },
+        link: { tag: 'a', match: /^A$/ }
+    };
+
+    // The marks a caret with nothing selected keeps for what is typed next.
+    var TYPED_MARKS = ['bold', 'italic', 'strike'];
+
+    function markName(node) {
+        if (!node || node.nodeType !== 1) {
+            return '';
+        }
+
+        for (var name in MARKS) {
+            if (Object.prototype.hasOwnProperty.call(MARKS, name) && MARKS[name].match.test(node.tagName)) {
+                return name;
+            }
+        }
+
+        return '';
+    }
+
+    // The element of a mark around a node (or the node itself), within the
+    // surface.
+    function markOf(node, surface, name) {
+        for (var at = (node && node.nodeType === 1) ? node : (node ? node.parentNode : null); at && at !== surface; at = at.parentNode) {
+            if (at.nodeType === 1 && MARKS[name].match.test(at.tagName)) {
+                return at;
+            }
+        }
+
+        return null;
+    }
+
+    // Chips, cards and the results drawn beside a line are no text to mark.
+    function sealed(node, surface) {
+        var element = (node.nodeType === 1) ? node : node.parentNode;
+        var found = (element && element.closest) ? element.closest('[data-token], .ws-rich-block, [data-ws-skip], [contenteditable="false"]') : null;
+
+        return !!(found && (found !== surface) && surface.contains(found));
+    }
+
+    function shows(node) {
+        return /[^\s\u200b]/.test(node.nodeValue);
+    }
+
+    // Something worth keeping in a piece cut out of a mark: words, a line
+    // break, a chip or a card (an emptied copy of a mark is not).
+    function filled(piece) {
+        return (piece.textContent || '').replace(/\u200b/g, '') !== ''
+            || !!(piece.querySelector && piece.querySelector('br, [data-token], .ws-rich-block'));
+    }
+
+    // The text nodes a range covers, without the ones it only touches at an
+    // end and the sealed ones.
+    function textsIn(surface, range) {
+        var root = range.commonAncestorContainer;
+        var found = [];
+
+        if (root.nodeType === 3) {
+            return ((range.startOffset < range.endOffset) && !sealed(root, surface)) ? [root] : [];
+        }
+
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+
+        while (walker.nextNode()) {
+            var node = walker.currentNode;
+
+            if ((node.nodeValue === '') || !range.intersectsNode(node)) {
+                continue;
+            }
+
+            if (((node === range.startContainer) && (range.startOffset >= node.nodeValue.length)) || ((node === range.endContainer) && (range.endOffset === 0))) {
+                continue;
+            }
+
+            if (!sealed(node, surface)) {
+                found.push(node);
+            }
+        }
+
+        return found;
+    }
+
+    // The ends of a range moved to the edges of the text nodes they fall in,
+    // so that whole nodes are marked or unmarked.
+    function splitEdges(range) {
+        var end = range.endContainer;
+
+        if ((end.nodeType === 3) && (range.endOffset > 0) && (range.endOffset < end.nodeValue.length)) {
+            end.splitText(range.endOffset);
+        }
+
+        var start = range.startContainer;
+
+        if ((start.nodeType === 3) && (range.startOffset > 0) && (range.startOffset < start.nodeValue.length)) {
+            range.setStart(start.splitText(range.startOffset), 0);
+        }
+    }
+
+    // backward: the selection is put back the way it was made, its focus at
+    // the start, so that Shift+Arrow goes on moving the end it moved before.
+    function select(startNode, startOffset, endNode, endOffset, backward) {
+        var range = document.createRange();
+        var selection = window.getSelection();
+
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        if (backward && selection.setBaseAndExtent) {
+            selection.setBaseAndExtent(endNode, endOffset, startNode, startOffset);
+            return range;
+        }
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        return range;
+    }
+
+    // Whether the selection was made backwards: its focus (the end that
+    // Shift+Arrow moves) stands before its anchor. A Range has no direction,
+    // so a selection rebuilt from one would turn forwards.
+    function selectionBackward() {
+        var selection = window.getSelection();
+
+        if (!selection || !selection.rangeCount || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) {
+            return false;
+        }
+
+        var range = document.createRange();
+
+        range.setStart(selection.anchorNode, selection.anchorOffset);
+        // An end set before the start collapses the range onto it.
+        range.setEnd(selection.focusNode, selection.focusOffset);
+
+        return range.collapsed;
+    }
+
+    // A text node taken out of a mark around it: the mark is cut in two where
+    // the node stands, and the marks between the two stay on the node.
+    function liftOut(node, mark) {
+        var head = document.createRange();
+        var tail = document.createRange();
+        var parent = mark.parentNode;
+
+        head.setStart(mark, 0);
+        head.setEndBefore(node);
+        tail.setStartAfter(node);
+        tail.setEnd(mark, mark.childNodes.length);
+
+        var before = head.extractContents();
+        var after = tail.extractContents();
+
+        if (filled(before)) {
+            var first = mark.cloneNode(false);
+            first.appendChild(before);
+            parent.insertBefore(first, mark);
+        }
+
+        if (filled(after)) {
+            var last = mark.cloneNode(false);
+            last.appendChild(after);
+            parent.insertBefore(last, mark.nextSibling);
+        }
+
+        while (mark.firstChild) {
+            parent.insertBefore(mark.firstChild, mark);
+        }
+
+        parent.removeChild(mark);
+    }
+
+    function wrapIn(node, name, href) {
+        var mark = document.createElement(MARKS[name].tag);
+
+        if (href) {
+            mark.setAttribute('href', href);
+        }
+
+        node.parentNode.insertBefore(mark, node);
+        mark.appendChild(node);
+
+        return mark;
+    }
+
+    function sameMark(a, b) {
+        return !!(a && b && (a.nodeType === 1) && (b.nodeType === 1) && (a.tagName === b.tagName) && markName(a)
+            && (a.attributes.length === b.attributes.length) && ((a.getAttribute('href') || '') === (b.getAttribute('href') || '')));
+    }
+
+    // A new mark joined with the same mark beside it: <b>a</b><b>b</b> is
+    // one <b>ab</b>, as the markup will read it anyway.
+    function joinMark(mark) {
+        if (!mark.parentNode) {
+            return;
+        }
+
+        while (mark.previousSibling && (mark.previousSibling.nodeType === 3) && (mark.previousSibling.nodeValue === '')) {
+            mark.previousSibling.remove();
+        }
+
+        var previous = mark.previousSibling;
+
+        if (sameMark(previous, mark)) {
+            while (mark.firstChild) {
+                previous.appendChild(mark.firstChild);
+            }
+
+            mark.remove();
+            mark = previous;
+        }
+
+        while (mark.nextSibling && (mark.nextSibling.nodeType === 3) && (mark.nextSibling.nodeValue === '')) {
+            mark.nextSibling.remove();
+        }
+
+        var next = mark.nextSibling;
+
+        if (sameMark(mark, next)) {
+            while (next.firstChild) {
+                mark.appendChild(next.firstChild);
+            }
+
+            next.remove();
+        }
+    }
+
+    // ── Marks waiting for what is typed next ──
+    //
+    // A mark turned on or off with nothing selected changes nothing yet: it
+    // waits for the next letters typed at that caret, which are put in it
+    // (or out of it), or for the next word composed there. A caret moved
+    // elsewhere forgets it. One surface at a time holds a caret, so one
+    // surface at a time has marks waiting.
+
+    var waitingIn = null;
+
+    function caretCount(surface, range) {
+        var head = document.createRange();
+
+        head.setStart(surface, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+
+        return plainOf(head.cloneContents()).length;
+    }
+
+    function waiting(surface, range) {
+        var held = surface.wsMarks;
+
+        if (!held || !range || !surface.contains(range.startContainer)) {
+            return null;
+        }
+
+        // A word being composed (an IME, the dead keys of a Mac, a phone's
+        // keyboard, which composes every word) moves the caret on with each
+        // letter: the marks wait for the whole word, until composedMarked().
+        if (surface.wsComposing) {
+            return held.marks;
+        }
+
+        if (!range.collapsed || (caretCount(surface, range) !== held.at)) {
+            return null;
+        }
+
+        return held.marks;
+    }
+
+    function forgetWaiting() {
+        var surface = waitingIn;
+
+        waitingIn = null;
+
+        if (surface) {
+            surface.wsMarks = null;
+
+            if (surface.wsEditor) {
+                surface.wsEditor.notify();
+            }
+        }
+    }
+
+    function toggleWaiting(surface, range, name) {
+        var marks = waiting(surface, range) || {};
+        var around = !!markOf(range.startContainer, surface, name);
+        var now = Object.prototype.hasOwnProperty.call(marks, name) ? marks[name] : around;
+
+        if (waitingIn && (waitingIn !== surface)) {
+            forgetWaiting();
+        }
+
+        marks[name] = !now;
+
+        // Back to what the caret has anyway: nothing waits for that.
+        if (marks[name] === around) {
+            delete marks[name];
+        }
+
+        surface.wsMarks = Object.keys(marks).length ? { marks: marks, at: caretCount(surface, range) } : null;
+        waitingIn = surface.wsMarks ? surface : null;
+    }
+
+    // The letters typed at a caret with marks waiting: put in the marks
+    // wanted, out of the ones turned off. true when they were put in.
+    function typeMarked(surface, text) {
+        var range = selectionRange();
+        var marks = waiting(surface, range);
+
+        forgetWaiting();
+
+        if (!marks) {
+            return false;
+        }
+
+        var want = {};
+
+        TYPED_MARKS.forEach(function (name) {
+            want[name] = Object.prototype.hasOwnProperty.call(marks, name) ? marks[name] : !!markOf(range.startContainer, surface, name);
+        });
+
+        // The outermost mark around the caret that is turned off: the letters
+        // go between its two halves.
+        var outer = null;
+
+        for (var at = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode; at && (at !== surface); at = at.parentNode) {
+            var name = markName(at);
+
+            if ((TYPED_MARKS.indexOf(name) !== -1) && !want[name]) {
+                outer = at;
+            }
+        }
+
+        var spot = range.cloneRange();
+
+        if (outer) {
+            var tail = document.createRange();
+
+            tail.setStart(range.startContainer, range.startOffset);
+            tail.setEnd(outer, outer.childNodes.length);
+
+            var rest = tail.extractContents();
+
+            if (filled(rest)) {
+                var copy = outer.cloneNode(false);
+                copy.appendChild(rest);
+                outer.parentNode.insertBefore(copy, outer.nextSibling);
+            }
+
+            spot = document.createRange();
+            spot.setStartAfter(outer);
+            spot.collapse(true);
+
+            if (!filled(outer)) {
+                outer.remove();
+            }
+        }
+
+        var typed = document.createTextNode(text);
+        var top = typed;
+
+        TYPED_MARKS.forEach(function (name) {
+            if (want[name] && !markOf(spot.startContainer, surface, name)) {
+                var mark = document.createElement(MARKS[name].tag);
+
+                mark.appendChild(top);
+                top = mark;
+            }
+        });
+
+        spot.insertNode(top);
+        select(typed, typed.nodeValue.length, typed, typed.nodeValue.length);
+
+        return true;
+    }
+
+    // The place just before the character that stands a count of characters
+    // from the start of a surface, counted as caretCount() counts them
+    // (plainOf(): chips, cards and line breaks one each, a line before a
+    // block, results beside a line none); null when none stands there.
+    function placeOf(surface, count) {
+        var seen = 0;
+        var spot = null;
+
+        function walk(parent) {
+            var level = { length: 0, last: '' };
+
+            for (var i = 0; (i < parent.childNodes.length) && !spot; i++) {
+                var child = parent.childNodes[i];
+
+                if (child.nodeType === 3) {
+                    var size = child.nodeValue.length;
+
+                    if (count < seen + size) {
+                        spot = [child, count - seen];
+                    } else if (size) {
+                        seen += size;
+                        level.length += size;
+                        level.last = child.nodeValue.charAt(size - 1);
+                    }
+
+                    continue;
+                }
+
+                if ((child.nodeType !== 1) || child.hasAttribute('data-ws-skip')) {
+                    continue;
+                }
+
+                var one = child.hasAttribute('data-token') || child.classList.contains('ws-rich-block') || (child.tagName === 'BR');
+                var line = !one && BLOCKS.test(child.tagName) && (level.length > 0) && (level.last !== '\n');
+
+                if ((one || line) && (count === seen)) {
+                    spot = [parent, i];
+                    continue;
+                }
+
+                if (one || line) {
+                    seen += 1;
+                    level.length += 1;
+                    level.last = (one && (child.tagName !== 'BR')) ? OBJECT : '\n';
+                }
+
+                if (!one) {
+                    var inner = walk(child);
+
+                    level.length += inner.length;
+                    level.last = inner.length ? inner.last : level.last;
+                }
+            }
+
+            return level;
+        }
+
+        walk(surface);
+
+        return spot;
+    }
+
+    // The word a composition has just left where marks waited for it: taken
+    // out and typed again by typeMarked(), so that it carries the marks as
+    // letters typed one by one would. It stays part of the typing around it
+    // in the undo history. true when it was typed again.
+    function composedMarked(surface) {
+        var held = surface.wsMarks;
+        var range = selectionRange();
+
+        if (!held) {
+            return false;
+        }
+
+        if (!range || !range.collapsed || !surface.contains(range.startContainer)) {
+            forgetWaiting();
+            return false;
+        }
+
+        var end = caretCount(surface, range);
+
+        // Nothing came of it (the composition was cancelled): the marks go on
+        // waiting at the caret.
+        if (end === held.at) {
+            return false;
+        }
+
+        var start = (end > held.at) ? placeOf(surface, held.at) : null;
+        var run = document.createRange();
+
+        if (start) {
+            run.setStart(start[0], start[1]);
+            run.setEnd(range.startContainer, range.startOffset);
+        }
+
+        // Only words: a composition makes no line break, chip or card, and
+        // a result drawn beside a line is no part of it.
+        var text = start ? run.toString() : '';
+
+        if ((text === '') || (text.length !== end - held.at) || (plainOf(run.cloneContents()) !== text.replace(/\u00a0/g, ' '))) {
+            forgetWaiting();
+            return false;
+        }
+
+        run.deleteContents();
+        select(run.startContainer, run.startOffset, run.startContainer, run.startOffset);
+
+        return typeMarked(surface, text);
+    }
+
+    // ── Putting marks on and off ──
+
+    // Which marks a caret or a selection has: a caret by the marks around it
+    // and the ones waiting there, a selection by whether all its words carry
+    // them.
+    function marksAt(surface, range) {
+        var state = { bold: false, italic: false, strike: false, code: false, link: false };
+
+        if (!surface || !range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return state;
+        }
+
+        if (range.collapsed) {
+            var marks = waiting(surface, range) || {};
+
+            Object.keys(state).forEach(function (name) {
+                state[name] = Object.prototype.hasOwnProperty.call(marks, name) ? !!marks[name] : !!markOf(range.startContainer, surface, name);
+            });
+
+            return state;
+        }
+
+        var texts = textsIn(surface, range).filter(shows);
+
+        Object.keys(state).forEach(function (name) {
+            state[name] = (texts.length > 0) && texts.every(function (node) { return !!markOf(node, surface, name); });
+        });
+
+        return state;
+    }
+
+    // Code holds its words as they are: the selection's text in one <code>,
+    // or the code the selection is in back to plain text.
+    function toggleCode(surface, range, backward) {
+        var code = insideCode(range);
+
+        if (code && (code !== surface) && surface.contains(code)) {
+            var plain = document.createTextNode(code.textContent);
+
+            code.parentNode.replaceChild(plain, code);
+            select(plain, 0, plain, plain.nodeValue.length, backward);
+
+            return true;
+        }
+
+        if (range.collapsed) {
+            return false;
+        }
+
+        var text = range.toString().replace(/\n/g, ' ');
+        var core = text.trim();
+
+        if (core === '') {
+            return false;
+        }
+
+        // A double-click takes the space after the word too; it stays outside.
+        var working = range.cloneRange();
+        var piece = document.createDocumentFragment();
+        var fresh = el('code', '', core);
+        var lead = /^\s*/.exec(text)[0];
+        var trail = /\s*$/.exec(text)[0];
+
+        if (lead !== '') {
+            piece.appendChild(document.createTextNode(lead));
+        }
+
+        piece.appendChild(fresh);
+
+        if (trail !== '') {
+            piece.appendChild(document.createTextNode(trail));
+        }
+
+        working.deleteContents();
+        working.insertNode(piece);
+
+        // Still selected, so the bar can take it off again.
+        select(fresh.firstChild, 0, fresh.firstChild, fresh.firstChild.nodeValue.length, backward);
+
+        return true;
+    }
+
+    // A mark on the selection, or off it when all its words have it already.
+    // With nothing selected the mark waits for what is typed next; code takes
+    // off the code around the caret. true when the surface changed.
+    function applyMark(surface, name) {
+        var range = selectionRange();
+
+        if (!range || !MARKS[name] || (name === 'link') || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var backward = selectionBackward();
+
+        if (name === 'code') {
+            return toggleCode(surface, range, backward);
+        }
+
+        if (range.collapsed) {
+            toggleWaiting(surface, range, name);
+            return false;
+        }
+
+        var off = marksAt(surface, range)[name];
+
+        range = range.cloneRange();
+        splitEdges(range);
+
+        var texts = textsIn(surface, range);
+
+        if (!texts.length) {
+            return false;
+        }
+
+        if (off) {
+            texts.forEach(function (node) {
+                var mark;
+
+                while ((mark = markOf(node, surface, name))) {
+                    liftOut(node, mark);
+                }
+            });
+        } else {
+            var made = [];
+
+            texts.forEach(function (node) {
+                if (markOf(node, surface, name)) {
+                    return;
+                }
+
+                // Words in code: the mark goes around the code.
+                var code = markOf(node, surface, 'code');
+
+                if (code && (made.indexOf(code.parentNode) !== -1)) {
+                    return;
+                }
+
+                made.push(wrapIn(code || node, name));
+            });
+
+            made.forEach(joinMark);
+        }
+
+        var last = texts[texts.length - 1];
+
+        select(texts[0], 0, last, last.nodeValue.length, backward);
+
+        return true;
+    }
+
+    // A link over a selection: the links inside it are taken off first, then
+    // each piece of its words is linked; chips and cards stay as they are.
+    function linkRange(surface, range, url, backward) {
+        var working = range.cloneRange();
+
+        splitEdges(working);
+
+        var texts = textsIn(surface, working);
+
+        if (!texts.length) {
+            return false;
+        }
+
+        texts.forEach(function (node) {
+            var mark;
+
+            while ((mark = markOf(node, surface, 'link'))) {
+                liftOut(node, mark);
+            }
+        });
+
+        var made = [];
+
+        texts.forEach(function (node) {
+            var code = markOf(node, surface, 'code');
+
+            if (code && (made.indexOf(code.parentNode) !== -1)) {
+                return;
+            }
+
+            made.push(wrapIn(code || node, 'link', url));
+        });
+
+        made.forEach(joinMark);
+
+        var last = texts[texts.length - 1];
+
+        select(texts[0], 0, last, last.nodeValue.length, backward);
+
+        return true;
+    }
+
+    // The link the caret or the selection starts in.
+    function anchorAt(surface) {
+        var range = selectionRange();
+        var element = range ? ((range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode) : null;
+        var anchor = (element && element.closest) ? element.closest('a') : null;
+
+        return (anchor && surface.contains(anchor)) ? anchor : null;
+    }
+
+    // A change the marks made: a step of its own in a box's undo, and the
+    // box's owner hears of it (a note saves, the composer grows).
+    function changed(surface, apply) {
+        if (surface.wsEditor) {
+            return surface.wsEditor.change(apply);
+        }
+
+        var done = apply();
+
+        if (done) {
+            surface.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        return done;
+    }
+
+    // A mark asked for by a button or a key, on any surface of this file.
+    function formatSurface(surface, name) {
+        if (surface.wsEditor) {
+            return surface.wsEditor.format(name);
+        }
+
+        if (name === 'link') {
+            openLink(surface, anchorAt(surface));
+            return true;
+        }
+
+        return changed(surface, function () { return applyMark(surface, name); });
+    }
+
     // ── The format bar and the link tip ────────────────────────────────
 
     var bar = null;
@@ -707,50 +1443,6 @@
         return element && element.closest ? element.closest('code') : null;
     }
 
-    function toggleCode(surface) {
-        var range = selectionRange();
-
-        if (!range) {
-            return;
-        }
-
-        var code = insideCode(range);
-
-        if (code && surface.contains(code)) {
-            code.replaceWith(document.createTextNode(code.textContent));
-            return;
-        }
-
-        var text = range.toString().replace(/\n/g, ' ');
-        var core = text.trim();
-
-        if (core === '') {
-            return;
-        }
-
-        // A double-click takes the space after the word too; it stays outside.
-        var holder = el('span');
-        var fresh = el('code', '', core);
-
-        fresh.setAttribute('data-ws-fresh', '1');
-        holder.appendChild(document.createTextNode(/^\s*/.exec(text)[0]));
-        holder.appendChild(fresh);
-        holder.appendChild(document.createTextNode(/\s*$/.exec(text)[0]));
-        command('insertHTML', holder.innerHTML);
-
-        // Still selected, so the bar can take it off again.
-        var added = surface.querySelector('code[data-ws-fresh]');
-
-        if (added) {
-            added.removeAttribute('data-ws-fresh');
-
-            var again = document.createRange();
-            again.selectNodeContents(added);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(again);
-        }
-    }
-
     function showBar() {
         var range = selectionRange();
         var surface = range ? surfaceOf(range.commonAncestorContainer) : null;
@@ -771,39 +1463,35 @@
         bar = el('div', 'ws-format-bar shadow');
         bar.setAttribute('role', 'toolbar');
 
+        var state = marksAt(surface, range);
+
         [
             ['bold', 'bi-type-bold', t('fmt_bold')],
             ['italic', 'bi-type-italic', t('fmt_italic')],
-            ['strikeThrough', 'bi-type-strikethrough', t('fmt_strike')],
+            ['strike', 'bi-type-strikethrough', t('fmt_strike')],
             ['code', 'bi-code', t('fmt_code')],
             ['link', 'bi-link-45deg', t('fmt_link')]
         ].forEach(function (entry) {
             var tool = button('ws-format-tool', '', entry[1], entry[2]);
-            var active = false;
-
-            try {
-                active = (entry[0] === 'code') ? !!insideCode(range) : ((entry[0] === 'link') ? false : document.queryCommandState(entry[0]));
-            } catch (error) {
-                active = false;
-            }
+            var active = (entry[0] !== 'link') && state[entry[0]];
 
             tool.classList.toggle('active', active);
+
+            if (entry[0] !== 'link') {
+                tool.setAttribute('aria-pressed', active ? 'true' : 'false');
+            }
 
             // mousedown, so the selection stays where it is.
             tool.addEventListener('mousedown', function (event) {
                 event.preventDefault();
 
-                if (entry[0] === 'code') {
-                    toggleCode(surface);
-                } else if (entry[0] === 'link') {
+                // A new link over the selection, even where it starts in one.
+                if (entry[0] === 'link') {
                     openLink(surface, null);
                     return;
-                } else {
-                    command('styleWithCSS', false);
-                    command(entry[0]);
                 }
 
-                surface.dispatchEvent(new Event('input', { bubbles: true }));
+                formatSurface(surface, entry[0]);
                 window.setTimeout(showBar, 0);
             });
 
@@ -824,6 +1512,7 @@
     function openLink(surface, anchor) {
         var range = selectionRange();
         var saved = range ? range.cloneRange() : null;
+        var backward = selectionBackward();
         var rect = anchor ? anchor.getBoundingClientRect() : (range ? range.getBoundingClientRect() : surface.getBoundingClientRect());
 
         hideBar();
@@ -857,9 +1546,15 @@
 
             var unlink = button('btn btn-sm btn-ghost', '', 'bi-link', t('link_remove'));
             unlink.addEventListener('click', function () {
-                anchor.replaceWith.apply(anchor, Array.prototype.slice.call(anchor.childNodes));
+                changed(surface, function () {
+                    if (!anchor.parentNode) {
+                        return false;
+                    }
+
+                    anchor.replaceWith.apply(anchor, Array.prototype.slice.call(anchor.childNodes));
+                    return true;
+                });
                 hideTip();
-                surface.dispatchEvent(new Event('input', { bubbles: true }));
                 surface.focus();
             });
             form.appendChild(unlink);
@@ -877,30 +1572,42 @@
                 return;
             }
 
-            if (anchor) {
-                anchor.setAttribute('href', url);
-            } else if (saved) {
+            changed(surface, function () {
+                if (anchor) {
+                    if (!anchor.parentNode) {
+                        return false;
+                    }
+
+                    anchor.setAttribute('href', url);
+                    return true;
+                }
+
+                if (!saved) {
+                    return false;
+                }
+
                 surface.focus();
 
                 var selection = window.getSelection();
                 selection.removeAllRanges();
                 selection.addRange(saved);
 
-                if (saved.collapsed) {
-                    var link = el('a', '', url.replace(/^mailto:/, ''));
-                    link.href = url;
-                    saved.insertNode(link);
-                    saved.setStartAfter(link);
-                    saved.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(saved);
-                } else {
-                    command('createLink', url);
+                if (!saved.collapsed) {
+                    return linkRange(surface, saved, url, backward);
                 }
-            }
+
+                var link = el('a', '', url.replace(/^mailto:/, ''));
+                link.href = url;
+                saved.insertNode(link);
+                saved.setStartAfter(link);
+                saved.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(saved);
+
+                return true;
+            });
 
             hideTip();
-            surface.dispatchEvent(new Event('input', { bubbles: true }));
             surface.focus();
         });
 
@@ -931,10 +1638,42 @@
         var element = range ? (range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentNode) : null;
         var box = (element && element.closest) ? element.closest('.ws-rich') : null;
 
+        // Marks waiting at a caret are forgotten once the caret moves on.
+        if (waitingIn && !waiting(waitingIn, range)) {
+            forgetWaiting();
+        }
+
         if (box && box.wsEditor) {
             box.wsEditor.savedRange = range.cloneRange();
+            box.wsEditor.savedBackward = selectionBackward();
+            notifySoon(box.wsEditor);
         }
     });
+
+    // The rows of tools hear of the caret once a frame, however often the
+    // selection moves while a word is typed or dragged over.
+    var notifyQueue = [];
+    var notifyFrame = 0;
+
+    function notifySoon(editor) {
+        if (notifyQueue.indexOf(editor) === -1) {
+            notifyQueue.push(editor);
+        }
+
+        if (notifyFrame) {
+            return;
+        }
+
+        var flush = function () {
+            var queued = notifyQueue;
+
+            notifyQueue = [];
+            notifyFrame = 0;
+            queued.forEach(function (one) { one.notify(); });
+        };
+
+        notifyFrame = window.requestAnimationFrame ? window.requestAnimationFrame(flush) : window.setTimeout(flush, 16);
+    }
 
     document.addEventListener('mousedown', function (event) {
         if (tip && !tip.contains(event.target)) {
@@ -953,35 +1692,25 @@
         }
     }, true);
 
-    // Keyboard shortcuts in any writing surface.
+    // Keyboard shortcuts in any writing surface: Ctrl+B, Ctrl+I,
+    // Ctrl+Shift+X, Ctrl+E (code) and Ctrl+K (link), Cmd on a Mac.
     function shortcut(surface, event) {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
             return false;
         }
 
-        var key = event.key.toLowerCase();
+        var key = String(event.key || '').toLowerCase();
+        var keys = { b: 'bold', i: 'italic', e: 'code', k: 'link' };
+        var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : '');
 
-        if (key === 'b' || key === 'i') {
-            command('styleWithCSS', false);
-            command(key === 'b' ? 'bold' : 'italic');
-        } else if (key === 'x' && event.shiftKey) {
-            command('strikeThrough');
-        } else if (key === 'e') {
-            toggleCode(surface);
-        } else if (key === 'k') {
-            var range = selectionRange();
-            var element = range ? (range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentNode) : null;
-            var anchor = element && element.closest ? element.closest('a') : null;
-
-            openLink(surface, (anchor && surface.contains(anchor)) ? anchor : null);
-        } else {
+        if (!name) {
             return false;
         }
 
         // Kept from the page's own shortcuts: Ctrl+K there opens the search.
         event.preventDefault();
         event.stopPropagation();
-        surface.dispatchEvent(new Event('input', { bubbles: true }));
+        formatSurface(surface, name);
 
         return true;
     }
@@ -1032,6 +1761,47 @@
             shortcut(surface, event);
         });
 
+        // Letters typed where a mark waits go into it; the browser's own
+        // format commands (its menu, a key of its own) take the buttons' way.
+        surface.addEventListener('beforeinput', function (event) {
+            var type = event.inputType || '';
+            var formats = { formatBold: 'bold', formatItalic: 'italic', formatStrikeThrough: 'strike' };
+
+            if ((type === 'insertText') && surface.wsMarks && event.data && !event.isComposing) {
+                if (typeMarked(surface, event.data)) {
+                    event.preventDefault();
+                    surface.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(formats, type)) {
+                event.preventDefault();
+                formatSurface(surface, formats[type]);
+            }
+        });
+
+        // A composed word comes as composition text, never as insertText, and
+        // the browser's own composition is left to run as it is (changing the
+        // nodes under it breaks the IME): marks waiting at its caret are held
+        // through it and put on the word once it is done.
+        surface.addEventListener('compositionstart', function () {
+            if (surface.wsMarks && !waiting(surface, selectionRange())) {
+                forgetWaiting();
+            }
+
+            surface.wsComposing = true;
+        });
+
+        surface.addEventListener('compositionend', function () {
+            surface.wsComposing = false;
+
+            if (surface.wsMarks && composedMarked(surface)) {
+                surface.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
         surface.addEventListener('paste', function (event) {
             pastePlain(event, singleLine);
         });
@@ -1078,7 +1848,9 @@
 
         self.options = options || {};
         self.savedRange = null;
+        self.savedBackward = false;
         self.history = { states: [], at: -1, timer: 0, pending: false, since: 0, quiet: false };
+        self.watchers = [];
 
         var node = el('div', 'ws-rich form-control');
         node.contentEditable = 'true';
@@ -1180,6 +1952,7 @@
 
             if (range && node.contains(range.startContainer)) {
                 self.savedRange = range.cloneRange();
+                self.savedBackward = selectionBackward();
             }
         });
 
@@ -1408,6 +2181,15 @@
             this.tidy();
             this.node.focus();
             this.placeCaret(state.caret);
+            this.announce();
+            this.drawPreviews();
+            this.historyChanged();
+        },
+
+        // The box tells its owner it changed (a note saves, the composer
+        // grows) without the change becoming a step of the history: the
+        // caller has kept it as one already, or it is a step put back.
+        announce: function () {
             this.history.quiet = true;
 
             try {
@@ -1415,15 +2197,84 @@
             } finally {
                 this.history.quiet = false;
             }
-
-            this.drawPreviews();
-            this.historyChanged();
         },
 
         historyChanged: function () {
             if (this.options.onHistory) {
                 this.options.onHistory(this.canUndo(), this.canRedo());
             }
+
+            this.notify();
+        },
+
+        // ── Marks and the rows of tools ──
+
+        // Whoever shows the box's state (a row of tools) is called when it may
+        // have changed: a step of the history, the caret, a mark.
+        watch: function (callback) {
+            this.watchers.push(callback);
+        },
+
+        notify: function () {
+            var self = this;
+
+            self.watchers.forEach(function (callback) { callback(self); });
+        },
+
+        // A change the box makes to itself (a mark, a link): what was typed
+        // before it is a step, the change is another. apply() answers true
+        // when it changed the box.
+        change: function (apply) {
+            if (this.history.pending) {
+                this.record();
+            }
+
+            if (!apply()) {
+                this.notify();
+                return false;
+            }
+
+            this.tidy();
+            this.record();
+            this.announce();
+
+            return true;
+        },
+
+        /**
+         * A mark on the selection, or off it: bold, italic, strike, code or
+         * link (the link tip). With nothing selected bold, italic and strike
+         * wait for what is typed next at the caret. Made on the nodes, never
+         * with document.execCommand(), and kept as a step of the box's undo.
+         */
+        format: function (name) {
+            var self = this;
+
+            if (!Object.prototype.hasOwnProperty.call(MARKS, name)) {
+                return false;
+            }
+
+            self.restore();
+
+            if (name === 'link') {
+                openLink(self.node, anchorAt(self.node));
+                return true;
+            }
+
+            return self.change(function () { return applyMark(self.node, name); });
+        },
+
+        // Which marks the caret or the selection has ({ bold, italic, strike,
+        // code, link }); where the selection is elsewhere, the caret the box
+        // kept when it was left, which a button acts on.
+        formatState: function () {
+            var range = selectionRange();
+
+            if (!range || !this.node.contains(range.startContainer)) {
+                range = (this.savedRange && this.node.contains(this.savedRange.startContainer)) ? this.savedRange : null;
+            }
+
+            return marksAt(this.node, range);
         },
 
         // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (Cmd on a Mac), whatever the
@@ -1495,13 +2346,7 @@
             }
 
             this.record();
-            this.history.quiet = true;
-
-            try {
-                node.dispatchEvent(new Event('input', { bubbles: true }));
-            } finally {
-                this.history.quiet = false;
-            }
+            this.announce();
         },
 
         // With options.previews (a note) the cards show what they hold, drawn
@@ -1577,14 +2422,17 @@
         // Puts the caret back where it was before a button took the focus.
         // A caret still in the box stays where it is: a button that does not
         // take the focus (a note's toolbar) leaves no blur to remember it by.
+        // The selection is put back by its anchor and its focus, not as a
+        // range, so that one made backwards stays backwards.
         restore: function () {
             var selection = window.getSelection();
             var range = selection.rangeCount ? selection.getRangeAt(0) : null;
 
             if (range && this.node.contains(range.startContainer)) {
+                var ends = [selection.anchorNode, selection.anchorOffset, selection.focusNode, selection.focusOffset];
+
                 this.node.focus();
-                selection.removeAllRanges();
-                selection.addRange(range);
+                selection.setBaseAndExtent(ends[0], ends[1], ends[2], ends[3]);
                 this.savedRange = range.cloneRange();
                 return;
             }
@@ -1592,8 +2440,9 @@
             this.node.focus();
 
             if (this.savedRange && this.node.contains(this.savedRange.startContainer)) {
-                selection.removeAllRanges();
-                selection.addRange(this.savedRange);
+                var saved = this.savedRange;
+
+                select(saved.startContainer, saved.startOffset, saved.endContainer, saved.endOffset, this.savedBackward);
             } else if (!selection.rangeCount || !this.node.contains(selection.getRangeAt(0).startContainer)) {
                 this.caretToEnd();
             }
@@ -1841,6 +2690,195 @@
             });
         }
     };
+
+    // ── The rows of tools under a box ──────────────────────────────────
+
+    // The box's own tools: icon, label key, shortcut, and what they do.
+    var TOOLS = {
+        undo: { icon: 'bi-arrow-counterclockwise', label: 'tool_undo', keys: 'Control+Z' },
+        redo: { icon: 'bi-arrow-clockwise', label: 'tool_redo', keys: 'Control+Y' },
+        bold: { icon: 'bi-type-bold', label: 'tool_bold', keys: 'Control+B', mark: 'bold' },
+        italic: { icon: 'bi-type-italic', label: 'tool_italic', keys: 'Control+I', mark: 'italic' },
+        strike: { icon: 'bi-type-strikethrough', label: 'tool_strike', keys: 'Control+Shift+X', mark: 'strike' },
+        code: { icon: 'bi-code', label: 'tool_code', keys: 'Control+E', mark: 'code' },
+        link: { icon: 'bi-link-45deg', label: 'tool_link', keys: 'Control+K', mark: 'link' },
+        checklist: { icon: 'bi-ui-checks', label: 'tool_checklist', block: 'checklist' },
+        table: { icon: 'bi-table', label: 'tool_table', block: 'table' },
+        calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
+        codeblock: { icon: 'bi-code-slash', label: 'tool_codeblock', block: 'code' }
+    };
+
+    var MAC = /Mac|iPhone|iPad|iPod/.test((navigator && navigator.platform) || '');
+
+    // A table, a checklist, a calculation or code from a row's button, as a
+    // card at the caret.
+    function insertFrom(editor, kind, options) {
+        var scope = options.scope || function () { return editor.markup(); };
+        var done = function (markup) {
+            if (markup) {
+                editor.insertBlock((kind === 'calc') ? 'code' : kind, markup);
+            }
+        };
+
+        if (kind === 'checklist') {
+            openChecklist('', done);
+        } else if (kind === 'table') {
+            openTable({ columns: 3, rows: 3 }, done, { insertLabel: options.insertLabel, scope: scope });
+        } else if (kind === 'calc') {
+            openCalc('', done, { insertLabel: options.insertLabel, scope: scope });
+        } else {
+            openCode('', done);
+        }
+    }
+
+    /**
+     * A row of tools for a writing box (an Editor), in the markup the rows
+     * had when each screen drew its own: btn btn-sm btn-ghost icon buttons in
+     * a row of the caller's class.
+     *
+     * items, in order, each one of:
+     *   - the name of one of the box's own tools: undo, redo, bold, italic,
+     *     strike, code, link, checklist, table, calc, codeblock;
+     *   - a node the caller made (attach, emoji, voice, send), put in as it is;
+     *   - an array of those, drawn as a group of options.groupClass.
+     * options: className (the row's class), groupClass, label (the row's name
+     * for a screen reader), insertLabel and scope (the table and calculation
+     * windows; scope defaults to the box's own text).
+     *
+     * The row is a toolbar: the arrow keys, Home and End move between its
+     * buttons, a click leaves the focus and the selection in the text, the
+     * marks show as pressed for the caret or the selection, and undo and redo
+     * are off while there is nothing to take back. Buttons the caller adds to
+     * the row later take part as well.
+     */
+    function toolbar(editor, items, options) {
+        var opts = options || {};
+        var row = el('div', (opts.className || 'ws-note-actions') + ' ws-rich-tools');
+        var pressed = {};
+        var steps = {};
+
+        row.setAttribute('role', 'toolbar');
+        row.setAttribute('aria-label', opts.label || t('tool_bar'));
+
+        function make(name) {
+            var spec = Object.prototype.hasOwnProperty.call(TOOLS, name) ? TOOLS[name] : null;
+
+            if (!spec) {
+                return null;
+            }
+
+            var label = t(spec.label);
+            var node = button('btn btn-sm btn-ghost', '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
+
+            node.setAttribute('data-ws-tool', name);
+
+            if (spec.keys) {
+                node.setAttribute('aria-keyshortcuts', MAC ? spec.keys.replace('Control', 'Meta') : spec.keys);
+            }
+
+            // The link opens its tip rather than switching on and off.
+            if (spec.mark && (spec.mark !== 'link')) {
+                node.setAttribute('aria-pressed', 'false');
+                pressed[spec.mark] = node;
+            }
+
+            if ((name === 'undo') || (name === 'redo')) {
+                steps[name] = node;
+            }
+
+            node.addEventListener('click', function () {
+                if (name === 'undo') {
+                    editor.undo();
+                } else if (name === 'redo') {
+                    editor.redo();
+                } else if (spec.mark) {
+                    editor.format(spec.mark);
+                } else {
+                    insertFrom(editor, spec.block, opts);
+                }
+            });
+
+            return node;
+        }
+
+        function put(parent, item) {
+            if (Array.isArray(item)) {
+                var group = el('div', opts.groupClass || 'ws-rich-tool-group');
+
+                group.setAttribute('role', 'group');
+                item.forEach(function (one) { put(group, one); });
+
+                if (group.childNodes.length) {
+                    parent.appendChild(group);
+                }
+
+                return;
+            }
+
+            var node = (typeof item === 'string') ? make(item) : item;
+
+            if (node) {
+                parent.appendChild(node);
+            }
+        }
+
+        (items || []).forEach(function (item) { put(row, item); });
+
+        // mousedown, as on the bar over a selection: the text keeps the focus
+        // and its selection while a button (or the row between them) is hit.
+        row.addEventListener('mousedown', function (event) {
+            var target = event.target;
+
+            if (!(target.closest && target.closest('input, textarea, select, [contenteditable="true"]'))) {
+                event.preventDefault();
+            }
+        });
+
+        row.addEventListener('keydown', function (event) {
+            var moves = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            var current = (event.target.closest && event.target.closest('button')) || null;
+
+            if ((moves.indexOf(event.key) === -1) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !current || !row.contains(current)) {
+                return;
+            }
+
+            var list = Array.prototype.filter.call(row.querySelectorAll('button'), function (one) {
+                return !one.disabled && (one.getClientRects().length > 0);
+            });
+            var index = list.indexOf(current);
+
+            if (index === -1) {
+                return;
+            }
+
+            var next = (event.key === 'Home') ? 0 : ((event.key === 'End') ? list.length - 1
+                : (index + ((event.key === 'ArrowLeft') ? list.length - 1 : 1)) % list.length);
+
+            event.preventDefault();
+            list[next].focus();
+        });
+
+        function refresh() {
+            var state = editor.formatState();
+
+            Object.keys(pressed).forEach(function (name) {
+                pressed[name].setAttribute('aria-pressed', state[name] ? 'true' : 'false');
+            });
+
+            if (steps.undo) {
+                steps.undo.disabled = !editor.canUndo();
+            }
+
+            if (steps.redo) {
+                steps.redo.disabled = !editor.canRedo();
+            }
+        }
+
+        editor.watch(refresh);
+        refresh();
+
+        return row;
+    }
 
     // ── Design windows ─────────────────────────────────────────────────
 
@@ -3576,6 +4614,7 @@
 
     window.PGWsEditor = {
         create: function (options) { return new Editor(options); },
+        toolbar: toolbar,
         open: open,
         openTable: openTable,
         openChecklist: openChecklist,
