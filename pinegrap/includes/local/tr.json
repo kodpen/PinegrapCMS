@@ -26793,5 +26793,7 @@
     "order review request": "sipariş değerlendirme isteği",
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
-    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok."
+    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
+    "All Forms": "Tüm Formlar",
+    "Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and the arrow at the top takes you back. The button at the top left changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden.": "Yazılımın yapabildiği her şey burada toplanır: sitenizin sayfaları ve dosyaları, mağaza, ziyaretçiler ve raporlar. Oku olan bir satır sayfalarını menünün içinde açar, üstteki ok geri götürür. Sol üstteki düğme menünün nasıl görüneceğini her tıklamada bir sonrakine geçirir: önce yalnız simgeleriyle minik, sonra adlarıyla açık, sonra gizli."
 }

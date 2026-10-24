@@ -18469,8 +18469,12 @@
                     return;
                 }
 
-                var row = el('a', 'list-group-item list-group-item-action border-0 active');
+                var row = el('a', 'list-group-item list-group-item-action border-0 no-popover active');
                 var label = el('span', 'list-group-text', t('notes_menu_label'));
+                // The panel of the pinned row (My Notes, Add Note) is drawn by
+                // the server whenever the notes are open to this person, pinned
+                // or not (output_menu()), so the new row opens it like any other.
+                var panel = document.getElementById('menu_panel_24');
 
                 row.id = 'menu_item_24';
                 row.href = CFG.urls.notes;
@@ -18487,6 +18491,15 @@
                 }
 
                 row.appendChild(label);
+
+                if (panel) {
+                    row.classList.add('pg-menu-parent');
+                    row.setAttribute('data-pg-menu-panel', panel.id);
+                    row.setAttribute('aria-controls', panel.id);
+                    row.setAttribute('aria-expanded', 'false');
+                    row.appendChild(el('span', 'pg-menu-hint'));
+                    row.appendChild(icon('bi-chevron-right', 'pg-menu-chevron'));
+                }
                 workspace.classList.remove('active');
                 workspace.parentNode.insertBefore(row, workspace.nextSibling);
             });
