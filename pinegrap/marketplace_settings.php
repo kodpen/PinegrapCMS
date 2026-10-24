@@ -578,10 +578,13 @@ if ($_POST) {
 			$existing = db_value("SELECT id FROM marketplace_product_map
 				WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')");
 
+			// The content id read from the marketplace belongs to the old
+			// code, so it is forgotten and the next listing read finds the
+			// new code's own.
 			if ($existing) {
 
 				db("UPDATE marketplace_product_map
-					SET remote_code = '" . e($remote_code) . "', status = 'active', last_error = ''
+					SET remote_code = '" . e($remote_code) . "', remote_id = '', status = 'active', last_error = ''
 					WHERE id = '" . e((int)$existing) . "'");
 
 			} else {
@@ -1291,6 +1294,10 @@ if ($selected) {
 	// left out, since the job would never pick that row up.
 	$can_list = mp_can($selected['provider'], 'create_listings');
 
+	// A marketplace whose connector reads its listings' approval shows where
+	// each matched product's listing stands.
+	$can_listing_status = mp_can($selected['provider'], 'listing_status');
+
 	// Orders come in only from a marketplace whose connector reads them, and
 	// are accepted only by one that can accept them. The job skips the rest
 	// without a word, so their switches and the orders card are not drawn: a
@@ -1416,16 +1423,47 @@ if ($selected) {
 			// product's stored price does not, so it is not read as a typo.
 			$map_price = mp_product_price($map);
 
+			// Where the listing stands, for a marketplace whose connector
+			// reads its approval (mp_sync_listing_states()): on sale once its
+			// content id is known, rejected with the reason below, otherwise
+			// still waiting. A note on a listing that is on sale (locked,
+			// archived, a document asked for) is shown under the code.
+			$map_state = '';
+
+			if ($can_listing_status) {
+
+				if ((string)$map['remote_id'] !== '') {
+
+					$map_state = ' <span class="mp-pill on">' . h(lang(array(
+						'string' => 'On {var:1}',
+						'vars'   => array(mp_provider_name($selected['provider']))
+					))) . '</span>';
+
+				} elseif ($map['status'] === 'error'
+					&& strpos((string)$map['last_error'], mp_listing_rejected_prefix(mp_provider_name($selected['provider']))) === 0) {
+
+					$map_state = ' <span class="mp-pill bad">' . lang('Rejected') . '</span>';
+
+				} elseif ($map['status'] === 'active') {
+
+					$map_state = ' <span class="mp-pill off">' . lang('Awaiting approval') . '</span>';
+
+				}
+
+			}
+
 			echo '
 			<div class="mp-row">
 				<span>
 					<b>' . h((string)$map['product_name']) . '</b>
 					<code>' . h(mb_substr((string)$map['title'], 0, 46)) . '</code>
 				</span>
-				<span><code>' . h($map['remote_code']) . '</code>'
+				<span><code>' . h($map['remote_code']) . '</code>' . $map_state
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
-						: '') . '</span>
+						: (($can_listing_status && (string)$map['last_error'] !== '')
+							? '<div class="small opacity-75">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
+							: '')) . '</span>
 				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
 					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
 				<span>' . pg_format_number($quantity, 0)
