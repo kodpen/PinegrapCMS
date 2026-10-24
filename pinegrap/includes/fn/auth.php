@@ -361,6 +361,52 @@ function pg_email_address_matches($given, $stored)
     return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
 }
 
+// Whether a member widget's tree (the decoded shared_components.tree_json)
+// asks the marketing question: it has a control named opt_in, the one name
+// pg_member_register() and pg_member_activate() read the answer from. A
+// hidden input of that name is not a question the visitor saw, and a
+// control bound to the opt_in column under another name is never read.
+function pg_member_tree_asks_opt_in(array $tree)
+{
+    if (!function_exists('_pg_member_controls')) {
+        return false;
+    }
+
+    foreach (_pg_member_controls($tree) as $control) {
+        if (($control['name'] === 'opt_in') && ($control['type'] !== 'hidden')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Whether the member widget a sign-up was posted from showed the marketing
+// question, read from the widget's own tree the way
+// pg_member_widget_register_opts() reads it. $type is the widget type the
+// entrance serves ('registration' or 'membership'); an id that names no
+// widget of that type answers false, as nothing shows the question was on
+// the screen.
+function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
+{
+    $widget_id = (int) $widget_id;
+    if ($widget_id <= 0) {
+        return false;
+    }
+
+    $row = db_item("SELECT tree_json, system_region_config FROM shared_components WHERE id = '" . $widget_id . "' LIMIT 1");
+    if (empty($row)) {
+        return false;
+    }
+    $cfg = json_decode((string) $row['system_region_config'], true);
+    if (!is_array($cfg) || !isset($cfg['regionType']) || ($cfg['regionType'] !== (string) $type)) {
+        return false;
+    }
+    $tree = json_decode((string) $row['tree_json'], true);
+
+    return is_array($tree) && pg_member_tree_asks_opt_in($tree);
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same
@@ -374,6 +420,9 @@ function pg_email_address_matches($given, $stored)
 //                     controls; the caller resolved the columns, never the
 //                     visitor).
 //   contact_group_id  group the contact joins; the site setting when absent.
+//   opt_in_asked      true when the screen that posted showed the marketing
+//                     question; only then is the answer recorded in
+//                     consent_log.
 //
 // Field names are the entrance screen's: first_name, last_name, username,
 // email, email_verify, password, password_verify, password_hint, opt_in,
@@ -537,6 +586,15 @@ function pg_member_register($form, $opts = array())
     }
     $new_user_id = (int) create_member_user($create);
 
+    // The marketing answer, once per sign-up however many contacts share the
+    // address, and only when it differs from the person's last recorded one.
+    if (!empty($opts['opt_in_asked'])) {
+        pg_consent_log_answers(
+            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+            array('email:marketing' => ($opt_in === '1')),
+            'signup');
+    }
+
     // Remember me: the entrance screen's field name first, the login form's
     // as the designed page may use it.
     $remember = false;
@@ -597,7 +655,8 @@ function pg_member_register($form, $opts = array())
 // optional (the member can keep signing in with Google).
 //
 // $opts: contact_fields (column => value written to the member's contact,
-// found or created), contact_group_id (the site setting when absent).
+// found or created), contact_group_id (the site setting when absent),
+// opt_in_asked (as in pg_member_register()).
 function pg_member_activate($form, $opts = array())
 {
     if (!is_array($opts)) $opts = array();
@@ -795,6 +854,15 @@ function pg_member_activate($form, $opts = array())
     $new_user_id = (int) create_member_user($create);
     if ($new_user_id && ($pending_provider !== '') && function_exists('pg_signin_identity_add')) {
         pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
+    }
+
+    // The marketing answer (see pg_member_register()). The contact id finds
+    // what the member answered under the address the contact had before.
+    if (!empty($opts['opt_in_asked'])) {
+        pg_consent_log_answers(
+            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+            array('email:marketing' => ($opt_in === '1')),
+            'signup');
     }
 
     $remember = false;

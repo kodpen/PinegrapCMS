@@ -155,6 +155,13 @@ if (($liveform->get_field_value('opt_in_displayed') == 'false') || ($liveform->g
     $opt_in = 0;
 }
 
+// Whether the visitor was shown the opt-in box, kept for the consent log that
+// submit_order() writes once the order is placed: a hidden box still gives
+// the order an answer, but not one the visitor made.
+$_SESSION['ecommerce']['opt_in_asked'] = array(
+    'order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+    'asked' => ($liveform->get_field_value('opt_in_displayed') === 'true'));
+
 // if tax-exempt was checked
 if ($liveform->get_field_value('tax_exempt')) {
     $tax_exempt = 1;

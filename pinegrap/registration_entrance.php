@@ -245,6 +245,13 @@ if (!$_POST) {
             $register_opts = pg_member_widget_register_opts((int) ($_POST['pg_widget_id'] ?? 0), $register_form);
         }
 
+        // Whether the marketing question was on the screen, so that only an
+        // answer the visitor gave is recorded: the legacy screen always shows
+        // the box, a widget only when its tree has the opt_in control.
+        $register_opts['opt_in_asked'] = isset($_POST['pg_widget_id'])
+            ? pg_member_widget_asks_opt_in((int) $_POST['pg_widget_id'], 'registration')
+            : true;
+
         $registered = pg_member_register($register_form, $register_opts);
 
         // if an error does not exist

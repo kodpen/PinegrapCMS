@@ -12,8 +12,10 @@
  * refuses a consent: the cookie notice's categories, marketing by e-mail, SMS
  * or phone call, and the documents accepted at checkout. Rows are appended,
  * never changed; the person's current answer is the newest row of each
- * channel and purpose (pg_consent_log_current()). Writing a row never stops
- * the action it records: a row that cannot be written is left out.
+ * channel and purpose (pg_consent_log_current()), and a screen that asks again
+ * adds a row only for an answer that differs from it (pg_consent_log_answers()).
+ * Writing a row never stops the action it records: a row that cannot be
+ * written is left out.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -169,7 +171,7 @@ function pg_consent_log_sources()
         'import',       // brought in with a contact list
         'api',          // an application through the external API
         'iys',          // pulled back from İYS
-        'form',         // a custom form that adds to a contact group (double opt-in)
+        'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
     );
 }
 
@@ -396,4 +398,97 @@ function pg_consent_log_current(array $rows)
     ksort($current);
 
     return $current;
+}
+
+/**
+ * The status a person's answer is recorded as, or '' when it repeats the last
+ * recorded one. Pure. Nothing recorded yet, or only a pending request (a
+ * confirmation mail not answered), counts as no answer: any answer is new.
+ *
+ * @param array|null $last    the newest row for that channel and purpose (an
+ *                            entry of pg_consent_log_current()), or null
+ * @param bool       $answer  true = yes
+ * @return string  'granted', 'refused' or ''
+ */
+function pg_consent_log_change($last, $answer)
+{
+    $status = $answer ? 'granted' : 'refused';
+
+    if (is_array($last) && isset($last['status']) && ((string) $last['status'] === $status)) {
+        return '';
+    }
+
+    return $status;
+}
+
+/**
+ * The rows a set of answers needs against the person's current answers: one
+ * per answer that differs from the last recorded one. Pure.
+ *
+ * @param array $current  pg_consent_log_current() of the person
+ * @param array $answers  "channel:purpose" => bool
+ * @return array[]  list of array('channel' => .., 'purpose' => .., 'status' => ..)
+ *                  in the order of $answers; a key that does not split into
+ *                  a valid channel and purpose (pg_consent_log_purpose_valid())
+ *                  is skipped
+ */
+function pg_consent_log_changes(array $current, array $answers)
+{
+    $changes = array();
+
+    foreach ($answers as $key => $answer) {
+        $key = (string) $key;
+        $parts = explode(':', $key, 2);
+
+        // The purpose keeps its own colon: "email:group:12" is email, group:12.
+        if ((count($parts) !== 2) || !pg_consent_log_purpose_valid($parts[0], $parts[1])) {
+            continue;
+        }
+
+        $status = pg_consent_log_change(isset($current[$key]) ? $current[$key] : null, $answer);
+
+        if ($status !== '') {
+            $changes[] = array('channel' => $parts[0], 'purpose' => $parts[1], 'status' => $status);
+        }
+    }
+
+    return $changes;
+}
+
+/**
+ * Record the answers a person gave on one screen. The person's rows are read
+ * once and only the answers that differ from the last recorded ones are
+ * written, so a form sent again, a second one-click unsubscribe or a save that
+ * changed only the address adds nothing. The baseline is the log, not the
+ * opt-in flags of the contact. Nothing is written before the upgrade, or for
+ * a person with no identifier (the last answer could not be read).
+ *
+ * ip and user_agent are this request's (pg_consent_log_record()): the person
+ * answers in their own request.
+ *
+ * @param array  $person   any of email (the address after the save),
+ *                         person_token, user_id, contact_id
+ * @param array  $answers  "channel:purpose" => bool, true = yes
+ * @param string $source   a pg_consent_log_sources() value
+ * @return int  rows written
+ */
+function pg_consent_log_answers(array $person, array $answers, $source)
+{
+    // Only the identifiers: the event's own fields come from the answer and the request.
+    $person = array_intersect_key($person, array_flip(array('email', 'person_token', 'user_id', 'contact_id')));
+
+    if (!$answers || (pg_consent_log_person_where($person) === '') || !pg_consent_log_ready()) {
+        return 0;
+    }
+
+    $changes = pg_consent_log_changes(pg_consent_log_current(pg_consent_log_rows($person)), $answers);
+    $written = 0;
+
+    foreach ($changes as $change) {
+        if (pg_consent_log_record($change + array('source' => (string) $source) + $person) > 0) {
+            $written++;
+        }
+    }
+
+    return $written;
 }

@@ -59,6 +59,10 @@ if (!$_POST) {
             SET opt_in = '0', timestamp = UNIX_TIMESTAMP()
             WHERE email_address = '" . e($one_click_address) . "'");
 
+        // The refusal goes to the consent log once: a client that repeats the
+        // POST finds it already recorded for the address and adds nothing.
+        pg_consent_log_answers(array('email' => $one_click_address), array('email:marketing' => false), 'unsubscribe');
+
         log_activity(lang(array('string' => '{var:1} unsubscribed with one click.', 'vars' => array($one_click_address))), 'UNKNOWN');
 
         http_response_code(200);
@@ -449,6 +453,36 @@ if (!$_POST) {
         }
     }
     
+    // The answers of this post for the consent log, under the same guards as
+    // the writes above: the opt-in and the lists the screen drew. When the
+    // opt-in is unticked the lists are left out: the legacy screen hides their
+    // boxes then, and a hidden ticked box still posts '1'.
+    $consent_answers = array();
+
+    if (pg_sw_posted_control($pg_controls, 'opt_in')) {
+        $consent_answers['email:marketing'] = ($liveform->get_field_value('opt_in') === '1');
+    }
+
+    if (!isset($consent_answers['email:marketing']) || $consent_answers['email:marketing']) {
+        foreach ($contact_groups as $contact_group) {
+            if (pg_sw_posted_control($pg_controls, 'contact_group_' . $contact_group['id'])) {
+                $consent_answers['email:group:' . $contact_group['id']] = ($liveform->get_field_value('contact_group_' . $contact_group['id']) === '1');
+            }
+        }
+    }
+
+    // Only the answers that differ from the person's last recorded ones are
+    // written, once per person rather than once per contact. The address is
+    // the one just saved. A signed-in visitor answers on the account page, a
+    // visitor without a session through the signed link in an e-mail.
+    pg_consent_log_answers(
+        array(
+            'email' => $liveform->get_field_value('email_address'),
+            'user_id' => $user_id,
+            'contact_id' => $contact_id),
+        $consent_answers,
+        !empty($_SESSION['sessionusername']) ? 'account' : 'unsubscribe');
+
     $liveform->add_notice(lang('Your email preferences have been updated.'));
     
     // send user back to e-mail preferences screen

@@ -569,6 +569,10 @@ if ($liveform->check_form_errors() == false) {
     // the membership block further down, so it has to start out empty.
     $sql_update_contact = '';
 
+    // Whether the e-mail opt-in the contact gets below is the visitor's own
+    // answer: set by the last field bound to opt_in, as that one is stored.
+    $contact_opt_in_asked = false;
+
     // Only set when this submission creates a user account; the notification
     // further below is written either way.
     $username = '';
@@ -776,6 +780,13 @@ if ($liveform->check_form_errors() == false) {
                         $sql_update_contact .= "file_id = '0', ";
                     }
                     $sql_update_contact .= $field['contact_field'] . " = '" . escape($liveform->get_field_value($field['id'])) . "', ";
+
+                    // An office-use-only field is filled by staff in edit mode
+                    // or carries its default, so only a field every visitor
+                    // sees holds the visitor's answer.
+                    if ($field['contact_field'] == 'opt_in') {
+                        $contact_opt_in_asked = ($field['office_use_only'] == 0);
+                    }
                 }
             }
 
@@ -1177,6 +1188,24 @@ if ($liveform->check_form_errors() == false) {
                     timestamp = UNIX_TIMESTAMP()
                  WHERE id = '$contact_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // The visitor's answer goes to the consent log as stored: the column
+        // keeps the posted value cast to an integer. A contact filled in for
+        // somebody else holds that person's values, not the visitor's answer.
+        // A repeated answer writes nothing (pg_consent_log_answers()).
+        if ($contact_opt_in_asked && !$contact_for_someone_else) {
+            $consent_contact = db_item("SELECT email_address, opt_in FROM contacts WHERE id = '" . (int) $contact_id . "'");
+
+            if ($consent_contact) {
+                pg_consent_log_answers(
+                    array(
+                        'email' => $consent_contact['email_address'],
+                        'user_id' => (int) $user_id,
+                        'contact_id' => (int) $contact_id),
+                    array('email:marketing' => ((int) $consent_contact['opt_in'] === 1)),
+                    'form');
+            }
+        }
     }
 
     // Announced only now: the row above was created empty and has just been

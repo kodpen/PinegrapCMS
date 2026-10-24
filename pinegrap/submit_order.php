@@ -533,6 +533,13 @@ function submit_order($type) {
                 $opt_in = 0;
             }
             
+            // Whether the visitor was shown the opt-in box, kept for the
+            // consent log written below once the order is placed (a gateway
+            // return skips this block and finds the flag of this submit).
+            $_SESSION['ecommerce']['opt_in_asked'] = array(
+                'order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+                'asked' => ($liveform->get_field_value('opt_in_displayed') === 'true'));
+            
             // if tax-exempt was checked
             if ($liveform->get_field_value('tax_exempt') == '1') {
                 $tax_exempt = 1;
@@ -4597,6 +4604,35 @@ function submit_order($type) {
         'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
         'contract' => ($liveform->get_field_value('legal_contract') == 1),
     ))));
+
+    // The visitor's answer to the e-mail marketing box goes to the consent log
+    // here, once per placed order: the contact is updated earlier, also for
+    // submits that are rejected or never paid. Only a box the visitor was
+    // shown counts (the flag kept where the answer was read), and the answer
+    // is the order's own, because a gateway return posts no form.
+    $opt_in_asked = $_SESSION['ecommerce']['opt_in_asked'] ?? null;
+    unset($_SESSION['ecommerce']['opt_in_asked']);
+
+    if (
+        is_array($opt_in_asked)
+        && !empty($opt_in_asked['asked'])
+        && ((int) ($opt_in_asked['order_id'] ?? 0) === (int) ($_SESSION['ecommerce']['order_id'] ?? 0))
+    ) {
+        $opt_in_order = db_item(
+            "SELECT opt_in, billing_email_address, user_id, contact_id
+            FROM orders
+            WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
+
+        if ($opt_in_order) {
+            pg_consent_log_answers(
+                array(
+                    'email' => $opt_in_order['billing_email_address'],
+                    'user_id' => $opt_in_order['user_id'],
+                    'contact_id' => $opt_in_order['contact_id']),
+                array('email:marketing' => ((int) $opt_in_order['opt_in'] === 1)),
+                'checkout');
+        }
+    }
 
     // Tell whoever is subscribed that an order was placed.
     //
