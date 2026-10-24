@@ -1295,6 +1295,10 @@ function _expand_custom_php($html)
         function ($m) {
             $src = base64_decode($m[1], true);
             if ($src === false) return '<!-- pg-custom-php: invalid base64 -->';
+            // What the code prints may depend on the visitor: never shared.
+            if (function_exists('pg_page_cache_personal')) {
+                pg_page_cache_personal('php_region');
+            }
             ob_start();
             try {
                 // @ intentionally omitted — PHP warnings/notices surface in error logs while

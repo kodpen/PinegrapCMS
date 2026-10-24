@@ -341,6 +341,82 @@ function erp_expense_recurrence_stop($id, $user_id = 0)
 }
 
 /**
+ * Why an active repeat written as paid cannot move to a till with a method,
+ * or ''. The till goes through the gate every expense payment does
+ * (erp_expense_till_row_refusal()): missing, taken off, or kept in another
+ * currency while foreign currency is on.
+ *
+ * @param array      $recurrence  erp_expense_recurrences row
+ * @param array|null $till        id, currency, is_active
+ * @param string     $method
+ * @return string
+ */
+function erp_expense_recurrence_till_refusal($recurrence, $till, $method)
+{
+    if ((string) ($recurrence['status'] ?? '') !== 'active') {
+        return lang('Only an active repeat can change its till.');
+    }
+
+    if ((string) ($recurrence['pay_mode'] ?? '') !== 'paid') {
+        return lang('Only a repeat written as paid takes money from a till.');
+    }
+
+    if (($refusal = erp_expense_till_row_refusal($till, strtoupper((string) ($recurrence['currency'] ?? '')))) !== '') {
+        return $refusal;
+    }
+
+    if (!in_array((string) $method, erp_cash_payment_methods(), true)) {
+        return lang('Choose a payment method.');
+    }
+
+    return '';
+}
+
+/**
+ * Pay the next ones of an active repeat from another till or with another
+ * method. Only what is still to come changes: the expenses it wrote keep
+ * their till. The last error is cleared, since it is usually the till that
+ * was taken off; a date that was given back is written on the next run, and
+ * whatever still stands in the way is said again then.
+ *
+ * @param int    $id
+ * @param int    $cash_account_id
+ * @param string $method
+ * @return array ['success' => bool, 'error' => string]
+ */
+function erp_expense_recurrence_set_till($id, $cash_account_id, $method)
+{
+    if (!erp_expense_recurring_ready()) {
+        return array('success' => false, 'error' => lang('Repeating expenses come with the software update; run the update to use them.'));
+    }
+
+    $recurrence = erp_expense_recurrence($id);
+
+    if ($recurrence === null) {
+        return array('success' => false, 'error' => lang('The repeat could not be found.'));
+    }
+
+    $till = db_item("SELECT id, currency, is_active FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' LIMIT 1");
+
+    if (($refusal = erp_expense_recurrence_till_refusal($recurrence, $till, $method)) !== '') {
+        return array('success' => false, 'error' => $refusal);
+    }
+
+    $ok = db("UPDATE erp_expense_recurrences SET
+            cash_account_id = '" . (int) $cash_account_id . "',
+            payment_method = '" . escape((string) $method) . "',
+            last_error = '',
+            updated_at = '" . time() . "'
+        WHERE id = '" . (int) $recurrence['id'] . "' AND status = 'active' AND pay_mode = 'paid'");
+
+    if ($ok === false) {
+        return array('success' => false, 'error' => lang('The repeat could not be saved.'));
+    }
+
+    return array('success' => true, 'error' => '');
+}
+
+/**
  * The words that say what a recurrence's expense is, with its month:
  * "Shop rent (October 2026)".
  *

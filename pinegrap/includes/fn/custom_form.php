@@ -221,6 +221,14 @@ function pg_cf_load_page_fields($page_id)
     // Optional in older schemas — probed, never assumed.
     $has_upload_folder = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation    = pg_cf_form_fields_has_column('validation_regex');
+    $translate_by_field = array();
+    if (pg_schema_has('form_fields', 'translate_values')) {
+        foreach ((array)db_items(
+            "SELECT id, translate_values FROM form_fields
+             WHERE page_id = '$page_id' AND form_type = 'custom'") as $t) {
+            $translate_by_field[(int)$t['id']] = ((int)$t['translate_values'] === 1);
+        }
+    }
     $validation_by_field = array();
     if ($has_validation) {
         foreach ((array)db_items(
@@ -276,6 +284,7 @@ function pg_cf_load_page_fields($page_id)
             'multiple'        => ((int)$r['multiple'] === 1),
             'office_use_only' => ((int)$r['office_use_only'] === 1),
             'wysiwyg'         => ((int)$r['wysiwyg'] === 1),
+            'translate'       => isset($translate_by_field[$id]) ? $translate_by_field[$id] : true,
             'rss_field'       => (string)$r['rss_field'],
             'contact_field'   => (string)$r['contact_field'],
             'default_value'   => (string)$r['default_value'],
@@ -410,9 +419,11 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
-        'pretty_urls' => 0,
+        'pretty_urls' => 0, 'double_opt_in' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
+    // The 11.0.27 column is read once it is there.
+    $double_opt_in_ready = pg_fs_ready();
 
     $row = db_item(
         "SELECT form_name, enabled, quiz, save, auto_registration,
@@ -420,7 +431,7 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days, pretty_urls
+                membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -454,6 +465,8 @@ function pg_cf_load_page_form_settings($page_id)
         // Records addressed by their name (/<page>/<title>) rather than by
         // their reference code; the name comes from the Title field.
         'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
+        // The contact joins the group only through the link mailed to it.
+        'double_opt_in'        => ($double_opt_in_ready && (int)$row['double_opt_in'] === 1) ? 1 : 0,
     );
 }
 
@@ -807,6 +820,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     if (array_key_exists('pretty_urls', $settings)) {
         $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
     }
+    if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
+        $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';
+    }
     if (array_key_exists('confirmation_message', $settings)) {
         $msg = trim((string)$settings['confirmation_message']);
         if ($msg !== '') $set['confirmation_message'] = $msg;
@@ -853,6 +869,29 @@ function pg_cf_rich_text_flag($wanted, $type, $stored = null)
     if ($wanted === null) {
         return (is_array($stored) && isset($stored['type']) && (string)$stored['type'] === 'text area'
                 && !empty($stored['wysiwyg'])) ? 1 : 0;
+    }
+    return $wanted ? 1 : 0;
+}
+
+/**
+ * The `translate_values` column a designed field is written with: 1 when the
+ * answers given in the field are listed for translation and translated where
+ * a widget shows them (pg_tr_extract_form_records(), pg_tr_record_fields()),
+ * 0 when they are left as they were typed (icon names, codes, JSON).
+ *
+ * Only a text box or a text area has its answers translated, so any other
+ * field is 1. $wanted is the control's `_cf.translate`: true or false once
+ * the designer's switch has been used. null means the control does not say
+ * (a tree drawn before the switch existed, a field set on the classic field
+ * screen): the stored row ($stored, with `translate_values` when the column
+ * was read) keeps its flag, and a new field is included.
+ */
+function pg_cf_translate_flag($wanted, $type, $stored = null)
+{
+    if (!in_array((string)$type, array('text box', 'text area'), true)) return 1;
+    if ($wanted === null) {
+        return (is_array($stored) && isset($stored['translate_values'])
+                && (string)$stored['translate_values'] === '0') ? 0 : 1;
     }
     return $wanted ? 1 : 0;
 }
@@ -906,6 +945,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $valid_contact  = pg_cf_contact_fields();
     $has_upload_col = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation = pg_cf_form_fields_has_column('validation_regex');
+    $has_translate  = pg_schema_has('form_fields', 'translate_values');
     $user_id        = (int)$user_id;
 
     // What is on the page's form right now, so we can tell an update from an
@@ -914,7 +954,8 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $old_list = array();
     $old_title_id = 0;
     foreach ((array)db_items(
-        "SELECT id, name, label, type, wysiwyg, rss_field FROM form_fields
+        "SELECT id, name, label, type, wysiwyg, rss_field"
+         . ($has_translate ? ", translate_values" : "") . " FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
@@ -983,6 +1024,14 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             // own — so nothing here has to guess at the operator's intent.
             $set['validation_regex']   = mb_substr((string)(isset($f['regex']) ? $f['regex'] : ''), 0, 255);
             $set['validation_message'] = mb_substr((string)(isset($f['regex_message']) ? $f['regex_message'] : ''), 0, 255);
+        }
+        if ($has_translate) {
+            // Three-state like `wysiwyg`: a text field whose control does not
+            // say keeps the row's flag, so a save never resets it. A field
+            // saved as another type is written as 1 and comes back included.
+            $set['translate_values'] = pg_cf_translate_flag(
+                array_key_exists('translate', $f) ? $f['translate'] : null, $type,
+                ($id > 0 && isset($existing[$id])) ? $existing[$id] : null);
         }
 
         // A folder the operator cannot edit is not a folder they may upload
@@ -1863,9 +1912,9 @@ function _pg_cf_type_by_input()
     );
 }
 
-// The `_cf` record a control carries, with every key present. `wysiwyg` is
-// three-state: null when the control does not say (the field row keeps the
-// flag it has), otherwise true or false.
+// The `_cf` record a control carries, with every key present. `wysiwyg` and
+// `translate` are three-state: null when the control does not say (the field
+// row keeps the flag it has), otherwise true or false.
 function _pg_cf_node_record($node)
 {
     $cf = (is_array($node) && isset($node['props']['_cf']) && is_array($node['props']['_cf']))
@@ -1881,6 +1930,7 @@ function _pg_cf_node_record($node)
         'quiz_question'      => !empty($cf['quiz_question']),
         'quiz_answer'        => isset($cf['quiz_answer']) ? (string)$cf['quiz_answer'] : '',
         'wysiwyg'            => array_key_exists('wysiwyg', $cf) ? !empty($cf['wysiwyg']) : null,
+        'translate'          => array_key_exists('translate', $cf) ? !empty($cf['translate']) : null,
     );
 }
 
@@ -1903,6 +1953,8 @@ function _pg_cf_node_record($node)
  * `wysiwyg` (rich text) is read for a text area only and stays null when
  * the control's `_cf` has no such key: the writer then keeps the row's own
  * flag (pg_cf_rich_text_flag()). The editor's twin is _cfFieldsOf().
+ * `translate` (include the answers in translation) is three-state the same
+ * way (pg_cf_translate_flag()).
  */
 function _pg_cf_controls($widget_tree, $page_id = 0)
 {
@@ -2007,6 +2059,7 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'multiple'        => ($tag === 'select' && array_key_exists('multiple', $a)) || $it === 'checkbox',
                         'office_use_only' => $cf['office_use_only'],
                         'wysiwyg'         => ($tag === 'textarea') ? $cf['wysiwyg'] : false,
+                        'translate'       => $cf['translate'],
                         'rss_field'       => $rss,
                         'contact_field'   => $cf['contact_field'],
                         'default_value'   => $default,
@@ -3015,9 +3068,11 @@ function pg_cf_checkbox_format_text($data, $format)
  * example of the format that goes with them ($yes / $no fill the check box
  * one). Information fields and fields without a name print nothing and are
  * left out. 'syntax' holds one sample line per format (conditional, date,
- * checkbox), taken from the first fitting form field.
+ * checkbox), taken from the first fitting form field. 'mail' lists the links
+ * only the e-mail to the person who sent the form fills in
+ * (pg_cf_mail_link_names()); $mail_links maps each name to its label.
  */
-function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no = 'No')
+function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no = 'No', $mail_links = array())
 {
     $example = function ($name, $type) use ($yes, $no) {
         switch ($type) {
@@ -3071,6 +3126,17 @@ function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no
         if ($item['type'] === 'check box') $help['syntax']['checkbox'] = $item['example'];
     }
 
+    $help['mail'] = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $label = trim((string)($mail_links[$name] ?? ''));
+        $help['mail'][] = array(
+            'token'   => '^^' . $name . '^^',
+            'label'   => ($label !== '') ? $label : $name,
+            'type'    => '',
+            'example' => '',
+        );
+    }
+
     return $help;
 }
 
@@ -3094,7 +3160,10 @@ function pg_cf_variables_help($page_id)
         if (is_array($rows)) $fields = $rows;
     }
 
-    $help = pg_cf_variables_help_build($fields, get_standard_fields_for_view(), lang('Yes'), lang('No'));
+    $help = pg_cf_variables_help_build($fields, get_standard_fields_for_view(), lang('Yes'), lang('No'), array(
+        'email_preferences_url'    => lang('E-mail preferences link'),
+        'confirm_subscription_url' => lang('Subscription confirmation link'),
+    ));
 
     $type_labels = array(
         'text box'      => lang('Text Box'),
@@ -3109,13 +3178,235 @@ function pg_cf_variables_help($page_id)
         'email address' => lang('E-mail Address'),
         'signature'     => lang('Signature'),
     );
-    foreach (array('fields', 'standard') as $group) {
+    foreach (array('fields', 'standard', 'mail') as $group) {
         foreach ($help[$group] as $i => $item) {
             $help[$group][$i]['type_label'] = $type_labels[$item['type']] ?? '';
         }
     }
 
     return $help;
+}
+
+/**
+ * The mail merge fields that hold a link for the person who sent the form:
+ * the signed e-mail preferences page and the subscription confirmation.
+ * They are not standard fields (get_standard_fields_for_view()), which list
+ * views, the search index and the designer also read: a signed link must
+ * only ever reach the mailbox of the address it was signed for.
+ *
+ * @return array
+ */
+function pg_cf_mail_link_names()
+{
+    return array('email_preferences_url', 'confirm_subscription_url');
+}
+
+/**
+ * Who the links are being drawn for, within the request that sends a form's
+ * e-mails. Set it (an array: email_address, contact_id, custom_form_page_id,
+ * form_id) just before the copy for the person who sent the form is drawn,
+ * clear it (false) right after; pass nothing to ask. A watcher's copy, the
+ * administrator's e-mail and the confirmation page are drawn without it, so
+ * they get no link.
+ *
+ * @param array|false|null $context
+ * @return array|null
+ */
+function pg_cf_mail_links_context($context = null)
+{
+    static $current = null;
+
+    if ($context === false) {
+        $current = null;
+    } elseif (is_array($context)) {
+        $current = $context;
+    }
+
+    return $current;
+}
+
+/**
+ * The values of the link fields for what is being drawn now, each '' when
+ * there is no link to give: no context set, or the administrator's e-mail
+ * (drawn while pg_tr_suspend() holds the request for the site's own people).
+ *
+ * @return array name => value
+ */
+function pg_cf_mail_link_values()
+{
+    return pg_cf_mail_link_values_build(
+        pg_cf_mail_links_context(),
+        function_exists('pg_tr_suspend') && pg_tr_suspend(),
+        'pg_email_preferences_url',
+        'pg_cf_confirm_subscription_url');
+}
+
+/**
+ * The link field values for $context (pg_cf_mail_links_context()): each ''
+ * without a context or while $suspended (the administrator's e-mail), else
+ * what the two link builders give for the context's address, form and contact.
+ *
+ * @param array|null $context
+ * @param bool       $suspended
+ * @param callable   $preferences_url function (string $email_address): string
+ * @param callable   $confirm_url     function (int $form_id, int $contact_id, string $email_address): string
+ * @return array name => value
+ */
+function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)
+{
+    $values = array_fill_keys(pg_cf_mail_link_names(), '');
+
+    if (!is_array($context) || $suspended) {
+        return $values;
+    }
+
+    $values['email_preferences_url'] = (string) call_user_func($preferences_url, (string)($context['email_address'] ?? ''));
+    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['form_id'] ?? 0), (int)($context['contact_id'] ?? 0), (string)($context['email_address'] ?? ''));
+
+    return $values;
+}
+
+/**
+ * The link that confirms a subscription made with a form: the signed,
+ * stateless link pg_fs_hold_submission() made for this submission when the
+ * form asks for a double opt-in and held the contact group back
+ * (pg_fs_pending_url()). Given only to the contact's own address
+ * (pg_cf_confirm_subscription_url_for()); '' for any other submission, a
+ * submission without a contact and a site without ENCRYPTION_KEY.
+ *
+ * @param int    $form_id       the submitted form (forms.id)
+ * @param int    $contact_id
+ * @param string $email_address where the e-mail being drawn goes
+ * @return string
+ */
+function pg_cf_confirm_subscription_url($form_id, $contact_id, $email_address)
+{
+    $url = pg_fs_pending_url($form_id);
+
+    if ($url === '') {
+        return '';
+    }
+
+    return pg_cf_confirm_subscription_url_for($url, $email_address, pg_fs_contact_email($contact_id));
+}
+
+/**
+ * $url when $email_address is the contact's own address once both are
+ * normalised (pg_privacy_normalize_email()), '' otherwise. The link is signed
+ * for the contact's address, while the submitter's e-mail can go to another
+ * one (the signed-in user's, or an e-mail field not bound to the contact): a
+ * confirmation pressed there would not prove the address owner agreed.
+ *
+ * @param string $url
+ * @param string $email_address
+ * @param string $contact_address
+ * @return string
+ */
+function pg_cf_confirm_subscription_url_for($url, $email_address, $contact_address)
+{
+    $address = pg_privacy_normalize_email($email_address);
+
+    if ((string) $url === '' || $address === '' || $address !== pg_privacy_normalize_email($contact_address)) {
+        return '';
+    }
+
+    return (string) $url;
+}
+
+/**
+ * Fills the link fields (pg_cf_mail_link_names()) in a template with
+ * $values, '' for a missing one: an empty value takes the other half of a
+ * [[...||...]] block and never leaves the token as written. In HTML the
+ * value is escaped, and the http:// the editor's Link dialog puts in front
+ * of href="^^email_preferences_url^^" is taken off first.
+ *
+ * Only for text that carries no submitted value yet (a subject or plain
+ * text body before get_variable_submitted_form_data_for_content(), a form
+ * item view's layout): [[...]] blocks are evaluated here, so a value that
+ * holds "[[" or "]]" would otherwise open or close one around other text.
+ * Text that already holds the submitted values goes through
+ * pg_cf_fill_mail_link_tokens().
+ *
+ * @param string $content
+ * @param array  $values name => value (pg_cf_mail_link_values())
+ * @param string $format 'html' or 'plain_text'
+ * @return string
+ */
+function pg_cf_fill_mail_links($content, $values, $format)
+{
+    $content = (string)$content;
+
+    if (strpos($content, '^^') === false) {
+        return $content;
+    }
+
+    $format = ($format === 'html') ? 'html' : 'plain_text';
+
+    if ($format === 'html') {
+        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+    }
+
+    $fields = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $fields[] = array('name' => $name, 'data' => (string)($values[$name] ?? ''), 'type' => '');
+    }
+
+    return replace_variables(array('content' => $content, 'fields' => $fields, 'format' => $format));
+}
+
+/**
+ * Replaces the bare link fields (^^email_preferences_url^^,
+ * ^^confirm_subscription_url^^) in text that already holds the submitted
+ * values, such as an HTML e-mail drawn by get_page_content(): no [[...]]
+ * block is evaluated, so a submitted value can neither hide nor reveal
+ * other text. In HTML the value is escaped and the Link dialog's http:// in
+ * front of the field is taken off; '' for a missing value.
+ *
+ * @param string $content
+ * @param array  $values name => value (pg_cf_mail_link_values())
+ * @param string $format 'html' or 'plain_text'
+ * @return string
+ */
+function pg_cf_fill_mail_link_tokens($content, $values, $format)
+{
+    $content = (string)$content;
+
+    if (strpos($content, '^^') === false) {
+        return $content;
+    }
+
+    $html = ($format === 'html');
+
+    if ($html) {
+        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+    }
+
+    $replace = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $value = (string)($values[$name] ?? '');
+        $replace['^^' . $name . '^^'] = $html ? h($value) : $value;
+    }
+
+    return strtr($content, $replace);
+}
+
+/**
+ * Whether a filled message carries one of the links in $values, so email()
+ * keeps its body out of the failure log and the "delivery failed" notice.
+ *
+ * @param string $text
+ * @param array  $values
+ * @return bool
+ */
+function pg_cf_mail_links_in($text, $values)
+{
+    foreach ((array)$values as $value) {
+        if (((string)$value !== '') && (strpos((string)$text, (string)$value) !== false)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -3286,4 +3577,400 @@ function pg_cf_new_account_password_note($set_password_url, $for_submitter)
     }
 
     return lang('You can set a password with "Forgot password" on the sign-in page.');
+}
+
+/* Form submission protections: a signed fill time and per address, per
+   e-mail and per domain limits. custom_form.php applies them to everyone
+   but staff (pg_user_has_panel_access()). */
+
+/**
+ * The key the fill time is signed with: the site's encryption key, or ''
+ * when the site has none (then the check is skipped).
+ *
+ * @return string
+ */
+function pg_cf_issued_key()
+{
+    return defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+}
+
+/**
+ * The value of the pg_form_issued field: when the form was drawn, and a
+ * signature over that second, so a script cannot write a time of its own.
+ * Stateless: no session entry, so a reopened page still verifies.
+ *
+ * @param int    $time Unix time the form is drawn at
+ * @param string $key
+ * @return string "<time>.<32 hex>", or '' without a key
+ */
+function pg_cf_issued_token($time, $key)
+{
+    $key = (string) $key;
+
+    if ($key === '') {
+        return '';
+    }
+
+    $time = (int) $time;
+
+    return $time . '.' . substr(hash_hmac('sha256', 'pg-form-issued|' . $time, $key), 0, 32);
+}
+
+/**
+ * Judge a posted pg_form_issued value.
+ *
+ * @param mixed  $token   The posted value
+ * @param int    $now
+ * @param string $key
+ * @param int    $min     Seconds a person needs at least
+ * @param int    $max_age Seconds after which the form counts as expired
+ * @return string ok, missing, bad, fast or old; always ok without a key
+ */
+function pg_cf_issued_verdict($token, $now, $key, $min = 3, $max_age = 86400)
+{
+    $key = (string) $key;
+
+    if ($key === '') {
+        return 'ok';
+    }
+
+    if (!is_string($token) || ($token === '')) {
+        return 'missing';
+    }
+
+    if (!preg_match('/^(\d{1,12})\.([0-9a-f]{32})$/', $token, $match)) {
+        return 'bad';
+    }
+
+    if (!hash_equals(pg_cf_issued_token((int) $match[1], $key), $token)) {
+        return 'bad';
+    }
+
+    $age = (int) $now - (int) $match[1];
+
+    // A time ahead of the clock is signed by this site but not reached yet;
+    // it counts as too fast rather than as a free pass.
+    if ($age < (int) $min) {
+        return 'fast';
+    }
+
+    if ($age > (int) $max_age) {
+        return 'old';
+    }
+
+    return 'ok';
+}
+
+/**
+ * The time a form is signed at. A visitor sent back to the form with an error
+ * (custom_form.php keeps when in the session) has spent the time once
+ * already, so the form drawn for them is signed as if drawn the minimum time
+ * ago: correcting one field and submitting again within seconds is not
+ * refused as too fast. A note older than ten minutes is ignored.
+ *
+ * @param int $now
+ * @param int $retry_at When the visitor was last sent back, or 0
+ * @param int $min      The minimum fill time pg_cf_issued_verdict() checks
+ * @return int
+ */
+function pg_cf_issued_time($now, $retry_at, $min = 3)
+{
+    $now      = (int) $now;
+    $retry_at = (int) $retry_at;
+
+    if (($retry_at > 0) && ($retry_at <= $now) && ($now - $retry_at <= 600)) {
+        return $now - (int) $min;
+    }
+
+    return $now;
+}
+
+/**
+ * The hidden field every form posting to custom_form.php carries. Empty on a
+ * site without an encryption key.
+ *
+ * @return string
+ */
+function pg_cf_issued_field()
+{
+    $retry_at = isset($_SESSION['software']['pg_form_retry']) ? (int) $_SESSION['software']['pg_form_retry'] : 0;
+
+    // Used once: the next form drawn is the one the visitor was sent back to.
+    if ($retry_at) {
+        unset($_SESSION['software']['pg_form_retry']);
+    }
+
+    $token = pg_cf_issued_token(pg_cf_issued_time(time(), $retry_at), pg_cf_issued_key());
+
+    if ($token === '') {
+        return '';
+    }
+
+    return '<input type="hidden" name="pg_form_issued" value="' . h($token) . '">';
+}
+
+/**
+ * The three limits from the Security settings, each 0..10000; 0 turns one
+ * off. The defaults apply until the 2026.11.0 step adds the columns. The
+ * domain limit is off by default: its counter is shared by every visitor at
+ * that domain, so a few submissions naming gmail.com addresses would refuse
+ * every Gmail user for the hour; the per-address and per-visitor limits
+ * already stop one inbox from being flooded.
+ *
+ * @return array ip_hour, recipient_day, domain_hour
+ */
+function pg_cf_throttle_limits()
+{
+    $limits = array();
+
+    foreach (array(
+        'ip_hour'       => array('form_limit_ip_hour', 10),
+        'recipient_day' => array('form_limit_recipient_day', 3),
+        'domain_hour'   => array('form_limit_domain_hour', 0),
+    ) as $name => $setting) {
+        $value = function_exists('waf_setting') ? waf_setting($setting[0], $setting[1]) : $setting[1];
+
+        $limits[$name] = max(0, min(10000, (int) $value));
+    }
+
+    return $limits;
+}
+
+/**
+ * The counters one submission is held against, in waf_rate:
+ *
+ *   cfi  the visitor's address (its /64 for IPv6), per hour
+ *   cfr  the e-mail address the form writes to, per day (waf_rate_long_scopes())
+ *   cfd  that address's domain, per hour
+ *
+ * The address is folded to the inbox it reaches (pg_cf_throttle_mailbox()),
+ * so Foo@, foo+1@ and, at Gmail, f.oo@ share one counter; waf_rate_key()
+ * hashes every subject, so no address is stored. A limit of 0 drops its row,
+ * an empty subject too.
+ *
+ * @param string $email      The address the form writes to, or ''
+ * @param string $ip_subject waf_ip_subject() of the visitor, or ''
+ * @param array  $limits     pg_cf_throttle_limits()
+ * @return array Rows of subject, scope, window (seconds) and limit
+ */
+function pg_cf_throttle_subjects($email, $ip_subject, $limits)
+{
+    $rows = array();
+
+    $ip_subject = (string) $ip_subject;
+
+    if (($ip_subject !== '') && !empty($limits['ip_hour'])) {
+        $rows[] = array('subject' => 'i|' . $ip_subject, 'scope' => 'cfi', 'window' => 3600, 'limit' => (int) $limits['ip_hour']);
+    }
+
+    $email = pg_cf_throttle_mailbox($email);
+    $at    = strrpos($email, '@');
+
+    if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
+        return $rows;
+    }
+
+    if (!empty($limits['recipient_day'])) {
+        $rows[] = array('subject' => 'r|' . $email, 'scope' => 'cfr', 'window' => 86400, 'limit' => (int) $limits['recipient_day']);
+    }
+
+    if (!empty($limits['domain_hour'])) {
+        $rows[] = array('subject' => 'd|' . substr($email, $at + 1), 'scope' => 'cfd', 'window' => 3600, 'limit' => (int) $limits['domain_hour']);
+    }
+
+    return $rows;
+}
+
+/**
+ * Whether the visitor's address gets a counter of its own. A private or
+ * reserved address (10/8, 172.16/12, 192.168/16, fc00::/7, loopback...) is
+ * the peer of a reverse proxy or load balancer not listed as a Trusted Proxy,
+ * or of a local network, and is shared by every visitor behind it: counting
+ * it would hold the whole site to one visitor's allowance.
+ *
+ * @param string $ip
+ * @return bool
+ */
+function pg_cf_visitor_address_counted($ip)
+{
+    return filter_var((string) $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
+/**
+ * An e-mail address folded to the inbox it reaches, for the counters only:
+ * trimmed and lower-cased, a "+tag" dropped from the name (plus addressing
+ * delivers name+anything@ to name@ at every large provider), and at Gmail the
+ * dots dropped too, googlemail.com being the same domain. Without this one
+ * inbox could be flooded through any number of counters of its own.
+ *
+ * @param string $email
+ * @return string The folded address, or the trimmed text when it is not one
+ */
+function pg_cf_throttle_mailbox($email)
+{
+    $email = mb_strtolower(trim((string) $email), 'UTF-8');
+    $at    = strrpos($email, '@');
+
+    if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
+        return $email;
+    }
+
+    $local  = substr($email, 0, $at);
+    $domain = substr($email, $at + 1);
+
+    // A quoted name is taken as it is.
+    if ($local[0] !== '"') {
+        $plus = strpos($local, '+');
+
+        if ($plus) {
+            $local = substr($local, 0, $plus);
+        }
+
+        if (($domain == 'gmail.com') || ($domain == 'googlemail.com')) {
+            $domain = 'gmail.com';
+            $bare   = str_replace('.', '', $local);
+
+            if ($bare !== '') {
+                $local = $bare;
+            }
+        }
+    }
+
+    return $local . '@' . $domain;
+}
+
+/**
+ * The submitter's address as custom_form.php settles it after the form row
+ * is written, worked out before it so the limits can be checked first: the
+ * field connected to the contact's e-mail address, else the signed-in
+ * account's address, else the form's only e-mail field. Fields whose value
+ * is a list (check box groups, multi-selects) are skipped, as there.
+ *
+ * @param array  $fields     form_fields rows (id, type, contact_field)
+ * @param array  $values     Posted value per field id
+ * @param string $user_email USER_EMAIL_ADDRESS, or ''
+ * @return string
+ */
+function pg_cf_submitter_address_guess($fields, $values, $user_email)
+{
+    $email_fields  = 0;
+    $email_value   = '';
+    $contact_value = '';
+
+    foreach ($fields as $field) {
+        $id    = isset($field['id']) ? $field['id'] : '';
+        $value = isset($values[$id]) ? $values[$id] : '';
+
+        if (is_array($value)) {
+            continue;
+        }
+
+        $value = (string) $value;
+
+        if (isset($field['type']) && ($field['type'] == 'email address')) {
+            $email_fields++;
+            $email_value = $value;
+        }
+
+        if (isset($field['contact_field']) && ($field['contact_field'] == 'email_address')) {
+            $contact_value = $value;
+        }
+    }
+
+    if ($contact_value != '') {
+        return $contact_value;
+    }
+
+    if ((string) $user_email !== '') {
+        return (string) $user_email;
+    }
+
+    if ($email_fields == 1) {
+        return $email_value;
+    }
+
+    return '';
+}
+
+/**
+ * Whether a form writes to the submitter's address: it mails them, adds
+ * them to a contact group or opens an account for them. Only then is the
+ * address a recipient the per-address and per-domain limits protect; a
+ * form that only stores what was typed has no one to flood.
+ *
+ * @param array $settings submitter_email, contact_group_id, auto_registration
+ * @return bool
+ */
+function pg_cf_form_writes_to_submitter($settings)
+{
+    return !empty($settings['submitter_email'])
+        || !empty($settings['contact_group_id'])
+        || !empty($settings['auto_registration']);
+}
+
+/**
+ * Count one submission on its counters, in order, and return the first row
+ * the count took past its limit; the rows after it are not counted, so a
+ * refused submission uses up no one else's allowance. Counting and testing
+ * are one atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE
+ * KEY UPDATE), so parallel requests, each with a session of its own, cannot
+ * all read room under the limit and all pass. A refused submission is
+ * counted too. Fails open: a counter that cannot be written returns 0.
+ *
+ * Runs before the form's hook code, so a hook that ends the request (go(),
+ * exit) cannot skip the count.
+ *
+ * @param array         $rows   pg_cf_throttle_subjects()
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return array The row over its limit, or an empty array
+ */
+function pg_cf_throttle_take($rows, $record = null)
+{
+    $live = ($record === null);
+
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return array();
+        }
+
+        $record = 'waf_rate_record';
+    }
+
+    $full = array();
+
+    foreach ($rows as $row) {
+        if ((int) call_user_func($record, $row['subject'], $row['scope'], $row['window']) > $row['limit']) {
+            $full = $row;
+            break;
+        }
+    }
+
+    // The firewall's sweep runs only while the firewall is on; these counters
+    // work without it, so they bring their own, as the sign-in throttle does.
+    if ($live && $rows && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    return $full;
+}
+
+/**
+ * Log a refusal by a form limit in the firewall log and in data/firewall.log,
+ * so a limit never refuses silently.
+ *
+ * @param array $row The row over its limit, from pg_cf_throttle_take()
+ * @return void
+ */
+function pg_cf_throttle_log($row)
+{
+    $rule = 'form-' . $row['scope'];
+
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', $rule, 'rate', 5, 'custom_form.php', (int) $row['limit'] . (($row['window'] >= 86400) ? '/day' : '/hour'));
+    }
+
+    if (function_exists('waf_text_log') && function_exists('waf_client_ip')) {
+        waf_text_log('DENY', waf_client_ip(), array('rule' => $rule));
+    }
 }

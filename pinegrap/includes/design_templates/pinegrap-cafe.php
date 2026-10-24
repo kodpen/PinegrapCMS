@@ -1090,12 +1090,11 @@ $sent_notices = function ($thanks) use ($el, $icon, $span, $para, $link, $attr, 
                 $span(lang('Email') . ': ', '', lang('Label')),
                 $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
             )),
-            $el('p', 'mb-2', lang('Temporary Password'), array(
-                $span(lang('Temporary password') . ': ', '', lang('Label')),
-                $span('a1b2c3d4', 'fw-semibold font-monospace', lang('Value'), $bind('__new_account_password')),
-            )),
-            $para(lang('You are signed in. Keep these details, and choose a password of your own.'), 'small mb-2'),
-            $link(lang('Change Password'), '{{page:change_password}}', 'btn btn-sm btn-primary'),
+            // The single-use set password link, for the person who sent the form
+            // while it is live; the sentence below covers a used or expired link.
+            $link(lang('Set your password'), '#', 'btn btn-sm btn-primary', array(),
+                array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
+            $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
         ), $show_when('has_new_account')),
     );
 };
@@ -2679,7 +2678,7 @@ $mail_reference = function () use ($el, $span, $bind, $mail_style) {
     ), $mail_style('font-size:13px;color:#75655a;margin:24px 0 0'));
 };
 // The account the form opened for a visitor who had none: the address it
-// signs in with, and how to choose a password (the temporary one is shown
+// signs in with, and how to choose a password (the set password link is shown
 // on the request's page, not mailed).
 $mail_new_account = function () use ($el, $span, $link, $bind, $mail_style, $show_when) {
     return $el('div', 'border-top pt-3', lang('New Account'), array(

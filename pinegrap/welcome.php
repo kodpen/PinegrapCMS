@@ -793,8 +793,8 @@ foreach ($widget_order as $widget_id) {
 // ── Widget controls ─────────────────────────────────────────────────────────
 //
 // Manager and above. Printed into the page script block further down; the Reset
-// Widgets button that calls reset_widgets() is built by functions.php, in the
-// menu popover, and only on this screen.
+// Widgets button that calls reset_widgets() is built by output_menu(), in the
+// Panel row's menu panel, and only on this screen.
 //
 // Built here rather than beside the other page furniture because it has to
 // carry $widget_order, and that is not known until the registry has been read.
@@ -865,7 +865,7 @@ if ($user['role'] < 2) {
         });
     }
 
-    // The two appearance selects in the Panel entry\'s context menu. Both save
+    // The two appearance selects in the Panel row\'s menu panel. Both save
     // through one call and both reload, because the backdrop is decided from
     // the card theme whenever it is left on "auto" and only the server knows
     // how to resolve that.

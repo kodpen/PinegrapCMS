@@ -10,14 +10,14 @@ description: How shipping works today (checked 2026-10-20): tracking tables and 
 - The plan to change all this: docs/memory/plans/shipping-management.md. Old audit with line numbers: `git show 88e7ac6d:docs/_tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md`
 
 ## Which paths write tracking numbers?
-- `update_order()` (`update_order.php`): the shared path (panel `view_order.php`, `api.php` `update_order`, `includes/workspace/changes.php`). Replaces the list through `includes/fn/shipping.php`, fires `order.shipped`, the automatic invoice (docs/memory/erp/erp-auto-invoice.md), the `order_shipped` auto campaign (mail-merge field only `^^order_number^^`) and, once per address, `order.delivered` + `order_delivered` campaigns when a save enters or changes the delivery date to a day that has come.
+- `update_order()` (`update_order.php`): the shared path (panel `view_order.php`, `api.php` `update_order`, `includes/workspace/changes.php`). Replaces the list through `includes/fn/shipping.php`, fires `order.shipped`, the automatic invoice (erp/erp-auto-invoice.md), the `order_shipped` auto campaign (only `^^order_number^^`), the `order_review_request` start (product-review-request-email.md) and, once per address, `order.delivered` + `order_delivered` campaigns when a save enters or changes the delivery date to a day that has come.
 - External API `api_orders_ship()` (`includes/api/resources/orders.php`), through `update_order()` with source `api`.
 - Marketplace `mp_order_apply_tracking()` / `mp_order_mark_dates()` (`includes/api/outbound/orders.php`): same write path, carrier name and link on the row; delivered stage: `order.delivered` once, no e-mail.
 - `shipworks.php` `updateshipment`: direct INSERT outside `update_order()` (no webhook, e-mail, date or log); kept unchanged.
 
 ## What does "shipped" mean?
 Four meanings live side by side:
-1. a non-empty tracking number: `_order_has_shipped()`, the external API and the customer cancel gate (docs/memory/commerce/order-cancel-shipping-gate.md);
+1. a non-empty tracking number: `_order_has_shipped()`, the external API and the customer cancel gate (order-cancel-shipping-gate.md);
 2. `shipped_quantity >= quantity`: `view_orders.php`, `view_shipping_report.php`, dashboard;
 3. `ship_date <= today`: `erp_order_shipment()` (`includes/erp/order_bridge.php`) and the order timeline;
 4. the n11 package status.

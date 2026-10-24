@@ -1593,7 +1593,7 @@ function ws_note_file_store_bytes($viewer, $note, $original_name, $binary)
     $extension = strtolower((string) pathinfo($original_name, PATHINFO_EXTENSION));
 
     if (($original_name === '') || ($extension === '') || ws_upload_refused($original_name)) {
-        return $fail(function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : lang('This file type is not allowed.'));
+        return $fail(ws_upload_refused_message($original_name));
     }
 
     $binary = (string) $binary;

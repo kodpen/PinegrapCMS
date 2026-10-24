@@ -19,6 +19,45 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+// Form submission limits: the counters custom_form.php holds a submission
+// against, and the StopForumSpam switch. Not drawn before the 2026.11.0 step
+// adds the columns, rather than offering fields that save nowhere.
+$output_form_limits = '';
+
+if ($form_limits_ready) {
+    $form_limit_inputs = '';
+
+    foreach (array(
+        array('form_limit_ip_hour', lang('Per visitor address'), $form_limit_ip_hour, lang('per hour')),
+        array('form_limit_recipient_day', lang('Per e-mail address'), $form_limit_recipient_day, lang('per day')),
+        array('form_limit_domain_hour', lang('Per e-mail domain'), $form_limit_domain_hour, lang('per hour')),
+    ) as $form_limit_input) {
+        $form_limit_inputs .= '
+                                                        <div class="pg-f-sm">
+                                                            <label for="' . $form_limit_input[0] . '" class="form-label">' . h($form_limit_input[1]) . '</label>
+                                                            <div class="input-group">
+                                                                <input type="text" name="' . $form_limit_input[0] . '" id="' . $form_limit_input[0] . '" class="form-control" value="' . (int) $form_limit_input[2] . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                <span class="input-group-text">' . h($form_limit_input[3]) . '</span>
+                                                            </div>
+                                                        </div>';
+    }
+
+    $output_form_limits = '
+                                        <div class="col-12">
+                                            <div class="form-label fw-bold mb-1">' . lang('Form Submission Limits') . '</div>
+                                            <div class="form-text mt-0">' . lang('How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off. The e-mail domain limit is off by default: every visitor with an address at that domain shares it, so a few submissions could refuse a whole provider such as gmail.com for an hour.') . '</div>
+                                            <div class="row gy-3 mt-0">' . $form_limit_inputs . '
+                                            </div>
+                                        </div>
+                                        <div class="col-12 ">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($form_spam_blacklist ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="form_spam_blacklist" name="form_spam_blacklist"/>
+                                                <label class="form-check-label" for="form_spam_blacklist">' . lang('Check visitors against StopForumSpam') . '</label>
+                                                <div class="form-text">' . lang('Before a form, comment or registration is accepted, the IP address of the visitor is sent to stopforumspam.com, and a listed address is refused. When the service cannot be reached, the submission is accepted.') . '</div>
+                                            </div>
+                                        </div>';
+}
+
 // ── Session & Password ──
 $pg_settings_cards[] = '
     <div id="pgset-session" class="pg-set-card">
@@ -33,12 +72,6 @@ $pg_settings_cards[] = '
                                             <div class="form-check form-switch">
                                                 <input value="1"' . $mass_deletion_checked . ' class="form-check-input" type="checkbox" id="mass_deletion" name="mass_deletion"/>
                                                 <label class="form-check-label" for="mass_deletion">' . lang('Allow Mass Deletion') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $captcha_checked . ' class="form-check-input" type="checkbox" id="captcha" name="captcha"/>
-                                                <label class="form-check-label" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
@@ -66,6 +99,31 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
 ' . $output_login_throttle . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
+// ── Spam Protection ──
+// The CAPTCHA switch keeps its config column and post name (captcha); the
+// provider and its keys are connect_apps rows (includes/fn/captcha.php),
+// written after the config row by security.save.php.
+$pg_settings_cards[] = '
+    <div id="pgset-captcha" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Spam Protection') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+                                        <div class="col-12 ">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $captcha_checked . ' class="form-check-input" type="checkbox" id="captcha" name="captcha"/>
+                                                <label class="form-check-label" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
+                                            </div>
+                                        </div>
+' . (function_exists('pg_captcha_settings_fields') ? pg_captcha_settings_fields() : '') . '
+' . $output_form_limits . '
                 </div>
             </div>
         </div>
