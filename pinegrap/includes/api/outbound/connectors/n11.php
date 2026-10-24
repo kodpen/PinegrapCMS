@@ -633,7 +633,13 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 	$more = false;
 
-	for ($page = 0; $page < $ceiling; $page++) {
+	// After a full page the window starts again just before the last moment read
+	// (mp_feed_next_page()), so the page asked for is mostly 0.
+	$page = 0;
+
+	$seen = array();
+
+	for ($request = 0; $request < $ceiling; $request++) {
 
 		$path = '/rest/delivery/v1/shipmentPackages'
 			. '?startDate=' . $start
@@ -656,17 +662,36 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 		$content = mp_n11_order_content($result['data']);
 
-		foreach ($content as $entry) {
+		$first = 0;
+
+		$last = 0;
+
+		foreach (array_values($content) as $index => $entry) {
+
+			$moment = (is_array($entry) && isset($entry['lastModifiedDate']))
+				? mp_feed_moment($entry['lastModifiedDate']) : 0;
+
+			if ($index === 0) {
+
+				$first = $moment;
+
+			}
+
+			$last = $moment;
 
 			$package = mp_n11_package($entry);
 
 			if ($package !== null) {
 
-				$packages[] = $package;
-
 				if ($package['placed_at'] > 0) {
 
 					$reached = (int) $package['placed_at'];
+
+				}
+
+				if (mp_feed_first_time($seen, $package['remote_package_id'], $moment)) {
+
+					$packages[] = $package;
 
 				}
 
@@ -682,11 +707,13 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 		}
 
-		if (($page + 1 >= $pages) && ($reached > $since)) {
+		if (($request + 1 >= $pages) && ($reached > $since)) {
 
 			break;
 
 		}
+
+		list($start, $page) = mp_feed_next_page($start, $page, $first, $last);
 
 	}
 

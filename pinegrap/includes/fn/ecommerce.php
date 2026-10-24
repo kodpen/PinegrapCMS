@@ -9812,7 +9812,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         "SELECT id, status, user_id, payment_method, transaction_id, total,
                 " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
                 billing_first_name, billing_last_name, billing_email_address,
-                order_number, order_date
+                order_number, order_date,
+                " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
          FROM orders
          WHERE id = '" . e($order_id) . "'
          LIMIT 1"
@@ -10016,7 +10017,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // Defensive: a flaky SMTP server must not block the cancel itself.
     $email_enabled = !defined('ECOMMERCE_CANCEL_EMAIL_NOTIFICATION')
         || ECOMMERCE_CANCEL_EMAIL_NOTIFICATION !== false;
-    if ($email_enabled) {
+    if ($email_enabled && pg_order_cancellation_mails_customer($order)) {
         try {
             _send_order_cancellation_email($order, $reason_clean, $refund_status_outcome);
         } catch (\Throwable $e) {
@@ -10327,6 +10328,23 @@ function _order_has_shipped($order_id)
 function _orders_has_refund_columns()
 {
     return pg_schema_has('orders', 'refund_status');
+}
+
+/**
+ * Whether a cancelled order's customer is mailed by this shop.
+ *
+ * Not for an order a marketplace sold (orders.type 'marketplace'): the
+ * marketplace tells its own buyer, as it does for the receipt, and the address
+ * on the order is the marketplace's relay for that buyer. A Trendyol package
+ * that is split cancels the old order here although nothing was cancelled for
+ * the buyer, who would be told the whole order was.
+ *
+ * @param array $order a row with at least `type`
+ * @return bool
+ */
+function pg_order_cancellation_mails_customer($order)
+{
+    return !(isset($order['type']) && $order['type'] === 'marketplace');
 }
 
 /**

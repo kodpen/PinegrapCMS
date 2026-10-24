@@ -391,6 +391,78 @@ function mp_error($message, $retry = false, $data = array()) {
 
 }
 
+/* ---------------------------------------------------------------- order feeds */
+
+// A moment of an order feed as the feed counts it, in whole milliseconds, or 0
+// for an entry without one. A number far too large to be seconds is already
+// milliseconds; a date string is read as seconds. Always rounded down: the next
+// request starts at this moment, and a start rounded up would pass over an
+// entry modified later in the same millisecond or second.
+function mp_feed_moment($value) {
+
+	if (is_numeric($value)) {
+
+		$value = (float) $value;
+
+		return (int) (($value > 100000000000) ? floor($value) : floor($value) * 1000);
+
+	}
+
+	$parsed = is_string($value) ? strtotime($value) : false;
+
+	return ($parsed === false) ? 0 : ((int) $parsed) * 1000;
+
+}
+
+// Where an order feed is asked next after a full page, as array(start, page).
+//
+// The feeds are asked inside a fixed window in ascending order of modification
+// time, a page of entries at a time. Asking for page 1, 2, ... of the same
+// window loses a package whenever one that was already read changes while the
+// pages are walked: it leaves its place, every later entry moves up one, and
+// the entry that moves onto the page already read is never read at all. So the
+// window starts again just before the moment of the last entry read, from page
+// 0. One millisecond before, so that the entries of that moment come back
+// whether the feed reads startDate as inclusive or exclusive; the caller skips
+// the ones it has (mp_feed_first_time()).
+//
+// Only a page whose entries all share one moment cannot move the start, and
+// is followed by the next page of the same window. $first and $last are the
+// moments of the page's first and last entries (mp_feed_moment()).
+function mp_feed_next_page($start, $page, $first, $last) {
+
+	$from = $last - 1;
+
+	if (($last > $first) && ($from > $start)) {
+
+		return array($from, 0);
+
+	}
+
+	return array($start, $page + 1);
+
+}
+
+// Whether a package is new to this pass: not handed over already with the same
+// modification moment. A package that changed while the pages were walked comes
+// back with a later moment and is handed over again, in order, as it would be
+// on the next pass.
+function mp_feed_first_time(&$seen, $package_id, $moment) {
+
+	$key = $package_id . '|' . (int) $moment;
+
+	if (isset($seen[$key])) {
+
+		return false;
+
+	}
+
+	$seen[$key] = true;
+
+	return true;
+
+}
+
 /* ---------------------------------------------------------------------- queue */
 
 // Ask for a product to be sent, some time soon.

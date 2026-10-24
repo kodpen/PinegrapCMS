@@ -1635,7 +1635,8 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 	// Twenty full pages that all sit inside the five-minute overlap would hand
 	// the next pass the same start for ever, so only then does the pull read
 	// on past the cap. They answer at most ten thousand packages of one window,
-	// which at two hundred a page makes page 49 the last one there is.
+	// which at two hundred a page makes page 49 the last one there is: the most
+	// a run of pages that all share one moment can reach.
 	$ceiling = 50;
 
 	// The modification time of the last entry read that carried one.
@@ -1643,7 +1644,13 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 	$more = false;
 
-	for ($page = 0; $page < $ceiling; $page++) {
+	// After a full page the window starts again just before the last moment read
+	// (mp_feed_next_page()), so the page asked for is mostly 0.
+	$page = 0;
+
+	$seen = array();
+
+	for ($request = 0; $request < $ceiling; $request++) {
 
 		// No status filter: an answer filtered on several statuses once came
 		// back without the status field, and every status matters here anyway.
@@ -1669,7 +1676,11 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
 			? $result['data']['content'] : array();
 
-		foreach ($content as $entry) {
+		$first = 0;
+
+		$last = 0;
+
+		foreach (array_values($content) as $index => $entry) {
 
 			// Read from every entry, the ones the importer is not handed too: a
 			// page of packages still awaiting payment has been read all the same,
@@ -1683,9 +1694,20 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 			}
 
+			$moment = (is_array($entry) && isset($entry['lastModifiedDate']))
+				? mp_feed_moment($entry['lastModifiedDate']) : 0;
+
+			if ($index === 0) {
+
+				$first = $moment;
+
+			}
+
+			$last = $moment;
+
 			$package = mp_trendyol_package($entry);
 
-			if ($package !== null) {
+			if (($package !== null) && mp_feed_first_time($seen, $package['remote_package_id'], $moment)) {
 
 				$packages[] = $package;
 
@@ -1701,11 +1723,13 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 		}
 
-		if (($page + 1 >= $pages) && ($reached > $since)) {
+		if (($request + 1 >= $pages) && ($reached > $since)) {
 
 			break;
 
 		}
+
+		list($start, $page) = mp_feed_next_page($start, $page, $first, $last);
 
 	}
 

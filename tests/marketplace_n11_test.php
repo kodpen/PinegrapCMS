@@ -62,17 +62,18 @@ function n11_test_packages($count, $first, $step, $prefix = 'pkg')
 // A transport that answers the shipmentPackages feed out of $feed the way n11
 // does: only the packages modified inside startDate..endDate, in ascending
 // order of modification, a page of the size asked for at a time. Every URL it
-// is asked for is written into $calls. Page $fail_page, when given, answers 500.
-function n11_test_feed_transport($feed, &$calls, $fail_page = -1)
+// is asked for is written into $calls. Request $fail_call (counted from 0),
+// when given, answers 500.
+function n11_test_feed_transport($feed, &$calls, $fail_call = -1)
 {
-	return function ($method, $url, $options) use ($feed, &$calls, $fail_page) {
+	return function ($method, $url, $options) use ($feed, &$calls, $fail_call) {
 
 		$calls[] = $url;
 
 		$query = array();
 		parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
-		if ((int) $query['page'] === $fail_page) {
+		if (count($calls) - 1 === $fail_call) {
 			return array('ok' => false, 'status' => 500, 'body' => '{"errors":[{"errorMessage":"down"}]}',
 				'error' => '', 'duration_ms' => 1);
 		}
@@ -128,7 +129,9 @@ function test_marketplace_n11_pull_reads_a_short_feed_to_the_end()
 	pg_assert_true($result['data']['read_to'] >= time() - 5, 'a feed read to its end moves the cursor to now');
 	pg_assert_false(!empty($result['data']['more']));
 	pg_assert_same(2, count($calls), 'one full page and one short one');
-	pg_assert_contains('&page=1&size=100&', $calls[1]);
+	pg_assert_contains('startDate=' . (($since + 10 + 99) * 1000 - 1) . '&', $calls[1],
+		'the second request starts a millisecond before the last moment read');
+	pg_assert_contains('&page=0&size=100&', $calls[1]);
 	pg_assert_contains('startDate=' . (($since - 300) * 1000) . '&', $calls[0], 'the window starts five minutes early');
 }
 
@@ -142,11 +145,12 @@ function test_marketplace_n11_pull_at_the_page_cap_moves_the_cursor_only_as_far_
 
 	pg_assert_true($result['ok']);
 	pg_assert_same(20, count($calls), 'twenty pages, then it stops');
-	pg_assert_same(2000, count($result['data']['packages']));
-	pg_assert_same('pkg2000', $result['data']['packages'][1999]['remote_package_id']);
+	pg_assert_same(100 + 19 * 99, count($result['data']['packages']),
+		'every page after the first starts with the last package of the one before');
+	pg_assert_same('pkg1981', $result['data']['packages'][1980]['remote_package_id']);
 	pg_assert_true($result['data']['complete'], 'the cursor moves');
 	pg_assert_true(!empty($result['data']['more']));
-	pg_assert_same($since + 60 + 1999 * 10, $result['data']['read_to'],
+	pg_assert_same($since + 60 + 1980 * 10, $result['data']['read_to'],
 		'to the modification time of the last package read, not to now');
 
 	// The next pass starts there and reads the rest.
@@ -210,8 +214,37 @@ function test_marketplace_n11_pull_failure_hands_over_what_was_read_and_keeps_th
 
 	pg_assert_false($result['ok']);
 	pg_assert_true(!empty($result['retry']), 'a 500 is worth trying again');
-	pg_assert_same(200, count($result['data']['packages']));
+	pg_assert_same(100 + 99, count($result['data']['packages']));
 	pg_assert_false($result['data']['complete']);
+}
+
+// A package read on the first page changes before the second page is asked
+// for: no other package is lost because of it.
+function test_marketplace_n11_pull_loses_no_package_when_one_already_read_changes()
+{
+	$since = time() - 3600;
+	$feed = n11_test_packages(250, $since + 10, 10);
+	$calls = array();
+	$requests = 0;
+
+	$transport = function ($method, $url, $options) use (&$feed, &$calls, &$requests) {
+
+		$requests++;
+
+		if ($requests === 2) {
+			$feed[5]['lastModifiedDate'] = (time() + 120) * 1000;
+		}
+
+		$answer = n11_test_feed_transport($feed, $calls);
+
+		return $answer($method, $url, $options);
+	};
+
+	$result = mp_n11_pull_orders(n11_test_account(), $since, $transport);
+
+	pg_assert_true($result['ok']);
+	pg_assert_same(250, count(array_unique(n11_test_ids($result['data']['packages']))),
+		'every package of the window is read');
 }
 
 /* ------------------------------------------------------- connection test */
