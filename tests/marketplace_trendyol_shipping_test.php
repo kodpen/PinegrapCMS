@@ -320,8 +320,10 @@ function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
 	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
 	pg_assert_contains("\$named = (\$default !== '') ? '' : \"", $step, 'without a default, a shape-only parcel is not read');
 	pg_assert_contains("if (\$since <= 0) {", $step, 'nothing before the account began shipping itself');
-	pg_assert_true(strpos($step, "\$current = isset(\$account['id']) ? mp_account((int)\$account['id']) : null;")
-		< strpos($step, "mp_account_ships_itself(\$account)"), 'the account is read again before it is asked');
+	$reread = strpos($step, "\$current = isset(\$account['id']) ? mp_account((int)\$account['id']) : null;");
+	$asked = strpos($step, "mp_account_ships_itself(\$account)");
+
+	pg_assert_true(($reread !== false) && ($asked !== false) && ($reread < $asked), 'the account is read again before it is asked');
 	pg_assert_contains("AND (imported_timestamp >= '\" . e(\$since + 60) . \"')", $step, 'from a minute after the stamp');
 	pg_assert_contains("AND (id > '\" . e(\$after) . \"')", $step, 'read page after page');
 	pg_assert_contains("OR (ship_tos.shipping_method_code <> ''))", $step);
