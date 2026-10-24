@@ -83,6 +83,60 @@ function test_designer_messages_comments_form_uses_add_comment()
 	}
 }
 
+// The comments widget's small forms post to handlers of their own: the
+// Messages node in the watch form is re-stamped add_or_remove_watcher, the
+// one in the open-or-close form allow_or_disallow_new_comments. Each prints
+// only its own form's messages and uses them up; the comment form keeps
+// add_comment's.
+function test_designer_messages_comments_small_forms_restamped()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('software' => array('liveforms' => array(
+		'add_comment' => array(12 => array('message' => array('error' => true, 'error_message' => 'A comment is required.'))),
+		'add_or_remove_watcher' => array(12 => array('notices' => array('You will now be notified when a comment is added.'))),
+		'allow_or_disallow_new_comments' => array(12 => array('notices' => array('New comments are closed.'))),
+	)));
+
+	$tree = pg_comments_default_tree();
+	_pg_inject_messages_node($tree, 'add_comment');
+	pg_comments_stamp_form_messages($tree);
+	$html = _render_tree_node($tree, 0);
+
+	$error = strpos($html, 'A comment is required.');
+	$notice = strpos($html, 'You will now be notified when a comment is added.');
+	$submit = strpos($html, 'Add comment</button>');
+	pg_assert_true(($error !== false) && ($error > strpos($html, '<form')) && ($submit !== false) && ($error < $submit), 'the comment form prints its error');
+	pg_assert_same(1, substr_count($html, 'You will now be notified when a comment is added.'), 'the watcher notice prints once');
+	pg_assert_true(($notice !== false) && ($notice > $submit), 'in the watch form, after the comment form');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['add_comment']), 'the add_comment state is used up');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['add_or_remove_watcher']), 'the watcher state is used up');
+	pg_assert_same(false, strpos($html, 'New comments are closed.'), 'the open-or-close form of the starter shows no messages');
+	pg_assert_true(isset($_SESSION['software']['liveforms']['allow_or_disallow_new_comments']), 'and leaves them');
+
+	$allow = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'form', '_bindings' => array('action' => 'comment_allow_new_form')), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+				array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => ''), 'children' => array()),
+			)),
+		)),
+		array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => ''), 'children' => array()),
+	));
+	_pg_inject_messages_node($allow, 'add_comment');
+	pg_comments_stamp_form_messages($allow);
+	pg_assert_same('allow_or_disallow_new_comments', $allow['children'][0]['children'][0]['children'][0]['props']['formName'], 'a node deep in the form is stamped');
+	pg_assert_same('add_comment', $allow['children'][1]['props']['formName'], 'one outside keeps add_comment');
+
+	$allow_html = _render_tree_node($allow, 0);
+	pg_assert_same(1, substr_count($allow_html, 'New comments are closed.'), 'printed by its own form');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['allow_or_disallow_new_comments']), 'and used up');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
 // Every system widget renderer names its Messages node, and none with an
 // empty name.
 function test_designer_messages_every_renderer_names_its_node()

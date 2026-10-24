@@ -11174,6 +11174,11 @@ const StyleDesigner = (function () {
     // setting. A page with comments off prints no widget, so the whole
     // widget fades. The attachment box and the choose-a-name select have no
     // page field in the designer yet; they join this twin with those fields.
+    // The watch form, its buttons and the watcher list follow the watcher
+    // e-mail page; a reply control fades while the page takes no new
+    // comments; a control only a button (or only a link or a button) works
+    // as fades elsewhere, and so does the pagination while the widget shows
+    // every comment on one page.
     function _sdCommentsBindingOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return '';
         var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
@@ -11189,14 +11194,27 @@ const StyleDesigner = (function () {
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
             return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
         }
-        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on') {
+        var isButton = tag === 'button' || (node.type === 'component' && node.props && node.props.componentType === 'btn');
+        var isLink = tag === 'a' || (node.type === 'content' && node.props && node.props.contentType === 'link');
+        // Only a button sends the watch form and the staff's form.
+        if (['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'].indexOf(b.action) !== -1 && !isButton) {
+            return _sdT('Off — only a button sends this form');
+        }
+        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on' ||
+            ['comment_watch_form', 'comment_watch', 'comment_unwatch'].indexOf(b.action) !== -1 || b.section === 'comment_watchers') {
             return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PAGE : '';
         }
+        if (b.action === 'comment_reply' && _getCmtVal('pg_comments_allow_new') === '0') return PAGE;
         // Only a button sends the comment; the site leaves anything else
         // bound to the send action out.
-        if (b.action === 'comment_submit' && tag !== 'button' &&
-            !(node.type === 'component' && node.props && node.props.componentType === 'btn')) {
+        if (b.action === 'comment_submit' && !isButton) {
             return _sdT('Off — only a button sends the comment');
+        }
+        if (['comment_reply', 'comment_reply_cancel', 'comment_share'].indexOf(b.action) !== -1 && !isButton && !isLink) {
+            return _sdT('Off — only a link or a button');
+        }
+        if (b.section === 'comment_pagination' && !(parseInt(cfg.per_page, 10) > 0)) {
+            return _sdT('Off — the widget shows every comment on one page');
         }
 
         // A label follows its control.
@@ -11889,6 +11907,9 @@ const StyleDesigner = (function () {
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
                     // Search results and calendar widgets.
                     pagination:           _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    // Comments widget.
+                    comment_pagination:   _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    comment_watchers:     _sdT('Watcher list (filled by the backend — only for who may manage the watchers)'),
                     calendar_picker:      _sdT('Calendar and view picker (filled by the backend)'),
                     month_grid:           _sdT('Month grid (filled by the backend — the events of each day)'),
                     reserve_form:         _sdT('Reserve button (filled by the backend — hidden when reservations are closed)'),
@@ -35238,7 +35259,9 @@ const StyleDesigner = (function () {
             ['__comments_label_plural',   _sdT('Comment label, plural')],
             ['__comments_intro',          _sdT('Message above the form (the page\'s comment settings)')],
             ['__comments_closed_message', _sdT('Message while new comments are closed')],
-            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')]
+            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
+            ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
+            ['__watcher_count_text',      _sdT('How many people are told of a new comment')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
@@ -35260,11 +35283,19 @@ const StyleDesigner = (function () {
             ['__comment_file_name',         _sdT('Attachment name')],
             ['__comment_file_size',         _sdT('Attachment size')],
             ['__comment_seller_reply_html', _sdT('Reply from the store (HTML)')],
-            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')]
+            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')],
+            ['__comment_parent_id',         _sdT('Number of the comment it answers')],
+            ['__comment_parent_name',       _sdT('Name on the comment it answers')],
+            ['__comment_quote',             _sdT('Quote of the comment it answers (start of its text)')],
+            ['__comment_depth',             _sdT('Depth in the thread (0 for a top-level comment)')],
+            ['__comment_reply_count',       _sdT('Number of replies')]
         ]},
         { label: _sdT('Comment links (href)'), tokens: [
             ['__comment_file_url',          _sdT('Attachment address')],
-            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')]
+            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')],
+            ['__comment_url',               _sdT('Link to the comment (opens the page that holds it)')],
+            ['__comment_reply_url',         _sdT('Answer the comment (fills the form; empty when the visitor may not answer)')],
+            ['__comment_parent_url',        _sdT('Link to the comment it answers')]
         ]}
     ];
 
@@ -36286,6 +36317,11 @@ const StyleDesigner = (function () {
             ['rating_on',                _sdT('Star ratings are on for the page')],
             ['files_on',                 _sdT('Attachments are on for the page')],
             ['watching_on',              _sdT('Notices of new comments are on for the page')],
+            ['has_more_pages',           _sdT('The comments run over more than one page')],
+            ['is_replying',              _sdT('The form answers a comment ("Replying to")')],
+            ['is_watching',              _sdT('The visitor is told of new comments')],
+            ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
+            ['can_manage_watchers',      _sdT('The visitor may manage who is told of new comments')],
             ['comment_is_featured',      _sdT('Row: featured')],
             ['comment_is_pending',       _sdT('Row: not published yet')],
             ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],
@@ -36295,7 +36331,11 @@ const StyleDesigner = (function () {
             ['comment_has_badge',        _sdT('Row: the writer has a badge')],
             ['comment_is_verified',      _sdT('Row: from a verified purchase')],
             ['comment_has_seller_reply', _sdT('Row: the store replied')],
-            ['comment_can_edit',         _sdT('Row: the visitor may edit it')]
+            ['comment_can_edit',         _sdT('Row: the visitor may edit it')],
+            ['comment_is_root',          _sdT('Row: a top-level comment')],
+            ['comment_is_reply',         _sdT('Row: a reply drawn under the comment it answers')],
+            ['comment_has_quote',        _sdT('Row: quotes the comment it answers')],
+            ['comment_has_replies',      _sdT('Row: has replies')]
         ]
     };
 
@@ -36369,6 +36409,21 @@ const StyleDesigner = (function () {
             if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {
                 aOpts.push(['comment_submit',      _sdT('Send the comment')]);
             }
+            // A link or a button answers, leaves or shares a comment (a link
+            // works without script too); only a button sends the watch form
+            // and the staff's open-or-close form.
+            if (region === 'comments') {
+                aOpts.push(['comment_reply',        _sdT('Answer the comment (loop_area)')]);
+                aOpts.push(['comment_reply_cancel', _sdT('Stop answering a comment')]);
+                aOpts.push(['comment_share',        _sdT('Share the comment (loop_area)')]);
+            }
+            var _cmtSends = ['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'];
+            if (region === 'comments' && (isRealButton || _cmtSends.indexOf(cur.action) !== -1)) {
+                aOpts.push(['comment_watch',   _sdT('Notify me of new comments (watch form)')]);
+                aOpts.push(['comment_unwatch', _sdT('Stop notifying me (watch form)')]);
+                aOpts.push(['comment_close',   _sdT('Stop new comments (staff form)')]);
+                aOpts.push(['comment_reopen',  _sdT('Allow new comments again (staff form)')]);
+            }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
                 aOpts.push(['unlink_microsoft',        _sdT('Disconnect Microsoft')]);
@@ -36392,7 +36447,11 @@ const StyleDesigner = (function () {
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
             else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
-            else if (region === 'comments')        fOpts.push(['comment_form', _sdT('Add-comment form')]);
+            else if (region === 'comments') {
+                fOpts.push(['comment_form',           _sdT('Add-comment form')]);
+                fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
+                fOpts.push(['comment_allow_new_form', _sdT('Open-or-close form (staff only)')]);
+            }
             out += mkSelect('data-bind-action', cur.action || '', fOpts, _sdT('Form action'),
                 _sdT('The backend adds the right action / method values and the hidden fields.'));
         }
@@ -38490,6 +38549,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
                 _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
                 _sectionOpts.push(['comment_publish',      _sdT('Publish options (staff only)')]);
+                _sectionOpts.push(['comment_watchers',     _sdT('Watcher list (who may manage the watchers only)')]);
+                _sectionOpts.push(['comment_pagination',   _sdT('Pagination (hidden on a single page)')]);
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
@@ -48202,8 +48263,9 @@ const StyleDesigner = (function () {
             if (cfg.hide_current === undefined) cfg.hide_current = false;
         } else if (newType === 'comments') {
             // The display options, with the defaults of the PHP twin
-            // pg_comments_widget_options(). layout, max_depth and per_page
-            // are kept for the thread's later shapes.
+            // pg_comments_widget_options(): the order, the featured mode,
+            // flat or threaded replies with their depth cap, and how many
+            // top-level comments a page holds (0 = all).
             if (cfg.order === undefined) cfg.order = 'oldest';
             if (cfg.featured === undefined) cfg.featured = 'first';
             if (cfg.layout === undefined) cfg.layout = 'flat';
@@ -52598,46 +52660,65 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('semantic', { tag: 'div', customName: _sdT('Comment List') }, [
                             createNode('loop_area', {}, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card mb-3', customName: _sdT('Comment') }, [
-                                    createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
-                                            customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                            _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
-                                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
-                                                _bindings: { text: '__comment_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
-                                                _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
-                                                _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
-                                                _bindings: { eo_visible_if: 'comment_is_verified' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
-                                                _bindings: { eo_visible_if: 'comment_is_featured' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
-                                            _bindings: { text: '__comment_date' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
-                                            _bindings: { text: '__comment_message_html' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
-                                            _bindings: { eo_visible_if: 'comment_has_file' } }, [
-                                            createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
-                                                _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
-                                                _bindings: { text: '__comment_file_size' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
-                                            _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
-                                            createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
-                                                _bindings: { text: '__comment_seller_reply_date' } }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
-                                                _bindings: { text: '__comment_seller_reply_html' } })
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex mb-3', customName: _sdT('Comment') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0 border-start border-2 ms-2 me-3', customName: _sdT('Reply Indent'),
+                                        _bindings: { eo_visible_if: 'comment_is_reply' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card flex-grow-1', customName: _sdT('Comment Card') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
+                                                customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
+                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
+                                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
+                                                    _bindings: { text: '__comment_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
+                                                    _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
+                                                    _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
+                                                    _bindings: { eo_visible_if: 'comment_is_verified' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
+                                                    _bindings: { eo_visible_if: 'comment_is_featured' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
+                                                _bindings: { text: '__comment_date' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 my-2 small text-body-secondary', customName: _sdT('Quote'),
+                                                _bindings: { eo_visible_if: 'comment_has_quote' } }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Jane Cooper'), href: '#', cssClass: 'fw-semibold link-secondary',
+                                                    _bindings: { href: '__comment_parent_url', text: '__comment_parent_name' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', text: _sdT('Quoted text'),
+                                                    _bindings: { text: '__comment_quote' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
+                                                _bindings: { text: '__comment_message_html' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
+                                                _bindings: { eo_visible_if: 'comment_has_file' } }, [
+                                                createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
+                                                    _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
+                                                    _bindings: { text: '__comment_file_size' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
+                                                _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
+                                                createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
+                                                    _bindings: { text: '__comment_seller_reply_date' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
+                                                    _bindings: { text: '__comment_seller_reply_html' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-3 mt-3 small', customName: _sdT('Comment Actions') }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Reply'), href: '#', cssClass: 'btn btn-link btn-sm p-0',
+                                                    _bindings: { action: 'comment_reply' } }),
+                                                createNode('content', { contentType: 'link', text: _sdT('Share'), href: '#', cssClass: 'btn btn-link btn-sm p-0 link-secondary',
+                                                    _bindings: { action: 'comment_share' } })
+                                            ])
                                         ])
                                     ])
                                 ])
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Pagination'),
+                                _bindings: { section: 'comment_pagination' } })
                         ]),
                         createNode('content', { contentType: 'paragraph', text: _sdT('No comments yet.'), cssClass: 'text-body-secondary',
                             _bindings: { eo_visible_if: 'no_comments' } }),
@@ -52657,6 +52738,13 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
                                 _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
                                 createNode('content', { contentType: 'messages', cssClass: '' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small', customName: _sdT('Replying To'),
+                                    _bindings: { eo_visible_if: 'is_replying' } }, [
+                                    createNode('semantic', { tag: 'span', text: _sdT('Replying to') }),
+                                    createNode('semantic', { tag: 'strong', _bindings: { text: '__reply_to_name' } }),
+                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto',
+                                        _bindings: { action: 'comment_reply_cancel' } })
+                                ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [
                                     createNode('semantic', { tag: 'label', cssClass: 'form-label visually-hidden', text: _sdT('Comment'),
                                         _attrs: [{ name: 'for', value: 'comment_message' }] }),
@@ -52701,6 +52789,28 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add comment'),
                                         _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_submit' } })
                                 ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'small border-top pt-3 mt-4 d-flex flex-column gap-2', customName: _sdT('Watch'),
+                            _bindings: { eo_visible_if: 'watching_on' } }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', _bindings: { text: '__watcher_count_text' } }),
+                            createNode('semantic', { tag: 'form', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Watch Form'),
+                                _bindings: { action: 'comment_watch_form' } }, [
+                                createNode('content', { contentType: 'messages', cssClass: 'w-100' }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Notify me of new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_watch' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop notifying me'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_unwatch' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', customName: _sdT('Watchers'), _bindings: { section: 'comment_watchers' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-end mt-3', customName: _sdT('Staff Controls'),
+                            _bindings: { eo_visible_if: 'is_staff' } }, [
+                            createNode('semantic', { tag: 'form', customName: _sdT('Open or Close'), _bindings: { action: 'comment_allow_new_form' } }, [
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_close' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Allow new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_reopen' } })
                             ])
                         ])
                     ])

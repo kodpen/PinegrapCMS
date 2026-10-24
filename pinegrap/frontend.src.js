@@ -1766,6 +1766,86 @@ var software = {
         });
     },
 
+    // The reply, cancel and share controls of a comments widget
+    // (widgets_comments.php), found by their data attributes, links and
+    // buttons alike. A reply link works without script too (?reply_to= fills
+    // the form on the server); here it points the form's parent_id at the
+    // comment, shows the "Replying to" box and focuses the message instead.
+    // Cancel points the form at no comment. Share copies the comment's
+    // permalink, or shows it to copy by hand.
+    init_comment_actions: function() {
+        if (software.comment_actions_ready) {
+            return;
+        }
+
+        software.comment_actions_ready = true;
+
+        // Point the comment form at the comment it answers ('0' for none).
+        // Returns the form, or null when the page has none (closed, or the
+        // visitor must sign in): a link then goes where it points.
+        var answer = function(id, name) {
+            var form = software_$('form[data-pg-comment-form]').first();
+
+            if (!form.length) {
+                return null;
+            }
+
+            form.find('input[name="parent_id"]').val(id);
+            software_$('[data-pg-comment-reply-to-name]').text(name);
+            // The hidden attribute: Bootstrap's [hidden] wins over a display
+            // class.
+            software_$('[data-pg-comment-replying]').prop('hidden', id === '0');
+
+            return form;
+        };
+
+        software_$(document).on('click', '[data-pg-comment-reply]', function(event) {
+            var control = software_$(this);
+            var id = String(parseInt(control.attr('data-pg-comment-reply'), 10) || 0);
+            var form = (id !== '0') ? answer(id, control.attr('data-pg-comment-reply-name') || '') : null;
+
+            if (form) {
+                event.preventDefault();
+                form[0].scrollIntoView({block: 'center'});
+                form.find('[name="message"]').focus();
+            }
+        });
+
+        software_$(document).on('click', '[data-pg-comment-reply-cancel]', function(event) {
+            if (answer('0', '')) {
+                event.preventDefault();
+            }
+        });
+
+        software_$(document).on('click', '[data-pg-comment-share]', function(event) {
+            var control = software_$(this);
+            // A link element makes the address absolute.
+            var link = document.createElement('a');
+
+            link.href = control.attr('data-pg-comment-url') || control.attr('href') || '';
+
+            var url = link.href;
+            var ask = function() {
+                window.prompt(control.attr('data-pg-comment-copy-prompt') || '', url);
+            };
+
+            event.preventDefault();
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(function() {
+                    var note = software_$('<span class="small ms-1" role="status"></span>').text(control.attr('data-pg-comment-copied') || '');
+
+                    control.after(note);
+                    setTimeout(function() {
+                        note.remove();
+                    }, 2000);
+                }, ask);
+            } else {
+                ask();
+            }
+        });
+    },
+
     init_auto_dialogs: function(properties) {
         var visit_length = properties.visit_length;
         var auto_dialogs = properties.auto_dialogs;
@@ -5471,7 +5551,9 @@ software.load = function(request) {
     document.body.appendChild(script);
 };
 
-// Comments widgets' add-comment forms (software.init_comment_forms()).
+// Comments widgets' add-comment forms (software.init_comment_forms()) and
+// their reply, cancel and share controls (software.init_comment_actions()).
 software_$(document).ready(function() {
     software.init_comment_forms();
+    software.init_comment_actions();
 });
