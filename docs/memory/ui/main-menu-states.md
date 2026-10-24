@@ -1,6 +1,6 @@
 ---
 name: main-menu-states
-description: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
+description: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 ---
 
 ## What are the states?

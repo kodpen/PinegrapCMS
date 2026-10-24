@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The one list of settings screens: the eight the site settings are split into,
- * and the neighbouring screens that live under the Settings menu.
+ * The one list of settings screens: the categories the site settings are split
+ * into, and the neighbouring screens that live beside them.
  *
- * Read by three places -- the dialog's sidebar and the link helper
- * (includes/fn/output.php), the category screens (includes/settings/screen.php)
- * and the command palette (api.php). One list, because they all name the same
+ * Read by four places -- the dialog's sidebar and the link helper
+ * (includes/fn/output.php), the main menu's Site Settings row
+ * (pg_menu_settings_entries(), same file), the category screens
+ * (includes/settings/screen.php) and the command palette (api.php). One list, because they all name the same
  * screens with the same gates, and copies of that answer drift: a screen added
  * to one is missing from the others and nothing says so.
  *
@@ -471,8 +472,10 @@ function pg_settings_tool_groups($user)
     // (role < 3, or a role-3 user carrying the flag); the menu has always
     // applied it together with the feature switch.
     if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE && $ecommerce) {
+        // Named apart from the Ecommerce category: the menu lists both as
+        // entries of one panel.
         $groups[] = array(
-            'label' => lang('Ecommerce'),
+            'label' => lang('Store Lists'),
             'icon'  => 'bi-bag',
             'items' => array(
                 array('label' => lang('All Referral Sources'), 'icon' => 'bi-signpost-2',        'url' => 'view_referral_sources.php'),

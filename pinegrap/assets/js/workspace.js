@@ -18459,6 +18459,14 @@
         // The row in the menu, added or taken away without a reload; the
         // next page draws it on the server the same way (includes/fn/output.php).
         function drawMenuRow(svg) {
+            // The pinned row's panel, if open, goes back to the rows first:
+            // without its row it would stay open, and be kept for the tab.
+            var openPanel = document.querySelector('#menu_panel_24.is-open [data-pg-menu-back]');
+
+            if (openPanel && !menuPinned) {
+                openPanel.click();
+            }
+
             Array.prototype.forEach.call(document.querySelectorAll('#menu_item_24'), function (row) {
                 row.remove();
             });

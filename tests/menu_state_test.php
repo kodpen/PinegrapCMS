@@ -3,9 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the main menu's wide-screen state (includes/fn/output.php):
- * pg_menu_state() reading the cookie value, the button in the bar
- * (pg_menu_toggle_button()) and the three states at the foot of the menu
- * (pg_menu_mode_switch()).
+ * pg_menu_state() reading the cookie value, and the button in the bar that
+ * walks the three states (pg_menu_mode_button()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

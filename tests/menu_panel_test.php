@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
- * open their entries inside the menu (pg_menu_row_opens_panel()) and the
- * panel they open (pg_menu_panel()).
+ * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
+ * they open (pg_menu_panel()) and the Site Settings row's two levels
+ * (pg_menu_settings_markup()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -50,9 +51,9 @@ function test_menu_row_whose_one_entry_goes_elsewhere_opens_a_panel()
 function test_menu_row_with_a_control_opens_a_panel()
 {
 	$entries = '<a href=\'/pinegrap/welcome.php\'>Dashboard</a>'
-		. '<form action=\'/pinegrap/welcome.php\' method=\'get\' class=\'disable_shortcut pg-ctx-form\'><input type=\'number\' name=\'refresh\'></form>';
+		. '<form action=\'/pinegrap/welcome.php\' method=\'get\'><input type=\'number\' name=\'refresh\'></form>';
 
-	pg_assert_true(pg_menu_row_opens_panel($entries, 'welcome.php'), 'the dashboard settings form');
+	pg_assert_true(pg_menu_row_opens_panel($entries, 'welcome.php'), 'a form');
 	pg_assert_true(pg_menu_row_opens_panel('<a href=\'/pinegrap/welcome.php\'>Dashboard</a><select id=\'widget_theme\'></select>', 'welcome.php'), 'a select');
 }
 

@@ -101,7 +101,7 @@ if ($dashboard_card_shown) {
                                         </div>
                                         <div class="col-12 ">
                                             <button type="submit" name="dashboard_reset_widgets" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
-                                            <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the settings above.') . '</div>
+                                            <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
                                         </div>
                                     </div>
                                 </div>

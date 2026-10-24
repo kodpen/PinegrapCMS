@@ -625,7 +625,7 @@ $(document).ready(function () {
     var MENU_PANEL_KEY = 'pgMenuPanel';
     var menuBackdrop = null;
 
-    initMenuToggle();                 // The button in the bar, and the foot of the menu
+    initMenuToggle();                 // The button in the bar: mini, open, hidden (the drawer on a phone)
     initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
@@ -1094,6 +1094,16 @@ $(document).ready(function () {
         var params = new URLSearchParams(here.search);
         var paramCount = 0;
 
+        // Run again when only the #section changes: the marks of the last run go first.
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-current'), function (link) {
+            link.classList.remove('pg-menu-current');
+            link.removeAttribute('aria-current');
+        });
+
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-hint'), function (hint) {
+            hint.textContent = '';
+        });
+
         params.forEach(function () {
             paramCount++;
         });
@@ -1175,12 +1185,17 @@ $(document).ready(function () {
             }
 
             // An entry that leaves this page in place (a new tab, a window of
-            // its own) puts the widened rail back; one that loads a page here
-            // takes the rail with it anyway.
+            // its own, a #section of this very page) puts the widened rail
+            // back; one that loads a page here takes the rail with it anyway.
             var entry = target.closest('.pg-menu-panel-body a');
 
-            if (entry && isMenuPeek() && (!entry.getAttribute('href') || (entry.getAttribute('target') === '_blank'))) {
-                closeMenuPanel({});
+            if (entry && isMenuPeek()) {
+                var href = entry.getAttribute('href');
+                var samePage = !!(href && entry.href && (entry.href.split('#')[0] === window.location.href.split('#')[0]));
+
+                if (!href || (entry.getAttribute('target') === '_blank') || samePage) {
+                    closeMenuPanel({});
+                }
             }
         });
 
@@ -1237,6 +1252,12 @@ $(document).ready(function () {
             }
         });
 
+        // A #section link of this page (Site Settings) changes no page, so
+        // the current entry is found again.
+        window.addEventListener('hashchange', function () {
+            markMenuCurrent(menu);
+        });
+
         // The panel this tab had open, when the page is one it is about.
         var stored = storedMenuPanel();
 
@@ -1247,7 +1268,7 @@ $(document).ready(function () {
         var panel = document.getElementById(stored);
         var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
 
-        if (panel && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || (row && row.classList.contains('active')))) {
+        if (panel && row && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || row.classList.contains('active'))) {
             openMenuPanel(panel, {});
         } else {
             storeMenuPanel('');
@@ -11534,6 +11555,17 @@ window.pgCodeEditorReady = function (markup, done) {
         }
 
         if (anchors[hash]) {
+
+            // A card on the settings page itself is that page's own section,
+            // reached from its section links (the main menu's Site Settings
+            // entries among them); only an anchor no card on the page answers
+            // is an old link meant for the dialog.
+            var own = document.getElementById(hash);
+            var dialog = document.getElementById('pg_settings_modal');
+
+            if (own && !(dialog && dialog.contains(own))) {
+                return false;
+            }
 
             var target = String(anchors[hash]).split('|');
 

@@ -1505,12 +1505,6 @@ body:not(.toolbar) .software-content {
 #menu .menu-body .bi{
   font-size: 1.3rem;
 }
-#menu .menu-footer {
-  position: sticky;
-  top: 100%;
-  bottom: 0;
-}
-
 /* The rail is 50px wide and the sidebar carries a hairline on its right, so an
    item that spans the full width has its background clipped by that line. The
    list is padded instead and every item is a rounded pill inside it, which
@@ -1699,13 +1693,17 @@ body:not(.toolbar) .software-content {
   font-size: 1.1rem;
   line-height: 1;
 }
-/* Centred over the entries: the padding on the right matches the button on
-   the left. A long name wraps rather than losing its end. */
+/* Centred over the entries, near enough: the padding on the right stands in
+   for most of the button on the left, and is short of it so the longest name
+   ("Tüm Nakliye Yöntemleri") keeps to one line in a menu narrowed by a
+   classic scrollbar. Anything longer ends in an ellipsis rather than wrap. */
 #menu .pg-menu-panel-title {
   flex: 1 1 auto;
   min-width: 0;
-  padding-right: 2.25rem;
-  overflow-wrap: anywhere;
+  padding-right: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: center;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -1761,12 +1759,6 @@ body:not(.toolbar) .software-content {
   border: 0;
   border-top: 1px solid currentColor;
   opacity: 0.1;
-}
-/* The dashboard's widget settings: a form needs the padding on itself and a
-   width that does not collapse onto the number input. */
-#menu .pg-menu-panel-body .pg-ctx-form {
-  min-width: 12.5rem;
-  padding: 0.25rem 0.625rem 0.375rem;
 }
 
 /* Into a panel from the right, back to the rows from the left. Only once
@@ -1917,9 +1909,6 @@ body:not(.toolbar) .software-content {
   }
   #menu:not(.expanded) .pg-menu-hint:empty {
     display: none;
-  }
-  #menu:not(.expanded) .menu-body .pg-menu-chevron {
-    display: inline-block;
   }
 
   /* Labels are nowrap by default and only get ellipsis in the expanded rail state;

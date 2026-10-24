@@ -50,7 +50,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-icons.md: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a drawing is needed, the 24-unit grid, module colour and accent colour classes, hover motion, what stays a Bootstrap icon.
 - main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry
 - main-menu-settings-row.md: The Site Settings row of the main menu (slot 20): two levels of panels, the page path instead of the modal (data-pg-settings-page), the gates it shares with the modal, the rows it marks active
-- main-menu-states.md: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
+- main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .dropdown-menu: Bootstrap's capture-phase keydown handler throws on it, so its keys are taken on the window; closing on scroll and a long press
@@ -72,7 +72,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
-- settings-modal-architecture.md: Site Settings modal architecture: file map, the eight categories and their cards, moving a card, adding a new category.
+- settings-modal-architecture.md: Site Settings modal architecture: file map, the categories and their cards, moving a card, adding a new category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-dialogs.md: Rules for a settings card that opens its own Bootstrap dialog inside the settings modal: extras box, data-pgdialog rename, modal-open, dispose.

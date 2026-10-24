@@ -2609,7 +2609,7 @@ function pg_shortcuts_dialog()
             array(array('Ctrl', 'K'), lang('Show/Hide Search Box')),
             array(array('Ctrl', 'S'), lang('Submit Form/Save')),
             array(array('Ctrl', 'Q'), lang('Toggle Notifications')),
-            array(array('Ctrl', 'D'), lang('Toggle Menu')),
+            array(array('Ctrl', 'D'), lang('Change menu view')),
             array(array('F1'), lang('Help for this screen')),
             array(array('?'), lang('Keyboard Shortcuts'))),
         lang('While on the Pages') => array(
@@ -3270,7 +3270,7 @@ function output_menu($properties = false)
             $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box2-heart bi-me-2\'>' . lang('All Products') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
@@ -4228,9 +4228,9 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
  * or is a plain link to its screen.
  *
  * A row opens a panel when it has more than one entry, a control of its own
- * (the dashboard's widget settings), or a single entry that goes somewhere
- * other than the row itself. One entry that is the row's own screen would
- * make a panel of one line, so that row stays a link.
+ * (a form or a select), or a single entry that goes somewhere other than the
+ * row itself. One entry that is the row's own screen would make a panel of
+ * one line, so that row stays a link.
  *
  * @param string $entries  the row's entries, as output_menu() built them
  * @param string $row_href the row's own address, relative to the panel folder
