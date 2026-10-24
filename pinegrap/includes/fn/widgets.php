@@ -7601,14 +7601,32 @@ function pg_sw_calendar_event_page_allows($page_id, $event_id)
 
 function _pg_sw_calendar_event_allowed($cfg, $event_id)
 {
-    $event_calendars = array();
-    foreach ((array)db_items("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int)$event_id . "'") as $r) {
-        $event_calendars[] = (int)$r['calendar_id'];
-    }
+    $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
     if (!$event_calendars) return false;
     $allowed = array();
     foreach (_pg_sw_calendars($cfg) as $c) $allowed[] = (int)$c['id'];
     return count(array_intersect($event_calendars, $allowed)) > 0;
+}
+
+// The calendars an event is in.
+function _pg_sw_calendar_event_calendar_ids($event_id)
+{
+    $ids = array();
+    foreach ((array)db_items("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int)$event_id . "'") as $r) {
+        $ids[] = (int)$r['calendar_id'];
+    }
+    return $ids;
+}
+
+// The edit pencil on one occurrence of an event, for whoever may edit the
+// event (pg_sw_can_edit_calendar_event()). The edit screen gets the
+// occurrence's number, as the legacy event page's edit button gives it: with
+// reservations kept per occurrence, it shows that occurrence's spots.
+function _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence_number, $calendar_ids)
+{
+    if (!pg_sw_can_edit_calendar_event($calendar_ids)) return $html;
+    $params = ((int)$recurrence_number > 0) ? array('recurrence_number' => (int)$recurrence_number) : array();
+    return pg_sw_add_edit_chip($html, pg_sw_backend_edit_url('edit_calendar_event.php', $event_id, $params), lang('Edit the event'), 'calendar');
 }
 
 // One event occurrence as row values (raw). $event is a get_calendar() row;
@@ -7830,11 +7848,13 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
     $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
     $rows = array();
+    $row_events = array();
     $by_day = array();
     foreach ($events as $ev) {
         $detail = $needs_detail ? get_calendar_event($ev['id'], $ev['recurrence_number']) : null;
         $vals = _pg_sw_calendar_event_values($ev, $detail, $link_base, $date_format, $calendar_names);
         $rows[] = $vals;
+        $row_events[] = $ev;
         $first  = strtotime($ev['event_start_date']);
         $last   = $first;
         $end_ts = is_array($detail) ? strtotime($detail['end_date_and_time']) : false;
@@ -7909,7 +7929,14 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($rows as $i => $vals) {
             if ($vals['__event_url'] === '') $vals['__event_url'] = '#';
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
+            // The pencil on every occurrence, for whoever may edit the event.
+            // The month grid's one-line entries get none: they link to the
+            // event page, which carries it.
+            $ev = $row_events[$i];
+            $loop_rendered .= _pg_sw_calendar_event_edit_chip($row_html, $ev['id'],
+                isset($ev['recurrence_number']) ? $ev['recurrence_number'] : 0,
+                isset($ev['calendars']) ? (array)$ev['calendars'] : array());
         }
     }
 
@@ -8041,7 +8068,12 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 
     $html = trim(_render_tree_node($tree, 0, 0));
     $values = pg_sw_escape_token_values($values, array('__event_description', '__event_notes'));
-    return str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+    $html = str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+    // The pencil on the event, for whoever may edit it.
+    if ($shown && pg_sw_edit_chips_on()) {
+        $html = _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence, _pg_sw_calendar_event_calendar_ids($event_id));
+    }
+    return $html;
 }
 
 // ============================================================================
@@ -8095,13 +8127,67 @@ function pg_sw_can_edit_submitted_forms($custom_form_page_id)
     return $folder_ok[$pid];
 }
 
-/** A control-panel edit screen for one record, returning to this page. */
-function pg_sw_backend_edit_url($script, $id)
+/**
+ * The rule edit_calendar_event.php applies, from values already read: staff
+ * (role 0-2) always; a user (role 3) only with the calendars right, one of
+ * the event's calendars among their own and, for a published event, the
+ * right to publish events.
+ *
+ * @param int   $role               USER_ROLE
+ * @param bool  $manage_calendars   user_manage_calendars
+ * @param bool  $publish_events     user_publish_calendar_events
+ * @param array $user_calendar_ids  the user's calendars (users_calendars_xref)
+ * @param array $event_calendar_ids the event's calendars
+ * @param bool  $published          whether the event is published
+ */
+function pg_sw_calendar_event_edit_rule($role, $manage_calendars, $publish_events, $user_calendar_ids, $event_calendar_ids, $published)
+{
+    if ((int)$role < 3) return true;
+    if (!$manage_calendars || ($published && !$publish_events)) return false;
+    $mine = array_map('intval', (array)$user_calendar_ids);
+    foreach ((array)$event_calendar_ids as $cid) {
+        if (in_array((int)$cid, $mine, true)) return true;
+    }
+    return false;
+}
+
+/**
+ * Calendar events: whether the signed-in user may open edit_calendar_event.php
+ * for an event in these calendars. A page shows only published events, so a
+ * user (role 3) also needs the right to publish events. Their rights and
+ * calendars are read once per request.
+ */
+function pg_sw_can_edit_calendar_event($event_calendar_ids, $published = true)
+{
+    static $own = null;
+    if (!pg_sw_edit_chips_on()) return false;
+    $role = defined('USER_ROLE') ? (int)USER_ROLE : 3;
+    if ($role < 3) return true;
+    if ($own === null) {
+        $own = array('manage' => false, 'publish' => false, 'calendars' => array());
+        $row = db_item("SELECT user_manage_calendars, user_publish_calendar_events FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
+        if (is_array($row) && $row['user_manage_calendars'] === 'yes') {
+            $own['manage']  = true;
+            $own['publish'] = ($row['user_publish_calendar_events'] === 'yes');
+            foreach ((array)db_items("SELECT calendar_id FROM users_calendars_xref WHERE user_id = '" . (int)USER_ID . "'") as $r) {
+                $own['calendars'][] = (int)$r['calendar_id'];
+            }
+        }
+    }
+    return pg_sw_calendar_event_edit_rule($role, $own['manage'], $own['publish'], $own['calendars'], $event_calendar_ids, $published);
+}
+
+/**
+ * A control-panel edit screen for one record, returning to this page.
+ * $params are further query parameters of the screen, before send_to.
+ */
+function pg_sw_backend_edit_url($script, $id, $params = array())
 {
     $back = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
          . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
          . '/' . $script . '?id=' . (int)$id
+         . ($params ? '&' . http_build_query($params, '', '&') : '')
          . ($back !== '' ? '&send_to=' . urlencode($back) : '');
 }
 
