@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
- * open their entries inside the menu (pg_menu_row_opens_panel()) and the
- * panel they open (pg_menu_panel()).
+ * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
+ * they open (pg_menu_panel()) and the Site Settings row's two levels
+ * (pg_menu_settings_markup()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -50,9 +51,9 @@ function test_menu_row_whose_one_entry_goes_elsewhere_opens_a_panel()
 function test_menu_row_with_a_control_opens_a_panel()
 {
 	$entries = '<a href=\'/pinegrap/welcome.php\'>Dashboard</a>'
-		. '<form action=\'/pinegrap/welcome.php\' method=\'get\' class=\'disable_shortcut pg-ctx-form\'><input type=\'number\' name=\'refresh\'></form>';
+		. '<form action=\'/pinegrap/welcome.php\' method=\'get\'><input type=\'number\' name=\'refresh\'></form>';
 
-	pg_assert_true(pg_menu_row_opens_panel($entries, 'welcome.php'), 'the dashboard settings form');
+	pg_assert_true(pg_menu_row_opens_panel($entries, 'welcome.php'), 'a form');
 	pg_assert_true(pg_menu_row_opens_panel('<a href=\'/pinegrap/welcome.php\'>Dashboard</a><select id=\'widget_theme\'></select>', 'welcome.php'), 'a select');
 }
 
@@ -70,4 +71,57 @@ function test_menu_panel_carries_its_entries_as_they_are()
 	pg_assert_contains('data-pg-menu-back', $html, 'the way back');
 	pg_assert_contains('aria-label="' . h(lang('Back')) . '"', $html, 'the way back is named');
 	pg_assert_contains('no-popover', $html, 'the way back keeps a plain title hint');
+}
+
+function test_menu_settings_markup_opens_categories_and_groups()
+{
+	$categories = array(
+		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server & Domain', 'pgset-cron' => 'Cron Jobs')),
+		'appearance' => array('label' => 'Appearance', 'icon' => 'bi-palette', 'url' => 'settings_appearance.php', 'sections' => array('pgset-theme' => 'Theme')));
+	$groups = array(
+		array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(
+			array('label' => 'Site Log', 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
+			array('label' => 'System Informations', 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank'))),
+		array('label' => 'Empty', 'icon' => 'bi-x', 'items' => array()),
+		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(
+			array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=a&b', 'confirm' => 'Sure?'))));
+
+	$menu = pg_menu_settings_markup($categories, $groups, '/pinegrap/', '');
+
+	pg_assert_same('settings_general.php', $menu['href'], 'the row leads to the first category');
+
+	// First level: every category and every group with screens, each opening its own panel.
+	pg_assert_contains('id=\'menu_entry_20_general\' href=\'/pinegrap/settings_general.php\'', $menu['entries'], 'a category entry');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_appearance\'', $menu['entries'], 'opens its panel');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_tools_0\'', $menu['entries'], 'a group opens its panel');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_tools_2\'', $menu['entries'], 'groups keep their numbers');
+	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'Empty') !== false, 'a group without screens is left out');
+	pg_assert_same(1, substr_count($menu['entries'], '<hr'), 'one divider between categories and groups');
+	pg_assert_contains('href=\'/pinegrap/view_log.php\'', $menu['entries'], 'a group entry leads to its first screen');
+
+	// Second level.
+	pg_assert_contains('id="menu_panel_20_general"', $menu['panels'], 'the category panel');
+	pg_assert_contains('data-pg-menu-row="menu_entry_20_general"', $menu['panels'], 'belongs to its entry');
+	pg_assert_contains('href=\'/pinegrap/settings_general.php#pgset-cron\'', $menu['panels'], 'a section link');
+	pg_assert_contains('Server &amp; Domain', $menu['panels'], 'section names are escaped');
+	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu['panels'], 'a screen that opens apart keeps its target');
+	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu['panels'], 'a job keeps its question');
+	pg_assert_contains('purge_cache.php?token=a&amp;b', $menu['panels'], 'addresses are escaped');
+
+	// Every link to a settings page skips the modal; the neighbouring screens do not need to.
+	pg_assert_same(2 + 3 + 2, substr_count($menu['entries'] . $menu['panels'], 'data-pg-settings-page'), 'category entries, category pages and sections');
+}
+
+function test_menu_settings_markup_in_the_toolbar()
+{
+	$categories = array('general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server')));
+	$groups = array(array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(
+		array('label' => 'Site Log', 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
+		array('label' => 'System Informations', 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank'))));
+
+	$menu = pg_menu_settings_markup($categories, $groups, '/pinegrap/', ' target=\'_parent\'');
+	$all = $menu['entries'] . $menu['panels'];
+
+	pg_assert_same(5, substr_count($all, 'target=\'_parent\''), 'every link but the one with its own target leaves the toolbar frame');
+	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
 }
