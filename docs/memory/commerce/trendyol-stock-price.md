@@ -28,5 +28,6 @@ description: Trendyol stock and price push: price-and-inventory batch by barcode
 
 ## What do webhooks carry? (for order import)
 - `POST /integration/webhook/sellers/{sellerId}/webhooks` with `url`, `authenticationType` `BASIC_AUTHENTICATION` (username/password) or `API_KEY` (sent as `x-api-key`), `subscribedStatuses` (order package statuses; empty = all). Payload = an order package page. No stock, price or product events; no signature. Max 15 per seller; retried every 5 minutes, passive after 13 errors; URL must not contain "Trendyol", "Dolap" or "Localhost".
+- Orders are pulled already (`trendyol-orders.md`); the receiver for these webhooks (plan step 4b) is written up there.
 
 Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md

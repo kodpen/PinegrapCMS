@@ -4,7 +4,7 @@
  *
  * Tests for the order part of the marketplace account screen
  * (marketplace_settings.php): a marketplace whose connector cannot bring
- * orders in (Trendyol today) starts with order import off, and its screen
+ * orders in starts with order import off, and its screen
  * draws neither the order switches nor the "Imported orders" card, only a
  * line saying orders are not brought in from it yet. The scheduled job skips
  * such an account without a word, so a switch shown on would promise orders
