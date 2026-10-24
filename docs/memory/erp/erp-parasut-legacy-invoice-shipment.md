@@ -10,6 +10,7 @@ description: The order screen's Paraşüt Create Invoice and E-Shipment on one o
 - An order holding `orders.parasut_shipment_id` gets `shipment_included` false and `relationships.shipment_documents` naming that document (`parasut_order_invoice_with_shipment()`). Paraşüt answers 201, moves no stock, and both records then name each other (the invoice's `shipment_documents`, the document's `invoices`).
 - A document deleted on Paraşüt's screen meanwhile: the create answers 404 "Record was not found" and writes nothing; the order keeps no invoice id.
 - Without a shipment document the body is unchanged (with shipment, Paraşüt's default).
+- The ERP driver's sales invoice of such an order does the same: erp-parasut-shipped-order.md.
 
 ## When may E-Shipment go after Create Invoice?
 - `parasut_create_shipment()` asks `parasut_shipment_invoice_link()` right after the shipped-order guard (#1407) and the token, before the buyer card, the product, the opening stock or the document are written. It reads `GET sales_invoices/{orders.parasut_invoice_id}`:
@@ -23,7 +24,7 @@ description: The order screen's Paraşüt Create Invoice and E-Shipment on one o
 
 ## What is still open?
 - E-Shipment writes a shipment document inside Paraşüt only; nothing converts it to an e-waybill, so an invoice without shipment refers to a waybill GİB has not seen.
-- The ERP driver's sales invoice keeps Paraşüt's default `shipment_included` true, so an order with a legacy E-Shipment that is later invoiced through the ERP is still counted out twice.
+- E-Shipment after the ERP's own invoice (the provider switched off, so the buttons are back): `parasut_shipment_invoice_link()` reads only `orders.parasut_invoice_id`, not the ERP invoice's record, so one sent with the shipment is not seen and the goods are counted out twice.
 - An invoice deleted on Paraşüt's screen: E-Shipment's read answers 404 and the order stays refused; only clearing `orders.parasut_invoice_id` frees it.
 
 ## How was it checked?
