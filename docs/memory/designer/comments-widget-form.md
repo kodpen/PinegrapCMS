@@ -1,10 +1,10 @@
 ---
 name: comments-widget-form
-description: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, watch box, frontend init
+description: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
 ---
 
 ## How is the form wired?
-- A semantic `form` bound to `comment_form` (`pg_comments_apply_form_bindings()`): the server writes `action` (add_comment.php), `method`, `enctype` (multipart with attachments on), `id="software_add_comment"` (the handler's anchor), `data-pg-comment-form|label`, and first the token and hidden `send_to`, `page_id`, `item_id`, `item_type`, `parent_id` (0): the server's values, never an earlier post's, not bindable.
+- A semantic `form` bound to `comment_form` (`pg_comments_apply_form_bindings()`): the server writes `action` (add_comment.php), `method`, `enctype` (multipart with attachments on), `id="software_add_comment"` (the handler's anchor), `data-pg-comment-form|label`, and first the token and hidden `send_to`, `page_id`, `item_id`, `item_type`, `parent_id` (the comment answered, else 0: [[comments-widget-replies]]): the server's values, not bindable.
 - One form per widget; a second one, and one for a visitor who cannot comment (closed, must sign in, search index), is dropped.
 
 ## Which controls bind, and how do they get their values?
@@ -27,14 +27,11 @@ description: The comments widget's add-comment form: bindings, slots, server sec
 | comment_captcha | no CAPTCHA | site flag |
 | comment_publish | not staff | - |
 | comment_submit, no button | always | always |
-- PHP: `_pg_comments_binding_disabled()`. No attachment or name-select page field in the designer yet; the JS twin learns them with those fields.
+- PHP: `_pg_comments_binding_disabled()`. The watcher checkbox and the watch box: [[comments-widget-watch-staff]]. No attachment or name-select page field in the designer yet; the JS twin learns them with those fields.
 - Name mode (`pg_comments_widget_name_mode()`, add_comment.php's rule): typed when signed out, role < 3, folder access, form editor; else chosen (select on) or fixed (`__comment_author_name`).
 
 ## Where does the Messages node sit?
 - First in the form (starter, PHP tree): a refused post lands on `#software_add_comment` by its errors. Named `add_comment`; state read before the draw, `remove_form()` after; an undrawn (closed) form's errors are dropped, as classic.
-
-## When is the watch box offered?
-- `pg_comments_watcher_box()`: watching on, signed in, not a watcher, not told another way (moderator address, form editor, conditional admin, record's submitter). Ticked unless a post said not.
 
 ## What does the browser add?
 - `software.init_comment_forms()` (frontend.src.js and its hand-made frontend.min.js twin), on ready, by data attributes: submit lock, leave warning with the label (on `[name="message"]`, textarea or input), publish picker toggling `hidden` (Bootstrap's `[hidden]` beats inline display), date picker once; the classic form keeps its own.
