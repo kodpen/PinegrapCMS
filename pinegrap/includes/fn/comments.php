@@ -5,8 +5,11 @@
  * Comment rules shared by the comment handlers: which thread a comment posted
  * to a page may join, which form record a stored comment is about, the
  * record's comment counters moderation keeps up to date, the name a
- * signed-in member's comment is stored under, and which comment a reply may
- * answer.
+ * signed-in member's comment is stored under, which comment a reply may
+ * answer, and the rules a page shows a thread by (its settings, whether it
+ * takes new comments, who reads it, which comments they read, the order they
+ * are drawn in), shared by the classic comments block and the comments
+ * widget.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -864,4 +867,612 @@ function pg_comment_copy_parent_id($parent_id, $copied)
     }
 
     return max(0, (int) $copied[$id]);
+}
+
+// The thread as a page shows it. The plural pg_comments_* helpers decide what
+// a page's comment thread is: the page's comment settings, whether the thread
+// takes new comments, who reads it, which comments they read and the order
+// they are drawn in. The classic comments block (get_page_content.php) asks
+// them only for these decisions and keeps building its own HTML;
+// add_comment.php asks the same allow-new rule. pg_comments_rows() sends the
+// statements the block always sent, character for character apart from
+// whitespace: rows are sorted by created_timestamp alone, so comments posted
+// in the same second come in whatever order the server's plan returns for
+// that statement, and a different statement (a tie-break, an extra column, a
+// reshaped WHERE) could reorder them. Each helper keeps the block's loose
+// comparisons on the raw values, so every PHP version answers as it did.
+
+/**
+ * Whether a page row's column holds a value equal (==) to $value. A missing
+ * column, or one that is not a value (an array: the rows a first blank
+ * <system> region left in the page's comments switch), is false.
+ *
+ * @param array  $row
+ * @param string $key
+ * @param mixed  $value the operand the block compares with ('1' or 1)
+ * @return bool
+ */
+function _pg_comments_setting_is($row, $key, $value)
+{
+    return isset($row[$key]) && is_scalar($row[$key]) && ($row[$key] == $value);
+}
+
+/**
+ * A page row's text column as a string, '' when it is missing or not a value.
+ *
+ * @param array  $row
+ * @param string $key
+ * @return string
+ */
+function _pg_comments_setting_text($row, $key)
+{
+    return (isset($row[$key]) && is_scalar($row[$key])) ? (string) $row[$key] : '';
+}
+
+/**
+ * A page row's id column as a whole number, 0 when it is missing, not a
+ * value, a bool or below 0.
+ *
+ * @param array  $row
+ * @param string $key
+ * @return int
+ */
+function _pg_comments_setting_id($row, $key)
+{
+    $id = (isset($row[$key]) && is_scalar($row[$key]) && !is_bool($row[$key])) ? (int) $row[$key] : 0;
+
+    return max(0, $id);
+}
+
+/**
+ * A page's comment settings, read from its page row (the page table's
+ * comments_* columns, or the region's $system_region_properties). Pure.
+ *
+ * Each switch keeps the operator the classic block and the handlers test the
+ * column with: 'enabled' (comments) and 'auto_publish'
+ * (comments_automatic_publish) are == '1', 'rating' (comments_rating) is not
+ * empty, every other switch is == 1. A column that is missing or not a value
+ * is off, '' or 0. The classic block takes only 'enabled' and 'allow_new'
+ * from here; its stars and rating field read the drawn page's
+ * $comments_rating, which a named <system> region does not change.
+ *
+ * @param mixed $page_row the page row, an array of comments_* columns
+ * @return array 'enabled', 'label', 'message', 'rating', 'allow_new',
+ *               'closed_message', 'auto_publish', 'select_name',
+ *               'require_login', 'attachments', 'show_date', 'admin_email',
+ *               'conditional_admins', 'submitter_email_page_id',
+ *               'watcher_email_page_id', 'watchers_by_submitter'
+ */
+function pg_comments_settings($page_row)
+{
+    $row = is_array($page_row) ? $page_row : array();
+
+    return array(
+        'enabled' => _pg_comments_setting_is($row, 'comments', '1'),
+        'label' => _pg_comments_setting_text($row, 'comments_label'),
+        'message' => _pg_comments_setting_text($row, 'comments_message'),
+        'rating' => isset($row['comments_rating']) && is_scalar($row['comments_rating']) && !empty($row['comments_rating']),
+        'allow_new' => _pg_comments_setting_is($row, 'comments_allow_new_comments', 1),
+        'closed_message' => _pg_comments_setting_text($row, 'comments_disallow_new_comment_message'),
+        'auto_publish' => _pg_comments_setting_is($row, 'comments_automatic_publish', '1'),
+        'select_name' => _pg_comments_setting_is($row, 'comments_allow_user_to_select_name', 1),
+        'require_login' => _pg_comments_setting_is($row, 'comments_require_login_to_comment', 1),
+        'attachments' => _pg_comments_setting_is($row, 'comments_allow_file_attachments', 1),
+        'show_date' => _pg_comments_setting_is($row, 'comments_show_submitted_date_and_time', 1),
+        'admin_email' => _pg_comments_setting_text($row, 'comments_administrator_email_to_email_address'),
+        'conditional_admins' => _pg_comments_setting_is($row, 'comments_administrator_email_conditional_administrators', 1),
+        'submitter_email_page_id' => _pg_comments_setting_id($row, 'comments_submitter_email_page_id'),
+        'watcher_email_page_id' => _pg_comments_setting_id($row, 'comments_watcher_email_page_id'),
+        'watchers_by_submitter' => _pg_comments_setting_is($row, 'comments_watchers_managed_by_submitter', 1),
+    );
+}
+
+/**
+ * Whether a thread takes new comments. Pure: pg_comments_allow_new() reads
+ * the item's row.
+ *
+ * An item's thread (an item id that is a value and != 0, the block's loose
+ * test on the raw id) whose allow_new_comments_for_items row was found takes
+ * them when that row's value == 1. Any other thread follows the page's
+ * switch. An item id that is not a value (a forged address or post) reads as
+ * no item.
+ *
+ * @param mixed $item_id      the thread's item id, as the caller holds it
+ * @param mixed $item_setting the row's allow_new_comments, '' when the row
+ *                            lacks it, null when there is no row
+ * @param mixed $page_allows  the page's switch (pg_comments_settings()'s
+ *                            'allow_new')
+ * @return bool
+ */
+function pg_comments_allow_new_decision($item_id, $item_setting, $page_allows)
+{
+    if (is_scalar($item_id) && ($item_id != 0) && ($item_setting !== null)) {
+        return is_scalar($item_setting) && ($item_setting == 1);
+    }
+
+    return (bool) $page_allows;
+}
+
+/**
+ * A value for a quoted SQL literal: escape() of the value as a string, '' for
+ * null and for anything that is not a value. The same text the block's
+ * escape($raw) gave for every value and null.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function _pg_comments_sql_value($value)
+{
+    return escape((is_scalar($value) || ($value === null)) ? (string) $value : '');
+}
+
+/**
+ * Whether the thread (page, item type, item id) takes new comments: an
+ * item's own switch in allow_new_comments_for_items when it has one, else
+ * the page's. The classic comment form and add_comment.php ask the same.
+ *
+ * Only an item's thread (pg_comments_allow_new_decision()) is looked up, with
+ * the statement both callers always sent; the first row decides. A failed
+ * query ends on the db helpers' error page.
+ *
+ * @param mixed    $page_id
+ * @param mixed    $item_type
+ * @param mixed    $item_id
+ * @param mixed    $page_allows the page's switch, as pg_comments_settings()
+ *                              reads it ('allow_new')
+ * @param callable $fetch       runs a SELECT and returns its rows (db_items)
+ * @return bool
+ */
+function pg_comments_allow_new($page_id, $item_type, $item_id, $page_allows, $fetch = 'db_items')
+{
+    $setting = null;
+
+    if (is_scalar($item_id) && ($item_id != 0)) {
+        $rows = call_user_func($fetch,
+            "SELECT allow_new_comments
+            FROM allow_new_comments_for_items
+            WHERE
+                (page_id = '" . _pg_comments_sql_value($page_id) . "')
+                AND (item_id = '" . _pg_comments_sql_value($item_id) . "')
+                AND (item_type = '" . _pg_comments_sql_value($item_type) . "')");
+
+        if (is_array($rows) && isset($rows[0]) && is_array($rows[0])) {
+            $setting = isset($rows[0]['allow_new_comments']) ? $rows[0]['allow_new_comments'] : '';
+        }
+    }
+
+    return pg_comments_allow_new_decision($item_id, $setting, $page_allows);
+}
+
+/**
+ * Who reads a thread. Pure: pg_comments_viewer() takes the user and the
+ * session from the request.
+ *
+ * - 'staff': edit access to the page; reads every comment.
+ * - 'form_editor': the signed-in user ($user_id > 0) is the shown record's
+ *   form editor: the record names a username that is not '' and its editor
+ *   id is that user. Reads every comment, as staff. Never on a thread that
+ *   is not a record's ($record_form null).
+ * - 'own_ids': this browser session's comments, perhaps still awaiting
+ *   approval, as positive whole numbers in the session's order (duplicates
+ *   kept); none for the search index.
+ * - 'search_index': the search index stores what an anonymous visitor reads,
+ *   so it reads the published comments only, whoever runs it.
+ *
+ * The array is the viewer pg_comment_parent_ok() and pg_comment_reply_to()
+ * take.
+ *
+ * @param mixed $staff        edit access to the page
+ * @param mixed $record_form  the shown record's form (form_editor_user_id,
+ *                            form_editor_username), null for a thread that is
+ *                            not a record's
+ * @param mixed $search_index the page is drawn for the search index
+ * @param mixed $user_id      the signed-in user's id, 0 when signed out
+ * @param mixed $session_ids  $_SESSION['software']['added_comments']
+ * @return array 'staff' (bool), 'form_editor' (bool), 'own_ids' (int[]),
+ *               'search_index' (bool)
+ */
+function pg_comments_viewer_decision($staff, $record_form, $search_index, $user_id, $session_ids)
+{
+    $uid = (is_scalar($user_id) && !is_bool($user_id)) ? (int) $user_id : 0;
+    $form_editor = false;
+
+    if (is_array($record_form) && ($uid > 0)) {
+        $name = isset($record_form['form_editor_username']) ? $record_form['form_editor_username'] : null;
+        $editor = isset($record_form['form_editor_user_id']) ? $record_form['form_editor_user_id'] : null;
+        $form_editor = is_scalar($name) && ((string) $name !== '')
+            && is_scalar($editor) && !is_bool($editor) && ((int) $editor === $uid);
+    }
+
+    $own_ids = array();
+
+    if (!$search_index && is_array($session_ids)) {
+        foreach ($session_ids as $id) {
+            if (is_scalar($id) && !is_bool($id) && ((int) $id > 0)) {
+                $own_ids[] = (int) $id;
+            }
+        }
+    }
+
+    return array(
+        'staff' => (bool) $staff,
+        'form_editor' => $form_editor,
+        'own_ids' => $own_ids,
+        'search_index' => (bool) $search_index,
+    );
+}
+
+/**
+ * Who reads a thread on this request (pg_comments_viewer_decision()): the
+ * signed-in user and this browser session's comments.
+ *
+ * @param mixed $staff        edit access to the page
+ * @param mixed $record_form  the shown record's form (form_editor_user_id,
+ *                            form_editor_username), or null for a thread that
+ *                            is not a record's
+ * @param mixed $search_index the page is drawn for the search index
+ * @return array as pg_comments_viewer_decision() returns it
+ */
+function pg_comments_viewer($staff, $record_form, $search_index = false)
+{
+    $user_id = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ? USER_ID : 0;
+    $session_ids = (isset($_SESSION['software']['added_comments']) && is_array($_SESSION['software']['added_comments']))
+        ? $_SESSION['software']['added_comments']
+        : array();
+
+    return pg_comments_viewer_decision($staff, $record_form, $search_index, $user_id, $session_ids);
+}
+
+/**
+ * The SQL filter of an item's thread, as the classic block wrote it: an AND
+ * clause on item_id and item_type, each value escaped (anything that is not
+ * a value reads ''). Null, or anything that is not an array, gives '': every
+ * comment on the page, as the block reads a page that shows no item,
+ * whatever item a comment was posted for. The block's watcher queries take
+ * the same text.
+ *
+ * @param mixed $thread array('item_type' => ..., 'item_id' => ...), or null
+ * @return string
+ */
+function pg_comments_thread_sql($thread)
+{
+    if (!is_array($thread)) {
+        return '';
+    }
+
+    return " AND (item_id = '" . _pg_comments_sql_value(isset($thread['item_id']) ? $thread['item_id'] : null) . "')"
+        . " AND (item_type = '" . _pg_comments_sql_value(isset($thread['item_type']) ? $thread['item_type'] : null) . "')";
+}
+
+/**
+ * The SQL filter of the comments a viewer reads, as the classic block wrote
+ * it: none for staff and the form editor; otherwise the published comments
+ * and the viewer's own of this session, one (comments.id = 'N') each; the
+ * published only for the search index. A viewer that is not an array is
+ * nobody.
+ *
+ * @param mixed $viewer as pg_comments_viewer() returns it
+ * @return string
+ */
+function pg_comments_visible_sql($viewer)
+{
+    $viewer = is_array($viewer) ? $viewer : array();
+    $search_index = !empty($viewer['search_index']);
+
+    if ((!empty($viewer['staff']) || !empty($viewer['form_editor'])) && !$search_index) {
+        return '';
+    }
+
+    $own = '';
+
+    if (!$search_index && isset($viewer['own_ids']) && is_array($viewer['own_ids'])) {
+        foreach ($viewer['own_ids'] as $id) {
+            if (!is_scalar($id) || is_bool($id) || ((int) $id <= 0)) {
+                continue;
+            }
+
+            if ($own !== '') {
+                $own .= " OR ";
+            }
+
+            $own .= "(comments.id = '" . (int) $id . "')";
+        }
+
+        if ($own !== '') {
+            $own = " OR (" . $own . ")";
+        }
+    }
+
+    return " AND ((comments.published = '1')" . $own . ")";
+}
+
+/**
+ * Whether only the featured comments are read. Pure.
+ *
+ * Only in the 'filter' mode (the classic block's), while featured comments
+ * exist, and when ?comments is unset or exactly 'featured': the same answer
+ * as the block's isset($_GET['comments']) == false ||
+ * $_GET['comments'] == 'featured' for every value ?comments can carry. The
+ * widget's 'first' and 'none' modes never filter.
+ *
+ * @param mixed $has_featured whether the thread has featured comments
+ * @param mixed $mode         'filter', 'first' or 'none'
+ * @param mixed $view         the ?comments value, null when unset
+ * @return bool
+ */
+function pg_comments_featured_filter($has_featured, $mode, $view)
+{
+    return ($mode === 'filter') && $has_featured && (($view === null) || (is_string($view) && ($view === 'featured')));
+}
+
+/**
+ * The first value of the first row as a whole number, 0 for no row or a
+ * value that is not one.
+ *
+ * @param mixed $rows
+ * @return int
+ */
+function _pg_comments_first_int($rows)
+{
+    if (!is_array($rows) || !isset($rows[0]) || !is_array($rows[0]) || !$rows[0]) {
+        return 0;
+    }
+
+    $value = reset($rows[0]);
+
+    return (is_scalar($value) && !is_bool($value)) ? (int) $value : 0;
+}
+
+/**
+ * The comments a viewer reads on a thread, oldest first, with the counts the
+ * classic block shows.
+ *
+ * Sends, in this order, the block's three statements: the count of what the
+ * viewer reads, the count of the featured ones among them, then the rows.
+ * When only the featured comments are read (pg_comments_featured_filter()),
+ * the rows statement alone filters them, so the count is of all.
+ *
+ * The default statements must not change: no tie-break and no extra column.
+ * Rows are sorted by created_timestamp alone, and the order of comments
+ * posted in the same second is whatever the server's plan returns for the
+ * statement.
+ *
+ * Options:
+ * - 'featured': 'filter' (default, the block's) reads only the featured
+ *   comments while some exist and the view is not 'all'; any other value
+ *   applies no filter, and the caller pins or ignores featured comments.
+ * - 'view': the ?comments value, null when unset.
+ * - 'parent_id': true adds comments.parent_id after created_timestamp
+ *   (0 AS parent_id before 11.0.31). The block never asks.
+ *
+ * A failed query ends on the db helpers' error page.
+ *
+ * @param mixed    $page_id
+ * @param mixed    $thread  pg_comments_thread_sql()'s thread, null for every
+ *                          comment on the page
+ * @param mixed    $viewer  as pg_comments_viewer() returns it
+ * @param mixed    $options see above
+ * @param callable $fetch   runs a SELECT and returns its rows (db_items)
+ * @return array 'count' (int), 'has_featured' (bool), 'featured_view'
+ *               (bool), 'rows' (the rows as read, a list)
+ */
+function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch = 'db_items')
+{
+    $options = is_array($options) ? $options : array();
+    $mode = (isset($options['featured']) && is_string($options['featured'])) ? $options['featured'] : 'filter';
+    $view = array_key_exists('view', $options) ? $options['view'] : null;
+    $page = _pg_comments_sql_value($page_id);
+    $where = pg_comments_thread_sql($thread) . pg_comments_visible_sql($viewer);
+
+    $count = _pg_comments_first_int(call_user_func($fetch,
+        "SELECT COUNT(*) FROM comments WHERE comments.page_id = '" . $page . "'" . $where));
+
+    $featured_count = _pg_comments_first_int(call_user_func($fetch,
+        "SELECT COUNT(*)
+        FROM comments
+        WHERE
+            (comments.page_id = '" . $page . "')
+            " . $where . "
+            AND comments.featured = '1'"));
+
+    $has_featured = ($featured_count > 0);
+    $featured_view = pg_comments_featured_filter($has_featured, $mode, $view);
+
+    if ($featured_view) {
+        $where .= " AND (comments.featured = '1')";
+    }
+
+    $parent = '';
+
+    if (!empty($options['parent_id'])) {
+        $parent = pg_comment_replies_ready()
+            ? ",
+            comments.parent_id"
+            : ",
+            0 AS parent_id";
+    }
+
+    $rows = call_user_func($fetch,
+        "SELECT
+            comments.id,
+            comments.name,
+            comments.message,
+            files.name as file_name,
+            files.size as file_size,
+            comments.published,
+            comments.publish_date_and_time,
+            comments.publish_cancel,
+            comments.featured,
+            comments.rating,
+            " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+            " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
+            user.user_username as username,
+            user.user_role,
+            user.user_id,
+            user.user_badge,
+            user.user_badge_label,
+            comments.created_timestamp" . $parent . "
+        FROM comments
+        LEFT JOIN files ON comments.file_id = files.id
+        LEFT JOIN user ON comments.created_user_id = user.user_id
+        WHERE comments.page_id = '" . $page . "'" . $where . "
+        ORDER BY comments.created_timestamp ASC");
+
+    return array(
+        'count' => $count,
+        'has_featured' => $has_featured,
+        'featured_view' => $featured_view,
+        'rows' => is_array($rows) ? array_values($rows) : array(),
+    );
+}
+
+/**
+ * A row's id column as a whole number, 0 when it is missing, not a value, a
+ * bool or below 0.
+ *
+ * @param mixed  $row
+ * @param string $key
+ * @return int
+ */
+function _pg_comments_row_int($row, $key)
+{
+    return (is_array($row) && isset($row[$key]) && is_scalar($row[$key]) && !is_bool($row[$key])) ? max(0, (int) $row[$key]) : 0;
+}
+
+/**
+ * The order a thread's comments are drawn in. Pure.
+ *
+ * - 'threaded': depth-first under each top-level comment, replies in the
+ *   order read; the depth is capped at $max_depth (1-3; anything else
+ *   clamps, default 1): a reply deeper than that is drawn at the cap and
+ *   keeps its real parent for its quote.
+ * - any other layout ('flat'): the order read, every depth 0.
+ *
+ * A reply's parent counts only when it is among the rows (the first row with
+ * that id). A parent that is not (deleted, someone else's pending comment,
+ * cut by the featured filter) or the comment itself makes a top-level
+ * comment, as do rows without parent_id (the classic block's). A loop is cut
+ * at the first of its rows met walking up from each row in the order read;
+ * that row becomes top-level. Entries that are not rows are skipped. The walk keeps its own stack, so a
+ * long thread needs no recursion.
+ *
+ * The comments widget is the first caller; the classic block ignores
+ * parent_id and draws the order read.
+ *
+ * @param mixed $rows      comment rows (id, parent_id, ...), oldest first
+ * @param mixed $layout    'threaded' or 'flat'
+ * @param mixed $max_depth 1-3
+ * @return array one entry per row: 'row' (the row as given), 'id',
+ *               'parent_id' (the parent among the rows, else 0), 'depth',
+ *               'root_id' (its top-level comment), 'replies' (direct replies
+ *               among the rows)
+ */
+function pg_comments_thread_order($rows, $layout, $max_depth)
+{
+    $threaded = ($layout === 'threaded');
+    $cap = (is_scalar($max_depth) && !is_bool($max_depth)) ? (int) $max_depth : 1;
+    $cap = min(3, max(1, $cap));
+
+    $list = array();
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        if (is_array($row)) {
+            $list[] = $row;
+        }
+    }
+
+    $count = count($list);
+
+    if ($count === 0) {
+        return array();
+    }
+
+    $ids = array();
+    $first = array();
+
+    foreach ($list as $i => $row) {
+        $ids[$i] = _pg_comments_row_int($row, 'id');
+
+        if (($ids[$i] > 0) && !isset($first[$ids[$i]])) {
+            $first[$ids[$i]] = $i;
+        }
+    }
+
+    // Each row's link to the row it answers, -1 for none.
+    $link = array();
+
+    foreach ($list as $i => $row) {
+        $parent = _pg_comments_row_int($row, 'parent_id');
+        $link[$i] = (($parent > 0) && isset($first[$parent]) && ($first[$parent] !== $i)) ? $first[$parent] : -1;
+    }
+
+    // Break loops. Walking up from each row in the order read (0 not seen,
+    // 1 on this walk, 2 done), a row met twice on the same walk closes a
+    // loop and is cut from its parent.
+    $state = array_fill(0, $count, 0);
+
+    for ($i = 0; $i < $count; $i++) {
+        $path = array();
+        $p = $i;
+
+        while (($p !== -1) && ($state[$p] === 0)) {
+            $state[$p] = 1;
+            $path[] = $p;
+            $p = $link[$p];
+        }
+
+        if (($p !== -1) && ($state[$p] === 1)) {
+            $link[$p] = -1;
+        }
+
+        foreach ($path as $q) {
+            $state[$q] = 2;
+        }
+    }
+
+    $children = array_fill(0, $count, array());
+    $roots = array();
+
+    for ($i = 0; $i < $count; $i++) {
+        if ($link[$i] === -1) {
+            $roots[] = $i;
+        } else {
+            $children[$link[$i]][] = $i;
+        }
+    }
+
+    // Depth-first from each top-level row, replies in the order read.
+    $order = array();
+    $depth = array();
+    $root = array();
+
+    foreach ($roots as $r) {
+        $stack = array(array($r, 0));
+
+        while ($stack) {
+            list($n, $d) = array_pop($stack);
+            $order[] = $n;
+            $depth[$n] = $d;
+            $root[$n] = $r;
+
+            for ($c = count($children[$n]) - 1; $c >= 0; $c--) {
+                $stack[] = array($children[$n][$c], $d + 1);
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach (($threaded ? $order : array_keys($list)) as $i) {
+        $out[] = array(
+            'row' => $list[$i],
+            'id' => $ids[$i],
+            'parent_id' => ($link[$i] === -1) ? 0 : $ids[$link[$i]],
+            'depth' => $threaded ? min($depth[$i], $cap) : 0,
+            'root_id' => $ids[$root[$i]],
+            'replies' => count($children[$i]),
+        );
+    }
+
+    return $out;
 }
