@@ -1335,6 +1335,81 @@ function parasut_shipment_stock_movement($product_id, $warehouse_id, $quantity)
 }
 
 /**
+ * Whether E-Shipment may write the order's outgoing shipment document, and
+ * which sales invoice it names, judged by the invoice Create Invoice left on
+ * the order (orders.parasut_invoice_id). Asked before anything is written.
+ *
+ * A sales invoice that Paraşüt keeps with shipment_included true (its
+ * default, and what Create Invoice sends for an order not yet shipped) took
+ * its goods out of stock itself, and Paraşüt refuses to link a shipment
+ * document to it (422 "İrsaliyeli faturalar ile irsaliye
+ * ilişkilendirilemez."); an unlinked document would take the goods out a
+ * second time. One kept with shipment_included false moved no stock: the
+ * shipment document names it in relationships.invoices and takes the goods
+ * out once. The unsure mark (parasut_order_invoice_unsure()) is not a record
+ * whose answer can be read, and a read that fails is no answer either: both
+ * refuse rather than guess.
+ *
+ * @param string   $invoice_id  orders.parasut_invoice_id
+ * @param callable $get         function (string $path): the _parasut_request() answer of
+ *                              GET _parasut_prefix() . $path
+ * @return array ['invoice_id' => string ('' for no invoice to name), 'error' => string ('' when it may go)]
+ */
+function parasut_shipment_invoice_link($invoice_id, $get)
+{
+    $invoice_id = trim((string) $invoice_id);
+
+    if ($invoice_id === '') {
+        return array('invoice_id' => '', 'error' => '');
+    }
+
+    if (parasut_order_invoice_unsure($invoice_id)) {
+        return array('invoice_id' => '', 'error' => lang('The last try to invoice this order got no answer from Paraşüt (Check Paraşüt), so it is not known whether its sales invoice carries the shipment. Press Create Invoice again to settle the invoice first; no shipment document was created.'));
+    }
+
+    $read = $get('/sales_invoices/' . rawurlencode($invoice_id));
+    $attributes = (((int) ($read['http_code'] ?? 0) === 200) && is_array($read['body']['data']['attributes'] ?? null))
+        ? $read['body']['data']['attributes']
+        : array();
+    $included = array_key_exists('shipment_included', $attributes) ? $attributes['shipment_included'] : null;
+
+    if (!is_bool($included)) {
+        return array('invoice_id' => '', 'error' => lang(array(
+            'string' => 'Paraşüt could not be asked whether this order\'s sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.',
+            'vars' => array($invoice_id, _parasut_extract_error((array) $read)),
+        )));
+    }
+
+    if ($included) {
+        return array('invoice_id' => '', 'error' => lang(array(
+            'string' => 'This order\'s sales invoice in Paraşüt (ID: {var:1}) carries the shipment: its goods left stock with it, so a shipment document would count them out a second time. A separate e-waybill needs the invoice issued without shipment. No shipment document was created.',
+            'vars' => array($invoice_id),
+        )));
+    }
+
+    return array('invoice_id' => $invoice_id, 'error' => '');
+}
+
+/**
+ * The order's outgoing shipment_documents body naming its sales invoice
+ * (relationships.invoices), when parasut_shipment_invoice_link() gave one.
+ *
+ * @param array  $body        The shipment_documents body
+ * @param string $invoice_id  Paraşüt sales invoice id, '' for none
+ * @return array
+ */
+function parasut_shipment_with_invoice($body, $invoice_id)
+{
+    $invoice_id = trim((string) $invoice_id);
+
+    if ($invoice_id !== '') {
+        $body['data']['relationships']['invoices'] = array('data' => array(array('type' => 'sales_invoices', 'id' => $invoice_id)));
+    }
+
+    return $body;
+}
+
+/**
  * Whether a Paraşüt product keeps stock. v4 products carry inventory_tracking
  * and no product_type (a GET answers null for it).
  *
@@ -1838,6 +1913,31 @@ function parasut_order_invoice_find($payload, $contact_id, $get)
 }
 
 /**
+ * The order's sales_invoices body for an order whose outgoing shipment
+ * document E-Shipment already wrote (orders.parasut_shipment_id): sent
+ * without shipment (shipment_included false) and naming that document
+ * (relationships.shipment_documents). A sales invoice Paraşüt keeps with
+ * the shipment included, its default, takes its goods out of stock itself,
+ * so beside the shipment document it would count them out a second time.
+ * Without a shipment document the body stays as it is.
+ *
+ * @param array  $body         The sales_invoices body (erp_edoc_parasut_invoice_payload())
+ * @param string $shipment_id  orders.parasut_shipment_id
+ * @return array
+ */
+function parasut_order_invoice_with_shipment($body, $shipment_id)
+{
+    $shipment_id = trim((string) $shipment_id);
+
+    if ($shipment_id !== '') {
+        $body['data']['attributes']['shipment_included'] = false;
+        $body['data']['relationships']['shipment_documents'] = array('data' => array(array('type' => 'shipment_documents', 'id' => $shipment_id)));
+    }
+
+    return $body;
+}
+
+/**
  * Create a Paraşüt sales invoice for an order and turn it into its
  * e-document: an e-invoice for a buyer registered with GİB, an e-archive
  * invoice otherwise (_parasut_resolve_edoc_kind()).
@@ -1853,7 +1953,9 @@ function parasut_order_invoice_find($payload, $contact_id, $get)
  * zero-rated line's exemption, an internet sale's address, payment and
  * carrier. Whatever can be refused from the order alone is refused before
  * anything is sent, and a sales invoice Paraşüt totals differently is
- * deleted before it becomes a document.
+ * deleted before it becomes a document. After E-Shipment the invoice goes
+ * without shipment, naming the shipment document
+ * (parasut_order_invoice_with_shipment()).
  *
  * @param int $order_id  orders.id
  * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
@@ -2010,6 +2112,11 @@ function parasut_create_invoice($order_id)
     }
 
     $invoice_body['data']['attributes']['description'] = lang('Order') . ' #' . $order_number;
+
+    // An order E-Shipment already sent took its goods out of Paraşüt's stock
+    // with the shipment document: the invoice goes without shipment and
+    // names that document, so the goods are not counted out twice.
+    $invoice_body = parasut_order_invoice_with_shipment($invoice_body, (string) ($order['parasut_shipment_id'] ?? ''));
 
     $sales_invoice_id = '';
     $attributes = array();
@@ -2198,6 +2305,11 @@ function parasut_create_invoice($order_id)
 /**
  * Create a Parasut shipment document (e-irsaliye) for the given order.
  *
+ * After Create Invoice it goes only for a sales invoice issued without
+ * shipment, which the document names; one that carries the shipment, the
+ * unsure mark or an invoice that cannot be read refuses it before anything
+ * is written (parasut_shipment_invoice_link()).
+ *
  * @param int $order_id  orders.id
  * @return array ['success' => bool, 'parasut_shipment_id' => string|null, 'error' => string]
  */
@@ -2238,6 +2350,17 @@ function parasut_create_shipment($order_id)
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
     }
     $token = $token_result['token'];
+
+    // The order's sales invoice from Create Invoice, judged before anything
+    // is written: one that carries the shipment already took the goods out
+    // of stock, one issued without shipment is named by the document.
+    $invoice_link = parasut_shipment_invoice_link((string) ($order['parasut_invoice_id'] ?? ''), function ($path) use ($token) {
+        return _parasut_request('GET', _parasut_prefix() . $path, null, $token);
+    });
+
+    if ($invoice_link['error'] !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $invoice_link['error']];
+    }
 
     // Sync contact.
     $contact_result = parasut_sync_contact($order);
@@ -2357,6 +2480,7 @@ function parasut_create_shipment($order_id)
             ],
         ],
     ];
+    $body = parasut_shipment_with_invoice($body, $invoice_link['invoice_id']);
 
     $result = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', $body, $token);
 
