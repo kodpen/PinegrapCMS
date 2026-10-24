@@ -11,7 +11,7 @@ description: Magazine template publishing: the shared live rule and leak closure
 
 ## Which desk lists are there?
 - Waiting for review, Being edited (`In review`), With the writer (`Changes requested`), Scheduled to go live, Live but no publication time, Live now, Every story (the page's one paginated list, with a search over title, byline, section, status, issue and tags).
-- Each row shows its Last activity (a list cannot be ordered by it; a long read can wait weeks).
+- Each row shows its Last activity (a long read can wait weeks).
 
 ## Why do the editors fix a letter's name before they publish it?
 - `add_comment.php` keeps a typed name only for a signed-out visitor, role < 3, folder edit rights or the form editor; a member's letter is stored under the login username. A template cannot set `comments_allow_user_to_select_name`.

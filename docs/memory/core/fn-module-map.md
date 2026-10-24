@@ -14,7 +14,7 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `designer`: system styles, tree validation/expansion, node/component render, page/style save, CSS output.
 - Widgets: `widgets_catalog` (catalog), `widgets_cart` (cart), `widgets_express_order` (`_eo_*` + order view), `widgets` (the others).
 - `custom_form` (`pg_cf_*` + form submission), `files` (file name/upload limits), `cron` (scheduled jobs), `tour` (tours; `PG_TOUR_SHELL_KEY` lives here).
-- `output`: `output_header/footer/menu/toolbar`, `pg_page_shell`, licence, asset versioning.
+- `output`: `output_header/footer/menu/toolbar`, `pg_page_shell`, licence, asset versioning. `dashboard`: card styles, backdrop, refresh time, their gate.
 - Sign-in and identity: `mfa` (two-step sign-in), `signin` (social sign-in), `connect` (connected accounts, the site as an OAuth client), `geo` (IP to country), `qr` (QR codes as inline SVG).
 - Store: `payments` (payment drivers), `carrier_api` (carriers' REST APIs), `returns` (customer returns), `price_history`, `product_feeds`, `currency_rates`, `legal_documents` (checkout legal documents).
 - Pages and designer: `meta_tags`, `design_templates_custom`, `design_themes`, `widgets_account`, `widgets_error`, `widgets_language`, `signature`, `page_revisions`, `page_schedule`, `maintenance_mode`, `language_redirect`, `translate` (front-end translation), `ai_crawlers` (robots.txt AI section), `ai_write`, `short_link_redirects`, `not_found_log` (the 404 log, `docs/memory/platform/not-found-log.md`), `office` / `office_edit` (Word/Excel preview and cell edits), `page_cache` (anonymous page cache gate, file cache the router also loads, visitor beacon, and `pg_header_callback_add()`, the one way to register a header callback).
@@ -22,6 +22,6 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `system_status`: system-status card and checks, cache clearing, file integrity, write permissions, changelog reading, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
 - Added in 2026.4.8: `errors`, `mail_queue`, `backup`, `consent` (see `docs/memory/core/fn-module-errors-mail-backup-consent.md`).
-- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see `docs/memory/core/consent-log-and-audit-trail.md`; `privacy_export` (one person's data pack, `docs/memory/core/personal-data-export.md`); `reviews` (who may review a product, the product rating, AggregateRating: `docs/memory/commerce/product-reviews-verified.md`); `comments` (which thread a posted comment joins: `docs/memory/designer/comment-thread-verify.md`).
+- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see `core/consent-log-and-audit-trail.md`; `privacy_export` (one person's data pack, `core/personal-data-export.md`); `reviews` (product review rights, rating, AggregateRating: `commerce/product-reviews-verified.md`); `comments` (which thread a posted comment joins: `designer/comment-thread-verify.md`).
 
 Related: docs/memory/core/functions-php-split-rules.md

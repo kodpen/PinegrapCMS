@@ -63,7 +63,8 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   shipping_address   the same shape, or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
-//                      price, tax, discount, and optionally discount_total)
+//                      price, tax, discount, and optionally discount_total
+//                      and sku)
 //
 // price, tax and discount are minor units PER UNIT, because that is what
 // order_items stores and converting once here is better than three connectors
@@ -71,6 +72,10 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 // is the whole line's discount and is used instead of discount x quantity: a
 // marketplace that discounts the line rather than the unit has an amount that
 // does not always divide by the quantity.
+//
+// code is the provider's key for the product (the seller's code on n11, the
+// barcode on Trendyol); sku, when a connector gives it, is the seller's own
+// code beside a barcode, which is the product's name here.
 function mp_import_order($account, $package) {
 
 	$account_id = (int) $account['id'];
@@ -204,24 +209,6 @@ function mp_import_claimed($account, $package, $map_id) {
 
 	}
 
-	// Cancelled before this shop ever saw it - between two pulls, or before the
-	// first one. Nothing is written: there is nothing to pick, and writing the
-	// order only to cancel it would take the stock and give it back, which is
-	// not a round trip when the stock was short (the take stops at zero, the
-	// return adds the whole quantity). The map row stays, so the package is
-	// never imported later, and says why there is no order.
-	if (mp_order_stage($account, $package) === 'cancelled') {
-
-		db("UPDATE marketplace_order_map
-			SET status = 'imported',
-				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
-				updated_timestamp = UNIX_TIMESTAMP()
-			WHERE id = '" . e($map_id) . "'");
-
-		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
-
-	}
-
 	$order_id = mp_order_write($account, $package, $map_id);
 
 	if (!$order_id) {
@@ -252,8 +239,8 @@ function mp_import_claimed($account, $package, $map_id) {
 //
 // Three things are worth reacting to and the rest is theirs to manage:
 //
-//   the tracking number, which the seller did not choose - on this marketplace
-//   the carrier is n11's and the number is assigned after collection, so it
+//   the tracking number, which the seller did not choose - on n11 and on
+//   Trendyol the carrier is the marketplace's and so is the number, so it
 //   arrives rather than being sent;
 //
 //   shipped and delivered, which are the two dates the order timeline reads;
@@ -716,9 +703,19 @@ function mp_order_totals($lines, $shipping = 0) {
 // Which product here is the marketplace talking about.
 //
 // The mapping table first, because that is the answer the operator gave and it
-// is allowed to disagree with the catalogue. Only then the product's own code,
-// which is what a shop that lists under the same codes on both sides relies on
-// and saves it from having to map every product by hand.
+// is allowed to disagree with the catalogue. Then the catalogue, which is what a
+// shop that lists under the same codes on both sides relies on and saves it
+// from having to map every product by hand:
+//
+//   the product's barcode, for a marketplace that knows products by barcode
+//   (Trendyol), where the line's code is a barcode;
+//
+//   the product's name against the line's sku, the seller's own code that
+//   such a marketplace carries beside the barcode (a Trendyol listing is sent
+//   with the name as its stock code);
+//
+//   the product's name against the code itself, which is the seller's code on
+//   a marketplace that has no barcode key (n11).
 function mp_order_match_product($account, $line) {
 
 	$code = isset($line['code']) ? trim((string)$line['code']) : '';
@@ -742,8 +739,33 @@ function mp_order_match_product($account, $line) {
 
 	}
 
-	$product = db_item("SELECT id, name, inventory, inventory_quantity
-		FROM products WHERE name = '" . e($code) . "' LIMIT 1");
+	$product = null;
+
+	if (mp_provider_keys_by_barcode($account['provider'])) {
+
+		$product = db_item("SELECT products.id, products.name, products.inventory, products.inventory_quantity
+			FROM product_barcodes
+			INNER JOIN products ON products.id = product_barcodes.product_id
+			WHERE product_barcodes.barcode = '" . e($code) . "'
+			LIMIT 1");
+
+	}
+
+	$sku = isset($line['sku']) ? trim((string)$line['sku']) : '';
+
+	if (!$product && $sku !== '') {
+
+		$product = db_item("SELECT id, name, inventory, inventory_quantity
+			FROM products WHERE name = '" . e($sku) . "' LIMIT 1");
+
+	}
+
+	if (!$product) {
+
+		$product = db_item("SELECT id, name, inventory, inventory_quantity
+			FROM products WHERE name = '" . e($code) . "' LIMIT 1");
+
+	}
 
 	if (!$product) {
 
@@ -751,7 +773,8 @@ function mp_order_match_product($account, $line) {
 
 	}
 
-	// Matched on the code alone, so the mapping is written now.
+	// Matched on the catalogue alone, so the mapping is written now, under the
+	// line's code - the marketplace's key, whichever way the product was found.
 	//
 	// The marketplace has just said this product is listed over there under
 	// this code, which is better evidence than anything the operator could have
@@ -759,7 +782,12 @@ function mp_order_match_product($account, $line) {
 	// queued per mapping, so a product that sells on the marketplace but was
 	// never mapped would drift out of step from its very first sale - which is
 	// exactly the product this shop can least afford to oversell.
-	db("INSERT INTO marketplace_product_map
+	//
+	// IGNORE because a product is mapped once per account: one already mapped
+	// under another code (a second barcode of the same product) keeps the
+	// mapping the operator gave it, where a plain INSERT would stop the job on
+	// the duplicate key.
+	db("INSERT IGNORE INTO marketplace_product_map
 		(account_id, product_id, remote_code, status, created_timestamp)
 		VALUES (
 			'" . e((int)$account['id']) . "',
@@ -842,7 +870,7 @@ function mp_order_email_is_personal($email) {
 
 	$relays = array(
 		'n11.com', 'mail.n11.com', 'pazaryeri.n11.com',
-		'trendyol.com', 'mail.trendyol.com',
+		'trendyol.com', 'mail.trendyol.com', 'trendyolmail.com',
 		'hepsiburada.com', 'mail.hepsiburada.com',
 		'marketplace.amazon.com', 'marketplace.amazon.com.tr'
 	);

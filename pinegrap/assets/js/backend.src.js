@@ -411,9 +411,9 @@ $(document).ready(function () {
                         fullscreen_toggle.click();
                     } else {
                         // The button in the bar: the drawer on a phone, the
-                        // menu hidden and brought back on a wide screen.
+                        // next of the three menu states on a wide screen.
                         event.preventDefault();
-                        $('#menu_drawer_toggle').trigger('click');
+                        $('#menu_mode_toggle').trigger('click');
                     }
                     break;
 
@@ -604,11 +604,10 @@ $(document).ready(function () {
      *
      *  - lg and up: the sidebar shares the grid with the content, in one of three
      *    states -- expanded (icons and labels), collapsed (the icon rail) or
-     *    hidden (no column at all). The foot of the menu chooses among them and
-     *    the button in the bar hides the menu and brings it back as it was. The
-     *    state is kept in the softwaremenustatus cookie, which the server reads
-     *    to draw the page in it (pg_menu_state()); softwaremenulast remembers
-     *    which of the two visible states the button brings back.
+     *    hidden (no column at all). The button in the bar walks them in that
+     *    order, one click at a time: mini, open, hidden, mini again. The state
+     *    is kept in the softwaremenustatus cookie, which the server reads to
+     *    draw the page in it (pg_menu_state()).
      *  - below lg: the sidebar is an off-canvas drawer that slides over the
      *    content, opened and shut by the same button in the bar. The drawer
      *    state is transient and deliberately NOT written to the cookie --
@@ -626,7 +625,7 @@ $(document).ready(function () {
     var MENU_PANEL_KEY = 'pgMenuPanel';
     var menuBackdrop = null;
 
-    initMenuToggle();                 // The button in the bar, and the foot of the menu
+    initMenuToggle();                 // The button in the bar: mini, open, hidden (the drawer on a phone)
     initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
@@ -677,30 +676,48 @@ $(document).ready(function () {
         }
     }
 
-    // The wide-screen state the cookie holds, and the visible one the button
-    // in the bar brings back from hidden.
+    // The order the button in the bar walks the wide-screen states in.
+    var MENU_STATE_NEXT = { collapsed: 'expanded', expanded: 'hidden', hidden: 'collapsed' };
+
+    // The wide-screen state the cookie holds.
     function savedMenuState() {
         var state = getCookie('softwaremenustatus');
         return (MENU_STATES.indexOf(state) === -1) ? 'collapsed' : state;
     }
 
-    function lastVisibleMenuState() {
-        return (getCookie('softwaremenulast') === 'expanded') ? 'expanded' : 'collapsed';
+    // The wide-screen state on screen now, read off the container.
+    function shownMenuState() {
+        var container = $('.software-container');
+
+        if (container.hasClass('menu-hidden')) {
+            return 'hidden';
+        }
+
+        return container.hasClass('expanded') ? 'expanded' : 'collapsed';
     }
 
-    // Says on the button in the bar whether the menu is on screen: the drawer
-    // below lg, the rail above. The picture follows from the stylesheet.
+    // Names on the button in the bar what it does here: below lg whether the
+    // drawer is open, above it the state the menu is in. The picture follows
+    // from the stylesheet.
     function paintMenuToggle() {
-        var toggle = document.getElementById('menu_drawer_toggle');
+        var toggle = document.getElementById('menu_mode_toggle');
+        var label;
 
         if (!toggle) {
             return;
         }
 
-        var open = isMenuDrawerMode() ? isMenuDrawerOpen() : !$('.software-container').hasClass('menu-hidden');
-        var label = toggle.getAttribute(open ? 'data-label-hide' : 'data-label-show');
+        if (isMenuDrawerMode()) {
+            var open = isMenuDrawerOpen();
 
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            label = toggle.getAttribute(open ? 'data-label-hide' : 'data-label-show');
+        } else {
+            var state = shownMenuState();
+
+            toggle.setAttribute('aria-expanded', (state !== 'hidden') ? 'true' : 'false');
+            label = toggle.getAttribute('data-label-view') + ': ' + toggle.getAttribute('data-label-' + state);
+        }
 
         if (label) {
             toggle.setAttribute('aria-label', label);
@@ -708,14 +725,10 @@ $(document).ready(function () {
         }
     }
 
-    // Draws a wide-screen state on the container, the menu and both controls.
+    // Draws a wide-screen state on the container, the menu and the button.
     function paintMenuState(state) {
         $('#menu, .software-container').toggleClass('expanded', state === 'expanded');
         $('.software-container').toggleClass('menu-hidden', (state === 'hidden') && ($('#menu').length > 0));
-
-        $('[data-pg-menu-mode]').each(function () {
-            this.setAttribute('aria-checked', (this.getAttribute('data-pg-menu-mode') === state) ? 'true' : 'false');
-        });
 
         paintMenuToggle();
         settleMenuPanel();
@@ -728,17 +741,13 @@ $(document).ready(function () {
             return;
         }
 
-        if (state !== 'hidden') {
-            setCookie('softwaremenulast', state, 365);
-        }
-
         setCookie('softwaremenustatus', state, 365);
         paintMenuState(state);
     }
 
     function initMenuToggle() {
-        // The button in the bar: the drawer below lg, hide and bring back above.
-        $('#menu_drawer_toggle').on('click', function (e) {
+        // The button in the bar: the drawer below lg, the next state above.
+        $('#menu_mode_toggle').on('click', function (e) {
             e.preventDefault();
 
             if (isMenuDrawerMode()) {
@@ -746,12 +755,7 @@ $(document).ready(function () {
                 return;
             }
 
-            setMenuState($('.software-container').hasClass('menu-hidden') ? lastVisibleMenuState() : 'hidden');
-        });
-
-        // The three states at the foot of the menu.
-        $(document).on('click', '[data-pg-menu-mode]', function () {
-            setMenuState(this.getAttribute('data-pg-menu-mode'));
+            setMenuState(MENU_STATE_NEXT[shownMenuState()]);
         });
     }
 
@@ -782,7 +786,7 @@ $(document).ready(function () {
         $(document).on('keydown', function (e) {
             if ((e.key === 'Escape' || e.key === 'Esc') && isMenuDrawerOpen()) {
                 if ($('#menu').hasClass('pg-menu-drilled')) {
-                    closeMenuPanel({ animate: true, focus: true });
+                    backMenuPanel({ animate: true, focus: true });
                     return;
                 }
 
@@ -881,9 +885,22 @@ $(document).ready(function () {
         return $('.software-container').hasClass('pg-menu-peek');
     }
 
-    function paintMenuPanelRows(menu, panelId) {
+    // aria-expanded on the row and the entries whose panels are open: the
+    // open panel, and the panel holding the entry it was opened from.
+    function paintMenuPanelRows(menu, panel) {
+        var open = [];
+        var guard = 0;
+
+        while (panel && (guard++ < 4)) {
+            open.push(panel.id);
+
+            var entry = document.getElementById(panel.getAttribute('data-pg-menu-row'));
+
+            panel = (entry && (typeof entry.closest === 'function')) ? entry.closest('.pg-menu-panel') : null;
+        }
+
         Array.prototype.forEach.call(menu.querySelectorAll('[data-pg-menu-panel]'), function (row) {
-            row.setAttribute('aria-expanded', (row.getAttribute('data-pg-menu-panel') === panelId) ? 'true' : 'false');
+            row.setAttribute('aria-expanded', (open.indexOf(row.getAttribute('data-pg-menu-panel')) !== -1) ? 'true' : 'false');
         });
     }
 
@@ -903,9 +920,11 @@ $(document).ready(function () {
         });
 
         menu.classList.toggle('pg-menu-animate', !!options.animate);
+        // Back to a first-level panel it comes in from the left, like the rows.
+        menu.classList.toggle('pg-menu-returning', !!options.back);
         panel.classList.add('is-open');
         menu.classList.add('pg-menu-drilled');
-        paintMenuPanelRows(menu, panel.id);
+        paintMenuPanelRows(menu, panel);
 
         if (isMenuRail()) {
             $('.software-container').addClass('pg-menu-peek');
@@ -929,6 +948,28 @@ $(document).ready(function () {
         }
     }
 
+    // Back one step: from a second-level panel to the panel that holds the
+    // entry it was opened from, from a first-level panel to the rows.
+    function backMenuPanel(options) {
+        var menu = document.getElementById('menu');
+        var open = menu ? menu.querySelector('.pg-menu-panel.is-open') : null;
+        var entry = open ? document.getElementById(open.getAttribute('data-pg-menu-row')) : null;
+        var parent = (entry && (typeof entry.closest === 'function')) ? entry.closest('.pg-menu-panel') : null;
+
+        options = options || {};
+
+        if (!parent) {
+            closeMenuPanel(options);
+            return;
+        }
+
+        openMenuPanel(parent, { animate: options.animate, back: true });
+
+        if (options.focus) {
+            entry.focus();
+        }
+    }
+
     function closeMenuPanel(options) {
         var menu = document.getElementById('menu');
 
@@ -941,8 +982,8 @@ $(document).ready(function () {
         var open = menu.querySelector('.pg-menu-panel.is-open');
 
         menu.classList.toggle('pg-menu-animate', !!options.animate);
-        menu.classList.remove('pg-menu-drilled');
-        paintMenuPanelRows(menu, '');
+        menu.classList.remove('pg-menu-drilled', 'pg-menu-returning');
+        paintMenuPanelRows(menu, null);
         $('.software-container').removeClass('pg-menu-peek');
         storeMenuPanel('');
 
@@ -1035,7 +1076,13 @@ $(document).ready(function () {
             return -1;
         }
 
-        return (own * 2) + ((own === paramCount) ? 1 : 0);
+        // A link to a section of the page (#pgset-...) is the page only when
+        // the address names that section.
+        if (url.hash && (url.hash !== here.hash)) {
+            return -1;
+        }
+
+        return (own * 2) + ((own === paramCount) ? 1 : 0) + (url.hash ? 1 : 0);
     }
 
     // Marks in each panel the entry that is the current page and writes its
@@ -1046,6 +1093,16 @@ $(document).ready(function () {
         var here = window.location;
         var params = new URLSearchParams(here.search);
         var paramCount = 0;
+
+        // Run again when only the #section changes: the marks of the last run go first.
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-current'), function (link) {
+            link.classList.remove('pg-menu-current');
+            link.removeAttribute('aria-current');
+        });
+
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-hint'), function (hint) {
+            hint.textContent = '';
+        });
 
         params.forEach(function () {
             paramCount++;
@@ -1106,7 +1163,7 @@ $(document).ready(function () {
 
             if (target.closest('[data-pg-menu-back]')) {
                 e.preventDefault();
-                closeMenuPanel({ animate: true, focus: true });
+                backMenuPanel({ animate: true, focus: true });
                 return;
             }
 
@@ -1128,12 +1185,17 @@ $(document).ready(function () {
             }
 
             // An entry that leaves this page in place (a new tab, a window of
-            // its own) puts the widened rail back; one that loads a page here
-            // takes the rail with it anyway.
+            // its own, a #section of this very page) puts the widened rail
+            // back; one that loads a page here takes the rail with it anyway.
             var entry = target.closest('.pg-menu-panel-body a');
 
-            if (entry && isMenuPeek() && (!entry.getAttribute('href') || (entry.getAttribute('target') === '_blank'))) {
-                closeMenuPanel({});
+            if (entry && isMenuPeek()) {
+                var href = entry.getAttribute('href');
+                var samePage = !!(href && entry.href && (entry.href.split('#')[0] === window.location.href.split('#')[0]));
+
+                if (!href || (entry.getAttribute('target') === '_blank') || samePage) {
+                    closeMenuPanel({});
+                }
             }
         });
 
@@ -1142,7 +1204,7 @@ $(document).ready(function () {
         menu.addEventListener('keydown', function (e) {
             if (((e.key === 'Escape') || (e.key === 'Esc')) && menu.classList.contains('pg-menu-drilled')) {
                 e.stopPropagation();
-                closeMenuPanel({ animate: true, focus: true });
+                backMenuPanel({ animate: true, focus: true });
             }
         });
 
@@ -1190,6 +1252,12 @@ $(document).ready(function () {
             }
         });
 
+        // A #section link of this page (Site Settings) changes no page, so
+        // the current entry is found again.
+        window.addEventListener('hashchange', function () {
+            markMenuCurrent(menu);
+        });
+
         // The panel this tab had open, when the page is one it is about.
         var stored = storedMenuPanel();
 
@@ -1200,7 +1268,7 @@ $(document).ready(function () {
         var panel = document.getElementById(stored);
         var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
 
-        if (panel && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || (row && row.classList.contains('active')))) {
+        if (panel && row && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || row.classList.contains('active'))) {
             openMenuPanel(panel, {});
         } else {
             storeMenuPanel('');
@@ -11435,6 +11503,12 @@ window.pgCodeEditorReady = function (markup, done) {
      */
     function asked(link) {
 
+        // The main menu's Site Settings links lead to the settings pages on
+        // purpose (pg_menu_settings_entries()).
+        if (link.hasAttribute('data-pg-settings-page')) {
+            return null;
+        }
+
         var key = link.getAttribute('data-pg-settings');
 
         if (key && ready()) {
@@ -11481,6 +11555,17 @@ window.pgCodeEditorReady = function (markup, done) {
         }
 
         if (anchors[hash]) {
+
+            // A card on the settings page itself is that page's own section,
+            // reached from its section links (the main menu's Site Settings
+            // entries among them); only an anchor no card on the page answers
+            // is an old link meant for the dialog.
+            var own = document.getElementById(hash);
+            var dialog = document.getElementById('pg_settings_modal');
+
+            if (own && !(dialog && dialog.contains(own))) {
+                return false;
+            }
 
             var target = String(anchors[hash]).split('|');
 
