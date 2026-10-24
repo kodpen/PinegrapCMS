@@ -22,7 +22,7 @@ description: Which blocks the designer's Themes panel writes light and dark vari
 - The light form, the old combined form, a bare `:root` and a bare `[data-bs-theme="light"]`, either quote style, each from its first selector; the tail of a combined form is never taken for a bare block. In Light mode the panel shows the light block over the shared one. A panel write puts the value in its own block and removes it from the other light block.
 
 ## How are designs saved with the old selector fixed?
-- In the editor: `_ensureBootstrapSentinels()` on load, `_writeThemeVar()` before every write. Colours move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, moved before the dark block when after it.
+- In the editor: `_ensureBootstrapSentinels()` on load, `_writeThemeVar()` before every write. Colours move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, moved before the dark block when after it (found again after the cut).
 - On the server: step 11.0.31 makes the same split for designs nobody opens, old page copies, design templates and old theme files (`designer-theme-light-selector-upgrade.md`).
 - A bare `:root` or `[data-bs-theme="light"]` block is hand-written and is left as written.
 - "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the shared, light and dark blocks with these selectors.

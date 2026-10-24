@@ -54,6 +54,16 @@ function designer_theme_vars_test_css()
 		'characters beyond ASCII' => "/* \xF0\x9F\x8C\x99 */ :root, [data-bs-theme=\"light\"] { --bs-body-font-family: \"Noto Sans\", \"\xC3\x9Cnl\xC3\xBC Yaz\xC4\xB1\"; --bs-body-bg: #fdf6e3; }",
 		'more blocks than the guard' => $many,
 		'old theme file' => ":root,\n[data-bs-theme=\"light\"] {\n    --bs-body-bg: #fdf6e3;\n    --bs-body-font-family: Georgia, serif;\n}\n\n[data-bs-theme=\"dark\"] {\n    --bs-body-bg: #111;\n}",
+		// The cut that drops an empty old block tidies the text before the
+		// dark block, so the shared block is put in front of the dark block
+		// where it is after the cut.
+		'blank lines before the dark block' => ".hero-note { color: #586e75; }\n\n\n\n[data-bs-theme=\"dark\"] { --bs-border-color:#495057; --bs-body-bg:#101820 }\n\n:root,\n[data-bs-theme=\"light\"] { --bs-body-font-family: Georgia, serif; --bs-border-radius: 0 }",
+		'a newline before the dark block' => "\n[data-bs-theme=\"dark\"]{--bs-body-bg:#101820}\n\n:root, [data-bs-theme=\"light\"] { --bs-border-radius: 0 }",
+		'colours already in the light block, dark block first' => "  /* \xC3\x9Cnl\xC3\xBC \xE2\x9C\x93 */\n\n\n[data-bs-theme=\"dark\"]{--bs-body-bg:#111}\n:root:not([data-bs-theme=\"dark\"]),[data-bs-theme=\"light\"]{--bs-body-bg:#new}\n:root, [data-bs-theme=\"light\"] { --bs-body-bg: #old; --bs-border-radius: 0 }",
+		// Where PCRE's Unicode \s and JavaScript's \s differ: U+FEFF is
+		// whitespace only in JavaScript, U+0085 and U+180E only in PCRE.
+		'whitespace JavaScript and PCRE disagree on' => ":root,\xEF\xBB\xBF[data-bs-theme=\"light\"]\xC2\x85{\xE1\xA0\x8E--bs-body-bg:\xEF\xBB\xBF#fdf6e3;\xC2\x85--bs-border-radius: 0}",
+		'whitespace before the variables' => ":root,\xEF\xBB\xBF[data-bs-theme=\"light\"] {\xEF\xBB\xBF--bs-body-bg:#fdf6e3;\xC2\x85--bs-body-color:#333;\xE1\xA0\x8E--bs-link-color:#00f;\xEF\xBB\xBF--bs-border-radius: 0\xEF\xBB\xBF}",
 	);
 }
 
@@ -209,6 +219,19 @@ function test_designer_theme_vars_split_results()
 	}
 
 	pg_assert_same(":root:not([data-bs-theme=\"dark\"]),\n[data-bs-theme=\"light\"] {--bs-body-bg:1}", pg_theme_vars_upgrade_light_selector($css['spacing']), 'spacing and single quotes');
+
+	pg_assert_same(".hero-note { color: #586e75; }\n\n:root,\n[data-bs-theme=\"light\"] { --bs-body-font-family: Georgia, serif; --bs-border-radius: 0 }\n\n[data-bs-theme=\"dark\"] { --bs-border-color:#495057; --bs-body-bg:#101820 }\n",
+		pg_theme_vars_upgrade_light_selector($css['blank lines before the dark block']), 'blank lines before the dark block');
+	pg_assert_same(":root, [data-bs-theme=\"light\"] { --bs-border-radius: 0 }\n\n[data-bs-theme=\"dark\"]{--bs-body-bg:#101820}\n",
+		pg_theme_vars_upgrade_light_selector($css['a newline before the dark block']), 'a newline before the dark block');
+	pg_assert_same("/* \xC3\x9Cnl\xC3\xBC \xE2\x9C\x93 */\n\n:root, [data-bs-theme=\"light\"] { --bs-border-radius: 0 }\n\n[data-bs-theme=\"dark\"]{--bs-body-bg:#111}\n:root:not([data-bs-theme=\"dark\"]),[data-bs-theme=\"light\"]{--bs-body-bg:#new}\n",
+		pg_theme_vars_upgrade_light_selector($css['colours already in the light block, dark block first']), 'colours already in the light block, dark block first');
+	// U+0085 and U+180E are not whitespace to the editor, so neither the
+	// block nor the variables behind them are taken for the panel's.
+	pg_assert_same($css['whitespace JavaScript and PCRE disagree on'],
+		pg_theme_vars_upgrade_light_selector($css['whitespace JavaScript and PCRE disagree on']), 'JavaScript\'s whitespace, not PCRE\'s: left as it is');
+	pg_assert_same(":root,\xEF\xBB\xBF[data-bs-theme=\"light\"] {\xC2\x85--bs-body-color:#333;\xE1\xA0\x8E--bs-link-color:#00f;\xEF\xBB\xBF--bs-border-radius: 0\xEF\xBB\xBF}\n\n:root:not([data-bs-theme=\"dark\"]),\n[data-bs-theme=\"light\"] {\n  --bs-body-bg:#fdf6e3;\n}",
+		pg_theme_vars_upgrade_light_selector($css['whitespace before the variables']), 'JavaScript\'s whitespace, not PCRE\'s: only the variable behind U+FEFF moves');
 }
 
 // "Save these colours as a theme" writes the same stylesheet as the editor.

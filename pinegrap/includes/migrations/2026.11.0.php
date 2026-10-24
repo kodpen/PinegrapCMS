@@ -1296,6 +1296,8 @@ function upgrade_2026_11_0_theme_light_selector() {
 
 	$files = upgrade_2026_11_0_theme_light_selector_files();
 
+	@unlink(upgrade_2026_11_0_theme_light_selector_progress_file());
+
 	if (($designs + $pages + $templates + $files) === 0) {
 
 		install_skipped('Visual designer: no design keeps its Themes panel light colours in the old block that also applied to a dark page.');
@@ -1308,16 +1310,75 @@ function upgrade_2026_11_0_theme_light_selector() {
 
 }
 
+// How far the step got, per table and column: the last id read and how many
+// rows were rewritten. The next pass goes on from there: in the same request
+// from memory, in a new one (the upgrade screen runs a paused version again
+// in the next request) from a file in data/temp written before every pause.
+// The file only saves reading the rows done before again and keeps the
+// counts of the final note; without it the step starts from the first row
+// and finds nothing more to split in the rows it already rewrote. The file
+// is deleted when the step has gone through every row; a file older than
+// ten minutes belongs to a run that was given up on and is not read,
+// because the rows may have been restored from a backup since.
+function upgrade_2026_11_0_theme_light_selector_progress_file() {
+
+	return dirname(__FILE__) . '/../../data/temp/upgrade_theme_light_selector.json';
+
+}
+
+function &upgrade_2026_11_0_theme_light_selector_progress() {
+
+	static $progress = null;
+
+	if ($progress === null) {
+
+		$progress = array();
+
+		$saved = @json_decode((string) @file_get_contents(upgrade_2026_11_0_theme_light_selector_progress_file()), true);
+
+		if (is_array($saved) && isset($saved['time'], $saved['rows']) && is_array($saved['rows']) && ((time() - (int) $saved['time']) < 600)) {
+
+			foreach ($saved['rows'] as $key => $row) {
+
+				if (is_array($row) && isset($row['last'], $row['changed'])) {
+
+					$progress[(string) $key] = array('last' => (int) $row['last'], 'changed' => (int) $row['changed']);
+
+				}
+
+			}
+
+		}
+
+	}
+
+	return $progress;
+
+}
+
+function upgrade_2026_11_0_theme_light_selector_progress_save() {
+
+	$file = upgrade_2026_11_0_theme_light_selector_progress_file();
+
+	if (!is_dir(dirname($file))) {
+
+		@mkdir(dirname($file), 0755, true);
+
+	}
+
+	@file_put_contents($file, json_encode(array('time' => time(), 'rows' => upgrade_2026_11_0_theme_light_selector_progress())), LOCK_EX);
+
+}
+
 // The rows of one table whose column holds a User Styles entry, one at a
 // time in id order (a design's assets can be megabytes), each rewritten
-// with $rewrite when it gives a new text. Returns how many were rewritten.
-// When the pass has used its time budget the version pauses, and the next
-// pass of the same request goes on after the last id it reached; a new
-// request starts again from the first row and leaves the rows done before
-// as they are.
+// with $rewrite when it gives a new text. Returns how many were rewritten,
+// in this pass and the ones before it. When the pass has used its time
+// budget the version pauses and the next pass goes on after the last id
+// it reached.
 function upgrade_2026_11_0_theme_light_selector_rows($table, $id_column, $column, $rewrite) {
 
-	static $progress = array();
+	$progress = &upgrade_2026_11_0_theme_light_selector_progress();
 
 	if (!install_table_exists($table) || !install_column_exists($table, $column)) {
 
@@ -1362,6 +1423,8 @@ function upgrade_2026_11_0_theme_light_selector_rows($table, $id_column, $column
 		}
 
 		if (install_pass_seconds() >= install_pause_budget()) {
+
+			upgrade_2026_11_0_theme_light_selector_progress_save();
 
 			install_pause('Visual designer: splitting the old Themes panel light colours, ' . $table . ' up to id ' . (int) $row['id'] . '.');
 

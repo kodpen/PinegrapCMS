@@ -44830,6 +44830,9 @@ const StyleDesigner = (function () {
                     content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
                 }
                 if (darkBefore) {
+                    // Found again: the cut above tidies the text in front of
+                    // the dark block, so its old offset may be stale.
+                    dark = _themeFindBlock(content, 'dark');
                     content = content.slice(0, dark.selStart) + sharedPart + '\n\n' + content.slice(dark.selStart);
                 }
                 if (taken.length && light) {

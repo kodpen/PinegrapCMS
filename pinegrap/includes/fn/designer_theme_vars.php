@@ -357,6 +357,9 @@ function pg_theme_vars_upgrade_light_selector($content)
         }
 
         if ($dark_before) {
+            // Found again: the cut above tidies the text in front of the
+            // dark block, so its old offset may be stale.
+            $dark = pg_theme_vars_find_block($content, 'dark');
             $content = substr($content, 0, $dark['sel_start']) . $shared_part . "\n\n" . substr($content, $dark['sel_start']);
         }
 
