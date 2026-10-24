@@ -153,7 +153,7 @@ if (!$_POST) {
     // get file handle for uploaded CSV file
     $handle = fopen($import_path, "r");
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",");
+    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
     
     // if file is empty
     if (!$columns) {
@@ -243,7 +243,7 @@ if (!$_POST) {
     $row_number = 1;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",")) {
+    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
         $row_number++;
 
         // If product name is not blank, do something with the rows data.
