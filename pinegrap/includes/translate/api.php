@@ -87,6 +87,11 @@ function translate_openapi_objects()
 /**
  * The route rows.
  *
+ * The job routes, whose handlers call translate_api_claude_guard(), carry
+ * 'mcp' => false: they answer the key of Claude's application alone, never
+ * an OAuth connection, and the routine calls them over REST, so as MCP tools
+ * they would refuse every client.
+ *
  * @return array
  */
 function translate_api_routes()
@@ -231,6 +236,7 @@ function translate_api_routes()
             'path'        => '/translations/jobs',
             'scope'       => 'translations:read',
             'handler'     => 'translate_api_jobs_list',
+            'mcp'         => false,
             'returns'     => array('list' => 'TranslationJob'),
             'summary'     => 'The translation jobs waiting for Claude',
             'description' => 'For the application chosen for Claude in the Workspace Settings only (and, to try it, an administrator\'s API Documentation screen). status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. Each job names its source and target language and how many texts it holds.',
@@ -245,6 +251,7 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/claim',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_claim',
+            'mcp'         => false,
             'returns'     => 'TranslationJob',
             'summary'     => 'Take a job',
             'description' => 'Marks the job as being worked on. 409 already_claimed when another run has it and is still posting, 409 closed when it is finished or cancelled. A run that went quiet for half an hour no longer holds its job.',
@@ -259,6 +266,7 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/items',
             'scope'       => 'translations:read',
             'handler'     => 'translate_api_jobs_items',
+            'mcp'         => false,
             'returns'     => 'TranslationJobItems',
             'summary'     => 'The texts of a job still to translate',
             'description' => 'Up to 100 of the job\'s waiting texts, oldest first, with the languages, the site owner\'s style note and the glossary of the target language. Each item carries the text and its format (inline is HTML whose tags stay as they are), where it stands on the site - the page, the kind of field, the texts before and after it - the translation its previous wording had, the glossary lines that touch it, and the reason its last answer was refused when there was one. Read it again after posting results: it answers no items when the job is done.',
@@ -274,6 +282,7 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/results',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_results',
+            'mcp'         => false,
             'returns'     => 'TranslationJobResults',
             'summary'     => 'Bring translations back',
             'description' => 'The translations of up to 100 items of the job, keyed on hash. Each is checked against its text - the tags and tokens have to be there - and written as a machine translation that shows on the pages at once. rejected names what was refused and why; a refused item is asked once more and then given up. {hash, skip: true, reason} gives an item up without an answer. A hash that is not in the job is stale. The job closes by itself when every item is answered.',
@@ -289,6 +298,7 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/fail',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_fail',
+            'mcp'         => false,
             'returns'     => 'TranslationJob',
             'summary'     => 'Give a job up',
             'description' => 'Closes the job as not done with the reason, which the Translations screen shows. What was already written stays.',
