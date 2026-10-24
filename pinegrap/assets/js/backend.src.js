@@ -621,6 +621,9 @@ $(document).ready(function () {
      */
     var MENU_DRAWER_BREAKPOINT = 992;
     var MENU_STATES = ['expanded', 'collapsed', 'hidden'];
+    // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
+    // init calls below run before the rest of this section is reached.
+    var MENU_PANEL_KEY = 'pgMenuPanel';
     var menuBackdrop = null;
 
     initMenuToggle();                 // The button in the bar, and the foot of the menu
@@ -774,8 +777,15 @@ $(document).ready(function () {
             }
         });
 
+        // A panel open in the drawer goes back first, wherever the focus is;
+        // the next Escape closes the drawer.
         $(document).on('keydown', function (e) {
             if ((e.key === 'Escape' || e.key === 'Esc') && isMenuDrawerOpen()) {
+                if ($('#menu').hasClass('pg-menu-drilled')) {
+                    closeMenuPanel({ animate: true, focus: true });
+                    return;
+                }
+
                 closeMenuDrawer();
             }
         });
@@ -841,8 +851,6 @@ $(document).ready(function () {
      * that page -- one of its entries is the page, or its row is the page's
      * row -- so a panel stays open while its entries are followed.
      */
-    var MENU_PANEL_KEY = 'pgMenuPanel';
-
     function storeMenuPanel(id) {
         try {
             if (id) {
@@ -1030,8 +1038,10 @@ $(document).ready(function () {
         return (own * 2) + ((own === paramCount) ? 1 : 0);
     }
 
-    // Marks in each panel the entry that is the current page, and names it
-    // beside the page's own row, as its hint.
+    // Marks in each panel the entry that is the current page and writes its
+    // name as the hint of the panel's row. The stylesheet shows the hint on
+    // the active row only, so it follows .active when workspace.js moves it
+    // between the Workspace row and a pinned My Notes row.
     function markMenuCurrent(menu) {
         var here = window.location;
         var params = new URLSearchParams(here.search);
@@ -1063,7 +1073,7 @@ $(document).ready(function () {
 
             var row = document.getElementById(panel.getAttribute('data-pg-menu-row'));
 
-            if (!row || !row.classList.contains('active')) {
+            if (!row) {
                 return;
             }
 
@@ -1150,9 +1160,33 @@ $(document).ready(function () {
             closeMenuPanel({});
         });
 
-        menu.addEventListener('focusout', function (e) {
-            if (isMenuPeek() && e.relatedTarget && sidebar && !sidebar.contains(e.relatedTarget)) {
+        // Focus leaving the menu puts the widened rail back. Focus that goes
+        // into a frame (a rich text editor) has no relatedTarget and its clicks
+        // and keys never reach this document, so the frame is looked for on
+        // the next turn, when it has become the active element.
+        function peekLostFocus() {
+            var active = document.activeElement;
+
+            if (isMenuPeek() && active && (active !== document.body) && sidebar && !sidebar.contains(active)) {
                 closeMenuPanel({});
+            }
+        }
+
+        menu.addEventListener('focusout', function (e) {
+            if (!isMenuPeek()) {
+                return;
+            }
+
+            if (!e.relatedTarget) {
+                window.setTimeout(peekLostFocus, 0);
+            } else if (sidebar && !sidebar.contains(e.relatedTarget)) {
+                closeMenuPanel({});
+            }
+        });
+
+        window.addEventListener('blur', function () {
+            if (isMenuPeek()) {
+                window.setTimeout(peekLostFocus, 0);
             }
         });
 

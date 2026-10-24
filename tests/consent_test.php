@@ -126,6 +126,29 @@ function test_consent_catalogue_lists_the_view_mode_and_language_cookies()
 	pg_assert_contains("array(PG_LANGUAGE_COOKIE, true, lang('", $section, 'the language the visitor chose');
 }
 
+// The page cache's marker cookie is listed as necessary, only while the cache
+// is on (it is off in the test runner, so the row is absent here).
+function test_consent_catalogue_lists_the_page_cache_marker()
+{
+	$names = array();
+
+	foreach (pg_consent_catalogue('<p>page</p>')['necessary'] as $row) {
+		$names[] = $row[0];
+	}
+
+	pg_assert_false(in_array(PG_PAGE_CACHE_MARKER, $names, true), 'not while the cache is off');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+	$from = strpos($source, 'function pg_consent_catalogue(');
+	$section = substr($source, $from, strpos($source, "
+}
+", $from) - $from);
+
+	pg_assert_contains('(pg_page_cache_ttl() > 0)', $section, 'only while the cache is on');
+	pg_assert_contains("array(PG_PAGE_CACHE_MARKER, true, lang('", $section, 'as a necessary cookie');
+	pg_assert_contains("setcookie(PG_PAGE_CACHE_MARKER", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_cache.php'), 'page_cache.php still writes it');
+}
+
 // On a page in a language with no language file only the cookie window is
 // read from the site's translations; the rest of the software's wording
 // never is, whatever the request.

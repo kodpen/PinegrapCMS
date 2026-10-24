@@ -464,6 +464,22 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// The page cache (includes/fn/page_cache.php): the folders of old
+// generations and of a purge, and copies past twice their lifetime; at most
+// every ten minutes, ten seconds a tick. With nothing to do it reads one small
+// file.
+if (function_exists('pg_page_cache_sweep_run')) {
+
+    $page_cache_sweep = pg_page_cache_sweep_run(10);
+
+    if ($page_cache_sweep['files'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page cache file(s)',
+            'vars'   => array(pg_format_number($page_cache_sweep['files'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Scheduled pages (includes/fn/page_schedule.php): a draft whose publish time
 // has come goes on the site, a page whose time to come off has come goes back
 // to the drafts, and the time is cleared. Every tick, so a page goes live
@@ -525,6 +541,23 @@ if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due(
 // file; a shop with no offer running reads its offers once an hour.
 if (pg_price_history_offer_pass_due()) {
     pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
+// Product price history rows older than thirteen months
+// (pg_price_history_trim_run()): once a day, five seconds a tick until the
+// pass is through. Each product and channel keeps the newest row before that
+// point and the newest row a writer wrote. A tick with nothing due reads one
+// small file.
+if (pg_price_history_trim_due()) {
+
+    $price_history_trim = pg_price_history_trim_run(PG_PRICE_HISTORY_TRIM_BUDGET);
+
+    if ($price_history_trim['removed'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} product price history row(s) older than {var:2} days',
+            'vars'   => array(pg_format_number($price_history_trim['removed'], 0), PG_PRICE_HISTORY_KEEP_DAYS),
+        )), 'UNKNOWN');
+    }
 }
 
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
