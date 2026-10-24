@@ -18,10 +18,11 @@
 //
 // What this connector does so far: prove the credentials, read the category
 // tree and what a category demands, open listings, send stock and price, read
-// the result of a batch, read order packages and accept one (Picking). What it
-// does not name in the table below - webhooks, invoices, shipping by the
-// seller's own carrier - mp_can() answers no for, so nothing queues work this
-// connector cannot do.
+// the result of a batch, read order packages (pulled, or delivered by their
+// webhook), accept one (Picking), and register or remove that webhook. What it
+// does not name in the table below - invoices, shipping by the seller's own
+// carrier - mp_can() answers no for, so nothing queues work this connector
+// cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -71,7 +72,10 @@ function mp_trendyol_connector() {
 		'read_task'           => 'mp_trendyol_read_task',
 		'pull_orders'         => 'mp_trendyol_pull_orders',
 		'order_stage'         => 'mp_trendyol_order_stage',
-		'approve_lines'       => 'mp_trendyol_approve_lines'
+		'approve_lines'       => 'mp_trendyol_approve_lines',
+		'webhook_packages'    => 'mp_trendyol_webhook_packages',
+		'register_webhook'    => 'mp_trendyol_register_webhook',
+		'remove_webhook'      => 'mp_trendyol_remove_webhook'
 	);
 
 }
@@ -2112,5 +2116,159 @@ function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $tra
 	}
 
 	return mp_ok(array('accepted' => count($lines)));
+
+}
+
+/* ---------------------------------------------------------------- webhooks */
+
+// The packages of one webhook delivery, in the importer's shape.
+//
+// Their webhook posts the same page the order feed answers with -
+// {totalElements, totalPages, page, size, content: [package]} - so each entry
+// goes through mp_trendyol_package() exactly as a pulled one does, and the
+// packages it skips (Awaiting, Verified) are skipped here too. A body that is
+// one bare package is read as well. Anything else carries no package.
+function mp_trendyol_webhook_packages($account, $decoded) {
+
+	$entries = array();
+
+	if (isset($decoded['content']) && is_array($decoded['content'])) {
+
+		$entries = $decoded['content'];
+
+	} elseif (is_array($decoded) && isset($decoded['shipmentPackageId'])) {
+
+		$entries = array($decoded);
+
+	}
+
+	$packages = array();
+
+	foreach ($entries as $entry) {
+
+		$package = mp_trendyol_package($entry);
+
+		if ($package !== null) {
+
+			$packages[] = $package;
+
+		}
+
+	}
+
+	return mp_ok(array('packages' => $packages));
+
+}
+
+// Ask Trendyol to post this seller's order packages to $url.
+//
+// Every package status is subscribed (an empty list means all of them): the
+// webhook replaces the wait for the next pull, and a cancellation matters as
+// much as a new order. Trendyol sends $key back in an x-api-key header on every
+// delivery; nothing is signed, so that key is all the receiver can check.
+//
+// Refused before the call: an address that is not https, which Trendyol does
+// not deliver to (a development site on plain http cannot be registered), and
+// one that contains "trendyol", "dolap" or "localhost", which their service
+// refuses.
+function mp_trendyol_register_webhook($account, $url, $key, $transport = null) {
+
+	$url = trim((string)$url);
+
+	if (stripos($url, 'https://') !== 0) {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol only sends orders to an https address, and this site\'s address is {var:1}. Set the site address to https first.',
+			'vars'   => array($url)
+		)));
+
+	}
+
+	if (preg_match('/trendyol|dolap|localhost/i', $url) === 1) {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol does not send orders to an address that contains "trendyol", "dolap" or "localhost": {var:1}',
+			'vars'   => array($url)
+		)));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/webhook/sellers/' . mp_trendyol_seller_id($account) . '/webhooks',
+		65536, $transport,
+		array(
+			'url'                => $url,
+			'authenticationType' => 'API_KEY',
+			'apiKey'             => (string)$key,
+			'subscribedStatuses' => array()
+		));
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$webhook_id = mp_trendyol_webhook_id(isset($result['data']['id']) ? $result['data']['id'] : '');
+
+	if ($webhook_id === '') {
+
+		return mp_error(lang('Trendyol accepted the webhook but did not return an id for it.'));
+
+	}
+
+	return mp_ok(array('webhook_id' => $webhook_id));
+
+}
+
+// Remove the webhook this account registered.
+//
+// Their 404 means it is gone already, which is what removing it was for, so it
+// is success too. The read error does not carry the status, so it is taken from
+// the answer on its way through.
+function mp_trendyol_remove_webhook($account, $transport = null) {
+
+	$webhook_id = mp_trendyol_webhook_id(isset($account['credentials']['webhook_id']) ? $account['credentials']['webhook_id'] : '');
+
+	if ($webhook_id === '') {
+
+		return mp_error(lang('No webhook is registered for this account.'));
+
+	}
+
+	$send = ($transport === null) ? 'api_http_request' : $transport;
+
+	$status = 0;
+
+	$watched = function ($method, $url, $options) use ($send, &$status) {
+
+		$outcome = call_user_func($send, $method, $url, $options);
+
+		$status = isset($outcome['status']) ? (int)$outcome['status'] : 0;
+
+		return $outcome;
+
+	};
+
+	$result = mp_trendyol_call($account,
+		'/integration/webhook/sellers/' . mp_trendyol_seller_id($account) . '/webhooks/' . $webhook_id,
+		65536, $watched, null, 'DELETE', true);
+
+	if ($result['ok'] || $status === 404) {
+
+		return mp_ok(array('removed' => true));
+
+	}
+
+	return $result;
+
+}
+
+// A webhook id of theirs as it may go into a path, or ''.
+function mp_trendyol_webhook_id($value) {
+
+	$value = is_scalar($value) ? trim((string)$value) : '';
+
+	return (preg_match('/^[A-Za-z0-9_-]{1,64}$/', $value) === 1) ? $value : '';
 
 }
