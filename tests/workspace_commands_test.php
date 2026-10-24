@@ -6,7 +6,9 @@
  * /price and /stock read an amount and a quantity and take the product's tag
  * off the text, how /task reads its people, department, estimate, priority
  * and day words, the names the commands answer to, that the help lists every
- * one of them, and who is offered them when nobody is named.
+ * one of them, and who is offered them when nobody is named; the registry
+ * (ws_commands()) the picker, /help and the argument popup read, the
+ * suggestions it offers, and how a mistyped /word is told apart from a path.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -163,4 +165,138 @@ function test_workspace_command_turkish_names()
 	pg_assert_same(array('command' => 'help', 'rest' => ''), ws_command_split('/YARDIM'), '/YARDIM');
 	pg_assert_same(array('command' => 'help', 'rest' => ''), ws_command_split('/help'), '/help');
 	pg_assert_same(array('gorev', 'görev', 'task', 'g', 't'), ws_command_aliases('task'), 'the names of /task in table order');
+}
+
+// The registry holds every name the parser answers to, each under exactly
+// one command, so the picker, /help and the parser cannot disagree.
+function test_workspace_command_registry_holds_every_name_once()
+{
+	$owners = array();
+
+	foreach (ws_commands(null) as $entry) {
+		foreach ((array) $entry['names'] as $name) {
+			$owners[$name][] = $entry['key'];
+		}
+	}
+
+	foreach (ws_command_names() as $name => $command) {
+		pg_assert_same(array($command), $owners['/' . $name] ?? array(), '/' . $name . ' belongs to /' . $command . ' only');
+	}
+
+	$keys = array_map(function ($entry) {
+		return $entry['key'];
+	}, ws_commands(null));
+
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'help'), $keys, 'the commands, in order, with no assistant set up');
+}
+
+// Every argument is typed with a known kind, says whether it may be left
+// out, and names a suggestion source the composer knows (or none).
+function test_workspace_command_registry_arguments_are_typed()
+{
+	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities');
+
+	foreach (ws_commands(null) as $entry) {
+		pg_assert_true(is_string($entry['description']) && ($entry['description'] !== ''), '/' . $entry['key'] . ' has a description');
+		pg_assert_true(strpos($entry['usage'], $entry['name']) === 0, '/' . $entry['key'] . ' usage starts with its name');
+		pg_assert_true(in_array($entry['name'], $entry['names'], true), '/' . $entry['key'] . ' shown name is one of its names');
+
+		foreach ($entry['args'] as $arg) {
+			$where = '/' . $entry['key'] . ' ' . $arg['name'];
+
+			pg_assert_true(in_array($arg['kind'], ws_command_argument_kinds(), true), $where . ' kind ' . $arg['kind'] . ' is known');
+			pg_assert_true(is_bool($arg['optional']), $where . ' optional is a flag');
+			pg_assert_true(in_array($arg['suggest'], $sources, true), $where . ' suggests from a known source');
+			pg_assert_true(is_string($arg['label']) && ($arg['label'] !== ''), $where . ' has a label');
+		}
+	}
+}
+
+// The help keeps the shape its callers read (the /help list, the composer's
+// picker, the command palette), and lists /help itself.
+function test_workspace_command_help_keeps_its_shape()
+{
+	$keys = array();
+
+	foreach (ws_command_help(null) as $entry) {
+		pg_assert_true(is_string($entry['command']) && is_array($entry['names']) && is_string($entry['example']) && is_string($entry['description']), 'help entry shape ' . $entry['command']);
+		$keys[] = $entry['key'] ?? '';
+	}
+
+	pg_assert_true(in_array('help', $keys, true), '/help is listed');
+}
+
+// A slash and a word that is no command is a mistyped command; a path, an
+// address, two slashes or a slash and a space are text.
+function test_workspace_command_unknown_word_is_told_apart_from_text()
+{
+	pg_assert_same('gorevx', ws_command_unknown('/gorevx'), '/gorevx');
+	pg_assert_same('todo', ws_command_unknown('/todo'), '/todo');
+	pg_assert_same('todo', ws_command_unknown('  /todo yarın bak'), '/todo with words after it');
+	pg_assert_same('', ws_command_unknown('/var/www dosyası'), 'a path');
+	pg_assert_same('', ws_command_unknown('//not bir komut'), 'two slashes');
+	pg_assert_same('', ws_command_unknown('http://x'), 'an address');
+	pg_assert_same('', ws_command_unknown('/ 5'), 'a slash and a space');
+	pg_assert_same('', ws_command_unknown('/görev Logo'), 'a command');
+	pg_assert_same('', ws_command_unknown('/FİYAT'), 'a command in capitals');
+	pg_assert_same('', ws_command_unknown('/claude özetle'), '/claude is the assistant\'s');
+	pg_assert_same('', ws_command_unknown('/ai'), '/ai is the assistant\'s');
+	pg_assert_same('', ws_command_unknown('/2026 hedefleri'), 'digits are no word');
+	pg_assert_same('', ws_command_unknown('merhaba /todo'), 'not at the start');
+	pg_assert_same(null, ws_command_split('/gorevx'), 'the parser takes no unknown word');
+}
+
+// The hint names the closest commands, Turkish letters folded.
+function test_workspace_command_closest_names()
+{
+	$closest = ws_command_closest('grev');
+
+	pg_assert_same('/görev', $closest[0] ?? '', '/grev is closest to /görev');
+	pg_assert_same('/görev', ws_command_closest('gorevx')[0] ?? '', '/gorevx');
+	pg_assert_same('/yardım', ws_command_closest('YARDM')[0] ?? '', '/YARDM');
+	pg_assert_same('/fiyat', ws_command_closest('fiyta')[0] ?? '', '/fiyta');
+	pg_assert_same('/ertele', ws_command_closest('erte')[0] ?? '', 'the start of a name');
+	pg_assert_same(array(), ws_command_closest('xyzzyq'), 'nothing close');
+	pg_assert_true(count(ws_command_closest('no')) <= 3, 'at most three');
+}
+
+// Two slashes before a word post it as text, one slash taken off; text
+// that only starts with two slashes is left as it is.
+function test_workspace_command_double_slash_posts_the_text()
+{
+	pg_assert_same('/not bir komut', ws_command_unescape('//not bir komut'), '//not');
+	pg_assert_same('/gorevx', ws_command_unescape('//gorevx'), '//gorevx');
+	pg_assert_same('// TODO', ws_command_unescape('// TODO'), 'a code comment');
+	pg_assert_same('///x', ws_command_unescape('///x'), 'three slashes');
+	pg_assert_same('//claude hi', ws_command_unescape('//claude hi'), 'the assistant\'s word');
+	pg_assert_same('/görev x', ws_command_unescape('/görev x'), 'one slash');
+	pg_assert_same('http://x', ws_command_unescape('http://x'), 'an address');
+}
+
+// Every word the argument popup suggests is one the parser reads, in either
+// language.
+function test_workspace_command_suggestions_are_read_by_the_parser()
+{
+	foreach (array('tr', 'en') as $language) {
+		$values = ws_command_suggestions($language);
+
+		pg_assert_true(count($values['dates']) >= 5, $language . ' dates');
+
+		foreach ($values['dates'] as $item) {
+			pg_assert_true(ws_parse_date_word($item['value'], '2026-10-21') !== '', $language . ' date ' . $item['value']);
+		}
+
+		foreach ($values['estimates'] as $item) {
+			pg_assert_true(ws_parse_estimate($item['value']) > 0, $language . ' estimate ' . $item['value']);
+		}
+
+		foreach ($values['priorities'] as $item) {
+			pg_assert_true(ws_parse_priority($item['value']) !== '', $language . ' priority ' . $item['value']);
+		}
+	}
+
+	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');
+	pg_assert_same('today', ws_command_suggestions('en')['dates'][0]['value'], 'English first day');
+	pg_assert_same('~30dk', ws_command_suggestions('tr')['estimates'][0]['value'], 'Turkish first estimate');
+	pg_assert_same('!acil', ws_command_suggestions('tr')['priorities'][0]['value'], 'Turkish first priority');
 }
