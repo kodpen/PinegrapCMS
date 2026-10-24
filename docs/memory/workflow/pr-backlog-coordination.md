@@ -25,5 +25,6 @@ description: Clearing a backlog of open PRs on development from one session: cla
 
 ## What happens to each PR before the merge?
 - Confirmed review findings are fixed on the branch, the body is rewritten in English, the Claude Code footer removed (`pr-footer-and-trailers.md`), CI must be green on the final head, the squash commit keeps the PR title and gets a short English message, and the PR's own claim is closed with the PR number.
+- Removing the footer is the merging session's job (owner, 2026-10-24): the sessions that opened the PRs need not touch it.
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/owner-rules.md
