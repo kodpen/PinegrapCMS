@@ -1239,9 +1239,12 @@ function _pg_comments_first_int($rows)
  *
  * Options:
  * - 'featured': 'filter' (default, the block's) reads only the featured
- *   comments while some exist and the view is not 'all'; any other value
- *   applies no filter, and the caller pins or ignores featured comments.
- * - 'view': the ?comments value, null when unset.
+ *   comments while some exist and the view is null (?comments unset) or
+ *   exactly 'featured' (pg_comments_featured_filter()); '', 'all' or any
+ *   other string reads every comment. Any other mode applies no filter, and
+ *   the caller pins or ignores featured comments.
+ * - 'view': the ?comments value; pass null, not '', when ?comments is unset,
+ *   or the filter mode reads every comment.
  * - 'parent_id': true adds comments.parent_id after created_timestamp
  *   (0 AS parent_id before 11.0.31). The block never asks.
  *
