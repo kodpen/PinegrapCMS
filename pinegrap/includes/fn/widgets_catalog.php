@@ -539,7 +539,9 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * no_rating describe the product of a card, so only the card is marked: an
  * element outside it, or one carrying a flag no catalog evaluates, is drawn
  * as before. Each product row takes the template of its state. A group row
- * has no rating state of its own, so its card draws neither flag's elements.
+ * has no rating state of its own, so its card draws neither flag's elements;
+ * when nothing is left without a flag (two alternative cards, one per state)
+ * it takes the card without a rating, so child groups are still drawn.
  *
  * @param array $nodes the loop_area's children, or the whole tree when it has none
  * @return array 'rated', 'unrated' and 'group' card HTML
@@ -556,11 +558,15 @@ function _pg_catalog_card_templates($nodes)
 
     // Resolved on the card alone, before any product's values go in, so a
     // span never holds a description long enough to exhaust PCRE.
+    $unrated = trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true)));
+    // No flag is set, so every marked span is cut. An empty result means every
+    // top-level element is flagged; the listing skips child groups without a
+    // group card, so group rows fall back to the card without a rating.
+    $group   = trim(_pg_sw_resolve_visibility($html, array()));
     return array(
         'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
-        'unrated' => trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true))),
-        // No flag is set, so every marked span is cut.
-        'group'   => trim(_pg_sw_resolve_visibility($html, array())),
+        'unrated' => $unrated,
+        'group'   => ($group !== '') ? $group : $unrated,
     );
 }
 
@@ -856,7 +862,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
     // The card comes in two states, with and without a rating (has_rating /
     // no_rating); $loop_template is the one without. A group row has no
-    // rating state and takes $loop_template_group, which draws neither.
+    // rating state and takes $loop_template_group, which draws neither (or
+    // the card without a rating when every element of the card is flagged).
     if ($split['loop_children'] === null) {
         $_pg_cards     = _pg_catalog_card_templates(array($tree_decoded));
         $static_html   = '';
@@ -1939,7 +1946,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // (price, inventory, mpn, gallery, …) collapse to empty via the final
     // ^^…^^ strip below — the designer template stays usable for both.
     // Elements shown only with or only without a rating (has_rating /
-    // no_rating) are left out of a group card ($loop_template_group).
+    // no_rating) are left out of a group card ($loop_template_group), unless
+    // every element is flagged: then it is the card without a rating.
     //
     // ^^__row_type^^ ('group' / 'product') lets the designer add type-aware
     // CSS / wrapper markup if they want a visual distinction.

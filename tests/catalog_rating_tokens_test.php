@@ -81,8 +81,9 @@ function test_catalog_rating_columns()
 
 // The listing's card is drawn once for each rating state: an element shown
 // only with a rating is in the rated card alone, one shown only without it in
-// the other, a group row (no rating state of its own) draws neither, and a
-// flag no catalog evaluates leaves its element drawn.
+// the other, a group row (no rating state of its own) draws neither unless
+// every element is flagged, and a flag no catalog evaluates leaves its
+// element drawn.
 function test_catalog_rating_card_templates()
 {
 	$paragraph = function ($text, $flag) {
@@ -120,6 +121,24 @@ function test_catalog_rating_card_templates()
 	pg_assert_same('<p>Stars</p>', $templates['rated']);
 	pg_assert_same('', $templates['unrated']);
 	pg_assert_same('', isset($templates['group']) ? $templates['group'] : null, 'nor for a group');
+
+	// Two alternative cards side by side, one per rating state: nothing is left
+	// without a flag, so a group row takes the card without a rating and the
+	// child groups (categories) are still drawn.
+	$col = function ($flag, $children) {
+		return array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col', '_bindings' => array('eo_visible_if' => $flag)), 'children' => $children);
+	};
+	$templates = _pg_catalog_card_templates(array(
+		$col('has_rating', array($paragraph('Name', ''), $paragraph('Stars', ''))),
+		$col('no_rating', array($paragraph('Name', ''), $paragraph('Be the first to review', ''))),
+	));
+
+	pg_assert_contains('<p>Stars</p>', $templates['rated']);
+	pg_assert_false(strpos($templates['rated'], 'Be the first') !== false, 'the rated card has no "be the first" text');
+	pg_assert_contains('<p>Be the first to review</p>', $templates['unrated']);
+	pg_assert_false(strpos($templates['unrated'], 'Stars') !== false, 'the card without a rating has no stars');
+	pg_assert_true($templates['group'] !== '', 'group rows still have a card');
+	pg_assert_same($templates['unrated'], $templates['group'], 'group rows take the card without a rating');
 }
 
 // The listing reads the columns behind the readiness check, fills both tokens
@@ -139,6 +158,8 @@ function test_catalog_rating_listing_source()
 
 	pg_assert_contains("'__rating_avg'          => \$rating['__rating_avg'],", $listing);
 	pg_assert_contains("'__rating_count'        => \$rating['__rating_count'],", $listing);
+	pg_assert_contains("\$loop_template       = \$_pg_cards['unrated'];", $listing, 'the card without a rating');
+	pg_assert_contains("\$loop_template_rated = \$_pg_cards['rated'];", $listing, 'the card with a rating');
 	pg_assert_contains('$rendered = ($rating[\'__rating_count\'] !== \'\') ? $loop_template_rated : $loop_template;', $listing);
 	pg_assert_contains("if (\$loop_template === '' && \$loop_template_rated === '') {", $listing, 'a card shown only with a rating is still a card');
 	pg_assert_contains("\$loop_template_group = \$_pg_cards['group'];", $listing);
