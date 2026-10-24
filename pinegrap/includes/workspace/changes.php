@@ -2175,8 +2175,15 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
     $can_post = array();
     $out = array();
 
+    // The applications that proposed some of them (proposals.php): their
+    // cards are headed by the application's name, not Claude's.
+    $proposers = function_exists('ws_proposers_map') ? ws_proposers_map(array_map(function ($row) {
+        return (int) $row['request_id'];
+    }, $rows)) : array();
+
     foreach ($rows as $row) {
         $type = (string) $row['record_type'];
+        $proposer = (string) ($proposers[(int) $row['request_id']] ?? '');
 
         // A call of an MCP server's tool that writes (mcp_ask.php) is not a
         // kind of record, but waits on the same card.
@@ -2254,6 +2261,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'can_apply'    => $pending && $may && !empty($can_post[$place]),
                 'no_right'     => $pending && $asker && !$may,
                 'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
+                'proposer'     => $proposer,
             );
 
             continue;
@@ -2386,6 +2394,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
             'can_apply'    => $pending && $may && !empty($can_post[$place]),
             'no_right'     => $pending && $asker && !$may,
             'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
+            'proposer'     => $proposer,
         );
     }
 
@@ -2424,15 +2433,21 @@ function ws_change_apply_check($viewer, $change_id)
         return $fail(lang('Somebody has already decided about this proposal.'));
     }
 
-    // Proposed by Claude or by Pinegrap AI (ai.php): the sentences written
-    // while it is applied name the one that proposed it.
+    // Proposed by Claude, by Pinegrap AI (ai.php) or by an application
+    // (proposals.php): the sentences written while it is applied name the one
+    // that proposed it.
     $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
 
     if (function_exists('ws_ai_voice_change')) {
         ws_ai_voice_change($change);
     }
 
     if ((int) $change['requested_by'] !== (int) $viewer['id']) {
+        if ($proposer !== '') {
+            return $fail(lang(array('string' => 'Only the person {var:1} proposed this change to can apply it.', 'vars' => $proposer)));
+        }
+
         return $fail($by_ai ? lang('Only the person who asked Pinegrap AI can apply this change.') : lang('Only the person who asked Claude can apply this change.'));
     }
 
@@ -2542,6 +2557,12 @@ function ws_change_apply_record_check($viewer, $change)
         }
 
         if ($moved) {
+            $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+            if ($proposer !== '') {
+                return $fail(lang(array('string' => 'The record changed after {var:1} proposed this, so it was not applied. Ask {var:1} again.', 'vars' => $proposer)), true);
+            }
+
             return $fail($by_ai
                 ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
                 : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
@@ -2998,6 +3019,12 @@ function ws_change_dismiss_check($viewer, $change_id)
     }
 
     if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
+        $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+        if ($proposer !== '') {
+            return $fail(lang(array('string' => 'Only the person {var:1} proposed this change to can set it aside.', 'vars' => $proposer)));
+        }
+
         return $fail((function_exists('ws_ai_proposed') && ws_ai_proposed($change))
             ? lang('Only the person who asked Pinegrap AI can set this change aside.')
             : lang('Only the person who asked Claude can set this change aside.'));
@@ -4286,6 +4313,14 @@ function ws_change_write_task_note($viewer, $action, $record, $values)
     $app_id = (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
         ? (int) ws_ai_config()['app_id']
         : (function_exists('ws_claude_config') ? (int) ws_claude_config()['app_id'] : 0);
+
+    // Proposed by an application (proposals.php): written in its name, not
+    // Claude's.
+    $agent = function_exists('ws_change_proposal_agent') ? ws_change_proposal_agent($change) : '';
+
+    if ($agent !== '') {
+        $app_id = ws_proposal_app_id($agent);
+    }
 
     $done = ws_task_note_add($viewer, $task, ws_tokens_normalise((string) ($values['text'] ?? '')), $app_id);
 

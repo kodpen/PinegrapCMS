@@ -28058,5 +28058,21 @@
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
     "Archived on {var:1}.": "{var:1} üzerinde arşivde.",
     "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",
-    "On {var:1}": "{var:1} üzerinde"
+    "On {var:1}": "{var:1} üzerinde",
+    "OAuth connection": "OAuth bağlantısı",
+    "Proposed by {var:1}": "{var:1} önerdi",
+    "The proposal could not be saved.": "Öneri kaydedilemedi.",
+    "An assistant proposes changes in its answer to the request it works on.": "Bir asistan değişiklikleri, üzerinde çalıştığı isteğe verdiği yanıtta önerir.",
+    "Changes are proposed by an application, with its key or through an OAuth connection; signed in on your own device, change the record yourself.": "Değişiklikleri bir uygulama, kendi anahtarıyla ya da bir OAuth bağlantısı üzerinden önerir; kendi cihazınızda oturum açtıysanız kaydı kendiniz değiştirin.",
+    "This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.": "Bu uygulama son bir saatte bu kişi için {var:1} öneride bulundu. Daha fazlasını önermeden önce bekleyin.",
+    "changes names at least one change.": "changes en az bir değişiklik içermeli.",
+    "{var:1} change(s) proposed in #{var:2}": "#{var:2} kanalında {var:1} değişiklik önerildi",
+    "{var:1} change(s) proposed on task {var:2}": "{var:2} görevinde {var:1} değişiklik önerildi",
+    "{var:1} proposed changes on {var:2}": "{var:1}, {var:2} görevinde değişiklik önerdi",
+    "On {var:1}'s proposal": "{var:1} önerisiyle",
+    "on {var:1}'s proposal": "{var:1} önerisiyle",
+    "Changes {var:1} proposes": "{var:1} tarafından önerilen değişiklikler",
+    "The record changed after {var:1} proposed this, so it was not applied. Ask {var:1} again.": "{var:1} bunu önerdikten sonra kayıt değişti, bu yüzden uygulanmadı. {var:1} uygulamasına yeniden sorun.",
+    "Only the person {var:1} proposed this change to can apply it.": "Bu değişikliği yalnız {var:1} uygulamasının önerdiği kişi uygulayabilir.",
+    "Only the person {var:1} proposed this change to can set it aside.": "Bu değişikliği yalnız {var:1} uygulamasının önerdiği kişi bir kenara bırakabilir."
 }

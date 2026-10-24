@@ -235,7 +235,9 @@ function ws_assistant($key)
 
 /**
  * The name an assistant is shown with, also for a key whose connection has
- * been switched off since: the runs it made keep their name.
+ * been switched off since: the runs it made keep their name. A proposal an
+ * application made on a task (proposals.php) sits among the runs under the
+ * application's name.
  *
  * @param string $key
  * @return string
@@ -246,6 +248,12 @@ function ws_assistant_name($key)
 
     if ($assistant) {
         return $assistant['name'];
+    }
+
+    $proposer = function_exists('ws_proposal_name') ? ws_proposal_name($key) : '';
+
+    if ($proposer !== '') {
+        return $proposer;
     }
 
     $server_id = ws_assistant_mcp_id($key);
@@ -272,6 +280,10 @@ function ws_assistant_avatar($key)
 
     if ($assistant) {
         return $assistant['avatar'];
+    }
+
+    if (function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse($key)) {
+        return ws_proposal_avatar($key);
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'claude') ? 'ws-assistant.svg' : 'ws-ai.svg');
@@ -789,6 +801,11 @@ function ws_task_delegation_state($viewer, $row)
 
     if (((string) ($row['agent'] ?? '') === 'mcp') && function_exists('ws_mcp_agent_request_state')) {
         return ws_mcp_agent_request_state($row, $viewer);
+    }
+
+    // A proposal an application made on the task (proposals.php).
+    if (function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse((string) ($row['agent'] ?? ''))) {
+        return ws_proposal_request_state($row);
     }
 
     return ws_claude_request_state($viewer, $row);

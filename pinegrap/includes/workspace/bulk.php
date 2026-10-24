@@ -805,8 +805,11 @@ function ws_bulk_finish($viewer, $change, $spec, $state)
     $decision_id = 0;
     $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
 
+    // An application's proposal (proposals.php) is named by the application.
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
     $body = lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => array(
-        $by_ai ? 'Pinegrap AI' : 'Claude', ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
+        ($proposer !== '') ? $proposer : ($by_ai ? 'Pinegrap AI' : 'Claude'), ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
         (int) $state['done'], (int) $state['skipped'], (int) $state['failed'])));
 
     if (!empty($state['lines'])) {

@@ -254,6 +254,110 @@ function test_ws_api_card_decisions_are_no_tools()
 	}
 }
 
+// An AI app or an integration changes a record by proposing it: one route in
+// a channel and its twin on a task, both MCP tools under workspace:write that
+// take the same changes as an assistant's answer, rehearse, and are marked as
+// writes that only add (a card), not as destructive ones.
+function test_ws_api_change_proposals_are_tools()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$answer = null;
+
+	foreach ($routes['workspace.claude.requests.answer']['params'] as $param) {
+		if ($param['name'] === 'changes') {
+			$answer = $param;
+		}
+	}
+
+	foreach (array('workspace.changes.propose' => '/workspace/channels/{id}/changes', 'workspace.tasks.changes.propose' => '/workspace/tasks/{id}/changes') as $id => $path) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		$route = $routes[$id];
+
+		pg_assert_same('POST', $route['method'], $id);
+		pg_assert_same($path, $route['path'], $id);
+		pg_assert_same('workspace:write', $route['scope'], $id . ' asks workspace:write');
+		pg_assert_false(isset($route['mcp']) && ($route['mcp'] === false), $id . ' carries no \'mcp\' => false');
+		pg_assert_true(pg_mcp_route_is_offered($route), $id . ' is an MCP tool');
+		pg_assert_true(!empty($route['dry_run']), $id . ' rehearses');
+		pg_assert_same('WorkspaceProposal', $route['returns'], $id);
+		pg_assert_same(201, $route['status'] ?? null, $id . ' answers 201');
+
+		$tool = pg_mcp_tool_from_route($route);
+		$properties = (array) $tool['inputSchema']['properties'];
+
+		pg_assert_same(str_replace('.', '_', $id), $tool['name'], $id);
+		pg_assert_same('boolean', $properties['dry_run']['type'] ?? null, $id . ': the tool takes dry_run');
+		pg_assert_contains('text', $tool['inputSchema']['required'], $id);
+		pg_assert_contains('changes', $tool['inputSchema']['required'], $id);
+		pg_assert_false($tool['annotations']['readOnlyHint'], $id . ' writes');
+		pg_assert_false($tool['annotations']['destructiveHint'], $id . ' only adds a card');
+
+		// The same changes as an assistant's answer, by the same limit.
+		$changes = null;
+
+		foreach ($route['params'] as $param) {
+			if ($param['name'] === 'changes') {
+				$changes = $param;
+			}
+		}
+
+		pg_assert_same($answer['of'], $changes['of'], $id . ' takes the answer\'s changes');
+		pg_assert_same(WS_CHANGES_PER_ANSWER, $changes['max_items'], $id . ' takes as many as an answer');
+
+		// What a model reads: it proposes, the person applies, nothing is
+		// written to a record by the call.
+		$text = $tool['description'];
+
+		pg_assert_contains('this only proposes, the person applies', $text, $id);
+		pg_assert_contains('Nothing is written to a record here', $text, $id);
+		pg_assert_contains('join this same endpoint', $text, $id . ' says new kinds come here');
+	}
+
+	// A caller with workspace:write only is offered both.
+	$scopes = array('workspace:read', 'workspace:write');
+
+	foreach (array('workspace.changes.propose', 'workspace.tasks.changes.propose') as $id) {
+		pg_assert_true(api_has_scope($scopes, $routes[$id]['scope']), $id . ' is listed for workspace:write');
+	}
+}
+
+// A proposal writes no record and applies nothing: its handlers and the
+// write they end in neither call a writer nor take a card; its request row is
+// written answered under the application's agent, so no assistant's queue
+// takes it; and the caller is gated as an application.
+function test_ws_api_change_proposals_never_write_records()
+{
+	foreach (array('ws_api_changes_propose', 'ws_api_task_changes_propose', 'ws_proposal_store', 'ws_api_proposal_rows') as $function) {
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($function));
+
+		foreach (array('ws_change_apply(', 'ws_change_write(', 'ws_bulk_start(', 'ws_change_dismiss(') as $write) {
+			pg_assert_false(strpos($source, $write) !== false, $function . ' calls no ' . $write);
+		}
+	}
+
+	pg_assert_contains('ws_changes_input(', ws_api_test_handler_source('ws_api_proposal_rows'), 'the changes are checked as an answer\'s');
+	pg_assert_contains('ws_changes_store(', ws_api_test_handler_source('ws_proposal_store'), 'and kept as an answer\'s');
+
+	$store = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_proposal_store'));
+
+	pg_assert_contains("'answered'", $store, 'written answered: no queue takes it');
+	pg_assert_contains("e(\$agent)", $store, 'under the application\'s agent');
+
+	foreach (array('ws_api_changes_propose', 'ws_api_task_changes_propose') as $handler) {
+		pg_assert_contains('ws_api_proposal_agent(', ws_api_test_handler_source($handler), $handler . ' takes keys and connections only');
+		pg_assert_contains('ws_api_proposal_scopes(', ws_api_test_handler_source($handler), $handler . ' asks the read scope of each kind');
+	}
+
+	pg_assert_contains('ws_api_is_assistant(', ws_api_test_handler_source('ws_api_proposal_agent'), 'an assistant proposes in its answer');
+	pg_assert_contains("api_require_scope('tasks:read')", ws_api_test_handler_source('ws_api_task_changes_propose'), 'the task is seen under tasks:read');
+}
+
 // An OAuth connection is a device row too, so a refusal of the team devices
 // gate says which session it wants and that a connection is refused as well,
 // not "signed in on a device".
@@ -1730,6 +1834,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_pause'          => array('ws_flow_pause_check(', 'api_dry_run_stop(', 'ws_flow_pause('),
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
+		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
+		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);

@@ -3955,7 +3955,8 @@ function ws_ai_voice_change($change = null)
 /**
  * A sentence about a change in the name of the assistant that proposed it.
  * The sentences are written for Claude ("on Claude's proposal"); for a change
- * Pinegrap AI proposed, that phrase names Pinegrap AI instead, in whichever
+ * Pinegrap AI proposed, that phrase names Pinegrap AI instead, and for one an
+ * application proposed (proposals.php) the application, in whichever
  * language the sentence came out in.
  *
  * @param string     $text
@@ -3966,13 +3967,23 @@ function ws_ai_voice($text, $change = null)
 {
     $change = is_array($change) ? $change : ws_ai_voice_change();
 
-    if (!ws_ai_proposed($change)) {
+    if (ws_ai_proposed($change)) {
+        return str_replace(
+            array(lang('on Claude\'s proposal'), lang('On Claude\'s proposal')),
+            array(lang('on Pinegrap AI\'s proposal'), lang('On Pinegrap AI\'s proposal')),
+            (string) $text
+        );
+    }
+
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+    if ($proposer === '') {
         return $text;
     }
 
     return str_replace(
         array(lang('on Claude\'s proposal'), lang('On Claude\'s proposal')),
-        array(lang('on Pinegrap AI\'s proposal'), lang('On Pinegrap AI\'s proposal')),
+        array(lang(array('string' => 'on {var:1}\'s proposal', 'vars' => $proposer)), lang(array('string' => 'On {var:1}\'s proposal', 'vars' => $proposer))),
         (string) $text
     );
 }
