@@ -529,6 +529,50 @@ function ws_message_send_check($viewer, $channel, $body, $options = array())
 }
 
 /**
+ * Why a message cannot be answered in a channel, from its row: it is not one
+ * of the channel's own (a discussion's own messages for a discussion), it was
+ * deleted, or it is in an earlier version of the conversation (eras.php).
+ * Pure: the row and the floor are read by ws_message_parent_check().
+ *
+ * @param array|null $parent     ws_messages row, null when there is none
+ * @param int        $channel_id the channel or discussion the answer goes to
+ * @param int        $floor      ws_channel_floor() of that channel
+ * @return string '' when it may be answered, else the refusal
+ */
+function ws_message_parent_refusal($parent, $channel_id, $floor)
+{
+    if (!is_array($parent) || ((int) $parent['channel_id'] !== (int) $channel_id) || ((int) $parent['deleted_at'] > 0)) {
+        return lang('That message could not be found.');
+    }
+
+    if ((int) $parent['id'] <= (int) $floor) {
+        return lang('This message is in an earlier version of the conversation, which is kept as it was.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether a file posted into a channel may answer a message there
+ * (parent_id): the external API's upload refuses with it before its dry run
+ * stops, and the panel's upload (ws_attach) posts the file without the parent
+ * rather than lose a recording. ws_message_send() itself only keeps a parent
+ * of another channel out.
+ *
+ * @param array $channel
+ * @param int   $parent_id 0 for none
+ * @return string '' when it may (or when none is given), else the refusal
+ */
+function ws_message_parent_check($channel, $parent_id)
+{
+    if ((int) $parent_id <= 0) {
+        return '';
+    }
+
+    return ws_message_parent_refusal(ws_message((int) $parent_id), (int) $channel['id'], ws_channel_floor($channel['id']));
+}
+
+/**
  * Writes a message into a channel and tells the people it mentions.
  *
  * @param array  $viewer
