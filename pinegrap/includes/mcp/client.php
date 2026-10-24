@@ -235,7 +235,7 @@ function pg_mcp_client_headers($conn, $method, $params, $version) {
 }
 
 // Sends one message and answers what came back: status, headers (by lower-
-// case name), body, error.
+// case name), body, error, errno (curl's error number, 0 for none).
 function pg_mcp_client_post($conn, $message, $method, $version) {
 
 	$flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
@@ -244,7 +244,7 @@ function pg_mcp_client_post($conn, $message, $method, $version) {
 
 	if ($body === false) {
 
-		return array('status' => 0, 'headers' => array(), 'body' => '', 'error' => 'The request could not be written as JSON.');
+		return array('status' => 0, 'headers' => array(), 'body' => '', 'error' => 'The request could not be written as JSON.', 'errno' => 0);
 
 	}
 
@@ -279,7 +279,8 @@ function pg_mcp_client_post($conn, $message, $method, $version) {
 		'status'  => isset($response['status']) ? (int)$response['status'] : 0,
 		'headers' => (isset($response['headers']) && is_array($response['headers'])) ? $response['headers'] : array(),
 		'body'    => isset($response['body']) ? (string)$response['body'] : '',
-		'error'   => isset($response['error']) ? (string)$response['error'] : ''
+		'error'   => isset($response['error']) ? (string)$response['error'] : '',
+		'errno'   => isset($response['errno']) ? (int)$response['errno'] : 0
 	);
 
 }
@@ -372,11 +373,16 @@ function pg_mcp_client_read($response, $id) {
 
 	// A server that answers an error without the request's id (a parse
 	// error, a refusal before the body was read) still says what went wrong.
+	// So does one that refuses with a failed status and an id of its own
+	// (FastMCP answers 400 with the id "server-error"): with that status the
+	// error cannot be another request's answer.
+	$failed = isset($response['status']) && ((int)$response['status'] >= 400);
+
 	foreach ($candidates as $candidate) {
 
 		list($message, $raw) = $candidate;
 
-		if (isset($message['error']) && (!array_key_exists('id', $message) || ($message['id'] === null))) {
+		if (isset($message['error']) && ($failed || !array_key_exists('id', $message) || ($message['id'] === null))) {
 
 			return array('message' => $message, 'raw' => $raw);
 
@@ -399,7 +405,8 @@ function pg_mcp_client_next_id() {
 
 // One request as it is, with no handshake before it. Answers ok, result,
 // raw (the response's JSON text), error, code (the JSON-RPC error code, 0
-// for none), status (HTTP) and headers.
+// for none), status (HTTP), headers and oauth (the server refused it with a
+// challenge that offers an OAuth sign-in).
 function pg_mcp_client_send($conn, $method, $params, $version) {
 
 	$id = pg_mcp_client_next_id();
@@ -408,13 +415,36 @@ function pg_mcp_client_send($conn, $method, $params, $version) {
 
 	$response = pg_mcp_client_post($conn, pg_mcp_client_message($id, $method, $params, $version, $extensions), $method, $version);
 
-	$out = array('ok' => false, 'result' => null, 'raw' => '', 'error' => '', 'code' => 0, 'status' => $response['status'], 'headers' => $response['headers'], 'task' => null);
+	$out = array('ok' => false, 'result' => null, 'raw' => '', 'error' => '', 'code' => 0, 'status' => $response['status'], 'headers' => $response['headers'], 'task' => null, 'oauth' => false);
 
 	if ($response['status'] === 0) {
 
-		$out['error'] = pg_mcp_client_transport_text($response['error']);
+		$out['error'] = pg_mcp_client_transport_text($response['error'], $response['errno']);
 
 		return $out;
+
+	}
+
+	// A server that wants an OAuth sign-in names its resource metadata in the
+	// challenge (RFC 9728). The sentence depends on whether a credential went
+	// along: none, or one the server refused (GitHub and Linear answer a wrong
+	// token with the same challenge). The status and the challenge stay in the
+	// answer for pg_mcp_client_discover_auth().
+	if ($response['status'] === 401) {
+
+		$challenge = pg_mcp_client_bearer_challenge(isset($response['headers']['www-authenticate']) ? $response['headers']['www-authenticate'] : '');
+
+		if (isset($challenge['resource_metadata']) && ($challenge['resource_metadata'] !== '')) {
+
+			$out['oauth'] = true;
+
+			$out['error'] = empty($conn['headers'])
+				? lang('This MCP server asks for a sign-in: under How the site signs in, choose Sign in to the service (OAuth), or Access token (Bearer) if the service gives one.')
+				: lang('The MCP server refused the credentials. Check the token or the header, or choose Sign in to the service (OAuth) under How the site signs in.');
+
+			return $out;
+
+		}
 
 	}
 
@@ -487,6 +517,40 @@ function pg_mcp_client_send($conn, $method, $params, $version) {
 
 	}
 
+	// An address of the old HTTP+SSE transport, where a GET opens the stream
+	// and a POST is refused, is not spoken: the Streamable HTTP address the
+	// server most likely has is named instead.
+	if (in_array($response['status'], array(404, 405, 410), true)) {
+
+		$sse = pg_mcp_client_sse_address($conn['url']);
+
+		if ($sse !== '') {
+
+			$out['error'] = lang(array('string' => 'This is an old SSE address. The address that works here usually ends in /mcp: {var:1}', 'vars' => $sse));
+
+			return $out;
+
+		}
+
+	}
+
+	// A redirect is not followed (api_http_request()): the new address is
+	// named, for the administrator to enter, where it is checked like any
+	// other.
+	if (in_array($response['status'], array(301, 302, 303, 307, 308), true)) {
+
+		$moved = pg_mcp_client_moved_to(isset($response['headers']['location']) ? $response['headers']['location'] : '', $conn['url']);
+
+		if ($moved !== '') {
+
+			$out['error'] = lang(array('string' => 'The MCP server moved to {var:1}. Enter that address instead.', 'vars' => $moved));
+
+			return $out;
+
+		}
+
+	}
+
 	$out['error'] = pg_mcp_client_status_text($response['status']);
 
 	return $out;
@@ -494,9 +558,26 @@ function pg_mcp_client_send($conn, $method, $params, $version) {
 }
 
 // Why a request did not reach a server, in a sentence. The refusals of
-// api_http_check_url() are said in the screen's language; anything else is
-// curl's own words.
-function pg_mcp_client_transport_text($error) {
+// api_http_check_url() and the commonest curl errors, by curl's error number
+// ($errno), are said in the screen's language; anything else is curl's own
+// words.
+function pg_mcp_client_transport_text($error, $errno = 0) {
+
+	switch ((int)$errno) {
+
+		case 28:
+
+			return lang('The MCP server took too long to answer.');
+
+		case 7:
+
+			return lang('The MCP server could not be reached.');
+
+		case 6:
+
+			return lang('The address of the MCP server does not resolve.');
+
+	}
 
 	switch ((string)$error) {
 
@@ -559,6 +640,118 @@ function pg_mcp_client_status_text($status) {
 
 }
 
+// An address as a refusal names it: the origin and the path. A query may
+// carry a key (some services take one there) and a refusal can be posted in
+// a channel, so a query is shown as "?…". '' for no web address.
+function pg_mcp_client_shown_address($url) {
+
+	$origin = pg_mcp_client_origin($url);
+
+	$parts = @parse_url(trim((string)$url));
+
+	if (($origin === '') || !is_array($parts)) {
+
+		return '';
+
+	}
+
+	$path = isset($parts['path']) ? (string)$parts['path'] : '';
+
+	return mb_substr($origin . $path . ((isset($parts['query']) && ($parts['query'] !== '')) ? '?…' : ''), 0, 200);
+
+}
+
+// Where a redirect points, as a refusal names it: a relative Location read
+// against the address asked, plain http on the same host as https (only
+// https is called). '' when it names no web address, or the address asked.
+function pg_mcp_client_moved_to($location, $url) {
+
+	$location = trim((string)$location);
+
+	$origin = pg_mcp_client_origin($url);
+
+	if (($origin === '') || ($location === '') || (strlen($location) > 2000) || preg_match('/[\x00-\x20\x7F<>"\\\\]/', $location)) {
+
+		return '';
+
+	}
+
+	$path = (string)parse_url(trim((string)$url), PHP_URL_PATH);
+
+	if (substr($location, 0, 2) === '//') {
+
+		$target = strtolower((string)parse_url(trim((string)$url), PHP_URL_SCHEME)) . ':' . $location;
+
+	} elseif (preg_match('/^[A-Za-z][A-Za-z0-9+.\-]*:/', $location)) {
+
+		$target = $location;
+
+	} elseif (substr($location, 0, 1) === '/') {
+
+		$target = $origin . $location;
+
+	} elseif (substr($location, 0, 1) === '?') {
+
+		$target = $origin . $path . $location;
+
+	} else {
+
+		$slash = strrpos($path, '/');
+
+		$target = $origin . (($slash === false) ? '/' : substr($path, 0, $slash + 1)) . $location;
+
+	}
+
+	$scheme = strtolower((string)parse_url($target, PHP_URL_SCHEME));
+
+	$host = strtolower((string)parse_url($target, PHP_URL_HOST));
+
+	if ((($scheme !== 'https') && ($scheme !== 'http')) || ($host === '')) {
+
+		return '';
+
+	}
+
+	if (($scheme === 'http') && ($host === strtolower((string)parse_url(trim((string)$url), PHP_URL_HOST)))) {
+
+		$target = 'https' . substr($target, 4);
+
+	}
+
+	// The origin, path and query, to tell the new address from the old one.
+	$same = function ($address) {
+
+		$parts = @parse_url(trim((string)$address));
+
+		return pg_mcp_client_origin($address) . (isset($parts['path']) ? $parts['path'] : '') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+
+	};
+
+	return ($same($target) === $same($url)) ? '' : pg_mcp_client_shown_address($target);
+
+}
+
+// The address an old HTTP+SSE address (its path ending in /sse) most likely
+// has on Streamable HTTP, as a refusal names it: that /sse made /mcp. '' for
+// any other path.
+function pg_mcp_client_sse_address($url) {
+
+	$parts = @parse_url(trim((string)$url));
+
+	$path = (is_array($parts) && isset($parts['path'])) ? (string)$parts['path'] : '';
+
+	if (!preg_match('#/sse/?$#', $path)) {
+
+		return '';
+
+	}
+
+	$query = (isset($parts['query']) && ($parts['query'] !== '')) ? '?' . $parts['query'] : '';
+
+	return pg_mcp_client_shown_address(pg_mcp_client_origin($url) . preg_replace('#/sse/?$#', '/mcp', $path) . $query);
+
+}
+
 // A session id as the transport allows it: visible ASCII only.
 function pg_mcp_client_session_is_valid($session) {
 
@@ -567,12 +760,13 @@ function pg_mcp_client_session_is_valid($session) {
 }
 
 // Finds out how a server is spoken to: the current generation first, then
-// initialize. Answers ok, error, status, instructions and server (its name
-// and version, as it gives them); the connection learns the version and,
-// from an earlier-generation server, the session.
+// initialize. Answers ok, error, status, oauth_challenge (the server asked
+// for an OAuth sign-in), instructions and server (its name and version, as it
+// gives them); the connection learns the version and, from an
+// earlier-generation server, the session.
 function pg_mcp_client_negotiate(&$conn) {
 
-	$out = array('ok' => false, 'error' => '', 'status' => 0, 'instructions' => '', 'server' => array());
+	$out = array('ok' => false, 'error' => '', 'status' => 0, 'oauth_challenge' => false, 'instructions' => '', 'server' => array());
 
 	$conn['protocol'] = '';
 
@@ -587,6 +781,8 @@ function pg_mcp_client_negotiate(&$conn) {
 	if (($discover['status'] === 401) || ($discover['status'] === 403)) {
 
 		$out['error'] = $discover['error'];
+
+		$out['oauth_challenge'] = !empty($discover['oauth']);
 
 		return $out;
 
@@ -633,6 +829,8 @@ function pg_mcp_client_negotiate(&$conn) {
 	if (!$init['ok']) {
 
 		$out['error'] = $init['error'];
+
+		$out['oauth_challenge'] = !empty($init['oauth']);
 
 		return $out;
 
@@ -1557,7 +1755,7 @@ function pg_mcp_client_register($registration_url, $metadata, $scopes = array(),
 
 		} elseif ($status === 0) {
 
-			$reason = pg_mcp_client_transport_text((is_array($got) && isset($got['error'])) ? $got['error'] : '');
+			$reason = pg_mcp_client_transport_text((is_array($got) && isset($got['error'])) ? $got['error'] : '', (is_array($got) && isset($got['errno'])) ? (int)$got['errno'] : 0);
 
 		} else {
 

@@ -100,7 +100,7 @@ function api_http_check_url($url, $allow_http = false) {
 
 }
 
-// One POST. Answers array('ok', 'status', 'body', 'error', 'duration_ms').
+// One POST. Answers like api_http_request().
 //
 // Kept as its own name because the webhook dispatcher reads that way, and
 // because a webhook is always a POST with a signed body.
@@ -135,13 +135,18 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             says in them which kind of body it sent and which session the
 //             client is in.
 //
+// Answers array('ok', 'status', 'body', 'error', 'errno', 'duration_ms'), and
+// 'headers' with response_headers. errno is curl's error number when the
+// request failed in curl (28 is a timeout), 0 otherwise - also for an address
+// refused before curl ran, whose reason is in error alone.
+//
 // Everything the webhook client refuses, this refuses: an address inside the
 // network, a redirect to an address nothing checked, an unverified certificate.
 function api_http_request($method, $url, $options = array()) {
 
 	$started = microtime(true);
 
-	$result = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'duration_ms' => 0);
+	$result = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'errno' => 0, 'duration_ms' => 0);
 
 	if (!empty($options['response_headers'])) {
 
@@ -248,8 +253,10 @@ function api_http_request($method, $url, $options = array()) {
 		// "unable to get local issuer certificate" on its own sends the operator
 		// looking at the receiver. The hint names the cause that is actually on
 		// this server.
+		$result['errno'] = (int)curl_errno($handle);
+
 		$result['error'] = curl_error($handle)
-			. (function_exists('pg_curl_tls_hint') ? pg_curl_tls_hint(curl_errno($handle)) : '');
+			. (function_exists('pg_curl_tls_hint') ? pg_curl_tls_hint($result['errno']) : '');
 
 	} else {
 

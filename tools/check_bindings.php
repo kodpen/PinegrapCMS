@@ -24,6 +24,11 @@
  *   • `__link_label` — a sentinel the catalog renderer expands into
  *     `__link_label_0`, `__link_label_1`, … one per bound node.
  *
+ * `__page_link` (a link to another page with a record's values) is a
+ * sentinel of the same kind, but needs no exemption: it is in no palette,
+ * and the form renderers build its `__page_link_<n>` keys by concatenation,
+ * never as a literal key.
+ *
  * Usage:  php tools/check_bindings.php [directory]     (default: pinegrap/)
  * Exit:   0 when both sides agree, 1 otherwise.
  *
