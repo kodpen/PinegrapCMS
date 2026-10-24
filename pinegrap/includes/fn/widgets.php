@@ -74,6 +74,7 @@ function pg_sw_type_labels()
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
+        'comments'            => lang('Comments'),
     );
 }
 
@@ -737,6 +738,10 @@ function pg_sw_raw_token_keys()
         '__filters_offcanvas',
         '__filters_offcanvas_inner_html',
         '__clear_filters_button',
+        // Comments widget.
+        '__comment_message_html',
+        '__comment_stars_html',
+        '__comment_seller_reply_html',
     ));
 
     return $keys;
@@ -5901,9 +5906,12 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
  * order receipt. A widget on an e-mail page has no address to read ?r= or
  * ?order_id= from, and the recipient is chosen by the server, so the checks
- * that keep a visitor to their own records do not apply there. Pass an array
- * to set (the previous context comes back, for restoring); pass nothing to
- * read.
+ * that keep a visitor to their own records do not apply there. 'page_id' is
+ * the page being drawn: a widget whose data is the page's own (the comments
+ * widget's thread) reads it here, never through _pg_sw_current_page_id(),
+ * which is 0 on the live home page, in e-mails and in the search index, and
+ * is cached for the whole request. Pass an array to set (the previous
+ * context comes back, for restoring); pass nothing to read.
  *
  * @param array|null $set
  * @return array
@@ -8052,9 +8060,10 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // the page itself is edited in the visual editor, and what its widgets show
 // - a product, a product group, a submitted form, a comment - is edited in
 // the panel. So the pencil is simply there for a user who may edit that
-// record, in the record's top-left corner (the top-right is where a comment
-// keeps its share button), and it opens the record's edit screen, which
-// brings them back here.
+// record, in the record's top-left corner on every page (the comment card
+// keeps its share button top right through Bootstrap's physical utilities,
+// so a chip that followed a right-to-left page would cover it), and it
+// opens the record's edit screen, which brings them back here.
 
 /**
  * Whether this request draws edit chips: a signed-in user, and not a page
@@ -8105,31 +8114,66 @@ function pg_sw_backend_edit_url($script, $id)
          . ($back !== '' ? '&send_to=' . urlencode($back) : '');
 }
 
-/** The chips' stylesheet, written once per page with the first chip. */
+/**
+ * The chips' stylesheet: only what a style attribute cannot say. The record
+ * is the chip's positioning box (zero specificity: a design that positions
+ * the record itself wins); the chip fades in on hover and focus and grows
+ * under the pointer (!important, over the plain opacity and transform the
+ * chip carries); it draws no pseudo-element a design gives links; it is not
+ * printed (visibility: its display is pinned). The chip's size, shape and
+ * colours need none of it. Written once per page by
+ * pg_sw_edit_chip_css_inject().
+ */
 function pg_sw_edit_chip_css()
 {
-    return '<style>'
-        . '.pg-edit-host{position:relative}'
-        . '.pg-edit-chip{position:absolute;top:.5rem;left:.5rem;z-index:6;display:inline-flex;align-items:center;justify-content:center;'
-        .   'width:1.9rem;height:1.9rem;border-radius:50%;background:rgba(25,118,210,.92);color:#fff!important;text-decoration:none!important;'
-        .   'box-shadow:0 2px 6px rgba(0,0,0,.28);opacity:.55;transition:opacity .15s,transform .15s}'
-        . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1}'
-        . '.pg-edit-chip:hover{transform:scale(1.08)}'
-        . '.pg-edit-chip:focus-visible{outline:2px solid #fff;outline-offset:2px}'
-        . '.pg-edit-chip svg{width:.9rem;height:.9rem;pointer-events:none}'
-        . '.pg-edit-chip-ecommerce{background:rgba(85,139,47,.94)}'
-        . '.pg-edit-chip-forms{background:rgba(128,95,167,.94)}'
-        . '.pg-edit-chip-calendar{background:rgba(93,64,55,.94)}'
-        . '@media (hover:none){.pg-edit-chip{opacity:.9}}'
-        . '@media print{.pg-edit-chip{display:none}}'
+    return '<style id="pg-edit-chip-css">'
+        . ':where(.pg-edit-host){position:relative}'
+        . '.pg-edit-chip::before,.pg-edit-chip::after{content:none!important;display:none!important}'
+        . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1!important}'
+        . '.pg-edit-chip:hover{transform:scale(1.08)!important}'
+        . '.pg-edit-chip:focus-visible{outline:2px solid #fff!important;outline-offset:2px!important}'
+        . '@media (hover:none){.pg-edit-chip{opacity:.9!important}}'
+        . '@media print{.pg-edit-chip{visibility:hidden!important}}'
         . '</style>';
 }
 
 /**
- * Put an edit chip in the first element of a rendered record and make that
- * element its positioning box. A record whose first element cannot hold one
- * - a void element, a table row, a link or button (a link in a link is not
+ * The chips' stylesheet in a finished page that shows a chip: once, in its
+ * head (in front of a page without one). Asked of the whole page
+ * (get_page_content()), not written with the first chip: that chip may
+ * belong to output thrown away later - a list hidden by "Show only when"
+ * draws its rows before it is cut - and the stylesheet went with it.
+ *
+ * @param string $html the page
+ * @return string
+ */
+function pg_sw_edit_chip_css_inject($html)
+{
+    $html = (string)$html;
+    if (strpos($html, 'class="pg-edit-chip ') === false || strpos($html, 'id="pg-edit-chip-css"') !== false) {
+        return $html;
+    }
+    $head_end = stripos($html, '</head>');
+    if ($head_end === false) return pg_sw_edit_chip_css() . $html;
+    return substr($html, 0, $head_end) . pg_sw_edit_chip_css() . substr($html, $head_end);
+}
+
+/**
+ * Put an edit chip in the first element of a rendered record and mark that
+ * element as its host. A record whose first element cannot hold one - a
+ * void element, a table row, a link or button (a link in a link is not
  * HTML) - is left as it is; its detail page carries the chip instead.
+ *
+ * The chip's look and place are written on the chip and its icon with
+ * !important, because a design's rules for links, svg and pictures
+ * ("a {display:block}", ".card svg {width:100%}", ".row > *", ".ratio > *")
+ * reach them too and made the pencil as wide as a card's picture, in the
+ * flow above it. It sits .5rem inside the record's top-left corner in
+ * either direction (right is auto). The record is its positioning box
+ * through the page's stylesheet (pg_sw_edit_chip_css()), not a position
+ * written on the record, which would override the design's own. Opacity and transform stay plain
+ * declarations, which a design's rules cannot reach either; the stylesheet
+ * raises them on hover and focus.
  *
  * @param string $html  one record's markup
  * @param string $url   the edit screen
@@ -8138,7 +8182,6 @@ function pg_sw_edit_chip_css()
  */
 function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
 {
-    static $css_written = false;
     if ($url === '' || !preg_match('/^(\s*(?:<!--.*?-->\s*)*)<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/s', (string)$html, $m)) {
         return $html;
     }
@@ -8156,15 +8199,32 @@ function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
     } else {
         $attrs = rtrim($attrs, " \t\n\r/") . ' class="pg-edit-host"';
     }
-    $tone = in_array($tone, array('page', 'ecommerce', 'forms', 'calendar'), true) ? $tone : 'page';
-    $chip = '<a class="pg-edit-chip pg-edit-chip-' . $tone . '" href="' . h($url) . '" title="' . h($title) . '" aria-label="' . h($title) . '" rel="nofollow">'
-          . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">'
-          . '<path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>'
+    $backgrounds = array(
+        'page'      => 'rgba(25,118,210,.92)',
+        'ecommerce' => 'rgba(85,139,47,.94)',
+        'forms'     => 'rgba(128,95,167,.94)',
+        'calendar'  => 'rgba(93,64,55,.94)',
+    );
+    $tone = isset($backgrounds[$tone]) ? $tone : 'page';
+    // justify-self / align-self: the corner, where a browser that aligns
+    // positioned boxes would otherwise follow a design's alignment.
+    $chip_style = 'position:absolute!important;top:.5rem!important;right:auto!important;bottom:auto!important;left:.5rem!important;'
+                . 'z-index:6!important;display:flex!important;align-items:center!important;justify-content:center!important;'
+                . 'justify-self:start!important;align-self:start!important;box-sizing:border-box!important;'
+                . 'width:1.9rem!important;height:1.9rem!important;min-width:0!important;min-height:0!important;'
+                . 'max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;'
+                . 'border:0!important;border-radius:50%!important;background:' . $backgrounds[$tone] . '!important;'
+                . 'color:#fff!important;box-shadow:0 2px 6px rgba(0,0,0,.28)!important;font-size:1rem!important;'
+                . 'line-height:1!important;text-decoration:none!important;float:none!important;pointer-events:auto!important;'
+                . 'transition:opacity .15s,transform .15s!important;opacity:.55;transform:none';
+    $svg_style  = 'display:block!important;flex:none!important;position:static!important;float:none!important;'
+                . 'width:.9rem!important;height:.9rem!important;min-width:0!important;min-height:0!important;'
+                . 'max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;'
+                . 'border:0!important;transform:none!important;opacity:1!important;color:inherit!important;'
+                . 'fill:currentColor!important;pointer-events:none!important';
+    $chip = '<a class="pg-edit-chip pg-edit-chip-' . $tone . '" href="' . h($url) . '" title="' . h($title) . '" aria-label="' . h($title) . '" rel="nofollow" style="' . $chip_style . '">'
+          . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false" style="' . $svg_style . '">'
+          . '<path style="fill:currentColor!important;stroke:none!important" d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>'
           . '</svg></a>';
-    $out = $m[1] . '<' . $m[2] . $attrs . '>' . $chip . substr((string)$html, strlen($m[0]));
-    if (!$css_written) {
-        $css_written = true;
-        $out = pg_sw_edit_chip_css() . $out;
-    }
-    return $out;
+    return $m[1] . '<' . $m[2] . $attrs . '>' . $chip . substr((string)$html, strlen($m[0]));
 }
