@@ -20,7 +20,7 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 ## Anything fixed alongside?
 - The export wrote people as `@@name` (labels carry `@`); fixed (issue #549). Tests: tests/workspace_notes_io_test.php.
 
-## Why did every upload say "The file could not be saved." on dev?
-- `ws_note_import_temp_dir()` asked `is_writable()` of data/temp (Windows: read-only attribute, ACL); now only `is_dir()` (issue #1469). Unconfirmed on site: platform/windows-folder-is-writable.md.
-- Each failed step logs PHP's message, e.g. `Notes import: creating the stage folder failed: mkdir(): Permission denied`. A missing data/temp logs nothing: php_errors.log is in it.
-- stage.json: `ws_note_import_replace()` renames, else writes in place, retried ~3 s on Windows (PR #708). Test: tests/workspace_notes_import_test.php.
+## Why did every upload say "The file could not be saved." (Dosya kaydedilemedi.) on dev?
+- `ws_note_import_temp_dir()` asked `is_writable()` of data/temp (Windows: read-only attribute, ACL); now only `is_dir()` (issue #1469). Not seen on site: platform/windows-folder-is-writable.md.
+- A failed step logs PHP's message, e.g. `Notes import: creating the stage folder failed: mkdir(): Permission denied`. A missing data/temp logs nothing: php_errors.log is in it.
+- stage.json: `ws_note_import_replace()` renames, else writes in place, retried ~3 s on Windows (PR #708).

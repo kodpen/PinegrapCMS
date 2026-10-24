@@ -460,16 +460,7 @@ function ws_note_import_stage($viewer, $files)
     $token = bin2hex(random_bytes(16));
     $dir = ws_note_import_stage_dir($token);
 
-    // data/temp is not there and mkdir() was refused: what it said is the
-    // last error. php_errors.log lives in data/temp too, so the line is
-    // written only if the log's own attempt to make the folder succeeds.
-    if ($dir === '') {
-        ws_note_import_log_failure('creating the temp folder data/temp');
-
-        return $fail(lang('The file could not be saved.'));
-    }
-
-    if (!@mkdir($dir, 0755)) {
+    if (($dir === '') || !@mkdir($dir, 0755)) {
         ws_note_import_log_failure('creating the stage folder');
 
         return $fail(lang('The file could not be saved.'));

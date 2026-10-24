@@ -125,16 +125,17 @@ function test_workspace_notes_import_save_writes_the_stage()
 	pg_test_notes_import_clean($dir);
 }
 
-// A stream wrapper whose every path is a folder with no write bit, owned by
-// another user: is_dir() says yes and is_writable() says no, whoever runs the
-// tests. A folder made read-only with chmod() would not stop root.
+// A stream wrapper whose every path is a folder with no write bit for anyone
+// (mode 0555): is_dir() says yes and is_writable() says no, whoever runs the
+// tests, since PHP reads the mode bits of a wrapper's stat. A folder made
+// read-only with chmod() would not stop root.
 class pg_notes_import_test_closed_folder
 {
 	public $context;
 
 	public function url_stat($path, $flags)
 	{
-		return array('mode' => 040555, 'uid' => 65534, 'gid' => 65534, 'nlink' => 2);
+		return array('mode' => 040555, 'nlink' => 2);
 	}
 }
 
@@ -145,10 +146,14 @@ class pg_notes_import_test_closed_folder
 function test_workspace_notes_import_temp_dir_ignores_is_writable()
 {
 	stream_wrapper_register('pgnotesclosed', 'pg_notes_import_test_closed_folder');
-	pg_assert_true(is_dir('pgnotesclosed://temp'), 'the stand-in is a folder');
-	pg_assert_false(is_writable('pgnotesclosed://temp'), 'that is_writable() calls closed');
-	pg_assert_same('pgnotesclosed://temp', ws_note_import_temp_dir('pgnotesclosed://temp'), 'the stage goes there all the same');
-	stream_wrapper_unregister('pgnotesclosed');
+
+	try {
+		pg_assert_true(is_dir('pgnotesclosed://temp'), 'the stand-in is a folder');
+		pg_assert_false(is_writable('pgnotesclosed://temp'), 'that is_writable() calls closed');
+		pg_assert_same('pgnotesclosed://temp', ws_note_import_temp_dir('pgnotesclosed://temp'), 'the stage goes there all the same');
+	} finally {
+		stream_wrapper_unregister('pgnotesclosed');
+	}
 }
 
 // A folder that is there is used as it is; one that is not is made.
