@@ -31,8 +31,9 @@
  * person's commerce rights. What is checked here is what the request says:
  * the order is complete, the delivery is the order's, the lines are the
  * delivery's and no more is asked for than is left on each line. A request
- * made by the customer must also come within the withdrawal window, after the
- * goods have left; staff may record one at any time.
+ * made by the customer, or by an app acting for the customer through the API
+ * (customer_rules), must also come within the withdrawal window, after the
+ * goods have left; staff, and an app by default, may record one at any time.
  *
  * Order totals, process_order_cancellation() and the ERP's own return
  * invoices are not touched here. A delivery that has not been sent is a
@@ -477,6 +478,55 @@ function pg_return_window($dates, $today)
         'deadline'  => $deadline,
         'open'      => (strcmp($today, $deadline) <= 0),
     );
+}
+
+/**
+ * Whether a return came in time, as the panel's side column and the external
+ * API's OrderReturn read it: the delivery's window (pg_return_window(), as the
+ * delivery is known today) and the request's own day. A delivery date learned
+ * later (a parcel marked delivered, a corrected date) moves the deadline and
+ * can change the answer; the request's day never moves.
+ *
+ * @param array|null $window        pg_return_window() of the return's delivery
+ * @param string     $requested_day Y-m-d of the request, or ''
+ * @return array|null delivered (Y-m-d), estimated (bool), deadline (Y-m-d,
+ *                    the last day in time), in_time (bool); null when no date
+ *                    is known for the delivery
+ */
+function pg_return_timing($window, $requested_day)
+{
+    if (!is_array($window) || !isset($window['delivered'], $window['deadline'])) {
+        return null;
+    }
+
+    $requested_day = pg_return_date($requested_day);
+
+    return array(
+        'delivered' => (string) $window['delivered'],
+        'estimated' => !empty($window['estimated']),
+        'deadline'  => (string) $window['deadline'],
+        'in_time'   => ($requested_day !== '') && (strcmp($requested_day, (string) $window['deadline']) <= 0),
+    );
+}
+
+/**
+ * Is a request held to the customer's timing rules: the goods have left, a
+ * date is known for the delivery and its withdrawal window is open? A
+ * customer's own request always is; one recorded through the external API
+ * only when the app asks (customer_rules, for an app acting for the
+ * customer); staff never are, they decide.
+ *
+ * @param string $source  customer, panel or api
+ * @param array  $options pg_return_create()'s, customer_rules (bool)
+ * @return bool
+ */
+function pg_return_customer_rules($source, $options)
+{
+    if ($source === 'customer') {
+        return true;
+    }
+
+    return ($source === 'api') && is_array($options) && isset($options['customer_rules']) && ($options['customer_rules'] === true);
 }
 
 /**
@@ -1157,7 +1207,7 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
         return $refuse(lang('That delivery is not part of this order.'), 'delivery_not_in_order', 'ship_to_id');
     }
 
-    if ($result['source'] === 'customer') {
+    if (pg_return_customer_rules($result['source'], $options)) {
 
         if (!$state['goods_left']) {
             return $refuse(lang('This delivery has not been sent yet. The order can be cancelled instead.'), 'not_sent');
@@ -1223,9 +1273,11 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
  * @param string $reason     a code of pg_return_reasons()
  * @param string $note       the customer's words; needed for "other"
  * @param array  $options    source ('customer', 'panel' or 'api'; a customer
- *                           request must be in time), user_id (who asked),
- *                           time (unix time, defaults to now), today (Y-m-d,
- *                           defaults to today)
+ *                           request must be in time), customer_rules (true:
+ *                           an api request is held to the customer's timing
+ *                           rules too, pg_return_customer_rules()), user_id
+ *                           (who asked), time (unix time, defaults to now),
+ *                           today (Y-m-d, defaults to today)
  * @return array ok, error, id, repeat (true when the request was the same
  *               form sent again and id is the request it repeats), field and
  *               code (pg_return_create_check()'s, and busy when another

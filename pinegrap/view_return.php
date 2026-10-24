@@ -408,25 +408,27 @@ foreach (($state && !empty($state['parcels'])) ? $state['parcels'] : array() as 
         . '</li>';
 }
 
+// Whether the request came in time, read as GET /orders/{id}/returns reads
+// it (pg_return_timing()): the delivery as it is known today, the request's
+// own day.
 $window = $state ? $state['window'] : null;
 $requested_day = ((int) $return['requested_at'] > 0) ? date('Y-m-d', (int) $return['requested_at']) : '';
+$timing = pg_return_timing($window, $requested_day);
 $output_window = '';
 
-if ($window) {
-    $in_time = ($requested_day !== '') && (strcmp($requested_day, $window['deadline']) <= 0);
-
+if ($timing) {
     $output_window = '
                         <div class="row">
-                            <span class="col text-muted">' . h($window['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
-                            <span class="col text-end">' . h(pg_return_day_text($window['delivered'])) . '</span>
+                            <span class="col text-muted">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
+                            <span class="col text-end">' . h(pg_return_day_text($timing['delivered'])) . '</span>
                         </div>
                         <div class="row">
                             <span class="col text-muted">' . h(lang('Return period ends')) . ':</span>
-                            <span class="col text-end">' . h(pg_return_day_text($window['deadline'])) . '</span>
+                            <span class="col text-end">' . h(pg_return_day_text($timing['deadline'])) . '</span>
                         </div>
                         <div class="row">
                             <span class="col text-muted">' . h(lang('Asked')) . ':</span>
-                            <span class="col text-end">' . ($in_time
+                            <span class="col text-end">' . ($timing['in_time']
                                 ? '<span class="text-success">' . h(lang('within the return period')) . '</span>'
                                 : '<span class="text-danger">' . h(lang('after the return period')) . '</span>') . '</span>
                         </div>';
