@@ -20347,8 +20347,14 @@
                         reject(new Error((json && json.message) ? json.message
                             : ((xhr.status === 413 || xhr.status === 404) ? t('notes_import_too_large_server') : t('error_generic'))));
                     });
+                    // No answer: the connection was lost, or the browser
+                    // would not send a file (changed on disk since it was
+                    // picked).
                     xhr.addEventListener('error', function () {
-                        reject(new Error(t('notes_import_request_failed')));
+                        var error = new Error(t('notes_import_request_failed'));
+
+                        error.network = true;
+                        reject(error);
                     });
                     xhr.addEventListener('abort', function () {
                         var error = new Error('');
@@ -20434,31 +20440,78 @@
                 return out;
             }
 
-            // Adds to what is picked already, one row a name, as the file
-            // manager keys its list on the path; here the newer pick takes
-            // the row. A file changed on disk after it was picked fails the
-            // whole request (the browser will not send it), and picking it
-            // again is the way out: kept beside the old row, the stale file
-            // would still go, and a second row of a zip would hold Upload
-            // back as a zip with others.
-            function add(entries) {
-                entries.forEach(function (entry) {
-                    for (var i = 0; i < picked.length; i++) {
-                        if (picked[i].file.name === entry.file.name) {
-                            picked[i] = entry;
-                            return;
-                        }
-                    }
+            // Tries each file's first byte. A file changed on disk after it
+            // was picked can no longer be read through what was picked
+            // (Chromium: NotReadableError), and the browser fails every
+            // request that carries it (net::ERR_UPLOAD_FILE_CHANGED), so it
+            // is marked stale: left out, and replaced when it is picked
+            // again. Folders are not passed in. Resolves once each file has
+            // answered.
+            function probe(entries) {
+                return Promise.all(entries.map(function (entry) {
+                    return new Promise(function (resolve) {
+                        var reader = new FileReader();
 
-                    picked.push(entry);
+                        reader.onload = function () { resolve(); };
+                        reader.onerror = function () {
+                            entry.stale = true;
+                            resolve();
+                        };
+                        reader.readAsArrayBuffer(entry.file.slice(0, 1));
+                    });
+                }));
+            }
+
+            // Adds to what is picked already. Each file becomes a note of
+            // its own, so a file of a listed name gets a row of its own too:
+            // todo.md from two folders are two notes, and the server stages
+            // both. The same file again (name, size and time) takes its row.
+            // A listed file of that name is replaced only when the browser
+            // can no longer read it: it changed on disk, and this is the
+            // file picked again. The files of one pick or drop are matched
+            // only against the rows listed before it, never with each other.
+            function add(entries) {
+                var namesakes = picked.filter(function (have) {
+                    return !have.folder && entries.some(function (entry) {
+                        return entry.file.name === have.file.name;
+                    });
                 });
 
-                drawPick().focus();
+                probe(namesakes).then(function () {
+                    var known = picked.slice();
+                    var taken = [];
+
+                    entries.forEach(function (entry) {
+                        var file = entry.file;
+                        var listed = known.filter(function (have) {
+                            return have.file.name === file.name && taken.indexOf(have) === -1;
+                        });
+                        var row = listed.filter(function (have) {
+                            return have.file.size === file.size && have.file.lastModified === file.lastModified;
+                        })[0] || listed.filter(function (have) {
+                            return have.stale;
+                        })[0];
+
+                        if (row) {
+                            taken.push(row);
+                            picked[picked.indexOf(row)] = entry;
+                        } else {
+                            picked.push(entry);
+                        }
+                    });
+
+                    // Upload pressed while the files were read: the list
+                    // shows them when it comes back.
+                    if (phase === 'pick') {
+                        drawPick().focus();
+                    }
+                });
             }
 
             // What the server would do with the picked files, asked before a
             // byte is sent. A folder, a file of another kind or one over the
-            // limit is left out, as the file manager does. Over the files
+            // limit is left out, as the file manager does, and so is one the
+            // browser can no longer read (probe()). Over the files
             // that go: none left, then PHP's file count (max_file_uploads,
             // checked only here; the stage never sees the dropped files),
             // then the rest of ws_note_import_stage()'s rules in its order.
@@ -20476,6 +20529,8 @@
                     if (entry.folder || types.indexOf(kind) === -1) {
                         entry.state = 'blocked';
                         result.blocked++;
+                    } else if (entry.stale) {
+                        entry.state = 'stale';
                     } else if (limits.max && entry.file.size > limits.max) {
                         entry.state = 'over';
                         result.over++;
@@ -20583,6 +20638,10 @@
                     head.appendChild(el('span', 'small fw-semibold flex-grow-1', heading));
                     head.appendChild(clearAll);
 
+                    // What a row left out says in place of its size; one over
+                    // the limit keeps its size, in red.
+                    var reasons = { blocked: t('notes_import_not_allowed'), stale: t('notes_import_unreadable') };
+
                     picked.forEach(function (entry) {
                         var row = el('div', 'list-group-item d-flex gap-2 align-items-start' + (entry.state ? ' ws-nb-import-row ws-nb-import-off' : ''));
                         var main = el('div', 'ws-nb-import-main');
@@ -20592,7 +20651,7 @@
                         main.appendChild(el('div', 'fw-semibold text-truncate', entry.file.name));
 
                         if (entry.state) {
-                            line.appendChild(el('span', 'ws-nb-import-kind ws-nb-import-error', (entry.state === 'blocked') ? t('notes_import_not_allowed') : sizeLabel(entry.file.size)));
+                            line.appendChild(el('span', 'ws-nb-import-kind ws-nb-import-error', reasons[entry.state] || sizeLabel(entry.file.size)));
                         } else {
                             line.textContent = sizeLabel(entry.file.size);
                         }
@@ -20719,6 +20778,8 @@
 
                 pressed = Date.now();
 
+                // The entries that go: check() left the state of each empty.
+                var going = picked.filter(function (entry) { return !entry.state; });
                 var form = new FormData();
 
                 form.append('step', 'upload');
@@ -20755,10 +20816,30 @@
                     capacity = data.capacity || 0;
                     drawPreview(data);
                 }).catch(function (error) {
-                    // Cancelled: nothing is lost, so nothing is said.
-                    if (!closed) {
-                        drawPick(error.aborted ? '' : error.message).focus();
+                    if (closed) {
+                        return;
                     }
+
+                    // An answer is said as it came. Cancelled: nothing is
+                    // lost, so nothing is said.
+                    if (!error.network) {
+                        drawPick(error.aborted ? '' : error.message).focus();
+                        return;
+                    }
+
+                    // A file changed on disk since it was picked fails each
+                    // try the same way. Those the browser cannot read are
+                    // named, and marked and left out in the list; picking
+                    // one again puts it back.
+                    return probe(going).then(function () {
+                        var unread = going.filter(function (entry) { return entry.stale; }).map(function (entry) {
+                            return t('notes_import_cannot_read', entry.file.name);
+                        });
+
+                        if (!closed) {
+                            drawPick(unread.length ? unread.join(' ') : error.message).focus();
+                        }
+                    });
                 }).then(function () {
                     uploadXhr = null;
                     window.removeEventListener('beforeunload', leaveGuard);

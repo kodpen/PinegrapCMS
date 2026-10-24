@@ -230,16 +230,46 @@ function test_workspace_notes_import_upload_screen_shows_the_steps()
 	pg_assert_false(strpos($change, 'upload(') !== false, 'picking does not send');
 }
 
-// A file changed on disk after it was picked fails every request with it.
-// Picking it again takes its row instead of adding a second one beside it
-// (a second row of a zip would also hold Upload back as "a zip with others").
-function test_workspace_notes_import_upload_repick_takes_the_row()
+// Each picked file is a note of its own, so two todo.md from two folders are
+// two rows. The same file twice (name, size and time) is one row, and a
+// listed file of that name gives way only when the browser can no longer
+// read it: it changed on disk after it was picked, which fails every
+// request with it, and this is the file picked again. The files of one pick
+// or drop are matched only against the rows listed before it.
+function test_workspace_notes_import_upload_repick_keeps_namesakes()
 {
-	$add = pg_test_notes_upload_between(pg_test_notes_upload_screen(), 'function add(entries)', 'function check()');
+	$screen = pg_test_notes_upload_screen();
+	$add = pg_test_notes_upload_between($screen, 'function add(entries)', 'function check()');
+	$probe = pg_test_notes_upload_between($screen, 'function probe(entries)', 'function add(entries)');
 
-	pg_assert_true($add !== '', 'add() is found');
-	pg_assert_true(preg_match('/picked\[\w+\]\s*=\s*entry;/', $add) === 1, 'a pick of a listed name replaces that entry');
-	pg_assert_false(strpos($add, 'lastModified') !== false, 'the key is the name alone, not the name, size and time');
+	pg_assert_true(($add !== '') && ($probe !== ''), 'add() and probe() are found');
+	pg_assert_true(strpos($add, 'lastModified') !== false, 'the same file is known by its name, size and time');
+	pg_assert_true(strpos($add, 'probe(') !== false, 'the listed files of a picked name are read first');
+	pg_assert_true(strpos($add, '.stale') !== false, 'only one the browser cannot read gives way');
+	pg_assert_true(strpos($add, 'var known = picked.slice();') !== false, 'a pick is matched against the rows listed before it');
+	pg_assert_true(preg_match('/picked\[picked\.indexOf\(\w+\)\]\s*=\s*entry;/', $add) === 1, 'the file picked again takes the row in place');
+	pg_assert_true(strpos($probe, 'new FileReader()') !== false && strpos($probe, '.slice(0, 1)') !== false, 'a file is tried by its first byte');
+	pg_assert_true(strpos($probe, 'entry.stale = true;') !== false, 'one that cannot be read is marked');
+}
+
+// A file the browser cannot read is left out of the upload like a file of
+// another kind, and named after a request that failed in the browser: the
+// screen said only "The request failed. Please try again." while every
+// retry failed the same way.
+function test_workspace_notes_import_upload_unreadable_file_named()
+{
+	$screen = pg_test_notes_upload_screen();
+	$check = pg_test_notes_upload_between($screen, 'function check()', 'function drawPick(');
+	$draw = pg_test_notes_upload_between($screen, 'function drawPick(', 'function drawSending()');
+	$upload = pg_test_notes_upload_between($screen, 'function upload()', 'function makesNote(');
+	$send = pg_test_notes_upload_between($screen, 'function sendFiles(', 'function closeButton(');
+
+	pg_assert_true(($check !== '') && ($draw !== '') && ($upload !== '') && ($send !== ''), 'check(), drawPick(), upload() and sendFiles() are found');
+	pg_assert_true(strpos($check, "entry.state = 'stale';") !== false, 'an unreadable file is left out');
+	pg_assert_true(strpos($draw, "t('notes_import_unreadable')") !== false, 'and its row says so');
+	pg_assert_true(strpos($send, 'error.network = true;') !== false, 'a request the browser could not send is told apart');
+	pg_assert_true(strpos($upload, 'error.network') !== false && strpos($upload, 'probe(') !== false, 'after it the files sent are read');
+	pg_assert_true(strpos($upload, "t('notes_import_cannot_read'") !== false, 'and the ones that cannot be read are named');
 }
 
 // The preview and the result take the focus from the button their redraw

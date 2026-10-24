@@ -2030,6 +2030,8 @@ function ws_notes_js_strings()
         'notes_import_over'     => ws_js_template('{var:1} of them are over the limit and will not be sent', 1),
         'notes_import_blocked'  => ws_js_template('{var:1} of them are of a type that cannot be uploaded and will not be sent', 1),
         'notes_import_not_allowed' => lang('not allowed here'),
+        'notes_import_unreadable' => lang('unreadable'),
+        'notes_import_cannot_read' => ws_js_template('The file {var:1} cannot be read.', 1),
         'notes_import_clear'    => lang('Clear'),
         'notes_import_upload'   => lang('Upload'),
         'notes_import_choose'   => lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).'),
