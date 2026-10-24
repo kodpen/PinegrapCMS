@@ -1,6 +1,6 @@
 ---
 name: prototype-sharing
-description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team (F7), a link later
+description: Plan (2026-10-24, slice 2 #1579, slice 4 #1578; answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team, a link later
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -8,21 +8,21 @@ description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design'
 
 ## What is there today?
 - A draft is a whole page in the private Drafts folder; every changing save is a revision. Roles 0-2 open a saved draft at its address ("Open on Site") and click on by page name; role 3 needs folder rights, signed out goes to sign-in. Preview renders widgets in the background, not signed out.
-- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel; flows have no shares.
+- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel.
 - Details: plans/prototype-sharing-code.md.
 
 ## What is proposed? (not approved yet)
 - Drafts are the prototype: a design's draft pages (scheduled ones until they go live) and their links; a link to a live page opens it on the site, a broken one is marked. Opened from the Prototype view (plans/designer-prototype-links.md) or "Preview as prototype"; a toggle outlines hotspots.
-- Viewer prototype.php: the saved draft drawn with no session (a true signed-out view), links resolved by the split `pg_seo_resolve_link()`, forms, cart and sign-in inert; headers as workspace_guest.php; no page cache.
+- Viewer prototype.php (#1579): the viewer frames a session-less render admitted by a 15-minute address signed for design, page, sub, record and person; links by `includes/fn/link_resolve.php`; no Analytics, consent refused, forms inert (designer/designer-prototype-viewer.md).
 - Link: a hashed token, expiry, revoke, optional password with a counter of its own (the sign-in throttle's address bucket would lock sign-in, and is off with it), or team only; roles 0-1 make it, Site Log lines, an API route with `dry_run` and `'mcp' => false` (no AI app mints a public link); what it shows and whether its address shows again: questions 6, 7.
 - Flows: F7 shares read by `ws_flow_access()`: a person gets view, run or edit (edit only for staff), a channel view (run comes from the home channel); a run acts with the owner's rights. A read-only outside graph link like the prototype link (people, channels as kinds) and run state later.
-- Schema, ask first: `prototype_links` (style, start page, token hash (and secret if 7 b), hint, expiry, password hash, audience, maker, revoked, uses) on a general label (11.0.1 on); `ws_flow_shares` on a Workspace one (11.0.80-89, 11.0.110-119); labels: release/version-numbering.md.
+- Schema (approved 2026-10-24): `prototype_links` (style, start page, token hash and secret (7 b), hint, expiry, password hash, audience, maker, revoked, uses) on general label 11.0.35; `ws_flow_shares` 11.0.83 (#1578).
 
 ## Slices (one PR each)
 1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
-2. prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver; Open on Site already shows them saved drafts.
-3. Share links (schema): dialog, list, revoke, password, WAF offence.
-4. F7 flow shares (schema).
+2. PR #1579: prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver.
+3. Share links (schema): dialog, list, revoke, password, WAF offence; only the frame's admission changes, the per-view signature stays.
+4. PR #1578: F7 flow shares (schema 11.0.83).
 5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
 ## Which questions are answered? (owner, 2026-10-24: 1 a, 2 c, 4 a, 6 a; 3, 5, 7 open)
@@ -35,4 +35,4 @@ description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design'
 7. The address: (a) shown once, like guest links, (b) shown again, like calendar feeds → b.
 
 ## Where to start?
-- Slice 1; slice 2 after designer-prototype-links slice 1 (resolver). Read plans/prototype-sharing-code.md, designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
+- Slice 3 (claim #1575); slice 1 open. Read plans/prototype-sharing-code.md, designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
