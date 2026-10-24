@@ -898,13 +898,14 @@ function _pg_sw_current_page_id()
     return $page_id;
 }
 
-// The record counters a form_list_view can order by, beside the built-ins and
-// the form's own fields. They win over a form field of the same name, as a
+// The record statistics a form_list_view can order by, beside the built-ins
+// and the form's own fields: the detail page's counters and the record's
+// newest activity. They win over a form field of the same name, as a
 // standard field does in pg_sw_apply_tokens(). style_designer.js keeps the
 // same list in _SW_FORM_ORDER_COUNTERS.
 function pg_sw_form_order_counters()
 {
-    return array('number_of_views', 'number_of_comments', 'recent_views');
+    return array('number_of_views', 'number_of_comments', 'recent_views', 'newest_activity_date_and_time');
 }
 
 // The window of the recent_views order, in days: today and the days before
@@ -921,15 +922,18 @@ function pg_sw_recent_views_days($value)
 
 // The ORDER BY term of a counter order (pg_sw_form_order_counters()), or null
 // when $field is not one of them and '' when it is but the list names no
-// detail page: the counters are kept per detail page, so without one there is
-// nothing to order by and the list keeps its date order.
+// detail page: the counters and the newest comment are kept per detail page,
+// so without one there is nothing to order by and the list keeps its date
+// order.
 //
 // Correlated scalar subqueries rather than joins: submitted_form_info has no
 // unique key, and a joined duplicate row would print a record twice. MAX()
 // picks one row; the daily rows are summed over the window, counted in
 // MySQL's clock (CURDATE(), as the writer stamps them). Without the daily
-// table, recent_views reads the all-time counter. Every value that reaches
-// the SQL is whitelisted or cast to int.
+// table, recent_views reads the all-time counter. Newest activity is the later
+// of the record's submitted time and the time of the comment the detail
+// page's row names as its newest. Every value that reaches the SQL is
+// whitelisted or cast to int.
 function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_days, $stats_ready)
 {
     $field = (string)$field;
@@ -939,6 +943,18 @@ function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_da
     if ($page <= 0) return '';
 
     $dir = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+
+    // The same source as the ^^newest_activity_date_and_time^^ token and the
+    // classic list's order: submitted_form_info.newest_comment_id. MAX()
+    // because the row has no unique key. Compared as integers, with 0 (never
+    // '') when there is no row or the comment is gone, so the submitted time
+    // stands.
+    if ($field === 'newest_activity_date_and_time') {
+        return "GREATEST(forms.submitted_timestamp, IFNULL((SELECT MAX(pg_ord_c.created_timestamp)"
+             . " FROM submitted_form_info pg_ord_i"
+             . " INNER JOIN comments pg_ord_c ON pg_ord_c.id = pg_ord_i.newest_comment_id"
+             . " WHERE pg_ord_i.submitted_form_id = forms.id AND pg_ord_i.page_id = '$page'), 0)) $dir";
+    }
 
     if ($field === 'recent_views' && $stats_ready) {
         $back = pg_sw_recent_views_days($recent_days) - 1;
@@ -1449,9 +1465,10 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
-//                               recent_views | form_fields.name (the three
-//                               counters need detail_page_id, whose counters
-//                               they read: pg_sw_counter_order_sql())
+//                               recent_views | newest_activity_date_and_time |
+//                               form_fields.name (the record statistics need
+//                               detail_page_id, whose counters and newest
+//                               comment they read: pg_sw_counter_order_sql())
 //   order_by_direction  ASC | DESC (default DESC)
 //   order_by_2_field, order_by_2_direction — the second order, same values
 //   order_recent_days   int 1-180 (default 7): the recent_views window,
@@ -1595,9 +1612,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($field === 'submitted_date_and_time') {
             return array('sql' => "forms.submitted_timestamp $direction", 'join' => '');
         }
-        // A record counter, read for the list's detail page. It wins over a
-        // form field of the same name; without a detail page it gives no
-        // order (the date order then applies) and no form field is tried.
+        // A record statistic (counter or newest activity), read for the
+        // list's detail page. It wins over a form field of the same name;
+        // without a detail page it gives no order (the date order then
+        // applies) and no form field is tried.
         $counter = pg_sw_counter_order_sql(
             $field,
             $direction,
