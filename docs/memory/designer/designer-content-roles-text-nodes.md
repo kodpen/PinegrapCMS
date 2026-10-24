@@ -10,10 +10,10 @@ description: Which designer nodes a manager or user may edit as text outside a m
 
 ## Why are the btn and badge components text?
 - They keep their label in `props.text`, and the save (`pg_designer_merge_restricted_tree()`) copies `props.text` of every node that has one, keeping the address and the look. The call-to-action button of every ready-made block is a `component`/`btn` (`palette-component-atomic.md`).
-- Symptom fixed: a manager or user who double-clicked a block's button label, on the page or in an opened shared component, got "You can edit text, and anything inside an area marked as editable."; the panel had no Text row and the button was faded, while a semantic `<a class="btn">` beside it was editable.
+- Symptom fixed: a manager or user who double-clicked a block's button label, on the page or in an opened shared component, got "You can edit text, and anything inside an area marked as editable."; the panel had no Text row and the button was faded, while a semantic `<a class="btn">` beside it was editable (PR #1479).
 
 ## What does the code view offer a content role?
-- A text island only where `_sdCodeApplyText()` writes it back: `_sdCodeLockOf()` asks `_sdCodeTextKind(node) !== 'none'` too, so a content or semantic node. A btn or badge component prints its own label, so there it stays fully locked and a keystroke gets the lock toast; before, the island took it and the next redraw dropped it unsaved.
+- A text island only where `_sdCodeApplyText()` writes it back: `_sdCodeLockOf()` asks `_sdCodeTextKind(node) !== 'none'` too, so a content or semantic node. A btn or badge component prints its own label, so there it stays fully locked and a keystroke gets the lock toast; before, the island took it and the next redraw dropped it unsaved (PR #1479).
 - A designer's code view still takes a typed btn label and drops it at the redraw (no component text kind); the panel and the double-click save it.
 
 ## Why not every component with a text prop?
