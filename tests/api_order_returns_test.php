@@ -150,9 +150,13 @@ function test_api_order_returns_present_the_refund()
 		api_order_return_present(api_order_returns_test_row(array('refund_reference' => '', 'refund_unclear' => '1')))['refund'],
 		'no clear answer from the service');
 
-	pg_assert_same(array('amount' => 0, 'method' => null, 'reference' => null, 'unclear' => false),
+	pg_assert_same(array('amount' => null, 'method' => null, 'reference' => null, 'unclear' => false),
 		api_order_return_present(api_order_returns_test_row(array('refund_amount' => '0', 'refund_method' => '', 'refund_reference' => '')))['refund'],
-		'refunded before the columns, nothing found to fill them');
+		'refunded before the columns, nothing found to fill them: the amount is not known either');
+
+	pg_assert_same(array('amount' => 25000, 'method' => 'driver', 'reference' => null, 'unclear' => true),
+		api_order_return_present(api_order_returns_test_row(array('refund_reference' => '', 'refund_unclear' => '1', 'status' => 'refunded')))['refund'],
+		'while the payment service is being asked');
 
 	pg_assert_same(array('amount' => 25000, 'method' => 'driver', 'reference' => 'R-77', 'unclear' => false),
 		api_order_return_present(api_order_returns_test_row(array('status' => 'closed', 'closed_at' => '1792998000')))['refund'],
@@ -166,7 +170,7 @@ function test_api_order_returns_present_the_refund()
 	pg_assert_same(null, api_order_return_present($before)['refund'], 'the columns are not there yet');
 
 	pg_assert_same('OrderReturnRefund?', api_order_return_schema()['refund'], 'a nested object that may be null');
-	pg_assert_same(array('amount' => 'integer', 'method' => 'string?', 'reference' => 'string?', 'unclear' => 'boolean'), api_order_return_refund_schema());
+	pg_assert_same(array('amount' => 'integer?', 'method' => 'string?', 'reference' => 'string?', 'unclear' => 'boolean'), api_order_return_refund_schema());
 	pg_assert_same(array_keys(api_order_return_refund_schema()), array_keys(api_order_return_present(api_order_returns_test_row())['refund']), 'every refund field declared, in order');
 }
 
@@ -268,7 +272,9 @@ function test_api_order_returns_list_route()
 	pg_assert_true(function_exists($route['handler']), 'the handler is declared');
 	pg_assert_same(array('list' => 'OrderReturn'), $route['returns']);
 	pg_assert_same(1, count($route['params']), 'the order id and nothing else: one page, no cursor');
-	pg_assert_contains('refund', $route['description'], 'names the refund the return keeps');
+	pg_assert_contains('but no reference', $route['description'], 'says what the event carries of the refund the return keeps');
+	pg_assert_contains('a closed return keeps it', $route['description']);
+	pg_assert_contains('while it is being asked', $route['description'], 'names the unconfirmed state of a refund in flight');
 	pg_assert_false(strpos($route['description'], 'come only with') !== false, 'the refund is no longer only in the event');
 	pg_assert_contains('requested_in_time', $route['description'], 'names the withdrawal timing');
 }

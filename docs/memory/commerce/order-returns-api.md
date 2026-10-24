@@ -1,6 +1,6 @@
 ---
 name: order-returns-api
-description: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, the refund fields the object lacks
+description: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, where the refund's amount and method are
 ---
 
 ## Which routes are there?

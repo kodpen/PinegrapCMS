@@ -1059,13 +1059,14 @@ function api_order_return_windows($rows) {
 
 // The refund a return keeps (order_returns.refund_*, 11.0.34): what the
 // order.return.refunded event carried. null until the return was refunded,
-// and on a site whose upgrade has not added the columns yet. amount is in
-// minor units (0 is a refund recorded as 0). method is driver (through the
-// payment service) or manual (made another way and recorded); null for a
-// return refunded before the columns whose refund could not be found again.
-// reference is the service's refund id or the typed reference, null when
-// none. unclear: the service gave no clear answer, so the refund is booked
-// but unconfirmed.
+// and on a site whose upgrade has not added the columns yet; a return closed
+// after its refund keeps it. amount is in minor units (0 is a refund
+// recorded as 0). method is driver (through the payment service) or manual
+// (made another way and recorded). Both are null for a return refunded
+// before the columns whose refund could not be found again. reference is the
+// service's refund id or the typed reference, null when none. unclear: the
+// service gave no clear answer, so the refund is booked but unconfirmed; it
+// is also true while the service is being asked.
 function api_order_return_refund_present($row) {
 
 	if (((int)$row['refunded_at'] <= 0) || !array_key_exists('refund_method', $row)) {
@@ -1076,11 +1077,13 @@ function api_order_return_refund_present($row) {
 
 	$method = (string)$row['refund_method'];
 
+	$known = in_array($method, array('driver', 'manual'), true);
+
 	$reference = isset($row['refund_reference']) ? (string)$row['refund_reference'] : '';
 
 	return array(
-		'amount'    => (int)(isset($row['refund_amount']) ? $row['refund_amount'] : 0),
-		'method'    => in_array($method, array('driver', 'manual'), true) ? $method : null,
+		'amount'    => $known ? (int)(isset($row['refund_amount']) ? $row['refund_amount'] : 0) : null,
+		'method'    => $known ? $method : null,
 		'reference' => ($reference !== '') ? $reference : null,
 		'unclear'   => ((int)(isset($row['refund_unclear']) ? $row['refund_unclear'] : 0) === 1)
 	);
@@ -1453,7 +1456,7 @@ function api_order_return_withdrawal_schema() {
 function api_order_return_refund_schema() {
 
 	return array(
-		'amount'    => 'integer',
+		'amount'    => 'integer?',
 		'method'    => 'string?',
 		'reference' => 'string?',
 		'unclear'   => 'boolean'
