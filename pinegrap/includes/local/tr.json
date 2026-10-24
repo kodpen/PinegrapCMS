@@ -26890,5 +26890,16 @@
     "My own carrier (the tracking link recorded here is sent to Trendyol)": "Kendi kargom (burada kaydedilen takip bağlantısı Trendyol'a gönderilir)",
     "That order has no package number to ship.": "Bu siparişin kargolanacak paket numarası yok.",
     "Trendyol needs the carrier's tracking page, an address that starts with http:// or https://, not a tracking number.": "Trendyol takip numarasını değil, kargo firmasının takip sayfasını ister: http:// ya da https:// ile başlayan bir adres.",
-    "Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} takip bağlantısıyla kargolandı olarak işaretlendi."
+    "Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} takip bağlantısıyla kargolandı olarak işaretlendi.",
+    "Pinegrap AI already has a key.": "Pinegrap AI'ın zaten bir anahtarı var.",
+    "Pinegrap AI's key needs writing in the Workspace and the Tasks, which your account cannot hand on.": "Pinegrap AI'ın anahtarı Çalışma Alanı'na ve Görevler'e yazabilmeli; hesabınız bu izni devredemiyor.",
+    "Made in Workspace settings for Pinegrap AI in the channels. It has no secret and cannot sign in.": "Kanallardaki Pinegrap AI için Çalışma Alanı ayarlarında oluşturuldu. Gizli anahtarı yoktur ve oturum açamaz.",
+    "Pinegrap AI's key could not be made.": "Pinegrap AI'ın anahtarı oluşturulamadı.",
+    "Pinegrap AI's key was made. It cannot sign in anywhere and needs no secret.": "Pinegrap AI'ın anahtarı oluşturuldu. Hiçbir yerde oturum açamaz ve gizli anahtara ihtiyaç duymaz.",
+    "Create Pinegrap AI's key": "Pinegrap AI'ın anahtarını oluştur",
+    "The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.": "Anahtar {var:1} dışındaki her tür kaydı okur ve yalnızca Çalışma Alanı'na ve Görevler'e yazar. Gizli anahtarı yoktur ve hiçbir yerde oturum açamaz: Pinegrap AI bu sitenin içinde çalışır.",
+    "Pinegrap AI uses only this application's name and permissions; its key and secret are not needed here.": "Pinegrap AI bu uygulamanın yalnızca adını ve izinlerini kullanır; anahtarı ve gizli anahtarı burada gerekmez.",
+    "It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.": "Hiçbir yerde oturum açamaz ve gizli anahtara ihtiyaç duymaz: Pinegrap AI bu sitenin içinde çalışır.",
+    "Press Create Pinegrap AI's key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude's, and choose it under Use another application.": "Yukarıdaki Pinegrap AI'ın anahtarını oluştur düğmesine basın: Pinegrap AI'ın yazdığı uygulamayı gizli anahtar olmadan oluşturur, bu yüzden hiçbir yerde oturum açamaz. Başka bir uygulama kullanmak için onu Uygulama Erişimi'nde Claude'unkinden ayrı oluşturun ve Başka bir uygulama kullan bölümünde seçin.",
+    "An administrator connects it by pressing Create Pinegrap AI's key on this card:": "Bir yönetici bu karttaki Pinegrap AI'ın anahtarını oluştur düğmesine basarak bağlar:"
 }

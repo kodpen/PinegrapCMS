@@ -1601,6 +1601,25 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user)
 }
 
 /**
+ * The scopes of the key an assistant's card makes (Claude's here, Pinegrap
+ * AI's in ai.php): every read but the five left out, and writing in the
+ * Workspace and the Tasks, cut to what the administrator pressing the button
+ * may hand on; every call is capped again by the owner's rights then.
+ *
+ * @param array $user validate_user() of the person pressing the button
+ * @return string[] empty when that person cannot hand on both writes
+ */
+function ws_assistant_key_scopes($user)
+{
+    require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
+
+    return api_assistant_scopes_handed_on(
+        api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()),
+        api_owner_scopes($user)
+    );
+}
+
+/**
  * The card's two key buttons, for an administrator (ws_claude_settings_post()
  * checked the role). Create makes the application key Claude works through
  * and links it; Reset secret gives the linked key a new secret, and the old
@@ -1633,15 +1652,9 @@ function ws_claude_key_post($action, $liveform, $user, $username)
             return;
         }
 
-        // Every read but the five left out, and writing in the Workspace and
-        // the Tasks, cut to what the administrator pressing the button may
-        // hand on; every call is capped again by the owner's rights then.
-        $scopes = array_values(array_intersect(
-            api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()),
-            api_owner_scopes($user)
-        ));
+        $scopes = ws_assistant_key_scopes($user);
 
-        if (!in_array('workspace:write', $scopes, true) || !in_array('tasks:write', $scopes, true)) {
+        if (empty($scopes)) {
             $liveform->add_error(lang('Claude\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
             return;
         }

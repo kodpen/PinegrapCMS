@@ -29,7 +29,7 @@ $app['scopes'] = api_effective_scopes($granted, $owner);
 
 ## Who creates keys?
 - Application keys, secrets and passwords are created, and credential boxes filled in, by the site's owner in the panel or the provider's console; never generated or typed in for them.
-- An administrator's "Create Claude's key" in Workspace settings also creates one, with scopes chosen by code (`api_assistant_scopes()`, cut to `api_owner_scopes()`): `workspace/workspace-assistant-keys.md`.
+- An administrator's "Create Claude's key" in Workspace settings also creates one, with scopes chosen by code (`api_assistant_scopes()`, cut to `api_owner_scopes()`), and "Create Pinegrap AI's key" one without a secret, which cannot sign in (`api_app_can_sign_in()`): `workspace/workspace-assistant-keys.md`.
 
 ## Which rows does an owner with the user role (3) reach?
 - The scope opens a kind of record; for role 3 each endpoint also narrows the rows as the panel screen does (404 outside): `api-user-role-rows.md`.

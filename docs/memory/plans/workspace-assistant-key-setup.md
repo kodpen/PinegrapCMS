@@ -1,6 +1,6 @@
 ---
 name: workspace-assistant-key-setup
-description: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
+description: Plan (2026-10-23; step 1 in PR #1462, step 2 built; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -8,22 +8,22 @@ description: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on
 - Pinegrap AI was inefficient in long tests.
 
 ## What is there today?
-- Claude (`ws_claude_settings_card()`, `ws_claude_settings_post()`): a key made by hand on api_settings.php (guide step `app`, `ws_claude_setup_hint()`), picked in a select; the prompt (`ws_claude_routine_prompt()`) holds no credential.
-- Pinegrap AI (`ws_ai_settings_card()`): same select; it runs in the site, the row is identity (`<@app:N>`), read filter (`ws_ai_readable_types()`), poster (`ws_ai_owner()`); no prompt, no secret used.
+- Claude (`ws_claude_settings_card()`): Create, the one-time window and Reset secret (step 1); a hand-made key is picked under Use another application; the prompt (`ws_claude_routine_prompt()`) holds no credential.
+- Pinegrap AI (`ws_ai_settings_card()`): Create makes a row without a secret; it runs in the site, the row is identity (`<@app:N>`), read filter (`ws_ai_readable_types()`), poster (`ws_ai_owner()`).
 - Links: `config.ws_claude_app_id`, `config.ws_ai_app_id`; role 0 saves; role-3 settings holders see the cards.
 - api_settings.php: hashed secret, one-time sheet via the session, removed on Close; rotation keeps the old secret 24 h. Delete removes the row; nothing sets 'revoked'.
 
-## What is proposed? (not approved yet)
-- includes/api/keys.php: `api_app_create()`, `api_app_rotate_secret($id, $grace)` (proposed), with the screen's audit and log.
-- Scopes (proposed `api_assistant_scopes()`, pure): per group its read, or `workspace:write` / `tasks:write`; no other write; cut to `api_owner_scopes()` of the clicking admin (owner); each call capped by `api_effective_scopes()`.
+## What was proposed? (approved by answers 1-4)
+- includes/api/keys.php: `api_app_create()`, `api_app_rotate_secret($id, $grace)`, with the screen's audit and log.
+- Scopes (`api_assistant_scopes()`, pure): per group its read, or `workspace:write` / `tasks:write`; no other write; cut to the clicking admin's `api_owner_scopes()`; each call capped by `api_effective_scopes()`.
 - No schema: the id goes in the config link; reset reads it there, never the post.
-- Sheet once after redirect (session, never URL or log): key, secret, domain, prompt to copy; "I have copied it" unlocks Close. Then role 0 sees key, prompt (copy), hint, "Reset secret".
+- Sheet once after redirect (session, never URL or log): key, secret, domain, prompt; then role 0 sees key, prompt, hint, "Reset secret".
 - Reset: linked 'server' key only, grace 0 (old secrets fail at once), audit, log, shown once.
 - POSTs: role 0, `validate_token_field()`; `lang()` labels.
 
 ## Slices
 1. No schema. Claude: helpers, scopes, Create, sheet, reset, guide and hint; the select stays in the Save form under "Use another application".
-2. No schema. Pinegrap AI: Create (question 3), guide.
+2. Built. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; see workspace/workspace-assistant-keys.md.
 3. No schema. api_settings.php uses the helpers, same behaviour.
 4. Pinegrap AI measurements (question 5).
 
@@ -39,4 +39,4 @@ Open: 5. Pinegrap AI: (a) measure first, (b) change limits → a; ai.pinegrap.co
 - Measure `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, `ai_state` size; tokens not kept. Briefing: plans/ai-agent-prompts.md.
 
 ## Where to start?
-- Slice 1. The sheet shows `ws_claude_routine_prompt()`, a bootstrap after plans/ai-agent-prompts.md step 3; the config link fits plans/workspace-agent-handles.md.
+- Slice 3, then 4. The sheet shows `ws_claude_routine_prompt()`, a bootstrap after plans/ai-agent-prompts.md step 3; the config link fits plans/workspace-agent-handles.md.

@@ -93,6 +93,49 @@ function api_secret_hint($secret) {
 
 }
 
+// Whether a stored secret hash takes the hash of a supplied secret. An empty
+// stored hash takes nothing, an empty supplied hash included, which
+// hash_equals() alone would call equal: a 'server' key made without a
+// secret (api_app_create() with $with_secret false) and a previous secret
+// that was cleared open nothing.
+function api_secret_hash_accepts($stored_hash, $supplied_hash) {
+
+	$stored_hash   = (string)$stored_hash;
+	$supplied_hash = (string)$supplied_hash;
+
+	return ($stored_hash !== '') && ($supplied_hash !== '') && hash_equals($stored_hash, $supplied_hash);
+
+}
+
+// Whether an application row has any way to sign in at $now. A 'device' or
+// 'oauth' application signs people in with tokens (includes/api/devices.php,
+// includes/oauth/); every other row only with its key and a secret
+// (api_secret_matches()), so it needs a stored secret hash, or the previous
+// one while its grace runs. Pinegrap AI's key, made without a secret, answers
+// false: it is an identity and a set of scopes inside the site, never a way
+// in. The status is not looked at: a disabled row is refused later anyway.
+function api_app_can_sign_in(array $app, $now) {
+
+	$kind = isset($app['kind']) ? (string)$app['kind'] : 'server';
+
+	if (($kind === 'device') || ($kind === 'oauth')) {
+
+		return true;
+
+	}
+
+	if (isset($app['api_secret_hash']) && ((string)$app['api_secret_hash'] !== '')) {
+
+		return true;
+
+	}
+
+	return isset($app['api_secret_prev_hash'], $app['api_secret_prev_expires'])
+		&& ((string)$app['api_secret_prev_hash'] !== '')
+		&& ((int)$app['api_secret_prev_expires'] > (int)$now);
+
+}
+
 // Makes an application key for a panel screen that sets one up by itself (the
 // assistants' cards in the Workspace settings). Always kind 'server': a
 // 'device' or 'oauth' application lets people sign in, which nothing made
