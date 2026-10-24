@@ -11,7 +11,10 @@
  * messages of a server that is an agent itself, what it is sent for a
  * workspace task, how often its tasks are asked about, who may stop a
  * request to it, the conversation it keeps and its answer without the head
- * line (mcp_agent.php).
+ * line (mcp_agent.php). Also the tools turned on by a server's first read and
+ * by declaring the unsaid ones as reading only, the fields the settings form
+ * keeps after a failed check, and when a request to an alias that could not
+ * reach Pinegrap AI posts the form-run link (ai.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,6 +31,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 
 // A tool as the client keeps it.
 function workspace_mcp_test_tool($name, $annotations = array())
@@ -699,4 +703,93 @@ function test_workspace_mcp_agent_request_is_stopped_by_who_asked_or_an_administ
 	pg_assert_false(ws_mcp_agent_can_cancel(null, $row), 'nobody');
 	pg_assert_true(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'queued')), 'while it waits');
 	pg_assert_false(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'answered')), 'not once it ended');
+}
+
+function test_workspace_mcp_first_read_turns_on_the_tools_that_read()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+		workspace_mcp_test_tool('deletes', array('destructiveHint' => true)),
+	);
+
+	pg_assert_true(ws_mcp_first_read(workspace_mcp_test_server(array(), array())), 'no tool known and no rule: a first read');
+	pg_assert_false(ws_mcp_first_read(workspace_mcp_test_server($tools, array())), 'tools read before, all of them off: the setup is the administrator\'s');
+	pg_assert_false(ws_mcp_first_read(workspace_mcp_test_server(array(), array('reads' => 'auto'))), 'a rule is kept');
+
+	pg_assert_same(array('reads' => 'auto'), ws_mcp_rules_after_read(array(), $tools, true), 'on the first read only the tool the server marks as reading only is on');
+	pg_assert_same(array(), ws_mcp_rules_after_read(array(), $tools, false), 'a server read before is left as it is');
+	pg_assert_same(array('unsaid' => 'auto_declared'), ws_mcp_rules_after_read(array('unsaid' => 'auto_declared', 'gone' => 'auto'), $tools, false), 'the rules of the tools it still lists stay; the others go');
+
+	// What a first read leaves on is what the screens offer.
+	$server = workspace_mcp_test_server($tools, ws_mcp_rules_after_read(array(), $tools, true), 'oauth');
+	pg_assert_same(array('reads'), array_keys(ws_mcp_tools_on($server)), 'a tool that writes stays off on a server people sign in to too');
+}
+
+function test_workspace_mcp_declare_all_turns_on_the_unsaid_tools()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('other'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+	);
+	$shared = workspace_mcp_test_server($tools, array());
+	$oauth = workspace_mcp_test_server($tools, array(), 'oauth');
+
+	pg_assert_same(
+		array('reads' => 'auto', 'unsaid' => 'auto_declared', 'other' => 'auto_declared'),
+		ws_mcp_rules_declare_all($shared, ws_mcp_tools($shared), array('reads' => 'auto')),
+		'every tool the server says nothing about reads only; the one that writes stays off'
+	);
+	pg_assert_same(array(), ws_mcp_rules_declare_all($shared, array(), array()), 'no tool, nothing on');
+
+	$declared = ws_mcp_rules_declare_all($oauth, ws_mcp_tools($oauth), array('unsaid' => 'approve', 'writes' => 'approve'));
+	pg_assert_same('approve', $declared['unsaid'], 'a tool set to ask first keeps asking');
+	pg_assert_same('auto_declared', $declared['other'], 'an unsaid tool that was off reads only');
+	pg_assert_same('approve', $declared['writes'], 'a tool that writes keeps its rule');
+	pg_assert_false(isset($declared['reads']), 'a tool the server says reads only is left to its switch');
+}
+
+function test_workspace_mcp_settings_form_keeps_no_secret()
+{
+	$kept = ws_mcp_settings_keep_values(array(
+		'mcp_alias'         => ' @Docs ',
+		'mcp_name'          => array('x'),
+		'mcp_url'           => 'https://mcp.example.com/mcp',
+		'mcp_auth'          => 'header',
+		'mcp_token'         => 'token-secret',
+		'mcp_header_name'   => 'X-Api-Key',
+		'mcp_header_value'  => 'header-secret',
+		'mcp_user'          => 'robot',
+		'mcp_password'      => 'password-secret',
+		'mcp_client_id'     => 'client-1',
+		'mcp_client_secret' => 'client-secret',
+	));
+
+	pg_assert_same(array('mcp_alias', 'mcp_name', 'mcp_url', 'mcp_auth', 'mcp_header_name', 'mcp_user', 'mcp_client_id'), array_keys($kept));
+	pg_assert_same('@Docs', $kept['mcp_alias'], 'as typed, trimmed');
+	pg_assert_same('', $kept['mcp_name'], 'a list is not a value');
+	pg_assert_same('X-Api-Key', $kept['mcp_header_name']);
+
+	foreach (array('token-secret', 'header-secret', 'password-secret', 'client-secret') as $secret) {
+		pg_assert_false(in_array($secret, $kept, true), 'never kept: ' . $secret);
+	}
+
+	pg_assert_same(500, mb_strlen(ws_mcp_settings_keep_values(array('mcp_url' => str_repeat('é', 900)))['mcp_url']), 'a long value is cut');
+}
+
+function test_workspace_mcp_form_link_at_the_first_hold_only()
+{
+	$row = array('mcp_server_id' => 3, 'channel_id' => 5, 'note_id' => 0, 'task_id' => 0, 'ai_steps' => 0, 'ai_attempts' => 0);
+
+	pg_assert_true(ws_ai_form_hint_due($row, true), 'the first call of a request to an alias could not reach Pinegrap AI');
+	pg_assert_false(ws_ai_form_hint_due($row, false), 'Pinegrap AI answered, with a problem of another kind');
+	pg_assert_false(ws_ai_form_hint_due(array('ai_attempts' => 1) + $row, true), 'a retry says nothing again');
+	pg_assert_false(ws_ai_form_hint_due(array('ai_steps' => 2) + $row, true), 'a request that got on is not told');
+	pg_assert_false(ws_ai_form_hint_due(array('mcp_server_id' => 0) + $row, true), 'no alias was asked');
+	pg_assert_false(ws_ai_form_hint_due(array('note_id' => 4) + $row, true), 'asked in a note');
+	pg_assert_false(ws_ai_form_hint_due(array('task_id' => 2) + $row, true), 'a run on a task');
+	pg_assert_false(ws_ai_form_hint_due(array('channel_id' => 0) + $row, true), 'no channel to tell');
 }
