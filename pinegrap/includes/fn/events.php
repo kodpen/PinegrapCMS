@@ -155,6 +155,7 @@ function pg_event_workspace_events()
         'order.shipped',
         'order.delivered',
         'order.cancelled',
+        'order.return.requested',
         'stock.low',
         'customer.created',
         'customer.updated',
