@@ -1,9 +1,9 @@
 ---
 name: erp-parasut-legacy-stale-ids
-description: Legacy Paraşüt buttons on an order keeping the id of a record deleted on Paraşüt's screen: read first, a 404 naming it as not found left out and its id cleared, any other answer refused (#PR)
+description: Legacy Paraşüt buttons on an order keeping the id of a record deleted on Paraşüt's screen: read first, a 404 naming it as not found left out and its id cleared, any other answer refused (#1544)
 ---
 
-## What went wrong? (#PR)
+## What went wrong? (#1544)
 - Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no panel screen clears: the buttons were disabled, E-Shipment's read got 404, an invoice naming a deleted document got 404, unwritten. The order stayed refused.
 
 ## What does a press do with a stored id now?
