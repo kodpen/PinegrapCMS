@@ -317,6 +317,8 @@ function pg_panel_actions()
         'ws_task_delegation', 'ws_task_delegation_stop',
         'ws_task_approval_create', 'ws_approval_guest_resend',
         'ws_mcp_connect', 'ws_mcp_disconnect_me',
+        'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
+        'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

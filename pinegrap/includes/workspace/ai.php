@@ -2740,9 +2740,11 @@ function ws_ai_seen_add(&$state, $text)
    --------------------------------------------------------------------------- */
 
 /**
- * The permission of the application a kind of tag is read under. A kind the
- * external API has no endpoint for goes with the workspace permission: the
- * person's own right to it (ws_ref_types()) decides.
+ * The permission of the application a kind of tag is read under: the scope
+ * the external API reads that kind with (ws_api_search_record_scopes()), so
+ * an assistant reaches no record its key could not read over the API. A kind
+ * the external API has no endpoint for goes with the workspace permission:
+ * the person's own right to it (ws_ref_types()) decides.
  *
  * @param string $type
  * @return string
@@ -2758,9 +2760,10 @@ function ws_ai_type_scope($type)
         'erp_account'    => 'erp:read',
         'invoice'        => 'erp:read',
         'waybill'        => 'erp:read',
-        'receipt'        => 'erp:read',
+        'receipt'        => 'erp_cash:read',
         'edoc'           => 'erp:read',
         'form'           => 'forms:read',
+        'calendar_event' => 'calendars:read',
         'file'           => 'files:read',
         'page'           => 'pages:read',
         'task'           => 'tasks:read',

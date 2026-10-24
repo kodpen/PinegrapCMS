@@ -5,7 +5,8 @@
  * (workspace_tasks.php), the planning board (workspace_board.php), the work
  * calendar (workspace_calendar.php), the decision timeline
  * (workspace_timeline.php) and the Workspace drawer on the order, contact
- * and product screens.
+ * and product screens. The flows screen (workspace_flows.php) is drawn by
+ * workspace_flow.js, which is started from here.
  *
  * Served minified as part of assets/js/workspace.min.js, together with the
  * workspace_*.js files it leans on (pg_js_bundles(), includes/fn/output.php).
@@ -82,6 +83,28 @@
         return node;
     }
 
+    // An icon with a small mark in its corner (ws_icon_badged_html() in
+    // includes/workspace/channel_icons.php); the plain icon without one.
+    function badgedIcon(name, badge, extra) {
+        if (!badge) {
+            return icon(name, extra);
+        }
+
+        var node = el('span', 'ws-icon-badged' + (extra ? ' ' + extra : ''));
+        node.setAttribute('aria-hidden', 'true');
+        node.appendChild(el('i', 'bi ' + name));
+        node.appendChild(el('i', 'bi ' + badge + ' ws-icon-badge'));
+        return node;
+    }
+
+    // A channel's icon: the one it was given, with the mark of its kind in
+    // the corner (a lock, a door, a person), or the one its kind gives.
+    function channelIcon(channel, extra) {
+        var name = channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash'));
+
+        return badgedIcon(name, channel.icon_badge || '', extra);
+    }
+
     function button(className, label, iconName, title) {
         var node = el('button', className);
         node.type = 'button';
@@ -123,7 +146,10 @@
         return node;
     }
 
-    function api(action, data) {
+    // options.keepalive: the request is finished even when the page is left
+    // meanwhile (a save as the page closes); browsers refuse such a body over
+    // 64 KiB.
+    function api(action, data, options) {
         var payload = { action: action, token: CFG.token };
 
         Object.keys(data || {}).forEach(function (key) {
@@ -133,6 +159,7 @@
         return fetch(CFG.api_url, {
             method: 'POST',
             credentials: 'same-origin',
+            keepalive: !!(options && options.keepalive),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         }).then(function (response) {
@@ -2811,7 +2838,7 @@
                 data.items.forEach(function (item) {
                     var row = el('button', 'ws-picker-item');
                     row.type = 'button';
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                     row.appendChild(el('span', 'ws-picker-label', item.label));
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));
                     row.addEventListener('click', function () {
@@ -2861,7 +2888,7 @@
             chip.href = ref.url;
         }
 
-        chip.appendChild(icon(ref.icon || 'bi-dot'));
+        chip.appendChild(badgedIcon(ref.icon || 'bi-dot', ref.badge || ''));
         chip.appendChild(el('span', '', ref.label));
 
         if (onRemove) {
@@ -3202,7 +3229,7 @@
             f.refs = el('div', 'ws-refs-field mb-2');
             refsWrap.appendChild(f.refs);
             refsWrap.appendChild(refSearchField(BOOT.ref_types, function (item) {
-                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, url: '' });
+                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, badge: item.badge || '', url: '' });
                 self.drawRefs();
             }));
             body.appendChild(refsWrap);
@@ -3906,6 +3933,176 @@
         return box;
     }
 
+    // An icon of the channel's own from the curated list
+    // (includes/workspace/channel_icons.php), or none: then the icon its
+    // kind gives, which the first cell shows. A radiogroup: Tab reaches the
+    // chosen icon, the arrow keys, Home and End move through the ones the
+    // search leaves, and Enter in the search takes the first of them.
+    function iconPicker(value, kindIcon) {
+        var box = el('div', 'ws-icon-picker');
+        var search = el('input', 'form-control form-control-sm ws-icon-search');
+        var grid = el('div', 'ws-icon-grid');
+        var empty = el('div', 'ws-icon-empty d-none', t('icon_nothing'));
+        var current = value || '';
+        var cells = [];
+
+        search.type = 'search';
+        search.placeholder = t('icon_search');
+        search.setAttribute('aria-label', t('icon_search'));
+        search.autocomplete = 'off';
+        search.spellcheck = false;
+
+        grid.setAttribute('role', 'radiogroup');
+        grid.setAttribute('aria-label', t('icon'));
+
+        [{ icon: '', label: t('icon_none'), words: '' }].concat(CFG.channel_icons || []).forEach(function (choice) {
+            var cell = el('button', 'ws-icon-choice' + (choice.icon ? '' : ' ws-icon-choice-none'));
+
+            cell.type = 'button';
+            cell.title = choice.label;
+            cell.setAttribute('role', 'radio');
+            cell.setAttribute('aria-label', choice.label);
+            cell.appendChild(icon(choice.icon || kindIcon || 'bi-hash'));
+            cell.addEventListener('click', function () {
+                choose(choice.icon, false);
+            });
+
+            cells.push({ node: cell, icon: choice.icon, words: ' ' + foldText(choice.label + ' ' + choice.words).replace(/[\s,]+/g, ' ') });
+            grid.appendChild(cell);
+        });
+
+        function shown() {
+            return cells.filter(function (cell) {
+                return !cell.node.classList.contains('d-none');
+            });
+        }
+
+        // Only one cell is in the Tab order: the chosen one, or the first
+        // shown when the search hides it.
+        function mark() {
+            var visible = shown();
+            var reachable = null;
+
+            cells.forEach(function (cell) {
+                var on = (cell.icon === current);
+
+                cell.node.classList.toggle('active', on);
+                cell.node.setAttribute('aria-checked', on ? 'true' : 'false');
+
+                if (on && !cell.node.classList.contains('d-none')) {
+                    reachable = cell;
+                }
+            });
+
+            reachable = reachable || visible[0] || null;
+
+            cells.forEach(function (cell) {
+                cell.node.tabIndex = (cell === reachable) ? 0 : -1;
+            });
+        }
+
+        function choose(name, focus) {
+            current = name || '';
+            mark();
+
+            if (focus) {
+                cells.forEach(function (cell) {
+                    if (cell.icon === current) {
+                        cell.node.focus();
+                    }
+                });
+            }
+        }
+
+        // Every word typed must start a word of the icon, in either language.
+        search.addEventListener('input', function () {
+            var words = foldText(search.value).split(/[\s,]+/).filter(Boolean);
+            var found = 0;
+
+            cells.forEach(function (cell) {
+                var keep = !cell.icon || words.every(function (word) {
+                    return cell.words.indexOf(' ' + word) !== -1;
+                });
+
+                cell.node.classList.toggle('d-none', !keep);
+                found += (keep && cell.icon) ? 1 : 0;
+            });
+
+            empty.classList.toggle('d-none', found > 0);
+            mark();
+        });
+
+        search.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            var first = shown().filter(function (cell) { return cell.icon; })[0];
+
+            if (search.value.trim() && first) {
+                choose(first.icon, true);
+            }
+        });
+
+        grid.addEventListener('keydown', function (event) {
+            var visible = shown();
+            var at = -1;
+
+            visible.forEach(function (cell, index) {
+                if (cell.node === document.activeElement) {
+                    at = index;
+                }
+            });
+
+            if ((at === -1) || !visible.length) {
+                return;
+            }
+
+            // As many cells as share the first one's line make a row.
+            var columns = visible.filter(function (cell) {
+                return cell.node.offsetTop === visible[0].node.offsetTop;
+            }).length || 1;
+            var moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+            var next;
+
+            if (event.key === 'Home') {
+                next = 0;
+            } else if (event.key === 'End') {
+                next = visible.length - 1;
+            } else if (moves[event.key]) {
+                next = Math.max(0, Math.min(visible.length - 1, at + moves[event.key]));
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+            choose(visible[next].icon, true);
+        });
+
+        box.appendChild(search);
+        box.appendChild(grid);
+        box.appendChild(empty);
+        mark();
+
+        box.value = function () {
+            return current;
+        };
+
+        // The icon the kind gives, drawn on "none": a new channel's changes
+        // with the kind chosen above it.
+        box.setKindIcon = function (name) {
+            var none = cells[0].node;
+
+            clear(none);
+            none.appendChild(icon(name || 'bi-hash'));
+        };
+
+        return box;
+    }
+
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
     function eraSection(channel, node) {
@@ -4184,6 +4381,25 @@
             body.appendChild(formRow(t('color'), colors, t('color_help')));
         }
 
+        // Its own icon beside the colour, the same for everybody; whoever may
+        // rename the channel may choose it.
+        var icons = null;
+
+        if ((CFG.channel_icons || []).length) {
+            icons = iconPicker(channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
+                channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
+            body.appendChild(formRow(t('icon'), icons, t('icon_help')));
+
+            // A new channel's "none" follows the kind picked above.
+            if (kind) {
+                kind.addEventListener('change', function () {
+                    var picked = kind.querySelector('input:checked');
+
+                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
+                });
+            }
+        }
+
         var members = null;
 
         if (!channel) {
@@ -4246,6 +4462,10 @@
 
             if (colors) {
                 data.color = colors.value();
+            }
+
+            if (icons) {
+                data.icon = icons.value();
             }
 
             if (watch) {
@@ -4885,7 +5105,7 @@
             var navKeys = {
                 'bi-house': 'home', 'bi-inbox': 'inbox', 'bi-check2-square': 'tasks', 'bi-journal-text': 'notes',
                 'bi-calendar-week': 'board', 'bi-calendar3': 'calendar', 'bi-alarm': 'scheduled', 'bi-clock-history': 'timeline',
-                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings'
+                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings', 'bi-diagram-3': 'flows'
             };
 
             function link(box, label, iconName, handler, badge, active) {
@@ -5030,7 +5250,7 @@
                     self.makeDraggable(link, channel);
                 }
 
-                link.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash')), 'ws-ch-icon'));
+                link.appendChild(channelIcon(channel, 'ws-ch-icon'));
                 link.appendChild(el('span', 'ws-channel-name', channel.name));
 
                 if (channel.notify === 'none') {
@@ -5287,6 +5507,10 @@
                 }
                 link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
                 link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
+
+                if (CFG.flows && CFG.flows.nav) {
+                    link(work, t('fl_nav'), 'bi-diagram-3', function () { window.location.href = CFG.urls.flows; });
+                }
 
                 if (CFG.scheduled || CFG.scheduled_messages) {
                     link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
@@ -7415,7 +7639,7 @@
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : 'bi-hash'), 'me-1 text-body-secondary'));
+            h.appendChild(channelIcon(channel, 'me-1 text-body-secondary'));
             h.appendChild(document.createTextNode(channel.name));
             title.appendChild(h);
 
@@ -8110,7 +8334,7 @@
                 quote.type = 'button';
                 quote.title = t('reply_go_to');
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.plain(parent.html)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message')));
 
                 // The message answered: brought into view and lit up for a
                 // moment, so which one it was is plain. One deleted since is
@@ -8319,6 +8543,19 @@
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
             return (text.length > 90) ? text.slice(0, 89) + '…' : text;
+        },
+
+        // What a quote of a message says: its words, or for a file alone its
+        // name - "Voice message" for a recording (workspace_voice.js).
+        quoteText: function (message) {
+            var text = this.plain(message.html);
+            var file = message.file;
+
+            if (text || !file) {
+                return text;
+            }
+
+            return ((file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name)) ? t('voice_message') : (file.name || '');
         },
 
         findMessage: function (id) {
@@ -8762,9 +8999,12 @@
 
             // A sound, a voice message among them: play and pause, the time
             // and the speed (assets/js/workspace_voice.js); the browser's own
-            // player below without it.
+            // player below without it. Any sound may be answered with a
+            // recording from its own microphone (voiceReply()).
             if ((kind === 'audio') && window.PGWsVoice) {
-                return window.PGWsVoice.player(file, featureHelpers());
+                return window.PGWsVoice.player(file, featureHelpers(), {
+                    reply: self.voiceReplyOffered(message) ? function () { self.voiceReply(message); } : null
+                });
             }
 
             if (kind === 'video' || kind === 'audio') {
@@ -10827,13 +11067,23 @@
             self.replyBar = el('div');
             wrap.appendChild(self.replyBar);
 
+            // While a command is written: its usage, the argument expected
+            // now highlighted (drawCommandStrip()).
+            self.commandStrip = el('div');
+            wrap.appendChild(self.commandStrip);
+
             var box = el('div', 'ws-composer');
 
             // The keys the box leaves to the conversation: the picker's,
-            // Escape, and Arrow Up in an empty box to change one's last
-            // message. true when used.
+            // Tab in a command's arguments, Escape, and Arrow Up in an empty
+            // box to change one's last message. true when used.
             function keys(event) {
                 if (self.picker && self.pickerKey(event)) {
+                    return true;
+                }
+
+                if ((event.key === 'Tab') && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && self.commandTab()) {
+                    event.preventDefault();
                     return true;
                 }
 
@@ -11006,25 +11256,15 @@
             // empty; voiceSwap() trades them.
             self.sendNode = sendGroup || send;
             self.voiceMic = null;
+            self.voiceBox = null;
 
             if (window.PGWsVoice && window.PGWsVoice.supported() && !self.era) {
                 var mic = button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-mic', '', 'bi-mic', t('voice_record'));
 
-                mic.addEventListener('click', function () {
-                    window.PGWsVoice.start({
-                        box: box,
-                        send: function (file) { self.uploadFiles([file]); },
-                        done: function () {
-                            self.voiceSwap();
-
-                            if (!touchScreen() && self.input && self.input.isConnected) {
-                                self.input.focus();
-                            }
-                        }
-                    }, featureHelpers());
-                });
+                mic.addEventListener('click', function () { self.voiceRecord(); });
                 tools.appendChild(mic);
                 self.voiceMic = mic;
+                self.voiceBox = box;
             }
 
             box.appendChild(tools);
@@ -11210,8 +11450,9 @@
         },
 
         // The microphone in place of Send while the box is empty. Not while a
-        // message is changed, nor beside a reply bar: a recording is sent by
-        // uploadFiles(), which posts no parent_id.
+        // message is changed; beside a reply bar it answers that message
+        // (voiceSend()), but not several at once, nor an assistant the reply
+        // would ask (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -11219,11 +11460,95 @@
                 return;
             }
 
-            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.reply && !this.era
-                && !!this.channel && !!this.channel.can_post;
+            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.era
+                && !!this.channel && !!this.channel.can_post
+                && (!this.reply || (!(this.replyMore && this.replyMore.length) && this.voiceAnswers(this.reply)));
 
             mic.classList.toggle('d-none', !show);
             this.sendNode.classList.toggle('d-none', show);
+        },
+
+        // Whether a recording may answer this message. An answer to Claude,
+        // Pinegrap AI or an MCP agent asks it, as the reply bar says; a
+        // recording asks nobody, so it does not stand in for one.
+        voiceAnswers: function (message) {
+            var sender = (message && message.sender) || {};
+            var channel = this.channel || {};
+
+            return !((sender.claude && channel.claude && channel.claude.available)
+                || (sender.ai && channel.ai && channel.ai.available) || sender.mcp);
+        },
+
+        // Whether a sound in the conversation gets the microphone that
+        // answers it: where the writing box records, in the conversation
+        // itself (not the Decisions or Files list).
+        voiceReplyOffered: function (message) {
+            return !!(window.PGWsVoice && window.PGWsVoice.supported()) && (this.tab === 'messages') && !this.era
+                && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
+        },
+
+        // Records into the writing box (the microphone in place of Send, or
+        // a sound's own); Stop sends it with voiceSend().
+        voiceRecord: function () {
+            var self = this;
+            var box = self.voiceBox;
+
+            if (!window.PGWsVoice || !box || !box.isConnected) {
+                return;
+            }
+
+            window.PGWsVoice.start({
+                box: box,
+                send: function (file) { self.voiceSend(file); },
+                done: function () {
+                    self.voiceSwap();
+
+                    if (!touchScreen() && self.input && self.input.isConnected) {
+                        self.input.focus();
+                    }
+                }
+            }, featureHelpers());
+        },
+
+        // The microphone on a sound: the sound becomes the message the box
+        // answers, as Reply makes it, and the recording starts at once. A
+        // tap on it while messages are being chosen chooses the message.
+        voiceReply: function (message) {
+            var self = this;
+
+            if (self.selecting || !window.PGWsVoice || window.PGWsVoice.busy() || !self.voiceBox || !self.voiceBox.isConnected) {
+                return;
+            }
+
+            if (self.editing || self.editingScheduled) {
+                toast(t('voice_busy'), 'warning');
+                return;
+            }
+
+            self.reply = self.findMessage(message.id) || message;
+            self.replyMore = null;
+            self.drawReplyBar();
+            self.voiceRecord();
+        },
+
+        // A recording leaves as a file of its own: the words in the box stay
+        // there, and it answers the message the reply bar shows when it is
+        // sent. The bar closes once it is posted.
+        voiceSend: function (file) {
+            var self = this;
+            var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
+
+            self.uploadFiles([file], {
+                body: '',
+                parent_id: parent ? parent.id : 0,
+                sent: function () {
+                    if (parent && (self.reply === parent)) {
+                        self.reply = null;
+                        self.replyMore = null;
+                        self.drawReplyBar();
+                    }
+                }
+            });
         },
 
         clearInput: function () {
@@ -11234,6 +11559,12 @@
             }
 
             this.labels = [];
+            this.argDismissed = null;
+
+            if (this.commandStrip) {
+                clear(this.commandStrip);
+            }
+
             this.autosize();
         },
 
@@ -11361,7 +11692,7 @@
             var row = el('div', 'ws-reply-bar');
             row.appendChild(icon(self.editing ? 'bi-pencil' : 'bi-reply'));
             row.appendChild(el('span', '', self.editing ? t('editing_message')
-                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.plain(self.reply.html)))));
+                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.quoteText(self.reply)))));
 
             // An answer to Claude goes to Claude.
             if (!self.editing && self.reply.sender && self.reply.sender.claude && self.channel.claude && self.channel.claude.available) {
@@ -11468,6 +11799,13 @@
                 return;
             }
 
+            // The argument popup does not outlive the line it was for: it
+            // stays away until the next argument, or until Tab asks for it.
+            if (self.picker && (self.pickerMode === 'arg')) {
+                self.argDismissed = self.argument ? self.argumentKey(self.argument) : null;
+                self.closePicker();
+            }
+
             var body = self.tokens(raw);
             self.busy = true;
 
@@ -11556,6 +11894,12 @@
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
                     self.scrollToEnd();
+
+                    // A command that does not exist: nothing was posted, and
+                    // the text stays in the box to be put right.
+                    if (result.command.keep) {
+                        return;
+                    }
                 }
 
                 if (result.command && result.command.type === 'done' && result.command.task_id) {
@@ -11746,6 +12090,12 @@
                 dt.appendChild(el('code', '', item.command));
                 list.appendChild(dt);
                 var dd = el('dd', '', item.description);
+
+                if (item.usage) {
+                    dd.appendChild(el('br'));
+                    dd.appendChild(el('code', 'ws-help-usage', item.usage));
+                }
+
                 dd.appendChild(el('br'));
                 dd.appendChild(el('span', 'text-body-secondary', item.example));
                 list.appendChild(dd);
@@ -11803,13 +12153,17 @@
         // Files picked, dropped or pasted: one after the other, the text in
         // the composer going with the first. What the file manager refuses
         // (PHP, .htaccess, web.config, shell scripts, programs) the server
-        // refuses here too, and says so.
-        uploadFiles: function (files) {
+        // refuses here too, and says so. options (a recording, voiceSend()):
+        // body sent instead of the box's text, which then stays in the box;
+        // parent_id, the message the files answer; sent(), once any is posted.
+        uploadFiles: function (files, options) {
             var self = this;
+            var settings = options || {};
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
-            var body = self.input ? self.tokens(self.inputText()) : '';
+            var ownBody = (typeof settings.body === 'string');
+            var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
             if (!total || !self.channel || !self.channel.can_post) {
                 return;
@@ -11820,6 +12174,10 @@
 
                 if (!file) {
                     if (done > 0) {
+                        if (settings.sent) {
+                            settings.sent();
+                        }
+
                         self.sync(true);
                     }
 
@@ -11841,13 +12199,17 @@
                         channel_id: self.channel.id,
                         name: file.name || ('image-' + Date.now() + '.png'),
                         data: reader.result,
-                        body: body
+                        body: body,
+                        parent_id: settings.parent_id || 0
                     }).then(function () {
                         done++;
 
                         if (body !== '') {
                             body = '';
-                            self.clearInput();
+
+                            if (!ownBody) {
+                                self.clearInput();
+                            }
                         }
 
                         next();
@@ -12025,8 +12387,23 @@
             var match;
 
             if (!self.noCommands && (match = /^\/([^\s]*)$/.exec(before))) {
+                self.argDismissed = null;
+                self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
                 return;
+            }
+
+            // After "/name ": the argument the command expects next
+            // (commandArgument()), shown in the strip above the box. Only the
+            // channel's composer reads commands.
+            var argument = self.noCommands ? null : self.commandArgument(before);
+
+            if (!self.noCommands) {
+                if (!argument) {
+                    self.argDismissed = null;
+                }
+
+                self.drawCommandStrip(argument);
             }
 
             // A chip right before the sigil counts as a word boundary.
@@ -12040,7 +12417,371 @@
                 return;
             }
 
+            // Its suggestions, unless Escape sent them away for this argument.
+            if (argument && self.argumentSource(argument) && (self.argDismissed !== self.argumentKey(argument))) {
+                self.argument = argument;
+                self.openPicker('arg', argument.query, argument.start);
+                return;
+            }
+
             self.closePicker();
+        },
+
+        // \u2500\u2500 The argument popup after a command \u2500\u2500
+        //
+        // The registry (BOOT.commands, includes/workspace/commands.php
+        // ws_commands()) gives each command its arguments in order, each
+        // with a kind and where its values come from. After "/name " the
+        // popup offers values for the argument expected next: people from
+        // BOOT.people, tasks and products from ws_ref_search (only what the
+        // person may see), the days, estimates and priorities of
+        // BOOT.command_values. Tab writes the first row (or the one picked
+        // with the arrows, as Enter then does) and a space, and the popup
+        // opens for the next argument; Enter with no row picked sends the
+        // line as it is; a space moves on; Escape closes it until the next
+        // argument, and Tab brings it back.
+
+        // The registry entry a typed name belongs to: any of its names, in
+        // Turkish lower case or plain lower case, as the server reads it.
+        commandEntry: function (typed) {
+            var lower = typed.toLocaleLowerCase('tr');
+            var plain = typed.toLowerCase();
+            var found = null;
+
+            (BOOT.commands || []).forEach(function (item) {
+                (item.names || []).forEach(function (name) {
+                    if (!found && ((name.toLocaleLowerCase('tr') === lower) || (name.toLowerCase() === plain))) {
+                        found = item;
+                    }
+                });
+            });
+
+            return found;
+        },
+
+        // Where the writer is in a command, from what is written before the
+        // caret: the entry, the name as typed, the word being typed (query)
+        // and where it starts, and the argument expected now (index, arg).
+        // Written in order, each word or tag fills the next argument; one
+        // that takes several keeps the rest. A free text first (/task's
+        // title) takes every word, until the arguments the parser reads
+        // anywhere are offered (extras) once it has one; a poll's options
+        // start at the first |. null outside a command, before the space
+        // after its name, and while a message or a scheduled one is edited.
+        commandArgument: function (before) {
+            var self = this;
+
+            if (self.noCommands || self.editing || self.editingScheduled || !BOOT || !BOOT.commands) {
+                return null;
+            }
+
+            var match = /^\/(\S+)(\s+)([\s\S]*)$/.exec(before);
+            var entry = match ? self.commandEntry('/' + match[1]) : null;
+
+            if (!entry) {
+                return null;
+            }
+
+            var rest = match[3];
+            var word = /[^\s\uFFFC]*$/.exec(rest)[0];
+            var done = rest.slice(0, rest.length - word.length).replace(/\uFFFC/g, ' \uFFFC ').split(/\s+/).filter(Boolean);
+            var args = entry.args || [];
+            var state = { entry: entry, typed: '/' + match[1], query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+
+            if (!args.length) {
+                return state;
+            }
+
+            if (args[0].kind === 'text') {
+                var anywhere = args.filter(function (arg) { return arg.anywhere; });
+                var options = args.filter(function (arg) { return arg.kind === 'options'; })[0];
+
+                if (anywhere.length && done.length) {
+                    state.index = 'extras';
+                    state.extras = self.commandExtras(anywhere, done);
+                } else if (options && (rest.indexOf('|') !== -1)) {
+                    state.index = args.indexOf(options);
+                    state.arg = options;
+                } else {
+                    state.index = 0;
+                    state.arg = args[0];
+                }
+
+                return state;
+            }
+
+            var index = 0;
+
+            done.forEach(function () {
+                if ((index < args.length) && !args[index].multiple) {
+                    index++;
+                }
+            });
+
+            state.index = index;
+            state.arg = args[index] || null;
+
+            return state;
+        },
+
+        // Which of the arguments read anywhere (/task's people, day,
+        // estimate, priority, records) the line does not hold yet: the tags
+        // are looked for in the whole text, the words before the caret.
+        commandExtras: function (args, done) {
+            var markup = this.tokens(this.inputText());
+            var days = ((BOOT.command_values && BOOT.command_values.dates) || []).map(function (item) { return foldText(item.value); });
+            var isDay = function (word) {
+                return (days.indexOf(foldText(word)) !== -1) || /^\+\d{1,3}\D*$/.test(word) || /^\d{1,2}[.\/]\d{1,2}([.\/]\d{2,4})?(-\d{1,2}[.\/]\d{1,2}([.\/]\d{2,4})?)?$/.test(word);
+            };
+            var starts = function (sign) {
+                return done.some(function (word) { return word.charAt(0) === sign; });
+            };
+
+            return args.filter(function (arg) {
+                switch (arg.suggest) {
+                    case 'people_departments':
+                    case 'people':
+                        return !/<@(user|dept):\d+>/.test(markup);
+                    case 'records':
+                        return !/<#[a-z_]+:\d+>/.test(markup);
+                    case 'dates':
+                        return !done.some(isDay);
+                    case 'estimates':
+                        return !starts('~');
+                    case 'priorities':
+                        return !starts('!');
+                }
+
+                return false;
+            });
+        },
+
+        // Where the popup finds values for the argument: its registry
+        // source, 'extras' for /task's missing parts, '' for none (a free
+        // text, an amount, a quantity, a poll's options).
+        argumentSource: function (argument) {
+            if (argument.extras) {
+                return argument.extras.length ? 'extras' : '';
+            }
+
+            return (argument.arg && argument.arg.suggest) || '';
+        },
+
+        // What Escape sends the popup away for: one argument of one
+        // command; /task's parts all together.
+        argumentKey: function (argument) {
+            return argument.entry.key + ':' + argument.index;
+        },
+
+        // Tab in a command with no popup open (or after Escape): the
+        // suggestions for the argument at the caret. false when there are
+        // none, and Tab does what it always does.
+        commandTab: function () {
+            var argument = this.commandArgument(this.beforeCaret());
+
+            if (!argument || !this.argumentSource(argument)) {
+                return false;
+            }
+
+            this.argDismissed = null;
+            this.pickerCheck();
+
+            return !!this.picker;
+        },
+
+        // The popup's rows for the argument expected now (this.argument).
+        openArgument: function (query) {
+            var self = this;
+            var argument = self.argument;
+            var source = self.argumentSource(argument);
+            var values = BOOT.command_values || {};
+            var typed = foldText(query);
+            var first = query.charAt(0);
+
+            self.argTicket = null;
+            clearTimeout(self.pickerTimer);
+
+            // Before anything is typed the first values, then every one that
+            // starts with what is typed.
+            var fixed = function (list, icon) {
+                return (list || []).filter(function (item) {
+                    return typed ? (foldText(item.value).indexOf(typed) === 0) : item.top;
+                }).map(function (item) {
+                    return { label: item.value, meta: item.meta, icon: icon, insert: item.value + ' ' };
+                });
+            };
+
+            // A fixed list that has nothing for the word typed closes: the
+            // word belongs to the text (a title), not to the list.
+            var show = function (items) {
+                if (!items.length) {
+                    self.closePicker();
+                    return;
+                }
+
+                self.drawPicker(items);
+            };
+
+            if (source === 'extras') {
+                var rows = [];
+
+                // The parts with a sign of their own come as the sign, which
+                // opens its own list: @ the people, # the records, ~ and !
+                // their values.
+                argument.extras.forEach(function (arg) {
+                    if (arg.suggest === 'people_departments' || arg.suggest === 'people') {
+                        if (!query) {
+                            rows.push({ label: '@', meta: t('cmd_extra_people'), icon: 'bi-at', insert: '@' });
+                        }
+                    } else if (arg.suggest === 'dates') {
+                        if ((first !== '~') && (first !== '!')) {
+                            rows = rows.concat(fixed(values.dates, 'bi-calendar-event'));
+                        }
+                    } else if (arg.suggest === 'estimates') {
+                        if (!query) {
+                            rows.push({ label: '~', meta: t('cmd_extra_estimate'), icon: 'bi-hourglass-split', insert: '~' });
+                        } else if (first === '~') {
+                            rows = rows.concat(fixed(values.estimates, 'bi-hourglass-split'));
+                        }
+                    } else if (arg.suggest === 'priorities') {
+                        if (!query) {
+                            rows.push({ label: '!', meta: t('cmd_extra_priority'), icon: 'bi-flag', insert: '!' });
+                        } else if (first === '!') {
+                            rows = rows.concat(fixed(values.priorities, 'bi-flag'));
+                        }
+                    } else if ((arg.suggest === 'records') && !query) {
+                        rows.push({ label: '#', meta: t('tag_record'), icon: 'bi-hash', insert: '#' });
+                    }
+                });
+
+                show(rows);
+                return;
+            }
+
+            if (source === 'dates') {
+                show(fixed(values.dates, 'bi-calendar-event'));
+                return;
+            }
+
+            if (source === 'estimates') {
+                show(fixed(values.estimates, 'bi-hourglass-split'));
+                return;
+            }
+
+            if (source === 'priorities') {
+                show(fixed(values.priorities, 'bi-flag'));
+                return;
+            }
+
+            // The team, as the @ picker lists it, without whoever the line
+            // already names; never the site's members.
+            if (source === 'people' || source === 'people_departments') {
+                var needle = query.toLocaleLowerCase();
+                var markup = self.tokens(self.inputText());
+                var people = [];
+                var fits = function (text) {
+                    return !needle || String(text || '').toLocaleLowerCase().indexOf(needle) !== -1;
+                };
+
+                (BOOT.people || []).forEach(function (member) {
+                    if ((markup.indexOf('<@user:' + member.id + '>') === -1) && (fits(member.name) || fits(member.username))) {
+                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                    }
+                });
+
+                if (source === 'people_departments') {
+                    (BOOT.departments || []).forEach(function (item) {
+                        if ((markup.indexOf('<@dept:' + item.id + '>') === -1) && fits(item.name)) {
+                            people.push({ label: item.name, meta: t('department'), icon: 'bi-people', token: '<@dept:' + item.id + '>', shown: shownLabel('@', item.name) });
+                        }
+                    });
+                }
+
+                if (!people.length && !query) {
+                    self.closePicker();
+                    return;
+                }
+
+                self.drawPicker(people.slice(0, 8), t('nothing_found'));
+                return;
+            }
+
+            // Tasks and records from the search the # picker uses: only what
+            // the person may see. A task is written as its number (T-42), a
+            // record as its tag.
+            var type = { tasks: 'task', products: 'product', records: 'all' }[source];
+
+            if (!type || ((type !== 'all') && !(BOOT.ref_types && BOOT.ref_types[type]))) {
+                self.closePicker();
+                return;
+            }
+
+            if ((type === 'all') && (query.trim().length < 2)) {
+                self.drawPicker([], t('type_to_search'));
+                return;
+            }
+
+            // Only the latest search draws: an answer for an earlier popup
+            // (another command, the same empty query) is dropped.
+            var ticket = {};
+
+            self.argTicket = ticket;
+            self.drawPicker(null);
+
+            clearTimeout(self.pickerTimer);
+            self.pickerTimer = setTimeout(function () {
+                api('ws_ref_search', { type: type, q: query }).then(function (data) {
+                    if (!self.picker || (self.pickerMode !== 'arg') || (self.argTicket !== ticket)) {
+                        return;
+                    }
+
+                    self.drawPicker((data.items || []).map(function (item) {
+                        if (type === 'task') {
+                            return { label: item.label, meta: item.meta, icon: item.icon || 'bi-check2-square', insert: String(item.label).split(' \u00B7 ')[0] + ' ' };
+                        }
+
+                        return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
+                    }), t('nothing_found'));
+                }).catch(function () {});
+            }, 220);
+        },
+
+        // Above the box while a command is written: the name as typed and
+        // its arguments, <required> and [optional], the one expected now
+        // highlighted, then the command's example.
+        drawCommandStrip: function (argument) {
+            var strip = this.commandStrip;
+
+            if (!strip) {
+                return;
+            }
+
+            clear(strip);
+
+            if (!argument) {
+                return;
+            }
+
+            var entry = argument.entry;
+            var row = el('div', 'ws-cmd-strip');
+            var usage = el('span', 'ws-cmd-usage');
+
+            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+
+            (entry.args || []).forEach(function (arg, index) {
+                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+
+                usage.appendChild(document.createTextNode(' '));
+                usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
+            });
+
+            row.appendChild(usage);
+
+            if (entry.example) {
+                row.appendChild(el('span', 'ws-cmd-example', t('cmd_example', entry.example)));
+            }
+
+            strip.appendChild(row);
         },
 
         // Is what follows a # still a search? Not once it is a tag that was
@@ -12086,9 +12827,15 @@
             self.pickerStart = start;
             self.pickerQuery = query;
 
+            if (mode === 'arg') {
+                self.openArgument(query);
+                return;
+            }
+
             // Every name a command answers to, Turkish or English: the name
             // as typed first ("/gö" shows /görev), then with the Turkish
             // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
+            // With nothing typed, the name in the screen's language.
             if (mode === 'command') {
                 var typed = ('/' + query).toLocaleLowerCase('tr');
                 var typedFolded = foldText(typed);
@@ -12097,7 +12844,7 @@
                 (BOOT.commands || []).forEach(function (item) {
                     var aliases = item.command.split(' · ');
                     var names = (item.names && item.names.length) ? item.names : aliases;
-                    var match = aliases[0];
+                    var match = item.name || aliases[0];
 
                     if (query !== '') {
                         match = null;
@@ -12264,7 +13011,7 @@
                     }
 
                     var records = results[0].items.map(function (item) {
-                        return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
+                        return { label: item.label, meta: item.meta, icon: item.icon, badge: item.badge || '', token: item.token, shown: shownLabel('#', item.label) };
                     });
                     var titled = (results[1].items || []).slice(0, 5).map(function (item) {
                         return { label: item.title, meta: t('pull_kind_' + item.kind) + ' · ' + item.where + ' · ' + item.author, icon: blockIcon(item.kind), block: item.id };
@@ -12319,15 +13066,19 @@
                 return;
             }
 
+            // The argument popup after a command picks no row by itself, so
+            // Enter still sends the line; the row Tab would write is marked.
+            var argMode = (self.pickerMode === 'arg');
+
             self.pickerItems = items;
-            self.pickerIndex = 0;
+            self.pickerIndex = argMode ? -1 : 0;
 
             if (!items.length) {
                 list.appendChild(el('div', 'ws-picker-empty', emptyText || t('nothing_found')));
             }
 
             items.forEach(function (item, index) {
-                var row = el('button', 'ws-picker-item' + (index === 0 ? ' active' : ''));
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
                 row.type = 'button';
 
                 if (item.avatar) {
@@ -12336,7 +13087,7 @@
                     img.alt = '';
                     row.appendChild(img);
                 } else {
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
 
                 // A second, muted line under the label (a command's example).
@@ -12360,6 +13111,10 @@
                 });
                 list.appendChild(row);
             });
+
+            if (argMode && items.length && !touchScreen()) {
+                picker.appendChild(el('div', 'ws-picker-keys', t('cmd_keys')));
+            }
 
             if (self.notesMode || self.caretPicker) {
                 self.placePicker();
@@ -12399,9 +13154,16 @@
 
         pickerKey: function (event) {
             var items = this.pickerItems || [];
+            var argMode = (this.pickerMode === 'arg');
 
             if (event.key === 'Escape') {
                 event.preventDefault();
+
+                // A command's suggestions stay away until its next argument.
+                if (argMode && this.argument) {
+                    this.argDismissed = this.argumentKey(this.argument);
+                }
+
                 this.closePicker();
                 return true;
             }
@@ -12412,18 +13174,34 @@
 
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
-                this.pickerIndex = (this.pickerIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+
+                if (argMode && (this.pickerIndex < 0)) {
+                    this.pickerIndex = (event.key === 'ArrowDown') ? 0 : items.length - 1;
+                } else {
+                    this.pickerIndex = (this.pickerIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+                }
 
                 Array.prototype.forEach.call(this.picker.querySelectorAll('.ws-picker-item'), function (row, index) {
                     row.classList.toggle('active', index === this.pickerIndex);
+
+                    if (argMode) {
+                        row.classList.toggle('ws-picker-next', index === this.pickerIndex);
+                    }
                 }, this);
 
                 return true;
             }
 
             if (event.key === 'Enter' || event.key === 'Tab') {
+                // After a command Enter writes only a row picked with the
+                // arrows, otherwise the line is sent; Shift+Tab is the
+                // browser's.
+                if (argMode && (((event.key === 'Enter') && (this.pickerIndex < 0)) || event.shiftKey)) {
+                    return false;
+                }
+
                 event.preventDefault();
-                this.pick(items[this.pickerIndex]);
+                this.pick(items[Math.max(0, this.pickerIndex)]);
                 return true;
             }
 
@@ -12460,6 +13238,14 @@
                     : { text: item.insert || '' });
                 this.closePicker();
                 this.autosize();
+
+                // In the channel's composer a pick inside a command opens the
+                // popup for the argument after it (after a command's name:
+                // its first argument).
+                if (!this.noCommands) {
+                    this.pickerCheck();
+                }
+
                 return;
             }
 
@@ -12479,6 +13265,10 @@
             this.closePicker();
             this.autosize();
             input.focus();
+
+            if (!this.noCommands) {
+                this.pickerCheck();
+            }
         },
 
         closePicker: function () {
@@ -13135,6 +13925,7 @@
             rich: null,
             sendNode: null,
             voiceMic: null,
+            voiceBox: null,
             picker: null,
             pickerMode: null,
             pickerItems: null,
@@ -20604,6 +21395,8 @@
             api: api,
             toast: toast,
             fail: fail,
+            ask: ask,
+            clear: clear,
             debounce: debounce,
             onContext: onContext,
             taskMenu: taskMenu,
@@ -20720,6 +21513,10 @@
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
                 startNotes(root);
+            } else if (CFG.mode === 'flows' && root && window.PGWsFlow) {
+                // The canvas lives in workspace_flow.js; it takes the team
+                // from here for its people picker.
+                window.PGWsFlow.start(root, BOOT);
             }
 
             // What runs where no scheduler does (repeating tasks, requests to
