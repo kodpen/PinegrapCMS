@@ -4,7 +4,8 @@ description: Open state an accordion item (.collapse) saves and publishes: the o
 ---
 
 ## Why does the editor touch `show` on save at all?
-- A click on a data-bs-toggle trigger on the canvas opens its target, and `_syncToggleableShowStateFromDom()` copies the live `.show` into `props.cssClass` so a re-render keeps it. Saved as it is, a modal would open by itself on the next load and an accordion would publish whichever item was last clicked open.
+- A click on a collapse toggle on the canvas opens its panel, and `_syncToggleableShowStateFromDom()` copies the live `.show` into `props.cssClass` so a re-render keeps it. Saved as it is, an accordion would publish whichever item was last clicked open.
+- A modal, offcanvas or dropdown menu open on the canvas never reaches the tree (designer-canvas-open-state.md); a tree saved before can still carry its `show`.
 - `_normalizeToggleableShowState(tree)` (`assets/js/style_designer.js`) runs on save (page and every cached shared tree) and on every load path (page tabs, prefetched widgets, revisions, autosave), so canvas, preview and page start from the same state.
 
 ## What does it keep?
