@@ -137,6 +137,76 @@ function test_designer_messages_comments_small_forms_restamped()
 	}
 }
 
+// The formName of every Messages node of a tree, depth first.
+function _test_msg_form_names($node, &$out)
+{
+	if (!is_array($node)) {
+		return;
+	}
+	if (isset($node['type'], $node['props']['contentType']) && ($node['type'] === 'content') && ($node['props']['contentType'] === 'messages')) {
+		$out[] = isset($node['props']['formName']) ? (string) $node['props']['formName'] : '';
+	}
+	foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+		_test_msg_form_names($child, $out);
+	}
+}
+
+// A design that deleted the comment form's Messages node but kept the watch
+// form's: _pg_inject_messages_node() finds that one and adds none, and the
+// re-stamping hands it to the watch form. The widget still gets a node for
+// add_comment, at the top of its container where _pg_inject_messages_node()
+// puts one into a tree that has none, so a refused comment's error prints.
+function test_designer_messages_comments_keeps_an_add_comment_node()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('software' => array('liveforms' => array(
+		'add_comment' => array(12 => array('message' => array('error' => true, 'error_message' => 'A comment is required.'))),
+		'add_or_remove_watcher' => array(12 => array('notices' => array('You will now be notified when a comment is added.'))),
+	)));
+
+	$tree = pg_comments_default_tree();
+	pg_assert_same('messages', $tree['children'][0]['children'][3]['children'][4]['children'][0]['props']['contentType'], 'the starter form opens with its Messages node');
+	array_shift($tree['children'][0]['children'][3]['children'][4]['children']);
+
+	_pg_inject_messages_node($tree, 'add_comment');
+	pg_comments_stamp_form_messages($tree);
+
+	$names = array();
+	_test_msg_form_names($tree, $names);
+	pg_assert_same(array('add_comment', 'add_or_remove_watcher'), $names, 'one node for the comment form, one for the watch form');
+	pg_assert_same('add_comment', $tree['children'][0]['children'][0]['props']['formName'], 'at the top of the container');
+
+	$html = _render_tree_node($tree, 0);
+	pg_assert_same(1, substr_count($html, 'A comment is required.'), 'the refused comment\'s error prints');
+	pg_assert_same(1, substr_count($html, 'You will now be notified when a comment is added.'), 'the watcher notice prints once');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['add_comment']), 'the add_comment state is used up');
+
+	// A tree whose first child is no container gets the node first.
+	$bare = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'form', '_bindings' => array('action' => 'comment_watch_form')), 'children' => array(
+			array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => ''), 'children' => array()),
+		)),
+	));
+	_pg_inject_messages_node($bare, 'add_comment');
+	pg_comments_stamp_form_messages($bare);
+	pg_assert_same('add_comment', $bare['children'][0]['props']['formName'], 'first in the root');
+	pg_assert_same('add_or_remove_watcher', $bare['children'][1]['children'][0]['props']['formName'], 'the watch form keeps its own');
+
+	// The default layout keeps its two nodes and gets no third.
+	$starter = pg_comments_default_tree();
+	_pg_inject_messages_node($starter, 'add_comment');
+	pg_comments_stamp_form_messages($starter);
+	$names = array();
+	_test_msg_form_names($starter, $names);
+	pg_assert_same(array('add_comment', 'add_or_remove_watcher'), $names, 'the default layout: its own two');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
 // Every system widget renderer names its Messages node, and none with an
 // empty name.
 function test_designer_messages_every_renderer_names_its_node()

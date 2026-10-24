@@ -31,7 +31,7 @@ description: The comments widget's add-comment form: bindings, slots, server sec
 - Name mode (`pg_comments_widget_name_mode()`, add_comment.php's rule): typed when signed out, role < 3, folder access, form editor; else chosen (select on) or fixed (`__comment_author_name`).
 
 ## Where does the Messages node sit?
-- First in the form (starter, PHP tree): a refused post lands on `#software_add_comment` by its errors. Named `add_comment`; state read before the draw, `remove_form()` after; an undrawn (closed) form's errors are dropped, as classic.
+- First in the form (starter, PHP tree): a refused post lands on `#software_add_comment` by its errors. Named `add_comment`; state read before the draw, `remove_form()` after; an undrawn (closed) form's errors are dropped, as classic. No node left for it (a design kept one only in a small form): one goes first in the container ([[comments-widget-watch-staff]]).
 
 ## What does the browser add?
 - `software.init_comment_forms()` (frontend.src.js and its hand-made frontend.min.js twin), on ready, by data attributes: submit lock, leave warning with the label (on `[name="message"]`, textarea or input), publish picker toggling `hidden` (Bootstrap's `[hidden]` beats inline display), date picker once; the classic form keeps its own.

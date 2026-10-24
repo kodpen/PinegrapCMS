@@ -12,7 +12,7 @@ description: Replies in the comments widget: order units, quotes, reply/cancel/s
 - Flags: `comment_is_root|is_reply` (depth as drawn; flat is always root), `comment_has_quote`, `comment_has_replies`, thread `is_replying`. Row root: `data-pg-comment-depth="N"` after `id="c-N"`.
 
 ## How do reply, cancel and share work?
-- On a link or a button only (`_pg_comments_wire_link_or_button()`), else dropped. Links work without script (reply to `?reply_to=`, share opens the permalink), rel nofollow; a button gets type=button. Outside the loop_area reply and share are dropped, cancel inside it.
+- On a link or a button only (`_pg_comments_wire_link_or_button()`), else dropped. Links work without script (reply to `?reply_to=`, share opens the permalink), rel nofollow; a button gets type=button. Outside the loop_area reply and share are dropped, cancel inside it; the canvas fades them ([[comments-widget-watch-staff]]).
 - Reply carries `data-pg-comment-reply|-name` and is wrapped in a root node shown by the internal row flag `pg_comment_reply_ok`, kept out of the flag literals (check_bindings would call it UNLISTED). It is `pg_comment_parent_ok()` for the row: the thread the form posts to (`pg_comments_rows()` option `thread_key`; a page read holds every item's comments) and visible to the visitor.
 - `software.init_comment_actions()` (frontend.src.js, hand-made min twin), delegated clicks: reply fills `input[name="parent_id"]` and `[data-pg-comment-reply-to-name]`, unhides `[data-pg-comment-replying]`, focuses the message; cancel sets 0 and hides; share copies (clipboard in a secure context, "Link copied." for 2 s) or `window.prompt()`s.
 

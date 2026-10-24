@@ -1473,6 +1473,7 @@ function test_comments_widget_default_tree_matches_starter()
 	pg_assert_same('Comment List', $container[1]['props']['customName'], 'the list second');
 	pg_assert_same('comment_form', $container[3]['children'][4]['props']['_bindings']['action'], 'the form where it was');
 	pg_assert_same('Watch', $container[4]['props']['customName'], 'the watch box after it');
+	pg_assert_contains('pg-hide-if-empty', $container[4]['props']['cssClass'], 'which leaves when all it holds left');
 	pg_assert_same('Staff Controls', $container[5]['props']['customName'], 'the staff controls last');
 
 	preg_match_all("/cssClass:\\s*'([^']*)'/", $block, $classes);
@@ -1819,6 +1820,165 @@ function test_comments_widget_draw_watch_staff()
 		pg_assert_false(strpos($closed_html, 'Stop new comments'), 'closed: no close');
 		pg_assert_false(strpos($closed_html, 'pg-comment-watchers'), 'the list prints only when given');
 	});
+}
+
+// add_or_remove_watcher.php answers at #software_watcher with its errors and
+// notices. A manager who is not offered the watch form (the record's
+// submitter, told of new comments anyway) reads them in the watcher list,
+// which carries the anchor; a manager who is offered it reads them once, in
+// the watch form.
+function test_comments_widget_draw_watchers_feedback()
+{
+	$tree = comments_widget_test_stamped_tree();
+	pg_comments_stamp_form_messages($tree);
+	$list = '<div class="pg-comment-watchers">The list</div>';
+	$error = 'Sorry, that watcher has already been added.';
+	$refused = function () use ($error) {
+		$_SESSION = array('software' => array('liveforms' => array('add_or_remove_watcher' => array(12 => array(
+			'username_or_email_address' => array('value' => 'jo', 'error' => true, 'error_message' => $error),
+		)))));
+	};
+
+	comments_widget_test_with_session(function () use ($tree, $list, $error, $refused) {
+		$refused();
+		$submitter = comments_widget_test_draw_data(array('facts' => array('watching_on' => true, 'signed_in' => true, 'submitter_notified' => true, 'manage_watchers' => true)));
+		$submitter['sections'] = array('comment_watchers' => $list);
+		pg_assert_true($submitter['thread_flags']['can_manage_watchers'] && !$submitter['thread_flags']['not_watching'] && empty($submitter['controls']['can_watch']), 'a manager who is not asked to watch');
+		$html = pg_comments_widget_draw($tree, $submitter);
+		pg_assert_false(strpos($html, 'Notify me of new comments'), 'no watch form');
+		pg_assert_same(1, substr_count($html, $error), 'the list prints the handler\'s error');
+		pg_assert_same(1, substr_count($html, 'id="software_watcher"'), 'and carries the anchor the handler returns to');
+		$anchor = strpos($html, 'id="software_watcher"');
+		$message = strpos($html, $error);
+		pg_assert_true(($anchor !== false) && ($message !== false) && ($anchor < $message) && ($message < strpos($html, $list)), 'anchor, message, list');
+		pg_assert_false(isset($_SESSION['software']['liveforms']['add_or_remove_watcher']), 'the state is used up');
+
+		$_SESSION = array('software' => array('liveforms' => array('add_or_remove_watcher' => array(12 => array('notices' => array('The watcher has been removed.'))))));
+		pg_assert_contains('The watcher has been removed.', pg_comments_widget_draw($tree, $submitter), 'and its notices');
+
+		$refused();
+		$staff = comments_widget_test_draw_data(array('facts' => array('watching_on' => true, 'signed_in' => true, 'staff' => true, 'manage_watchers' => true)));
+		$staff['controls'] = comments_widget_test_controls(array('can_watch' => true, 'is_staff' => true));
+		$staff['sections'] = array('comment_watchers' => $list);
+		$staff_html = pg_comments_widget_draw($tree, $staff);
+		pg_assert_same(1, substr_count($staff_html, $error), 'a manager with the watch form: printed once');
+		pg_assert_same(1, substr_count($staff_html, 'id="software_watcher"'), 'one anchor, the watch form\'s');
+		$form = strpos($staff_html, '<form id="software_watcher"');
+		$message = strpos($staff_html, $error);
+		pg_assert_true(($form !== false) && ($message > $form) && ($message < strpos($staff_html, $list)), 'in the watch form');
+
+		$refused();
+		$member = comments_widget_test_draw_data(array('facts' => array('watching_on' => true, 'signed_in' => true, 'submitter_notified' => true)));
+		$member_html = pg_comments_widget_draw($tree, $member);
+		pg_assert_false(strpos($member_html, 'software_watcher'), 'no list and no watch form: no anchor');
+		pg_assert_false(strpos($member_html, $error), 'and no message');
+	});
+}
+
+// A signed-out visitor, nobody told yet, no list: the default layout's Watch
+// box leaves with its contents instead of drawing an empty rule.
+function test_comments_widget_draw_empty_watch_box()
+{
+	comments_widget_test_with_session(function () {
+		$visitor = comments_widget_test_draw_data(array('facts' => array('watching_on' => true)));
+		$visitor['thread_values']['__watcher_count_text'] = '';
+		pg_assert_false(strpos(pg_comments_widget_draw(comments_widget_test_stamped_tree(), $visitor), 'border-top pt-3 mt-4'), 'no empty Watch box');
+
+		$visitor['thread_values']['__watcher_count_text'] = '2 people will be notified when a comment is added.';
+		$counted = pg_comments_widget_draw(comments_widget_test_stamped_tree(), $visitor);
+		pg_assert_contains('border-top pt-3 mt-4', $counted, 'a box with words stays');
+		pg_assert_contains('2 people will be notified when a comment is added.', $counted, 'with them');
+	});
+}
+
+// One function of style_designer.js, from its declaration to its closing
+// brace.
+function comments_widget_test_js_function($js, $name)
+{
+	$start = strpos($js, "\n    function " . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+// The canvas twin fades what the site leaves out for where it sits: reply
+// and share outside the comment, the thread's controls, small forms and
+// sections inside it, and a button that sends a small form outside that
+// form. Run under Node; skipped without it.
+function test_comments_widget_canvas_twin_fades_by_place()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = comments_widget_test_source('assets/js/style_designer.js');
+	$code_js = '';
+	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_sdCommentsBindingOff') as $name) {
+		$body = comments_widget_test_js_function($js, $name);
+		pg_assert_true($body !== '', 'style_designer.js has ' . $name . '()');
+		$code_js .= $body . "\n";
+	}
+
+	$script = <<<'JS'
+var dragData = null, _parentIndex = null, _sysWidgetRenderTreeRoot = null, sdDesign = { siteFlags: {} };
+function _sdT(s) { return s; }
+var _cmt = { pg_comments: '1', pg_comments_rating: '1', pg_comments_email_page: '5', pg_comments_allow_new: '1' };
+function _getCmtVal(k) { return _cmt[k] || ''; }
+function n(type, props, kids) { return { type: type, props: props || {}, children: kids || [] }; }
+function sem(tag, b, kids, name) { return n('semantic', { tag: tag, customName: name, _bindings: b || {} }, kids); }
+function link(action, name) { return n('content', { contentType: 'link', customName: name, _bindings: { action: action } }); }
+function btn(action, name) { return sem('button', { action: action }, [], name); }
+var named = {};
+function keep(node) { named[node.props.customName] = node; return node; }
+var tree = n('root', {}, [n('container', {}, [
+    sem('div', {}, [keep(link('comment_share', 'share outside')), keep(link('comment_reply', 'reply outside'))]),
+    n('loop_area', {}, [sem('div', {}, [
+        keep(link('comment_reply', 'reply inside')), keep(link('comment_share', 'share inside')),
+        keep(link('comment_reply_cancel', 'cancel inside')), keep(btn('comment_close', 'close inside')),
+        keep(sem('form', { action: 'comment_watch_form' }, [], 'watch form inside')),
+        keep(sem('div', { section: 'comment_watchers' }, [], 'watchers inside')),
+        keep(sem('div', { section: 'comment_pagination' }, [], 'pages inside'))
+    ])]),
+    keep(link('comment_reply_cancel', 'cancel outside')),
+    keep(sem('div', { section: 'comment_watchers' }, [], 'watchers outside')),
+    sem('form', { action: 'comment_watch_form' }, [sem('div', {}, [keep(btn('comment_watch', 'watch in its form'))]), keep(btn('comment_close', 'close in the watch form'))]),
+    sem('form', { action: 'comment_allow_new_form' }, [keep(btn('comment_reopen', 'reopen in its form'))]),
+    keep(btn('comment_unwatch', 'unwatch outside a form'))
+])]);
+_sysWidgetRenderTreeRoot = tree;
+var cfg = { regionType: 'comments', per_page: 10 };
+var res = {};
+Object.keys(named).forEach(function (k) { res[k] = _sdCommentsBindingOff(named[k], cfg); });
+process.stdout.write(JSON.stringify(res));
+JS;
+
+	$file = tempnam(sys_get_temp_dir(), 'pgcw');
+	file_put_contents($file, $code_js . $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 5)));
+	$res = json_decode(implode("\n", $out), true);
+	pg_assert_true(is_array($res), 'the twin answers');
+	if (!is_array($res)) {
+		return;
+	}
+
+	foreach (array('reply outside', 'share outside') as $name) {
+		pg_assert_same('Off — works only inside a comment', $res[$name], $name);
+	}
+	foreach (array('cancel inside', 'close inside', 'watch form inside', 'watchers inside', 'pages inside') as $name) {
+		pg_assert_same('Off — has no place inside a comment', $res[$name], $name);
+	}
+	foreach (array('close in the watch form', 'unwatch outside a form') as $name) {
+		pg_assert_same('Off — works only inside its own form', $res[$name], $name);
+	}
+	foreach (array('reply inside', 'share inside', 'cancel outside', 'watchers outside', 'watch in its form', 'reopen in its form') as $name) {
+		pg_assert_same('', $res[$name], $name . ' is drawn');
+	}
 }
 
 // The page links: in the list where the design put them, after the comments

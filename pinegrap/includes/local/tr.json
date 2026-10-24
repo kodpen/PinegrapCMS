@@ -28199,5 +28199,8 @@
     "Watch form (notify me of new comments)": "Takip formu (yeni yorumlarda bana haber ver)",
     "Watcher list (filled by the backend — only for who may manage the watchers)": "Takipçi listesi (sunucu doldurur — yalnızca takipçileri yönetebilenler için)",
     "Watcher list (who may manage the watchers only)": "Takipçi listesi (yalnızca takipçileri yönetebilenler)",
-    "Watchers": "Takipçiler"
+    "Watchers": "Takipçiler",
+    "Off — works only inside a comment": "Kapalı — yalnızca bir yorumun içinde çalışır",
+    "Off — has no place inside a comment": "Kapalı — bir yorumun içinde yeri yok",
+    "Off — works only inside its own form": "Kapalı — yalnızca kendi formunun içinde çalışır"
 }

@@ -11165,6 +11165,25 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Where a node of the comments widget being drawn sits: inside its
+    // loop_area (the template of one comment), and the actions of the bound
+    // forms around it, the way _pg_comments_control_walk() and
+    // _pg_comments_row_walk() (widgets_comments.php) meet it.
+    function _sdCommentsPlace(node) {
+        var place = { inComment: false, forms: [] };
+        var root = _sysWidgetRenderTreeRoot;
+        var p = root ? findParent(node, root) : null;
+        while (p) {
+            if (p.type === 'loop_area') place.inComment = true;
+            var pb = (p.props && p.props._bindings) || {};
+            if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form' && pb.action) {
+                place.forms.push(pb.action);
+            }
+            p = findParent(p, root);
+        }
+        return place;
+    }
+
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
@@ -11178,7 +11197,10 @@ const StyleDesigner = (function () {
     // e-mail page; a reply control fades while the page takes no new
     // comments; a control only a button (or only a link or a button) works
     // as fades elsewhere, and so does the pagination while the widget shows
-    // every comment on one page.
+    // every comment on one page. What the page leaves out for where it sits
+    // fades too (_sdCommentsPlace()): reply and share outside the comment
+    // (the loop_area), the thread's controls, small forms and sections
+    // inside it, a button that sends a small form outside that form.
     function _sdCommentsBindingOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return '';
         var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
@@ -11199,6 +11221,21 @@ const StyleDesigner = (function () {
         // Only a button sends the watch form and the staff's form.
         if (['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'].indexOf(b.action) !== -1 && !isButton) {
             return _sdT('Off — only a button sends this form');
+        }
+        // Reply and share answer one comment; the thread's controls, small
+        // forms and sections have no place in one; a button sends only the
+        // form it is in.
+        var rowOnly = ['comment_reply', 'comment_share'].indexOf(b.action) !== -1;
+        var threadOnly = ['comment_reply_cancel', 'comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen',
+            'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1 ||
+            b.section === 'comment_watchers' || b.section === 'comment_pagination';
+        if (rowOnly || threadOnly) {
+            var place = _sdCommentsPlace(node);
+            var sends = (b.action === 'comment_watch' || b.action === 'comment_unwatch') ? 'comment_watch_form'
+                : ((b.action === 'comment_close' || b.action === 'comment_reopen') ? 'comment_allow_new_form' : '');
+            if (rowOnly && !place.inComment) return _sdT('Off — works only inside a comment');
+            if (threadOnly && place.inComment) return _sdT('Off — has no place inside a comment');
+            if (sends && place.forms.indexOf(sends) === -1) return _sdT('Off — works only inside its own form');
         }
         if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on' ||
             ['comment_watch_form', 'comment_watch', 'comment_unwatch'].indexOf(b.action) !== -1 || b.section === 'comment_watchers') {
@@ -52791,7 +52828,7 @@ const StyleDesigner = (function () {
                                 ])
                             ])
                         ]),
-                        createNode('semantic', { tag: 'div', cssClass: 'small border-top pt-3 mt-4 d-flex flex-column gap-2', customName: _sdT('Watch'),
+                        createNode('semantic', { tag: 'div', cssClass: 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', customName: _sdT('Watch'),
                             _bindings: { eo_visible_if: 'watching_on' } }, [
                             createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', _bindings: { text: '__watcher_count_text' } }),
                             createNode('semantic', { tag: 'form', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Watch Form'),

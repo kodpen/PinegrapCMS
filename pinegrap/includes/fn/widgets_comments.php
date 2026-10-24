@@ -2168,13 +2168,76 @@ function pg_comments_apply_row_bindings(&$loop_tree, $ctx)
  * to: one inside a form bound to comment_watch_form prints the
  * add_or_remove_watcher messages, one inside comment_allow_new_form the
  * allow_or_disallow_new_comments ones. Run after
- * _pg_inject_messages_node($tree, 'add_comment'), which names them all.
+ * _pg_inject_messages_node($tree, 'add_comment'), which names them all and
+ * adds one only to a tree that has none. Pure.
  *
- * @param array  $tree
- * @param string $name the handler of the form $tree is in, '' for none
+ * When no node is left for add_comment (the design kept a Messages node only
+ * in a small form), one is added where _pg_inject_messages_node() adds it:
+ * first in the tree's first container, else first in the tree. Otherwise a
+ * refused comment's error would print nowhere and be removed unread.
+ *
+ * @param array $tree
  * @return void
  */
-function pg_comments_stamp_form_messages(&$tree, $name = '')
+function pg_comments_stamp_form_messages(&$tree)
+{
+    if (!is_array($tree)) {
+        return;
+    }
+
+    _pg_comments_stamp_walk($tree, '');
+
+    if (_pg_comments_has_messages($tree, 'add_comment') || empty($tree['children']) || !is_array($tree['children'])) {
+        return;
+    }
+
+    $messages = array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => '', 'formName' => 'add_comment'), 'children' => array());
+
+    if (isset($tree['children'][0]['type']) && ($tree['children'][0]['type'] === 'container')) {
+        $kids = (isset($tree['children'][0]['children']) && is_array($tree['children'][0]['children'])) ? $tree['children'][0]['children'] : array();
+        array_unshift($kids, $messages);
+        $tree['children'][0]['children'] = $kids;
+    } else {
+        array_unshift($tree['children'], $messages);
+    }
+}
+
+/**
+ * Whether a tree holds a Messages node named $name. Pure.
+ *
+ * @param mixed  $node
+ * @param string $name
+ * @return bool
+ */
+function _pg_comments_has_messages($node, $name)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    if (isset($node['type'], $node['props']['contentType'], $node['props']['formName']) && ($node['type'] === 'content')
+        && ($node['props']['contentType'] === 'messages') && ((string) $node['props']['formName'] === $name)
+    ) {
+        return true;
+    }
+
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (_pg_comments_has_messages($child, $name)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The walk of pg_comments_stamp_form_messages().
+ *
+ * @param array  $tree
+ * @param string $name the handler of the small form $tree is in, '' for none
+ * @return void
+ */
+function _pg_comments_stamp_walk(&$tree, $name)
 {
     if (!is_array($tree)) {
         return;
@@ -2196,7 +2259,7 @@ function pg_comments_stamp_form_messages(&$tree, $name = '')
 
     if (!empty($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as &$child) {
-            pg_comments_stamp_form_messages($child, $name);
+            _pg_comments_stamp_walk($child, $name);
         }
         unset($child);
     }
@@ -2357,6 +2420,107 @@ function pg_comments_watchers_html($data)
         . '</form></div>';
 }
 
+/**
+ * Give the watcher list the feedback of add_or_remove_watcher.php when no
+ * watch form drawn for the visitor carries it. Pure; run on the tree as the
+ * visitor gets it (sections filled, flags applied), before it is drawn.
+ *
+ * The handler answers every add and remove at #software_watcher with its
+ * errors and notices. They print in the watch form, which carries that id
+ * and the Messages node re-stamped add_or_remove_watcher. A manager who is
+ * not offered the watch form (the record's submitter, told of new comments
+ * anyway), or whose design's watch form has no Messages node, would read
+ * nothing, and the renderer removes the state after the draw. The first
+ * comment_watchers section drawn then gets, first inside it, the anchor when
+ * nothing carries the id and a Messages node for add_or_remove_watcher when
+ * none is left, as the classic block prints them in its manager area.
+ *
+ * @param array $tree
+ * @return void
+ */
+function pg_comments_watchers_feedback(&$tree)
+{
+    if (!is_array($tree)) {
+        return;
+    }
+
+    $anchor = _pg_comments_has_id($tree, 'software_watcher');
+    $messages = _pg_comments_has_messages($tree, 'add_or_remove_watcher');
+
+    if ($anchor && $messages) {
+        return;
+    }
+
+    $add = array();
+
+    if (!$anchor) {
+        $add[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<a id="software_watcher"></a>'), 'children' => array());
+    }
+
+    if (!$messages) {
+        $add[] = array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => '', 'formName' => 'add_or_remove_watcher'), 'children' => array());
+    }
+
+    _pg_comments_watchers_prepend($tree, $add);
+}
+
+/**
+ * Whether a node of the tree carries the element id $id. Pure.
+ *
+ * @param mixed  $node
+ * @param string $id
+ * @return bool
+ */
+function _pg_comments_has_id($node, $id)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    if (isset($node['props']['id']) && is_scalar($node['props']['id']) && ((string) $node['props']['id'] === $id)) {
+        return true;
+    }
+
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (_pg_comments_has_id($child, $id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Put $add first inside the first comment_watchers section of the tree.
+ *
+ * @param array $node
+ * @param array $add
+ * @return bool whether a section took them
+ */
+function _pg_comments_watchers_prepend(&$node, $add)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    if (isset($node['props']['_bindings']['section']) && ($node['props']['_bindings']['section'] === 'comment_watchers')) {
+        $node['children'] = array_merge($add, (isset($node['children']) && is_array($node['children'])) ? $node['children'] : array());
+        return true;
+    }
+
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) {
+            if (_pg_comments_watchers_prepend($child, $add)) {
+                unset($child);
+                return true;
+            }
+        }
+        unset($child);
+    }
+
+    return false;
+}
+
 // ============================================================================
 // The default layout
 // ============================================================================
@@ -2514,7 +2678,7 @@ function pg_comments_default_tree()
                 )),
                 $form,
             )),
-            $sem('div', array('cssClass' => 'small border-top pt-3 mt-4 d-flex flex-column gap-2', 'customName' => lang('Watch'),
+            $sem('div', array('cssClass' => 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', 'customName' => lang('Watch'),
                 '_bindings' => array('eo_visible_if' => 'watching_on')), array(
                 $sem('div', array('cssClass' => 'pg-hide-if-empty', '_bindings' => array('text' => '__watcher_count_text'))),
                 $sem('form', array('cssClass' => 'd-flex flex-wrap align-items-center gap-2', 'customName' => lang('Watch Form'),
@@ -2576,7 +2740,9 @@ function pg_comments_default_tree()
  * default layout's; a list the visitor does not get (below a false thread
  * flag, in a form that is not drawn) draws none. A layout without a
  * comment_pagination section gets the page links right after the comments
- * (after the list, when the comments sit in one). A link to a comment's
+ * (after the list, when the comments sit in one). A drawn watcher list
+ * carries the watch handler's anchor and messages when no drawn watch form
+ * does (pg_comments_watchers_feedback()). A link to a comment's
  * anchor keeps reaching it (pg_comments_row_anchor_links()). The output
  * starts with the #software_comments anchor the featured and page links aim
  * at.
@@ -2649,6 +2815,7 @@ function pg_comments_widget_draw($tree, $data)
 
     $static_tree = $split['static_tree'];
     _eo_apply_visibility_bindings($static_tree, $comments_thread_flags);
+    pg_comments_watchers_feedback($static_tree);
 
     $loop_tree = array('type' => 'root', 'props' => array(), 'children' => $loop_children);
     pg_comments_apply_row_bindings($loop_tree, $controls);
