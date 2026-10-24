@@ -60,8 +60,7 @@ define('WS_NOTE_IMPORT_SECONDS', 8);
  * The largest upload: WS_NOTE_IMPORT_UPLOAD_MAX, or what the server takes
  * when that is less. Loose files travel in one request, so post_max_size
  * less the multipart envelope (request_max) bounds the total just as
- * upload_max_filesize bounds one file; a total between the two came back
- * as a 413 the screen had let through.
+ * upload_max_filesize bounds one file.
  *
  * @param array|null $limits pg_upload_limits(); null reads it
  * @return int bytes
@@ -476,6 +475,13 @@ function ws_note_import_stage($viewer, $files, $token = '')
     foreach ($files as $file) {
         $name = (string) ($file['name'] ?? '');
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+
+        // A part with no file in it (only a hand-made request sends one)
+        // is no file at all: the answer to an empty upload, and nothing
+        // for the error log.
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            return $fail($choose);
+        }
 
         // A part PHP could not store is the server's fault: the error log
         // gets its code. A file over the limit or cut short (a cancelled

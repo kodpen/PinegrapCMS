@@ -20232,9 +20232,10 @@
             var limits = CFG.notes_import || {};
             var types = limits.types || [];
             var maxMb = Math.max(1, Math.floor((limits.max || 0) / 1048576));
-            // Each file's part headers travel in the body too, and the 64 KB
-            // the server's request_max keeps for them is not enough for
-            // hundreds of files.
+            // Each file's part headers travel in the body too. The 64 KB the
+            // server's request_max keeps covers one file's, not those of
+            // hundreds; a file on its own is held to the cap by its size, as
+            // upload_max_filesize holds it.
             var partBytes = 1024;
             var kindIcons = { md: 'bi-markdown', markdown: 'bi-markdown', txt: 'bi-file-earmark-text', zip: 'bi-file-earmark-zip', enex: 'bi-journal-text' };
             var node = el('div', 'modal fade ws-nb-import');
@@ -20244,6 +20245,8 @@
             // The step on screen: pick, send, read, preview or run.
             var phase = 'pick';
             var uploadXhr = null;
+            // When Upload was pressed, for the footer's gate below.
+            var pressed = 0;
             var stage = '';
             var rows = [];
             var mode = 'update';
@@ -20267,6 +20270,25 @@
             var footer = node.querySelector('.modal-footer');
 
             closeX.setAttribute('aria-label', t('close'));
+
+            // Upload's place in the footer is taken at once by Cancel upload,
+            // which gets the focus, then by Close and by the preview's
+            // Import: the second tap of a double tap, or a second press of
+            // Enter, would stop the upload it started, close the dialog or
+            // import unseen. Clicks there are dropped for 800 ms after
+            // Upload, longer than a double tap or press. A held key repeats
+            // its keydown, which a button takes as one more press.
+            footer.addEventListener('click', function (event) {
+                if (Date.now() - pressed < 800) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }, true);
+            footer.addEventListener('keydown', function (event) {
+                if (event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                }
+            }, true);
 
             // The JSON steps after the upload.
             function send(payload) {
@@ -20361,9 +20383,9 @@
 
             // Sizes in the list and while the files travel, as the file
             // manager writes them (uploadSizeLabel() in view_folders.php).
-            // The unit letters are the one literal in this file: the
-            // server's convert_bytes_to_string() writes the same ones in
-            // every language.
+            // The unit letters are not translated: the server's
+            // convert_bytes_to_string() writes the same ones in every
+            // language.
             function sizeLabel(bytes) {
                 var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
 
@@ -20425,11 +20447,7 @@
                     }
                 });
 
-                var go = drawPick();
-
-                if (!go.disabled) {
-                    go.focus();
-                }
+                drawPick().focus();
             }
 
             // What the server would do with the picked files, asked before a
@@ -20450,7 +20468,7 @@
                     if (entry.folder || types.indexOf(kind) === -1) {
                         entry.state = 'blocked';
                         result.blocked++;
-                    } else if (limits.max && entry.file.size + partBytes > limits.max) {
+                    } else if (limits.max && entry.file.size > limits.max) {
                         entry.state = 'over';
                         result.over++;
                     } else {
@@ -20469,7 +20487,7 @@
                     // The server takes only so many files in one request and
                     // drops the rest without a word.
                     result.error = t('notes_import_too_many', limits.files);
-                } else if (limits.max && result.total + count * partBytes > limits.max) {
+                } else if (limits.max && result.total + ((count > 1) ? count * partBytes : 0) > limits.max) {
                     result.error = t('notes_import_too_large', maxMb);
                 } else if (zips && count > 1) {
                     result.error = t('notes_import_zip_alone');
@@ -20484,7 +20502,9 @@
             // them (renderUploadPicked() in view_folders.php): what will not
             // be sent is said before the upload, while it can still be
             // changed. A failed upload comes back here with its message and
-            // the same list, so Upload tries again.
+            // the same list, so Upload tries again. Returns what takes the
+            // focus after a change: Upload, or the picker while nothing can
+            // be sent (the redraw removed the control that had it).
             function drawPick(error) {
                 var result = check();
 
@@ -20549,7 +20569,7 @@
 
                     clearAll.addEventListener('click', function () {
                         picked = [];
-                        drawPick();
+                        drawPick().focus();
                     });
 
                     head.appendChild(el('span', 'small fw-semibold flex-grow-1', heading));
@@ -20580,7 +20600,16 @@
                 }
 
                 if (result.error || error) {
-                    body.appendChild(el('div', 'alert alert-danger small mt-3 mb-0', result.error || error));
+                    var notice = el('div', 'alert alert-danger small mt-3 mb-0', result.error || error);
+
+                    // A refused upload is read out once. The list's own
+                    // rules are drawn again with every change, and would be
+                    // read out again each time.
+                    if (!result.error) {
+                        notice.setAttribute('role', 'alert');
+                    }
+
+                    body.appendChild(notice);
                 }
 
                 var go = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_import_upload'), 'bi-cloud-arrow-up');
@@ -20590,7 +20619,7 @@
                 footer.appendChild(closeButton());
                 footer.appendChild(go);
 
-                return go;
+                return go.disabled ? input : go;
             }
 
             // ── the upload ──
@@ -20679,6 +20708,8 @@
                 if (!result.files.length || result.error) {
                     return;
                 }
+
+                pressed = Date.now();
 
                 var form = new FormData();
 

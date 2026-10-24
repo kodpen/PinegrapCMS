@@ -107,6 +107,20 @@ function test_workspace_notes_import_upload_stage_names_the_file()
 	pg_assert_contains('Arşiv.zip', $large['error'], 'and named');
 }
 
+// A part with no file in it (a hand-made request; the screen sends files[])
+// is no file: the answer to an empty upload, not a server fault.
+function test_workspace_notes_import_upload_stage_part_without_file()
+{
+	$viewer = array('id' => 7, 'role' => 0, 'member' => true);
+	$choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).');
+	$empty = ws_note_import_stage($viewer, array(array('name' => '', 'tmp_name' => '', 'size' => 0, 'error' => UPLOAD_ERR_NO_FILE)));
+	$bare = ws_note_import_stage($viewer, array(array('name' => 'a.md', 'tmp_name' => '', 'size' => 0)));
+
+	pg_assert_false($empty['ok'], 'refused');
+	pg_assert_same($choose, $empty['error'], 'as an empty upload');
+	pg_assert_same($choose, $bare['error'], 'an entry with no error code reads the same');
+}
+
 // One list of kinds: the stage reads it, the screen gets it with its config.
 function test_workspace_notes_import_upload_extensions_are_one_list()
 {
@@ -175,7 +189,11 @@ function test_workspace_notes_import_upload_screen_shows_the_steps()
 		'limits.types'                          => 'the kinds come from the server',
 		'webkitGetAsEntry'                      => 'a dropped folder is told apart',
 		"'data-bs-keyboard', 'false'"           => 'Escape does not close it',
-		"phase === 'send'"                      => 'late upload events are let pass',
+		"phase === 'send'"                      => 'late upload events are ignored',
+		'event.repeat'                          => 'a held key does not press the next button',
+		'Date.now() - pressed'                  => 'nor does the second tap or press that started the upload',
+		'entry.file.size > limits.max'          => 'one file is held to the cap by its own size',
+		"setAttribute('role', 'alert')"         => 'a refused upload is announced',
 		"t('notes_import_upload')"              => 'an Upload button starts it',
 		"t('notes_import_request_failed')"      => 'a lost connection is said in words',
 		"t('notes_import_too_large_server')"    => 'a web server\'s own refusal too',
