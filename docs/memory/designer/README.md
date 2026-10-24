@@ -36,9 +36,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
+- comments-widget-canvas.md: The comments widget on the canvas and in the Preview: visitor states, the thread flag twin, hide versus fade, sample comments, the Preview's page, ?r=, unsaved settings, anonymous background renders
+- comments-widget-conversion.md: Fixed comments block to the Comments widget and back (which widget is the design's, featured filter on a new one), save warnings about comments not drawn, templates shipping the kind
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
 - comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
+- comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, tokens, flags, escaping, default layout, checks
