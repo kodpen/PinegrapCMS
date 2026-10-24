@@ -456,6 +456,41 @@ function test_designer_canvas_fit_short_element_keeps_its_margin()
 	pg_assert_contains("addFit.forEach(function (w) { w.classList.add('sd-fx-fit'); });", $pass, 'and writes it after measuring');
 }
 
+// setCanvasZoom(): the CSS zoom on the canvas root lays the page out again
+// without resizing the canvas window (no resize event), so the zoom itself
+// schedules the measuring pass (_sdFxSoon()); without a canvas it does not.
+function test_designer_canvas_zoom_reruns_the_fit_pass()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$js = _test_canvas_bs_js();
+	$from = strpos($js, '    function setCanvasZoom(');
+	pg_assert_true($from !== false, 'the designer has setCanvasZoom()');
+	$to = strpos($js, "\n    }\n", $from);
+	$fn = substr($js, $from, $to - $from + 7);
+	$script = 'var canvasZoom = 1, soon = 0, root = { style: {} }, canvasDoc = { documentElement: root };
+		var document = { getElementById: function () { return null; } };
+		function _sdFxSoon() { soon++; }
+		function updateIconResizeHandle() {}
+		' . $fn . '
+		var r = [];
+		setCanvasZoom(1.5); r.push(root.style.zoom + ":" + soon);
+		setCanvasZoom(1); r.push(root.style.zoom + ":" + soon);
+		canvasDoc = null; setCanvasZoom(0.5); r.push(canvasZoom + ":" + soon);
+		process.stdout.write(JSON.stringify(r));';
+	$file = tempnam(sys_get_temp_dir(), 'pgzoom');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 5)));
+	pg_assert_same(array('1.5:1', ':2', '0.5:2'), json_decode(implode("\n", $out), true));
+}
+
 // A selected floating label is not lifted out of its place over the control
 // (the selection lift is position:relative), or the second click of a
 // double-click misses it.

@@ -1521,3 +1521,99 @@ function _pg_design_thumb_magazine()
         // the footer
         . '<rect y="192" width="320" height="8" fill="#f1f3f5"/>' . $footer;
 }
+
+// The community forum: a header with the mark, the main links and the Start
+// a Topic button; the tinted hero with the title, the search box and the
+// forum's three numbers beside a large chat mark; the six board tiles, each
+// with its icon; the latest topics, the pinned one on the tint, each with
+// its board badge and its counts, beside a side box; and the footer. Same
+// variables as the home page drawing.
+function _pg_design_thumb_forum()
+{
+    // The forum's numbers: three small cards under the search.
+    $stats = '';
+    foreach (array(18, 64, 110) as $i => $x) {
+        $stats .= '<rect x="' . $x . '" y="70" width="40" height="11" rx="2" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/>'
+            . '<rect x="' . ($x + 4) . '" y="72.5" width="' . (14 + $i * 2) . '" height="3" rx="1" fill="#111827"/>'
+            . '<rect x="' . ($x + 4) . '" y="77" width="20" height="1.6" rx=".8" fill="#94a3b8"/>';
+    }
+
+    // The boards: two rows of three tiles, an icon beside two lines each.
+    $boards = '';
+    foreach (array(98, 114) as $r => $y) {
+        foreach (array(12, 114, 216) as $c => $x) {
+            $boards .= '<g style="filter:var(--tsh)"><rect x="' . $x . '" y="' . $y . '" width="92" height="13" rx="2" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/></g>'
+                . '<rect x="' . ($x + 3) . '" y="' . ($y + 2.5) . '" width="8" height="8" rx="2" style="rx:var(--tr);fill:var(--tp);opacity:.15"/>'
+                . '<rect x="' . ($x + 5) . '" y="' . ($y + 4.5) . '" width="4" height="4" rx="1" style="fill:var(--tp)"/>'
+                . '<rect x="' . ($x + 15) . '" y="' . ($y + 3.5) . '" width="' . (34 + (($r * 3 + $c) % 3) * 6) . '" height="2.6" rx="1.3" fill="#1f2937"/>'
+                . '<rect x="' . ($x + 15) . '" y="' . ($y + 8) . '" width="58" height="1.8" rx=".9" fill="#94a3b8"/>';
+        }
+    }
+
+    // The latest topics: a board badge, a title and a line, the counts on
+    // the right; the first row is pinned, on the tint.
+    $topics = '<rect x="12" y="141" width="194" height="11" style="fill:var(--tp);opacity:.07"/>';
+    foreach (array(141, 152, 163, 174) as $i => $y) {
+        $x = ($i === 0) ? 15 : 12;
+        $topics .= '<rect x="' . $x . '" y="' . ($y + 1.8) . '" width="16" height="3" rx="1.5" style="fill:var(--tp);opacity:.3"/>'
+            . '<rect x="' . ($x + 19) . '" y="' . ($y + 1.8) . '" width="' . (96 - $i * 9) . '" height="3" rx="1.2" fill="#1f2937"/>'
+            . '<rect x="' . $x . '" y="' . ($y + 6.6) . '" width="' . (54 + $i * 6) . '" height="1.8" rx=".9" fill="#94a3b8"/>'
+            . '<rect x="180" y="' . ($y + 2) . '" width="8" height="2.6" rx="1" fill="#1f2937"/><rect x="194" y="' . ($y + 2) . '" width="8" height="2.6" rx="1" fill="#1f2937"/>'
+            . '<rect x="12" y="' . ($y + 10.6) . '" width="194" height=".5" fill="#e5e7eb"/>';
+    }
+
+    // The side box: a title and four topics waiting for an answer.
+    $side = '<rect x="216" y="134" width="92" height="48" rx="2" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/>'
+        . '<rect x="221" y="138.5" width="42" height="3" rx="1.2" fill="#111827"/>';
+    foreach (array(146, 154, 162, 170) as $i => $y) {
+        $side .= '<rect x="221" y="' . $y . '" width="' . (74 - $i * 7) . '" height="2.2" rx="1.1" fill="#1f2937"/>'
+            . '<rect x="221" y="' . ($y + 3.6) . '" width="30" height="1.6" rx=".8" fill="#94a3b8"/>';
+    }
+
+    // The footer's link groups.
+    $footer = '';
+    foreach (array(12, 92, 172, 252) as $i => $x) {
+        $footer .= '<rect x="' . $x . '" y="190" width="' . (26 - $i * 2) . '" height="1.6" rx=".8" fill="#94a3b8"/>'
+            . '<rect x="' . $x . '" y="194" width="' . (18 + $i * 2) . '" height="1.4" rx=".7" fill="#cbd5e1"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the header: the mark and the name, the main links (the current
+        // one underlined), the theme, the sign-in and Start a Topic
+        . '<rect x="12" y="6" width="10" height="10" rx="2.5" style="rx:var(--tr);fill:var(--tp)"/>'
+        . '<path d="M14.6 9 h4.8 v3 h-2.6 l-1.4 1.2 v-1.2 h-0.8 z" fill="#fff"/>'
+        . '<rect x="26" y="9" width="40" height="4.5" rx="2" fill="#111827"/>'
+        . '<rect x="84" y="10" width="16" height="2.4" rx="1.2" fill="#475569"/><rect x="106" y="10" width="14" height="2.4" rx="1.2" fill="#475569"/>'
+        . '<rect x="126" y="10" width="20" height="2.4" rx="1.2" fill="#475569"/><rect x="152" y="10" width="14" height="2.4" rx="1.2" fill="#475569"/>'
+        . '<rect x="84" y="14.2" width="16" height=".9" style="fill:var(--tp)"/>'
+        . '<circle cx="244" cy="11" r="3.4" fill="none" stroke="#94a3b8" stroke-width=".8"/>'
+        . '<rect x="252" y="9.5" width="24" height="3" rx="1.5" fill="#94a3b8"/>'
+        . '<rect x="282" y="5.5" width="28" height="11" rx="3" style="rx:var(--tbr);fill:var(--tp)"/><rect x="287" y="10" width="18" height="2" rx="1" fill="#fff"/>'
+        . '<rect y="21.6" width="320" height=".6" fill="#e5e7eb"/>'
+        // the hero on the tint: the kicker, the title, the line, the search and the numbers
+        . '<rect y="22.2" width="320" height="64" style="fill:var(--tp);opacity:.07"/>'
+        . '<rect x="18" y="29" width="24" height="2.2" rx="1.1" style="fill:var(--tp)"/>'
+        . '<rect x="18" y="34" width="118" height="8" rx="2" fill="#111827"/>'
+        . '<rect x="18" y="46" width="150" height="2.6" rx="1.3" fill="#64748b"/>'
+        . '<rect x="18" y="53" width="168" height="12" rx="3" style="rx:var(--tr);fill:#fff;stroke:var(--tbc);stroke-width:var(--tbw)"/>'
+        . '<rect x="23" y="58" width="60" height="2.2" rx="1.1" fill="#cbd5e1"/>'
+        . '<rect x="188" y="53" width="18" height="12" rx="3" style="rx:var(--tbr);fill:var(--tp)"/>'
+        . '<circle cx="196.4" cy="58.6" r="2.4" fill="none" stroke="#fff" stroke-width="1"/><path d="M198.2 60.4 l1.8 1.8" stroke="#fff" stroke-width="1" stroke-linecap="round"/>'
+        . $stats
+        // a large chat mark on the right of the hero
+        . '<g style="filter:var(--tsh)"><rect x="236" y="32" width="58" height="34" rx="6" style="rx:var(--tr);fill:var(--tp)"/></g>'
+        . '<path d="M246 66 v8 l8 -8 z" style="fill:var(--tp)"/>'
+        . '<rect x="244" y="40" width="40" height="3" rx="1.5" fill="#fff" opacity=".85"/><rect x="244" y="47" width="32" height="3" rx="1.5" fill="#fff" opacity=".6"/>'
+        . '<rect x="244" y="54" width="36" height="3" rx="1.5" fill="#fff" opacity=".6"/>'
+        . '<rect y="86.2" width="320" height=".6" fill="#e5e7eb"/>'
+        // the boards
+        . '<rect x="12" y="91" width="48" height="4" rx="1.5" fill="#111827"/>'
+        . $boards
+        // the latest topics and the side box
+        . '<rect x="12" y="134" width="56" height="4" rx="1.5" fill="#111827"/>'
+        . $topics
+        . $side
+        // the footer
+        . '<rect y="186" width="320" height="14" fill="#f1f3f5"/><rect y="186" width="320" height=".6" fill="#e5e7eb"/>'
+        . $footer;
+}

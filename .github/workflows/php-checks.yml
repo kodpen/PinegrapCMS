@@ -105,3 +105,31 @@ jobs:
       - name: Memory index matches its files (tools/memory_index.php --check)
         if: ${{ hashFiles('tools/memory_index.php') != '' }}
         run: php tools/memory_index.php --check
+
+  # The oldest PHP the product supports. The job above runs on 8.3 and skips
+  # the bundled libraries, and PHPCompatibility reads the product tree alone,
+  # so neither sees a bundled file that does not parse on 7.1 or code that
+  # behaves differently there. The unit tests run without a database, as above.
+  php71:
+    name: syntax with bundled libraries and unit tests (PHP 7.1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        if: ${{ hashFiles('tools/lint.php') != '' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "7.1"
+          extensions: mbstring, mysqli, gd, intl, xml, zip, pdo_mysql
+          coverage: none
+          tools: none
+
+      - name: Syntax check, bundled libraries included (php tools/lint.php --vendored)
+        if: ${{ hashFiles('tools/lint.php') != '' }}
+        run: php tools/lint.php --vendored
+
+      - name: Unit tests (tests/*_test.php)
+        if: ${{ hashFiles('tools/test.php') != '' }}
+        run: php -d memory_limit=-1 tools/test.php
