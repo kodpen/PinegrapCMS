@@ -14,7 +14,9 @@
  *
  * The export is the reverse of _pg_tpl_fill(): the addresses of the design's
  * pages become {{page:<key>}}, the page ids in widget and form settings
- * {{tab:<key>}}, the folders {{folder:<key>}}, the contact groups
+ * and the page a widget's link to another page opens
+ * (props._bindParams.*.page_id) {{tab:<key>}}, the folders {{folder:<key>}},
+ * the contact groups
  * {{contact_group:<key>}}, the site's name {{site_name}} and the year after
  * a copyright sign {{year}}. Every placed shared component becomes a
  * template widget (props.templateWidget) or a template shared component
@@ -282,12 +284,24 @@ function _pg_dtc_id_value($value)
 // The props of a node: every string through pg_dtc_tokenize_string(), the
 // data bindings left exactly as they are, a folder id of the template's
 // folders (a form field's upload folder, props._cf.upload_folder_id) as
-// {{folder:<key>}}.
+// {{folder:<key>}}. A link to another page (props._bindParams) keeps its
+// values as they are; the page it opens becomes {{tab:<key>}} when it is a
+// page of the design, and any other page keeps its id.
 function _pg_dtc_tokenize_props($props, $ctx, $depth = 0)
 {
     if (!is_array($props) || $depth > 20) return $props;
     foreach ($props as $k => $v) {
         if ($k === '_bindings') continue;
+        if ($k === '_bindParams') {
+            if (!is_array($v)) continue;
+            foreach ($v as $prop => $spec) {
+                if (!is_array($spec) || !isset($spec['page_id'])) continue;
+                $id = _pg_dtc_id_value($spec['page_id']);
+                if ($id > 0 && isset($ctx['page_ids'][$id])) $v[$prop]['page_id'] = '{{tab:' . $ctx['page_ids'][$id] . '}}';
+            }
+            $props[$k] = $v;
+            continue;
+        }
         if (is_array($v)) {
             $props[$k] = _pg_dtc_tokenize_props($v, $ctx, $depth + 1);
         } elseif (is_string($k) && strpos($k, 'folder_id') !== false && ($id = _pg_dtc_id_value($v)) > 0

@@ -4,7 +4,7 @@ description: marketplace_webhook.php: what calls it and what it imports, its che
 ---
 
 ## What calls it, and what does it do?
-- `POST marketplace_webhook.php?account=<id>` from the marketplace's servers; functions in `includes/api/outbound/webhook_receiver.php`. The connector's `webhook_packages($account, $decoded)` reads the body (Trendyol: the order-feed page through `mp_trendyol_package()`, or one bare package); each package goes through `mp_import_order()`, so a pull meeting it later skips it.
+- `POST marketplace_webhook.php?account=<id>` from the marketplace's servers; functions in `includes/api/outbound/webhook_receiver.php`. The connector's `webhook_packages($account, $decoded)` reads the body (Trendyol: the order-feed page through `mp_trendyol_package()`, or one bare package); each package goes through `mp_import_order()`, cancelled ones first (`mp_order_cancellations_first()`), so a pull meeting it later skips it.
 - No network call inside the request: no acceptance, no lookup. `mp_sync_approve_pending()` (job, after a successful pull, auto-accept on) accepts map rows of the last day that are imported with an order, not accepted, still `Created` and without an error, 50 a pass.
 - The account's `last_success`/`last_error` are not touched: they answer whether this site reaches the marketplace, and clearing the error would hide a refused key.
 

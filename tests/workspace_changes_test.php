@@ -132,3 +132,50 @@ function test_workspace_changes_writers_use_the_refusal_sentence()
 		pg_assert_same(($file === 'bulk.php') ? 2 : 1, substr_count($source, $call), $file . ' names the refusal');
 	}
 }
+
+// An order's status moves by the store's rule (pg_order_status_move()), as
+// the external API moves it: a move the rule refuses is refused when it is
+// proposed, applied, bulk-run or scheduled, before anything is written.
+function test_workspace_changes_order_status_follows_the_store_rule()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+	$complete = array('id' => 7, 'status' => 'complete');
+	$cancelled = array('id' => 7, 'status' => 'cancelled');
+	$cart = array('id' => 7, 'status' => 'incomplete');
+
+	pg_assert_same(pg_order_status_move_refusal('complete', 'incomplete'), ws_change_check($viewer, 'order', 'update', $complete, array('status' => 'incomplete')), 'an order is not turned into a basket');
+	pg_assert_same(pg_order_status_move_refusal('cancelled', 'incomplete'), ws_change_check($viewer, 'order', 'update', $cancelled, array('status' => 'incomplete')), 'nor a cancelled one');
+	pg_assert_true(ws_change_check($viewer, 'order', 'update', $cart, array('status' => 'complete')) !== '', 'a basket is not completed');
+	pg_assert_true(ws_change_check($viewer, 'order', 'update', $cart, array('status' => 'cancelled')) !== '', 'nor cancelled');
+
+	pg_assert_same('', ws_change_check($viewer, 'order', 'update', $complete, array('status' => 'exported')), 'complete to exported');
+	pg_assert_same('', ws_change_check($viewer, 'order', 'update', $complete, array('status' => 'cancelled')), 'a cancellation');
+	pg_assert_same('', ws_change_check($viewer, 'order', 'update', $cancelled, array('status' => 'complete')), 'a restore');
+	pg_assert_same('', ws_change_check($viewer, 'order', 'update', $cart, array('notes' => 'Aranacak')), 'a note on a basket');
+	pg_assert_same('', ws_change_check($viewer, 'order', 'update', $cart, array()), 'the drawer opening a basket');
+}
+
+// The order writer decides by the same rule and never writes a status into
+// or out of cancelled by hand: the cancellation and the restore are the
+// store's helpers, and its one status write is a plain move that lands only
+// while the order still has the status it was read with.
+function test_workspace_changes_order_writer_uses_the_helpers()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+	$start = strpos($source, "\nfunction ws_change_write_order(");
+	$end = ($start === false) ? false : strpos($source, "\nfunction ", $start + 1);
+
+	pg_assert_true(($start !== false) && ($end !== false), 'ws_change_write_order() is in changes.php');
+
+	$writer = substr($source, $start, $end - $start);
+
+	pg_assert_contains('$move = ($status === null) ? \'none\' : pg_order_status_move((string) $record[\'status\'], (string) $status);', $writer, 'the move is the rule\'s');
+	pg_assert_contains("if (\$move === 'refuse') {", $writer, 'a refused move fails');
+	pg_assert_contains('process_order_cancellation((int) $record[\'id\'], $reason, true, (int) $viewer[\'id\']);', $writer, 'a cancel through the cancellation');
+	pg_assert_contains('pg_order_restore_cancelled((int) $record[\'id\'], $status)', $writer, 'a restore through the restore');
+
+	preg_match_all('/UPDATE\s+orders\s+SET[^"]*\bstatus\s*=[^;]*;/', $writer, $writes);
+
+	pg_assert_same(1, count($writes[0]), 'one status write of its own');
+	pg_assert_contains("AND status = '\" . e(\$record['status']) . \"'", isset($writes[0][0]) ? $writes[0][0] : '', 'guarded by the status it was read with');
+}

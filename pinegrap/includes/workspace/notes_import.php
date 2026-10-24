@@ -100,17 +100,25 @@ function ws_note_import_files_max()
    --------------------------------------------------------------------------- */
 
 /**
- * @return string data/temp, made when missing; '' when it cannot be written
+ * @param string|null $directory null: data/temp
+ * @return string the folder, made when missing; '' when it is not there and
+ *                cannot be made
  */
-function ws_note_import_temp_dir()
+function ws_note_import_temp_dir($directory = null)
 {
-    $directory = PG_FUNCTIONS_DIR . '/data/temp';
+    if ($directory === null) {
+        $directory = PG_FUNCTIONS_DIR . '/data/temp';
+    }
 
     if (!is_dir($directory)) {
         @mkdir($directory, 0755, true);
     }
 
-    return (is_dir($directory) && is_writable($directory)) ? $directory : '';
+    // is_writable() is not asked: on Windows it reads the folder's read-only
+    // attribute, which Explorer and OneDrive set freely and which says
+    // nothing about whether PHP may write in it. The writes that follow are
+    // the answer, and each one that fails is logged with what PHP said.
+    return is_dir($directory) ? $directory : '';
 }
 
 /**
@@ -255,7 +263,13 @@ function ws_note_import_save($stage)
 
     $json = json_encode($stage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-    if (($dir === '') || !is_string($json)) {
+    if ($dir === '') {
+        return false;
+    }
+
+    if (!is_string($json)) {
+        ws_note_import_log_failure('encoding stage.json', json_last_error_msg());
+
         return false;
     }
 
@@ -530,7 +544,7 @@ function ws_note_import_stage($viewer, $files)
                 return $fail(lang('The file could not be saved.'), $dir);
             }
 
-            $entries[] = array(ws_note_import_entry_name(basename(str_replace('\\', '/', (string) $file['name']))), (int) $file['size'], 0, (int) $number);
+            $entries[] = array(ws_note_import_entry_name(pg_basename(str_replace('\\', '/', (string) $file['name']))), (int) $file['size'], 0, (int) $number);
         }
     }
 
@@ -539,7 +553,7 @@ function ws_note_import_stage($viewer, $files)
         'user'    => (int) $viewer['id'],
         'created' => time(),
         'zip'     => ($zips > 0),
-        'name'    => mb_substr(ws_note_import_entry_name(basename(str_replace('\\', '/', (string) $files[0]['name']))), 0, 120),
+        'name'    => mb_substr(ws_note_import_entry_name(pg_basename(str_replace('\\', '/', (string) $files[0]['name']))), 0, 120),
         'entries' => $entries,
     );
 
@@ -607,7 +621,7 @@ function ws_note_import_index($stage)
             $index['lower'][$lower] = $entry;
         }
 
-        $index['name'][mb_strtolower(basename($path))][] = $entry;
+        $index['name'][mb_strtolower(pg_basename($path))][] = $entry;
 
         // An attachment of an Evernote note (a fifth value) is a file, even
         // one named like a note.
@@ -657,7 +671,7 @@ function ws_note_import_lookup($stage, $index, $from, $path)
         return $index['lower'][mb_strtolower($path)];
     }
 
-    $candidates = $index['name'][mb_strtolower(basename($path))] ?? array();
+    $candidates = $index['name'][mb_strtolower(pg_basename($path))] ?? array();
 
     if (empty($candidates)) {
         return -1;
@@ -976,7 +990,7 @@ function ws_note_import_attach($viewer, &$stage, $index, $entry, $note, $body, $
 
     if ($known) {
         foreach (ws_note_export_attachments($note) as $file) {
-            $have[mb_strtolower(basename($file['path']))] = $file['url'];
+            $have[mb_strtolower(pg_basename($file['path']))] = $file['url'];
         }
     }
 
@@ -988,7 +1002,7 @@ function ws_note_import_attach($viewer, &$stage, $index, $entry, $note, $body, $
         }
 
         $found = $target['entry'];
-        $name = ($found >= 0) ? basename((string) $stage['entries'][$found][0]) : basename(($link['kind'] === 'wiki') ? $link['name'] : $link['path']);
+        $name = ($found >= 0) ? pg_basename((string) $stage['entries'][$found][0]) : pg_basename(($link['kind'] === 'wiki') ? $link['name'] : $link['path']);
         $label = (trim($link['label']) !== '') ? $link['label'] : $name;
 
         // A file that is not in the upload, or that a note cannot keep, is
