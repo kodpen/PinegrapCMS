@@ -3015,9 +3015,11 @@ function pg_cf_checkbox_format_text($data, $format)
  * example of the format that goes with them ($yes / $no fill the check box
  * one). Information fields and fields without a name print nothing and are
  * left out. 'syntax' holds one sample line per format (conditional, date,
- * checkbox), taken from the first fitting form field.
+ * checkbox), taken from the first fitting form field. 'mail' lists the links
+ * only the e-mail to the person who sent the form fills in
+ * (pg_cf_mail_link_names()); $mail_links maps each name to its label.
  */
-function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no = 'No')
+function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no = 'No', $mail_links = array())
 {
     $example = function ($name, $type) use ($yes, $no) {
         switch ($type) {
@@ -3071,6 +3073,17 @@ function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no
         if ($item['type'] === 'check box') $help['syntax']['checkbox'] = $item['example'];
     }
 
+    $help['mail'] = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $label = trim((string)($mail_links[$name] ?? ''));
+        $help['mail'][] = array(
+            'token'   => '^^' . $name . '^^',
+            'label'   => ($label !== '') ? $label : $name,
+            'type'    => '',
+            'example' => '',
+        );
+    }
+
     return $help;
 }
 
@@ -3094,7 +3107,10 @@ function pg_cf_variables_help($page_id)
         if (is_array($rows)) $fields = $rows;
     }
 
-    $help = pg_cf_variables_help_build($fields, get_standard_fields_for_view(), lang('Yes'), lang('No'));
+    $help = pg_cf_variables_help_build($fields, get_standard_fields_for_view(), lang('Yes'), lang('No'), array(
+        'email_preferences_url'    => lang('E-mail preferences link'),
+        'confirm_subscription_url' => lang('Subscription confirmation link'),
+    ));
 
     $type_labels = array(
         'text box'      => lang('Text Box'),
@@ -3109,13 +3125,205 @@ function pg_cf_variables_help($page_id)
         'email address' => lang('E-mail Address'),
         'signature'     => lang('Signature'),
     );
-    foreach (array('fields', 'standard') as $group) {
+    foreach (array('fields', 'standard', 'mail') as $group) {
         foreach ($help[$group] as $i => $item) {
             $help[$group][$i]['type_label'] = $type_labels[$item['type']] ?? '';
         }
     }
 
     return $help;
+}
+
+/**
+ * The mail merge fields that hold a link for the person who sent the form:
+ * the signed e-mail preferences page and the subscription confirmation.
+ * They are not standard fields (get_standard_fields_for_view()), which list
+ * views, the search index and the designer also read: a signed link must
+ * only ever reach the mailbox of the address it was signed for.
+ *
+ * @return array
+ */
+function pg_cf_mail_link_names()
+{
+    return array('email_preferences_url', 'confirm_subscription_url');
+}
+
+/**
+ * Who the links are being drawn for, within the request that sends a form's
+ * e-mails. Set it (an array: email_address, contact_id, custom_form_page_id,
+ * form_id) just before the copy for the person who sent the form is drawn,
+ * clear it (false) right after; pass nothing to ask. A watcher's copy, the
+ * administrator's e-mail and the confirmation page are drawn without it, so
+ * they get no link.
+ *
+ * @param array|false|null $context
+ * @return array|null
+ */
+function pg_cf_mail_links_context($context = null)
+{
+    static $current = null;
+
+    if ($context === false) {
+        $current = null;
+    } elseif (is_array($context)) {
+        $current = $context;
+    }
+
+    return $current;
+}
+
+/**
+ * The values of the link fields for what is being drawn now, each '' when
+ * there is no link to give: no context set, or the administrator's e-mail
+ * (drawn while pg_tr_suspend() holds the request for the site's own people).
+ *
+ * @return array name => value
+ */
+function pg_cf_mail_link_values()
+{
+    return pg_cf_mail_link_values_build(
+        pg_cf_mail_links_context(),
+        function_exists('pg_tr_suspend') && pg_tr_suspend(),
+        'pg_email_preferences_url',
+        'pg_cf_confirm_subscription_url');
+}
+
+/**
+ * The link field values for $context (pg_cf_mail_links_context()): each ''
+ * without a context or while $suspended (the administrator's e-mail), else
+ * what the two link builders give for the context's address, page and contact.
+ *
+ * @param array|null $context
+ * @param bool       $suspended
+ * @param callable   $preferences_url function (string $email_address): string
+ * @param callable   $confirm_url     function (int $custom_form_page_id, int $contact_id): string
+ * @return array name => value
+ */
+function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)
+{
+    $values = array_fill_keys(pg_cf_mail_link_names(), '');
+
+    if (!is_array($context) || $suspended) {
+        return $values;
+    }
+
+    $values['email_preferences_url'] = (string) call_user_func($preferences_url, (string)($context['email_address'] ?? ''));
+    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['custom_form_page_id'] ?? 0), (int)($context['contact_id'] ?? 0));
+
+    return $values;
+}
+
+/**
+ * The link that confirms a subscription made with a form: a signed,
+ * stateless link for the contact and the form's contact group, given only
+ * when the form asks for a double opt-in. '' otherwise, for a submission
+ * without a contact, and on a site without ENCRYPTION_KEY. No form asks for
+ * a double opt-in yet, so it is always ''.
+ *
+ * @param int      $custom_form_page_id
+ * @param int      $contact_id
+ * @param int|null $issued Unix time the link is signed with (null: now)
+ * @return string
+ */
+function pg_cf_confirm_subscription_url($custom_form_page_id, $contact_id, $issued = null)
+{
+    return '';
+}
+
+/**
+ * Fills the link fields (pg_cf_mail_link_names()) in a template with
+ * $values, '' for a missing one: an empty value takes the other half of a
+ * [[...||...]] block and never leaves the token as written. In HTML the
+ * value is escaped, and the http:// the editor's Link dialog puts in front
+ * of href="^^email_preferences_url^^" is taken off first.
+ *
+ * Only for text that carries no submitted value yet (a subject or plain
+ * text body before get_variable_submitted_form_data_for_content(), a form
+ * item view's layout): [[...]] blocks are evaluated here, so a value that
+ * holds "[[" or "]]" would otherwise open or close one around other text.
+ * Text that already holds the submitted values goes through
+ * pg_cf_fill_mail_link_tokens().
+ *
+ * @param string $content
+ * @param array  $values name => value (pg_cf_mail_link_values())
+ * @param string $format 'html' or 'plain_text'
+ * @return string
+ */
+function pg_cf_fill_mail_links($content, $values, $format)
+{
+    $content = (string)$content;
+
+    if (strpos($content, '^^') === false) {
+        return $content;
+    }
+
+    $format = ($format === 'html') ? 'html' : 'plain_text';
+
+    if ($format === 'html') {
+        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+    }
+
+    $fields = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $fields[] = array('name' => $name, 'data' => (string)($values[$name] ?? ''), 'type' => '');
+    }
+
+    return replace_variables(array('content' => $content, 'fields' => $fields, 'format' => $format));
+}
+
+/**
+ * Replaces the bare link fields (^^email_preferences_url^^,
+ * ^^confirm_subscription_url^^) in text that already holds the submitted
+ * values, such as an HTML e-mail drawn by get_page_content(): no [[...]]
+ * block is evaluated, so a submitted value can neither hide nor reveal
+ * other text. In HTML the value is escaped and the Link dialog's http:// in
+ * front of the field is taken off; '' for a missing value.
+ *
+ * @param string $content
+ * @param array  $values name => value (pg_cf_mail_link_values())
+ * @param string $format 'html' or 'plain_text'
+ * @return string
+ */
+function pg_cf_fill_mail_link_tokens($content, $values, $format)
+{
+    $content = (string)$content;
+
+    if (strpos($content, '^^') === false) {
+        return $content;
+    }
+
+    $html = ($format === 'html');
+
+    if ($html) {
+        $content = pg_mail_merge_address_hrefs($content, pg_cf_mail_link_names());
+    }
+
+    $replace = array();
+    foreach (pg_cf_mail_link_names() as $name) {
+        $value = (string)($values[$name] ?? '');
+        $replace['^^' . $name . '^^'] = $html ? h($value) : $value;
+    }
+
+    return strtr($content, $replace);
+}
+
+/**
+ * Whether a filled message carries one of the links in $values, so email()
+ * keeps its body out of the failure log and the "delivery failed" notice.
+ *
+ * @param string $text
+ * @param array  $values
+ * @return bool
+ */
+function pg_cf_mail_links_in($text, $values)
+{
+    foreach ((array)$values as $value) {
+        if (((string)$value !== '') && (strpos((string)$text, (string)$value) !== false)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

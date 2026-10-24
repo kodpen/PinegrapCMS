@@ -167,6 +167,7 @@ if (!$_POST) {
 
     $output_available_standard_fields = $output_variable_items($variables_help['standard']);
     $output_available_custom_fields = $output_variable_items($variables_help['fields']);
+    $output_available_mail_links = $output_variable_items($variables_help['mail']);
 
     if ($output_available_custom_fields === '') {
         $output_available_custom_fields = '<li class="list-group-item py-1 px-2 small text-body-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
@@ -283,6 +284,11 @@ if (!$_POST) {
                                                         <p class="mb-0 text-primary">' . lang('System Fields') . '</p>
                                                         <ul class="list-group overflow-auto pe-1 mb-3" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
                                                             ' . $output_available_standard_fields . '
+                                                        </ul>
+                                                        <p class="mb-0">' . lang('E-mail links') . '</p>
+                                                        <p class="form-text mt-0 mb-1">' . lang('Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.') . '</p>
+                                                        <ul class="list-group mb-3">
+                                                            ' . $output_available_mail_links . '
                                                         </ul>
                                                         <p class="mb-0">' . lang('Formats') . '</p>
                                                         <ul class="list-group">

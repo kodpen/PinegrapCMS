@@ -26702,5 +26702,9 @@
     "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı.",
     "New account password note (a sentence with the set password link)": "Yeni hesabın parola notu (parola belirleme bağlantısını içeren cümle)",
     "Set password link address (only for the person who sent the form)": "Parola belirleme bağlantısının adresi (yalnız formu gönderen kişi için)",
-    "A set password link is ready for the visitor": "Ziyaretçi için bir parola belirleme bağlantısı hazır"
+    "A set password link is ready for the visitor": "Ziyaretçi için bir parola belirleme bağlantısı hazır",
+    "E-mail links": "E-posta bağlantıları",
+    "E-mail preferences link": "E-posta tercihleri bağlantısı",
+    "Subscription confirmation link": "Abonelik onay bağlantısı",
+    "Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.": "Yalnızca formu gönderen kişiye giden e-postada doldurulur; sayfada ve diğer kopyalarda boş kalır."
 }

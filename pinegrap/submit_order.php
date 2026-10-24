@@ -7406,15 +7406,32 @@ function submit_order($type) {
                                     $from_email_address = EMAIL_ADDRESS;
                                 }
                                 
-                                // check the subject line for variable data and replace any variables with content from the submitted form
-                                $submitter_email_subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $submitter_email_subject, $prepare_for_html = FALSE);
+                                // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+                                // go into the billing address's own copy only; a watcher's copy gets them empty.
+                                // The order's form has no contact of its own, so there is no confirmation link.
+                                if ($to_email_address == $billing_email_address) {
+                                    pg_cf_mail_links_context(array(
+                                        'email_address' => $billing_email_address,
+                                        'contact_id' => 0,
+                                        'custom_form_page_id' => (int) $product['submit_form_custom_form_page_id'],
+                                        'form_id' => (int) $submitted_form_id));
+                                } else {
+                                    pg_cf_mail_links_context(false);
+                                }
+
+                                $mail_link_values = pg_cf_mail_link_values();
+
+                                // The link fields go into the template before the submitted values, so a
+                                // value holding "[[" or "]]" cannot open or close a block around other text.
+                                // $submitter_email_subject stays the template for the next recipient.
+                                $subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links($submitter_email_subject, $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
 
                                 // if the format of the e-mail should be plain text, then prepare that
                                 if ($submitter_email_format == 'plain_text') {
 
                                     // Check the body for variable data and replace any variables with content from the submitted form.
                                     // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
+                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
 
                                 // else the format of the e-mail should be HTML, so prepare that
                                 } else {
@@ -7422,16 +7439,23 @@ function submit_order($type) {
                                     require_once(dirname(__FILE__) . '/get_page_content.php');
 
                                     $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $submitted_form_id));
+
+                                    // Bare link fields only: the body already holds the submitted values.
+                                    $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
                                 }
                                 
                                 email(array(
                                     'to' => $to_email_address,
                                     'from_name' => ORGANIZATION_NAME,
                                     'from_email_address' => $from_email_address,
-                                    'subject' => $submitter_email_subject,
+                                    'subject' => $subject,
                                     'format' => $submitter_email_format,
                                     'body' => $body,
+                                    // A signed link stays out of the failure log and the delivery-failed notice.
+                                    'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
                                     'queue' => true));
+
+                                pg_cf_mail_links_context(false);
 
                             }
                         }
@@ -7444,6 +7468,10 @@ function submit_order($type) {
                                 $administrator_email_addresses[] = $administrator_email_to_email_address;
                             }
                             
+                            // The signed links belong to the buyer alone: empty in the administrator's
+                            // e-mail, filled into the template before the submitted values go in.
+                            $administrator_email_subject = pg_cf_fill_mail_links($administrator_email_subject, array(), 'plain_text');
+
                             // check the subject line for variable data and replace any variables with content from the submitted form
                             $administrator_email_subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $administrator_email_subject, $prepare_for_html = FALSE);
 
@@ -7452,7 +7480,7 @@ function submit_order($type) {
 
                                 // Check the body for variable data and replace any variables with content from the submitted form.
                                 // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), $prepare_for_html = FALSE);
+                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), array(), 'plain_text'), $prepare_for_html = FALSE);
 
                             // else the format of the e-mail should be HTML, so prepare that
                             } else {
@@ -7469,6 +7497,8 @@ function submit_order($type) {
                                 if (function_exists('pg_tr_suspend')) {
                                     pg_tr_suspend(false);
                                 }
+
+                                $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
 
                             }
 
