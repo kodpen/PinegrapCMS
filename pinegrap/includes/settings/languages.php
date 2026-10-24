@@ -180,7 +180,7 @@ $output_translation_languages = '
                     <div class="col-12">
                         <div class="form-text">
                             <i class="bi bi-translate me-1"></i>' . lang(array(
-                                'string' => 'The texts themselves are translated and reviewed on the {var:1} screen, which is also under Visual Page Editor in the menu.',
+                                'string' => 'The texts themselves are translated and reviewed on the {var:1} screen.',
                                 'vars'   => array('<a href="translations.php">' . lang('Translations') . '</a>'))) . '
                         </div>
                     </div>';

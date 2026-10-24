@@ -455,7 +455,7 @@ function api_files_create($params) {
 
 		$path_part = (string)@parse_url((string)$params['source_url'], PHP_URL_PATH);
 
-		$url_basename = trim(basename($path_part));
+		$url_basename = trim(pg_basename($path_part));
 
 	}
 
