@@ -22,10 +22,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - designable-comments.md: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
+- designer-prototype-links.md: Plan (2026-10-24, not started, answers open): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
+- graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; Flows the first user, designer prototype links the second
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
@@ -62,6 +64,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, not started, answers open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
+- workspace-flows-scheduled-merge.md: Plan (2026-10-24, not started, answers open): scheduled actions move into Flows with no feature lost; one screen first, then a read-only graph, boxes for every part, opt-in convert
 - workspace-flows.md: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules

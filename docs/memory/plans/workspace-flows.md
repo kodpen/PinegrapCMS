@@ -38,7 +38,7 @@ Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members o
 5. MCP connector tools: reads inline, writes propose and wait, F8.
 6. AI: drafts only (a draft card as scheduled_draft.php), a person publishes.
 7. Process runs: a task per box once ready, due from then, Done per run.
-8. Rules: the scheduled-actions form stays, shared steps, "Open on canvas".
+8. Scheduled actions to Flows, no loss: workspace-flows-scheduled-merge.md
 
 ## Where to start?
 - F3 next (plans/workspace-flows-engine.md). Read workspace/README.md, plans/workspace-growth-terms.md.
