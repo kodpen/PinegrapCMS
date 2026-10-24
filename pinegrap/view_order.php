@@ -109,8 +109,10 @@ if (isset($_POST['parasut_action'])) {
 
         // A record the order kept that Paraşüt no longer holds (deleted on
         // Paraşüt's screen) was left out by the press, and its id cleared.
+        // Shown as a warning: it is no success, and it stands beside a
+        // refusal as well as beside a record created.
         foreach ($parasut_notices as $parasut_notice) {
-            $liveform->add_notice(h($parasut_notice));
+            $liveform->add_warning(h($parasut_notice));
         }
     }
 

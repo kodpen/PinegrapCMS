@@ -4,33 +4,33 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 ---
 
 ## What went wrong? (#PR)
-- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id behind, which no panel screen clears: the buttons were drawn disabled, E-Shipment refused on the 404 of its read, and an invoice naming a deleted document got 404 and was not written. The order stayed refused for good.
+- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no panel screen clears: the buttons were disabled, E-Shipment's read got 404, an invoice naming a deleted document got 404, unwritten. The order stayed refused.
 
 ## What does a press do with a stored id now?
-- It reads the record first: `parasut_stored_record_check($type, $id, $get)` (GET `sales_invoices/{id}` or `shipment_documents/{id}`), judged by `parasut_stored_record_state($read, $type)`:
+- Read first: `parasut_stored_record_check($type, $id, $get)` (GET `sales_invoices/{id}` or `shipment_documents/{id}`), judged by `parasut_stored_record_state($read, $type)`:
   - 200 `kept`: as before (a second record refused; Create Invoice names the document; E-Shipment judges `shipment_included`).
-  - `gone` only for a 404 with an error titled `Record was not found` whose detail starts with `SalesInvoice-` / `ShipmentDocument-` (the kind read): left out, the id cleared (`_parasut_order_forget_record()`, only while the column still holds it), the screen told.
-  - Anything else `unknown`: refused. Own id: "already has ... could not be asked whether it is still there: <Paraşüt's words>"; Create Invoice's read of the document: "could not be asked whether ... is still there"; E-Shipment's read of the invoice: its old refusal.
+  - `gone` only for a 404 with an error titled `Record was not found` whose detail starts with `SalesInvoice-` / `ShipmentDocument-` (the kind read): left out, the id cleared (`_parasut_order_forget_record()`, only while the column holds it), the screen told.
+  - Anything else `unknown`: refused. Own id: "... could not be asked whether it is still there: <Paraşüt's words>" (one closing period dropped, `parasut_refusal_words()`); Create Invoice's read of the document likewise; E-Shipment's read of the invoice: its old refusal.
 - The unsure mark `?` is never read (#1416 unchanged).
 
 ## Why not every 404?
-- A wrong company number can answer 404 too: `{"status":404,"error":"Not Found"}` (seen for no such company and one not the user's; the demo's code-grant token got 401 `No access to company`); a wrong path `Not Found` / `No route matches.`. The settings box saves the number as typed and a password-grant token still works, so a press would clear a live id; once corrected, Create Invoice would issue a second invoice (#1084) and E-Shipment would go unlinked beside an invoice with shipment (stock out twice, #1506).
+- Seen live (2026-10-24): a company the token cannot reach answers 401 `No access to company: <n>`; a wrong path 404 `No route matches.`; only a missing record 404 `Record was not found`, detail `<Type>-<id>`. The settings box saves the number as typed, so clearing on any 404 or 401 would free a live id: Create Invoice would issue a second invoice (#1084), E-Shipment go unlinked beside an invoice with shipment (stock out twice, #1506).
+- Left open: a number pointing at another company the user can reach (one of theirs mistyped, a demo to real switch) answers `Record was not found` for this company's ids too, so a press clears the id and writes a new record there. Right for a switch; after a typo is put right, the order holds the new id and the old record stays at the first company.
 
 ## Which press clears which column?
 | Press | Gone at Paraşüt | Then |
 |---|---|---|
 | Create Invoice | own `parasut_invoice_id` | cleared, invoiced as never sent |
-| Create Invoice | `parasut_shipment_id` | cleared, invoice with shipment (Paraşüt's default), as for an order never shipped |
-| E-Shipment | own `parasut_shipment_id` | cleared, VKN/TCKN asked (the screen skips it once an id is kept), shipped as never shipped |
+| Create Invoice | `parasut_shipment_id` | cleared, invoice with shipment (Paraşüt's default) |
+| E-Shipment | own `parasut_shipment_id` | cleared, VKN/TCKN asked (the screen skips it once an id is kept), shipped anew |
 | E-Shipment | `parasut_invoice_id` | cleared (the link returns `gone`), document unlinked |
 - `parasut_exported` stays: the Excel export sets it too.
 
 ## What does the order screen show?
-- Both buttons stay pressable once sent; a sent one keeps its badge and title, and its confirm says the press asks Paraşüt first and creates a new record only if it was deleted there. Each record left out is a notice (`&$notices`, shown with `h()`).
+- Both buttons stay pressable once sent (badge and title kept); the confirm says the press asks Paraşüt first and creates anew only if it was deleted there. Each record left out comes back in the functions' `&$notices`; `view_order.php` passes `$parasut_notices` and shows each as a warning (`add_warning(h())`).
 
 ## How was it checked live? (demo company, 2026-10-24)
-- Branch code on dev order 443 (441 is refused before any request: its line falls back to 18%). A deleted record answers GET 404 `Record was not found`, detail `ShipmentDocument-<id>` / `SalesInvoice-<id>`.
-- E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or the read sent to a company that does not exist: refused, ids kept. All records deleted, the product's tracking put back; the demo matched its baseline.
+- Dev order 443. E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or the read sent to company 999999999 (401): refused, ids kept. Records deleted; the demo back at its baseline.
 
 ## Tests
-- `tests/parasut_stale_ids_test.php`: the state (the 404 shapes above), the read, the notices, the link's `gone`, the order of reads and writes, the guarded clear, the order screen.
+- `tests/parasut_stale_ids_test.php`: the state, the read, the notices, the refusal words, the link's `gone`, the order of reads and writes, the guarded clear, the order screen.

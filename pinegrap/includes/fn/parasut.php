@@ -1338,7 +1338,7 @@ function parasut_shipment_stock_movement($product_id, $warehouse_id, $quantity)
  * out once. An invoice deleted on Paraşüt's screen since (a 404 naming it
  * as not found, parasut_stored_record_state()) is no invoice: the document
  * goes unlinked, and 'gone' names the id for the caller to clear. Any other
- * 404 (a wrong company number, say) is no answer. The unsure mark
+ * 404 ("No route matches.", say) is no answer. The unsure mark
  * (parasut_order_invoice_unsure()) is not a record whose answer can be
  * read, and a read that fails is no answer either: both refuse rather than
  * guess.
@@ -1993,13 +1993,19 @@ function parasut_order_invoice_with_shipment($body, $shipment_id)
  * ShipmentDocument-<id>), as it does for a record deleted on Paraşüt's
  * screen; 'unknown' for any other answer, on which nothing is guessed.
  *
- * A 404 that does not name the record says nothing about it. Paraşüt can
- * answer a bare one ({"status":404,"error":"Not Found"}) for a company
- * number that is wrong or not the token user's, which the settings box saves
- * as typed and a password-grant token still works with (an authorization-code
- * token gets 401 "No access to company"), and "No route matches." for a path
- * it does not know; the id must not be cleared on either. No connection, a
- * timeout, a 5xx, 401/403 and 429 are no answer either.
+ * A 404 that does not name the record says nothing about it: Paraşüt
+ * answers "No route matches." for a path it does not know. A company number
+ * the token's user cannot reach, which the settings box saves as typed,
+ * answers 401 "No access to company: <n>". No connection, a timeout, a 5xx,
+ * 401/403 and 429 are no answer either; the id is cleared on none of them.
+ *
+ * What this cannot tell apart: a company number that points at another
+ * company the user can reach (one of their companies mistyped, or a switch
+ * from the demo company to the real one) answers "Record was not found" for
+ * this company's ids too, so a press clears the stored id and writes a new
+ * record at that company. A switch wants that; once a wrong number is put
+ * right, the order holds the new id while the first record is still at the
+ * first company.
  *
  * @param array  $read  The _parasut_request() answer of GET sales_invoices/{id} or shipment_documents/{id}
  * @param string $type  'sales_invoices' or 'shipment_documents': the kind of record read
@@ -2096,6 +2102,26 @@ function parasut_stored_record_gone_notice($type, $id)
         'string' => 'This order\'s earlier sales invoice (ID: {var:1}) is no longer at Paraşüt, so it was left out.',
         'vars' => array((string) $id),
     ));
+}
+
+/**
+ * Paraşüt's words, or a token error, as they go inside a refusal sentence
+ * before its own period ("...: {var:2}. ..."): one closing period and the
+ * spaces around the text are dropped, so "No route matches." does not
+ * print "..".
+ *
+ * @param string $text
+ * @return string
+ */
+function parasut_refusal_words($text)
+{
+    $text = trim((string) $text);
+
+    if (substr($text, -1) === '.') {
+        $text = rtrim((string) substr($text, 0, -1));
+    }
+
+    return $text;
 }
 
 /**
@@ -2205,8 +2231,8 @@ function parasut_create_invoice($order_id, &$notices = array())
     // leaves its id on the order, which no screen clears. One Paraşüt names
     // as not found is forgotten and the order invoiced as one never sent;
     // one still there refuses as before, and a read that does not say (a
-    // 404 for a wrong company number among them) refuses with Paraşüt's
-    // words.
+    // 401 for a company number the token cannot reach among them) refuses
+    // with Paraşüt's words.
     if (($existing_invoice_id !== '') && !$unsure) {
         $stored = _parasut_stored_record_check('sales_invoices', $existing_invoice_id);
 
@@ -2216,7 +2242,7 @@ function parasut_create_invoice($order_id, &$notices = array())
                 'parasut_invoice_id' => $existing_invoice_id,
                 'error' => lang(array(
                     'string' => 'This order already has a sales invoice in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',
-                    'vars' => array($existing_invoice_id, $stored['error']),
+                    'vars' => array($existing_invoice_id, parasut_refusal_words($stored['error'])),
                 )),
             ];
         }
@@ -2306,7 +2332,7 @@ function parasut_create_invoice($order_id, &$notices = array())
     } elseif ($shipment_check['state'] === 'unknown') {
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array(
             'string' => 'Paraşüt could not be asked whether this order\'s shipment document (ID: {var:1}) is still there: {var:2}. No invoice was created; try again in a minute.',
-            'vars' => array(trim((string) $order['parasut_shipment_id']), $shipment_check['error']),
+            'vars' => array(trim((string) $order['parasut_shipment_id']), parasut_refusal_words($shipment_check['error'])),
         ))];
     }
 
@@ -2596,8 +2622,8 @@ function parasut_create_shipment($order_id, &$notices = array())
     // on Paraşüt's screen since leaves its id on the order, which no screen
     // clears. One Paraşüt names as not found is forgotten and the order
     // shipped as one never shipped; one still there refuses as before, and a
-    // read that does not say (a 404 for a wrong company number among them)
-    // refuses with Paraşüt's words.
+    // read that does not say (a 401 for a company number the token cannot
+    // reach among them) refuses with Paraşüt's words.
     $existing_shipment_id = trim((string) ($order['parasut_shipment_id'] ?? ''));
 
     if ($existing_shipment_id !== '') {
@@ -2609,7 +2635,7 @@ function parasut_create_shipment($order_id, &$notices = array())
                 'parasut_shipment_id' => $existing_shipment_id,
                 'error' => lang(array(
                     'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',
-                    'vars' => array($existing_shipment_id, $stored['error']),
+                    'vars' => array($existing_shipment_id, parasut_refusal_words($stored['error'])),
                 )),
             ];
         }

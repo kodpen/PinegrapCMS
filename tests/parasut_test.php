@@ -198,14 +198,17 @@ function test_parasut_view_order_shipment_check_passes_the_order_and_the_contact
 	pg_assert_contains('$parasut_order,', $handler);
 	pg_assert_contains('SELECT tax_number FROM contacts', $handler);
 
-	// An order already shipped skips the identity check, so
-	// parasut_create_shipment() refuses it as a second document.
+	// The screen skips the identity check for an order that keeps a shipment
+	// id: parasut_create_shipment() reads that document first, refuses a
+	// second one while Paraşüt holds it, and asks for the VKN/TCKN itself
+	// when it clears one deleted there.
 	pg_assert_contains("&& ((string) (\$parasut_order['parasut_shipment_id'] ?? '') === '')", $handler);
 }
 
-// E-Shipment on an order that already holds a Paraşüt shipment id is refused
-// before anything is asked of Paraşüt, the token included: every
-// shipment_documents create takes the goods out of Paraşüt's stock again.
+// E-Shipment on an order that already holds a Paraşüt shipment id reads that
+// document first (a GET with a token of its own) and, while Paraşüt holds it,
+// refuses a second one before anything is written: every shipment_documents
+// create takes the goods out of Paraşüt's stock again.
 function test_parasut_create_shipment_refuses_an_order_already_sent()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
@@ -215,13 +218,22 @@ function test_parasut_create_shipment_refuses_an_order_already_sent()
 	$end = strpos($source, "\nfunction ", (int) $start + 1);
 	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
 
-	$guard = strpos($body, "\$order['parasut_shipment_id']");
-	pg_assert_true($guard !== false, 'the stored shipment id is read');
-	pg_assert_contains("'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.'", $body);
+	$guard = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
+	$read = strpos($body, "\$stored = _parasut_stored_record_check('shipment_documents', \$existing_shipment_id);");
+	$refused = strpos($body, "'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.'");
 
-	foreach (array('parasut_get_token()', 'parasut_sync_contact(', 'parasut_ensure_default_warehouse(', '_parasut_request(') as $call) {
+	pg_assert_true(($guard !== false) && ($read !== false) && ($guard < $read), 'the stored shipment id is read at Paraşüt');
+	pg_assert_true(($refused !== false) && ($read < $refused), 'a document still there is refused after the read');
+
+	// The read takes its own token; the press asks for one again only after the refusal.
+	$check_start = strpos($source, 'function _parasut_stored_record_check(');
+	$check_end = ($check_start === false) ? false : strpos($source, "\nfunction ", (int) $check_start + 1);
+	$check = (($check_start !== false) && ($check_end !== false)) ? substr($source, (int) $check_start, (int) $check_end - (int) $check_start) : '';
+	pg_assert_contains('parasut_get_token()', $check);
+
+	foreach (array('_parasut_order_forget_record(', 'parasut_get_token()', 'parasut_sync_contact(', 'parasut_ensure_default_warehouse(', 'parasut_ensure_product_stock_tracking(', "_parasut_request('POST'", 'db("UPDATE orders') as $call) {
 		$at = strpos($body, $call);
-		pg_assert_true(($guard !== false) && ($at !== false) && ($guard < $at), 'the stored id is checked before ' . $call);
+		pg_assert_true(($refused !== false) && ($at !== false) && ($refused < $at), 'refused before ' . $call);
 	}
 }
 
