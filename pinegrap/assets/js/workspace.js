@@ -5210,14 +5210,17 @@
             if (threads.length) {
                 var talks = el('div', 'ws-side-section ws-side-threads');
                 var talksHead = el('div', 'ws-side-title');
-                // Closed, a section still shows the one that is on the screen.
+                // Closed, it lists none, not even the open one: that one has
+                // its own panel beside the channel and opens again with the
+                // address (&thread=), so keeping it left the section looking
+                // open after every click and every reload.
                 var talksShut = !!closedParts.threads;
                 var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
 
                 sectionToggle(talksHead, 'threads', t('th_section'), 'bi-chat-square-dots', talksShut, countBadge(talksUnread, false));
                 talks.appendChild(talksHead);
 
-                (talksShut ? threads.filter(function (thread) { return thread.id === openThread; }) : (self.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
+                (talksShut ? [] : (self.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
                     var item = el('button', 'ws-channel-link ws-thread-link' + (self.openThreadId() === thread.id ? ' active' : '') + (thread.unread ? ' ws-unread' : ''));
                     item.type = 'button';
                     item.title = thread.title + ' · #' + thread.channel;
