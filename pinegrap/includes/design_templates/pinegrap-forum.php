@@ -1,0 +1,2911 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Design template "Community Forum & Docs": the community site of a software
+ * product. A front page with the site search, the forum's numbers, the
+ * announcements, the boards, the latest activity, the topics waiting for an
+ * answer, the week's most viewed topics and the featured guides; the forum
+ * with its pinned topics and every topic by its newest activity; one board
+ * at a time (?board=); the topic page, with its replies beside a column
+ * about the topic; the form that starts a topic; the docs, which members
+ * contribute and moderators review; a form to report a post; the sign-in
+ * and account pages, the e-mails the site sends and a site search. Built on
+ * Bootstrap 5. Read by pg_design_templates() (includes/fn/designer.php).
+ *
+ * A topic is a record of the Forum Topics form, owned by the Start a Topic
+ * page in the "registration" folder: a member sends it, and it is public at
+ * once. Moderators set its Status, pin it, make it an announcement and keep
+ * a staff note in the control panel (office-use-only fields). Every public
+ * list of topics and the topic page carry one rule: the Status is not
+ * Hidden ($topic_live). A guide is a record of the Community Docs form,
+ * owned by the Contribute a Guide page: it is public only while its Status
+ * is Published ($doc_live). A report (Forum Reports, the Report a Post page)
+ * is never public. Replies are comments of the topic page.
+ *
+ * The look ships in the template's User Styles: the template's own rules,
+ * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
+ * Mono for code, from the editor's font picker.
+ *
+ * Placeholders, filled when the template is opened (pg_design_template_prepare()):
+ *   {{page:<key>}}                  address of the template page with that key
+ *   {{tab:<key>}}                   that page in a widget setting; its id once published
+ *   {{folder:<key>}}                id of that template folder
+ *   {{site_name}}, {{site_email}}, {{year}}
+ * See includes/design_templates/hello-pinegrap.php for widgets, shared
+ * components and 'requires'.
+ *
+ * One function lives outside this file: the gallery drawing
+ * _pg_design_thumb_forum() (includes/fn/design_themes.php), because the
+ * screens that draw it never read the template.
+ *
+ * Every structural node carries its role in '_label' (the designer's own
+ * label, shown beside the element's tag in the layer tree).
+ *
+ * The version follows the template, not the software: raise it whenever the
+ * pages change, so a design records which edition it started from.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+$panel_url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/welcome.php';
+$shop      = defined('ECOMMERCE') && ECOMMERCE;
+
+// ── Node builders ───────────────────────────────────────────────────────
+// Same shapes the editor's createNode() produces; the editor gives every
+// node its id when the tabs open. $name is the node's label in the layer
+// tree ('_label'): the tag stays visible beside it.
+$el = function ($tag, $class, $name, $children = array(), $extra = array()) {
+    $props = array('tag' => $tag, 'cssClass' => $class);
+    if ($name !== '') $props['_label'] = $name;
+    return array('type' => 'semantic', 'props' => array_merge($props, $extra), 'children' => $children);
+};
+$heading = function ($tag, $text, $class, $extra = array()) {
+    return array('type' => 'content', 'props' => array_merge(array('contentType' => 'heading', 'tag' => $tag, 'text' => $text, 'cssClass' => $class), $extra), 'children' => array());
+};
+$para = function ($text, $class = '', $extra = array()) {
+    return array('type' => 'content', 'props' => array_merge(array('contentType' => 'paragraph', 'text' => $text, 'cssClass' => $class), $extra), 'children' => array());
+};
+$link = function ($text, $href, $class, $attrs = array(), $extra = array()) {
+    $props = array('contentType' => 'link', 'text' => $text, 'href' => $href, 'cssClass' => $class);
+    if ($attrs) $props['_attrs'] = $attrs;
+    return array('type' => 'content', 'props' => array_merge($props, $extra), 'children' => array());
+};
+$image = function ($src, $alt, $class, $extra = array()) {
+    return array('type' => 'content', 'props' => array_merge(array('contentType' => 'image', 'src' => $src, 'alt' => $alt,
+        'fluid' => false, 'rounded' => false, 'cssClass' => $class), $extra), 'children' => array());
+};
+$attr = function ($name, $value) {
+    return array('name' => $name, 'value' => $value);
+};
+// A decorative icon: the words beside it say what it means.
+$icon = function ($name, $class = '') use ($el, $attr) {
+    return $el('i', trim('bi ' . $name . ' ' . $class), lang('Icon'), array(), array('_attrs' => array($attr('aria-hidden', 'true'))));
+};
+$span = function ($text, $class, $name, $extra = array()) use ($el) {
+    return $el('span', $class, $name, array(), array_merge(array('text' => $text), $extra));
+};
+$container = function ($children, $class = '') {
+    return array('type' => 'container', 'props' => array('fluid' => false, 'cssClass' => $class), 'children' => $children);
+};
+// A gutter above 4 is wider than the container's side padding and pushes a
+// phone screen sideways; wider gaps are given from lg up (g-4 g-lg-5).
+$row = function ($children, $gutter = '', $justify = '', $class = '') {
+    return array('type' => 'row', 'props' => array('gutter' => $gutter, 'justify' => $justify, 'align' => '', 'cssClass' => $class), 'children' => $children);
+};
+$col = function ($children, $md = '', $lg = '', $sm = '', $xs = '12', $class = '') {
+    return array('type' => 'col', 'props' => array('xs' => $xs, 'sm' => $sm, 'md' => $md, 'lg' => $lg, 'xl' => '', 'xxl' => '',
+                                                  'offsetXs' => '', 'offsetMd' => '', 'order' => '', 'cssClass' => $class), 'children' => $children);
+};
+$root = function ($children) {
+    return array('type' => 'root', 'props' => array('cssClass' => 'd-flex flex-column min-vh-100'), 'children' => $children);
+};
+$widget_root = function ($children) {
+    return array('type' => 'root', 'props' => array(), 'children' => $children);
+};
+$loop = function ($children) {
+    return array('type' => 'loop_area', 'props' => array(), 'children' => $children);
+};
+$widget = function ($key) {
+    return array('type' => 'shared_ref', 'props' => array('templateWidget' => $key), 'children' => array());
+};
+$shared = function ($key) {
+    return array('type' => 'shared_ref', 'props' => array('templateShared' => $key), 'children' => array());
+};
+$bind = function ($token) {
+    return array('_bindings' => array('text' => $token));
+};
+// A date field in the format given ('relative' for "2 hours ago"), in place
+// of the site's own date format. Never a month name: date() prints it in
+// English on every site.
+$bind_date = function ($token, $format) {
+    return array('_bindings' => array('text' => $token), '_bindFormats' => array('text' => $format));
+};
+$show_when = function ($flag) {
+    return array('_bindings' => array('eo_visible_if' => $flag));
+};
+// A link that opens another page of the template with values of the record
+// in its address (/board?board=<the record's board>): the list or the record
+// view fills the address for each record ([[record-value-page-links]]).
+// $params: address name => the record's field.
+$page_link = function ($page_key, $params) {
+    $list = array();
+    foreach ($params as $name => $token) $list[] = array('name' => $name, 'token' => $token);
+    return array(
+        '_bindings'   => array('href' => '__page_link'),
+        '_bindParams' => array('href' => array('page_id' => '{{tab:' . $page_key . '}}', 'params' => $list)),
+    );
+};
+// The language switcher button: the server draws it for each request and
+// leaves it out while the site has a single language. Its button carries
+// the language's name, so it is filled ($outline false): an outlined grey
+// button with words is too faint in the dark theme of the plain palette.
+$lang_switcher = function ($class = '', $variant = 'secondary', $outline = false) {
+    return array('type' => 'component', 'props' => array(
+        'componentType' => 'language_switcher',
+        'variant' => $variant, 'outline' => $outline, 'size' => 'sm',
+        'align' => 'lg-end', 'display' => 'name', 'icon' => 'translate',
+        'cssClass' => $class,
+    ), 'children' => array());
+};
+
+// ── One vocabulary ──────────────────────────────────────────────────────
+// The values the forms store, the filters compare, the menus link and the
+// sample records carry, written once. Each is the lang() text of the
+// language the template is opened in, so the options, the filters and the
+// samples always match. They are filter words: renaming one in a form
+// leaves every list that filters on it empty (the lists fail closed).
+
+// The boards: key => array(name, one line, icon). The name is the value the
+// Board field stores, the ?board= value of the board page and its title.
+// It goes into an address URL-encoded (rawurlencode() here, the renderer
+// for a record's own value), so "&" is safe in it.
+$boards = array(
+    'getting_started' => array(lang('Getting Started'),    lang('New here? Say hello and find your way around.'),              'bi-flag'),
+    'help'            => array(lang('Questions & Help'),   lang('Ask how something works, or why it does not.'),               'bi-question-circle'),
+    'ideas'           => array(lang('Ideas & Feedback'),   lang('Suggest a feature and tell us what could work better.'),      'bi-lightbulb'),
+    'show_and_tell'   => array(lang('Show & Tell'),        lang('Share your setups, templates and the things you built.'),     'bi-easel'),
+    'tips'            => array(lang('Tips & Tricks'),      lang('Shortcuts, workflows and small habits worth passing on.'),    'bi-magic'),
+    'general'         => array(lang('General Discussion'), lang('Everything else about notes, tasks and getting things done.'), 'bi-chat-left-text'),
+);
+// The board names in menu order: the Board field's options.
+$board_names = array();
+foreach ($boards as $b) $board_names[] = $b[0];
+// The board page for one board.
+$board_url = function ($key) use ($boards) {
+    return '{{page:board}}?board=' . rawurlencode($boards[$key][0]);
+};
+
+// What a topic is: the author picks one.
+$kinds = array(lang('Question'), lang('Discussion'));
+
+// A topic's Status, set by the moderators. A new topic is Open and public
+// at once; Hidden takes it off the site ($topic_live below). Solved and
+// Closed are only said: replies are closed with the reply block's own
+// button.
+$topic_statuses = array(lang('Open'), lang('Solved'), lang('Closed'), lang('Hidden'));
+$solved_value   = $topic_statuses[1];
+$hidden_value   = $topic_statuses[3];
+
+// The answers of the office pick lists Pinned, Announcement and Featured.
+// The first is the stored default: an option whose value is '' is never
+// stored, and the control panel would save the first answer on the next
+// change.
+$no     = lang('No');
+$yes    = lang('Yes');
+$yes_no = array($no, $yes);
+
+// Why a member reports a post, and where the moderators take the report.
+$report_reasons  = array(lang('Spam'), lang('Harassment or abuse'), lang('Off-topic'), lang('Wrong board'), lang('Something else'));
+$report_statuses = array(lang('Open'), lang('Resolved'), lang('Dismissed'));
+
+// The sections of the docs: key => array(name, one line, icon). The name is
+// the value the Section field stores and the ?section= value.
+$doc_sections = array(
+    'getting_started' => array(lang('Getting Started'), lang('Install the app and learn the basics in an afternoon.'),          'bi-rocket-takeoff'),
+    'how_to'          => array(lang('How-to Guides'),   lang('Step-by-step guides for the things people do every day.'),        'bi-signpost-2'),
+    'reference'       => array(lang('Reference'),       lang('Shortcuts, search syntax and every setting explained.'),          'bi-journal-code'),
+    'troubleshooting' => array(lang('Troubleshooting'), lang('What to check when sync, reminders or the app misbehave.'),       'bi-wrench-adjustable'),
+    'integrations'    => array(lang('Integrations'),    lang('Connect your calendar, your e-mail and the tools you already use.'), 'bi-plug'),
+    'release_notes'   => array(lang('Release Notes'),   lang('What changed in each version, and why.'),                         'bi-megaphone'),
+);
+$doc_section_names = array();
+foreach ($doc_sections as $s) $doc_section_names[] = $s[0];
+
+// A guide's Status on the docs desk: the magazine's six desk statuses,
+// adapted. Only the fourth makes a guide public ($doc_live below).
+$doc_statuses = array(lang('Awaiting review'), lang('In review'), lang('Changes requested'),
+                      lang('Published'), lang('Archived'), lang('Not accepted'));
+$published_value = $doc_statuses[3];
+
+// ── The filters of the lists ────────────────────────────────────────────
+// Operators and dynamic values are the renderer's English constants, never
+// translated (pg_sw_form_list_filter_sql()).
+$f = function ($field, $operator, $value, $dynamic = '', $attribute = null) {
+    $row = array('field' => $field, 'operator' => $operator, 'value' => $value, 'dynamic_value' => $dynamic);
+    if ($attribute !== null) $row['dynamic_value_attribute'] = $attribute;
+    return $row;
+};
+// What keeps a topic public: every public list of topics and the topic page
+// carry it. A topic is public from the moment it is sent; a moderator takes
+// one off the site by setting it Hidden.
+$topic_live = array(
+    $f('status', 'is not equal to', $hidden_value),
+);
+$with_topic_live = function ($more = array()) use ($topic_live) {
+    return array_merge($topic_live, $more);
+};
+// What makes a guide public: a moderator published it.
+$doc_live = array(
+    $f('status', 'is equal to', $published_value),
+);
+$with_doc_live = function ($more = array()) use ($doc_live) {
+    return array_merge($doc_live, $more);
+};
+$in_board = function ($name) use ($f) {
+    return $f('board', 'is equal to', $name);
+};
+// The board the address names (?board=); without one the filter is left out.
+$board_param     = $f('board', 'is equal to', '', 'url parameter', 'board');
+$is_pinned       = $f('pinned', 'is equal to', $yes);
+// Not "is equal to No": a topic without the value (sent through the API)
+// is not pinned either.
+$not_pinned      = $f('pinned', 'is not equal to', $yes);
+$is_announcement = $f('announcement', 'is equal to', $yes);
+$is_solved       = $f('status', 'is equal to', $solved_value);
+// No reply yet. "is less than 1", never "is equal to 0": a topic nobody has
+// opened has no counter row, and its empty value is not the text '0'
+// ([[form-list-filters-fail-closed]]).
+$unanswered      = $f('number_of_comments', 'is less than', '1');
+// Opened at least once: a list of the most viewed leaves out topics nobody
+// has opened, which would otherwise fill it in date order.
+$viewed          = $f('number_of_views', 'is greater than', '0');
+$is_featured     = $f('featured', 'is equal to', $yes);
+
+// The settings every public list of topics shares: the form, the topic page
+// its rows open, the newest activity (a new topic or a reply) first. The
+// activity order and the reply counts are read for the detail page.
+$topic_pub = array(
+    'regionType'           => 'form_list_view',
+    'custom_form_page_id'  => '{{tab:new_topic}}',
+    'detail_page_id'       => '{{tab:topic}}',
+    'order_by_field'       => 'newest_activity_date_and_time',
+    'order_by_direction'   => 'DESC',
+    'order_by_2_field'     => 'submitted_date_and_time',
+    'order_by_2_direction' => 'DESC',
+);
+// The settings every public list of guides shares: the newest first.
+$doc_pub = array(
+    'regionType'           => 'form_list_view',
+    'custom_form_page_id'  => '{{tab:doc_new}}',
+    'detail_page_id'       => '{{tab:doc}}',
+    'order_by_field'       => 'submitted_date_and_time',
+    'order_by_direction'   => 'DESC',
+);
+
+// ── Look: fonts and the template's own rules ───────────────────────────
+// The fonts the editor's font picker lists, weights only.
+$forum_fonts = array(
+    array('family' => 'Figtree', 'weights' => array('400', '500', '600', '700'), 'enabled' => true),
+    array('family' => 'JetBrains Mono', 'weights' => array('400', '600'), 'enabled' => true),
+);
+
+// The template's own CSS, in User Styles. Every class is named pf-; no
+// block rule is used or named. Selectors use descendants and pseudo-classes
+// only, so they hold on the editor's canvas too, and never :first-child or
+// :last-child: the editor's edit button may bring its own style element in
+// first. Colours are tokens only: a palette colour that only the colour
+// palettes define (--pg-primary-fg) always carries a fallback for the plain
+// Bootstrap palette, and the tint is mixed from tokens under @supports, so
+// it follows any palette in both themes.
+$forum_css = implode("\n", array(
+    // Fonts and the accent: the palette's first colour as text, else the
+    // theme's link colour.
+    ':root,[data-bs-theme]{--pf-sans:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;'
+        . '--pf-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;'
+        . '--pg-font-heading:var(--pf-sans);--pg-font-body:var(--pf-sans);'
+        . '--pg-heading-weight:700;--pg-display-weight:700;--pg-heading-tracking:-.015em;--pg-heading-line-height:1.2;'
+        . '--pf-accent:var(--pg-primary-fg,var(--bs-link-color))}',
+    'body{font-family:var(--pg-font-body)}',
+    'h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6{font-family:var(--pg-font-heading)}',
+    'code,kbd,pre,samp{font-family:var(--pf-mono)}',
+    // The tint of the hero, the pinned topics and the call-outs: the plain
+    // tertiary background first, a custom value holding an unsupported
+    // color-mix() would drop the background to nothing.
+    '.pf-tint{background-color:var(--bs-tertiary-bg)}',
+    '@supports (background-color:color-mix(in srgb,red 7%,blue)){.pf-tint{background-color:color-mix(in srgb,var(--pf-accent) 7%,var(--bs-body-bg))}}',
+    // Focus is an ink outline on every button, field, page link and close
+    // button: Bootstrap's half-clear shadow all but vanishes on the tint
+    // and in the dark theme (body outranks the theme's button rule).
+    'body .btn:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    'body .page-link:focus-visible,body .btn-close:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    'body .form-control:focus,body .form-select:focus{outline:2px solid var(--bs-emphasis-color);outline-offset:1px}',
+    'body .form-check-input:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
+    '.nav-underline .nav-link:focus-visible{box-shadow:none;outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
+    // The masthead's menu button has no colour variant and so no focus
+    // ring of its own.
+    '.pf-masthead .btn:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    '.pf-masthead [data-pg-theme-switcher] .bi{font-size:1rem}',
+    '.pf-masthead{border-bottom:1px solid var(--bs-border-color)}',
+    // The community's name beside its mark; a long name is cut, not wrapped
+    // under the buttons.
+    '.pf-brand{display:inline-flex;align-items:center;gap:.625rem;min-width:0;font-weight:700;font-size:1.125rem;letter-spacing:-.01em;color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-brand:hover{color:var(--bs-emphasis-color)}',
+    '.pf-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.pf-logo{display:inline-flex;align-items:center;justify-content:center;flex:0 0 2.25rem;width:2.25rem;height:2.25rem;border-radius:var(--pg-radius,.5rem);font-size:1.125rem;color:var(--pg-on-primary,var(--bs-white));background-color:var(--bs-primary)}',
+    // The main links: 44px targets, the current one underlined in the accent.
+    '.pf-navlink{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .75rem;border-radius:var(--pg-radius,.375rem);font-weight:500;color:var(--bs-body-color);text-decoration:none}',
+    '.pf-navlink:hover{color:var(--bs-emphasis-color);background-color:var(--bs-tertiary-bg)}',
+    '.pf-navlink.active{color:var(--bs-emphasis-color);font-weight:600;text-decoration:underline;text-decoration-thickness:2px;text-decoration-color:var(--pf-accent);text-underline-offset:.55em}',
+    // Bootstrap's nav-link focus is a faint shadow that dims the words: the
+    // words keep their ink and an ink ring sits inside the link.
+    '.pf-navlink:focus{color:var(--bs-emphasis-color)}',
+    '.pf-navlink:focus-visible{box-shadow:none;outline:2px solid var(--bs-emphasis-color);outline-offset:-2px}',
+    // The menu drawer's rows: 44px targets.
+    '.pf-drawer{display:flex;align-items:center;gap:.75rem;min-height:2.75rem;border-bottom:1px solid var(--bs-border-color);font-weight:500;color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-drawer.active,.pf-drawer:hover{color:var(--bs-emphasis-color);text-decoration:underline;text-underline-offset:.2em}',
+    '.pf-drawer .bi{color:var(--pf-accent)}',
+    // A band's vertical rhythm (Bootstrap's largest spacer is 3rem).
+    '.pf-band{padding-block:clamp(2.5rem,1.75rem + 3vw,4.5rem)}',
+    // The page titles: the home page's, the inner pages' and a board's name.
+    '.pf-display{font-weight:700;font-size:clamp(2rem,1.4rem + 2.4vw,3.25rem);line-height:1.1;letter-spacing:-.025em;text-wrap:balance}',
+    '.pf-page-title{font-weight:700;font-size:clamp(1.75rem,1.4rem + 1.4vw,2.5rem);line-height:1.15;letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere}',
+    '.pf-lead{max-width:44rem}',
+    // The words over a title; ink on the tint, where the accent is fainter.
+    '.pf-kicker{font-weight:700;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--pf-accent)}',
+    '.pf-tint .pf-kicker{color:var(--bs-emphasis-color)}',
+    // A band's head: its title, and a link to the rest on the right.
+    '.pf-sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.5rem 1rem;margin-bottom:1.25rem}',
+    '.pf-sec-title{margin:0;font-weight:700;font-size:1.25rem;letter-spacing:-.01em}',
+    '.pf-more{display:inline-flex;align-items:center;gap:.25rem;font-weight:600;font-size:.875rem}',
+    // A small label over a group, such as "Pinned".
+    '.pf-label{display:flex;align-items:center;gap:.375rem;margin:0;font-weight:700;font-size:.8125rem;letter-spacing:.04em;text-transform:uppercase;color:var(--bs-secondary-color)}',
+    // Bylines, dates and counts. Their links take the words' colour.
+    '.pf-meta{font-size:.875rem;color:var(--bs-secondary-color)}',
+    '.pf-meta a:not(.btn):not(.pf-badge){color:inherit}',
+    // The search on the home page.
+    '.pf-search .form-control,.pf-search .btn{min-height:3.25rem}',
+    // A card: the boards, the guides, the forum's numbers and the boxes of
+    // a side column. A card that is a link shows its border in the accent
+    // under the pointer, and its title link stretches over it.
+    '.pf-card{position:relative;padding:1.25rem;border:1px solid var(--bs-border-color);border-radius:var(--pg-radius-card,var(--bs-border-radius-lg));background-color:var(--bs-body-bg);color:var(--bs-body-color)}',
+    '.pf-card-link{transition:border-color .15s ease}',
+    '.pf-card-link:hover{border-color:var(--pf-accent)}',
+    '.pf-card-title{margin:0;font-weight:700;line-height:1.3;overflow-wrap:anywhere}',
+    '.pf-card-title a{color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-card-link:hover .pf-card-title a,.pf-card-title a:focus-visible{text-decoration:underline;text-underline-offset:.15em}',
+    // The forum's numbers.
+    '.pf-stat{display:flex;flex-direction:column;gap:.125rem;padding:1rem 1.25rem}',
+    '.pf-stat-num{margin:0;font-weight:700;font-size:clamp(1.5rem,1.2rem + 1vw,2rem);line-height:1.1;color:var(--bs-emphasis-color);font-variant-numeric:tabular-nums}',
+    '.pf-stat-label{margin:0;font-size:.875rem;color:var(--bs-secondary-color)}',
+    // A board: its icon beside its name, its line and its number of topics.
+    '.pf-board{display:flex;gap:1rem;align-items:flex-start}',
+    '.pf-board-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 2.75rem;width:2.75rem;height:2.75rem;border-radius:var(--pg-radius,.5rem);font-size:1.25rem;color:var(--pf-accent);background-color:var(--bs-tertiary-bg)}',
+    '@supports (background-color:color-mix(in srgb,red 12%,blue)){.pf-board-icon{background-color:color-mix(in srgb,var(--pf-accent) 12%,var(--bs-body-bg))}}',
+    // The boards in a side column.
+    '.pf-board-nav{display:flex;align-items:center;gap:.625rem;min-height:2.75rem;padding:.25rem 0;border-bottom:1px solid var(--bs-border-color);color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-board-nav:hover{text-decoration:underline;text-underline-offset:.15em}',
+    '.pf-board-nav .bi{color:var(--pf-accent)}',
+    // A topic in a list: its badges, its title over the whole row, who
+    // started it and when it was last active; its replies and views beside.
+    '.pf-topics{border-top:1px solid var(--bs-border-color)}',
+    '.pf-topic{position:relative;display:flex;gap:1rem;align-items:flex-start;padding:1rem 0;border-bottom:1px solid var(--bs-border-color)}',
+    '.pf-topic-main{flex:1 1 auto;min-width:0}',
+    '.pf-topic-title{margin:0 0 .25rem;font-weight:600;font-size:1.0625rem;line-height:1.35;overflow-wrap:anywhere}',
+    '.pf-topic-title a{color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-topic:hover .pf-topic-title a,.pf-topic-title a:focus-visible{text-decoration:underline;text-underline-offset:.15em}',
+    // The pinned topics on the tint, their rows inset from its edges.
+    '.pf-pinned .pf-topic{padding-inline:1rem}',
+    // The badges; the board's is a link of its own, raised over the row's
+    // stretched link so it can be clicked (the rest of the row opens the
+    // topic).
+    '.pf-badges{display:flex;flex-wrap:wrap;align-items:center;gap:.375rem}',
+    '.pf-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.125rem .5rem;border:1px solid var(--bs-border-color);border-radius:var(--pg-radius-badge,50rem);font-weight:600;font-size:.75rem;line-height:1.5;color:var(--bs-body-color);background-color:var(--bs-body-bg);text-decoration:none}',
+    '.pf-badge-board{position:relative;z-index:2;color:var(--bs-primary-text-emphasis);background-color:var(--bs-primary-bg-subtle);border-color:var(--bs-primary-border-subtle)}',
+    'a.pf-badge-board:hover{color:var(--bs-primary-text-emphasis);text-decoration:underline}',
+    '.pf-badge-pin{color:var(--bs-emphasis-color);border-color:var(--bs-emphasis-color)}',
+    // The replies and the views: the number under its label, read label
+    // first by a screen reader ("Replies 3").
+    '.pf-counts{display:flex;flex:0 0 auto;gap:1rem;text-align:center}',
+    '.pf-count{display:flex;flex-direction:column-reverse;min-width:3.25rem;margin:0}',
+    '.pf-count-num{font-weight:700;font-size:1rem;color:var(--bs-emphasis-color);font-variant-numeric:tabular-nums}',
+    '.pf-count-label{font-size:.75rem;color:var(--bs-secondary-color)}',
+    '@media (max-width:575.98px){.pf-counts{gap:.5rem}.pf-count{min-width:2.75rem}}',
+    // A short list of topics in a side column.
+    '.pf-compact{position:relative;padding:.75rem 0;border-bottom:1px solid var(--bs-border-color)}',
+    '.pf-compact-title{margin:0 0 .125rem;font-weight:600;font-size:.9375rem;line-height:1.4;overflow-wrap:anywhere}',
+    '.pf-compact-title a{color:var(--bs-emphasis-color);text-decoration:none}',
+    '.pf-compact:hover .pf-compact-title a,.pf-compact-title a:focus-visible{text-decoration:underline;text-underline-offset:.15em}',
+    // An announcement: on the primary's own subtle pair.
+    '.pf-announce{position:relative;display:flex;gap:.875rem;align-items:flex-start;padding:1rem 1.25rem;border:1px solid var(--bs-primary-border-subtle);border-radius:var(--pg-radius-card,var(--bs-border-radius-lg));color:var(--bs-primary-text-emphasis);background-color:var(--bs-primary-bg-subtle)}',
+    '.pf-announce a{color:inherit;text-decoration:none}',
+    '.pf-announce:hover a,.pf-announce a:focus-visible{text-decoration:underline;text-underline-offset:.15em}',
+    '.pf-announce .pf-meta{color:inherit}',
+    // A band whose list found nothing leaves the page, its heading with it.
+    // An older browser without :has() shows the list's empty sentence.
+    '.pf-vanish:has(.pg-sw-empty){display:none}',
+    // What a member writes: contained first, so a stretched link or a fixed
+    // layer stays inside its box and a wide table scrolls; then the
+    // reading measure and type, and code in the mono font.
+    '.pf-post{position:relative;contain:paint;overflow-wrap:anywhere;font-size:1.0625rem;line-height:1.7}',
+    '.pf-post p,.pf-post ul,.pf-post ol{margin:0 0 1.1em}',
+    '.pf-post h2{margin:1.75em 0 .6em;font-weight:700;font-size:1.375rem;line-height:1.3}',
+    '.pf-post h3{margin:1.5em 0 .5em;font-weight:700;font-size:1.125rem}',
+    '.pf-post li{margin-bottom:.35em}',
+    '.pf-post a{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em}',
+    '.pf-post img{max-width:100%;height:auto}',
+    '.pf-post blockquote{margin:1.5rem 0;padding-left:1rem;border-left:3px solid var(--bs-border-color);color:var(--bs-secondary-color)}',
+    '.pf-post table{display:block;max-width:100%;overflow-x:auto}',
+    '.pf-post code{padding:.1em .35em;border-radius:.25rem;font-size:.875em;color:var(--bs-emphasis-color);background-color:var(--bs-tertiary-bg)}',
+    '.pf-post pre{margin:0 0 1.25em;padding:1rem;overflow-x:auto;border:1px solid var(--bs-border-color);border-radius:var(--pg-radius,.375rem);font-size:.875rem;line-height:1.6;color:var(--bs-emphasis-color);background-color:var(--bs-tertiary-bg)}',
+    '.pf-post pre code{padding:0;font-size:inherit;background:none}',
+    // The facts about a topic: a label and its value on each row.
+    '.pf-fact{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.25rem 1rem;padding:.5rem 0;border-bottom:1px solid var(--bs-border-color);font-size:.875rem}',
+    '.pf-fact dt{font-weight:400;color:var(--bs-secondary-color)}',
+    '.pf-fact dd{margin:0;font-weight:600;color:var(--bs-emphasis-color);text-align:end;overflow-wrap:anywhere}',
+    // A side column that stays in view beside a long thread from lg.
+    '@media (min-width:992px){.pf-sticky{position:sticky;top:1.5rem}}',
+    // A call-out: an icon beside its words and its button.
+    '.pf-callout{display:flex;flex-direction:column;gap:1rem;padding:1.5rem;border-radius:var(--pg-radius-card,var(--bs-border-radius-lg))}',
+    '@media (min-width:768px){.pf-callout{flex-direction:row;align-items:center}}',
+    // A card's line, three lines at most.
+    '.pf-clamp-3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+    // A flex item that may shrink below its words (Bootstrap has no
+    // min-width utility).
+    '.pf-min-0{min-width:0}',
+    // The platform's notices in the replies print their links without
+    // .alert-link: they take the alert's link colour.
+    '.pf-replies .alert a:not(.btn){color:var(--bs-alert-link-color)}',
+    '@media (prefers-reduced-motion:reduce){.pf-card-link{transition:none}}',
+));
+
+// ── Form fields ─────────────────────────────────────────────────────────
+$field = function ($id, $label, $control, $class = 'mb-3') use ($el, $attr) {
+    return $el('div', $class, $label, array(
+        $el('label', 'form-label', lang('Label'), array(), array('text' => $label, '_attrs' => array($attr('for', $id)))),
+        $control,
+    ));
+};
+$input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf = array(), $more = array()) use ($el, $attr) {
+    $attrs = array($attr('type', $type), $attr('name', $name));
+    if ($required) $attrs[] = $attr('required', '');
+    if ($autocomplete !== '') $attrs[] = $attr('autocomplete', $autocomplete);
+    foreach ($more as $k => $v) $attrs[] = $attr($k, $v);
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('input', 'form-control', lang('Field'), array(), $props);
+};
+// $cf: the field's form settings ('wysiwyg' => true makes it a rich text
+// box, 'office_use_only' => true a field only the moderators fill).
+$textarea = function ($id, $name, $rows, $required = true, $placeholder = '', $cf = array(), $more = array()) use ($el, $attr) {
+    $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
+    if ($required) $attrs[] = $attr('required', '');
+    if ($placeholder !== '') $attrs[] = $attr('placeholder', $placeholder);
+    foreach ($more as $k => $v) $attrs[] = $attr($k, $v);
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
+};
+// A pick list: the first, empty option is the prompt, not an answer. Each
+// answer's value is its own words, so the e-mails and the lists read as the
+// member chose. $selected is the answer chosen to begin with: there is no
+// prompt then, so every option is a stored answer (an office pick list
+// needs that: the control panel prints only the stored options).
+$select = function ($id, $name, $prompt, $options, $required = true, $selected = '', $cf = array()) use ($el, $attr) {
+    $children = array();
+    if ($selected === '') {
+        $children[] = $el('option', '', lang('Option'), array(), array('text' => $prompt, '_attrs' => array($attr('value', ''))));
+    }
+    foreach ($options as $text) {
+        $oattrs = array($attr('value', $text));
+        if ($text === $selected) $oattrs[] = $attr('selected', '');
+        $children[] = $el('option', '', lang('Option'), array(), array('text' => $text, '_attrs' => $oattrs));
+    }
+    $attrs = array($attr('name', $name));
+    if ($required) $attrs[] = $attr('required', '');
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('select', 'form-select', lang('Field'), $children, $props);
+};
+// A group of radio buttons under its legend: the legend names the field,
+// each button's own label its answer.
+$choices = function ($id, $name, $legend, $options, $required = true) use ($el, $attr) {
+    $children = array($el('legend', 'form-label fs-6 mb-2', lang('Label'), array(), array('text' => $legend)));
+    foreach (array_values($options) as $n => $o) {
+        $rid = $id . '-' . ($n + 1);
+        $rattrs = array($attr('type', 'radio'), $attr('name', $name), $attr('value', $o));
+        if ($required) $rattrs[] = $attr('required', '');
+        $children[] = $el('div', 'form-check form-check-inline', lang('Option'), array(
+            $el('input', 'form-check-input', lang('Field'), array(), array('id' => $rid, '_attrs' => $rattrs)),
+            $el('label', 'form-check-label', lang('Label'), array(), array('text' => $o, '_attrs' => array($attr('for', $rid)))),
+        ));
+    }
+    return $el('fieldset', 'mb-3', $legend, $children);
+};
+// A hint under a field, named by the field's aria-describedby. Never under
+// an office-use-only field: the hint would stay on the page for a member
+// after the field itself is taken out.
+$help = function ($id, $text) use ($el) {
+    return $el('div', 'form-text', lang('Help Text'), array(), array('id' => $id, 'text' => $text));
+};
+// A field with a hint under it, which the field names as its description.
+// Under a rich text box the hint stays in view: the editor hides the text
+// area, not the hint.
+$field_help = function ($id, $label, $control, $help_text) use ($el, $attr, $help) {
+    $help_id = $id . '-help';
+    $control['props']['_attrs'][] = $attr('aria-describedby', $help_id);
+    return $el('div', 'mb-3', $label, array(
+        $el('label', 'form-label', lang('Label'), array(), array('text' => $label, '_attrs' => array($attr('for', $id)))),
+        $control,
+        $help($help_id, $help_text),
+    ));
+};
+// An office-use-only field: the moderators fill it in, a member never sees
+// it, and a new record stores its selected option or nothing. Each sits
+// alone in a box with its label: a legend or a hint around it would stay on
+// a member's form (only empty wrappers are pruned).
+$office = function ($control) {
+    $cf = isset($control['props']['_cf']) && is_array($control['props']['_cf']) ? $control['props']['_cf'] : array();
+    $control['props']['_cf'] = array_merge($cf, array('office_use_only' => true));
+    return $control;
+};
+$submit = function ($text, $class = 'btn btn-primary px-4') use ($el, $attr) {
+    return $el('button', $class, lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
+};
+$captcha = function () use ($el) {
+    return $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'captcha')));
+};
+// A box the member must tick: what was agreed to is stored with the form.
+$agree = function ($id, $name, $text) use ($el, $attr) {
+    return $el('div', 'form-check mb-3', lang('Consent'), array(
+        $el('input', 'form-check-input', lang('Field'), array(), array('id' => $id, '_attrs' => array(
+            $attr('type', 'checkbox'), $attr('name', $name), $attr('value', 'yes'), $attr('required', ''),
+        ))),
+        $el('label', 'form-check-label', lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $id)))),
+    ));
+};
+// A file field; what is sent is kept in the template folder named.
+$file = function ($id, $name, $folder, $accept = 'image/*', $required = false) use ($el, $attr) {
+    $attrs = array($attr('type', 'file'), $attr('name', $name), $attr('accept', $accept));
+    if ($required) $attrs[] = $attr('required', '');
+    return $el('input', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs,
+        '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+};
+// A group of fields under its legend.
+$fieldset = function ($legend, $children) use ($el) {
+    return $el('fieldset', 'mb-4', $legend, array_merge(array(
+        $el('legend', 'h5 fw-bold mb-3 pb-2 border-bottom', lang('Legend'), array(), array('text' => $legend)),
+    ), $children));
+};
+
+// ── Records ─────────────────────────────────────────────────────────────
+
+// The record's moderation button, shown to whoever may edit the submissions
+// of its form; it opens the record in the control panel and comes back. A
+// filled button: an outlined grey one is too faint in the dark theme of the
+// plain palette.
+$edit_button = function ($text = '') use ($link) {
+    return $link($text !== '' ? $text : lang('Edit'), '#', 'btn btn-sm btn-secondary', array(),
+        array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
+};
+// The replies of a record page: the platform's comments block, placed in
+// the page's own tree.
+$comments_block = function () {
+    return array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array());
+};
+// The notice a record page shows above the record once its form is sent,
+// and ($with_account) the account opened for a visitor who had none.
+$sent_notices = function ($thanks, $with_account = false) use ($el, $icon, $span, $para, $link, $attr, $bind, $show_when) {
+    $out = array(
+        $el('div', 'alert alert-success d-flex gap-2', lang('Sent Notice'), array(
+            $icon('bi-check-circle', 'mt-1'),
+            $span($thanks, '', lang('Text')),
+        ), array_merge(array('_attrs' => array($attr('role', 'status'))), $show_when('submitted_this_session'))),
+    );
+    if ($with_account) {
+        $out[] = $el('div', 'alert alert-info', lang('New Account'), array(
+            $el('p', 'fw-semibold mb-2', lang('Title'), array(), array('text' => lang('We opened an account for you'))),
+            $el('p', 'mb-1', lang('Sign-in Email'), array(
+                $span(lang('Email') . ': ', '', lang('Label')),
+                $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
+            )),
+            // The single-use set password link, for the person who sent the
+            // form while it is live; the sentence below covers a used or
+            // expired link.
+            $link(lang('Set your password'), '#', 'btn btn-sm btn-primary', array(),
+                array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
+            $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
+        ), $show_when('has_new_account'));
+    }
+    return $out;
+};
+// A label and its value in a record's facts; $optional rows leave when the
+// value is empty.
+$fact = function ($label, $value_children, $optional = false) use ($el) {
+    return $el('div', 'pf-fact' . ($optional ? ' pg-hide-if-empty' : ''), $label, array(
+        $el('dt', '', lang('Label'), array(), array('text' => $label)),
+        $el('dd', '', lang('Value'), $value_children),
+    ));
+};
+
+// ── The rows of the lists ───────────────────────────────────────────────
+// A topic row is an article whose title link stretches over the whole row;
+// the badges above the title are raised over that link, so the board's link
+// in them opens the board. No row's own element is a .row: the editor's
+// edit button goes into a record's first element, and a row would pad it
+// as a column. $s is the sample topic a row shows in the editor and the
+// installer's preview ($topic_sample()).
+
+// A dot between two details, silent to screen readers.
+$dot = function () use ($span, $attr) {
+    return $span('·', 'mx-1', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true'))));
+};
+// The record's board, linking to the board's page with its value.
+$board_badge = function ($s) use ($link, $page_link) {
+    return $link($s['board'], '#', 'pf-badge pf-badge-board', array(),
+        array_merge($page_link('board', array('board' => 'board')), array('_bindings' => array('text' => 'board', 'href' => '__page_link'))));
+};
+// The badges of a topic: pinned ($pinned: every row of a list of pinned
+// topics), the board, the kind and the Status.
+$topic_badges = function ($s, $pinned = false, $class = 'mb-1') use ($el, $icon, $span, $bind, $board_badge) {
+    $children = array();
+    if ($pinned) {
+        $children[] = $el('span', 'pf-badge pf-badge-pin', lang('Pinned'), array(
+            $icon('bi-pin-angle-fill'),
+            $span(lang('Pinned'), '', lang('Text')),
+        ));
+    }
+    $children[] = $board_badge($s);
+    $children[] = $span($s['kind'], 'pf-badge', lang('Kind'), $bind('kind'));
+    $children[] = $span($s['status'], 'pf-badge', lang('Status'), $bind('status'));
+    return $el('p', trim('pf-badges ' . $class), lang('Badges'), $children);
+};
+// Who started the topic and when it was last active, and who wrote its last
+// reply. The author's name comes from their profile (submitter_name); a
+// record without one (a sample sent by the setup account) shows no "Started
+// by" at all, and a topic without replies no "last reply".
+$topic_meta = function ($s) use ($el, $span, $bind, $bind_date, $dot) {
+    return $el('p', 'pf-meta mb-0', lang('Byline and Activity'), array(
+        $el('span', 'pg-hide-if-empty', lang('Author'), array(
+            $span(lang('Started by'), 'me-1', lang('Label')),
+            $span($s['author'], 'pg-field-value', lang('Author Name'), $bind('submitter_name')),
+            $dot(),
+        )),
+        $span(lang('Last activity:'), 'me-1', lang('Label')),
+        $span(lang('2 hours ago'), '', lang('Time'), $bind_date('newest_activity_date_and_time', 'relative')),
+        $el('span', 'pg-hide-if-empty', lang('Last Reply'), array(
+            $dot(),
+            $span(lang('Last reply by'), 'me-1', lang('Label')),
+            $span($s['replier'], 'pg-field-value', lang('Name'), $bind('newest_comment_name')),
+        )),
+    ));
+};
+// A topic's replies and views: each number under its label, the label read
+// first by a screen reader.
+$topic_counts = function () use ($el, $span, $bind) {
+    return $el('div', 'pf-counts', lang('Counts'), array(
+        $el('p', 'pf-count', lang('Replies'), array(
+            $span(lang('Replies'), 'pf-count-label', lang('Label')),
+            $span('3', 'pf-count-num', lang('Number of Replies'), $bind('number_of_comments')),
+        )),
+        $el('p', 'pf-count', lang('Views'), array(
+            $span(lang('Views'), 'pf-count-label', lang('Label')),
+            $span('48', 'pf-count-num', lang('Number of Views'), $bind('number_of_views')),
+        )),
+    ));
+};
+// (a) A topic of a list. $tag is the title's level under its list's heading.
+$topic_row = function ($s, $pinned = false, $tag = 'h3') use ($el, $link, $topic_badges, $topic_meta, $topic_counts) {
+    return $el('article', 'pf-topic', lang('Topic Row'), array(
+        $el('div', 'pf-topic-main', lang('Words'), array(
+            $topic_badges($s, $pinned),
+            $el($tag, 'pf-topic-title', lang('Title'), array(
+                $link($s['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+            )),
+            $topic_meta($s),
+        )),
+        $topic_counts(),
+    ));
+};
+// The rows of a list of topics, in the bordered list.
+$topic_rows = function ($s, $pinned = false, $tag = 'h3') use ($el, $loop, $topic_row) {
+    return $el('div', 'pf-topics' . ($pinned ? ' pf-pinned pf-tint' : ''), lang('List'), array($loop(array($topic_row($s, $pinned, $tag)))));
+};
+// (b) A topic in a side column: its title, its board and either when it was
+// sent ('sent') or how often it was opened ('views').
+$compact_row = function ($s, $with) use ($el, $link, $span, $bind, $bind_date, $dot) {
+    $detail = ($with === 'views')
+        ? $el('span', '', lang('Views'), array(
+            $span(lang('Views:'), 'me-1', lang('Label')),
+            $span('48', 'fw-semibold', lang('Number of Views'), $bind('number_of_views')),
+        ))
+        : $span(lang('2 hours ago'), '', lang('Time'), $bind_date('submitted_date_and_time', 'relative'));
+    return $el('li', 'pf-compact', lang('Topic Row'), array(
+        $el('h3', 'pf-compact-title', lang('Title'), array(
+            $link($s['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+        )),
+        $el('p', 'pf-meta small mb-0', lang('Details'), array(
+            $span($s['board'], '', lang('Board'), $bind('board')),
+            $dot(),
+            $detail,
+        )),
+    ));
+};
+// (c) An announcement: the megaphone beside its title and when it was posted.
+$announce_row = function ($s) use ($el, $link, $para, $icon, $bind_date) {
+    return $el('article', 'pf-announce', lang('Announcement'), array(
+        $icon('bi-megaphone', 'fs-4 flex-shrink-0'),
+        $el('div', 'pf-min-0', lang('Words'), array(
+            $el('h3', 'h6 fw-bold mb-1', lang('Title'), array(
+                $link($s['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+            )),
+            $para(lang('2 hours ago'), 'pf-meta mb-0', $bind_date('submitted_date_and_time', 'relative')),
+        )),
+    ));
+};
+// (d) A guide card: its section over its title and its summary.
+$guide_card = function ($g, $tag = 'h3') use ($el, $link, $para, $bind) {
+    return $el('article', 'pf-card pf-card-link h-100', lang('Guide Card'), array(
+        $para($g['section'], 'pf-kicker mb-2', $bind('section')),
+        $el($tag, 'pf-card-title h5 mb-2', lang('Title'), array(
+            $link($g['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+        )),
+        $para($g['summary'], 'text-body-secondary small mb-0 pf-clamp-3', $bind('summary')),
+    ));
+};
+// (e) A board's tile: its icon, its name linking to its page, its line and
+// its number of live topics (a count of its own, $widget 'board_count_*').
+$board_tile = function ($key, $tag = 'h3') use ($el, $link, $para, $icon, $widget, $boards, $board_url) {
+    $b = $boards[$key];
+    return $el('article', 'pf-card pf-card-link pf-board h-100', $b[0], array(
+        $el('span', 'pf-board-icon', lang('Icon'), array($icon($b[2]))),
+        $el('div', 'pf-min-0', lang('Words'), array(
+            $el($tag, 'pf-card-title h6 mb-1', lang('Title'), array($link($b[0], $board_url($key), 'stretched-link'))),
+            $para($b[1], 'small text-body-secondary mb-2'),
+            $widget('board_count_' . $key),
+        )),
+    ));
+};
+// Every board's tile, two to a row from md, three from lg.
+$board_tiles = function ($tag = 'h3') use ($el, $boards, $board_tile) {
+    $cols = array();
+    foreach (array_keys($boards) as $key) {
+        $cols[] = $el('div', 'col-md-6 col-lg-4', lang('Column'), array($board_tile($key, $tag)));
+    }
+    return $el('div', 'row g-3 g-lg-4', lang('Boards'), $cols);
+};
+// The boards as a short list of links, for a side column.
+$board_nav = function () use ($el, $heading, $link, $icon, $span, $attr, $boards, $board_url) {
+    $items = array();
+    foreach ($boards as $key => $b) {
+        $items[] = $el('li', '', lang('List Item'), array(
+            $el('a', 'pf-board-nav', lang('Link'), array(
+                $icon($b[2]),
+                $span($b[0], '', lang('Link Text')),
+            ), array('href' => $board_url($key))),
+        ));
+    }
+    return $el('nav', 'pf-card mb-4', lang('Boards'), array(
+        $heading('h2', lang('Boards'), 'h6 fw-bold mb-2'),
+        $el('ul', 'list-unstyled mb-0', lang('Links'), $items),
+    ), array('_attrs' => array($attr('aria-label', lang('Boards')))));
+};
+
+// ── The parts every page repeats ────────────────────────────────────────
+
+// The masthead: the skip link; the menu button (phone), the community's
+// name, the main links from lg, then the theme, the language, the sign-in
+// and Start a Topic; and the menu drawer. Not sticky, so the drawer can
+// live inside it. Left out of a printed page.
+$masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $widget) {
+    $nav_items = array();
+    foreach (array(
+        array(lang('Forum'), '{{page:forum}}'),
+        array(lang('Docs'), '{{page:docs}}'),
+        array(lang('Guidelines'), '{{page:guidelines}}'),
+        array(lang('Search'), '{{page:search}}'),
+    ) as $m) {
+        $nav_items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($m[0], $m[1], 'nav-link pf-navlink')));
+    }
+    $drawer_link = function ($text, $href, $icon_name) use ($el, $icon, $span) {
+        return $el('li', '', lang('Nav Item'), array(
+            $el('a', 'pf-drawer', lang('Link'), array($icon($icon_name), $span($text, '', lang('Link Text'))), array('href' => $href)),
+        ));
+    };
+    $drawer = array(
+        $drawer_link(lang('Homepage'), '{{page:home}}', 'bi-house'),
+        $drawer_link(lang('Forum'), '{{page:forum}}', 'bi-chat-square-text'),
+        $drawer_link(lang('Boards'), '{{page:board}}', 'bi-grid'),
+        $drawer_link(lang('Docs'), '{{page:docs}}', 'bi-journal-text'),
+        $drawer_link(lang('Guidelines'), '{{page:guidelines}}', 'bi-heart'),
+        $drawer_link(lang('Search'), '{{page:search}}', 'bi-search'),
+    );
+    $drawer_more = array(
+        $drawer_link(lang('Start a topic'), '{{page:new_topic}}', 'bi-plus-circle'),
+        $drawer_link(lang('Contribute a guide'), '{{page:doc_new}}', 'bi-pencil-square'),
+        $drawer_link(lang('My Account'), '{{page:my_account}}', 'bi-person-circle'),
+    );
+
+    return $el('header', 'pf-masthead bg-body d-print-none', lang('Forum Masthead'), array(
+        $link(lang('Skip to main content'), '#main', 'visually-hidden-focusable position-absolute p-2 bg-body text-body'),
+        $el('div', 'container', lang('Container'), array(
+            $el('div', 'd-flex align-items-center gap-2 py-2', lang('Masthead Row'), array(
+                $el('button', 'btn p-2 d-lg-none', lang('Menu Button'), array($icon('bi-list', 'fs-3')), array('_attrs' => array(
+                    $attr('type', 'button'),
+                    $attr('data-bs-toggle', 'offcanvas'),
+                    $attr('data-bs-target', '#pf-menu'),
+                    $attr('aria-controls', 'pf-menu'),
+                    $attr('aria-label', lang('Open the menu')),
+                ))),
+                $el('a', 'pf-brand me-auto me-lg-3', lang('Brand'), array(
+                    $el('span', 'pf-logo', lang('Logo'), array($icon('bi-chat-square-text'))),
+                    $span('{{site_name}}', 'pf-name', lang('Name')),
+                ), array('href' => '{{page:home}}')),
+                // The main links from lg; the current one is marked on the server.
+                $el('nav', 'd-none d-lg-block me-auto', lang('Main Links'), array(
+                    $el('ul', 'nav', lang('Nav Menu'), $nav_items, array('smartActive' => true)),
+                ), array('_attrs' => array($attr('aria-label', lang('Main links'))))),
+                $el('div', 'd-flex align-items-center gap-2', lang('Account Links'), array(
+                    // The palette's Theme Switcher (Toggle): the page loads its
+                    // script because of the marker.
+                    $el('div', 'd-inline-block', lang('Theme Switcher'), array(
+                        $el('button', 'btn btn-outline-secondary btn-sm rounded-pill', lang('Theme Toggle Button'), array(
+                            $icon('bi-moon-stars-fill'),
+                        ), array('_attrs' => array(
+                            $attr('type', 'button'),
+                            $attr('aria-label', lang('Switch the theme')),
+                            $attr('aria-pressed', 'false'),
+                        ))),
+                    ), array('_attrs' => array($attr('data-pg-theme-switcher', 'toggle')))),
+                    $lang_switcher(),
+                    $widget('login_region'),
+                    $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary btn-sm d-none d-md-inline-block text-nowrap'),
+                )),
+            )),
+        )),
+        // The menu drawer the phone's button opens.
+        $el('div', 'offcanvas offcanvas-start', lang('Menu Drawer'), array(
+            $el('div', 'offcanvas-header border-bottom', lang('Drawer Header'), array(
+                // Not a heading: the drawer comes before the page's h1, and
+                // the page's outline should start there. The dialog takes its
+                // name from it all the same (aria-labelledby).
+                $el('p', 'h5 offcanvas-title fw-bold mb-0', lang('Drawer Title'), array(), array('id' => 'pf-menu-title', 'text' => '{{site_name}}')),
+                $el('button', 'btn-close', lang('Close Button'), array(), array('_attrs' => array(
+                    $attr('type', 'button'),
+                    $attr('data-bs-dismiss', 'offcanvas'),
+                    $attr('aria-label', lang('Close')),
+                ))),
+            )),
+            $el('div', 'offcanvas-body', lang('Drawer Body'), array(
+                $el('form', '', lang('Search Form'), array(
+                    $el('label', 'visually-hidden', lang('Label'), array(), array('text' => lang('Search the forum and the docs'), '_attrs' => array($attr('for', 'pf-q')))),
+                    $el('div', 'input-group', lang('Search Box'), array(
+                        $el('input', 'form-control', lang('Field'), array(), array('id' => 'pf-q', '_attrs' => array(
+                            $attr('type', 'search'),
+                            $attr('name', 'query'),
+                            $attr('placeholder', lang('Search the forum and the docs…')),
+                        ))),
+                        $el('button', 'btn btn-primary', lang('Search Button'), array(), array('text' => lang('Search'), '_attrs' => array($attr('type', 'submit')))),
+                    )),
+                ), array('_attrs' => array($attr('action', '{{page:search}}'), $attr('method', 'get'), $attr('role', 'search')))),
+                $el('ul', 'list-unstyled mt-4 mb-0', lang('Drawer Links'), $drawer, array('smartActive' => true)),
+                $el('p', 'pf-label mt-4 mb-1', lang('Heading'), array(), array('text' => lang('Take part'))),
+                $el('ul', 'list-unstyled mb-0', lang('Drawer Links'), $drawer_more, array('smartActive' => true)),
+            )),
+        ), array('id' => 'pf-menu', '_attrs' => array(
+            $attr('tabindex', '-1'),
+            $attr('aria-labelledby', 'pf-menu-title'),
+        ))),
+    ));
+};
+
+// The footer, on the tinted surface: the community in a sentence and its
+// feed of topics, the forum, the docs, the community's pages and the
+// member's own pages; under them the copyright and the legal pages. No
+// social links: a link that looks real but goes nowhere is worse than none.
+$footer = function () use ($el, $para, $link, $icon, $span, $heading, $attr) {
+    $plain = 'link-body-emphasis text-decoration-none';
+    $column = function ($title, $class, $links) use ($el, $heading) {
+        $items = array();
+        foreach ($links as $l) $items[] = $el('li', 'mb-2', lang('List Item'), array($l));
+        return $el('div', $class, $title, array(
+            $heading('h2', $title, 'h6 fw-bold mb-3'),
+            $el('ul', 'list-unstyled small mb-0', lang('Links'), $items),
+        ));
+    };
+    return $el('footer', 'mt-auto bg-body-tertiary border-top d-print-none', lang('Forum Footer'), array(
+        $el('div', 'container pf-band', lang('Footer Container'), array(
+            $el('div', 'row g-4 g-lg-5', lang('Footer Columns'), array(
+                $el('div', 'col-lg-4', lang('About the Community'), array(
+                    $el('a', 'pf-brand mb-3', lang('Brand'), array(
+                        $el('span', 'pf-logo', lang('Logo'), array($icon('bi-chat-square-text'))),
+                        $span('{{site_name}}', 'pf-name', lang('Name')),
+                    ), array('href' => '{{page:home}}')),
+                    $para(lang('The place to ask questions about the app, share what you made and learn from the people who use it every day.'), 'small text-body-secondary mb-3'),
+                    // Every board's live topics, the newest first: the board
+                    // page's feed without a board.
+                    $el('a', 'd-inline-flex gap-2 align-items-center small link-body-emphasis', lang('RSS Feed'), array(
+                        $icon('bi-rss'),
+                        $span(lang('Feed of new topics'), '', lang('Link Text')),
+                    ), array('href' => '{{page:board}}?rss=true')),
+                )),
+                $column(lang('Topics'), 'col-6 col-md-3 col-lg-2', array(
+                    $link(lang('Every topic'), '{{page:forum}}', $plain),
+                    $link(lang('Boards'), '{{page:board}}', $plain),
+                    $link(lang('Unanswered topics'), '{{page:unanswered}}', $plain),
+                    $link(lang('Start a topic'), '{{page:new_topic}}', $plain),
+                )),
+                $column(lang('Guides'), 'col-6 col-md-3 col-lg-2', array(
+                    $link(lang('All guides'), '{{page:docs}}', $plain),
+                    $link(lang('Contribute a guide'), '{{page:doc_new}}', $plain),
+                    $link(lang('Search'), '{{page:search}}', $plain),
+                )),
+                $column(lang('Community'), 'col-6 col-md-3 col-lg-2', array(
+                    $link(lang('Guidelines'), '{{page:guidelines}}', $plain),
+                    $link(lang('FAQ'), '{{page:faq}}', $plain),
+                    $link(lang('About the community'), '{{page:about}}', $plain),
+                    $link(lang('Contact us'), '{{page:contact}}', $plain),
+                )),
+                $column(lang('Your account'), 'col-6 col-md-3 col-lg-2', array(
+                    $link(lang('My Account'), '{{page:my_account}}', $plain),
+                    $link(lang('My topics'), '{{page:my_topics}}', $plain),
+                    $link(lang('My guides'), '{{page:my_docs}}', $plain),
+                    $link(lang('Inbox'), '{{page:inbox}}', $plain),
+                )),
+            )),
+            $el('div', 'd-flex flex-column flex-md-row justify-content-between gap-2 border-top mt-5 pt-3 pf-meta', lang('Footer Bottom'), array(
+                $para('© {{year}} {{site_name}}', 'mb-0'),
+                $el('nav', 'd-flex flex-wrap column-gap-3 row-gap-1', lang('Legal'), array(
+                    $link(lang('Privacy Policy'), '{{page:privacy}}', $plain),
+                    $link(lang('Terms of Use'), '{{page:terms}}', $plain),
+                    $link(lang('Accessibility'), '{{page:accessibility}}', $plain),
+                ), array('_attrs' => array($attr('aria-label', lang('Legal'))))),
+            )),
+        )),
+    ));
+};
+
+// The moderators' own menu, under the masthead on the staff pages. Each
+// link names a page of its own: the smart active state ignores the part
+// after #, so two links to one page would both be marked current.
+$staff_bar = function () use ($el, $link, $span, $attr) {
+    $item = function ($key, $text) use ($link) {
+        return $link($text, '{{page:' . $key . '}}', 'nav-link px-0');
+    };
+    return $el('div', 'border-bottom small bg-body d-print-none', lang('Staff Bar'), array(
+        $el('div', 'container d-flex flex-wrap align-items-center column-gap-4 row-gap-2 py-2', lang('Staff Bar Container'), array(
+            $el('nav', 'nav nav-underline align-items-center column-gap-4 row-gap-1', lang('Staff Links'), array(
+                $span(lang('Moderators'), 'badge text-bg-primary', lang('Staff Badge')),
+                $item('staff', lang('Moderation')),
+                $item('staff_topics', lang('All topics')),
+                $item('staff_docs', lang('Docs desk')),
+                $item('staff_reports', lang('Reported posts')),
+                $item('inbox', lang('Inbox')),
+                $item('staff_directory', lang('Staff Directory')),
+            ), array('smartActive' => true, '_attrs' => array($attr('aria-label', lang('Moderators'))))),
+        )),
+    ));
+};
+
+// A page of the site: the masthead, the page's own content and the footer.
+$page = function ($main) use ($root, $shared, $el) {
+    return $root(array(
+        $shared('masthead'),
+        $el('main', '', lang('Main Content'), $main, array('id' => 'main')),
+        $shared('footer'),
+    ));
+};
+// A page of the moderators: the staff bar under the masthead.
+$staff_page = function ($main) use ($root, $shared, $el) {
+    return $root(array(
+        $shared('masthead'),
+        $shared('staff_bar'),
+        $el('main', '', lang('Main Content'), $main, array('id' => 'main')),
+        $shared('footer'),
+    ));
+};
+
+// The trail of links above a page's title: array(text, address) each, the
+// last one the page itself (address '').
+$breadcrumb = function ($items) use ($el, $link, $attr) {
+    $lis = array();
+    foreach ($items as $it) {
+        if ($it[1] === '') {
+            $lis[] = $el('li', 'breadcrumb-item active', lang('Current Page'), array(), array('text' => $it[0], '_attrs' => array($attr('aria-current', 'page'))));
+        } else {
+            $lis[] = $el('li', 'breadcrumb-item', lang('List Item'), array($link($it[0], $it[1], 'link-body-emphasis')));
+        }
+    }
+    return $el('nav', '', lang('Where You Are'), array(
+        $el('ol', 'breadcrumb small mb-2', lang('Links'), $lis),
+    ), array('_attrs' => array($attr('aria-label', lang('Where you are')))));
+};
+
+// The top of the inner pages: the trail, the title, its line and whatever
+// the page adds under them.
+$page_header = function ($title, $lead = '', $before = array(), $after = array()) use ($el, $heading, $para, $container) {
+    $children = array_merge($before, array($heading('h1', $title, 'pf-page-title mb-2')));
+    if ($lead !== '') $children[] = $para($lead, 'lead text-body-secondary pf-lead mb-0');
+    return $el('header', 'pf-band pb-4', lang('Page Header'), array(
+        $container(array_merge($children, $after)),
+    ));
+};
+
+// The head of a band: its title, and a link to the rest on the right.
+$sec_head = function ($title, $more_text = '', $more_href = '', $id = '') use ($el, $heading, $icon, $span) {
+    $extra = ($id !== '') ? array('id' => $id) : array();
+    $children = array($heading('h2', $title, 'pf-sec-title', $extra));
+    if ($more_text !== '') {
+        $children[] = $el('a', 'pf-more', lang('Link'), array(
+            $span($more_text, '', lang('Link Text')),
+            $icon('bi-arrow-right'),
+        ), array('href' => $more_href));
+    }
+    return $el('div', 'pf-sec-head', lang('Section Header'), $children);
+};
+
+// A band of a page: a section around a container, with the band's padding.
+$band = function ($name, $children, $class = 'pf-band', $extra = array()) use ($el, $container) {
+    return $el('section', $class, $name, array($container($children)), $extra);
+};
+// A list with a check before each line.
+$check_list = function ($items) use ($el, $icon, $span) {
+    $children = array();
+    foreach ($items as $text) {
+        $children[] = $el('li', 'd-flex gap-2 mb-2', lang('List Item'), array(
+            $icon('bi-check2', 'text-primary mt-1'),
+            $span($text, '', lang('Text')),
+        ));
+    }
+    return $el('ul', 'list-unstyled mb-0', lang('Check List'), $children);
+};
+// A box of a side column: a title and what goes under it.
+$side_card = function ($name, $title, $children, $class = 'pf-card mb-4', $extra = array()) use ($el, $heading) {
+    return $el('div', $class, $name, array_merge(array($heading('h2', $title, 'h6 fw-bold mb-3')), $children), $extra);
+};
+$buttons = function ($links, $class = 'd-flex flex-wrap align-items-center gap-2') use ($el) {
+    return $el('div', $class, lang('Buttons'), $links);
+};
+
+// ── E-mail pages ────────────────────────────────────────────────────────
+// Sent as the body of an e-mail, never visited. E-mail programs drop linked
+// stylesheets, so the few rules that shape them are written on the elements
+// next to the Bootstrap classes; a palette colour is written twice, plain
+// first, so a program that blocks the linked stylesheet still has one. No
+// capitals by CSS: a Turkish i would turn into a dotless I.
+$mail_style = function ($css) use ($attr) {
+    return array('_attrs' => array($attr('style', $css)));
+};
+// The frame is light in any page theme: the dark theme would turn its
+// Bootstrap backgrounds dark under the written dark text when a moderator
+// opens the page in a browser (a sent e-mail has no theme).
+$mail_page = function ($children) use ($el, $shared, $mail_style, $attr) {
+    return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
+        $el('div', 'bg-body-tertiary py-4 px-3', lang('E-mail Frame'), array(
+            $el('div', 'mx-auto bg-body border rounded-3 overflow-hidden', lang('E-mail Card'), array(
+                $shared('email_header'),
+                $el('div', 'p-4', lang('E-mail Body'), $children, $mail_style('padding:24px')),
+                $shared('email_footer'),
+            ), $mail_style('max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #dcdfe8;border-radius:12px;overflow:hidden')),
+        ), array('_attrs' => array(
+            $attr('data-bs-theme', 'light'),
+            $attr('style', 'background:#f3f4f8;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1d2131'),
+        ))),
+    ));
+};
+$mail_heading = function ($text) use ($heading, $attr) {
+    return $heading('h1', $text, 'h4 fw-bold mb-3', array('_attrs' => array($attr('style', 'font-size:22px;font-weight:700;line-height:1.3;margin:0 0 16px;color:#1d2131'))));
+};
+$mail_para = function ($text, $class = 'mb-3', $style = 'margin:0 0 16px') use ($para, $attr) {
+    return $para($text, $class, array('_attrs' => array($attr('style', $style))));
+};
+// The small print at the end of an e-mail.
+$mail_small = function ($text) use ($mail_para) {
+    return $mail_para($text, 'small text-body-secondary mb-0', 'font-size:13px;color:#5b6070;margin:0');
+};
+$mail_button = function ($text, $href, $extra = array()) use ($el, $link, $mail_style, $attr) {
+    return $el('p', 'my-4', lang('Button'), array(
+        $link($text, $href, 'btn btn-primary px-4', array($attr('style',
+            'display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;'
+            . 'background-color:#4f46e5;background-color:var(--bs-primary,#4f46e5);color:#ffffff;color:var(--pg-on-primary,#ffffff)')), $extra),
+    ), $mail_style('margin:24px 0'));
+};
+$mail_line = function ($label, $values) use ($el, $span, $mail_style, $attr) {
+    return $el('p', 'pg-hide-if-empty mb-1', lang('Line'), array(
+        $span($label . ': ', 'text-body-secondary', lang('Label'), array('_attrs' => array($attr('style', 'color:#5b6070')))),
+        $el('span', 'pg-field-value fw-semibold', lang('Value'), $values),
+    ), $mail_style('margin:0 0 4px'));
+};
+$mail_box = function ($children, $name) use ($el, $mail_style) {
+    return $el('div', 'bg-body-tertiary border rounded-3 p-3 my-3', $name, $children,
+        $mail_style('background:#f3f4f8;border:1px solid #dcdfe8;border-radius:8px;padding:16px;margin:16px 0'));
+};
+$mail_reference = function () use ($el, $span, $bind, $mail_style) {
+    return $el('p', 'small text-body-secondary mt-4 mb-0', lang('Reference'), array(
+        $span(lang('Reference Code') . ': ', '', lang('Label')),
+        $span('ABC123', '', lang('Reference Code'), $bind('reference_code')),
+    ), $mail_style('font-size:13px;color:#5b6070;margin:24px 0 0'));
+};
+// The member's first name after "Hello,", in an element of its own: a
+// translated page matches whole texts.
+$mail_account_greeting = function () use ($el, $span, $bind, $mail_style) {
+    return $el('p', 'mb-3', lang('Greeting'), array(
+        $span(lang('Hello,'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+        $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
+    ), $mail_style('margin:0 0 16px'));
+};
+// A form's e-mail widget: drawn for the record just sent, which the server
+// names when it sends the e-mail. Opened by its address instead (?r=), the
+// page shows the record only to whoever sent it and to the moderators.
+$mail_widget = function ($page_key, $form_page, $not_found, $children) use ($widget_root) {
+    return array(
+        'page'   => $page_key,
+        'slug'   => lang('form-detail'),
+        'config' => array(
+            'regionType'          => 'form_item_view',
+            'custom_form_page_id' => '{{tab:' . $form_page . '}}',
+            'access_control'      => 'submitter_only',
+            'not_found_message'   => $not_found,
+        ),
+        'tree'   => $widget_root($children),
+    );
+};
+// "Hello," and the name the record carries, in an element of its own.
+$mail_greeting = function ($token, $sample) use ($el, $span, $bind, $mail_style) {
+    return $el('p', 'mb-3', lang('Greeting'), array(
+        $span(lang('Hello,'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+        $span($sample, '', lang('Name'), $bind($token)),
+    ), $mail_style('margin:0 0 16px'));
+};
+// One value of the record on a line of an e-mail's box.
+$mail_value = function ($label, $sample, $token) use ($mail_line, $span, $bind) {
+    return $mail_line($label, array($span($sample, '', $label, $bind($token))));
+};
+$mail_settings = array('folder' => 'private', 'search' => false, 'sitemap' => false, 'noindex' => true);
+
+// ── Comments ────────────────────────────────────────────────────────────
+// The comment settings of the record pages. Each label is a singular noun:
+// the platform puts it in plural and into sentences ("2 Replies", "Notify
+// me when a Reply is added.").
+
+// The replies under a topic: signed in, published at once, mailed to the
+// topic's followers. No staff address: the moderators follow replies on
+// their dashboard and in the control panel's Comments screen.
+$reply_comments = array(
+    'label'         => lang('Reply'),
+    'allow_new'     => true,
+    'auto_publish'  => true,
+    'show_date'     => true,
+    'login'         => true,
+    'email_page'    => '{{tab:email_reply}}',
+    'email_subject' => lang('There is a new reply to a topic you follow'),
+);
+// Feedback under a guide, with a rating: held until a moderator publishes it.
+$feedback_comments = array(
+    'label'         => lang('Feedback'),
+    'allow_new'     => true,
+    'rating'        => true,
+    'auto_publish'  => false,
+    'show_date'     => true,
+    'login'         => true,
+    'email_page'    => '{{tab:email_reply}}',
+    'email_subject' => lang('There is new feedback on a guide you follow'),
+    'notify_email'  => '{{site_email}}',
+);
+// The messages between a guide's author and the moderators.
+$doc_desk_comments = array(
+    'label'         => lang('Message'),
+    'allow_new'     => true,
+    'auto_publish'  => true,
+    'show_date'     => true,
+    'login'         => true,
+    'email_page'    => '{{tab:email_doc_message}}',
+    'email_subject' => lang('New message about a guide sent to the docs'),
+    'notify_email'  => '{{site_email}}',
+);
+// The answers in a conversation started from the contact page.
+$conversation_comments = array(
+    'label'         => lang('Message'),
+    'allow_new'     => true,
+    'auto_publish'  => true,
+    'show_date'     => true,
+    'login'         => true,
+    'email_page'    => '{{tab:email_reply}}',
+    'email_subject' => lang('There is a new reply to your conversation'),
+    'notify_email'  => '{{site_email}}',
+);
+// The moderators' notes under a report, for the moderators only.
+$staff_note_comments = array(
+    'label'        => lang('Note'),
+    'allow_new'    => true,
+    'auto_publish' => true,
+    'show_date'    => true,
+    'login'        => true,
+);
+
+// ── The sample records ──────────────────────────────────────────────────
+// The topics and the guides the forms open with, newest first. The seeder
+// dates record i (4i + 1) days back, so no text names a date, a month or a
+// season: they move with the install. Each is a record like any other,
+// edited or deleted in the control panel. No field holds an author's name:
+// a topic's author is the account that sent it (submitter_name), and the
+// samples are sent by the setup account, so they show none.
+
+// A text as the rich-text field stores it: a paragraph a <p>, a subhead
+// (array('h2' => text)) an <h2>, a list (array('ul' or 'ol' => items)) its
+// list, a code block (array('pre' => text)) a <pre><code>. The words are
+// escaped here; the seeder keeps the markup (pg_cf_seed_rich_value()) and
+// filters it.
+$rich = function ($blocks) {
+    $html = '';
+    foreach ($blocks as $b) {
+        if (!is_array($b)) {
+            $html .= '<p>' . h($b) . '</p>';
+        } elseif (isset($b['h2'])) {
+            $html .= '<h2>' . h($b['h2']) . '</h2>';
+        } elseif (isset($b['ul']) || isset($b['ol'])) {
+            $tag = isset($b['ul']) ? 'ul' : 'ol';
+            $html .= '<' . $tag . '>';
+            foreach ($b[$tag] as $item) $html .= '<li>' . h($item) . '</li>';
+            $html .= '</' . $tag . '>';
+        } elseif (isset($b['pre'])) {
+            $html .= '<pre><code>' . h($b['pre']) . '</code></pre>';
+        }
+    }
+    return $html;
+};
+
+// The people the editor and the installer's preview show beside a sample
+// row; the site shows the real author from their profile.
+$people = array(lang('Jordan Lee'), lang('Priya Raman'), lang('Marcus Bell'), lang('Elena Ortiz'), lang('Sam Whitaker'));
+
+// The heads of the sample topics, newest first: array(board key, kind
+// index, status index, pinned, announcement, title, tags).
+$topic_heads = array(
+    array('getting_started', 1, 0, true,  true,  lang('Welcome! Start here'), lang('welcome, getting started, how to post')),
+    array('help',            0, 1, false, false, lang('Reminders arrive an hour late after the clocks change'), lang('reminders, time zone, phone app')),
+    array('ideas',           1, 0, false, false, lang('Idea: a weekly review that gathers unfinished tasks'), lang('tasks, weekly review, feature request')),
+    array('tips',            1, 0, false, false, lang('Five keyboard shortcuts I use every day'), lang('keyboard shortcuts, productivity')),
+    array('help',            0, 0, false, false, lang('Can I move a notebook from my personal workspace to a team workspace?'), lang('workspaces, sharing, notebooks')),
+    array('show_and_tell',   1, 0, false, false, lang('My reading log template, free to copy'), lang('templates, reading, saved searches')),
+    array('getting_started', 0, 1, false, false, lang('What is the difference between a notebook and a workspace?'), lang('workspaces, notebooks, getting started')),
+    array('help',            0, 1, false, false, lang('Sync is stuck on Waiting on my phone'), lang('sync, phone app')),
+    array('ideas',           1, 2, false, false, lang('Print notes in the light theme'), lang('printing, dark theme')),
+    array('tips',            1, 0, false, false, lang('Use templates with placeholders for meeting notes'), lang('templates, meetings, tasks')),
+    array('help',            0, 1, false, false, lang('Does exporting a notebook to Markdown keep the images?'), lang('export, markdown, attachments')),
+    array('show_and_tell',   1, 0, false, false, lang('How our team of six plans a product launch'), lang('teams, planning, shared notebooks')),
+    array('general',         1, 0, false, false, lang('What does your note-taking setup look like?'), lang('setups, organization')),
+    array('getting_started', 0, 1, false, false, lang('How do I import my notes from plain text files?'), lang('import, getting started')),
+    array('ideas',           1, 0, false, false, lang('Let tasks repeat on the last weekday of the month'), lang('recurring tasks, feature request')),
+    array('tips',            1, 0, false, false, lang('Search operators that save me time'), lang('search, tips')),
+    array('general',         1, 0, false, true,  lang('The docs are open for community guides'), lang('docs, announcements, contributing')),
+    array('tips',            1, 0, true,  false, lang('How to write a question that gets a quick answer'), lang('how to post, questions')),
+);
+// A sample topic's values as the rows bind them, by its index above.
+$topic_sample = function ($i) use ($topic_heads, $boards, $kinds, $topic_statuses, $people) {
+    $h = $topic_heads[$i];
+    return array(
+        'board'   => $boards[$h[0]][0],
+        'kind'    => $kinds[$h[1]],
+        'status'  => $topic_statuses[$h[2]],
+        'title'   => $h[5],
+        'tags'    => $h[6],
+        'author'  => $people[$i % count($people)],
+        'replier' => $people[($i + 2) % count($people)],
+    );
+};
+// Sample topic $i: its head and its text.
+$sample_topic = function ($i, $blocks) use ($topic_heads, $boards, $kinds, $topic_statuses, $yes, $no, $rich) {
+    $h = $topic_heads[$i];
+    return array(
+        'board'        => $boards[$h[0]][0],
+        'kind'         => $kinds[$h[1]],
+        'title'        => $h[5],
+        'body'         => $rich($blocks),
+        'tags'         => $h[6],
+        'guidelines'   => 'yes',
+        'status'       => $topic_statuses[$h[2]],
+        'pinned'       => $h[3] ? $yes : $no,
+        'announcement' => $h[4] ? $yes : $no,
+    );
+};
+// Eighteen topics across every board and both kinds: five solved, one
+// closed, two pinned and two announcements. None has a reply yet.
+$sample_topics = array(
+    $sample_topic(0, array(
+        lang('Welcome to the community. This is the place to ask questions about the app, share the setups and templates you built, and tell us what you would like to see next.'),
+        array('h2' => lang('Where to post')),
+        lang('Pick the board that fits: Questions & Help for anything that does not work the way you expect, Ideas & Feedback for suggestions, Show & Tell for things you made, and Tips & Tricks for habits worth passing on.'),
+        array('h2' => lang('Before you ask')),
+        lang('Search the forum and the docs first: many questions already have an answer. If yours is new, give it a title that says what happens. When a reply solves it, say so in a reply, and a moderator marks the topic as solved so the next person finds the answer too.'),
+        lang('Be kind. Everyone here was new once.'),
+    )),
+    $sample_topic(1, array(
+        lang('Since the clocks changed, every reminder I set arrives exactly one hour late on my phone. On the desktop app the same reminders are on time.'),
+        lang('I tried signing out and back in, and the time zone in the app\'s settings is right. Is there anything else I should check?'),
+    )),
+    $sample_topic(2, array(
+        lang('Every Friday I go through my notebooks looking for tasks I did not finish. A weekly review that gathers every open task from the past seven days in one list would save a lot of clicking.'),
+        lang('Ideally I could move each task to next week, mark it done or drop it right from that list. Would anyone else use this?'),
+    )),
+    $sample_topic(3, array(
+        lang('I put off learning shortcuts for a long time. These five changed how fast I take notes:'),
+        array('ul' => array(
+            lang('Ctrl+N starts a new note in the notebook you are in.'),
+            lang('Ctrl+K opens the quick switcher: type part of a name to jump to any notebook or note.'),
+            lang('Ctrl+Shift+T turns the line you are on into a task.'),
+            lang('Alt+Up and Alt+Down move a line or a task up and down.'),
+            lang('Ctrl+/ shows every shortcut, which is how I found the others.'),
+        )),
+        lang('What are yours?'),
+    )),
+    $sample_topic(4, array(
+        lang('I started a project in my personal workspace, and now two colleagues need to work on it with me. Is there a way to move the whole notebook to our team workspace, with its tasks and attachments, without copying every note by hand?'),
+    )),
+    $sample_topic(5, array(
+        lang('I keep a reading log in the app and finally turned it into a template. Each book gets a note with the title, the author, the day I started, a rating and a few lines on what stayed with me.'),
+        lang('A saved search shows every book I finished this year, and a second one lists the books I gave up on, which turns out to be a surprisingly useful list. Copy the template and change it however you like.'),
+    )),
+    $sample_topic(6, array(
+        lang('I am new to the app and a little confused by the words. Is a workspace just a big notebook? When should I make a new workspace instead of a new notebook?'),
+    )),
+    $sample_topic(7, array(
+        lang('My phone app has said Waiting to sync since this morning. The desktop app syncs fine, but new notes from the desktop never appear on the phone.'),
+        lang('I am on the latest version and the phone is online. What else can I try before I reinstall?'),
+    )),
+    $sample_topic(8, array(
+        lang('When I print a note while the app is in the dark theme, the page comes out with light text that is hard to read. Could printing always use the light theme?'),
+    )),
+    $sample_topic(9, array(
+        lang('If you take meeting notes, try a template with placeholders. Mine fills in today\'s date and the meeting\'s name, and starts with three headings: decisions, open questions and next steps.'),
+        lang('Each next step is a task, so it lands in my task list with the meeting note linked. It takes ten minutes to set up and saves that much every week.'),
+    )),
+    $sample_topic(10, array(
+        lang('I would like to keep a copy of my notes outside the app. When I export a notebook to Markdown, are the images and attachments exported too, or only the text?'),
+    )),
+    $sample_topic(11, array(
+        lang('Our small team plans every launch in one shared notebook. The first note is a one-page brief; every other note is one part of the launch, from the website copy to the help articles.'),
+        array('h2' => lang('What made it work')),
+        lang('Each part has one owner and a due date, and a saved search shows everything due this week. We go through that one list in a short meeting every Monday.'),
+        lang('Comments on the notes replaced most of our e-mail threads, which was the biggest surprise.'),
+    )),
+    $sample_topic(12, array(
+        lang('I am curious how others organize things. I keep one notebook for each area of my life, tags for the status of a note and a single inbox note for anything I have not sorted yet.'),
+        lang('Do you use many notebooks or a few? Tags or nested notebooks? I would love to see your setups.'),
+    )),
+    $sample_topic(13, array(
+        lang('I have a few hundred notes as plain text files in folders on my computer. Can the app import them, and will it keep the folder names?'),
+    )),
+    $sample_topic(14, array(
+        lang('Recurring tasks can repeat every month on a set day, but my invoices are due on the last weekday of the month. A repeat rule for that would help anyone who works with month-end deadlines.'),
+    )),
+    $sample_topic(15, array(
+        lang('The search box understands more than words. A few operators I use all the time:'),
+        array('ul' => array(
+            lang('tag:urgent finds the notes with that tag.'),
+            lang('is:task is:open lists open tasks only.'),
+            lang('in:"Home" searches one notebook.'),
+            lang('A phrase in quotes finds those words together.'),
+        )),
+        lang('The full list is in the Search syntax guide in the docs.'),
+    )),
+    $sample_topic(16, array(
+        lang('You can now contribute to the docs. If you have worked out a workflow, an integration or a fix that others keep asking about, write it up as a guide.'),
+        lang('A moderator reviews every guide before it is published, and you can follow the review and talk with the moderators on the guide\'s own page. Start from Contribute a guide in the docs.'),
+    )),
+    $sample_topic(17, array(
+        lang('The questions that get answered fastest have three things in common:'),
+        array('ol' => array(
+            lang('A title that says what happens, such as "Reminders arrive an hour late", rather than "Help!".'),
+            lang('The steps that lead to the problem, what you expected and what happened instead.'),
+            lang('The version of the app and the device you use, with a screenshot if it helps.'),
+        )),
+        lang('Remove anything private from screenshots and logs before you attach them.'),
+    )),
+);
+
+// The heads of the sample guides, newest first: array(section key,
+// featured, order in its section, title, summary, version, byline, tags).
+$docs_team = lang('The docs team');
+$doc_heads = array(
+    array('release_notes',   false, '10', lang('What changed in version 4.2'), lang('Export to PDF, attachments in Markdown exports and faster sync on phones.'), '4.2', $docs_team, lang('release notes, export, sync')),
+    array('getting_started', true,  '10', lang('Install the app on your computer'), lang('Download the desktop app, sign in and see your notes in a few minutes.'), lang('4.0 and later'), $docs_team, lang('install, desktop app')),
+    array('how_to',          true,  '10', lang('Share a notebook with your team'), lang('Invite people to a notebook, choose what they may change and see who changed what.'), lang('4.0 and later'), $docs_team, lang('sharing, teams, workspaces')),
+    array('troubleshooting', false, '10', lang('Sync is stuck or slow'), lang('What to check when notes do not appear on your other devices.'), lang('4.0 and later'), $docs_team, lang('sync, troubleshooting')),
+    array('reference',       false, '10', lang('Keyboard shortcuts'), lang('Every shortcut of the desktop and web apps, by task.'), '4.2', $docs_team, lang('keyboard shortcuts, reference')),
+    array('integrations',    false, '10', lang('Subscribe to your tasks from a calendar app'), lang('Show the tasks that have a due date in any calendar that subscribes to a calendar feed.'), lang('4.1 and later'), lang('Priya Raman'), lang('calendar, integrations, tasks')),
+    array('how_to',          false, '20', lang('Set up recurring tasks and reminders'), lang('Repeat a task on a schedule and get a reminder at the right time.'), lang('4.0 and later'), $docs_team, lang('tasks, reminders')),
+    array('getting_started', false, '20', lang('Your first notebook in ten minutes'), lang('Create a notebook, add notes and tasks, and find them again with tags and search.'), '', $docs_team, lang('notebooks, tags, getting started')),
+    array('reference',       false, '20', lang('Search syntax'), lang('Operators that narrow a search to a notebook, a tag, a time or open tasks.'), lang('4.0 and later'), lang('Marcus Bell'), lang('search, reference')),
+    array('troubleshooting', false, '20', lang('Reminders arrive at the wrong time'), lang('Check the time zone of the app and of each device when reminders come early or late.'), '', lang('Elena Ortiz'), lang('reminders, time zone')),
+    array('how_to',          false, '30', lang('Build a template with placeholders'), lang('Start meeting notes, journals and checklists from a template that fills in the date.'), lang('4.1 and later'), lang('Sam Whitaker'), lang('templates')),
+    array('integrations',    false, '20', lang('Send notes to the app by e-mail'), lang('Forward an e-mail to your own address for notes and it becomes a note.'), '', $docs_team, lang('e-mail, integrations')),
+);
+// A sample guide's values as the cards bind them, by its index above.
+$doc_sample = function ($i) use ($doc_heads, $doc_sections) {
+    $h = $doc_heads[$i];
+    return array(
+        'section' => $doc_sections[$h[0]][0],
+        'title'   => $h[3],
+        'summary' => $h[4],
+        'version' => $h[5],
+        'byline'  => $h[6],
+        'tags'    => $h[7],
+    );
+};
+// Sample guide $i: its head and its text, published.
+$sample_doc = function ($i, $blocks) use ($doc_heads, $doc_sections, $published_value, $yes, $no, $rich) {
+    $h = $doc_heads[$i];
+    return array(
+        'section'   => $doc_sections[$h[0]][0],
+        'title'     => $h[3],
+        'summary'   => $h[4],
+        'body'      => $rich($blocks),
+        'version'   => $h[5],
+        'tags'      => $h[7],
+        'byline'    => $h[6],
+        'rights'    => 'yes',
+        'status'    => $published_value,
+        'featured'  => $h[1] ? $yes : $no,
+        'doc_order' => $h[2],
+    );
+};
+// Twelve published guides across every section, two of them featured.
+$sample_docs = array(
+    $sample_doc(0, array(
+        lang('Version 4.2 is rolling out to every device. Here is what is new and what we fixed.'),
+        array('h2' => lang('New features')),
+        array('ul' => array(
+            lang('Export a note or a whole notebook to PDF, with its headings, tasks and images.'),
+            lang('Markdown exports now include images and attachments, in a folder beside the notes.'),
+            lang('The quick switcher also finds tags and saved searches.'),
+        )),
+        array('h2' => lang('Improvements')),
+        array('ul' => array(
+            lang('Sync on phones starts sooner after the app opens and uses less battery.'),
+            lang('Printing always uses the light theme, so printed notes stay readable.'),
+        )),
+        array('h2' => lang('Bug fixes')),
+        array('ul' => array(
+            lang('Reminders set before the clocks change keep their local time.'),
+            lang('A table pasted from a spreadsheet keeps its columns.'),
+        )),
+    )),
+    $sample_doc(1, array(
+        lang('The desktop app keeps your notes on your computer and syncs them with your phone and the web app. Setting it up takes a few minutes.'),
+        array('h2' => lang('Installation')),
+        array('ol' => array(
+            lang('Open the download page and choose the installer for your computer.'),
+            lang('Run the installer and follow the steps on the screen.'),
+            lang('Open the app and sign in with the account you use on the web.'),
+        )),
+        array('h2' => lang('After you sign in')),
+        lang('Your notebooks appear in the sidebar and start to sync. A large account can take a few minutes the first time; you can keep working while it does.'),
+        lang('If a notebook is missing, check that you are in the right workspace with the switcher at the top of the sidebar.'),
+    )),
+    $sample_doc(2, array(
+        lang('A notebook in a team workspace can be shared with anyone in that workspace, and with guests you invite by e-mail.'),
+        array('h2' => lang('Invite people')),
+        array('ol' => array(
+            lang('Open the notebook and choose Share.'),
+            lang('Type a name or an e-mail address.'),
+            lang('Choose Can view or Can edit, then send the invitation.'),
+        )),
+        array('h2' => lang('See who changed what')),
+        lang('Each note shows who changed it last. Open History on a note to see every change and bring back an earlier version.'),
+        lang('To stop sharing, open Share again and remove the person. They lose access at once; the notes stay in the notebook.'),
+    )),
+    $sample_doc(3, array(
+        lang('Notes sync within a few seconds while every device is online. When they do not, check these in order.'),
+        array('ol' => array(
+            lang('Make sure each device is signed in to the same account and the same workspace.'),
+            lang('Look at the sync status at the bottom of the sidebar. Waiting means the app has not reached the server yet.'),
+            lang('Close the app completely and open it again.'),
+            lang('Update the app on every device: an old version can stop syncing after the service is updated.'),
+        )),
+        array('h2' => lang('Still stuck?')),
+        lang('Sign out and back in on the device that is stuck. Notes that have not synced yet are kept and sent once you sign in again.'),
+        lang('If that does not help, start a topic in Questions & Help with the version of the app and what the sync status says.'),
+    )),
+    $sample_doc(4, array(
+        lang('These shortcuts work in the desktop and web apps. Press Ctrl+/ in the app to see them at any time.'),
+        array('h2' => lang('Notes')),
+        array('ul' => array(
+            lang('Ctrl+N: a new note in the current notebook'),
+            lang('Ctrl+K: the quick switcher, to jump to a notebook, a note or a tag'),
+            lang('Ctrl+F: find in the current note'),
+            lang('Ctrl+Shift+F: search everything'),
+        )),
+        array('h2' => lang('Tasks')),
+        array('ul' => array(
+            lang('Ctrl+Shift+T: turn the current line into a task'),
+            lang('Ctrl+Enter: mark a task done'),
+            lang('Alt+Up and Alt+Down: move a line or a task'),
+        )),
+        array('h2' => lang('Text')),
+        array('ul' => array(
+            lang('Ctrl+B, Ctrl+I and Ctrl+U: bold, italic and underline'),
+            lang('Ctrl+Shift+7: a numbered list'),
+            lang('Ctrl+Shift+8: a bulleted list'),
+        )),
+    )),
+    $sample_doc(5, array(
+        lang('Every account has a private calendar feed of its tasks that have a due date. Any calendar app that can subscribe to a calendar by its address can show them.'),
+        array('ol' => array(
+            lang('In the app, open Settings and choose Calendar feed.'),
+            lang('Copy the feed address.'),
+            lang('In your calendar app, add a calendar by its address and paste the feed address.'),
+        )),
+        lang('The calendar app checks the feed on its own schedule, often every few hours, so a new task can take a while to appear.'),
+        lang('The feed address works like a password: anyone who has it can see your tasks. If you shared it by mistake, choose Reset address in the same settings.'),
+    )),
+    $sample_doc(6, array(
+        lang('A task can repeat on a schedule and remind you before it is due.'),
+        array('h2' => lang('Make a task repeat')),
+        array('ol' => array(
+            lang('Open the task and choose Repeat.'),
+            lang('Pick daily, weekly, monthly or yearly, and the day it repeats on.'),
+            lang('Save. When you mark the task done, the next one is created with the next due date.'),
+        )),
+        array('h2' => lang('Add a reminder')),
+        lang('Choose Remind me on the task and pick a time, or a number of minutes before the task is due. Reminders follow the time zone set in Settings, so set it to where you are.'),
+    )),
+    $sample_doc(7, array(
+        lang('A notebook holds the notes on one subject: a project, a class, a trip. Here is how to set up your first one.'),
+        array('ol' => array(
+            lang('Choose New notebook in the sidebar and give it a name.'),
+            lang('Add a note with Ctrl+N and write a title and a few lines.'),
+            lang('Turn a line into a task with Ctrl+Shift+T and give it a due date.'),
+            lang('Add a tag or two, such as idea or urgent, to find the note later.'),
+        )),
+        lang('Use the search box at the top to find anything by a word, a tag or a task. When you are ready to work with others, read Share a notebook with your team.'),
+    )),
+    $sample_doc(8, array(
+        lang('Type words to find the notes that contain all of them. Add operators to narrow the search; you can combine as many as you like.'),
+        array('ul' => array(
+            lang('tag:urgent finds the notes with the tag urgent.'),
+            lang('in:"Home renovation" searches one notebook.'),
+            lang('is:task is:open lists open tasks only.'),
+            lang('due:week finds the tasks due this week.'),
+            lang('updated:7d finds the notes changed in the last seven days.'),
+            lang('A phrase in quotes finds those words in that order.'),
+            lang('A minus sign leaves a word out: -draft skips the notes that contain draft.'),
+        )),
+        lang('For example, this search lists the open tasks of one notebook that are due this week:'),
+        array('pre' => lang('is:task is:open due:week in:"Product launch"')),
+        lang('To keep a search, choose Save search: it appears in the sidebar.'),
+    )),
+    $sample_doc(9, array(
+        lang('A reminder is set for a time in the time zone of the app. When reminders come early or late by whole hours, the time zone is usually the cause.'),
+        array('ol' => array(
+            lang('Open Settings, then Date and time, and check the time zone.'),
+            lang('On your phone, check that the device sets its time zone automatically.'),
+            lang('Update the app: since version 4.2, reminders keep their local time when the clocks change.'),
+        )),
+        lang('A reminder that comes a few minutes late on a phone is often held back by the phone\'s battery saver. Let the app run in the background to get it on time.'),
+    )),
+    $sample_doc(10, array(
+        lang('A template is a note you start other notes from. The placeholders in it are filled in when you use it.'),
+        array('h2' => lang('Make a template')),
+        array('ol' => array(
+            lang('Write the note the way every copy should start.'),
+            lang('Put placeholders where the details go, such as {date} or {title}.'),
+            lang('Choose Save as template from the note\'s menu.'),
+        )),
+        array('h2' => lang('Placeholders you can use')),
+        array('ul' => array(
+            lang('{date}: today\'s date'),
+            lang('{time}: the time now'),
+            lang('{title}: the title you give the new note'),
+            lang('{notebook}: the notebook the note goes into'),
+        )),
+        lang('To use a template, choose New from template and pick it from the list.'),
+    )),
+    $sample_doc(11, array(
+        lang('Every account has a private e-mail address for notes. Anything you send or forward to it becomes a note in your Inbox notebook.'),
+        array('ol' => array(
+            lang('Open Settings and choose E-mail to notes to see your address.'),
+            lang('Add the address to your contacts, so it is easy to find.'),
+            lang('Forward an e-mail to it: the subject becomes the title and the message the note.'),
+        )),
+        lang('Add #tag to the subject to tag the note, and @notebook to put it in another notebook.'),
+        lang('Attachments up to 25 MB come along with the note.'),
+    )),
+);
+
+// ── Pages ───────────────────────────────────────────────────────────────
+
+$pages = array();
+
+// The front page: the search and the forum's numbers, the announcements,
+// the boards, the latest activity beside the topics waiting for an answer
+// and the week's most viewed, the featured guides and the guidelines. Its
+// RSS feed is its first list, the count of every live topic: every live
+// topic, the newest first.
+$stat = function ($widget_key) use ($el, $widget) {
+    return $el('div', 'col-4', lang('Column'), array($widget($widget_key)));
+};
+$pages[] = array(
+    'key'              => 'home',
+    'name'             => lang('home'),
+    'folder'           => 'public',
+    'title'            => lang('Community forum and docs'),
+    'meta_description' => lang('Ask questions, share what you made and read the guides, with the people who use the app every day.'),
+    'tree'             => $page(array(
+        // The search first: most visitors come with a question.
+        $el('section', 'pf-band pf-tint border-bottom', lang('Hero'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $para('{{site_name}}', 'pf-kicker mb-2'),
+                        $heading('h1', lang('How can we help?'), 'pf-display mb-3', array('id' => 'pf-welcome-title')),
+                        $para(lang('Search the forum and the docs, or start a topic and the community will help.'), 'lead text-body-secondary mb-4'),
+                        $el('form', 'pf-search mb-3', lang('Search Form'), array(
+                            $el('label', 'visually-hidden', lang('Label'), array(), array('text' => lang('Search the forum and the docs'), '_attrs' => array($attr('for', 'pf-hero-q')))),
+                            $el('div', 'input-group input-group-lg', lang('Search Box'), array(
+                                $el('input', 'form-control', lang('Field'), array(), array('id' => 'pf-hero-q', '_attrs' => array(
+                                    $attr('type', 'search'),
+                                    $attr('name', 'query'),
+                                    $attr('placeholder', lang('Search the forum and the docs…')),
+                                ))),
+                                $el('button', 'btn btn-primary px-4', lang('Search Button'), array($icon('bi-search')), array('_attrs' => array(
+                                    $attr('type', 'submit'),
+                                    $attr('aria-label', lang('Search')),
+                                ))),
+                            )),
+                        ), array('_attrs' => array($attr('action', '{{page:search}}'), $attr('method', 'get'), $attr('role', 'search')))),
+                        $buttons(array(
+                            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary'),
+                            $link(lang('Browse the docs'), '{{page:docs}}', 'btn btn-secondary'),
+                        )),
+                    ), '', '8', '', '12', 'col-xl-7'),
+                )),
+                // The forum's numbers: three counts of their own.
+                $el('div', 'row g-2 g-md-3 mt-4', lang('Numbers'), array(
+                    $stat('home_count_topics'),
+                    $stat('home_count_solved'),
+                    $stat('home_count_guides'),
+                ), array('_attrs' => array($attr('aria-label', lang('The forum in numbers')), $attr('role', 'group')))),
+            )),
+        ), array('_attrs' => array($attr('aria-labelledby', 'pf-welcome-title')))),
+        // The moderators' announcements; the band leaves the page while
+        // there is none.
+        $band(lang('Announcements'), array(
+            $sec_head(lang('Announcements')),
+            $widget('home_announcements'),
+        ), 'pf-band pb-0 pf-vanish'),
+        $band(lang('Boards'), array(
+            $sec_head(lang('Browse the boards'), lang('Every topic'), '{{page:forum}}'),
+            $board_tiles(),
+        ), 'pf-band', array('id' => 'boards')),
+        $band(lang('Activity'), array(
+            $row(array(
+                $col(array(
+                    $sec_head(lang('Latest activity'), lang('Every topic'), '{{page:forum}}'),
+                    $widget('home_latest'),
+                ), '', '8'),
+                $col(array(
+                    $el('section', 'pf-card mb-4', lang('Unanswered'), array(
+                        $sec_head(lang('Waiting for an answer'), lang('See all'), '{{page:unanswered}}'),
+                        $widget('home_unanswered'),
+                    )),
+                    $el('section', 'pf-card', lang('Popular this week'), array(
+                        $sec_head(lang('Popular this week')),
+                        $widget('home_popular'),
+                    )),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+        // The featured guides; the band leaves the page while there is none.
+        $band(lang('Featured guides'), array(
+            $sec_head(lang('Featured guides'), lang('Browse the docs'), '{{page:docs}}'),
+            $widget('home_guides'),
+        ), 'pf-band pt-0 pf-vanish'),
+        $band(lang('Guidelines Call-out'), array(
+            $el('div', 'pf-callout pf-tint', lang('Call-out'), array(
+                $el('span', 'pf-board-icon', lang('Icon'), array($icon('bi-heart'))),
+                $el('div', 'flex-grow-1', lang('Words'), array(
+                    $heading('h2', lang('Be kind, be clear, be helpful'), 'h5 fw-bold mb-1'),
+                    $para(lang('Read the community guidelines before you post: they keep the forum friendly and easy to search.'), 'mb-0'),
+                )),
+                $link(lang('Read the guidelines'), '{{page:guidelines}}', 'btn btn-primary flex-shrink-0'),
+            )),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// The forum: every live topic. Its first list is the count of every live
+// topic, so its RSS feed is every live topic, the newest first; then the
+// pinned topics, then every other topic by its newest activity, with a
+// search (the page's one list with page links). The boards beside them.
+$pages[] = array(
+    'key'              => 'forum',
+    'name'             => lang('forum'),
+    'folder'           => 'public',
+    'title'            => lang('Forum'),
+    'meta_description' => lang('Every topic of the community, the most recently active first.'),
+    'tree'             => $page(array(
+        $page_header(lang('Forum'), lang('Every topic of the community, the most recently active first.'), array(), array(
+            $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3', lang('Forum Numbers'), array(
+                $widget('forum_count'),
+                $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary'),
+            )),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $widget('forum_pinned'),
+                    $el('section', '', lang('All topics'), array(
+                        $sec_head(lang('All topics'), '', '', 'pf-all-topics'),
+                        $widget('forum_topics'),
+                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-all-topics')))),
+                ), '', '8'),
+                $col(array(
+                    $el('aside', '', lang('Side Column'), array(
+                        $board_nav(),
+                        $side_card(lang('Waiting for an answer'), lang('Can you help?'), array(
+                            $para(lang('These topics have no reply yet. A short answer is better than none.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Unanswered topics'), '{{page:unanswered}}', 'btn btn-sm btn-secondary'),
+                        )),
+                        $side_card(lang('Guidelines'), lang('Before you post'), array(
+                            $check_list(array(
+                                lang('Search first: your question may have an answer.'),
+                                lang('Pick the board that fits.'),
+                                lang('One question or idea for each topic.'),
+                            )),
+                            $link(lang('Read the guidelines'), '{{page:guidelines}}', 'd-inline-block small fw-semibold mt-3'),
+                        ), 'pf-card'),
+                    ), array('_attrs' => array($attr('aria-label', lang('Boards and help'))))),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// A board (?board=<name>): the count of its live topics with its name, its
+// pinned topics, then its other topics by their newest activity (the page's
+// one list with page links). The name comes from the address; only a name a
+// live topic carries prints, and an unknown one keeps the page out of the
+// index. Every board below. The count comes first, so the page's feed is
+// the board's topics (/board?board=<name>&rss=true), and every board's
+// without a name.
+$pages[] = array(
+    'key'              => 'board',
+    'name'             => lang('board'),
+    'folder'           => 'public',
+    'title'            => lang('Boards'),
+    'meta_description' => lang('The boards of the forum and the topics in each.'),
+    'tree'             => $page(array(
+        $page_header(lang('Boards'), '', array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Boards'), ''))),
+        )),
+        $band(lang('Board'), array(
+            $widget('board_head'),
+            $row(array(
+                $col(array(
+                    $widget('board_pinned'),
+                    $widget('board_topics'),
+                ), '', '', '', '12', 'col-xl-10'),
+            )),
+        ), 'pf-band pt-0'),
+        $band(lang('All boards'), array(
+            $sec_head(lang('All boards'), lang('Every topic'), '{{page:forum}}'),
+            $board_tiles(),
+        ), 'pf-band pt-0', array('id' => 'all-boards')),
+    )),
+);
+
+// The topic (?r=): the topic and its replies (signed in, published at once)
+// in the main column, and beside them what is known about it, a way to
+// report a post and the guidelines. Two record views of the same topic: the
+// replies sit in the page's own tree, between them. The bare page shows
+// "not found", so it stays out of the sitemap; its topics get there
+// through the lists.
+$pages[] = array(
+    'key'              => 'topic',
+    'name'             => lang('topic'),
+    'folder'           => 'public',
+    'title'            => lang('Topic'),
+    'meta_description' => lang('A topic of the community forum.'),
+    'sitemap'          => false,
+    'comments'         => $reply_comments,
+    'tree'             => $page(array(
+        $el('div', 'container pf-band pt-4', lang('Topic'), array(
+            $row(array(
+                $col(array(
+                    $widget('topic_view'),
+                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($comments_block())),
+                ), '', '8'),
+                $col(array($widget('topic_aside')), '', '4', '', '12', 'd-print-none'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    )),
+);
+
+// Start a Topic: the Forum Topics form, in the registration folder (members
+// only). Its page owns the form. A topic is public as soon as it is sent:
+// its Status starts as Open. The moderators get an e-mail; the author is
+// taken to the topic. Addresses are ?r=<reference code> (no pretty URLs):
+// the code never changes, while a pretty address would follow every title
+// edit.
+$pages[] = array(
+    'key'     => 'new_topic',
+    'name'    => lang('start-a-topic'),
+    'folder'  => 'registration',
+    'title'   => lang('Start a topic'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'form'    => array(
+        'form_name'            => lang('Forum Topics'),
+        'confirmation_message' => lang('Thank you. Your topic is live.'),
+        'confirmation_page_id' => '{{tab:topic}}',
+        'notify_email'         => '{{site_email}}',
+        'notify_subject'       => lang('New topic in the forum: ^^title^^'),
+        'notify_page_id'       => '{{tab:email_topic_new}}',
+        'pretty_urls'          => 0,
+        'sample_records'       => $sample_topics,
+    ),
+    'tree'    => $page(array(
+        $page_header(lang('Start a topic'), lang('Ask a question or start a discussion. Your topic is public as soon as you post it.'), array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Start a topic'), ''))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $el('div', 'card card-body p-4', lang('Form Card'), array($widget('topic_form'))),
+                ), '', '8'),
+                $col(array(
+                    $side_card(lang('Before you post'), lang('Before you post'), array(
+                        $check_list(array(
+                            lang('Search the forum and the docs: your question may already have an answer.'),
+                            lang('Pick the board that fits, and keep to one question or idea for each topic.'),
+                            lang('Give it a title that says what happens.'),
+                            lang('Say what you tried, what you expected and what happened instead.'),
+                        )),
+                    ), 'pf-card pf-tint mb-4'),
+                    $side_card(lang('After you post'), lang('After you post'), array(
+                        $para(lang('Your topic is public at once. Replies come by e-mail while you follow the topic.'), 'small'),
+                        $para(lang('When a reply solves your question, say so in a reply: a moderator marks the topic as solved, so the next person finds the answer.'), 'small'),
+                        $para(lang('Your name comes from your profile. To change it, edit your profile.'), 'small mb-3'),
+                        $link(lang('Read the guidelines'), '{{page:guidelines}}', 'btn btn-sm btn-secondary'),
+                    )),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// What each Status of a guide means to its author, in the words of the
+// Status field.
+$doc_status_notes = array(
+    lang('It reached the moderators; no one has opened it yet.'),
+    lang('A moderator is reading and checking it.'),
+    lang('The moderators wrote under your guide what to change.'),
+    lang('Readers see it in the docs.'),
+    lang('It was taken out of the docs, for example because it no longer applies.'),
+    lang('The moderators decided not to publish it.'),
+);
+$doc_status_list = array();
+foreach ($doc_statuses as $i => $status) {
+    $doc_status_list[] = $el('dt', 'fw-semibold', lang('Status'), array(), array('text' => $status));
+    $doc_status_list[] = $el('dd', 'mb-2', lang('Text'), array(), array('text' => $doc_status_notes[$i]));
+}
+
+// Contribute a Guide: the Community Docs form, in the registration folder.
+// Its page owns the form; a guide is sent as Awaiting review and only a
+// moderator publishes it. The author follows it on its own page.
+$pages[] = array(
+    'key'     => 'doc_new',
+    'name'    => lang('contribute-a-guide'),
+    'folder'  => 'registration',
+    'title'   => lang('Contribute a guide'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'form'    => array(
+        'form_name'            => lang('Community Docs'),
+        'confirmation_message' => lang('Thank you. Your guide has reached the moderators; they will write to you on its page.'),
+        'confirmation_page_id' => '{{tab:doc_submission}}',
+        'notify_email'         => '{{site_email}}',
+        'notify_subject'       => lang('New guide to review: ^^title^^'),
+        'notify_page_id'       => '{{tab:email_doc_new}}',
+        'confirm_email'        => 1,
+        'confirm_subject'      => lang('Your guide reached the moderators: ^^title^^'),
+        'confirm_page_id'      => '{{tab:email_doc_received}}',
+        'pretty_urls'          => 0,
+        'sample_records'       => $sample_docs,
+    ),
+    'tree'    => $page(array(
+        $page_header(lang('Contribute a guide'), lang('Write down what you worked out, so the next person does not have to. A moderator reviews every guide before it is published.'), array(
+            $breadcrumb(array(array(lang('Docs'), '{{page:docs}}'), array(lang('Contribute a guide'), ''))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $el('div', 'card card-body p-4', lang('Form Card'), array($widget('doc_form'))),
+                ), '', '8'),
+                $col(array(
+                    $side_card(lang('What makes a good guide'), lang('What makes a good guide'), array(
+                        $check_list(array(
+                            lang('One task or one question, from start to finish'),
+                            lang('Steps in the order you take them, as a numbered list'),
+                            lang('The version of the app it applies to'),
+                            lang('Screenshots and files you may share, with nothing private in them'),
+                        )),
+                    ), 'pf-card pf-tint mb-4'),
+                    $side_card(lang('How review works'), lang('How review works'), array(
+                        $el('dl', 'small mb-3', lang('Statuses'), $doc_status_list),
+                        $para(lang('Nothing you send is shown to readers until a moderator publishes it.'), 'small fw-semibold'),
+                        $para(lang('Follow your guide under My guides. The moderators write to you under the guide, and each message also comes by e-mail. To change your guide, write to them there.'), 'small mb-3'),
+                        $link(lang('My guides'), '{{page:my_docs}}', 'btn btn-sm btn-secondary'),
+                    )),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// Report a Post: the Forum Reports form, in the registration folder. A
+// report is never public: the moderators read it on their desk, and the
+// member gets a copy by e-mail.
+$pages[] = array(
+    'key'     => 'report',
+    'name'    => lang('report-a-post'),
+    'folder'  => 'registration',
+    'title'   => lang('Report a post'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'form'    => array(
+        'form_name'            => lang('Forum Reports'),
+        'confirmation_message' => lang('Thank you. A moderator will look at the post and write to you if they need more.'),
+        'notify_email'         => '{{site_email}}',
+        'notify_subject'       => lang('New report in the forum: ^^reason^^'),
+        'notify_page_id'       => '{{tab:email_report_new}}',
+        'confirm_email'        => 1,
+        'confirm_subject'      => lang('We received your report'),
+        'confirm_page_id'      => '{{tab:email_report_received}}',
+        'pretty_urls'          => 0,
+    ),
+    'tree'    => $page(array(
+        $page_header(lang('Report a post'), lang('Tell the moderators about a topic or a reply that breaks the guidelines. Only the moderators see your report.'), array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Report a post'), ''))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $el('div', 'card card-body p-4', lang('Form Card'), array($widget('report_form'))),
+                ), '', '8'),
+                $col(array(
+                    $side_card(lang('What happens next'), lang('What happens next'), array(
+                        $check_list(array(
+                            lang('A moderator reads every report.'),
+                            lang('A post that breaks the guidelines is edited or hidden.'),
+                            lang('The member who wrote it is not told who reported it.'),
+                        )),
+                    ), 'pf-card pf-tint mb-4'),
+                    $side_card(lang('In a hurry?'), lang('Something urgent?'), array(
+                        $para(lang('If someone is in danger, contact the local emergency services first.'), 'small mb-0'),
+                    )),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// Search: the whole site for ?query= (the home page's and the menu
+// drawer's search send it here), with the boards and the docs beside it.
+$pages[] = array(
+    'key'              => 'search',
+    'name'             => lang('search'),
+    'folder'           => 'public',
+    'title'            => lang('Search'),
+    'meta_description' => lang('Search every topic, every guide and every page of the community.'),
+    'tree'             => $page(array(
+        $page_header(lang('Search'), lang('Search every topic, every guide and every page of the community.')),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array($widget('site_search')), '', '8'),
+                $col(array(
+                    $el('aside', '', lang('Side Column'), array(
+                        $board_nav(),
+                        $side_card(lang('Not found?'), lang('No answer yet?'), array(
+                            $para(lang('Ask the community: start a topic in Questions & Help.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-primary'),
+                        ), 'pf-card'),
+                    ), array('_attrs' => array($attr('aria-label', lang('Boards and help'))))),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// Signing in and out. The forms are the palette's own layouts, each a
+// narrow card centred in its own container, set in a band so the card
+// keeps the other pages' distance from the masthead; the sign-in pages end
+// with a tinted band that leads to the forum.
+$sign_panel = function () use ($el, $para, $link, $container) {
+    return $el('div', 'pf-band pf-tint text-center d-print-none', lang('Tinted Panel'), array(
+        $container(array(
+            $para(lang('Ask, share and learn with the people who use the app every day.'), 'mb-2'),
+            $el('p', 'mb-0', lang('Link'), array(
+                $link(lang('Read the forum without signing in'), '{{page:forum}}', 'fw-semibold'),
+            )),
+        )),
+    ));
+};
+$sign_page = function ($key, $name, $title, $widget_key, $with_panel = false) use ($el, $page, $widget, $sign_panel) {
+    $main = array($el('div', 'pf-band pb-4', lang('Content'), array($widget($widget_key))));
+    if ($with_panel) $main[] = $sign_panel();
+    return array(
+        'key'     => $key,
+        'name'    => $name,
+        'folder'  => 'public',
+        'title'   => $title,
+        'search'  => false,
+        'sitemap' => false,
+        'tree'    => $page($main),
+    );
+};
+$pages[] = $sign_page('login', lang('login'), lang('Log In'), 'login', true);
+$pages[] = $sign_page('register', lang('register'), lang('Sign Up'), 'register', true);
+$pages[] = $sign_page('forgot_password', lang('forgot-password'), lang('Forgot Password'), 'forgot_password', true);
+$pages[] = $sign_page('set_password', lang('set-password'), lang('Set Password'), 'set_password');
+$pages[] = $sign_page('logout', lang('logout'), lang('Logout'), 'logout');
+
+// My account: the member's own pages, behind the registration folder.
+$pages[] = array(
+    'key'     => 'my_account',
+    'name'    => lang('my-account'),
+    'folder'  => 'registration',
+    'title'   => lang('My Account'),
+    'search'  => false,
+    'sitemap' => false,
+    'tree'    => $page(array($widget('my_account'), $widget('account_invoices'), $widget('account_security'))),
+);
+$pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profile'), 'profile'), array('folder' => 'registration'));
+$pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
+$pages[] = array_merge($sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences'), array('folder' => 'registration'));
+$pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book'), array('folder' => 'registration', 'requires' => 'ecommerce'));
+
+// The page a missing address shows.
+$pages[] = array(
+    'key'     => 'error',
+    'name'    => lang('page-not-found'),
+    'folder'  => 'public',
+    'title'   => lang('Page Not Found'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'tree'    => $page(array($widget('error_page'))),
+);
+
+// The account e-mails: the welcome after a sign-up and the password reset
+// link. Their Account E-mail widgets fill in the member's name and links.
+$pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_account_welcome',
+    'name'  => lang('email-account-welcome'),
+    'title' => lang('Account Welcome E-mail'),
+    'tree'  => $mail_page(array($widget('account_email_welcome'))),
+));
+$pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_password_reset',
+    'name'  => lang('email-password-reset'),
+    'title' => lang('Password Reset E-mail'),
+    'tree'  => $mail_page(array($widget('account_email_reset'))),
+));
+
+// ── Widgets ─────────────────────────────────────────────────────────────
+
+$login_item = function ($text, $token, $flag = '') use ($el, $link) {
+    $extra = ($flag !== '') ? array('_bindings' => array('eo_visible_if' => $flag)) : array();
+    return $el('li', '', lang('Menu Item'), array(
+        $link($text, '#', 'dropdown-item', array(), array('_bindings' => array('href' => $token))),
+    ), $extra);
+};
+$login_page_item = function ($text, $href) use ($el, $link) {
+    return $el('li', '', lang('Menu Item'), array($link($text, $href, 'dropdown-item')));
+};
+$login_divider = function () use ($el) {
+    return $el('li', '', lang('Divider'), array($el('hr', 'dropdown-divider', lang('Divider Line'))));
+};
+// A link of the account menu; $token binds its address (a page the widget
+// knows), $flag shows the link only while that widget flag is on.
+$account_link = function ($icon_name, $text, $href, $token = '', $flag = '') use ($el, $icon, $span) {
+    $extra = array('href' => $href);
+    if ($token !== '') $extra['_bindings'] = array('href' => $token);
+    if ($flag !== '') $extra['_bindings']['eo_visible_if'] = $flag;
+    return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Menu Item'), array(
+        $icon($icon_name, 'text-primary'),
+        $span($text, '', lang('Link Text')),
+    ), $extra);
+};
+// The member's account menu. The staff directory is not in it: it lists
+// the moderators' e-mails and phones and is for the moderators only.
+$account_links = array(
+    $account_link('bi-chat-square-text', lang('My topics'), '{{page:my_topics}}'),
+    $account_link('bi-journal-text', lang('My guides'), '{{page:my_docs}}'),
+    $account_link('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
+    $account_link('bi-person-vcard', lang('My Profile'), '#', '__profile_url'),
+);
+if ($shop) $account_links[] = $account_link('bi-journal-bookmark', lang('Address Book'), '#', '__address_book_url');
+$account_links[] = $account_link('bi-shield-lock', lang('Change Password'), '#', '__change_password_url');
+$account_links[] = $account_link('bi-envelope-check', lang('Email Preferences'), '#', '__email_preferences_url');
+
+// A card of the account page: an icon, a title, a line and its buttons.
+$account_card = function ($icon_name, $title, $text, $buttons, $extra = array()) use ($el, $heading, $para, $icon) {
+    return $el('div', 'pf-card mb-4', $title, array(
+        $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-3', lang('Title'), array(
+            $el('div', 'd-flex align-items-center gap-3', lang('Words'), array(
+                $el('span', 'pf-board-icon', lang('Icon'), array($icon($icon_name))),
+                $el('div', '', lang('Text'), array(
+                    $heading('h2', $title, 'h5 fw-bold mb-1'),
+                    $para($text, 'small text-body-secondary mb-0'),
+                )),
+            )),
+            $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), $buttons),
+        )),
+    ), $extra);
+};
+
+$widgets = array(
+    // The sign-in in the masthead: two links for a visitor, the account
+    // menu for a member. "Moderation" is drawn for whoever the staff page's
+    // private folder lets in.
+    'login_region' => array(
+        'page'   => '',
+        'slug'   => lang('login-region'),
+        'config' => array(
+            'regionType'         => 'login_region',
+            'login_page_id'      => '{{tab:login}}',
+            'register_page_id'   => '{{tab:register}}',
+            'show_register_link' => true,
+            'account_page_id'    => '{{tab:my_account}}',
+            'staff_page_id'      => '{{tab:staff}}',
+        ),
+        'tree'   => $widget_root(array(
+            $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
+                $link(lang('Log In'), '#', 'btn btn-sm btn-link link-body-emphasis text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign Up'), '#', 'btn btn-sm btn-secondary text-nowrap d-none d-sm-inline-block', array(), array('_bindings' => array('href' => '__register_url'))),
+            ), $show_when('is_signed_out')),
+            $el('div', 'dropdown', lang('Signed In'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 px-0 py-1 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                    $image('https://placehold.co/64x64/4f46e5/ffffff?text=JC', '', 'rounded-circle object-fit-cover',
+                        array('width' => '24', 'height' => '24', '_bindings' => array('src' => '__user_avatar_url'))),
+                    // The member's first name names the button.
+                    $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),
+                ), array('_attrs' => array(
+                    $attr('type', 'button'),
+                    $attr('data-bs-toggle', 'dropdown'),
+                    $attr('aria-expanded', 'false'),
+                ))),
+                $el('ul', 'dropdown-menu dropdown-menu-end shadow-sm', lang('Account Menu'), array(
+                    $el('li', 'px-3 py-2', lang('Account Summary'), array(
+                        $span(lang('Jane Cooper'), 'd-block fw-semibold', lang('Full Name'), $bind('__user_name')),
+                        $span(lang('jane.cooper@example.com'), 'd-block small text-body-secondary', lang('Email'), $bind('__user_email')),
+                    )),
+                    $login_divider(),
+                    $login_item(lang('My Account'), '__my_account_url'),
+                    $login_page_item(lang('My topics'), '{{page:my_topics}}'),
+                    $login_page_item(lang('My guides'), '{{page:my_docs}}'),
+                    $login_page_item(lang('Inbox'), '{{page:inbox}}'),
+                    $login_item(lang('Edit my profile'), '__profile_url'),
+                    $login_item(lang('Moderation'), '__staff_url', 'is_staff'),
+                    $login_item(lang('Control panel'), '__panel_url', 'has_panel_access'),
+                    $login_divider(),
+                    $login_item(lang('Log out'), '__logout_url'),
+                )),
+            ), $show_when('is_signed_in')),
+            $loop(array()),
+        )),
+    ),
+
+    // The account page: who is signed in, the account menu, the member's
+    // topics and guides and, for whoever the moderation page's private
+    // folder lets in, the way to the moderation dashboard.
+    'my_account' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('my-account'),
+        'config' => array(
+            'regionType'       => 'my_account',
+            'login_page_id'    => '{{tab:login}}',
+            'show_submissions' => false,
+            'staff_page_id'    => '{{tab:staff}}',
+        ),
+        'tree'   => $widget_root(array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'pf-card pf-tint mb-3', lang('Account Card'), array(
+                            $para(lang('Welcome back'), 'small text-body-secondary mb-1'),
+                            $heading('h1', lang('Jane Cooper'), 'h4 fw-bold mb-1', $bind('__display_name')),
+                            $para(lang('jane.cooper@example.com'), 'small text-body-secondary mb-3', $bind('email_address')),
+                            $link(lang('Log out'), '#', 'btn btn-sm btn-secondary', array(), array('_bindings' => array('href' => '__logout_url'))),
+                        )),
+                        $el('nav', 'list-group', lang('Account Menu'), $account_links, array('_attrs' => array($attr('aria-label', lang('My Account'))))),
+                    ), '', '4'),
+                    $col(array(
+                        $account_card('bi-shield-check', lang('Moderation'), lang('The topics, guides and reports waiting for the moderators.'), array(
+                            $link(lang('Open the dashboard'), '#', 'btn btn-primary', array(), array('_bindings' => array('href' => '__staff_url'))),
+                        ), $show_when('is_staff')),
+                        $account_card('bi-chat-square-text', lang('Your topics'), lang('Ask a question or start a discussion, and follow the topics you take part in.'), array(
+                            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary'),
+                            $link(lang('My topics'), '{{page:my_topics}}', 'btn btn-secondary'),
+                        )),
+                        $account_card('bi-journal-text', lang('Your guides'), lang('Write a guide for the docs and follow its review.'), array(
+                            $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-primary'),
+                            $link(lang('My guides'), '{{page:my_docs}}', 'btn btn-secondary'),
+                        )),
+                        $account_card('bi-inbox', lang('Messages'), lang('Your conversations with the moderators, and the e-mails you get from the community.'), array(
+                            $link(lang('Inbox'), '{{page:inbox}}', 'btn btn-primary'),
+                            $link(lang('Email Preferences'), '#', 'btn btn-secondary', array(), array('_bindings' => array('href' => '__email_preferences_url'))),
+                        )),
+                        $heading('h2', lang('My Orders'), 'h5 fw-bold mb-3', $show_when('has_orders')),
+                        $el('div', '', lang('Order History'), array(), array('_bindings' => array('section' => 'order_history'))),
+                    ), '', '8'),
+                ), '4', '', 'g-lg-5'),
+                $loop(array()),
+            ), 'py-5'),
+        )),
+    ),
+    'account_invoices' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('invoices'),
+        'config' => array('regionType' => 'account_invoices', 'max_results' => 50),
+        'tree'   => 'starter',
+    ),
+    // Google connection, remembered devices and two-step verification,
+    // under the account overview on the same page.
+    'account_security' => array(
+        'page'   => 'my_account',
+        'slug'   => lang('security'),
+        'config' => array('regionType' => 'account_security', 'login_page_id' => '{{tab:login}}'),
+        'tree'   => 'starter',
+    ),
+
+    // Signing in, up and out, and the password: the layouts their widgets
+    // get from the palette.
+    'login' => array(
+        'page'   => 'login',
+        'slug'   => lang('login'),
+        'config' => array(
+            'regionType'              => 'login_form',
+            'show_remember_me'        => true,
+            'register_page_id'        => '{{tab:register}}',
+            'show_register_link'      => true,
+            'forgot_password_page_id' => '{{tab:forgot_password}}',
+        ),
+        'tree'   => 'starter',
+    ),
+    'register' => array(
+        'page'   => 'register',
+        'slug'   => lang('registration'),
+        'config' => array(
+            'regionType'            => 'registration',
+            'show_remember_me'      => true,
+            'login_page_id'         => '{{tab:login}}',
+            'redirect_page_id'      => '{{tab:my_account}}',
+            'welcome_email_page_id' => '{{tab:email_account_welcome}}',
+            'welcome_email_subject' => lang('Welcome! Your account is ready'),
+        ),
+        'tree'   => 'starter',
+    ),
+    'forgot_password' => array(
+        'page'   => 'forgot_password',
+        'slug'   => lang('forgot-password'),
+        'config' => array(
+            'regionType'          => 'forgot_password',
+            'login_page_id'       => '{{tab:login}}',
+            'reset_email_page_id' => '{{tab:email_password_reset}}',
+            'reset_email_subject' => lang('Reset your password'),
+        ),
+        'tree'   => 'starter',
+    ),
+    // The account e-mails' widgets, drawn for the member the e-mail is
+    // sent to. The reset e-mail's button carries the set password link: a
+    // page without it is not sent (the built-in e-mail goes instead).
+    'account_email_welcome' => array(
+        'page'   => 'email_account_welcome',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Welcome!')),
+            $mail_account_greeting(),
+            $mail_para(lang('Your community account is ready. Ask questions, reply to topics, contribute guides to the docs and follow the topics you care about.')),
+            $mail_button(lang('Go to my account'), '#', array('_bindings' => array('href' => '__my_account_url'))),
+            $mail_small(lang('Glad to have you with us.')),
+        )),
+    ),
+    'account_email_reset' => array(
+        'page'   => 'email_password_reset',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Reset your password')),
+            $mail_account_greeting(),
+            $mail_para(lang('We received a request to reset your password.')),
+            $mail_button(lang('Set a new password'), '#', array('_bindings' => array('href' => '__set_password_url'))),
+            $mail_small(lang('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.')),
+        )),
+    ),
+    'set_password' => array(
+        'page'   => 'set_password',
+        'slug'   => lang('set-password'),
+        'config' => array('regionType' => 'set_password', 'redirect_page_id' => '{{tab:my_account}}', 'forgot_password_page_id' => '{{tab:forgot_password}}'),
+        'tree'   => 'starter',
+    ),
+    'logout' => array(
+        'page'   => 'logout',
+        'slug'   => lang('logout'),
+        'config' => array('regionType' => 'logout', 'login_page_id' => '{{tab:login}}'),
+        'tree'   => 'starter',
+    ),
+    'profile' => array(
+        'page'   => 'profile',
+        'slug'   => lang('profile'),
+        'config' => array('regionType' => 'account_profile', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'   => 'starter',
+    ),
+    'change_password' => array(
+        'page'   => 'change_password',
+        'slug'   => lang('change-password'),
+        'config' => array('regionType' => 'change_password', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'   => 'starter',
+    ),
+    'email_preferences' => array(
+        'page'   => 'email_preferences',
+        'slug'   => lang('email-preferences'),
+        'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'   => 'starter',
+    ),
+    'address_book' => array(
+        'page'     => 'address_book',
+        'requires' => 'ecommerce',
+        'slug'     => lang('address-book'),
+        'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'     => 'starter',
+    ),
+    'error_page' => array(
+        'page'   => 'error',
+        'slug'   => lang('error'),
+        'config' => array('regionType' => 'error_page'),
+        'tree'   => 'starter',
+    ),
+);
+
+// ── The lists ───────────────────────────────────────────────────────────
+// Every public list carries its form's live rule before its own filters.
+// Lists on one page share the page_number and query parameters, so only
+// one list of a page pages through its records (max_results 0); every
+// other list shows a fixed number. A list's page links come after its rows,
+// inside the rows' parent.
+$topic_list = function ($page_key, $ipp, $max, $more, $empty, $tree, $extra = array()) use ($topic_pub, $with_topic_live, $widget_root) {
+    $config = array_merge($topic_pub, array('items_per_page' => $ipp, 'max_results' => $max, 'filters' => $with_topic_live($more)), $extra);
+    if ($empty !== '') $config['empty_message'] = $empty;
+    return array('page' => $page_key, 'slug' => lang('form-list'), 'config' => $config, 'tree' => $widget_root($tree));
+};
+$doc_list = function ($page_key, $ipp, $max, $more, $empty, $tree, $extra = array()) use ($doc_pub, $with_doc_live, $widget_root) {
+    $config = array_merge($doc_pub, array('items_per_page' => $ipp, 'max_results' => $max, 'filters' => $with_doc_live($more)), $extra);
+    if ($empty !== '') $config['empty_message'] = $empty;
+    return array('page' => $page_key, 'slug' => lang('form-list'), 'config' => $config, 'tree' => $widget_root($tree));
+};
+// A count of the records a list finds and nothing else: its loop area is
+// empty, so it prints its surround with ^^__result_count^^ and reads no
+// row ([[form-list-result-count]]). The loop area sits in a box shown only
+// while the list found records, so a count of 0 prints no empty sentence.
+$count_list = function ($page_key, $base, $filters, $surround, $extra = array()) use ($el, $loop, $show_when, $widget_root) {
+    $config = array_merge($base, array('items_per_page' => 10, 'max_results' => 0, 'filters' => $filters), $extra);
+    $tree = array_merge($surround, array($el('div', '', lang('Rows'), array($loop(array())), $show_when('has_records'))));
+    return array('page' => $page_key, 'slug' => lang('form-list'), 'config' => $config, 'tree' => $widget_root($tree));
+};
+// A number of the forum's numbers strip, and "Topics: N" in a line.
+$stat_surround = function ($sample, $label) use ($el, $para, $bind) {
+    return array($el('div', 'pf-card pf-stat h-100', lang('Number'), array(
+        $para($sample, 'pf-stat-num', $bind('__result_count')),
+        $para($label, 'pf-stat-label'),
+    )));
+};
+$count_line = function ($sample, $class = 'pf-meta mb-0') use ($el, $span, $bind) {
+    return array($el('p', $class, lang('Topic Count'), array(
+        $span(lang('Topics:'), 'me-1', lang('Label')),
+        $span($sample, 'fw-semibold', lang('Number of Results'), $bind('__result_count')),
+    )));
+};
+
+// The home page's numbers: every live topic, the solved ones and the
+// published guides. The first is the page's first list: its feed.
+$widgets['home_count_topics'] = $count_list('home', $topic_pub, $topic_live, $stat_surround('1,284', lang('Topics')));
+$widgets['home_count_solved'] = $count_list('home', $topic_pub, $with_topic_live(array($is_solved)), $stat_surround('612', lang('Solved')));
+$widgets['home_count_guides'] = $count_list('home', $doc_pub, $doc_live, $stat_surround('48', lang('Guides')));
+// Each board's number of live topics, on its tile (home, the board page).
+$board_samples = array('getting_started' => '86', 'help' => '512', 'ideas' => '204', 'show_and_tell' => '97', 'tips' => '143', 'general' => '242');
+foreach ($boards as $key => $b) {
+    $widgets['board_count_' . $key] = $count_list('', $topic_pub, $with_topic_live(array($in_board($b[0]))),
+        $count_line($board_samples[$key], 'pf-meta small mb-0'));
+}
+
+// The announcements: the three newest live topics marked as one, the
+// newest first, one under the other.
+$widgets['home_announcements'] = $topic_list('home', 3, 3, array($is_announcement),
+    lang('Topics the moderators mark as an announcement appear here.'),
+    array($el('div', 'd-grid gap-3', lang('Announcements'), array($loop(array($announce_row($topic_sample(0))))))),
+    array('order_by_field' => 'submitted_date_and_time'));
+// The latest activity: the ten live topics with the newest topic or reply.
+$widgets['home_latest'] = $topic_list('home', 10, 10, array(),
+    lang('No topics yet. Start the first one.'),
+    array($topic_rows($topic_sample(1))));
+// Waiting for an answer: the five newest live topics without a reply.
+$widgets['home_unanswered'] = $topic_list('home', 5, 5, array($unanswered),
+    lang('Every topic has a reply. Thank you, everyone.'),
+    array($el('ul', 'list-unstyled mb-0', lang('List'), array($loop(array($compact_row($topic_sample(4), 'sent')))))),
+    array('order_by_field' => 'submitted_date_and_time'));
+// Popular this week: the five live topics opened most in the last seven
+// days (the views the topic page counts); topics nobody opened are left
+// out.
+$widgets['home_popular'] = $topic_list('home', 5, 5, array($viewed),
+    lang('The topics opened most this week appear here.'),
+    array($el('ul', 'list-unstyled mb-0', lang('List'), array($loop(array($compact_row($topic_sample(3), 'views')))))),
+    array(
+        'order_by_field'       => 'recent_views',
+        'order_by_direction'   => 'DESC',
+        'order_recent_days'    => 7,
+        'order_by_2_field'     => 'newest_activity_date_and_time',
+        'order_by_2_direction' => 'DESC',
+    ));
+// The featured guides: the three newest published guides marked featured.
+$widgets['home_guides'] = $doc_list('home', 3, 3, array($is_featured),
+    lang('Guides the moderators feature appear here.'),
+    array($el('div', 'row row-cols-1 row-cols-md-3 g-3 g-lg-4', lang('Featured guides'), array(
+        $loop(array($el('div', 'col', lang('Column'), array($guide_card($doc_sample(1)))))),
+    ))));
+
+// The forum: the count of every live topic (the page's feed), the pinned
+// topics, then every other live topic with a search over the title, the
+// text, the tags and the board, twenty to a page.
+$widgets['forum_count'] = $count_list('forum', $topic_pub, $topic_live, $count_line('1,284'));
+$widgets['forum_pinned'] = $topic_list('forum', 10, 10, array($is_pinned), '',
+    array($el('section', 'mb-5', lang('Pinned'), array(
+        $el('h2', 'pf-sec-title d-flex align-items-center gap-2 mb-3', lang('Title'), array(
+            $icon('bi-pin-angle-fill', 'text-primary'),
+            $span(lang('Pinned'), '', lang('Text')),
+        ), array('id' => 'pf-pinned-title')),
+        $topic_rows($topic_sample(0), true),
+    ), array_merge(array('_attrs' => array($attr('aria-labelledby', 'pf-pinned-title'))), $show_when('has_records')))));
+$widgets['forum_topics'] = $topic_list('forum', 20, 0, array($not_pinned),
+    lang('No topics found. Try other words, or start a topic.'),
+    array($topic_rows($topic_sample(1))),
+    array(
+        'search_enabled' => true,
+        'search_fields'  => array('title', 'body', 'tags', 'board'),
+        'search_width'   => 'full',
+        'search_label'   => lang('Search the topics…'),
+    ));
+
+// A board: its name and number of live topics, from the address. The name
+// prints only while a live topic carries it exactly; a board without
+// topics, or a name no board has, says so instead. Without a name the
+// block stays off the page, which keeps its title and every board.
+$widgets['board_head'] = $count_list('board', $topic_pub, $with_topic_live(array($board_param)), array(
+    $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-3 mb-4 pb-4 border-bottom', lang('Board Header'), array(
+        $el('div', 'pf-min-0', lang('Words'), array(
+            $para(lang('Board'), 'pf-kicker mb-1'),
+            $heading('h2', $boards['help'][0], 'pf-display mb-2', $bind('__filter_value')),
+            $el('p', 'pf-meta mb-0', lang('Topic Count'), array(
+                $span(lang('Topics:'), 'me-1', lang('Label')),
+                $span('512', 'fw-semibold', lang('Number of Results'), $bind('__result_count')),
+            )),
+        )),
+        $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary'),
+    ), $show_when('has_filter_value')),
+    $el('div', 'alert alert-secondary d-flex gap-2 align-items-start', lang('Empty Board'), array(
+        $icon('bi-info-circle', 'mt-1'),
+        $el('p', 'mb-0', lang('Text'), array(
+            $span(lang('There are no topics in this board yet.'), 'me-1', lang('Text')),
+            $link(lang('Start the first one'), '{{page:new_topic}}', 'alert-link'),
+        )),
+    ), $show_when('no_records')),
+), array('filter_title' => lang('Board: {value}')));
+// The board's pinned topics, under its name.
+$widgets['board_pinned'] = $topic_list('board', 10, 10, array($board_param, $is_pinned), '',
+    array($el('div', 'mb-4', lang('Pinned'), array(
+        $el('p', 'pf-label mb-2', lang('Title'), array(
+            $icon('bi-pin-angle-fill'),
+            $span(lang('Pinned'), '', lang('Text')),
+        )),
+        $topic_rows($topic_sample(17), true),
+    ), $show_when('has_filter_value'))));
+// The board's other topics, twenty to a page.
+$widgets['board_topics'] = $topic_list('board', 20, 0, array($board_param, $not_pinned), '',
+    array($el('div', '', lang('Topics'), array(
+        $topic_rows($topic_sample(1)),
+    ), $show_when('has_filter_value'))));
+
+// The topic: shown while it is not Hidden (anything else is "not found" and
+// not indexed). Its title is the page's title; its text gives the
+// description of the head and the feed. Above the replies, which the page
+// puts right under it, their heading. The heading leaves with a missing
+// topic.
+$topic = $topic_sample(1);
+$topic_page_link = function ($text, $class) use ($link, $page_link) {
+    return $link($text, '#', $class, array(), $page_link('board', array('board' => 'board')));
+};
+$widgets['topic_view'] = array(
+    'page'   => 'topic',
+    'slug'   => lang('form-detail'),
+    'config' => array(
+        'regionType'          => 'form_item_view',
+        'custom_form_page_id' => '{{tab:new_topic}}',
+        'access_control'      => 'public',
+        'filters'             => $topic_live,
+        'title_field'         => 'title',
+        'not_found_message'   => lang('This topic is not available. It may have been removed or hidden by the moderators.'),
+    ),
+    'tree'   => $widget_root(array(
+        $el('div', 'text-center py-5', lang('Not Found'), array(
+            $icon('bi-chat-square-dots', 'display-5 text-body-secondary'),
+            $heading('h1', lang('Topic not available'), 'h3 fw-bold mt-3'),
+            $para(lang('This topic is not available. It may have been removed or hidden by the moderators.'), 'text-body-secondary mb-4', $bind('not_found')),
+            $buttons(array(
+                $link(lang('Back to the forum'), '{{page:forum}}', 'btn btn-primary'),
+                $link(lang('Search'), '{{page:search}}', 'btn btn-secondary'),
+            ), 'd-flex flex-wrap justify-content-center gap-2'),
+        ), $show_when('record_not_found')),
+        $el('article', '', lang('Topic'), array_merge(
+            $sent_notices(lang('Thank you. Your topic is live.')),
+            array(
+                $el('nav', '', lang('Where You Are'), array(
+                    $el('ol', 'breadcrumb small mb-3', lang('Links'), array(
+                        $el('li', 'breadcrumb-item', lang('List Item'), array($link(lang('Forum'), '{{page:forum}}', 'link-body-emphasis'))),
+                        $el('li', 'breadcrumb-item', lang('List Item'), array(
+                            $link($topic['board'], '#', 'link-body-emphasis', array(),
+                                array_merge($page_link('board', array('board' => 'board')), array('_bindings' => array('text' => 'board', 'href' => '__page_link')))),
+                        )),
+                    )),
+                ), array('_attrs' => array($attr('aria-label', lang('Where you are'))))),
+                $el('div', 'd-flex flex-wrap align-items-start justify-content-between gap-2 mb-2', lang('Badges and Moderation'), array(
+                    $topic_badges($topic, false, 'mb-0'),
+                    $edit_button(lang('Moderate')),
+                )),
+                $heading('h1', $topic['title'], 'pf-page-title mb-2', $bind('title')),
+                $el('p', 'pf-meta mb-4', lang('Byline and Time'), array(
+                    $el('span', 'pg-hide-if-empty', lang('Author'), array(
+                        $span(lang('Started by'), 'me-1', lang('Label')),
+                        $span($topic['author'], 'pg-field-value fw-semibold text-body', lang('Author Name'), $bind('submitter_name')),
+                        $dot(),
+                    )),
+                    $span(lang('Posted:'), 'me-1', lang('Label')),
+                    $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
+                )),
+                // The topic's text is rich text: a div holds what the author
+                // wrote, contained by the template's rules.
+                $el('div', 'pf-post mb-4', lang('Topic Text'), array(), array_merge(
+                    array('text' => lang('The text of the topic appears here.')), $bind('body'))),
+                // The attachment leaves with an empty field: its address,
+                // never shown, is the value the row is judged by.
+                $el('p', 'pg-hide-if-empty mb-3', lang('Attachment'), array(
+                    $span('/attachment.png', 'pg-field-value d-none', lang('Value'), $bind('attachment')),
+                    $el('a', 'btn btn-sm btn-secondary d-inline-flex align-items-center gap-2', lang('Link'), array(
+                        $icon('bi-paperclip'),
+                        $span(lang('Open the attachment'), '', lang('Link Text')),
+                    ), array('href' => '#', '_bindings' => array('href' => 'attachment'))),
+                )),
+                $el('p', 'pf-meta pg-hide-if-empty mb-4', lang('Tags'), array(
+                    $span(lang('Tags:'), 'fw-semibold me-1', lang('Label')),
+                    $span($topic['tags'], 'pg-field-value', lang('Value'), $bind('tags')),
+                )),
+                $el('div', 'border-top pt-4 d-print-none', lang('Replies'), array(
+                    $heading('h2', lang('Replies'), 'pf-sec-title mb-1'),
+                    $para(lang('Be kind, stay on topic, and say so when a reply solves your question.'), 'pf-meta mb-3'),
+                )),
+            )
+        ), $show_when('record_found')),
+    )),
+);
+// Beside the topic and its replies: what is known about it, the way to its
+// board, a way to report a post and the guidelines. A second record view
+// of the same topic, under the same rule; with no topic, ways to find one.
+$widgets['topic_aside'] = array(
+    'page'   => 'topic',
+    'slug'   => lang('form-detail'),
+    'config' => array(
+        'regionType'          => 'form_item_view',
+        'custom_form_page_id' => '{{tab:new_topic}}',
+        'access_control'      => 'public',
+        'filters'             => $topic_live,
+        'not_found_message'   => lang('This topic is not available. It may have been removed or hidden by the moderators.'),
+    ),
+    'tree'   => $widget_root(array(
+        $el('div', 'pf-card', lang('Find Your Way'), array(
+            $heading('h2', lang('Looking for something else?'), 'h6 fw-bold mb-3'),
+            $buttons(array(
+                $link(lang('Browse the boards'), '{{page:board}}', 'btn btn-sm btn-primary'),
+                $link(lang('Search'), '{{page:search}}', 'btn btn-sm btn-secondary'),
+            )),
+        ), $show_when('record_not_found')),
+        $el('aside', 'pf-sticky', lang('About This Topic'), array(
+            $el('div', 'pf-card mb-4', lang('About This Topic'), array(
+                $heading('h2', lang('About this topic'), 'h6 fw-bold mb-2'),
+                $el('dl', 'mb-3', lang('Facts'), array(
+                    $fact(lang('Board'), array($link($topic['board'], '#', 'link-body-emphasis', array(),
+                        array_merge($page_link('board', array('board' => 'board')), array('_bindings' => array('text' => 'board', 'href' => '__page_link')))))),
+                    $fact(lang('Status'), array($span($topic['status'], '', lang('Status'), $bind('status')))),
+                    $fact(lang('Started'), array($span(lang('2 days ago'), '', lang('Time'), $bind_date('submitted_date_and_time', 'relative')))),
+                    $fact(lang('Last activity'), array($span(lang('2 hours ago'), '', lang('Time'), $bind_date('newest_activity_date_and_time', 'relative')))),
+                    $fact(lang('Last reply by'), array($span($topic['replier'], 'pg-field-value', lang('Name'), $bind('newest_comment_name'))), true),
+                    $fact(lang('Replies'), array($span('3', '', lang('Number of Replies'), $bind('number_of_comments')))),
+                    $fact(lang('Views'), array($span('48', '', lang('Number of Views'), $bind('number_of_views')))),
+                )),
+                $topic_page_link(lang('More topics in this board'), 'btn btn-sm btn-secondary'),
+            )),
+            $el('div', 'pf-card mb-4', lang('Report'), array(
+                $heading('h2', lang('Something wrong?'), 'h6 fw-bold mb-2'),
+                $para(lang('If a post breaks the guidelines, tell the moderators. Copy its link with the reply\'s Share button, or the topic\'s address from your browser.'), 'small text-body-secondary mb-3'),
+                $link(lang('Report a post'), '{{page:report}}', 'btn btn-sm btn-secondary'),
+            )),
+            $el('div', 'pf-card pf-tint', lang('Guidelines'), array(
+                $heading('h2', lang('Before you reply'), 'h6 fw-bold mb-2'),
+                $para(lang('Answer the question that was asked, be kind, and keep each reply to one point. A moderator marks a topic as solved when its author says a reply solved it.'), 'small mb-3'),
+                $link(lang('Read the guidelines'), '{{page:guidelines}}', 'small fw-semibold'),
+            )),
+        ), array_merge(array('_attrs' => array($attr('aria-label', lang('About this topic')))), $show_when('record_found'))),
+    )),
+);
+
+// ── The forms ───────────────────────────────────────────────────────────
+
+// The Forum Topics form, on Start a Topic. What a member fills in sits in
+// one group; the fields after it are for the moderators only (office use):
+// each in a box of its own with its label and no hint, so a member's form
+// keeps nothing of them. A new topic stores their selected option: Open,
+// not pinned, no announcement. Every option of an office pick list is a
+// stored answer (no empty prompt): the control panel prints only stored
+// options, so an empty one would show the first answer and save it on the
+// next change.
+$widgets['topic_form'] = array(
+    'page'   => 'new_topic',
+    'slug'   => 'form',
+    'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+    'tree'   => $widget_root(array(
+        $fieldset(lang('Your topic'), array(
+            $field('pf-topic-board', lang('Board'), pg_cf_with_role($select('pf-topic-board', 'board', lang('Choose a board…'), $board_names), 'category')),
+            $choices('pf-topic-kind', 'kind', lang('What kind of topic is it?'), $kinds),
+            $field_help('pf-topic-title', lang('Title'), pg_cf_with_role($input('pf-topic-title', 'text', 'title', 'off', true, array(), array('maxlength' => '120')), 'title'),
+                lang('One clear sentence, at most 120 characters, that says what happens.')),
+            $field_help('pf-topic-body', lang('Your post'), pg_cf_with_role($textarea('pf-topic-body', 'body', 12, true, '', array('wysiwyg' => true)), 'description'),
+                lang('Say what you tried, what you expected and what happened instead. Links, lists and code blocks are kept.')),
+            $field_help('pf-topic-tags', lang('Tags (optional)'), $input('pf-topic-tags', 'text', 'tags', 'off', false, array(), array('maxlength' => '100')),
+                lang('A few words, separated by commas, such as sync, reminders.')),
+            $field_help('pf-topic-attachment', lang('Attachment (optional)'), $file('pf-topic-attachment', 'attachment', 'public', 'image/*,.txt,.log,.pdf'),
+                lang('A screenshot or a log file. Everyone who can read the topic can open it, so remove anything private first.')),
+        )),
+        $agree('pf-topic-guidelines', 'guidelines', lang('I have read the community guidelines and searched for an existing topic first.')),
+        // For the moderators only.
+        $field('pf-topic-status', lang('Status'), $office($select('pf-topic-status', 'status', '', $topic_statuses, false, $topic_statuses[0]))),
+        $field('pf-topic-pinned', lang('Pinned at the top of the forum and its board'), $office($select('pf-topic-pinned', 'pinned', '', $yes_no, false, $no))),
+        $field('pf-topic-announcement', lang('Announcement on the home page'), $office($select('pf-topic-announcement', 'announcement', '', $yes_no, false, $no))),
+        $field('pf-topic-staff-note', lang('Staff note (never shown to members)'), $office($textarea('pf-topic-staff-note', 'staff_note', 3, false))),
+        $captcha(),
+        $submit(lang('Post the topic'), 'btn btn-primary btn-lg px-4'),
+        $loop(array()),
+    )),
+);
+
+// The Community Docs form, on Contribute a Guide: the guide in one group,
+// the author's name in another; then the moderators' fields. A new guide
+// stores Awaiting review, not featured and no order.
+$widgets['doc_form'] = array(
+    'page'   => 'doc_new',
+    'slug'   => 'form',
+    'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+    'tree'   => $widget_root(array(
+        $fieldset(lang('Your guide'), array(
+            $field('pf-doc-section', lang('Section'), pg_cf_with_role($select('pf-doc-section', 'section', lang('Choose a section…'), $doc_section_names), 'category')),
+            $field_help('pf-doc-title', lang('Title'), pg_cf_with_role($input('pf-doc-title', 'text', 'title', 'off', true, array(), array('maxlength' => '120')), 'title'),
+                lang('Say what the guide helps with, such as "Share a notebook with your team".')),
+            $field_help('pf-doc-summary', lang('Summary'), pg_cf_with_role($textarea('pf-doc-summary', 'summary', 3, true, '', array(), array('maxlength' => '300')), 'description'),
+                lang('One or two sentences readers see in the lists and in the search results.')),
+            $field_help('pf-doc-body', lang('The guide'), $textarea('pf-doc-body', 'body', 20, true, '', array('wysiwyg' => true)),
+                lang('Start with what the guide helps with. Use subheads for the parts and numbered lists for the steps; code blocks and links are kept.')),
+            $field_help('pf-doc-version', lang('Applies to version (optional)'), $input('pf-doc-version', 'text', 'version', 'off', false, array(), array('maxlength' => '40')),
+                lang('Such as 4.2 or 4.0 and later. Leave it empty if the guide applies to every version.')),
+            $field_help('pf-doc-tags', lang('Tags (optional)'), $input('pf-doc-tags', 'text', 'tags', 'off', false, array(), array('maxlength' => '100')),
+                lang('A few words, separated by commas.')),
+            $field_help('pf-doc-attachment', lang('Attachment (optional)'), $file('pf-doc-attachment', 'attachment', 'public', 'image/*,.txt,.pdf,.zip'),
+                lang('A screenshot, a sample file or a template. Readers can open it once the guide is published.')),
+        )),
+        $fieldset(lang('About you'), array(
+            $field_help('pf-doc-byline', lang('Your name as readers will see it'), $input('pf-doc-byline', 'text', 'byline', 'name', true, array(), array('maxlength' => '80')),
+                lang('The guide is signed with this name.')),
+        )),
+        $agree('pf-doc-rights', 'rights', lang('I wrote this guide myself, I may share its files, and the moderators may edit it.')),
+        // For the moderators only.
+        $field('pf-doc-status', lang('Status'), $office($select('pf-doc-status', 'status', '', $doc_statuses, false, $doc_statuses[0]))),
+        $field('pf-doc-featured', lang('Featured on the home page and in the docs'), $office($select('pf-doc-featured', 'featured', '', $yes_no, false, $no))),
+        $field('pf-doc-order', lang('Order in its section (two digits, such as 10, 20 or 30)'), $office($input('pf-doc-order', 'text', 'doc_order', 'off', false, array(), array('inputmode' => 'numeric', 'maxlength' => '2')))),
+        $captcha(),
+        $submit(lang('Send for review'), 'btn btn-primary btn-lg px-4'),
+        $loop(array()),
+    )),
+);
+
+// The Forum Reports form, on Report a Post: the post's link, the reason and
+// the details; then the moderators' fields. A new report is Open.
+$widgets['report_form'] = array(
+    'page'   => 'report',
+    'slug'   => 'form',
+    'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+    'tree'   => $widget_root(array(
+        $field_help('pf-report-post', lang('Link to the post'), $input('pf-report-post', 'text', 'post', 'off', true, array(), array('maxlength' => '300', 'inputmode' => 'url')),
+            lang('Copy the post\'s link with its Share button and paste it here. For the topic itself, copy the address from your browser.')),
+        $field('pf-report-reason', lang('Reason'), $select('pf-report-reason', 'reason', lang('Choose a reason…'), $report_reasons)),
+        $field_help('pf-report-details', lang('Details (optional)'), $textarea('pf-report-details', 'details', 5, false, '', array(), array('maxlength' => '2000')),
+            lang('What should the moderators look at? Only the moderators read this.')),
+        // For the moderators only.
+        $field('pf-report-status', lang('Status'), $office($select('pf-report-status', 'status', '', $report_statuses, false, $report_statuses[0]))),
+        $field('pf-report-staff-note', lang('Staff note'), $office($textarea('pf-report-staff-note', 'staff_note', 3, false))),
+        $captcha(),
+        $submit(lang('Send the report')),
+        $loop(array()),
+    )),
+);
+
+// The site search: the whole site for ?query=, ten results a page. A
+// result that matches a part of a page links to that part.
+$widgets['site_search'] = array(
+    'page'   => 'search',
+    'slug'   => lang('search'),
+    'config' => array(
+        'regionType'       => 'search_results',
+        'search_scope'     => 'all',
+        'results_per_page' => 10,
+        'empty_message'    => lang('Nothing matched your search. Try fewer or different words.'),
+    ),
+    'tree'   => $widget_root(array(
+        $el('form', 'mb-4', lang('Search Form'), array(
+            $el('div', 'input-group input-group-lg', lang('Search Box'), array(
+                $el('input', 'form-control', lang('Field'), array(), array(
+                    '_attrs'    => array($attr('type', 'search'), $attr('placeholder', lang('Search the forum and the docs…')), $attr('aria-label', lang('Search the forum and the docs'))),
+                    '_bindings' => array('value' => 'search_query'),
+                )),
+                $el('button', 'btn btn-primary px-4', lang('Search Button'), array($icon('bi-search')), array(
+                    '_attrs'    => array($attr('type', 'submit'), $attr('aria-label', lang('Search'))),
+                    '_bindings' => array('action' => 'submit_search'),
+                )),
+            )),
+        ), array('_bindings' => array('action' => 'search_form'))),
+        $para(lang('Results heading'), 'pf-meta fw-semibold pb-3 mb-0 border-bottom', $bind('__results_heading')),
+        $el('div', '', lang('Results'), array(
+            $loop(array(
+                $el('article', 'pf-compact py-3', lang('Result Row'), array(
+                    $span(lang('Page'), 'pf-badge mb-2', lang('Result Type'), $bind('__result_type_label')),
+                    $el('h2', 'h5 fw-bold mb-1', lang('Result Title'), array(
+                        $link(lang('Title'), '#', 'stretched-link link-body-emphasis', array(),
+                            array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
+                    )),
+                    $para(lang('Before you ask'), 'pf-kicker mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
+                    $para(lang('Excerpt'), 'text-body-secondary mb-0', $bind('__result_excerpt')),
+                )),
+            )),
+        )),
+        $el('div', 'mt-4', lang('Pagination'), array(), array('_bindings' => array('section' => 'pagination'))),
+    )),
+);
+
+// ── Search sections ─────────────────────────────────────────────────────
+// The parts of the pages the site search points a result at (Search and
+// SERP in the editor's options): a result that matches one links to it,
+// the words are marked when the visitor arrives, and the page's structured
+// data names it. A part is found by its id ('#…') or by the name it has in
+// the layer tree, once per page; it keeps an id it already has. The topics
+// are words a visitor may search for that the part does not say itself.
+// Parts inside a shared component or a widget belong to that, not to the
+// page, so only the page's own parts are listed here.
+$search_sections = array(
+    'home' => array(
+        '#boards' => array('boards', lang('boards, categories, where to post, getting started')),
+    ),
+    'board' => array(
+        '#all-boards' => array('all-boards', lang('boards, categories, where to post')),
+    ),
+);
+$searchable_tree = function ($node, $marks, &$used) use (&$searchable_tree) {
+    if (!is_array($node)) return $node;
+    if (isset($node['props']) && is_array($node['props'])) {
+        $p = $node['props'];
+        $name = isset($p['customName']) ? (string)$p['customName'] : (isset($p['_label']) ? (string)$p['_label'] : '');
+        $key = null;
+        if (!empty($p['id']) && isset($marks['#' . $p['id']]) && !isset($used['#' . $p['id']])) {
+            $key = '#' . $p['id'];
+        } elseif ($name !== '' && isset($marks[$name]) && !isset($used[$name])) {
+            $key = $name;
+        }
+        if ($key !== null) {
+            $used[$key] = true;
+            if (empty($p['id'])) $node['props']['id'] = $marks[$key][0];
+            $node['props']['searchSection'] = true;
+            if ($marks[$key][1] !== '') $node['props']['searchKeywords'] = $marks[$key][1];
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) $node['children'][$i] = $searchable_tree($child, $marks, $used);
+    }
+    return $node;
+};
+foreach ($pages as $i => $p) {
+    if (!isset($search_sections[$p['key']])) continue;
+    $used = array();
+    $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
+}
+
+return array(
+    'name'        => lang('Community Forum & Docs'),
+    'version'     => '1.0.0',
+    'framework'   => 'bootstrap5',
+    'order'       => 90,
+    'icon'        => 'bi-chat-square-text',
+    // The picture on the template's card and beside the designs made from
+    // it: a forum's front page (pg_design_thumb_svg()).
+    'thumb'       => 'forum',
+    'description' => lang('A community forum with docs for a software product: boards, topics with replies, member-written guides that moderators review, reports and a moderation dashboard.'),
+
+    // The theme the template is made for; the operator can pick another
+    // before opening it, and change it later in the editor. The template's
+    // own look travels in its User Styles ('assets'), so it holds under any
+    // look and palette.
+    'look'        => 'minimal',
+    'palette'     => 'aurora',
+
+    // What the installer lists on the template's card, after the points
+    // every template shares.
+    'highlights'  => array(
+        lang('Boards, pinned topics and announcements, with the latest activity, unanswered topics and the week\'s most viewed on the home page.'),
+        lang('Topic pages with replies, the topic\'s facts beside them and a way to report a post.'),
+        lang('Docs that members write and moderators review, publish and feature.'),
+        lang('A moderation dashboard, member accounts with an inbox, and e-mails for new topics, replies, guides and reports.'),
+    ),
+
+    // Made (or found again) when the template is opened; see _pg_tpl_folders().
+    'folders'     => array(
+        'root'         => array('name' => 'pinegrap_forum', 'access' => 'public'),
+        'public'       => array('name' => 'public', 'parent' => 'root', 'access' => 'public'),
+        'registration' => array('name' => 'registration', 'parent' => 'root', 'access' => 'registration'),
+        'private'      => array('name' => 'private', 'parent' => 'root', 'access' => 'private'),
+    ),
+
+    'pages'       => $pages,
+
+    'widgets'     => $widgets,
+
+    'shared'      => array(
+        'masthead'     => array('name' => lang('Forum Masthead'), 'tree' => $masthead()),
+        'footer'       => array('name' => lang('Forum Footer'), 'tree' => $footer()),
+        'staff_bar'    => array('name' => lang('Moderators\' Bar'), 'tree' => $staff_bar()),
+        'email_header' => array('name' => lang('Forum E-mail Header'), 'tree' =>
+            $el('div', 'px-4 py-3 border-bottom', lang('E-mail Header'), array(
+                $link('{{site_name}}', '{{page:home}}', 'fs-5 fw-bold link-body-emphasis text-decoration-none',
+                    array($attr('style', 'font-size:20px;font-weight:700;text-decoration:none;color:#1d2131;color:var(--bs-emphasis-color,#1d2131)'))),
+            ), $mail_style('padding:16px 24px;border-bottom:3px solid #4f46e5'))),
+        'email_footer' => array('name' => lang('Forum E-mail Footer'), 'tree' =>
+            $el('div', 'px-4 py-3 border-top small text-body-secondary', lang('E-mail Footer'), array(
+                $para('© {{year}} {{site_name}}', 'mb-1', array('_attrs' => array($attr('style', 'margin:0 0 4px')))),
+                $para(lang('You get this e-mail because of your account in the community.'), 'mb-1', array('_attrs' => array($attr('style', 'margin:0 0 4px')))),
+                $link(lang('Visit the community'), '{{page:home}}', '',
+                    array($attr('style', 'color:#4f46e5;color:var(--bs-link-color,#4f46e5)'))),
+            ), $mail_style('padding:16px 24px;border-top:1px solid #dcdfe8;font-size:13px;color:#5b6070'))),
+    ),
+
+    // The template's own look: its pf- rules in one User Styles entry, and
+    // its two fonts.
+    'assets'      => array(
+        'css'   => pg_design_template_user_styles(array(), $forum_css),
+        'fonts' => json_encode($forum_fonts),
+    ),
+);
