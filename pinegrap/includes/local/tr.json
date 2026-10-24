@@ -28058,5 +28058,11 @@
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
     "Archived on {var:1}.": "{var:1} üzerinde arşivde.",
     "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",
-    "On {var:1}": "{var:1} üzerinde"
+    "On {var:1}": "{var:1} üzerinde",
+    "Average rating (verified reviews)": "Ortalama puan (doğrulanmış incelemeler)",
+    "Number of verified reviews": "Doğrulanmış inceleme sayısı",
+    "Row: the product has a rating from verified reviews": "Satır: ürünün doğrulanmış incelemelerden bir puanı var",
+    "Row: the product has no rating yet": "Satır: ürünün henüz puanı yok",
+    "The product has a rating from verified reviews": "Ürünün doğrulanmış incelemelerden bir puanı var",
+    "The product has no rating yet": "Ürünün henüz puanı yok"
 }
