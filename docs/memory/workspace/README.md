@@ -16,6 +16,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Delete inbox lines only with `ws_inbox_delete()` and call `ws_inbox_reach_lost()` / `_regained()` when access changes, or `changed_since` misses it (`workspace-api-sync-inbox.md`).
 - Call a panel function that logs with `$_SESSION['sessionusername']` inside `ws_api_as_owner()`, or its Site Log line has no name (`workspace-api-endpoint-rules.md`).
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
+- Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -43,6 +44,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
 - workspace-record-changes.md: How the Workspace writes site records: changes.php pipeline and callers, Recycle Bin guard, stock flag, money ceilings, whose name the sentences carry, writes that die half way
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
+- workspace-record-kinds.md: Every list a Workspace record kind (order, product, contact, invoice...) must be in, the kinds each leaves out and why, and the test that names the list a new kind was missed in
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
