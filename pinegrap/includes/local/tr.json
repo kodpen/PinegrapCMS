@@ -26930,5 +26930,9 @@
     "workspace flow ({var:1}) was paused": "çalışma alanı akışı ({var:1}) duraklatıldı",
     "Only the owner of a flow can delete it.": "Bir akışı yalnız sahibi silebilir.",
     "workspace flow ({var:1}) was deleted": "çalışma alanı akışı ({var:1}) silindi",
-    "Only the person's own team devices session (POST /auth/login) can publish a flow; an application key or an OAuth connection cannot do it for them.": "Bir akışı yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) yayımlayabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz."
+    "Only the person's own team devices session (POST /auth/login) can publish a flow; an application key or an OAuth connection cannot do it for them.": "Bir akışı yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) yayımlayabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz.",
+    "Voice message": "Sesli mesaj",
+    "Play": "Oynat",
+    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek.",
+    "Reply with voice": "Sesli yanıtla"
 }
