@@ -911,3 +911,26 @@ function mp_listing_split_live($rows) {
 	return $split;
 
 }
+
+// The text a rejected listing's mapping carries in last_error (written by the
+// job, mp_sync_listing_row_update()).
+function mp_listing_rejected_text($provider_name, $reasons) {
+
+	return lang(array('string' => 'Rejected by {var:1}: {var:2}', 'vars' => array($provider_name, $reasons)));
+
+}
+
+// The start of that text, the part that does not depend on the reasons: the
+// job and the screen know a rejected row by it. Worked out from the
+// translated text, so it is the same words the row was written with.
+function mp_listing_rejected_prefix($provider_name) {
+
+	$marker = "\x1F";
+
+	$text = mp_listing_rejected_text($provider_name, $marker);
+
+	$at = strpos($text, $marker);
+
+	return ($at === false) ? $text : substr($text, 0, $at);
+
+}

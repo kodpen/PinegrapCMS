@@ -41,7 +41,7 @@ require_once(dirname(__FILE__) . '/listings.php');
 function mp_sync_run($seconds = 25) {
 
 	$summary = array('pushed' => 0, 'batches' => 0, 'done' => 0, 'failed' => 0, 'waiting' => 0,
-		'orders' => 0, 'order_errors' => 0, 'listed' => 0);
+		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0);
 
 	if (!defined('DB_CONNECTED')) {
 
@@ -55,6 +55,10 @@ function mp_sync_run($seconds = 25) {
 	// rows before this run decides what else to send, which keeps a slow
 	// marketplace from being handed a second batch of the same products.
 	mp_sync_poll($deadline, $summary);
+
+	// Then where the listings stand: a mapping set back to active here, its
+	// listing approved, has its stock and price queued again.
+	mp_sync_listing_states($deadline, $summary);
 
 	mp_sync_push($deadline, $summary);
 
@@ -695,6 +699,266 @@ function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 
 }
 
+
+/* ------------------------------------------------------- listing states */
+
+// Where the listings stand on the marketplace, onto their mapping rows.
+//
+// A listing created from here goes to the marketplace's approval first, and a
+// stock line sent for it meanwhile can be refused, which puts its mapping in
+// error and stops it. So the rows whose listing has not been seen approved
+// (remote_id still empty) are asked about, except the ones already written as
+// rejected: those wait for the operator to fix the article and list it again,
+// which sets the row back to active. What each answer writes is
+// mp_sync_listing_row_update().
+//
+// At most a hundred rows an account a pass, fifty to a call and two calls to
+// each fifty (approved and unapproved), far below the marketplace's limits.
+// Rows leave the set as they are approved or rejected. Rows the marketplace
+// answers for with neither (never listed there, deleted there) stay, and the
+// hundred asked about moves on every pass (mp_sync_listing_window()), so they
+// cannot hide the rest.
+function mp_sync_listing_states($deadline, &$summary) {
+
+	foreach (mp_accounts('', 'active') as $account) {
+
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
+
+		if (!mp_can($account['provider'], 'listing_status')) {
+
+			continue;
+
+		}
+
+		mp_sync_listing_states_account($account, $summary);
+
+	}
+
+}
+
+function mp_sync_listing_states_account($account, &$summary) {
+
+	$account_id = (int) $account['id'];
+
+	$provider_name = mp_provider_name($account['provider']);
+
+	$ids = array_map('intval', (array) db_values("SELECT id FROM marketplace_product_map
+		WHERE (account_id = '" . e($account_id) . "')
+		  AND (remote_code <> '')
+		  AND (remote_id = '')
+		  AND NOT ((status = 'error') AND (last_error LIKE '" . e(mp_sync_like_prefix(mp_listing_rejected_prefix($provider_name))) . "%'))
+		ORDER BY id ASC"));
+
+	// A pass every five minutes moves the window on by one.
+	$ids = mp_sync_listing_window($ids, (int) floor(time() / 300), 100);
+
+	if (!$ids) {
+
+		return;
+
+	}
+
+	$rows = (array) db_items("SELECT id, product_id, remote_code, remote_id, status, last_error
+		FROM marketplace_product_map
+		WHERE id IN (" . implode(',', $ids) . ")
+		ORDER BY id ASC");
+
+	foreach (array_chunk($rows, 50) as $chunk) {
+
+		$result = mp_call($account['provider'], 'listing_status', array($account, array_column($chunk, 'remote_code')));
+
+		if (!$result['ok']) {
+
+			mp_account_outcome($account_id, false, $result['error']);
+
+			return;
+
+		}
+
+		$listings = isset($result['data']['listings']) ? (array)$result['data']['listings'] : array();
+
+		foreach ($chunk as $row) {
+
+			$code = (string) $row['remote_code'];
+
+			$summary['listings_checked']++;
+
+			$update = mp_sync_listing_row_update($row, isset($listings[$code]) ? $listings[$code] : null, $provider_name);
+
+			if ($update === null) {
+
+				continue;
+
+			}
+
+			$set = array();
+
+			foreach ($update as $column => $value) {
+
+				$set[] = $column . " = '" . e($value) . "'";
+
+			}
+
+			db("UPDATE marketplace_product_map SET " . implode(', ', $set) . "
+				WHERE id = '" . e((int)$row['id']) . "'");
+
+			// Its stock and price were refused while it waited, and nothing
+			// would send them again until the product changed.
+			if (isset($update['status']) && $update['status'] === 'active') {
+
+				mp_enqueue((int)$row['product_id']);
+
+			}
+
+		}
+
+	}
+
+}
+
+// The columns a listing's state changes on its mapping row, or null when
+// nothing changes.
+//
+// $row is the mapping (remote_id, status, last_error); $state what the
+// connector's listing_status answered for its code, or null.
+//
+//   approved: remote_id becomes the marketplace's content id. A row in error
+//   goes back to active - its stock line was refused while the listing
+//   waited - while a paused row stays paused. last_error is cleared, or
+//   carries a note when the listing is blacklisted, locked or archived over
+//   there (information: the status is not changed for it).
+//
+//   rejected: the row goes to error with the reasons, under a prefix
+//   (mp_listing_rejected_prefix()) that keeps it out of the next passes.
+//
+//   pending: nothing, unless a document is needed, which is noted without
+//   touching the status.
+//
+//   unknown, or no answer: nothing. The listing may still be on its way
+//   through their batch, and a row written as missing would stop a product
+//   that is about to appear.
+function mp_sync_listing_row_update($row, $state, $provider_name) {
+
+	$kind = (is_array($state) && isset($state['state'])) ? (string)$state['state'] : 'unknown';
+
+	$want = array();
+
+	if ($kind === 'approved') {
+
+		$content_id = isset($state['content_id']) ? (string)$state['content_id'] : '';
+
+		if ($content_id === '') {
+
+			return null;
+
+		}
+
+		$note = '';
+
+		if (!empty($state['blacklisted'])) {
+
+			$note = lang(array('string' => 'Blacklisted on {var:1}.', 'vars' => array($provider_name)));
+
+		} elseif (!empty($state['locked'])) {
+
+			$reason = isset($state['lock_reason']) ? trim((string)$state['lock_reason']) : '';
+
+			$note = ($reason !== '')
+				? lang(array('string' => 'Locked on {var:1}: {var:2}', 'vars' => array($provider_name, $reason)))
+				: lang(array('string' => 'Locked on {var:1}.', 'vars' => array($provider_name)));
+
+		} elseif (!empty($state['archived'])) {
+
+			$note = lang(array('string' => 'Archived on {var:1}.', 'vars' => array($provider_name)));
+
+		}
+
+		$want['remote_id'] = mb_substr($content_id, 0, 64);
+
+		if ((string)$row['status'] === 'error') {
+
+			$want['status'] = 'active';
+
+		}
+
+		$want['last_error'] = mb_substr($note, 0, 500);
+
+	} elseif ($kind === 'rejected') {
+
+		$reasons = (isset($state['reasons']) && is_array($state['reasons'])) ? $state['reasons'] : array();
+
+		$want['status'] = 'error';
+
+		$want['last_error'] = mb_substr(mp_listing_rejected_text($provider_name,
+			$reasons ? implode('; ', $reasons) : lang('no reason given')), 0, 500);
+
+	} elseif ($kind === 'pending' && !empty($state['doc_needed'])) {
+
+		$want['last_error'] = lang(array(
+			'string' => '{var:1} needs a document for this listing; upload it in the seller panel.',
+			'vars'   => array($provider_name)
+		));
+
+	} else {
+
+		return null;
+
+	}
+
+	// Only what changes is written.
+	foreach ($want as $column => $value) {
+
+		if ((string)(isset($row[$column]) ? $row[$column] : '') === (string)$value) {
+
+			unset($want[$column]);
+
+		}
+
+	}
+
+	return $want ? $want : null;
+
+}
+
+// A text as the start of a LIKE pattern: its own % and _ match only themselves.
+function mp_sync_like_prefix($text) {
+
+	return str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), (string)$text);
+
+}
+
+// The $size ids asked about on pass number $pass: a window that moves on by
+// $size every pass and wraps round, so every id of a set larger than one
+// window is reached within ceil(count / size) passes.
+function mp_sync_listing_window($ids, $pass, $size) {
+
+	$ids = array_values((array)$ids);
+
+	$count = count($ids);
+
+	if ($count <= $size) {
+
+		return $ids;
+
+	}
+
+	$start = ((int)$pass * $size) % $count;
+
+	$window = array_slice($ids, $start, $size);
+
+	if (count($window) < $size) {
+
+		$window = array_merge($window, array_slice($ids, 0, $size - count($window)));
+
+	}
+
+	return $window;
+
+}
 
 /* --------------------------------------------------------------- orders in */
 
