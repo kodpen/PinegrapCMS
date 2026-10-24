@@ -4710,14 +4710,16 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
 // Bootstrap pagination for a widget list: previous / next, a window of two
 // pages around the current one, the first and the last. '' for a single page.
 // Links keep every other query parameter (search text, filters).
-function pg_sw_pagination_html($page_param, $current_page, $total_pages)
+function pg_sw_pagination_html($page_param, $current_page, $total_pages, $fragment = '')
 {
     $current_page = (int)$current_page;
     $total_pages  = (int)$total_pages;
     if ($total_pages <= 1) return '';
 
-    $link = function ($n, $label, $aria = '') use ($page_param) {
-        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . '"'
+    // $fragment: the anchor every link lands on (the comments widget's
+    // #software_comments); without one the links are as they always were.
+    $link = function ($n, $label, $aria = '') use ($page_param, $fragment) {
+        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . (($fragment !== '') ? '#' . h($fragment) : '') . '"'
              . ($aria !== '' ? ' aria-label="' . h($aria) . '"' : '') . '>' . $label . '</a></li>';
     };
     $html = '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
