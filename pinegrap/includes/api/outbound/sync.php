@@ -890,6 +890,18 @@ function mp_sync_package_from_row($row) {
 // already shipped; at most fifty calls are made in a pass.
 function mp_sync_ship_pending($account) {
 
+	// The account as it is now, not as the job loaded it before the pull: an
+	// account switched back to the marketplace's carrier during the pass gets
+	// that carrier's name in the method code of packages it imports, and a
+	// stale copy would then still report their page with the shop's number.
+	$current = isset($account['id']) ? mp_account((int)$account['id']) : null;
+
+	if (is_array($current)) {
+
+		$account = $current;
+
+	}
+
 	if (!mp_can($account['provider'], 'ship_package') || !mp_account_ships_itself($account)) {
 
 		return;
