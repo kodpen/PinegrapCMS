@@ -3244,12 +3244,12 @@ function pg_cf_mail_link_values()
 /**
  * The link field values for $context (pg_cf_mail_links_context()): each ''
  * without a context or while $suspended (the administrator's e-mail), else
- * what the two link builders give for the context's address, page and contact.
+ * what the two link builders give for the context's address, form and contact.
  *
  * @param array|null $context
  * @param bool       $suspended
  * @param callable   $preferences_url function (string $email_address): string
- * @param callable   $confirm_url     function (int $custom_form_page_id, int $contact_id): string
+ * @param callable   $confirm_url     function (int $form_id, int $contact_id, string $email_address): string
  * @return array name => value
  */
 function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)
@@ -3261,26 +3261,56 @@ function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $c
     }
 
     $values['email_preferences_url'] = (string) call_user_func($preferences_url, (string)($context['email_address'] ?? ''));
-    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['custom_form_page_id'] ?? 0), (int)($context['contact_id'] ?? 0));
+    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['form_id'] ?? 0), (int)($context['contact_id'] ?? 0), (string)($context['email_address'] ?? ''));
 
     return $values;
 }
 
 /**
- * The link that confirms a subscription made with a form: a signed,
- * stateless link for the contact and the form's contact group, given only
- * when the form asks for a double opt-in. '' otherwise, for a submission
- * without a contact, and on a site without ENCRYPTION_KEY. No form asks for
- * a double opt-in yet, so it is always ''.
+ * The link that confirms a subscription made with a form: the signed,
+ * stateless link pg_fs_hold_submission() made for this submission when the
+ * form asks for a double opt-in and held the contact group back
+ * (pg_fs_pending_url()). Given only to the contact's own address
+ * (pg_cf_confirm_subscription_url_for()); '' for any other submission, a
+ * submission without a contact and a site without ENCRYPTION_KEY.
  *
- * @param int      $custom_form_page_id
- * @param int      $contact_id
- * @param int|null $issued Unix time the link is signed with (null: now)
+ * @param int    $form_id       the submitted form (forms.id)
+ * @param int    $contact_id
+ * @param string $email_address where the e-mail being drawn goes
  * @return string
  */
-function pg_cf_confirm_subscription_url($custom_form_page_id, $contact_id, $issued = null)
+function pg_cf_confirm_subscription_url($form_id, $contact_id, $email_address)
 {
-    return '';
+    $url = pg_fs_pending_url($form_id);
+
+    if ($url === '') {
+        return '';
+    }
+
+    return pg_cf_confirm_subscription_url_for($url, $email_address, pg_fs_contact_email($contact_id));
+}
+
+/**
+ * $url when $email_address is the contact's own address once both are
+ * normalised (pg_privacy_normalize_email()), '' otherwise. The link is signed
+ * for the contact's address, while the submitter's e-mail can go to another
+ * one (the signed-in user's, or an e-mail field not bound to the contact): a
+ * confirmation pressed there would not prove the address owner agreed.
+ *
+ * @param string $url
+ * @param string $email_address
+ * @param string $contact_address
+ * @return string
+ */
+function pg_cf_confirm_subscription_url_for($url, $email_address, $contact_address)
+{
+    $address = pg_privacy_normalize_email($email_address);
+
+    if ((string) $url === '' || $address === '' || $address !== pg_privacy_normalize_email($contact_address)) {
+        return '';
+    }
+
+    return (string) $url;
 }
 
 /**
