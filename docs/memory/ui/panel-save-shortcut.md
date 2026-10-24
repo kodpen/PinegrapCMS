@@ -9,7 +9,7 @@ description: Panel Ctrl+S (backend.src.js) and Return in a text field: which for
 - The visitor page (`frontend.src.js`) has its own block, which only presses the inline editing Save button.
 
 ## Which forms carry `disable_shortcut`?
-- Forms that only delete (the shortcut is too dangerous there) and helper forms that are never "the" form of a screen: the header search box, the account menu's quick form, `pg_filter_select()`'s filter, the licence check, the dashboard's widget settings in the Panel row's menu panel (always in the page now, so `disable_shortcut` is what keeps the "first visible form" fallback off them), the Site Settings dialog's form.
+- Forms that only delete (the shortcut is too dangerous there) and helper forms that are never "the" form of a screen: the header search box, the account menu's quick form, `pg_filter_select()`'s filter, the licence check, the Site Settings dialog's form. The dashboard's widget settings, once a form in the Panel row's menu panel, are a card of Site Settings > Appearance now (`settings-dashboard-card.md`).
 - A screen that answers Ctrl+S itself puts it on its form and catches the key: the visual editor (`#style_designer_form`).
 
 ## What if a dialog saves on Ctrl+S itself?
