@@ -25536,7 +25536,10 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
         var structural = _sdCanEditNode(node);
         if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
-        var textOk = structural || _sdCanEditNode(node, 'text');
+        // A text island only where _sdCodeApplyText() writes it back: a
+        // component prints its own label (a btn, a badge), so a keystroke
+        // there would be taken and then dropped by the next redraw.
+        var textOk = structural || (_sdCanEditNode(node, 'text') && _sdCodeTextKind(node) !== 'none');
         if (!structural) {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };

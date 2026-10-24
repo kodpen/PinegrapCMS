@@ -5,7 +5,9 @@
  * Tests for the texts a content operator (manager, user) may edit in the
  * visual designer outside a marked area: the editor's answer
  * (_sdIsTextNode(), asked through _sdCanEditNode(node, 'text')) has to match
- * what the save takes (pg_designer_merge_restricted_tree() copies props.text).
+ * what the save takes (pg_designer_merge_restricted_tree() copies props.text),
+ * and the code view offers a text only where it can write it back
+ * (_sdCodeLockOf(), _sdCodeTextKind()).
  * The designer's functions are cut out of assets/js/style_designer.js and run
  * under Node with the editor's state stubbed; on a machine without Node that
  * part is skipped.
@@ -50,8 +52,8 @@ function designer_content_text_test_function($source, $name)
 	return '';
 }
 
-// Runs _sdCanEditNode() and _sdIsTextNode() with the stubs and prints what
-// $script gives as JSON; null when there is no Node.
+// Runs the designer's text and code view lock functions with the stubs and
+// prints what $script gives as JSON; null when there is no Node.
 function designer_content_text_test_run($script)
 {
 	if (!function_exists('exec')) {
@@ -69,7 +71,7 @@ function designer_content_text_test_run($script)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$functions = '';
 
-	foreach (array('_sdCanEditNode', '_sdIsTextNode') as $name) {
+	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdCodeLockOf', '_sdCodeTextKind') as $name) {
 		$found = designer_content_text_test_function($source, $name);
 		pg_assert_true($found !== '', $name . ' is in the designer');
 		$functions .= $found . "\n";
@@ -79,7 +81,9 @@ function designer_content_text_test_run($script)
 		. 'function _sdIsContentLevel() { return level === "content"; }'
 		. 'function _sdInClosedShared() { return closed; }'
 		. 'function _sdInEditableArea() { return false; }'
-		. 'function _sdNodeContentImage() { return null; }';
+		. 'function _sdNodeContentImage() { return null; }'
+		. 'function hasLockedAncestor() { return false; }'
+		. 'function _resolveSharedSid() { return 0; }';
 
 	$file = @tempnam(sys_get_temp_dir(), 'pgsdtext');
 
@@ -156,4 +160,35 @@ function test_designer_content_text_save_takes_button_labels()
 	pg_assert_same('/start', $merged['children'][0]['props']['href'], 'button address kept');
 	pg_assert_same('primary', $merged['children'][0]['props']['variant'], 'button look kept');
 	pg_assert_same('Sale', $merged['children'][1]['props']['text'], 'badge text written');
+}
+
+// The code view writes a typed text back only for a node whose text kind it
+// knows (_sdCodeTextKind()): a content element and a semantic one. A ready-made
+// button's or a badge's label is printed by the component, so at content level
+// it stays fully locked there instead of taking a keystroke the next redraw
+// throws away; the double-click and the read-only panel's Text row edit it.
+function test_designer_content_text_code_view_offers_only_writable_text()
+{
+	$result = designer_content_text_test_run(
+		'var btn = { type: "component", props: { componentType: "btn", text: "Start now", href: "#" } };'
+		. 'var badge = { type: "component", props: { componentType: "badge", text: "New" } };'
+		. 'var card = { type: "component", props: { componentType: "card", title: "Title", text: "Body" } };'
+		. 'var heading = { type: "content", props: { contentType: "heading", text: "Hello" } };'
+		. 'var semBtn = { type: "semantic", props: { tag: "button", text: "Sign in" } };'
+		. 'var all = [btn, badge, card, heading, semBtn];'
+		. 'var ask = function () { return all.map(function (n) { var l = _sdCodeLockOf(n); return l.level + "/" + (l.attrs ? "attrs" : "-") + "/" + (l.text ? "text" : "-"); }); };'
+		. 'var content = ask();'
+		. 'closed = true; var inClosed = ask(); closed = false;'
+		. 'level = "full"; var full = all.map(function (n) { var l = _sdCodeLockOf(n); return l.level + "/" + (l.attrs ? "attrs" : "-"); });'
+		. 'console.log(JSON.stringify({ content: content, inClosed: inClosed, full: full }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array('full/-/-', 'full/-/-', 'full/-/-', 'half/-/text', 'half/-/text'), $result['content'], 'content level, outside a marked area: a text island only for a heading and a <button>');
+	pg_assert_same(array('full/-/-', 'full/-/-', 'full/-/-', 'full/-/-', 'full/-/-'), $result['inClosed'], 'a closed shared component or a system widget is fully locked');
+	pg_assert_same(array('/attrs', '/attrs', '/attrs', '/attrs', '/attrs'), $result['full'], 'a designer: no lock, values may change');
 }
