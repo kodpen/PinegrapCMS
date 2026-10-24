@@ -1,6 +1,6 @@
 ---
 name: fn-module-map-additions
-description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to comments, widgets_comments and wishlist) and the memory file that describes each.
+description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to comments, widgets_comments, wishlist, widgets_wishlist) and the memory file that describes each.
 ---
 
 ## Which `includes/fn/` modules were added in 2026.4.8?
@@ -13,6 +13,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to
 - `comments`: which thread a posted comment joins ([[comment-thread-verify]]), the record's comment counters ([[comments-moderation-counters]]), which name a member's comment gets (`pg_comment_member_name()`, [[designed-page-comment-names]]), which comment a reply may answer (`pg_comment_parent_ok()`, [[comment-replies]]), the rules a page shows a thread by (`pg_comments_*`, [[comment-thread-rules]]).
 - `widgets_comments`: the comments system widget, its hand-off with the classic comments block and its add-comment form ([[comments-widget]], [[comments-widget-form]]).
 - `wishlist`: a visitor's or an account's favourites, the visitor cookie, the merge at sign-in, the toggle and state endpoint (`wishlist.php`): [[wishlist]].
+- `widgets_wishlist`: the Favourites system widget, the visitor's saved products with add to cart and remove: [[wishlist-widget]].
 
 ## Where does a module added later go?
 - Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].

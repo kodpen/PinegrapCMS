@@ -1453,6 +1453,8 @@ $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profil
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book'), array('folder' => 'registration', 'requires' => 'ecommerce'));
+// Favourites: open to every visitor, signed in or not.
+$pages[] = array_merge($sign_page('favourites', lang('favourites'), lang('Favourites'), 'wishlist'), array('requires' => 'ecommerce'));
 
 // The inbox: the member's conversations (for the staff, everybody's), and
 // the conversation page, where both sides answer as comments.
@@ -2426,6 +2428,7 @@ $widgets = array(
                             $account_link('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
                             $account_link('bi-person-vcard', lang('My Profile'), '#', '__profile_url'),
                             $account_link('bi-journal-bookmark', lang('Address Book'), '#', '__address_book_url'),
+                            $account_link('bi-heart', lang('Favourites'), '#', '__my_account_wishlist_url'),
                             $account_link('bi-shield-lock', lang('Change Password'), '#', '__change_password_url'),
                             $account_link('bi-envelope-paper', lang('Email Preferences'), '#', '__email_preferences_url'),
                             $account_link('bi-people', lang('Book Club'), '{{page:book_club}}'),
@@ -2562,6 +2565,21 @@ $widgets = array(
         'requires' => 'ecommerce',
         'slug'     => lang('address-book'),
         'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'     => 'starter',
+    ),
+    // The products saved with the hearts of the catalog. On a page of its
+    // own that every visitor can open: a visitor who is not signed in keeps
+    // a list in this browser until they sign in.
+    'wishlist' => array(
+        'page'     => 'favourites',
+        'requires' => 'ecommerce',
+        'slug'     => lang('favourites'),
+        'config'   => array(
+            'regionType'    => 'wishlist',
+            'max_results'   => 100,
+            'login_page_id' => '{{tab:login}}',
+            'shop_page_id'  => '{{tab:shop}}',
+        ),
         'tree'     => 'starter',
     ),
     // The support center's search: the whole site for ?query=, ten results
@@ -2910,7 +2928,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',
