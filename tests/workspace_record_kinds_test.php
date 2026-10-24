@@ -472,6 +472,30 @@ function test_workspace_record_kinds_prefixes_pick_one_kind()
 	pg_assert_false(isset(ws_ref_types(workspace_record_kinds_test_viewer(array('ecommerce', 'contacts', 'users', 'forms', 'calendars')))['erp_quote']), 'without the ERP right the sales quote tag is not shown');
 }
 
+// A sales quote's grand_total is kept in the quote's own currency
+// (erp_quote_save()), so its chip prints it in that currency, as the quote
+// screens do, not through ws_money_out() (the visitor's currency at its
+// exchange rate). The branch runs queries, so it is read from source.
+function test_workspace_record_kinds_erp_quote_total_in_its_currency()
+{
+	$source = pg_test_function_source('ws_refs_resolve');
+	$start = strpos($source, "if (!empty(\$ids['erp_quote']))");
+	pg_assert_true($start !== false, 'ws_refs_resolve() has a sales quote branch');
+
+	$end = strpos($source, 'if (!empty($ids[', (int) $start + 1);
+	$branch = substr($source, (int) $start, ($end === false) ? strlen($source) : $end - (int) $start);
+	// The code alone: a comment may name the helper the branch does not call.
+	$branch = implode('', array_map('pg_test_source_text', pg_test_source_tokens($branch)));
+
+	pg_assert_contains('q.currency', $branch, 'the quote\'s currency is read');
+	pg_assert_contains("erp_money_out_currency((int) \$row['grand_total'], (string) \$row['currency'])", $branch, 'the total is printed in the quote\'s currency');
+	pg_assert_true(strpos($branch, 'ws_money_out(') === false, 'the total does not go through the visitor\'s currency');
+
+	// Outside the ERP's own screens refs.php loads the quote helpers alone,
+	// so the money helpers are loaded with them.
+	pg_assert_contains("'/includes/erp/money.php'", pg_test_function_source('ws_erp_quotes_readable'), 'the money helpers are loaded with the quote helpers');
+}
+
 // The channel screen offers the same customer kinds as the server.
 function test_workspace_record_kinds_customer_kinds_match_the_channel_screen()
 {

@@ -263,9 +263,10 @@ function ws_money_out($minor)
 
 /**
  * Whether sales quotes can be read: the ERP is on and its quotes table is
- * there. Loads the quote helpers alone (erp_quote_state(),
- * erp_quote_statuses()) rather than the whole module through its bootstrap:
- * a tag reads one table and needs nothing else of it.
+ * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
+ * and the money helpers (erp_money_out_currency()) alone rather than the
+ * whole module through its bootstrap: a tag reads one table and needs
+ * nothing else of it.
  *
  * @return bool
  */
@@ -275,13 +276,14 @@ function ws_erp_quotes_readable()
         return false;
     }
 
-    if (!function_exists('erp_quotes_ready')) {
+    if (!function_exists('erp_quotes_ready') || !function_exists('erp_money_out_currency')) {
         // The gate every file under includes/erp/ checks; the ERP bootstrap
         // defines it the same way.
         if (!defined('PG_ERP_ENTRY')) {
             define('PG_ERP_ENTRY', true);
         }
 
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
     }
 
@@ -617,7 +619,7 @@ function ws_refs_resolve($viewer, $tokens)
         // The joined invoice's status tells an invoiced quote whose invoice
         // was cancelled or deleted (accepted again) from one still invoiced.
         $rows = ws_erp_quotes_readable()
-            ? (array) db_items("SELECT q.id, q.full_number, q.status, q.valid_until, q.grand_total, a.title AS account_title,
+            ? (array) db_items("SELECT q.id, q.full_number, q.status, q.valid_until, q.grand_total, q.currency, a.title AS account_title,
                     i.status AS invoice_status
                 FROM erp_quotes q
                 LEFT JOIN erp_accounts a ON a.id = q.account_id
@@ -632,8 +634,12 @@ function ws_refs_resolve($viewer, $tokens)
                 $number = ((string) $row['full_number'] !== '') ? $row['full_number'] : '#' . (int) $row['id'];
                 $state = erp_quote_state($row);
 
+                // grand_total is in the quote's own currency (erp_quote_save()
+                // keeps the base figure apart), so it is printed in that
+                // currency, as the quote screens print it; ws_money_out()
+                // would show it in the visitor's currency.
                 $put('erp_quote', $row['id'], lang('Sales quote') . ' ' . $number, $base . 'edit_erp_quote.php?id=' . (int) $row['id'],
-                    trim((string) $row['account_title'] . ' · ' . ws_money_out($row['grand_total']), ' ·'),
+                    trim((string) $row['account_title'] . ' · ' . erp_money_out_currency((int) $row['grand_total'], (string) $row['currency']), ' ·'),
                     $statuses[$state][0] ?? $state, true, 'bi-file-earmark-text');
             } else {
                 $put('erp_quote', $row['id'], lang('Sales quote'), '', '', '', false, 'bi-file-earmark-text');
