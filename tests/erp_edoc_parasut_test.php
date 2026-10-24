@@ -232,6 +232,73 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 }
 
+// An order the order screen's E-Shipment shipped (orders.parasut_shipment_id,
+// carried as order_shipment_id) holds a real Paraşüt record id: digits.
+// Anything else, and a typed invoice, names no shipment document.
+function test_erp_edoc_parasut_order_shipment_id()
+{
+	pg_assert_same('1094785', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '1094785'))));
+	pg_assert_same('1094785', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => ' 1094785 '))), 'trimmed');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => ''))), 'not shipped');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443))), 'column not read');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '?'))), 'a mark');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '0'))), 'zero');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => 'irsaliye'))), 'not an id');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 0, 'order_shipment_id' => '1094785'))), 'typed invoice');
+
+	// Paraşüt ids outgrow a 32-bit integer; the id is kept as written.
+	pg_assert_same('98765432101', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '98765432101'))));
+}
+
+// The sales invoice of an order shipped by E-Shipment goes without shipment
+// and names the shipment document, so Paraşüt counts the goods out once;
+// every other invoice's body is the one sent before.
+function test_erp_edoc_parasut_invoice_payload_legacy_shipment()
+{
+	$lines = array(
+		array('product_id' => 0, 'description' => 'Hizmet', 'quantity' => '2.0000', 'unit_price' => 50000, 'discount_rate' => '10.000', 'discount_amount' => 10000, 'tax_rate' => '20.000', 'withholding_rate' => '0.000'),
+	);
+	$order = array('order_id' => 443, 'order_number' => '1180', 'order_date' => '2026-10-18');
+
+	$shipped = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array_merge($order, array('order_shipment_id' => '1094785'))), $lines, '555');
+	pg_assert_false(isset($shipped['error']));
+	pg_assert_same(false, $shipped['data']['attributes']['shipment_included'], 'without shipment');
+	pg_assert_same(array('data' => array(array('type' => 'shipment_documents', 'id' => '1094785'))), $shipped['data']['relationships']['shipment_documents']);
+	pg_assert_same('555', $shipped['data']['relationships']['contact']['data']['id']);
+	pg_assert_same(1, count($shipped['data']['relationships']['details']['data']));
+	pg_assert_same('1180', $shipped['data']['attributes']['order_no']);
+
+	// Apart from the shipment, the body is the one an unshipped order gets.
+	$plain = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array_merge($order, array('order_shipment_id' => ''))), $lines, '555');
+	$without = $shipped;
+	unset($without['data']['attributes']['shipment_included'], $without['data']['relationships']['shipment_documents']);
+	pg_assert_same($plain, $without);
+
+	// Not shipped, a mark, a typed invoice: the body sent before, with
+	// Paraşüt's own default for the shipment.
+	foreach (array(array_merge($order, array('order_shipment_id' => '')), $order, array_merge($order, array('order_shipment_id' => '?'))) as $label => $overrides) {
+		$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice($overrides), $lines, '555');
+		pg_assert_false(array_key_exists('shipment_included', $payload['data']['attributes']), 'no shipment_included ' . $label);
+		pg_assert_same(array('contact', 'details'), array_keys($payload['data']['relationships']), 'relationships ' . $label);
+	}
+
+	$typed = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_shipment_id' => '1094785')), $lines, '555');
+	pg_assert_false(array_key_exists('shipment_included', $typed['data']['attributes']), 'typed invoice');
+	pg_assert_false(isset($typed['data']['relationships']['shipment_documents']), 'typed invoice');
+}
+
+// send_invoice reads the order's shipment document with its number and date,
+// so the payload gets it from the order row and not from the caller.
+function test_erp_edoc_parasut_send_invoice_reads_the_order_shipment()
+{
+	$function = new ReflectionFunction('erp_edoc_parasut_send_invoice');
+	$source = implode('', array_slice(file($function->getFileName()), $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_true((bool) preg_match('/SELECT [^"]*parasut_shipment_id[^"]* FROM orders WHERE id/', $source), 'the order read takes parasut_shipment_id');
+	pg_assert_contains("\$invoice['order_shipment_id']", $source);
+	pg_assert_contains("!isset(\$invoice['order_shipment_id'])", $source);
+}
+
 function pg_test_parasut_vat_line($base, $vat, $overrides = array())
 {
 	return array_merge(array('product_id' => 0, 'description' => 'Satır', 'quantity' => '1.0000', 'unit_price' => $base, 'line_total' => $base, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => $vat, 'tax2_amount' => 0, 'withholding_rate' => '0.000'), $overrides);
@@ -1200,6 +1267,225 @@ function test_erp_edoc_parasut_contact_for_checks_final_consumer_card()
 	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
 
 	pg_assert_contains('if ($final_consumer && !erp_edoc_parasut_final_consumer_card_matches($attributes, $party, $tax_number)) {', $section);
+}
+
+// A sales invoice as GET sales_invoices lists it: this invoice's description
+// and date on contact 7001 unless told otherwise, with the e-document
+// Paraşüt holds for it when one is named.
+function pg_test_parasut_cancel_listed($id, $attributes = array(), $contact = '7001', $edoc_id = '')
+{
+	$item = array('id' => $id, 'type' => 'sales_invoices',
+		'attributes' => $attributes + array('description' => 'PGF2026000000042', 'issue_date' => '2026-10-19', 'item_type' => 'invoice', 'net_total' => '1080.0'),
+		'relationships' => array('contact' => array('data' => array('id' => $contact, 'type' => 'contacts'))));
+
+	if ($edoc_id !== '') {
+		$item['relationships']['active_e_document'] = array('data' => array('id' => $edoc_id, 'type' => 'e_archives'));
+	}
+
+	return $item;
+}
+
+// A stand-in for erp_edoc_parasut_request(): the answers in turn, each call
+// written into $calls as "METHOD path". A call past the last answer is
+// answered 500, so a request a test did not expect is seen.
+function pg_test_parasut_cancel_transport($answers, &$calls)
+{
+	return function ($method, $path) use ($answers, &$calls) {
+		$calls[] = $method . ' ' . $path;
+		$answer = $answers[count($calls) - 1] ?? array('http_code' => 500, 'body' => null, 'raw' => '');
+
+		return $answer + array('raw' => '{}', 'error' => '', 'login_error' => '');
+	};
+}
+
+function pg_test_parasut_cancel_page($items, $total_pages = 1)
+{
+	return array('http_code' => 200, 'body' => array('data' => $items, 'meta' => array('total_pages' => $total_pages)));
+}
+
+// The calls of a run that sent something other than GET.
+function pg_test_parasut_cancel_writes($calls)
+{
+	return array_values(array_filter($calls, function ($call) {
+		return strpos($call, 'GET ') !== 0;
+	}));
+}
+
+// Cancelling an invoice whose send got no answer: the one draft that send
+// left at Paraşüt is found with the date and contact the mark holds (not the
+// invoice's current date) and deleted; none found deletes nothing.
+function test_erp_edoc_parasut_cancel_unsure_deletes_the_draft_it_finds()
+{
+	$invoice = pg_test_parasut_invoice(array('issue_date' => '2026-10-20'));
+	$unsure = erp_edoc_parasut_unsure_read('?2026-10-19:7001');
+
+	$calls = array();
+	$taken = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(
+			pg_test_parasut_cancel_listed('5002', array('description' => 'PGF2026000000043')),
+			pg_test_parasut_cancel_listed('5001'),
+		)),
+		array('http_code' => 204, 'body' => null, 'raw' => ''),
+	), $calls));
+
+	pg_assert_true($taken['success'], 'the draft is taken back');
+	pg_assert_same('deleted', $taken['outcome']);
+	pg_assert_same('The record has been deleted at Paraşüt.', $taken['message']);
+	pg_assert_same(2, count($calls));
+	pg_assert_contains('GET /sales_invoices?filter[contact_id]=7001&filter[issue_date]=2026-10-19&sort=-id&include=active_e_document&page[number]=1&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, $calls[0], 'searched with the mark\'s date and contact');
+	pg_assert_same(array('DELETE /sales_invoices/5001'), pg_test_parasut_cancel_writes($calls), 'only the matching record is deleted');
+
+	$calls = array();
+	$none = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5002', array('description' => 'PGF2026000000043')))),
+	), $calls));
+
+	pg_assert_same(array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted'), $none, 'nothing to take back');
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls), 'no request that writes');
+	pg_assert_same(1, count($calls));
+
+	$calls = array();
+	$gone = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5001'))),
+		array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Not found'))), 'raw' => '{}'),
+	), $calls));
+
+	pg_assert_true($gone['success'], 'deleted on Paraşüt\'s screen in between');
+	pg_assert_same('Paraşüt no longer has the record.', $gone['message']);
+}
+
+// What cannot be taken back through the API, or cannot be known, refuses
+// the cancel without a request that writes: several records, one Paraşüt
+// holds as an e-document, a search that failed, pages left unread, a
+// record Paraşüt would not delete.
+function test_erp_edoc_parasut_cancel_unsure_refuses_what_it_cannot_settle()
+{
+	$invoice = pg_test_parasut_invoice();
+	$unsure = erp_edoc_parasut_unsure_read('?2026-10-19:7001');
+
+	$calls = array();
+	$several = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5003'), pg_test_parasut_cancel_listed('5001'))),
+	), $calls));
+	pg_assert_false($several['success'], 'several records');
+	pg_assert_contains('ids 5003, 5001', $several['error']);
+	pg_assert_contains('Nothing was cancelled', $several['error']);
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls));
+
+	$calls = array();
+	$document = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5004', array(), '7001', '8001'))),
+	), $calls));
+	pg_assert_false($document['success'], 'a record Paraşüt holds as an e-document');
+	pg_assert_contains('record 5004', $document['error']);
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls));
+
+	$calls = array();
+	$mixed = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5005'), pg_test_parasut_cancel_listed('5004', array(), '7001', '8001'))),
+	), $calls));
+	pg_assert_false($mixed['success'], 'a draft beside an e-document is not deleted either');
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls));
+
+	$calls = array();
+	$timeout = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		array('http_code' => 0, 'body' => null, 'raw' => '', 'error' => 'Operation timed out after 40000 milliseconds'),
+	), $calls));
+	pg_assert_false($timeout['success'], 'the search got no answer');
+	pg_assert_contains('Operation timed out', $timeout['error']);
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls));
+
+	$calls = array();
+	$login = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		array('http_code' => 0, 'body' => null, 'raw' => '', 'login_error' => 'no token'),
+	), $calls));
+	pg_assert_false($login['success'], 'no token');
+	pg_assert_contains('no token', $login['error']);
+
+	$calls = array();
+	$crowded = erp_edoc_parasut_cancel_unsure($invoice, $unsure, function ($method, $path) use (&$calls) {
+		$calls[] = $method . ' ' . $path;
+		return array('http_code' => 200, 'raw' => '{}', 'error' => '', 'login_error' => '', 'body' => array('data' => array(), 'meta' => array('total_pages' => 999)));
+	});
+	pg_assert_false($crowded['success'], 'pages left unread');
+	pg_assert_same((int) ERP_EDOC_PARASUT_FIND_PAGES, count($calls), 'stops at the page limit');
+	pg_assert_contains('return invoice', $crowded['error'], 'names the way out');
+	pg_assert_same(array(), pg_test_parasut_cancel_writes($calls));
+
+	$calls = array();
+	$kept = erp_edoc_parasut_cancel_unsure($invoice, $unsure, pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5001'))),
+		array('http_code' => 422, 'body' => array('errors' => array(array('title' => 'Silinemez', 'detail' => 'Silinemez'))), 'raw' => '{}'),
+	), $calls));
+	pg_assert_false($kept['success'], 'Paraşüt would not delete it');
+	pg_assert_contains('id 5001', $kept['error']);
+	pg_assert_contains('Silinemez', $kept['error']);
+}
+
+// A mark from before it carried the date and contact: the invoice's date,
+// and the day's invoices of every contact. An order's invoice is matched by
+// the description that carries the order's number.
+function test_erp_edoc_parasut_cancel_unsure_bare_mark_and_order()
+{
+	$calls = array();
+	$taken = erp_edoc_parasut_cancel_unsure(pg_test_parasut_invoice(), erp_edoc_parasut_unsure_read('?'), pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5001', array(), '7002'))),
+		array('http_code' => 204, 'body' => null, 'raw' => ''),
+	), $calls));
+
+	pg_assert_true($taken['success']);
+	pg_assert_contains('GET /sales_invoices?filter[issue_date]=2026-10-19&sort=-id', $calls[0], 'no contact filter');
+	pg_assert_same(array('DELETE /sales_invoices/5001'), pg_test_parasut_cancel_writes($calls));
+
+	$order = pg_test_parasut_invoice(array('order_id' => 12, 'order_number' => '1179'));
+	$description = erp_edoc_parasut_invoice_description($order);
+	pg_assert_same('PGF2026000000042 / ' . lang(array('string' => 'Order #{var:1}', 'vars' => '1179')), $description);
+
+	$calls = array();
+	$found = erp_edoc_parasut_cancel_unsure($order, erp_edoc_parasut_unsure_read('?2026-10-19:7001'), pg_test_parasut_cancel_transport(array(
+		pg_test_parasut_cancel_page(array(pg_test_parasut_cancel_listed('5009'), pg_test_parasut_cancel_listed('5010', array('description' => $description)))),
+		array('http_code' => 204, 'body' => null, 'raw' => ''),
+	), $calls));
+
+	pg_assert_true($found['success']);
+	pg_assert_same(array('DELETE /sales_invoices/5010'), pg_test_parasut_cancel_writes($calls), 'the order\'s record, not the bare number\'s');
+}
+
+// A contact id of '' matches a record of any contact (a mark that carries
+// none); the e-documents among the matches are named with their ids.
+function test_erp_edoc_parasut_written_documents()
+{
+	$payload = array('data' => array('attributes' => array('description' => 'PGF2026000000042', 'issue_date' => '2026-10-19')));
+	$body = array('data' => array(
+		pg_test_parasut_cancel_listed('5001', array(), '7002'),
+		pg_test_parasut_cancel_listed('5004', array(), '7001', '8001'),
+		pg_test_parasut_cancel_listed('5006', array('description' => 'PGF2026000000043'), '7001', '8002'),
+		pg_test_parasut_cancel_listed('5007', array('item_type' => 'cancelled'), '7001', '8003'),
+	));
+
+	pg_assert_same(array('5001'), array_map('strval', array_keys(erp_edoc_parasut_written_matches($body, $payload, ''))), 'any contact');
+	pg_assert_same(array(), erp_edoc_parasut_written_matches($body, $payload, '7001'), 'the contact\'s only');
+	pg_assert_same(array('5004' => '8001'), erp_edoc_parasut_written_documents($body, $payload, '7001'));
+	pg_assert_same(array(), erp_edoc_parasut_written_documents($body, $payload, '7002'));
+	pg_assert_same(array(), erp_edoc_parasut_written_documents(null, $payload, '7001'));
+}
+
+// The driver's cancel follows the mark before it answers for a row that
+// names no record; a row without the mark is answered at once.
+function test_erp_edoc_parasut_cancel_invoice_reads_the_mark()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+	$from = strpos($source, 'function erp_edoc_parasut_cancel_invoice(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+	$read = strpos($section, "\$unsure = erp_edoc_parasut_unsure_read(\$invoice['parasut_invoice_id'] ?? '');");
+	$taken = strpos($section, '$taken = erp_edoc_parasut_cancel_unsure($invoice, $unsure,');
+	$detail = strpos($section, "erp_edoc_parasut_request('GET', '/sales_invoices/' . rawurlencode(\$external_id)");
+
+	pg_assert_true(($read !== false) && ($taken !== false) && ($read < $taken), 'the mark is read and followed');
+	pg_assert_true(($detail !== false) && ($taken < $detail), 'before a named record is asked after');
+
+	$plain = erp_edoc_parasut_cancel_invoice(array('id' => 42, 'edoc_external_id' => '', 'parasut_invoice_id' => ''));
+	pg_assert_same(array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted'), $plain, 'no mark: nothing there');
 }
 
 // A stand-in for erp_edoc_parasut_request() that answers GET contacts out of

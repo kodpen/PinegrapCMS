@@ -3841,6 +3841,7 @@ function output_menu($properties = false)
         case 'workspace_board.php':
         case 'workspace_calendar.php':
         case 'workspace_timeline.php':
+        case 'workspace_flows.php':
         case 'workspace_mcp.php':
         case 'workspace_settings.php':
             $active_menu = 23;
@@ -6200,11 +6201,13 @@ function pg_js_bundles()
             'assets/js/workspace_approvals.js',
             'assets/js/workspace_acks.js',
             'assets/js/workspace_status.js',
+            'assets/js/workspace_voice.js',
             'assets/js/workspace.js',
         ),
         'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),
         'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
+        'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
     );

@@ -241,10 +241,7 @@ function workspace_record_kinds_test_lists()
 			'where'  => 'ws_ai_type_scope() in includes/workspace/ai.php',
 			'kinds'  => $ai_scoped,
 			'except' => array(
-				'user_account'   => 'no scope of the external API reads user accounts, so the Workspace permission is asked',
-				// The assistants read calendar events under workspace:read
-				// today, while the API search reads them with calendars:read.
-				'calendar_event' => 'read under workspace:read, although the API search asks calendars:read',
+				'user_account' => 'no scope of the external API reads user accounts, so the Workspace permission is asked',
 			),
 		),
 		'audit' => array(
@@ -371,29 +368,37 @@ function test_workspace_record_kinds_change_right_is_the_tag_right()
 }
 
 // The assistants read a kind of record with the scope the API search reads
-// it with.
+// it with: every kind the search finds, none of them under the Workspace
+// permission alone.
 function test_workspace_record_kinds_assistants_and_search_ask_the_same_scope()
 {
-	// Receipts: the assistants ask erp:read, the API search (and the ERP's
-	// own receipt routes) erp_cash:read. Kept as it is today.
-	$differ = array('receipt' => array('erp:read', 'erp_cash:read'));
-
 	foreach (ws_api_search_record_scopes() as $kind => $scope) {
-		$assistant = ws_ai_type_scope($kind);
-
-		// A kind read under the Workspace permission is an exception of the
-		// 'ai_scopes' list.
-		if ($assistant === 'workspace:read') {
-			continue;
-		}
-
-		if (isset($differ[$kind])) {
-			pg_assert_same($differ[$kind], array($assistant, $scope), $kind . ': the two scopes still differ as noted; when they agree, take ' . $kind . ' off $differ');
-			continue;
-		}
-
-		pg_assert_same($scope, $assistant, $kind . ': ws_ai_type_scope() asks what ws_api_search_record_scopes() asks');
+		pg_assert_same($scope, ws_ai_type_scope($kind), $kind . ': ws_ai_type_scope() asks what ws_api_search_record_scopes() asks');
 	}
+}
+
+// The record route of Claude's queue is declared with workspace:read alone,
+// so its handler asks the scope of the kind it reads (ws_ai_type_scope() of
+// the kind's tag) before it looks the record up: the key reads no kind of
+// record there that it could not read through the API search.
+function test_workspace_record_kinds_claude_record_route_asks_the_kind_scope()
+{
+	$route = null;
+
+	foreach (ws_claude_api_routes() as $row) {
+		if ($row['id'] === 'workspace.claude.record') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_same('workspace:read', $route['scope'] ?? null, 'workspace.claude.record is declared with workspace:read');
+
+	$source = pg_test_function_source('ws_api_claude_record');
+	$asks = strpos($source, "api_require_scope(ws_ai_type_scope((string) \$types[\$type]['tag']));");
+	$looks = strpos($source, 'ws_change_allowed(');
+
+	pg_assert_true($asks !== false, 'ws_api_claude_record() asks the scope of the kind\'s tag with api_require_scope(ws_ai_type_scope())');
+	pg_assert_true(($asks !== false) && ($looks !== false) && ($asks < $looks), 'ws_api_claude_record() asks the scope before ws_change_allowed() looks the record up');
 }
 
 // A kind the drawer edits is a kind of change of that name that takes

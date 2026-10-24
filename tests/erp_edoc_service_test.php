@@ -134,3 +134,23 @@ function test_erp_edoc_fix_carrier_refusal_only_for_a_typed_carrier()
 	pg_assert_same(null, erp_edoc_fix_carrier_refusal(array('carrier_title' => 'Ali Veli', 'carrier_vkn' => ''), $courier), 'a person with the stored TCKN');
 	pg_assert_same(null, erp_edoc_fix_carrier_refusal(array('carrier_title' => '', 'carrier_vkn' => '1234567808'), $mistyped), 'a corrected VKN with the stored title');
 }
+
+// Cancelling an invoice whose send got no answer ('error', no provider id)
+// asks the driver, which may find the record that send wrote and take it
+// back; its refusal stops the cancel. A row the provider never saw ('none')
+// and one it answered with a rejection are still let go without a call.
+function test_erp_edoc_provider_cancel_asks_the_driver_after_an_unanswered_send()
+{
+	$service = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
+	$from = strpos($service, 'function erp_edoc_invoice_provider_cancel(');
+	$cancel = substr($service, $from, strpos($service, "\n}\n", $from) - $from);
+	$early = strpos($cancel, "if ((\$external_id === '') && in_array((string) \$invoice['edoc_status'], array('none', 'error', 'rejected'), true)) {");
+	$asked = strpos($cancel, "if (((string) \$invoice['edoc_status'] === 'error') && (\$provider !== '') && erp_edoc_supports('cancel_invoice', \$provider)) {");
+	$called = strpos($cancel, "\$result = erp_edoc_call('cancel_invoice', array(\$invoice, (string) \$reason), \$provider);");
+	$refused = strpos($cancel, "? array('success' => false, 'message' => '', 'error' => (string) \$result['error'])");
+	$check = strpos($cancel, '$check = erp_edoc_invoice_cancellable($invoice);');
+
+	pg_assert_true(($early !== false) && ($asked !== false) && ($early < $asked), 'an error row without an id goes to the driver');
+	pg_assert_true(($called !== false) && ($asked < $called) && ($called < $check), 'before the general path');
+	pg_assert_true(($refused !== false) && ($called < $refused), 'the driver\'s refusal stops the cancel');
+}

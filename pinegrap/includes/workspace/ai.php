@@ -917,7 +917,13 @@ function ws_ai_setup_hint()
 
     $base = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/';
 
-    return lang('Pinegrap AI cannot answer yet.') . ' ' . lang('An administrator connects it on this card:') . ' ['
+    // With no application linked the first thing to do is the card's
+    // button, which makes it.
+    $where = (ws_ai_schema_ready() && !ws_ai_app())
+        ? lang('An administrator connects it by pressing Create Pinegrap AI\'s key on this card:')
+        : lang('An administrator connects it on this card:');
+
+    return lang('Pinegrap AI cannot answer yet.') . ' ' . $where . ' ['
         . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . 'workspace_settings.php#ws-ai)';
 }
 
@@ -2740,9 +2746,11 @@ function ws_ai_seen_add(&$state, $text)
    --------------------------------------------------------------------------- */
 
 /**
- * The permission of the application a kind of tag is read under. A kind the
- * external API has no endpoint for goes with the workspace permission: the
- * person's own right to it (ws_ref_types()) decides.
+ * The permission of the application a kind of tag is read under: the scope
+ * the external API reads that kind with (ws_api_search_record_scopes()), so
+ * an assistant reaches no record its key could not read over the API. A kind
+ * the external API has no endpoint for goes with the workspace permission:
+ * the person's own right to it (ws_ref_types()) decides.
  *
  * @param string $type
  * @return string
@@ -2758,9 +2766,10 @@ function ws_ai_type_scope($type)
         'erp_account'    => 'erp:read',
         'invoice'        => 'erp:read',
         'waybill'        => 'erp:read',
-        'receipt'        => 'erp:read',
+        'receipt'        => 'erp_cash:read',
         'edoc'           => 'erp:read',
         'form'           => 'forms:read',
+        'calendar_event' => 'calendars:read',
         'file'           => 'files:read',
         'page'           => 'pages:read',
         'task'           => 'tasks:read',
@@ -4009,13 +4018,14 @@ function ws_ai_license_label()
 }
 
 /**
- * Saves the card, or tries the connection.
+ * Saves the card, tries the connection, or makes Pinegrap AI's key.
  *
  * @param array    $viewer
- * @param string   $action ai | ai_test
+ * @param string   $action ai | ai_test | ai_key_create
  * @param liveform $liveform
+ * @param array    $user   validate_user(): whose rights cap a key made here
  */
-function ws_ai_settings_post($viewer, $action, $liveform)
+function ws_ai_settings_post($viewer, $action, $liveform, $user)
 {
     if (!ws_ai_schema_ready()) {
         $liveform->add_error(lang('The database has not been upgraded yet.'));
@@ -4031,6 +4041,11 @@ function ws_ai_settings_post($viewer, $action, $liveform)
 
     if ($action === 'ai_test') {
         ws_ai_settings_test($liveform);
+        return;
+    }
+
+    if ($action === 'ai_key_create') {
+        ws_ai_key_post($liveform, $user, $username);
         return;
     }
 
@@ -4068,6 +4083,61 @@ function ws_ai_settings_post($viewer, $action, $liveform)
             $liveform->add_error(ws_ai_license_sentence($state));
         }
     }
+}
+
+/**
+ * The card's "Create Pinegrap AI's key", for an administrator
+ * (ws_ai_settings_post() checked the role): makes the application row
+ * Pinegrap AI writes through and links it in config.ws_ai_app_id.
+ *
+ * The row has no secret. Pinegrap AI runs inside the site and never calls
+ * the API: the row is its identity in the channels (<@app:N>), the reads it
+ * is allowed (ws_ai_readable_types()) and the poster of its answers
+ * (ws_ai_owner()). Kind 'server' without a stored secret hash has no door:
+ * key and secret need a hash (api_secret_matches()), and tokens are issued
+ * only under 'device' and 'oauth' rows. Nor is it ever given a secret:
+ * Application Access's rotation and Claude's Reset secret both refuse such a
+ * row (api_app_secret_can_rotate()). So there is nothing to show once and
+ * nothing to reset.
+ *
+ * Offered only while ws_ai_app() finds no row (none chosen, or the linked
+ * one deleted in Application Access); a key linked by hand is kept.
+ *
+ * @param liveform $liveform
+ * @param array    $user     validate_user()
+ * @param string   $username
+ */
+function ws_ai_key_post($liveform, $user, $username)
+{
+    require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
+
+    ws_ai_config(true);
+
+    if (ws_ai_app()) {
+        $liveform->add_error(lang('Pinegrap AI already has a key.'));
+        return;
+    }
+
+    // The same scopes as Claude's key, cut to the presser's rights.
+    $scopes = ws_assistant_key_scopes($user);
+
+    if (empty($scopes)) {
+        $liveform->add_error(lang('Pinegrap AI\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
+        return;
+    }
+
+    $made = api_app_create(lang('Pinegrap AI'), lang('Made in Workspace settings for Pinegrap AI in the channels. It has no secret and cannot sign in.'), $scopes, (int) $user['id'], false, $username);
+
+    if (!$made) {
+        $liveform->add_error(lang('Pinegrap AI\'s key could not be made.'));
+        return;
+    }
+
+    db("UPDATE config SET ws_ai_app_id = '" . (int) $made['id'] . "', ws_ai_error = '', ws_ai_hold_until = 0");
+    ws_ai_config(true);
+
+    log_activity(lang('the Pinegrap AI connection of the workspace was changed'), $username);
+    $liveform->add_notice(lang('Pinegrap AI\'s key was made. It cannot sign in anywhere and needs no secret.'));
 }
 
 /**
@@ -4141,6 +4211,12 @@ function ws_ai_settings_test($liveform)
 /**
  * The card on the settings screen: the connection on the left, how it
  * stands on the right, and the setup steps under the form.
+ *
+ * An administrator sees Pinegrap AI's key there: a button that makes it
+ * while no application is linked, otherwise its name and whether it can sign
+ * in. The application select stays inside the Save form, under "Use another
+ * application": outside it, a Save would post no application and unlink the
+ * key.
  *
  * @param string $self_url
  * @param array  $viewer
@@ -4235,7 +4311,7 @@ function ws_ai_settings_card($self_url, $viewer)
     $steps = array(
         array(
             lang('An application for Pinegrap AI'),
-            lang('In Application Access, create an application named Pinegrap AI, apart from Claude\'s. Give it read and write on Workspace and on Tasks, and read on the records it may look at (orders, customers, products…); its key and secret are not needed here. Then choose it above.'),
+            lang('Press Create Pinegrap AI\'s key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude\'s, and choose it under Use another application.'),
             '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
@@ -4261,6 +4337,37 @@ function ws_ai_settings_card($self_url, $viewer)
             </li>';
     }
 
+    // Pinegrap AI's key, for an administrator only: made here while no
+    // application row is linked, otherwise named, with whether it can sign
+    // in. A key made here has no secret, so there is nothing to show once.
+    $key_block = '';
+
+    if ($admin && !$app) {
+        require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
+
+        $key_block = '
+                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-4">
+                            ' . get_token_field() . '
+                            <input type="hidden" name="ws_action" value="ai_key_create">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
+                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
+                        </form>';
+    } elseif ($admin) {
+        require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
+
+        // A key linked by hand may hold a secret, or be a team devices or
+        // OAuth application: the line says what is true of the row.
+        $doors = (array) db_item("SELECT kind, api_secret_hash, api_secret_prev_hash, api_secret_prev_expires FROM api_apps WHERE id = '" . (int) $app['id'] . "'");
+
+        $key_block = '
+                        <div class="ws-claude-key mb-4">
+                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="text-body-secondary">#' . (int) $app['id'] . '</span></div>
+                            <div class="small text-body-secondary">' . h(api_app_can_sign_in($doors, time())
+                                ? lang('Pinegrap AI uses only this application\'s name and permissions; its key and secret are not needed here.')
+                                : lang('It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.')) . '</div>
+                        </div>';
+    }
+
     return '
         <div class="card mt-4" id="ws-ai">
             <div class="card-header d-flex align-items-center gap-2">
@@ -4270,6 +4377,7 @@ function ws_ai_settings_card($self_url, $viewer)
             <div class="card-body">
                 <div class="row g-4">
                     <div class="col-lg-7">
+                        ' . $key_block . '
                         <form method="post" action="' . h($self_url) . '#ws-ai">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai">
@@ -4278,14 +4386,17 @@ function ws_ai_settings_card($self_url, $viewer)
                                 <label class="form-check-label" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
                                 <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                <select class="form-select form-select-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
-                                <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
-                                <div class="form-text">' . h(empty($readable)
-                                    ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
-                                    : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
-                            </div>
+                            <details class="mb-3">
+                                <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
+                                <div class="mt-2">
+                                    <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
+                                    <select class="form-select form-select-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <div class="form-text">' . h(empty($readable)
+                                        ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
+                                        : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
+                                </div>
+                            </details>
                             <div class="mb-3">
                                 <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
                                 <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Settings › General')) . '</a></div>
