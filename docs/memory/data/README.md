@@ -20,6 +20,7 @@ Table structures and SQL pitfalls.
 ## Files
 
 - backup-rowless-tables.md: Tables every backup dumps without rows, the SEO, search and log tables that keep theirs and why, and how Search Console refills after a restore.
+- comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes idx_parent and idx_thread, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
 - config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), with the InnoDB row-size reasons and the test that enforces it.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
