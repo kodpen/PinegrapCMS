@@ -24,7 +24,7 @@ description: Trendyol stock and price push: price-and-inventory batch by barcode
 - Inventory & price write: 350–2000 requests/minute by listing-limit tier, one shared pool. Price changes: 30 per minute per barcode, refused per line in the batch result. The 5-minute queue with one waiting row per product stays far below both.
 
 ## What is still unknown?
-- Whether a stock line for a listing still awaiting approval is refused. If it is, the line's refusal puts the mapping in `error` and it stops syncing until re-matched (n11 rule, `mp_sync_apply_results()`); step 2b's approval read is where it would be set active again.
+- Whether a stock line for a listing still awaiting approval is refused. If it is, the line's refusal puts the mapping in `error` (n11 rule, `mp_sync_apply_results()`); the approval read sets it active again (`trendyol-listing-status.md`).
 
 ## What do webhooks carry?
 - Order package changes only, no stock, price or product events, so they change nothing here. The receiver: `marketplace-webhook-receiver.md`; Trendyol's webhook facts: `marketplace-webhook-registration.md`.
