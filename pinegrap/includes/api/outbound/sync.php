@@ -750,7 +750,7 @@ function mp_sync_listing_states_account($account, &$summary) {
 		WHERE (account_id = '" . e($account_id) . "')
 		  AND (remote_code <> '')
 		  AND (remote_id = '')
-		  AND NOT ((status = 'error') AND (last_error LIKE '" . e(mp_sync_like_prefix(mp_listing_rejected_prefix($provider_name))) . "%'))
+		  AND NOT ((status = 'error') AND (last_error LIKE '" . e(escape_like(mp_listing_rejected_prefix($provider_name))) . "%'))
 		ORDER BY id ASC"));
 
 	// A pass every five minutes moves the window on by one.
@@ -921,13 +921,6 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 	}
 
 	return $want ? $want : null;
-
-}
-
-// A text as the start of a LIKE pattern: its own % and _ match only themselves.
-function mp_sync_like_prefix($text) {
-
-	return str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), (string)$text);
 
 }
 
