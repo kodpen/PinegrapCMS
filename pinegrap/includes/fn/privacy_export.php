@@ -568,7 +568,7 @@ function pg_privacy_export_summary_html(array $document)
 
         foreach ($consents as $key => $row) {
             $html .= '<tr><td>' . h((string) $key) . '</td>'
-                . '<td>' . h((($row['status'] ?? '') === 'granted') ? lang('Given') : lang('Refused')) . '</td>'
+                . '<td>' . h(_pg_privacy_export_consent_answer((string) ($row['status'] ?? ''))) . '</td>'
                 . '<td>' . h(_pg_privacy_export_time((int) ($row['created_at'] ?? 0))) . '</td>'
                 . '<td>' . h((string) ($row['source'] ?? '')) . '</td></tr>';
         }
@@ -1234,6 +1234,22 @@ function _pg_privacy_export_select($sql, array $needs, array $mask = array(), ar
 function _pg_privacy_export_time($time)
 {
     return ((int) $time > 0) ? date('Y-m-d H:i', (int) $time) : '';
+}
+
+/**
+ * The answer of a consent row in words. A pending row (a double opt-in mail
+ * not answered yet) is neither given nor refused.
+ *
+ * @param string $status
+ * @return string
+ */
+function _pg_privacy_export_consent_answer($status)
+{
+    if ($status === 'granted') {
+        return lang('Given');
+    }
+
+    return ($status === 'pending') ? lang('Waiting for confirmation') : lang('Refused');
 }
 
 /**

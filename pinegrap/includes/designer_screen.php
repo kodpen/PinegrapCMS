@@ -336,6 +336,9 @@ function pg_designer_screen_render($ctx)
             'contactGroups' => array_map(function ($g) {
                 return array('id' => (int)$g['id'], 'name' => (string)$g['name']);
             }, (array)db_items("SELECT id, name FROM contact_groups ORDER BY name")),
+            // The form's double opt-in switch exists once the 11.0.27 column
+            // is there; until then pg_cf_write_form_settings() drops it.
+            'doubleOptIn' => function_exists('pg_fs_ready') && pg_fs_ready(),
         ),
     ), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 

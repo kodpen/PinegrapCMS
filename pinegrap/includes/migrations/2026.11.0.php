@@ -53,6 +53,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_invoice_recurring_day(); // 11.0.60
 	upgrade_2026_11_0_form_field_translate();   // 11.0.26
 	upgrade_2026_11_0_form_protection();        // 11.0.28
+	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 
 }
 
@@ -1220,5 +1221,18 @@ function upgrade_2026_11_0_form_protection() {
 	install_add_column('config', 'form_spam_blacklist', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Forms: custom form submissions are limited per visitor address (10 an hour) and per e-mail address (3 a day), and the limits can be changed under Site Settings, Security. A limit per e-mail domain and a check against StopForumSpam can be switched on there; both stay off.');
+
+}
+
+// A per-form switch for double opt-in: with it on, a custom form that adds its
+// sender to a contact group mails a signed confirmation link instead, and the
+// contact joins the group only when the button behind the link is pressed
+// (includes/fn/form_subscription.php). Off on every existing form, so no form
+// changes what it does until the switch is turned on.
+function upgrade_2026_11_0_form_double_opt_in() {
+
+	install_add_column('custom_form_pages', 'double_opt_in', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Forms: a form that adds its sender to a contact group can now ask for confirmation by e-mail first (double opt-in). The switch is off on every form until it is turned on in the settings of the form.');
 
 }

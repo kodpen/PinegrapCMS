@@ -419,9 +419,11 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
-        'pretty_urls' => 0,
+        'pretty_urls' => 0, 'double_opt_in' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
+    // The 11.0.27 column is read once it is there.
+    $double_opt_in_ready = pg_fs_ready();
 
     $row = db_item(
         "SELECT form_name, enabled, quiz, save, auto_registration,
@@ -429,7 +431,7 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days, pretty_urls
+                membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -463,6 +465,8 @@ function pg_cf_load_page_form_settings($page_id)
         // Records addressed by their name (/<page>/<title>) rather than by
         // their reference code; the name comes from the Title field.
         'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
+        // The contact joins the group only through the link mailed to it.
+        'double_opt_in'        => ($double_opt_in_ready && (int)$row['double_opt_in'] === 1) ? 1 : 0,
     );
 }
 
@@ -815,6 +819,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     // fields (the Title field among them) are in place.
     if (array_key_exists('pretty_urls', $settings)) {
         $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
+    }
+    if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
+        $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';
     }
     if (array_key_exists('confirmation_message', $settings)) {
         $msg = trim((string)$settings['confirmation_message']);
@@ -3237,12 +3244,12 @@ function pg_cf_mail_link_values()
 /**
  * The link field values for $context (pg_cf_mail_links_context()): each ''
  * without a context or while $suspended (the administrator's e-mail), else
- * what the two link builders give for the context's address, page and contact.
+ * what the two link builders give for the context's address, form and contact.
  *
  * @param array|null $context
  * @param bool       $suspended
  * @param callable   $preferences_url function (string $email_address): string
- * @param callable   $confirm_url     function (int $custom_form_page_id, int $contact_id): string
+ * @param callable   $confirm_url     function (int $form_id, int $contact_id, string $email_address): string
  * @return array name => value
  */
 function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)
@@ -3254,26 +3261,56 @@ function pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $c
     }
 
     $values['email_preferences_url'] = (string) call_user_func($preferences_url, (string)($context['email_address'] ?? ''));
-    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['custom_form_page_id'] ?? 0), (int)($context['contact_id'] ?? 0));
+    $values['confirm_subscription_url'] = (string) call_user_func($confirm_url, (int)($context['form_id'] ?? 0), (int)($context['contact_id'] ?? 0), (string)($context['email_address'] ?? ''));
 
     return $values;
 }
 
 /**
- * The link that confirms a subscription made with a form: a signed,
- * stateless link for the contact and the form's contact group, given only
- * when the form asks for a double opt-in. '' otherwise, for a submission
- * without a contact, and on a site without ENCRYPTION_KEY. No form asks for
- * a double opt-in yet, so it is always ''.
+ * The link that confirms a subscription made with a form: the signed,
+ * stateless link pg_fs_hold_submission() made for this submission when the
+ * form asks for a double opt-in and held the contact group back
+ * (pg_fs_pending_url()). Given only to the contact's own address
+ * (pg_cf_confirm_subscription_url_for()); '' for any other submission, a
+ * submission without a contact and a site without ENCRYPTION_KEY.
  *
- * @param int      $custom_form_page_id
- * @param int      $contact_id
- * @param int|null $issued Unix time the link is signed with (null: now)
+ * @param int    $form_id       the submitted form (forms.id)
+ * @param int    $contact_id
+ * @param string $email_address where the e-mail being drawn goes
  * @return string
  */
-function pg_cf_confirm_subscription_url($custom_form_page_id, $contact_id, $issued = null)
+function pg_cf_confirm_subscription_url($form_id, $contact_id, $email_address)
 {
-    return '';
+    $url = pg_fs_pending_url($form_id);
+
+    if ($url === '') {
+        return '';
+    }
+
+    return pg_cf_confirm_subscription_url_for($url, $email_address, pg_fs_contact_email($contact_id));
+}
+
+/**
+ * $url when $email_address is the contact's own address once both are
+ * normalised (pg_privacy_normalize_email()), '' otherwise. The link is signed
+ * for the contact's address, while the submitter's e-mail can go to another
+ * one (the signed-in user's, or an e-mail field not bound to the contact): a
+ * confirmation pressed there would not prove the address owner agreed.
+ *
+ * @param string $url
+ * @param string $email_address
+ * @param string $contact_address
+ * @return string
+ */
+function pg_cf_confirm_subscription_url_for($url, $email_address, $contact_address)
+{
+    $address = pg_privacy_normalize_email($email_address);
+
+    if ((string) $url === '' || $address === '' || $address !== pg_privacy_normalize_email($contact_address)) {
+        return '';
+    }
+
+    return (string) $url;
 }
 
 /**
