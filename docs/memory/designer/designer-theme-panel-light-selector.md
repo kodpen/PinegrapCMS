@@ -23,7 +23,7 @@ description: Which blocks the designer's Themes panel writes light and dark vari
 
 ## How are designs saved with the old selector fixed?
 - In the editor: `_ensureBootstrapSentinels()` on load, `_writeThemeVar()` before every write. Colours move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, moved before the dark block when after it (found again after the cut).
-- On the server: step 11.0.31 makes the same split for designs nobody opens, old page copies, design templates and old theme files (`designer-theme-light-selector-upgrade.md`).
+- On the server: step 11.0.32 makes the same split for designs nobody opens, old page copies, design templates and old theme files (`designer-theme-light-selector-upgrade.md`).
 - A bare `:root` or `[data-bs-theme="light"]` block is hand-written and is left as written.
 - "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the shared, light and dark blocks with these selectors.
 - Palette files (`pg_design_palette_css()`) keep `:root, [data-bs-theme=light]`: they set every variable they override in their dark block too.

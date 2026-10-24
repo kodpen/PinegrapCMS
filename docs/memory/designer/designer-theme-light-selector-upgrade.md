@@ -1,13 +1,13 @@
 ---
 name: designer-theme-light-selector-upgrade
-description: Upgrade step 11.0.31 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
+description: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 ---
 
 ## What broke on a design nobody opened?
 - A design saved before #1298 keeps `:root, [data-bs-theme="light"]` in its User Styles. That `:root` matches `<html data-bs-theme="dark">`, and `<style id="pg-user-styles">` comes after Bootstrap's dark block: on Dark the page kept its light Background rgb(253,246,227) with grey text. Only an editor open and save split it.
 
-## What does step 11.0.31 do?
-- `upgrade_2026_11_0_theme_light_selector()` in `includes/migrations/2026.11.0.php`, data only, label 11.0.31 (the first free label after 11.0.30).
+## What does step 11.0.32 do?
+- `upgrade_2026_11_0_theme_light_selector()` in `includes/migrations/2026.11.0.php`, data only, label 11.0.32.
 - The editor's split, on:
   - `style.style_custom_css`, each `meta: 'user-styles'` entry;
   - `page.page_custom_css`, the pre-2026.4.4 copy rendered while the design's own list is empty;
@@ -30,5 +30,4 @@ description: Upgrade step 11.0.31 splits the Themes panel's old combined light b
 - Published designs (old block before and after the dark block, fonts-only block after a dark block with blank lines, an old theme file), logged out at 1280 and 375, light and dark OS: Dark rgb(253,246,227) before, rgb(33,37,41) after; Light, Georgia, radius 0 and a design's own dark values kept. A second run changed no byte; an editor save wrote the same JSON.
 
 ## What is left open?
-- A template document imported from another site later is not split until its design is saved in the editor.
-- Like the editor, the split does not skip comments: an old block inside `/* */` is split too.
+- Shared with the editor, both twins to change together: an old block inside `/* */` is split too; a `}` inside quotes counts as a brace; `_themeSetDecl()` appends after a hand-edited last declaration with no `;` without adding one.

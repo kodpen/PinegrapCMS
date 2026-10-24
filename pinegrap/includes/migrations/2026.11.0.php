@@ -55,7 +55,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
-	upgrade_2026_11_0_theme_light_selector();   // 11.0.31
+	upgrade_2026_11_0_theme_light_selector();   // 11.0.32
 
 }
 
@@ -1253,7 +1253,7 @@ function upgrade_2026_11_0_page_cache_generation() {
 }
 
 // The Themes panel's old combined light block in stored designs (2026.11.0,
-// 11.0.31; no table changes; includes/fn/designer_theme_vars.php).
+// 11.0.32; no table changes; includes/fn/designer_theme_vars.php).
 //
 // Until the panel kept its light and shared blocks apart it wrote every
 // light value under `:root, [data-bs-theme="light"]`. That `:root` also
@@ -1306,7 +1306,7 @@ function upgrade_2026_11_0_theme_light_selector() {
 
 	}
 
-	install_ran('Visual designer: the Themes panel light colours that also applied to a page a theme switcher set to dark were split from the fonts and radii, as the editor does when a design is opened (' . $designs . ' designs, ' . $pages . ' pages, ' . $templates . ' design templates, ' . $files . ' theme files). A dark page now takes the dark colours; light pages look as before.');
+	install_ran('Visual designer: the Themes panel light colours that also applied to a page a theme switcher set to dark were split from the fonts and radii, as the editor does when a design is opened (designs: ' . $designs . ', pages: ' . $pages . ', design templates: ' . $templates . ', theme files: ' . $files . '). A dark page now takes the dark colours; light pages look as before.');
 
 }
 
