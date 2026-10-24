@@ -28049,5 +28049,9 @@
     "Report Details": "Şikâyet Ayrıntıları",
     "What is your message about?": "Mesajınız ne hakkında?",
     "Choose one…": "Birini seçin…",
-    "Topics desk": "Konu masası"
+    "Topics desk": "Konu masası",
+    "Paraşüt no longer has this invoice's record (id {var:1}): it was deleted there. The last send got no answer, so the next send first looks at Paraşüt for a record that send may have written; the invoice can be sent again.": "Paraşüt'te bu faturanın kaydı (id {var:1}) artık yok: orada silinmiş. Son gönderim yanıt alamadı; bu yüzden sonraki gönderim önce o gönderimin yazmış olabileceği kaydı Paraşüt'te arar. Fatura yeniden gönderilebilir.",
+    "Paraşüt no longer has this invoice's record (id {var:1}): it was deleted there. Nothing of it is left at Paraşüt, so the invoice can be sent again.": "Paraşüt'te bu faturanın kaydı (id {var:1}) artık yok: orada silinmiş. Paraşüt'te ondan bir şey kalmadı; fatura yeniden gönderilebilir.",
+    "Paraşüt may still be turning the invoice into an e-document; ask after its status first, then cancel.": "Paraşüt faturayı hâlâ e-belgeye dönüştürüyor olabilir; önce durumunu sorun, sonra iptal edin.",
+    "Paraşüt is asked what it holds first: a record whose conversion failed is deleted there, an e-Archive invoice is cancelled there, and an e-Invoice that reached GİB is not cancelled (the buyer answers it with a return invoice).": "Önce Paraşüt'e ne tuttuğu sorulur: dönüşümü başarısız olmuş kayıt orada silinir, e-Arşiv faturası orada iptal edilir; GİB'e ulaşmış e-Fatura ise iptal edilmez (alıcı ona iade faturasıyla karşılık verir)."
 }
