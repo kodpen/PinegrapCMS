@@ -26793,5 +26793,9 @@
     "order review request": "sipariş değerlendirme isteği",
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
-    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok."
+    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
+    "Trendyol only sends orders to an https address, and this site's address is {var:1}. Set the site address to https first.": "Trendyol siparişleri yalnızca https adresine gönderir; bu sitenin adresi {var:1}. Önce site adresini https yapın.",
+    "Trendyol does not send orders to an address that contains \"trendyol\", \"dolap\" or \"localhost\": {var:1}": "Trendyol, içinde \"trendyol\", \"dolap\" ya da \"localhost\" geçen bir adrese sipariş göndermez: {var:1}",
+    "Trendyol accepted the webhook but did not return an id for it.": "Trendyol webhook'u kabul etti ama kimliğini döndürmedi.",
+    "No webhook is registered for this account.": "Bu hesap için kayıtlı bir webhook yok."
 }
