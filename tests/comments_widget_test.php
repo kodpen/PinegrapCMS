@@ -5,7 +5,10 @@
  * Tests for the comments system widget (includes/fn/widgets_comments.php):
  * the per-pass record of the pages whose thread a widget drew, which the
  * classic comments block of get_page_content.php reads to leave those pages
- * alone.
+ * alone; the display options, the order and the featured modes; the thread
+ * and row flags; the markup the renderer builds and its escaping; the
+ * add-comment form's bindings and the binding-off table; the default layout
+ * against the editor's starter; the draw end to end.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
