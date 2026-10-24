@@ -17,10 +17,11 @@
 // documentation marks as shared by V1 and V2, are used.
 //
 // What this connector does so far: prove the credentials, read the category
-// tree and what a category demands, open listings, send stock and price, and
-// read the result of a batch. Orders are not named in the table below, so
-// mp_can() answers no for them and nothing queues work this connector cannot
-// do.
+// tree and what a category demands, open listings, send stock and price, read
+// the result of a batch, read order packages and accept one (Picking). What it
+// does not name in the table below - webhooks, invoices, shipping by the
+// seller's own carrier - mp_can() answers no for, so nothing queues work this
+// connector cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -67,7 +68,10 @@ function mp_trendyol_connector() {
 		'category_attributes' => 'mp_trendyol_category_attributes',
 		'create_listings'     => 'mp_trendyol_create_listings',
 		'push_stock_price'    => 'mp_trendyol_push_stock_price',
-		'read_task'           => 'mp_trendyol_read_task'
+		'read_task'           => 'mp_trendyol_read_task',
+		'pull_orders'         => 'mp_trendyol_pull_orders',
+		'order_stage'         => 'mp_trendyol_order_stage',
+		'approve_lines'       => 'mp_trendyol_approve_lines'
 	);
 
 }
@@ -154,8 +158,13 @@ function mp_trendyol_credentials_problem($account) {
 /* ---------------------------------------------------------------- one call */
 
 // One call, with their answer already read. A GET unless a body is given, in
-// which case it is a POST of that body as JSON.
-function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null) {
+// which case it is a POST of that body as JSON; $method names another verb
+// (PUT, DELETE), sent with the body when there is one.
+//
+// $allow_empty reads a 2xx whose body is empty or not JSON as success, for a
+// call whose answer carries nothing but its status. Every other call keeps
+// reading such an answer as an error.
+function mp_trendyol_call($account, $path, $max_body, $transport = null, $body = null, $method = null, $allow_empty = false) {
 
 	$problem = mp_trendyol_credentials_problem($account);
 
@@ -201,9 +210,15 @@ function mp_trendyol_call($account, $path, $max_body, $transport = null, $body =
 
 	$options['headers'] = $headers;
 
-	$outcome = call_user_func($transport, ($body === null) ? 'GET' : 'POST', mp_trendyol_base($account) . $path, $options);
+	if ($method === null) {
 
-	return mp_trendyol_read($outcome, mp_trendyol_environment($account));
+		$method = ($body === null) ? 'GET' : 'POST';
+
+	}
+
+	$outcome = call_user_func($transport, strtoupper((string)$method), mp_trendyol_base($account) . $path, $options);
+
+	return mp_trendyol_read($outcome, mp_trendyol_environment($account), $allow_empty);
 
 }
 
@@ -214,7 +229,10 @@ function mp_trendyol_call($account, $path, $max_body, $transport = null, $body =
 // User-Agent, its rate limit, and the test environment's 503 for an address it
 // does not know. Each of those has one likely cause, and naming the cause is
 // more use to the operator than the envelope's exception class.
-function mp_trendyol_read($outcome, $environment = 'production') {
+//
+// A 2xx whose body is not JSON is an error unless $allow_empty says the call
+// answers with its status alone; then it is success with no data.
+function mp_trendyol_read($outcome, $environment = 'production', $allow_empty = false) {
 
 	$status = isset($outcome['status']) ? (int)$outcome['status'] : 0;
 
@@ -258,6 +276,12 @@ function mp_trendyol_read($outcome, $environment = 'production') {
 	$ok = ($status >= 200 && $status < 300);
 
 	if (!is_array($decoded)) {
+
+		if ($ok && $allow_empty) {
+
+			return mp_ok(array());
+
+		}
 
 		return mp_error(
 			lang(array('string' => 'Trendyol answered {var:1} with something that is not JSON.', 'vars' => array($status))),
@@ -1550,5 +1574,543 @@ function mp_trendyol_reason_text($reasons) {
 	}
 
 	return mb_substr(implode('; ', array_unique($parts)), 0, 500);
+
+}
+
+/* ------------------------------------------------------------------ orders */
+
+// Their order packages modified since a moment.
+//
+// The package, not the order, is the unit, as on n11: Trendyol splits a
+// customer's order into shipment packages, and it is the package that carries a
+// status, a carrier and a tracking number. A partial cancellation breaks a
+// package: the old one turns Cancelled and what is left comes back under a new
+// package id with the same order number, which the importer sees as one order
+// cancelled and one new.
+//
+// The feed is asked in ascending order of modification time, so a package comes
+// back every time it changes and the cursor can stop at the last one read.
+// Their window is at most two weeks long, so a cursor older than that starts at
+// the oldest moment the window still reaches, an hour inside it so that a clock
+// here that runs differently from theirs cannot make the window longer than
+// they allow. An account paused for longer than two weeks loses the packages
+// modified before that; Trendyol keeps a month and its seller panel still
+// shows them.
+//
+// The window starts five minutes before $since, as on n11, and the importer
+// refuses a package it has already seen, so the overlap costs nothing. It ends
+// now rather than a little ahead: an end in the future is not something their
+// documentation says the service takes.
+//
+// Answers data['read_to'] the way mp_n11_pull_orders() does: the end of the
+// window when the feed ran out, the modification time of the last package read
+// when the page cap ran out first.
+function mp_trendyol_pull_orders($account, $since, $transport = null) {
+
+	$now = time();
+
+	$since = (int) $since;
+
+	if ($since <= 0) {
+
+		// A first pull. A week, as on n11: long enough to catch what is still
+		// unshipped without walking the whole history of the store.
+		$since = $now - 604800;
+
+	}
+
+	$start = max($since - 300, $now - 1209600 + 3600) * 1000;
+
+	$end = $now * 1000;
+
+	$packages = array();
+
+	// Their ceiling for one page.
+	$size = 200;
+
+	// Twenty pages is a pass. Whatever is left is read by the next one, because
+	// the cursor only moves as far as what was read.
+	$pages = 20;
+
+	// Twenty full pages that all sit inside the five-minute overlap would hand
+	// the next pass the same start for ever, so only then does the pull read
+	// on past the cap. They answer at most ten thousand packages of one window,
+	// which at two hundred a page makes page 49 the last one there is.
+	$ceiling = 50;
+
+	// The modification time of the last entry read that carried one.
+	$reached = 0;
+
+	$more = false;
+
+	for ($page = 0; $page < $ceiling; $page++) {
+
+		// No status filter: an answer filtered on several statuses once came
+		// back without the status field, and every status matters here anyway.
+		$result = mp_trendyol_call($account,
+			'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/v2/orders'
+				. '?startDate=' . $start
+				. '&endDate=' . $end
+				. '&orderByField=PackageLastModifiedDate'
+				. '&orderByDirection=ASC'
+				. '&page=' . $page
+				. '&size=' . $size,
+			4194304, $transport);
+
+		if (!$result['ok']) {
+
+			// Whatever was read before the failure is still worth importing, and
+			// the caller is told not to move the cursor past it.
+			return mp_error($result['error'], !empty($result['retry']),
+				array('packages' => $packages, 'complete' => false));
+
+		}
+
+		$content = (isset($result['data']['content']) && is_array($result['data']['content']))
+			? $result['data']['content'] : array();
+
+		foreach ($content as $entry) {
+
+			// Read from every entry, the ones the importer is not handed too: a
+			// page of packages still awaiting payment has been read all the same,
+			// and the next pass must not start before it again.
+			$modified = (is_array($entry) && isset($entry['lastModifiedDate']))
+				? mp_trendyol_seconds($entry['lastModifiedDate']) : 0;
+
+			if ($modified > 0) {
+
+				$reached = $modified;
+
+			}
+
+			$package = mp_trendyol_package($entry);
+
+			if ($package !== null) {
+
+				$packages[] = $package;
+
+			}
+
+		}
+
+		$more = (count($content) >= $size);
+
+		if (!$more) {
+
+			break;
+
+		}
+
+		if (($page + 1 >= $pages) && ($reached > $since)) {
+
+			break;
+
+		}
+
+	}
+
+	if (!$more) {
+
+		return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => $now));
+
+	}
+
+	if ($reached > $since) {
+
+		return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => $reached, 'more' => true));
+
+	}
+
+	// Even the ceiling did not get past the start. The packages are imported
+	// and the cursor stays where it was rather than jumping over the rest.
+	return mp_ok(array('packages' => $packages, 'complete' => false, 'more' => true));
+
+}
+
+// One of their packages in the shape mp_import_order() reads, or null for an
+// entry that is not one to import.
+//
+// Awaiting and Verified are packages whose payment is not confirmed yet.
+// Trendyol says to do nothing with them but count the stock; once the payment
+// clears they come back as Created, modified again. Importing one would write
+// an order that may never be paid.
+//
+// Their amounts are decimal lira and are converted to minor units here, once.
+// lineGrossAmount is the price of one unit before any discount, VAT inside, so
+// the tax handed on is 0, as on n11. The seller's discount is summed from
+// discountDetails, one entry per unit, which keeps a discount that does not
+// divide by the quantity at its exact amount; the line's lineSellerDiscount is
+// an average per unit and only the fallback. Trendyol's own discounts
+// (lineTyDiscount, lineItemTyDiscount, packageTyDiscount) are not counted:
+// Trendyol pays the seller as if they had not happened, the same as n11's
+// mallDiscount, so counting them would understate what the sale earned.
+//
+// The older field names (id, amount, discount, lineItemDiscount, merchantSku)
+// are read where the new ones are missing; Trendyol renamed them and said the
+// old ones would go.
+function mp_trendyol_package($entry) {
+
+	if (!is_array($entry)) {
+
+		return null;
+
+	}
+
+	$package_id = mp_trendyol_text($entry, array('shipmentPackageId', 'id'));
+
+	if ($package_id === '') {
+
+		return null;
+
+	}
+
+	$status = mp_trendyol_text($entry, array('status', 'shipmentPackageStatus'));
+
+	if ($status === 'Awaiting' || $status === 'Verified') {
+
+		return null;
+
+	}
+
+	$lines = array();
+
+	$raw_lines = (isset($entry['lines']) && is_array($entry['lines'])) ? $entry['lines'] : array();
+
+	foreach ($raw_lines as $line) {
+
+		if (!is_array($line)) {
+
+			continue;
+
+		}
+
+		$quantity = isset($line['quantity']) ? max(1, (int)$line['quantity']) : 1;
+
+		$discount = mp_trendyol_seller_discount($line, $quantity);
+
+		$lines[] = array(
+			'remote_line_id' => mp_trendyol_text($line, array('lineId', 'id')),
+			// The barcode is what they know a product by, and what the mapping
+			// row of this provider stores; the stock code is the code the
+			// listing was sent with, which is the product's name here.
+			'code'           => mp_trendyol_text($line, array('barcode')),
+			'sku'            => mp_trendyol_text($line, array('stockCode', 'merchantSku')),
+			'name'           => mp_trendyol_text($line, array('productName')),
+			'quantity'       => $quantity,
+			'price'          => mp_trendyol_minor(mp_trendyol_first($line, array('lineGrossAmount', 'amount'))),
+			'tax'            => 0,
+			'discount'       => (int) round($discount / $quantity),
+			'discount_total' => $discount,
+			'status'         => mp_trendyol_text($line, array('orderLineItemStatusName'))
+		);
+
+	}
+
+	$shipping = mp_trendyol_address($entry, 'shipmentAddress');
+
+	$billing = mp_trendyol_address($entry, 'invoiceAddress');
+
+	$first = mp_trendyol_text($entry, array('customerFirstName'));
+
+	$last = mp_trendyol_text($entry, array('customerLastName'));
+
+	if ($first === '' && $last === '') {
+
+		// One name only: the surname is its last word, as on n11.
+		$name = isset($shipping['name']) ? $shipping['name'] : '';
+
+		$space = ($name !== '') ? strrpos($name, ' ') : false;
+
+		$first = ($space === false) ? $name : trim(substr($name, 0, $space));
+
+		$last = ($space === false) ? '' : trim(substr($name, $space + 1));
+
+	}
+
+	$phone = isset($shipping['phone']) ? $shipping['phone'] : '';
+
+	if ($phone === '' && isset($billing['phone'])) {
+
+		$phone = $billing['phone'];
+
+	}
+
+	$order_number = mp_trendyol_text($entry, array('orderNumber'));
+
+	$currency = strtoupper(mp_trendyol_text($entry, array('currencyCode')));
+
+	return array(
+		'remote_order_id'   => ($order_number !== '') ? $order_number : $package_id,
+		'remote_package_id' => $package_id,
+		'remote_status'     => $status,
+		// The modification time, not the order date: the map row keeps it as
+		// the package's timestamp, and "Try again" moves the pull cursor back to
+		// it, so it has to be on the scale the feed is asked on.
+		'placed_at'         => isset($entry['lastModifiedDate']) ? mp_trendyol_seconds($entry['lastModifiedDate']) : 0,
+		'currency'          => ($currency !== '') ? $currency : 'TRY',
+		'customer' => array(
+			'first_name' => $first,
+			'last_name'  => $last,
+			'email'      => mp_trendyol_text($entry, array('customerEmail')),
+			'phone'      => $phone,
+			// A company only on a corporate order; otherwise the field is
+			// whatever the buyer typed into an address.
+			'company'    => (!empty($entry['commercial']) && isset($billing['company'])) ? $billing['company'] : ''
+		),
+		'billing'          => $billing,
+		'shipping_address' => $shipping,
+		'shipping_cost'    => 0,
+		// The carrier and the number are Trendyol's and arrive with the package.
+		'tracking' => array(
+			'number'  => mp_trendyol_text($entry, array('cargoTrackingNumber')),
+			'carrier' => mp_trendyol_text($entry, array('cargoProviderName')),
+			'link'    => mp_trendyol_text($entry, array('cargoTrackingLink'))
+		),
+		'lines'            => $lines
+	);
+
+}
+
+// The seller's discount on one line, in minor units, for the whole line.
+//
+// Summed from discountDetails, one entry per unit. A line without them falls
+// back to lineSellerDiscount, an average per unit, times the quantity.
+function mp_trendyol_seller_discount($line, $quantity) {
+
+	$details = (isset($line['discountDetails']) && is_array($line['discountDetails'])) ? $line['discountDetails'] : array();
+
+	if ($details) {
+
+		$total = 0;
+
+		foreach ($details as $detail) {
+
+			if (is_array($detail)) {
+
+				$total += mp_trendyol_minor(mp_trendyol_first($detail, array('lineItemSellerDiscount', 'lineItemDiscount')));
+
+			}
+
+		}
+
+		return $total;
+
+	}
+
+	return mp_trendyol_minor(mp_trendyol_first($line, array('lineSellerDiscount', 'discount'))) * $quantity;
+
+}
+
+// One of their addresses in the importer's shape.
+//
+// address2 is often a copy of address1, and is then replaced by the
+// neighbourhood, which their address1 does not always name.
+function mp_trendyol_address($entry, $key) {
+
+	$address = (isset($entry[$key]) && is_array($entry[$key])) ? $entry[$key] : array();
+
+	if (!$address) {
+
+		return array();
+
+	}
+
+	$name = mp_trendyol_text($address, array('fullName'));
+
+	if ($name === '') {
+
+		$name = trim(mp_trendyol_text($address, array('firstName')) . ' ' . mp_trendyol_text($address, array('lastName')));
+
+	}
+
+	$line_1 = mp_trendyol_text($address, array('address1', 'fullAddress'));
+
+	$line_2 = mp_trendyol_text($address, array('address2'));
+
+	if ($line_2 === '' || $line_2 === $line_1) {
+
+		$line_2 = mp_trendyol_text($address, array('neighborhood'));
+
+	}
+
+	return array(
+		'name'      => $name,
+		'company'   => mp_trendyol_text($address, array('company')),
+		'address_1' => $line_1,
+		'address_2' => $line_2,
+		'city'      => mp_trendyol_text($address, array('city')),
+		'state'     => mp_trendyol_text($address, array('district')),
+		'zip'       => mp_trendyol_text($address, array('postalCode')),
+		'country'   => mp_trendyol_text($address, array('countryCode')),
+		'phone'     => mp_trendyol_text($address, array('phone'))
+	);
+
+}
+
+// The value of the first of $keys that $row has, or null.
+function mp_trendyol_first($row, $keys) {
+
+	foreach ($keys as $key) {
+
+		if (isset($row[$key])) {
+
+			return $row[$key];
+
+		}
+
+	}
+
+	return null;
+
+}
+
+// The first of $keys that holds some text, trimmed, or ''. Their ids and the
+// tracking number are JSON numbers and come out as digits.
+function mp_trendyol_text($row, $keys) {
+
+	foreach ($keys as $key) {
+
+		if (isset($row[$key]) && is_scalar($row[$key]) && !is_bool($row[$key])) {
+
+			$value = trim((string)$row[$key]);
+
+			if ($value !== '') {
+
+				return $value;
+
+			}
+
+		}
+
+	}
+
+	return '';
+
+}
+
+// A decimal amount of theirs (199.90) as minor units.
+function mp_trendyol_minor($value) {
+
+	return is_numeric($value) ? (int) round(((float)$value) * 100) : 0;
+
+}
+
+// Their millisecond timestamp as unix seconds.
+function mp_trendyol_seconds($value) {
+
+	return is_numeric($value) ? (int) round(((float)$value) / 1000) : 0;
+
+}
+
+// What their package status means here.
+//
+// A dozen of theirs against four of ours. Only three answers matter to the
+// shop: it has gone, it has arrived, or it is not going to happen.
+function mp_trendyol_order_stage($remote_status) {
+
+	switch ((string)$remote_status) {
+
+		// With the carrier, at a collection point, or on the way back after a
+		// delivery that failed: the goods have left either way, and a parcel
+		// that comes back is a return, not a cancellation.
+		case 'Shipped':
+		case 'AtCollectionPoint':
+		case 'UnDelivered':
+		case 'Returned':
+			return 'shipped';
+
+		case 'Delivered':
+			return 'delivered';
+
+		// Not going out under this package. UnPacked is a package that was
+		// split: its goods now belong to new packages, which are imported as
+		// orders of their own and take the stock again, so the old order gives
+		// its stock back or the same goods are taken twice.
+		case 'Cancelled':
+		case 'UnSupplied':
+		case 'UnPacked':
+			return 'cancelled';
+
+	}
+
+	// Created, Picking, Invoiced - still the seller's to prepare. Awaiting and
+	// Verified never reach the importer.
+	return 'open';
+
+}
+
+// Accept a package: Created becomes Picking.
+//
+// Their status service takes the package id in the path and each line with its
+// quantity, so the package the lines belong to is needed as well as their ids.
+// Only Picking and Invoiced can be sent; everything after that is set by
+// Trendyol and its carrier. Accepting is a commitment to ship, so the caller
+// decides whether to do it; this only carries it out.
+//
+// Their answer to a successful update has no documented body, so any 2xx is
+// success here, whatever it carries.
+//
+// Ids are at most eighteen digits. A line id is sent as a JSON number, and
+// (int) of a longer string can pass PHP_INT_MAX (nineteen digits on a 64-bit
+// build), where it saturates and a different line id would be sent; the
+// package id is held to the same length, theirs being ten digits today.
+function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $transport = null) {
+
+	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
+
+	if (preg_match('/^[0-9]{1,18}$/', $package_id) !== 1) {
+
+		return mp_error(lang('That order has no package number to accept.'));
+
+	}
+
+	$wanted = array();
+
+	foreach ((array)$line_ids as $line_id) {
+
+		$wanted[trim((string)$line_id)] = true;
+
+	}
+
+	$lines = array();
+
+	foreach ((array)(isset($package['lines']) ? $package['lines'] : array()) as $line) {
+
+		$line_id = isset($line['remote_line_id']) ? trim((string)$line['remote_line_id']) : '';
+
+		if (!isset($wanted[$line_id]) || preg_match('/^[0-9]{1,18}$/', $line_id) !== 1) {
+
+			continue;
+
+		}
+
+		$lines[] = array(
+			'lineId'   => (int)$line_id,
+			'quantity' => isset($line['quantity']) ? max(1, (int)$line['quantity']) : 1
+		);
+
+	}
+
+	if (!$lines) {
+
+		return mp_error(lang('That order has no lines to accept.'));
+
+	}
+
+	// params is an object on their side; an empty PHP array would be sent as
+	// [] instead of {}.
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/shipment-packages/' . $package_id,
+		65536, $transport,
+		array('lines' => $lines, 'params' => new stdClass(), 'status' => 'Picking'),
+		'PUT', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('accepted' => count($lines)));
 
 }

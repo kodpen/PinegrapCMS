@@ -124,3 +124,22 @@ function test_form_item_view_variables_help_syntax_samples()
 	pg_assert_same('^^submitted_date_and_time^^%%d.m.Y H:i%%', $empty['syntax']['date'], 'date on the submitted date');
 	pg_assert_same('^^example^^%%Yes|No%%', $empty['syntax']['checkbox'], 'check box placeholder');
 }
+
+// The links only the sender's e-mail fills in are a group of their own.
+function test_form_item_view_variables_help_mail_links()
+{
+	$help = pg_cf_variables_help_build(array(), array(), 'Yes', 'No', array(
+		'email_preferences_url' => 'E-posta tercihleri',
+	));
+
+	pg_assert_same(2, count($help['mail']), 'two mail links');
+	pg_assert_same('^^email_preferences_url^^', $help['mail'][0]['token'], 'preferences token');
+	pg_assert_same('E-posta tercihleri', $help['mail'][0]['label'], 'preferences label');
+	pg_assert_same('^^confirm_subscription_url^^', $help['mail'][1]['token'], 'confirmation token');
+	pg_assert_same('confirm_subscription_url', $help['mail'][1]['label'], 'label falls back to the name');
+	pg_assert_same('', $help['mail'][0]['example'], 'no format example');
+
+	$tokens = array();
+	foreach (pg_cf_variables_help_build(array(), get_standard_fields_for_view())['standard'] as $item) $tokens[] = $item['token'];
+	pg_assert_false(in_array('^^email_preferences_url^^', $tokens, true), 'not a standard field');
+}

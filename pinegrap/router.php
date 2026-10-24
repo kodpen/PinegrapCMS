@@ -334,6 +334,12 @@ if ($query_string_position !== false) {
 
 $item_name = rawurldecode($item_name);
 
+// The page cache (includes/fn/page_cache.php): an anonymous visit to a page
+// kept on disk is answered here and the request ends, before any lookup. A
+// miss goes on as before; only the two requires of get_page.php below that
+// draw the page named by the address may store it.
+router_page_cache_serve();
+
 // If the item name is blank or is "index.php", then that means the home page was requested,
 // so forward to get page script.
 if (
@@ -341,6 +347,7 @@ if (
     || ($item_name == 'index.php')
 ) {
 
+    router_page_cache_store_here();
     require(dirname(__FILE__) . '/get_page.php');
     exit();
 }
@@ -596,6 +603,7 @@ if ($short_link) {
 // here (includes/fn/short_link_redirects.php), so a page always wins over it.
 define('PG_SHORT_LINK_PATH', $short_link_name);
 $_GET['page'] = $item_name;
+router_page_cache_store_here();
 require(dirname(__FILE__) . '/get_page.php');
 exit();
 
@@ -686,6 +694,66 @@ function router_short_link_module()
     }
 
     require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
+}
+
+/**
+ * Loads includes/fn/page_cache.php on its own, as router_short_link_module()
+ * does its module: what the router calls there runs no lang() and no db().
+ *
+ * @return void
+ */
+function router_page_cache_module()
+{
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+    }
+
+    require_once(dirname(__FILE__) . '/includes/fn/page_cache.php');
+}
+
+/**
+ * Answers the request from the page cache when a fresh (or, while another
+ * request draws it again, a stale) copy of the page is on disk, and ends it.
+ * Otherwise the lookup is kept for router_page_cache_store_here(). Nothing at
+ * all while PAGE_CACHE_TTL is off.
+ *
+ * @return void
+ */
+function router_page_cache_serve()
+{
+    global $router_config_row, $router_page_cache_lookup;
+
+    if (!defined('PAGE_CACHE_TTL') || !PAGE_CACHE_TTL || !is_array($router_config_row)) {
+        return;
+    }
+
+    router_page_cache_module();
+
+    $lookup = pg_page_cache_lookup($router_config_row, $_SERVER, $_COOKIE, REQUEST_URL, time());
+
+    if (($lookup['state'] === 'hit') || ($lookup['state'] === 'stale')) {
+        pg_page_cache_send($lookup, isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '');
+        exit();
+    }
+
+    $router_page_cache_lookup = $lookup;
+}
+
+/**
+ * Tells get_page.php the name and generation to store the page under: only
+ * where the page drawn is the one the address names (the home page and a
+ * page by its own name), never for a short link, whose address draws another.
+ *
+ * @return void
+ */
+function router_page_cache_store_here()
+{
+    global $router_page_cache_lookup;
+
+    if (is_array($router_page_cache_lookup) && ($router_page_cache_lookup['state'] === 'miss') && !defined('PG_PAGE_CACHE_KEY')) {
+        define('PG_PAGE_CACHE_KEY', $router_page_cache_lookup['key']);
+        define('PG_PAGE_CACHE_GENERATION', $router_page_cache_lookup['generation']);
+    }
 }
 
 /**

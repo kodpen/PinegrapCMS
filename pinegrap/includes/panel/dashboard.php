@@ -279,22 +279,22 @@ function pg_panel_update_dashboard_appearance($request, $action)
     validate_token();
 
     // How the dashboard looks: which of the four treatments the cards wear,
-    // and what sits behind them. Both are site-wide, both live on the
-    // dashboard row beside the widget order, and both are picked from the
-    // Panel entry's context menu on the dashboard itself.
+    // and what sits behind them. Both are site-wide and live on the
+    // dashboard row beside the widget order. The panel sets them on the
+    // Dashboard card of Site Settings > Appearance, whose save writes them
+    // itself (includes/settings/appearance.save.php); this action sets one
+    // of them per request, for a caller of api.php.
     //
     // Deliberately not exempt from the general gate (its row in
     // includes/panel/actions.php says exempt => false), so the gate applies:
-    // signed in, and role 1 or better. That is the same reach as the menu
-    // the selects are drawn in.
+    // signed in, and role 1 or better. That is the same reach as the
+    // settings card (pg_dashboard_appearance_allowed()).
     //
     // Field and value are whitelisted rather than validated. One of them
     // becomes a column name and the other a stored slug, and neither has a
-    // legitimate free-text form, so a table of the accepted pairs is both
-    // the check and the documentation.
-    $appearance_fields = array(
-        'widget_theme'   => array('flat', 'neon', 'glass', 'aurora'),
-        'panel_backdrop' => array('auto', 'none', 'mesh', 'dusk', 'ember'));
+    // legitimate free-text form; the list is the one the dashboard and the
+    // settings card read (pg_dashboard_appearance_choices()).
+    $appearance_fields = pg_dashboard_appearance_choices();
 
     $appearance_field = (string) ($request['field'] ?? '');
     $appearance_value = (string) ($request['value'] ?? '');
@@ -312,8 +312,7 @@ function pg_panel_update_dashboard_appearance($request, $action)
 
     // The columns arrive with 2026.4.4. An installation whose files are
     // ahead of its database is told to run the upgrade rather than handed a
-    // failed query -- the menu that sent this is drawn from the same row, so
-    // it will have offered the choice quite happily.
+    // failed query: the caller cannot know which columns the row has.
     if (!db_item("SHOW COLUMNS FROM dashboard LIKE '" . $appearance_field . "'")) {
 
         $response = array(

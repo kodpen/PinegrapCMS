@@ -292,3 +292,23 @@ function test_privacy_export_summary_html()
 		pg_assert_contains(h($label), $html, 'section ' . $label);
 	}
 }
+
+// A pending group consent (a double opt-in mail not answered) is shown as waiting, never as given.
+function test_privacy_export_summary_pending_consent()
+{
+	$document = pg_privacy_export_document(
+		array('emails' => array('ali@example.com')),
+		array(
+			'consents' => array('rows' => array(
+				array('id' => '3', 'created_at' => '300', 'channel' => 'email', 'purpose' => 'group:7', 'status' => 'pending', 'source' => 'form'),
+				array('id' => '4', 'created_at' => '300', 'channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted', 'source' => 'account'),
+			)),
+		),
+		array('time' => 1760961600, 'site' => 'example.com', 'prepared_by' => 'admin')
+	);
+
+	$html = pg_privacy_export_summary_html($document);
+
+	pg_assert_contains('<td>email:group:7</td><td>' . h(lang('Waiting for confirmation')) . '</td>', $html, 'pending');
+	pg_assert_contains('<td>email:marketing</td><td>' . h(lang('Given')) . '</td>', $html, 'granted');
+}
