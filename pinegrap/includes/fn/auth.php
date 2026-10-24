@@ -3111,8 +3111,27 @@ function get_captcha_fields($liveform)
         return '';
     }
     $output_captcha_fields = '';
+    // A provider chosen in the Security settings (includes/fn/captcha.php)
+    // replaces the question with its own widget; the honeypot stays.
+    $captcha_provider = (!pg_user_has_panel_access() && function_exists('pg_captcha_active')) ? pg_captcha_active() : null;
+
+    if (is_array($captcha_provider)) {
+        $output_captcha_fields = '<div class="captcha">
+
+                <div style="display: none">' . $liveform->output_field(array(
+                        'type' => 'textarea',
+                        'name' => 'body',
+                        'cols' => '30',
+                        'rows' => '4',
+                        'class' => 'software_textarea'
+                    )) . '</div>
+
+                <div class="software_captcha_label" style="font-weight: bold; margin-bottom: .5em">' . lang('To prevent spam, please confirm you are not a robot') . '</div>
+                ' . pg_captcha_widget($captcha_provider) . '
+
+            </div>';
     // Everyone but staff answers the question (pg_user_has_panel_access()).
-    if (!pg_user_has_panel_access()) {
+    } else if (!pg_user_has_panel_access()) {
         // randomly generate the numbers to add and the question to be asked
         $first_number = rand(0, 9);
         $second_number = rand(0, 9);
@@ -3175,6 +3194,22 @@ function get_captcha_info($form)
     if (!CAPTCHA || pg_user_has_panel_access()) {
         return false;
     }
+    // With a provider there is no question, so the layout drops its answer
+    // box, and the widget is printed with the form's system fields.
+    $captcha_provider = function_exists('pg_captcha_active') ? pg_captcha_active() : null;
+
+    if (is_array($captcha_provider)) {
+        return array(
+            'question' => '',
+            'system' => '<div style="display: none">
+
+            <textarea name="body" cols="30" rows="4"></textarea>
+
+        </div>
+
+        ' . pg_captcha_widget($captcha_provider)
+        );
+    }
     // randomly generate the numbers to add and the question to be asked
     $first_number = rand(0, 9);
     $second_number = rand(0, 9);
@@ -3211,6 +3246,12 @@ function validate_captcha_answer($liveform)
         // because the field is hidden with CSS, so add error.
         if ($liveform->get_field_value('body') != '') {
             $liveform->mark_error('captcha_submitted_answer', lang('Sorry, the answer that you entered for the question is not valid. Please try again.'));
+        // A provider's token is checked with the provider; the blacklist is
+        // asked only after it passed, as after a correct answer.
+        } else if (function_exists('pg_captcha_active') && is_array($captcha_provider = pg_captcha_active())) {
+            if (pg_captcha_check($liveform, $captcha_provider) === 'pass') {
+                pg_form_spam_check($liveform);
+            }
             // Else the honeypot field was not filled out, so determine if the answer is correct.
         } else {
             // check to see if there is a submitted answer

@@ -1,6 +1,6 @@
 ---
 name: forms-subscription-double-opt-in
-description: Plan (approved 2026-10-23; a, b done: #1386, #1385; c, d open): forms that add to a contact group get throttling, signed link variables, per-form double opt-in and a Turnstile/hCaptcha option
+description: Plan (approved 2026-10-23; a, b, d done: #1386, #1385, #1401; c open): forms that add to a contact group get throttling, signed link variables, per-form double opt-in and a Turnstile/hCaptcha option
 ---
 
 ## Where does this come from?
@@ -25,7 +25,7 @@ description: Plan (approved 2026-10-23; a, b done: #1386, #1385; c, d open): for
 - a — throttling per address/IP/domain (settings, 11.0.28), signed minimum fill time, StopForumSpam https, staff-only captcha and WAF exemption: done, PR #1386 (`waf/form-submission-limits.md`, `waf/form-submission-checks.md`)
 - b — `^^email_preferences_url^^` and `^^confirm_subscription_url^^` in form mails: done, PR #1385 (`ui/form-mail-link-variables.md`); the confirmation link stays empty until step c fills it
 - c — double opt-in switch (11.0.27), signed confirmation link and page, `consent_log` pending/granted (claim #1377, open)
-- d — captcha provider layer: built-in default, Turnstile and hCaptcha, fail closed, CSP; after a (claim #1378, open)
+- d — captcha provider layer: built-in default, Turnstile and hCaptcha, fail closed, CSP: done, PR #1401 (`waf/form-captcha-providers.md`)
 
 ## Where to start?
 - Read `waf/waf-login-captcha.md`, `designer/custom-form-options-and-rules.md`, `sms-and-iys.md` step 4.
