@@ -1602,8 +1602,10 @@ function parasut_order_contact_attributes($order, $id_number, $country = null)
  * many buyers share, and for a number that fails the check. A real VKN/TCKN
  * always passes. Buyers who typed a placeholder that fails it (00000000000,
  * 2222222222, 12345678901) each keep a card of their own; a placeholder that
- * passes it (1234567890, 4444444444) is looked up and shared like a real
- * number. Needs the ERP's e-document registry (_parasut_order_invoice_load()).
+ * passes it (1234567890, 4444444444) is looked up like a real number, and a
+ * card under it is taken only when it is the buyer's own
+ * (parasut_order_contact_card_is_buyers()). Needs the ERP's e-document
+ * registry (_parasut_order_invoice_load()).
  *
  * @param string $identity  _parasut_order_identity()
  * @return string  Digits, or ''
@@ -1616,6 +1618,38 @@ function parasut_order_contact_search_number($identity)
 }
 
 /**
+ * Whether a card found under the buyer's number is this buyer's: the same
+ * name and e-mail as the card the order would open
+ * (parasut_order_contact_attributes()), case and outer spaces aside, as the
+ * ERP's driver matches a final consumer's card
+ * (erp_edoc_parasut_final_consumer_card_matches()). A placeholder that
+ * passes the check digits is typed by strangers too, and a card is taken as
+ * it is: the invoice carries no buyer details of its own, so another buyer's
+ * card would put the e-Arşiv in their name and mail it to them.
+ *
+ * @param mixed $card        attributes of a listed card
+ * @param array $attributes  parasut_order_contact_attributes()
+ * @return bool
+ */
+function parasut_order_contact_card_is_buyers($card, $attributes)
+{
+    if (!is_array($card)) {
+        return false;
+    }
+
+    foreach (array('name', 'email') as $field) {
+        $have = mb_strtolower(trim((string) ($card[$field] ?? '')), 'UTF-8');
+        $want = mb_strtolower(trim((string) ($attributes[$field] ?? '')), 'UTF-8');
+
+        if ($have !== $want) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * The Paraşüt card an order of the order screen's buttons goes on.
  *
  * A buyer with a VKN/TCKN (parasut_order_contact_search_number()) keeps one
@@ -1623,7 +1657,8 @@ function parasut_order_contact_search_number($identity)
  * ERP's driver reads them before it opens one (erp_edoc_parasut_contact_for()):
  * GET contacts?filter[tax_number], newest first, page by page up to
  * ERP_EDOC_PARASUT_FIND_PAGES pages, and the first card that is not
- * archived and carries exactly the number is taken as it is. A page that
+ * archived, carries exactly the number and is this buyer's
+ * (parasut_order_contact_card_is_buyers()) is taken as it is. A page that
  * answers neither a list nor 404 (no card under the number) refuses: no card
  * is opened while one may be unread. The driver's own function is not called
  * because it opens a missing card with the ERP account's details and logs
@@ -1675,9 +1710,11 @@ function parasut_order_contact_for($identity, $attributes, $request)
             $card = (is_array($item) && is_array($item['attributes'] ?? null)) ? $item['attributes'] : array();
 
             // The filter is the server's; a card whose number only begins
-            // the same way is another buyer's.
+            // the same way is another buyer's, and so is one under the same
+            // number with another name or e-mail.
             if (($id !== '') && empty($card['archived'])
-                && (preg_replace('/\D/', '', (string) ($card['tax_number'] ?? '')) === $number)) {
+                && (preg_replace('/\D/', '', (string) ($card['tax_number'] ?? '')) === $number)
+                && parasut_order_contact_card_is_buyers($card, $attributes)) {
                 return array('id' => $id, 'reused' => true, 'error' => '');
             }
         }

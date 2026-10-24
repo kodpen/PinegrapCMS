@@ -55,11 +55,12 @@ function parasut_contact_reuse_test_request($cards, &$calls, $answers = array(),
 	};
 }
 
-// A card as the contacts list gives it.
-function parasut_contact_reuse_test_card($id, $tax_number, $archived = false)
+// A card as the contacts list gives it, by default the buyer's own (the name
+// and e-mail of parasut_contact_reuse_test_attributes()).
+function parasut_contact_reuse_test_card($id, $tax_number, $archived = false, $name = 'Ayşe Demir', $email = 'ayse@example.com')
 {
 	return array('id' => (string) $id, 'type' => 'contacts', 'attributes' => array(
-		'name' => 'PG Test Alıcı ' . $id, 'contact_type' => 'person', 'account_type' => 'customer',
+		'name' => $name, 'email' => $email, 'contact_type' => 'person', 'account_type' => 'customer',
 		'tax_number' => $tax_number, 'archived' => $archived,
 	));
 }
@@ -127,6 +128,37 @@ function test_parasut_order_contact_for_skips_archived_and_other_numbers()
 
 	pg_assert_same(array('id' => '7002', 'reused' => true, 'error' => ''), $contact);
 	pg_assert_same(0, parasut_contact_reuse_test_calls_of($calls, 'POST'));
+}
+
+// A placeholder that passes the check digits (1234567890) is typed by
+// strangers too. A card under the number is taken only when it carries this
+// buyer's name and e-mail (case and outer spaces aside): the invoice carries
+// no buyer details of its own, so another buyer's card would put the
+// e-Arşiv in their name and mail it to them.
+function test_parasut_order_contact_for_takes_only_the_buyers_own_card()
+{
+	$attributes = array_merge(parasut_contact_reuse_test_attributes(), array('tax_number' => '1234567890'));
+
+	$calls = array();
+	$cards = array(parasut_contact_reuse_test_card(7101, '1234567890', false, 'Ali Veli', 'ali@example.com'));
+	$contact = parasut_order_contact_for('1234567890', $attributes, parasut_contact_reuse_test_request($cards, $calls));
+
+	pg_assert_same(array('id' => '9001', 'reused' => false, 'error' => ''), $contact, 'another buyer: a card of her own');
+	pg_assert_same(1, parasut_contact_reuse_test_calls_of($calls, 'POST'));
+
+	$calls = array();
+	$cards = array(
+		parasut_contact_reuse_test_card(7104, '1234567890', false, 'Ayşe Demir', 'other@example.com'),
+		parasut_contact_reuse_test_card(7103, '1234567890', false, 'Ali Veli', 'ayse@example.com'),
+		parasut_contact_reuse_test_card(7102, '1234567890', false, ' ayşe demir ', 'AYSE@example.com'),
+	);
+	$contact = parasut_order_contact_for('1234567890', $attributes, parasut_contact_reuse_test_request($cards, $calls));
+
+	pg_assert_same(array('id' => '7102', 'reused' => true, 'error' => ''), $contact, 'the same name and e-mail, case and outer spaces aside');
+	pg_assert_same(0, parasut_contact_reuse_test_calls_of($calls, 'POST'));
+
+	pg_assert_false(parasut_order_contact_card_is_buyers(array('name' => 'Ayşe Demir'), $attributes), 'a card without the e-mail');
+	pg_assert_false(parasut_order_contact_card_is_buyers('not a card', $attributes));
 }
 
 // No usable card under the number: one is opened with the order's own
