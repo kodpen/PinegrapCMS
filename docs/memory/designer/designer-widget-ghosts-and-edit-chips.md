@@ -25,3 +25,4 @@ description: Canvas ghost records of listing widgets (designer/widget_ghosts); t
 - `pg_sw_edit_chip_css_inject()` at the end of `get_page_content()` (not in an e-mail) puts `<style id="pg-edit-chip-css">` once before `</head>` when the finished page holds a chip.
 - It used to come with the first chip of the request. A list hidden by "Show only when" draws its rows before it is cut (the Magazine's `issue_list` on the issues page), so the stylesheet went with them and every later chip had none.
 - `:where(.pg-edit-host){position:relative}` makes the record the pencil's box at zero specificity: a design that positions the record wins. Nothing is written on the record.
+- The cost: a design rule that makes the record `position:static` wins too, and its pencils pile up in the next positioned ancestor's corner. No shipped template does.

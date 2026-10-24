@@ -8052,9 +8052,9 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // the page itself is edited in the visual editor, and what its widgets show
 // - a product, a product group, a submitted form, a comment - is edited in
 // the panel. So the pencil is simply there for a user who may edit that
-// record, in the record's top-left corner (the top-right is where a comment
-// keeps its share button), and it opens the record's edit screen, which
-// brings them back here.
+// record, in the record's top start corner (top-left; top-right on a
+// right-to-left page; a comment keeps its share button at the other end),
+// and it opens the record's edit screen, which brings them back here.
 
 /**
  * Whether this request draws edit chips: a signed-in user, and not a page
