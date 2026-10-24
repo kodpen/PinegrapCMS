@@ -1,6 +1,6 @@
 ---
 name: file-header-and-embedded-libraries
-description: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, and the PHP 7.1 base rule when embedding a third-party library.
+description: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
 ---
 
 ## Which header does a new file carry?
@@ -26,5 +26,9 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 - Before putting a library under `includes/`, check the `php` constraint in its `composer.json` and PIN the version accordingly: the base must stay at 7.1 or below.
 - Raising the PHP base is the owner's (Erdal's) decision, never a side effect of a library choice. Example: html5-php 2.11 needs PHP 7.4, so it is pinned at 2.10.1.
 - The exception: `includes/iyzipay-php` (2.0.59) asks for PHP 7.4 and is patched to load on 7.1 instead; an update re-applies the patch (commerce/iyzipay-sdk-php71-patch.md).
+
+## Which embedded libraries carry a local change?
+- `includes/iyzipay-php`, to load on PHP 7.1 (above).
+- `mysqldump.php` (ifsnop/mysqldump-php at the software root; the backup, `includes/fn/backup.php`): its constructor sets the buffered-query option through `Pdo\Mysql::ATTR_USE_BUFFERED_QUERY` when that class exists (PHP 8.4 and later; the same value, 1000), because `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY` is deprecated from 8.5 (#1451). On 8.5 the unit tests stopped with an ERROR there. An update re-applies it.
 
 Related: docs/memory/core/dompdf-embedding.md

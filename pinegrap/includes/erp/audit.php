@@ -426,7 +426,7 @@ function erp_audit_csv($filters)
     fputcsv($out, array(
         lang('Date'), lang('Source'), lang('User'), lang('IP address'), lang('Action'),
         lang('Record'), lang('Record ID'), lang('Number or name'), lang('Amount'), lang('Currency'), lang('Details'),
-    ), ';');
+    ), ';', '"', '\\');
 
     $sources = erp_audit_sources();
     $types = erp_audit_object_types();
@@ -455,7 +455,7 @@ function erp_audit_csv($filters)
                 $is_log ? '' : number_format(((int) $row['amount']) / 100, 2, '.', ''),
                 (string) $row['currency'],
                 $is_log ? '' : (string) $row['detail'],
-            ), ';');
+            ), ';', '"', '\\');
             $last = (int) $row['id'];
             $written++;
         }

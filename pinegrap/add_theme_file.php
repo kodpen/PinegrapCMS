@@ -344,7 +344,7 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
             $handle = fopen($_FILES['system_theme_csv_file']['tmp_name'], "r");
             
             // get column names from first row of CSV file
-            $columns = fgetcsv($handle, 100000, ",");
+            $columns = fgetcsv($handle, 100000, ",", '"', '\\');
             
             // if file is empty
             if (!$columns) {
@@ -414,7 +414,7 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
             $system_theme_properties_for_sql = '';
             
             // loop through the rows in the csv file to create an sql statement that will insert the properties
-            while ($row = fgetcsv($handle, 100000, ",")) {
+            while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
                 if ($system_theme_properties_for_sql != '') {
                     $system_theme_properties_for_sql .= ',';
                 }
