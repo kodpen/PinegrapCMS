@@ -203,6 +203,17 @@ function test_returns_refund_columns_panel_says_a_zero_refund_went_back_from_the
 	pg_assert_contains("lang('Marked as refunded: the money went back from the order screen.')", $panel);
 }
 
+// refund_unclear is 1 both while the payment service is being asked and
+// after it gave no clear answer; the note is true in both states and only
+// sends staff to the service's screen if it stays.
+function test_returns_refund_columns_panel_unclear_note_holds_while_the_service_is_asked()
+{
+	$panel = returns_refund_columns_test_source('view_return.php');
+
+	pg_assert_contains("lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\\'s screen.')", $panel, 'the unclear note is true while the service is being asked too');
+	pg_assert_false(strpos($panel, 'gave no clear answer; check the refund on its screen') !== false, 'never sends staff to the service while the call runs');
+}
+
 // The step is called from the open version with its label, adds the four
 // columns with the idempotent helper and fills the old refunds in again
 // only where nothing is kept yet.

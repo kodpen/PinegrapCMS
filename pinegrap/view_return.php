@@ -474,7 +474,7 @@ if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $ret
                                 <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
                                 <span class="col text-end text-break">' . h($refund_reference) . '</span>
                             </div>' : '') . '
-                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert alert-warning small mt-2 mb-0">' . h(lang('The payment service gave no clear answer; check the refund on its screen.')) . '</div>' : '') . '
+                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert alert-warning small mt-2 mb-0">' . h(lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\'s screen.')) . '</div>' : '') . '
                         </div>';
     } else {
         $output_refund = '

@@ -1057,16 +1057,18 @@ function api_order_return_windows($rows) {
 
 }
 
-// The refund a return keeps (order_returns.refund_*, 11.0.34): what the
-// order.return.refunded event carried. null until the return was refunded,
-// and on a site whose upgrade has not added the columns yet; a return closed
-// after its refund keeps it. amount is in minor units (0 is a refund
-// recorded as 0). method is driver (through the payment service) or manual
-// (made another way and recorded). Both are null for a return refunded
-// before the columns whose refund could not be found again. reference is the
-// service's refund id or the typed reference, null when none. unclear: the
-// service gave no clear answer, so the refund is booked but unconfirmed; it
-// is also true while the service is being asked.
+// The refund a return keeps (order_returns.refund_*, 11.0.34): the amount,
+// method and unclear the order.return.refunded event carries (as amount,
+// refund_method and unclear), and the reference, which the event does not
+// carry. null until the return was refunded, and on a site whose upgrade
+// has not added the columns yet; a return closed after its refund keeps
+// it. amount is in minor units (0 is a refund recorded as 0). method is
+// driver (through the payment service) or manual (made another way and
+// recorded). Both are null for a return refunded before the columns whose
+// refund could not be found again. reference is the service's refund id or
+// the typed reference, null when none. unclear: the service gave no clear
+// answer, so the refund is booked but unconfirmed; it is also true while
+// the service is being asked.
 function api_order_return_refund_present($row) {
 
 	if (((int)$row['refunded_at'] <= 0) || !array_key_exists('refund_method', $row)) {

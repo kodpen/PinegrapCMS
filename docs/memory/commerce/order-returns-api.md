@@ -21,7 +21,7 @@ description: Returns over the external API: GET/POST /orders/{id}/returns, body,
 - `pg_return_notify_staff(id, 'requested')` and one activity line naming the application (both as My Account), `pg_audit('create', 'order_return', …)` over `pg_return_audit_create_fields()` (API only; My Account writes none), the request mail only with `notify` (My Account always mails).
 
 ## Where are the refund's amount and method?
-- On the return since the owner's decision of 2026-10-24 (step 11.0.34, backfilled from the audit trail and `order_refunds`): `OrderReturn.refund` {amount, method, reference, unclear}, null before the refund, the values `order.return.refunded` carries: order-returns-refund-columns.md.
+- On the return since the owner's decision of 2026-10-24 (step 11.0.34, backfilled from the audit trail and `order_refunds`): `OrderReturn.refund` {amount, method, reference, unclear}, null before the refund; `order.return.refunded` carries amount, refund_method and unclear, no reference: order-returns-refund-columns.md.
 
 ## Events and the Workspace?
 - commerce/order-returns-events.md.
