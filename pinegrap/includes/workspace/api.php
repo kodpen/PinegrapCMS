@@ -1044,6 +1044,9 @@ function ws_api_routes()
             'path'        => '/workspace/approvals/{id}/decide',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_approvals_decide',
+            // The person's answer is given on the card: no MCP client gives
+            // it in their name.
+            'mcp'         => false,
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Approve or reject a request',
@@ -1102,6 +1105,9 @@ function ws_api_routes()
             'path'        => '/workspace/changes/{id}/apply',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_changes_apply',
+            // Applying is the person's decision on the card: no MCP client
+            // applies a change, its own proposal included.
+            'mcp'         => false,
             'dry_run' => true,
             'returns'     => 'WorkspaceChange',
             'summary'     => 'Apply a change an assistant proposed',
@@ -1117,6 +1123,8 @@ function ws_api_routes()
             'path'        => '/workspace/changes/{id}/dismiss',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_changes_dismiss',
+            // Setting a change aside is the person's decision on the card too.
+            'mcp'         => false,
             'dry_run' => true,
             'returns'     => 'WorkspaceChange',
             'summary'     => 'Set aside a change an assistant proposed',

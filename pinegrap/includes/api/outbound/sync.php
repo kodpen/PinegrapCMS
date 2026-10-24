@@ -742,7 +742,7 @@ function mp_sync_orders_account($account, &$summary) {
 
 	$complete = !empty($result['data']['complete']);
 
-	foreach ($packages as $package) {
+	foreach (mp_order_cancellations_first($account, $packages) as $package) {
 
 		$outcome = mp_import_order($account, $package);
 
