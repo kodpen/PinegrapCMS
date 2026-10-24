@@ -5,7 +5,7 @@ description: How a design's scripts and stylesheets reach the designer canvas: s
 
 ## How often does the design's JavaScript run on the canvas?
 - Once per canvas document. `applyAssetsToIframe()` compares the signature of the scripts the page on the canvas loads (`_sdCanvasJsSig()`: type, name, content or stamped URL, module flag) with the one stored on the document. When it changed, `_sdCanvasRealmReset()` replaces the iframe element with a fresh one; `document.open()` would keep the window, its timers and its globals.
-- Why: a script cannot be taken back once it has run (its timers, listeners and observers stay), so it never runs again on top of its previous copy. The editor's state carries over the reset: selection, zoom, width, dark canvas, grid and outline, scroll position.
+- Why: a script cannot be taken back once it has run (its timers, listeners and observers stay), so it never runs again on top of its previous copy. The editor's state carries over the reset: selection, zoom, width, dark canvas, grid and outline, scroll position, an open modal, offcanvas or dropdown menu (designer-canvas-open-state.md).
 - A new path that puts script on the canvas goes through this gate. Inline `<script>` inside a `custom_html` node is the exception: `renderCanvas()` rebuilds the body and `_reExecuteCanvasScripts()` runs it again on every render, so such code must be idempotent.
 
 ## How are stylesheets kept in step?

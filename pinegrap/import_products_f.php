@@ -332,7 +332,7 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
             continue;
         }
 
-        fputcsv($handle, $row);
+        fputcsv($handle, $row, ',', '"', '\\');
         $written++;
     }
 
@@ -718,7 +718,7 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 
         ksort($row);
 
-        fputcsv($handle, $row);
+        fputcsv($handle, $row, ',', '"', '\\');
         $written++;
     }
 
