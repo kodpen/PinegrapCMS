@@ -4,8 +4,9 @@
  *
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
  * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
- * they open (pg_menu_panel()) and the Site Settings row's two levels
- * (pg_menu_settings_markup()).
+ * they open (pg_menu_panel()), the Site Settings row's two levels
+ * (pg_menu_settings_markup()) and the screens it lists under a category
+ * (pg_settings_category_screens(), includes/settings/registry.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,6 +17,12 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+if (!defined('PG_SETTINGS_MENU')) {
+	define('PG_SETTINGS_MENU', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
 function test_menu_row_without_entries_is_a_link()
 {
@@ -143,4 +150,16 @@ function test_menu_settings_markup_lists_a_category_s_screens_under_its_sections
 	pg_assert_false(strpos($languages, 'translations.php\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\' data-pg-settings-page') !== false, 'not a settings page, so the modal may answer nothing');
 	pg_assert_false(strpos($menu['panels'], '<hr') !== strrpos($menu['panels'], '<hr'), 'a category with no screens gets no divider');
 	pg_assert_false(strpos($menu['entries'], '<hr') !== false, 'no groups, no divider on the first level');
+}
+
+function test_settings_category_screens_follow_the_gate_of_each_screen()
+{
+	$administrator = pg_settings_category_screens(array('role' => 0));
+	pg_assert_same(array('translations.php'), array_column($administrator['languages'], 'url'), 'an administrator gets Translations');
+	pg_assert_same(array('private_label.php'), array_column($administrator['appearance'], 'url'), 'and Private Label Branding');
+
+	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 1))), 'Private Label Branding is the administrator\'s alone');
+	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 2))), 'a manager gets Translations');
+	pg_assert_same(array(), pg_settings_category_screens(array('role' => 3)), 'a user gets none');
+	pg_assert_same(array(), pg_settings_category_screens(array()), 'no role counts as a user');
 }

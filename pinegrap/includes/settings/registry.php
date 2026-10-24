@@ -451,6 +451,12 @@ function pg_settings_category_screens($user)
         $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
     }
 
+    // The panel's own logo, stylesheet and footer links:
+    // validate_area_access($user, 'administrator'). No other link led to it.
+    if ($role === 0) {
+        $screens['appearance'][] = array('label' => lang('Private Label Branding'), 'icon' => 'bi-badge-tm', 'url' => 'private_label.php');
+    }
+
     return $screens;
 }
 
@@ -516,13 +522,17 @@ function pg_settings_tool_groups($user)
     // Jobs. The ones that change or remove something sit here together, and
     // they wear the same colour as every other row: severity is carried by the
     // icon and by the confirmation, not by a tint.
-    $tools = array(
-        array('label' => lang('Check for Updates'),   'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php'),
-    );
+    // On a hosted site the hosting platform updates and repairs the software,
+    // and both screens refuse (pg_hosted()).
+    $tools = array();
+
+    if (!pg_hosted()) {
+        $tools[] = array('label' => lang('Check for Updates'), 'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php');
+    }
 
     // Writing the release package over the software is an administrator's
     // job, like the screen's own door.
-    if ($role === 0) {
+    if (($role === 0) && !pg_hosted()) {
         $tools[] = array('label' => lang('Repair Software'), 'icon' => 'bi-bandaid', 'url' => 'software_repair.php');
     }
 
