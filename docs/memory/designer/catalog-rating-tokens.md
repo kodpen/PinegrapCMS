@@ -4,7 +4,7 @@ description: Product rating in the catalog widgets: __rating_avg / __rating_coun
 ---
 
 ## Which tokens carry a product's rating?
-- `__rating_avg` (one decimal, the site's number format via `pg_format_number()`) and `__rating_count` (plain integer) in `catalog_listing` and `catalog_item_view` (PR #TBD), from `products.rating_avg` / `rating_count`: published, starred reviews of verified purchases (`commerce/product-reviews-verified.md`).
+- `__rating_avg` (one decimal, the site's number format via `pg_format_number()`) and `__rating_count` (plain integer) in `catalog_listing` and `catalog_item_view` (PR #1560), from `products.rating_avg` / `rating_count`: published, starred reviews of verified purchases (`commerce/product-reviews-verified.md`).
 - Both are `''` while the count is 0, so a bound element collapses (`[data-pg-bind]:empty`) and no rating shows without a verified review behind it. One helper fills them: `_pg_catalog_rating_values()` (`includes/fn/widgets_catalog.php`), also for the not-found map.
 - Designer: group "Reviews" in `SW_CATALOG_TOKEN_GROUPS` and `SW_CATALOG_ITEM_TOKEN_GROUPS`; canvas samples `4.6` / `12` in `_SD_NUMERIC_TOKENS`.
 

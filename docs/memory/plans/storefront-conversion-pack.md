@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, in progress: schema, verified reviews, r
 1. Schema 11.0.14 (PR #698) `upgrade_2026_11_0_conversion_pack()`: comments and products columns, `wishlist_items`, `stock_notify`, `order_review_request` in both campaign action enums.
 2a. (PR #698) Review gate in the comment form and `add_comment.php`, "Verified purchase" badge, rating refresh on every write path plus a daily pass, `aggregateRating` in the legacy catalog detail markup, the store's reply in Comment Moderation and under the review, verified marker in the list (`includes/fn/reviews.php`, `tests/reviews_test.php`).
 2b. (PR #1316) `order_review_request` profile: once per order when an account's order ships, links to review forms, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
-2c (tokens). (PR #TBD) `__rating_avg`, `__rating_count`, `has_rating`/`no_rating` in the catalog widgets (`designer/catalog-rating-tokens.md`).
+2c (tokens). (PR #1560) `__rating_avg`, `__rating_count`, `has_rating`/`no_rating` in the catalog widgets (`designer/catalog-rating-tokens.md`).
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
