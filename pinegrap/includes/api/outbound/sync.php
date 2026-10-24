@@ -880,8 +880,11 @@ function mp_sync_package_from_row($row) {
 // (their outage, a rate limit) writes nothing, so the next pass tries again.
 //
 // Only packages imported since the account began shipping itself are
-// reported (mp_account_delivery_stamp()); an older one is shipped in the
-// marketplace's panel. Only packages whose order has a parcel the shop
+// reported (mp_account_delivery_stamp()), from a minute after the stamp so a
+// write racing the save, or a database clock a little behind this one, does
+// not count; an older one is shipped in the marketplace's panel, and so is one
+// refused before the switch and brought in after it (its import time is the
+// first one). Only packages whose order has a parcel the shop
 // recorded are read, oldest first, two hundred at a time and up to five
 // pages, so packages still waiting for their parcel do not hide the ones
 // already shipped; at most fifty calls are made in a pass.
@@ -933,7 +936,7 @@ function mp_sync_ship_pending($account) {
 			  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
 			  AND (last_error = '')
 			  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
-			  AND (imported_timestamp >= '" . e($since) . "')
+			  AND (imported_timestamp >= '" . e($since + 60) . "')
 			  AND (id > '" . e($after) . "')
 			  AND EXISTS (
 				SELECT 1
@@ -1092,10 +1095,13 @@ function mp_sync_ship_pending($account) {
 //
 // The link is sent only when somebody named where it points: the row's own
 // tracking page, a carrier stored on the row, the carrier the method code
-// names, or the site's default carrier - never the number's shape alone,
-// which reads a plain Turkish number as UPS or FedEx. A shipment once
-// reported cannot be taken back, so such a parcel waits until its carrier is
-// chosen on the order screen.
+// names, or - only while the method code is empty - the site's default
+// carrier. Never the number's shape alone, which reads a plain Turkish number
+// as UPS or FedEx, and never the default in place of a carrier the method code
+// names that the carrier list does not know (Sendeo, HepsiJET): that would
+// report another company's page. A shipment once reported cannot be taken
+// back, so such a parcel waits until its carrier is chosen on the order
+// screen.
 //
 // The method code and a carrier the row took from it are the shop's: the job
 // reads only packages imported since the account began shipping itself, and
@@ -1136,7 +1142,8 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 		// Without a carrier on the row, pg_shipment_view() took the method
 		// code's, else the default, else the number's shape.
-		if (!$own_page && !$view['named'] && ($by_method === '') && ($default === '')) {
+		if (!$own_page && !$view['named']
+			&& ((trim((string)$method) !== '') ? ($by_method === '') : ($default === ''))) {
 
 			continue;
 

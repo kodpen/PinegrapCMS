@@ -194,13 +194,13 @@ function test_marketplace_trendyol_shipping_link_never_sends_their_own_number_ba
 	$theirs = trendyol_shipping_test_row(array('number' => '7280027504111111', 'source' => 'marketplace',
 		'tracking_url' => 'https://tracking.trendyol.com/?id=1'));
 
-	pg_assert_same(null, mp_sync_shipment_link(array($theirs), 'Trendyol Express', 'yurtici'));
+	pg_assert_same(null, mp_sync_shipment_link(array($theirs), '', 'yurtici'));
 
 	$ours = trendyol_shipping_test_row(array('id' => 2, 'number' => '123456789012', 'source' => 'panel'));
 
 	pg_assert_same(array('number' => '123456789012',
 		'url' => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=123456789012'),
-		mp_sync_shipment_link(array($theirs, $ours), 'Trendyol Express', 'yurtici'), 'the shop\'s parcel, linked by the site default');
+		mp_sync_shipment_link(array($theirs, $ours), '', 'yurtici'), 'the shop\'s parcel, linked by the site default');
 }
 
 function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
@@ -221,7 +221,15 @@ function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
 	$unnamed = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
 
 	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
-		mp_sync_shipment_link(array($unnamed), 'Trendyol Express', 'aras')['url']);
+		mp_sync_shipment_link(array($unnamed), '', 'aras')['url']);
+
+	// A carrier the method code names that the list does not know is not
+	// replaced by the default: that would report another company's page.
+	foreach (array('Sendeo', 'HepsiJET', 'Kolay Gelsin', 'Trendyol Express') as $unknown) {
+
+		pg_assert_same(null, mp_sync_shipment_link(array($unnamed), $unknown, 'aras'), $unknown);
+
+	}
 }
 
 // The moment an account began shipping itself: set when it starts, kept while
@@ -312,15 +320,17 @@ function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
 	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
 	pg_assert_contains("\$named = (\$default !== '') ? '' : \"", $step, 'without a default, a shape-only parcel is not read');
 	pg_assert_contains("if (\$since <= 0) {", $step, 'nothing before the account began shipping itself');
-	pg_assert_contains("AND (imported_timestamp >= '\" . e(\$since) . \"')", $step);
+	pg_assert_contains("AND (imported_timestamp >= '\" . e(\$since + 60) . \"')", $step, 'from a minute after the stamp');
 	pg_assert_contains("AND (id > '\" . e(\$after) . \"')", $step, 'read page after page');
 	pg_assert_contains("OR (ship_tos.shipping_method_code <> ''))", $step);
 
 	$orders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
 
 	pg_assert_contains('mp_order_apply_tracking($order_id, $package, $account);', $orders);
-	pg_assert_contains("if ((\$carrier !== '') && \$ship_to_id && !(is_array(\$account) && mp_account_ships_itself(\$account))) {",
+	pg_assert_contains("if ((\$carrier !== '') && \$ship_to_id && !\$ships_itself) {",
 		$orders, 'an account that ships itself keeps their carrier out of the method code');
+	pg_assert_contains("\$current = isset(\$account['id']) ? mp_account((int)\$account['id']) : null;", $orders,
+		'read again, not as the pass loaded it');
 }
 
 function test_marketplace_trendyol_shipping_link_is_null_without_a_linked_parcel()

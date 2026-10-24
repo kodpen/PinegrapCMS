@@ -345,7 +345,10 @@ function mp_order_cancellations_first($account, $packages) {
 // The carrier's name also becomes the address's shipping method code, unless
 // the account ships with a carrier of its own: there the marketplace's carrier
 // is not the one that takes the parcel, and a parcel the shop records would
-// otherwise take that carrier and its tracking page from the method code.
+// otherwise take that carrier and its tracking page from the method code. The
+// account is read again for that, not taken as the pass loaded it: an operator
+// who switches to the shop's own carrier during a long pull would otherwise
+// get the marketplace's carrier on packages imported after the switch.
 function mp_order_apply_tracking($order_id, $package, $account = null) {
 
 	$tracking = isset($package['tracking']) ? (array)$package['tracking'] : array();
@@ -390,7 +393,17 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 		'ship_date'        => null
 	));
 
-	if (($carrier !== '') && $ship_to_id && !(is_array($account) && mp_account_ships_itself($account))) {
+	$ships_itself = false;
+
+	if (($carrier !== '') && $ship_to_id && is_array($account)) {
+
+		$current = isset($account['id']) ? mp_account((int)$account['id']) : null;
+
+		$ships_itself = mp_account_ships_itself(is_array($current) ? $current : $account);
+
+	}
+
+	if (($carrier !== '') && $ship_to_id && !$ships_itself) {
 
 		db("UPDATE ship_tos SET shipping_method_code = '" . e(mb_substr($carrier, 0, 50)) . "'
 			WHERE (id = '" . e($ship_to_id) . "') AND (shipping_method_code = '')");
