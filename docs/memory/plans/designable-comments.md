@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-6, 3b, 9 done; 7 #1550; 8 10 11 #1558; 12-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+description: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -21,11 +21,11 @@ description: Plan (1-6, 3b, 9 done; 7 #1550; 8 10 11 #1558; 12-18 next): comment
 4. 7r: member display name (`pg_comment_member_name()`), add_comment.php and the prefill. Done (#1490).
 5. Schema: `comments.parent_id` and the two indexes. Done (#1467).
 6. add_comment.php accepts replies (`pg_comment_parent_ok()`, `?reply_to=`), API `parent_id`. Done (#1525).
-7. Shared rule helpers for the legacy block (settings, allow-new, viewer, rows, `pg_comments_thread_order()`). In #1550.
-8. `page_id` in `pg_sw_render_context()`; `pg_comments_widget_drawn()` hand-off so the legacy pass skips a page the widget drew. In #1558.
+7. Shared rule helpers for the legacy block (settings, allow-new, viewer, rows, `pg_comments_thread_order()`). Done (#1550).
+8. `page_id` in `pg_sw_render_context()`; `pg_comments_widget_drawn()` hand-off so the legacy pass skips a page the widget drew. Done (#1558).
 9. "Make a copy for this page" button (style_designer.js). Done (#1472).
-10. Read-only Comments widget: renderer `includes/fn/widgets_comments.php`, SW_TYPES, tokens, flags, default layout in three places. In #1558.
-11. The add-comment form in the widget (bindings, CAPTCHA, rating, publish section, frontend twins). In #1558.
+10. Read-only Comments widget: renderer `includes/fn/widgets_comments.php`, SW_TYPES, tokens, flags, default layout in three places. Done (#1558).
+11. The add-comment form in the widget (bindings, CAPTCHA, rating, publish section, frontend twins). Done (#1558).
 12. Replies and quotes (layout flat/threaded, `max_depth`).
 13. Watch box and staff controls.
 14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`).
@@ -37,5 +37,5 @@ description: Plan (1-6, 3b, 9 done; 7 #1550; 8 10 11 #1558; 12-18 next): comment
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558, on #1550); D = 12 + 13 + 14; E = 15 + 16 + 17 + 18; then 19. Each group branch stacks on the one before.
+- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558); D = 12 + 13 + 14 (#1567); E = 15 + 16 + 17 + 18; then 19. Each group branch stacks on the one before.
 - Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).
