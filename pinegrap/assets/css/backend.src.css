@@ -1558,6 +1558,190 @@ body:not(.toolbar) .software-content {
   font-size: 0.6rem;
   padding: 0.25em 0.4em;
 }
+
+/* ── Rows that open a panel ──────────────────────────────────────────────
+   output_menu() gives a row with several entries a panel of its own
+   (pg_menu_panel()); a plain click on the row shows that panel in place of
+   the rows, headed by the way back and the row's name (backend.src.js). The
+   row lays its parts out in a line: the icon, the name, the entry of the
+   panel that is the current page (.pg-menu-hint, filled by the script) and
+   the arrow. Collapsed to the rail only the icon shows; a click there widens
+   the rail over the content to the expanded width (.pg-menu-peek, below). */
+#menu .pg-menu-main .list-group-item {
+  display: flex;
+  align-items: center;
+}
+#menu .pg-menu-main .list-group-item .list-group-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#menu .pg-menu-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  margin-left: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+#menu .pg-menu-hint:empty {
+  display: none;
+}
+#menu .menu-body .pg-menu-chevron {
+  flex: 0 0 auto;
+  margin-left: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--bs-secondary-color);
+}
+/* With the labels showing the count stands in the line, before the arrow,
+   instead of over the row's right edge where the arrow is. */
+#menu.expanded .pg-menu-main .list-group-item .pg-menu-badge {
+  position: static;
+  transform: none;
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+}
+#menu:not(.expanded) .pg-menu-hint,
+#menu:not(.expanded) .menu-body .pg-menu-chevron {
+  display: none;
+}
+
+/* One of the two at a time: the rows, or the panel one of them opened. */
+#menu .pg-menu-panel {
+  display: none;
+}
+#menu .pg-menu-panel.is-open {
+  display: block;
+}
+#menu.pg-menu-drilled .pg-menu-main {
+  display: none;
+}
+#menu .pg-menu-panels {
+  padding: 0 6px;
+}
+#menu .pg-menu-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.5rem;
+  margin-bottom: 0.25rem;
+}
+#menu .pg-menu-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  background: transparent;
+  color: var(--bs-body-color);
+}
+#menu .pg-menu-back:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
+}
+#menu .menu-body .pg-menu-back .bi {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+/* Centred over the entries: the padding on the right matches the button on
+   the left. */
+#menu .pg-menu-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 2.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 600;
+}
+/* The entries are the links output_menu() builds for each row, with the
+   Bootstrap button and icon classes they carry; they are drawn here as rows
+   of the menu. The id and two classes are what outweighs the 1.3rem the menu
+   gives every .bi. */
+#menu .menu-body .pg-menu-panel-body > a {
+  display: block;
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 0.45rem 0.625rem;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: start;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+#menu .menu-body .pg-menu-panel-body > a::before {
+  font-size: 1rem;
+  vertical-align: -0.15em;
+}
+#menu .menu-body .pg-menu-panel-body > a:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
+  color: var(--bs-body-color);
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-current {
+  background: rgba(var(--pg-primary-rgb), 0.18);
+  color: var(--pg-primary-ink);
+  font-weight: 600;
+}
+#menu .pg-menu-panel-body > hr {
+  height: 0;
+  margin: 0.375rem 0.625rem;
+  border: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.1;
+}
+/* The dashboard's widget settings: a form needs the padding on itself and a
+   width that does not collapse onto the number input. */
+#menu .pg-menu-panel-body .pg-ctx-form {
+  min-width: 12.5rem;
+  padding: 0.25rem 0.625rem 0.375rem;
+}
+
+/* Into a panel from the right, back to the rows from the left. Only once
+   the person has opened one (.pg-menu-animate): a panel shown again as a
+   page loads is simply there. */
+@keyframes pgMenuPanelIn {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pgMenuMainIn {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #menu.pg-menu-animate .pg-menu-panel.is-open {
+    animation: pgMenuPanelIn 0.22s ease both;
+  }
+  #menu.pg-menu-animate:not(.pg-menu-drilled) .pg-menu-main {
+    animation: pgMenuMainIn 0.22s ease both;
+  }
+}
 @media only screen and (max-width: 991px) {
   #menu.expanded {
     box-shadow: 3px 3px 3px #00000040;
@@ -1764,13 +1948,23 @@ body:not(.toolbar) .software-content {
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
     visibility: visible;
   }
-  /* And a count goes back to the row's edge with them. */
+  /* And a count goes back into the line with them, before the arrow. */
   #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
-    right: 0.6rem;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
+    transform: none;
+    margin-left: 0.5rem;
+    flex: 0 0 auto;
     font-size: 0.7rem;
     padding: 0.3em 0.55em;
+  }
+  #menu:not(.expanded) .pg-menu-hint {
+    display: block;
+  }
+  #menu:not(.expanded) .pg-menu-hint:empty {
+    display: none;
+  }
+  #menu:not(.expanded) .menu-body .pg-menu-chevron {
+    display: inline-block;
   }
 
   /* Labels are nowrap by default and only get ellipsis in the expanded rail state;
@@ -1877,6 +2071,18 @@ body:not(.toolbar) .software-content {
   }
   .software-container.menu-hidden .software-sidebar::before,
   .software-container.menu-hidden .software-sidebar::after {
+    display: none;
+  }
+
+  /* A panel opened from the collapsed rail: the rail widens over the
+     content to the expanded width while the grid keeps the rail's column,
+     so nothing under it moves. The pocket corner would hang in the middle
+     of the content, so it goes for as long as the rail is wide. */
+  .software-container.pg-menu-peek:not(.expanded) .software-sidebar {
+    width: var(--pg-rail-w-expanded);
+    box-shadow: 0 0 1.5rem rgba(0, 0, 0, 0.18);
+  }
+  .software-container.pg-menu-peek:not(.expanded) .software-sidebar::after {
     display: none;
   }
 
@@ -3071,14 +3277,6 @@ body:not(.toolbar) .software-content {
 
 .contextmenu.popover .divider {
   opacity: 0.1;
-}
-
-/* Long pressing a menu entry opens our own context menu, so suppress the iOS
-   callout (copy / share sheet) and the text selection that fights with it. */
-#menu a.list-group-item-action[data-bs-toggle="context"] {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 .pointer,
@@ -4623,13 +4821,6 @@ div#software_image_picker_container {
   opacity: 1;
 }
 
-/* A form inside a left-menu context popover. The popover body pads its own
-   links; a form needs the padding on itself and a width that does not collapse
-   onto the number input. */
-.contextmenu .pg-ctx-form {
-  min-width: 12.5rem;
-  padding: 0.25rem 0.5rem 0.375rem;
-}
 .pg-row-heading .pg-row-aside {
   margin-left: auto;
   font-weight: 400;

@@ -26709,6 +26709,7 @@
     "Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.": "Yalnızca formu gönderen kişiye giden e-postada doldurulur; sayfada ve diğer kopyalarda boş kalır.",
     "Include in translation": "Çeviriye dahil et",
     "When off, the answers to this field are never listed in Translations or sent to an engine (icons, codes, JSON).": "Kapalıyken bu alana verilen yanıtlar Çeviriler ekranında listelenmez ve çeviri motoruna gönderilmez (simgeler, kodlar, JSON).",
+    "Click the Panel button in the menu and you will find the widget theme settings in the list it opens.": "Menüdeki Panel düğmesine tıklarsan açılan listede widget tema ayarları çıkıyor.",
     "Please take a moment to check your entries and submit again.": "Lütfen girdiklerinizi kontrol etmek için biraz zaman ayırın ve yeniden gönderin.",
     "This form has expired. Please submit it again.": "Bu formun süresi doldu. Lütfen yeniden gönderin.",
     "Too many submissions. Please try again later.": "Çok fazla gönderim yapıldı. Lütfen daha sonra yeniden deneyin.",
