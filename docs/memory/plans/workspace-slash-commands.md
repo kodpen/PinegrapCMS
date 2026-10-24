@@ -1,6 +1,6 @@
 ---
 name: workspace-slash-commands
-description: Plan (2026-10-23, step 1 in PR #1440, answers open): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
+description: Plan (2026-10-23, step 1 in #1440, 2-3 in #1499; answer 2a given): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
 ---
 
 ## What is asked? (owner, 2026-10-23)
