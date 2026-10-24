@@ -17,6 +17,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
+- design-template-forum.md: Plan (approved 2026-10-23, not started): Community Forum & Docs design template built only from general features; list, link and form steps first, then the template; waits for designable-comments 1-18
+- designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
+- designable-comments.md: Plan (approved 2026-10-23, not started): comments as a general designable system widget kind; layout shared in the widget row, comments and policy per page; replies via parent_id; 19 slices
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
@@ -28,7 +31,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
-- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452) done; 4b, 2b or 4c next
+- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453) done; 2b or 4c next
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Evernote .enex import done; Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 - passkeys.md: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
