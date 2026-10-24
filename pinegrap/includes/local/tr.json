@@ -28049,5 +28049,12 @@
     "Report Details": "Şikâyet Ayrıntıları",
     "What is your message about?": "Mesajınız ne hakkında?",
     "Choose one…": "Birini seçin…",
-    "Topics desk": "Konu masası"
+    "Topics desk": "Konu masası",
+    "This order's earlier sales invoice (ID: {var:1}) is no longer at Paraşüt, so it was left out.": "Bu siparişin önceki satış faturası (ID: {var:1}) artık Paraşüt'te yok; bu yüzden dikkate alınmadı.",
+    "This order's earlier shipment document (ID: {var:1}) is no longer at Paraşüt, so it was left out.": "Bu siparişin önceki irsaliyesi (ID: {var:1}) artık Paraşüt'te yok; bu yüzden dikkate alınmadı.",
+    "Paraşüt could not be asked whether this order's shipment document (ID: {var:1}) is still there: {var:2}. No invoice was created; try again in a minute.": "Bu siparişin irsaliyesinin (ID: {var:1}) Paraşüt'te hâlâ durup durmadığı sorulamadı: {var:2}. Fatura oluşturulmadı; bir dakika sonra yeniden deneyin.",
+    "This order already has a sales invoice in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?": "Bu siparişin Paraşüt'te zaten bir satış faturası var. Yeniden basıldığında önce Paraşüt'e sorulur; yalnızca orada silinmişse yeni bir fatura oluşturulur. Devam edilsin mi?",
+    "This order already has a shipment document in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?": "Bu siparişin Paraşüt'te zaten bir irsaliyesi var. Yeniden basıldığında önce Paraşüt'e sorulur; yalnızca orada silinmişse yeni bir irsaliye oluşturulur. Devam edilsin mi?",
+    "This order already has a sales invoice in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.": "Bu siparişin Paraşüt'te zaten bir satış faturası var (ID: {var:1}) ve Paraşüt'e hâlâ orada olup olmadığı sorulamadı: {var:2}. İkincisi oluşturulmadı; bir dakika sonra yeniden deneyin.",
+    "This order already has a shipment document in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.": "Bu siparişin Paraşüt'te zaten bir irsaliyesi var (ID: {var:1}) ve Paraşüt'e hâlâ orada olup olmadığı sorulamadı: {var:2}. İkincisi oluşturulmadı; bir dakika sonra yeniden deneyin."
 }
