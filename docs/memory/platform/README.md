@@ -17,6 +17,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Before a new door gives, zips, copies or renames a file, ask `pg_file_withheld()`; a stored name built outside `prepare_file_name()` asks `pg_file_name_reserved()` (`dkim-key-in-file-manager.md`).
 - Set an optional cookie with `pg_consent_setcookie()` (keep a session copy), list it in `pg_consent_catalogue()`, hold third-party tags with `pg_consent_hold_scripts()` (`cookie-consent-new-cookies.md`).
 - Use `HOSTNAME` only for answers back to the visitor; links that leave the request (mails, documents, feeds) use `HOSTNAME_SETTING` (`hostname-in-mail-links.md`).
+- Make a front-end renderer whose output depends on the visitor call `pg_page_cache_personal('<why>')`, and register a header callback only through `pg_header_callback_add()` (`page-cache-gate.md`).
+- Make a change to what pages show that is not a signed-in POST, a content `api.php` row, an MCP write or a `pg_announce()` call `pg_page_cache_mark_dirty()`, and sort a new designer, shared component or explorer sub-action into `pg_page_cache_panel_sub_actions()`, or the file cache serves the old page for the TTL (`page-cache-invalidation.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -62,6 +64,11 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
+- page-cache-decisions.md: Why Pinegrap has its own anonymous page cache and the lasting decisions behind it (PRs #1382, #1402): no CDN dependence, off by default, what is never cached, how to measure
+- page-cache-gate.md: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot
+- page-cache-invalidation.md: Which writes make every page the file cache keeps old (PR #1402): the generation number, the request, panel, MCP and announce rules, what waits for the TTL
+- page-cache-proxy-rules.md: Cache rules for a CDN or reverse proxy in front of Pinegrap (Cloudflare, nginx, Varnish) that follow the page cache gate: what to pass, what to keep, and what a hit skips
+- page-file-cache.md: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).

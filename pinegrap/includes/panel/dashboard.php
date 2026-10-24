@@ -281,7 +281,7 @@ function pg_panel_update_dashboard_appearance($request, $action)
     // How the dashboard looks: which of the four treatments the cards wear,
     // and what sits behind them. Both are site-wide, both live on the
     // dashboard row beside the widget order, and both are picked from the
-    // Panel entry's context menu on the dashboard itself.
+    // Panel row's menu panel on the dashboard itself.
     //
     // Deliberately not exempt from the general gate (its row in
     // includes/panel/actions.php says exempt => false), so the gate applies:

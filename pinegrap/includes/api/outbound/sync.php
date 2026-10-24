@@ -812,10 +812,7 @@ function mp_sync_approve($account, $package, $order_id) {
 
 	}
 
-	// Only an open package is accepted. One that arrived already shipped or
-	// delivered is past the step acceptance moves it to, and the marketplace
-	// refuses it.
-	if (mp_order_stage($account, $package) !== 'open') {
+	if (!mp_sync_approvable($account, $package)) {
 
 		return;
 
@@ -839,7 +836,9 @@ function mp_sync_approve($account, $package, $order_id) {
 
 	}
 
-	$result = mp_call($account['provider'], 'approve_lines', array($account, $line_ids));
+	// The package goes along: a marketplace whose status service names the
+	// package and each line's quantity (Trendyol) needs more than the ids.
+	$result = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
 
 	$map_id = (int) db_value("SELECT id FROM marketplace_order_map
 		WHERE (account_id = '" . e((int)$account['id']) . "')
@@ -867,6 +866,26 @@ function mp_sync_approve($account, $package, $order_id) {
 		SET last_error = '" . e(mb_substr((string)$result['error'], 0, 500)) . "',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
+
+}
+
+// Whether a package may be accepted.
+//
+// Only an open package whose status is still exactly Created, the word both
+// n11 and Trendyol use for the one state acceptance moves on from. One that
+// arrived shipped, delivered or cancelled is past that step; one already
+// Picking or Invoiced was accepted by hand in their panel, and sending Picking
+// again is refused and would fill the map row's error as if something had
+// gone wrong.
+function mp_sync_approvable($account, $package) {
+
+	if (mp_order_stage($account, $package) !== 'open') {
+
+		return false;
+
+	}
+
+	return isset($package['remote_status']) && ((string)$package['remote_status'] === 'Created');
 
 }
 

@@ -10,7 +10,7 @@ description: Referring address and user agent of a visit kept once each in visit
 - Code: `includes/fn/visitor_texts.php`. The other long columns (`utm_term`, `utm_content`, `referring_search_terms`, `site_search_terms`) stay: almost always empty (1 byte), and UTM tags and site search terms are updated later in the visit from several files.
 
 ## How is a visit written?
-- `init_tracking()` in `get_page.php`, only when `pg_visitor_texts_ready()` (table + both columns): `pg_visitor_text_id()` per text. Text cleaned first (`pg_visitor_text_clean()`: valid UTF-8, 255 characters), hash taken in PHP. Hash is binary, so "Mozilla" and "mozilla" are two values (the column collation is case-insensitive).
+- `init_tracking()` (`includes/fn/seo.php`), only when `pg_visitor_texts_ready()` (table + both columns): `pg_visitor_text_id()` per text. Text cleaned first (`pg_visitor_text_clean()`: valid UTF-8, 255 characters), hash taken in PHP. Hash is binary, so "Mozilla" and "mozilla" are two values (the column collation is case-insensitive).
 - Lookup: SELECT by hash; `last_used` refreshed only when older than a day (`PG_VISITOR_TEXT_REFRESH_SECONDS`), so one UPDATE a day per value. An UPDATE that touches no row means the prune took it: the value is inserted again. Miss: `INSERT IGNORE`, then re-read on a race. Empty text = 0, no row.
 - If the list cannot be read or written (`false`), the visit keeps its texts in the row as before.
 

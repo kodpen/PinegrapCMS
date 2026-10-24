@@ -139,6 +139,7 @@ function ws_events_catalog()
             'order.shipped'        => array('label' => lang('An order is shipped'), 'when' => lang('When an order is shipped'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.delivered'      => array('label' => lang('An order is delivered'), 'when' => lang('When an order is delivered'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.cancelled'      => array('label' => lang('An order is cancelled'), 'when' => lang('When an order is cancelled'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
         );
     }
@@ -411,9 +412,12 @@ function ws_events_record_of($event, $payload)
 }
 
 /**
- * Is this event written into the channels that watch its record? The orders'
- * events, a changed contact, a changed product and a product low in stock. A
- * submitted form is not: nobody can have tagged it before it existed.
+ * Is this event written into the channels that watch its record? An order
+ * placed, moved to another status, shipped, delivered or cancelled, a changed
+ * contact, a changed product and a product low in stock. A submitted form is
+ * not: nobody can have tagged it before it existed. A return requested
+ * (order.return.requested) is not either: it only starts scheduled actions,
+ * and ws_watch_line() has no line for it.
  *
  * @param string $event
  * @return bool

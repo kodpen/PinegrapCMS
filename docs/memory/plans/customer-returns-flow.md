@@ -1,6 +1,6 @@
 ---
 name: customer-returns-flow
-description: Plan (approved 2026-10-19, in progress: model, My Account, panel, refund and reminders done): API and webhooks, staff-recorded requests, the classic order view left
+description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
 ---
 
 ## Why?
@@ -12,7 +12,6 @@ description: Plan (approved 2026-10-19, in progress: model, My Account, panel, r
 - Panel: Returns list and detail (approve/reject with a note, mark received), bulk approve; approval e-mail carries the return carrier code or the label from `shipping-carrier-labels.md` when that driver exists.
 - Money: "Refund" on a received return calls the existing iyzico line refund for iyzico orders and creates the ERP return invoice through the existing bridge; other gateways are refunded by hand and marked. Order totals and `process_order_cancellation()` are untouched; a full return of an unshipped order is a cancellation, not a return.
 - Timers: withdrawal deadline and refund deadline shown on the request; a daily job reminds staff of refunds due in 3 days.
-- Webhooks `order.return.requested/approved/received/refunded`; API `GET/POST /orders/{id}/returns`, scheduled-action trigger `order.return.requested`.
 - Legacy multi-step order view (`get_view_order`) gets the same button through the widget token layer, no layout rewrite.
 
 ## What remains?
@@ -20,10 +19,10 @@ description: Plan (approved 2026-10-19, in progress: model, My Account, panel, r
 2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
 3. Done (PR #808): list and bulk approve, one return's moves, decision mails, audit trail, bell, order card, delivery date from the parcel rows: docs/memory/commerce/order-returns-panel.md. Left: a form for staff to record a request (`pg_return_create()` source `panel`).
 4. Done (PR #936): refund by driver or recorded, ERP return invoice hand-off, refund mail, reminder job, `[NEW]` line: docs/memory/commerce/order-returns-refund.md.
-5. API, webhooks, trigger (S).
+5. Done (PR #1352): `GET/POST /orders/{id}/returns`, `order.return.*` webhooks, Workspace trigger: docs/memory/commerce/order-returns-api.md, order-returns-events.md.
 
 ## Open questions?
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
 
 ## Where to start?
-- Step 5: `order.return.*` webhooks from the moves (`pg_return_move()`, `pg_return_refund()`), `GET/POST /orders/{id}/returns`, the `order.return.requested` trigger. Read `commerce/order-returns-refund.md` and `api/api-webhook-events.md`.
+- What is left ("Left" in steps 2 and 3): a panel form to record a request (source `panel`; `pg_return_create_check()` and `pg_return_audit_create_fields()` are ready), and returns in the classic order view. Read `commerce/order-returns-api.md`.
