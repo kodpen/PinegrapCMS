@@ -59,3 +59,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
 - workspace-slash-commands.md: Plan (2026-10-23, not started, answers open): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
+- workspace-voice-messages.md: Plan (2026-10-23, not started, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
