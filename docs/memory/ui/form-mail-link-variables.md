@@ -5,7 +5,7 @@ description: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form 
 
 ## What do the two variables print?
 - `^^email_preferences_url^^`: the signed `email_preferences.php` address for the address the e-mail goes to (`pg_email_preferences_url()` over the pure `pg_email_preferences_url_build()`, `includes/fn/mail.php`). '' for an empty address or one without "@" (no stricter check, so every campaign recipient keeps its `List-Unsubscribe` header) and without `ENCRYPTION_KEY`.
-- `^^confirm_subscription_url^^`: `pg_cf_confirm_subscription_url()`; '' until a form can ask for a double opt-in. That link needs its own HMAC prefix and an expiry: the preferences signature has neither and never expires.
+- `^^confirm_subscription_url^^`: `pg_cf_confirm_subscription_url()`, the link `pg_fs_hold_submission()` keeps in `pg_fs_pending_url()` when a double opt-in form held the group back (`core/form-double-opt-in.md`), only for the contact's own address, normalised (`pg_cf_confirm_subscription_url_for()`); '' otherwise, a resend included. It has its own HMAC prefix and a 7-day expiry, unlike the preferences signature.
 - Write them bare or alone in a `[[...||...]]` block: `[[Manage your e-mails: ^^email_preferences_url^^]]`. Not inside `{if ...}` and not in the same block as `^^reference_code^^`: the form item view fills them before those are read, so `{if ^^email_preferences_url^^ == ''}` loses its field.
 
 ## Who gets a link?
@@ -21,7 +21,7 @@ description: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form 
 
 ## How is it wired?
 - `pg_cf_mail_links_context(array(email_address, contact_id, custom_form_page_id, form_id))` is set just before the sender's copy is drawn and cleared (`false`) after `email()`. `pg_cf_mail_link_values()` reads it through the pure `pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)`.
-- `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`) is shared with the review link PR #1316; when both are open, merge one and rebase the other so only one definition stays.
+- `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`) is also used by the review request e-mail (`create_auto_email_campaigns()`, `^^review_url^^`, PR #1316).
 
 ## Why are they not standard fields?
 - `get_standard_fields_for_view()` is also read by list views, the search index, sitemap and the designer; a signed link there would leak. The edit screen lists them in their own "E-mail links" group (`pg_cf_variables_help_build()` key `mail`).

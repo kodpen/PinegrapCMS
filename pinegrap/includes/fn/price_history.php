@@ -56,6 +56,11 @@
  * the external API lists them under GET /products/{id}/price-history
  * (includes/api/resources/products.php), and the MCP tools run the same route.
  *
+ * Once a day the general job trims the history to thirteen months
+ * (pg_price_history_trim_run()): older rows go, except, in each product and
+ * channel, the newest one before that point, which says what the price was
+ * then, and the newest row a writer wrote, which the recorder compares with.
+ *
  * Recording never stops the request that changed the price: the price is
  * already saved when it runs. A failed statement is written to the error log
  * and the next save of that product catches up, because the comparison is
@@ -818,6 +823,350 @@ function pg_price_history_offer_pass_run($seconds)
     @file_put_contents($marker, json_encode($state), LOCK_EX);
 
     db("SELECT RELEASE_LOCK(" . $lock . ")");
+
+    return $result;
+}
+
+/* ------------------------------------------------------------------ *
+ * Retention: the general job's daily trim
+ * ------------------------------------------------------------------ */
+
+/**
+ * Days a history row is kept: thirteen months (13 x 30.44 days, rounded up),
+ * so the same month of last year and the 30-day window before it can still
+ * be read. Older rows go, except the ones the history still needs
+ * (pg_price_history_trim_keep_sql()).
+ */
+define('PG_PRICE_HISTORY_KEEP_DAYS', 396);
+
+/**
+ * How often the trim runs, in seconds. Rows age by the day, so a pass more
+ * often than daily would find next to nothing.
+ */
+define('PG_PRICE_HISTORY_TRIM_EVERY', 86400);
+
+/**
+ * Seconds one tick of the general job spends on the trim; the first pass over
+ * a long history goes on over several ticks.
+ */
+define('PG_PRICE_HISTORY_TRIM_BUDGET', 5);
+
+/**
+ * Rows removed per statement, so a product with years of offer rows goes in
+ * short statements rather than one long one.
+ */
+define('PG_PRICE_HISTORY_TRIM_ROWS', 5000);
+
+/**
+ * The moment a row must be stamped at or after to be kept by its age alone.
+ *
+ * @param int $now
+ * @return int
+ */
+function pg_price_history_trim_before($now)
+{
+    return (int) $now - (PG_PRICE_HISTORY_KEEP_DAYS * 86400);
+}
+
+/**
+ * The file the trim keeps between ticks: the last product done by a pass
+ * under way and when the last pass finished. Losing it costs one more pass.
+ *
+ * @return string
+ */
+function pg_price_history_trim_marker()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/price_history_trim.json';
+}
+
+/**
+ * The trim's marker as it is used. Anything unreadable is a pass that never
+ * ran.
+ *
+ * @param mixed $raw the decoded marker
+ * @return array('after_id' => int, 'done_at' => int)
+ */
+function pg_price_history_trim_state($raw)
+{
+    $raw = is_array($raw) ? $raw : array();
+
+    return array(
+        'after_id' => isset($raw['after_id']) ? max(0, (int) $raw['after_id']) : 0,
+        'done_at' => isset($raw['done_at']) ? max(0, (int) $raw['done_at']) : 0,
+    );
+}
+
+/**
+ * Whether a trim is due at a moment: one is under way, or the last one
+ * finished PG_PRICE_HISTORY_TRIM_EVERY seconds ago or more.
+ *
+ * @param array $state pg_price_history_trim_state()
+ * @param int   $now
+ * @return bool
+ */
+function pg_price_history_trim_due_at($state, $now)
+{
+    return ($state['after_id'] > 0) || ($state['done_at'] <= ((int) $now - PG_PRICE_HISTORY_TRIM_EVERY));
+}
+
+/**
+ * Whether the general job should run the trim on this tick.
+ *
+ * @return bool
+ */
+function pg_price_history_trim_due()
+{
+    if (!pg_price_history_ready()) {
+        return false;
+    }
+
+    $state = pg_price_history_trim_state(@json_decode((string) @file_get_contents(pg_price_history_trim_marker()), true));
+
+    return pg_price_history_trim_due_at($state, time());
+}
+
+/**
+ * The query for the next products the trim walks: the product ids of the
+ * history after the last one done, in order, read from the index the table
+ * has on (product_id, channel, changed_at).
+ *
+ * @param int $after_id
+ * @param int $rows
+ * @return string
+ */
+function pg_price_history_trim_walk_sql($after_id, $rows)
+{
+    return "SELECT DISTINCT product_id
+        FROM product_price_history
+        WHERE product_id > '" . max(0, (int) $after_id) . "'
+        ORDER BY product_id
+        LIMIT " . max(1, (int) $rows);
+}
+
+/**
+ * The query for the products, out of a walked chunk, that may have rows to
+ * remove: two rows or more stamped before the cutoff in one channel. A
+ * channel with one such row keeps it (pg_price_history_trim_keep_sql()), so
+ * this one read passes over the products with nothing to remove, which on a
+ * history younger than the retention period is all of them. A product with
+ * two channels can be named twice.
+ *
+ * @param int[] $ids
+ * @param int   $before pg_price_history_trim_before()
+ * @return string '' when there is no product id
+ */
+function pg_price_history_trim_candidates_sql($ids, $before)
+{
+    $ids = pg_price_history_ids($ids);
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT product_id
+        FROM product_price_history
+        WHERE
+            (product_id IN (" . implode(',', $ids) . "))
+            AND (changed_at < '" . (int) $before . "')
+        GROUP BY product_id, channel
+        HAVING COUNT(*) > 1";
+}
+
+/**
+ * The query for the ids of the rows the trim leaves, in each product and
+ * channel, among the rows stamped before the cutoff:
+ *
+ *   - the newest of them, in the order the rows are read back (changed_at,
+ *     then id): the price that applied at the cutoff, where a window reaching
+ *     back to it starts, and the price a product unchanged for longer than
+ *     the retention period still sells at;
+ *   - the newest row a writer of products.price wrote (the highest id not of
+ *     source 'offer'): what pg_price_history_record() compares the stored
+ *     price with. Without it the next save during an offer would write the
+ *     unchanged stored price again. Mostly it is newer than the cutoff and
+ *     outside the rows the trim looks at anyway.
+ *
+ * @param int[] $ids
+ * @param int   $before pg_price_history_trim_before()
+ * @return string '' when there is no product id
+ */
+function pg_price_history_trim_keep_sql($ids, $before)
+{
+    $ids = pg_price_history_ids($ids);
+
+    if (!$ids) {
+        return '';
+    }
+
+    $in = implode(',', $ids);
+
+    return "SELECT MAX(history.id) AS id
+        FROM product_price_history AS history
+        INNER JOIN (
+            SELECT product_id, channel, MAX(changed_at) AS changed_at
+            FROM product_price_history
+            WHERE
+                (product_id IN (" . $in . "))
+                AND (changed_at < '" . (int) $before . "')
+            GROUP BY product_id, channel
+        ) AS latest ON
+            (latest.product_id = history.product_id)
+            AND (latest.channel = history.channel)
+            AND (latest.changed_at = history.changed_at)
+        GROUP BY history.product_id, history.channel
+        UNION
+        SELECT MAX(id) AS id
+        FROM product_price_history
+        WHERE
+            (product_id IN (" . $in . "))
+            AND (source <> 'offer')
+        GROUP BY product_id, channel";
+}
+
+/**
+ * The statement that removes up to $limit rows of the products stamped
+ * before the cutoff, leaving the rows pg_price_history_trim_keep_sql() named.
+ *
+ * Without a row to keep it is '': every product it is meant for has rows
+ * before the cutoff and so a row to keep, and a statement without that list
+ * would remove the price a long-unchanged product sells at.
+ *
+ * @param int[] $ids
+ * @param int   $before pg_price_history_trim_before()
+ * @param int[] $keep   the ids pg_price_history_trim_keep_sql() read
+ * @param int   $limit
+ * @return string '' when there is no product id or no row to keep
+ */
+function pg_price_history_trim_delete_sql($ids, $before, $keep, $limit)
+{
+    $ids = pg_price_history_ids($ids);
+    $keep = pg_price_history_ids($keep);
+
+    if (!$ids || !$keep) {
+        return '';
+    }
+
+    return "DELETE FROM product_price_history
+        WHERE
+            (product_id IN (" . implode(',', $ids) . "))
+            AND (changed_at < '" . (int) $before . "')
+            AND (id NOT IN (" . implode(',', $keep) . "))
+        LIMIT " . max(1, (int) $limit);
+}
+
+/**
+ * Remove the rows older than PG_PRICE_HISTORY_KEEP_DAYS that the history no
+ * longer needs. Products are walked by id for as many seconds as the tick
+ * gives; a pass that runs out of time goes on from the same chunk on the next
+ * tick, and a finished one waits PG_PRICE_HISTORY_TRIM_EVERY seconds.
+ *
+ * Rows stamped since the cutoff are never touched, nor the rows
+ * pg_price_history_trim_keep_sql() names, so a writer or the offer pass
+ * running meanwhile compares with the row it would have compared with
+ * anyway: the newest row of any source is newer than the cutoff or the
+ * newest before it, and the newest writer row is kept by its id.
+ *
+ * @param int $seconds
+ * @return array('state' => 'done'|'more'|'skipped', 'removed' => int)
+ */
+function pg_price_history_trim_run($seconds)
+{
+    $result = array('state' => 'skipped', 'removed' => 0);
+
+    if (!class_exists('db', false) || empty(db::$con) || !pg_price_history_ready()) {
+        return $result;
+    }
+
+    $marker = pg_price_history_trim_marker();
+    $state = pg_price_history_trim_state(@json_decode((string) @file_get_contents($marker), true));
+    $before = pg_price_history_trim_before(time());
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $result['state'] = 'more';
+
+    while (microtime(true) < $deadline) {
+        $walk = @mysqli_query(db::$con, pg_price_history_trim_walk_sql($state['after_id'], PG_PRICE_HISTORY_CHUNK));
+
+        if (!$walk) {
+            pg_price_history_log_failure('reading the products for the trim');
+            break;
+        }
+
+        $ids = array();
+
+        while ($row = mysqli_fetch_row($walk)) {
+            $ids[] = (int) $row[0];
+        }
+
+        if (!$ids) {
+            $state = array('after_id' => 0, 'done_at' => time());
+            $result['state'] = 'done';
+            break;
+        }
+
+        $candidates_result = @mysqli_query(db::$con, pg_price_history_trim_candidates_sql($ids, $before));
+
+        if (!$candidates_result) {
+            pg_price_history_log_failure('reading the old rows for the trim');
+            break;
+        }
+
+        $candidates = array();
+
+        while ($row = mysqli_fetch_row($candidates_result)) {
+            $candidates[] = $row[0];
+        }
+
+        $candidates = pg_price_history_ids($candidates);
+
+        // A chunk left halfway (a failed statement, or the time is up) is
+        // walked again on the next tick: the rows it keeps are the same.
+        $through = true;
+
+        if ($candidates) {
+            $keep_result = @mysqli_query(db::$con, pg_price_history_trim_keep_sql($candidates, $before));
+
+            if (!$keep_result) {
+                pg_price_history_log_failure('reading the rows the trim keeps');
+                break;
+            }
+
+            $keep = array();
+
+            while ($row = mysqli_fetch_row($keep_result)) {
+                $keep[] = $row[0];
+            }
+
+            $sql = pg_price_history_trim_delete_sql($candidates, $before, $keep, PG_PRICE_HISTORY_TRIM_ROWS);
+
+            while ($sql !== '') {
+                if (!@mysqli_query(db::$con, $sql)) {
+                    pg_price_history_log_failure('removing old rows');
+                    $through = false;
+                    break;
+                }
+
+                $affected = max(0, (int) mysqli_affected_rows(db::$con));
+                $result['removed'] += $affected;
+
+                if ($affected < PG_PRICE_HISTORY_TRIM_ROWS) {
+                    break;
+                }
+
+                if (microtime(true) >= $deadline) {
+                    $through = false;
+                    break;
+                }
+            }
+        }
+
+        if (!$through) {
+            break;
+        }
+
+        $state['after_id'] = (int) end($ids);
+    }
+
+    @file_put_contents($marker, json_encode($state), LOCK_EX);
 
     return $result;
 }

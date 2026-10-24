@@ -1358,13 +1358,18 @@ function pg_tr_extract_form_records($form_page_id)
     $segments = array();
     $position = 0;
 
+    // A field switched out of translation (icon names, codes, JSON) gives no
+    // texts; its earlier ones leave the store with this extraction.
+    $field_filter = pg_tr_has_column('form_fields', 'translate_values')
+        ? " AND form_fields.translate_values = '1'" : '';
+
     $rows = db_items("SELECT form_data.form_id, form_data.form_field_id, form_data.data, form_fields.type, form_fields.wysiwyg
                       FROM form_data
                       INNER JOIN forms ON forms.id = form_data.form_id
                       INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
                       WHERE forms.page_id = '$form_page_id'
                         AND forms.complete = '1'
-                        AND form_fields.type IN ('text box', 'text area')
+                        AND form_fields.type IN ('text box', 'text area')$field_filter
                       ORDER BY forms.id, form_fields.sort_order, form_data.id");
 
     foreach ((array) $rows as $row) {
