@@ -1,6 +1,6 @@
 ---
 name: design-template-forum-leftovers
-description: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix feature/forms-list-watcher-designed done): step 4 and the comments widget move left
+description: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix #1545 done): step 4 and the comments widget move left
 ---
 
 The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the template's own memory is [[design-template-forum]].
@@ -17,7 +17,7 @@ The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the t
 2. Links with parameters: an href to another page with query parameters valued from row tokens (#1474, [[record-value-page-links]]).
 3. A designed form control filled from a named address parameter (#1501): the Report form's post field.
 5. The template (#1526): what it ships is in [[design-template-forum]], [[design-template-forum-moderation]] and [[design-template-forum-layout]].
-- The watcher fix (branch `feature/forms-list-watcher-designed`): the form list's watcher filter accepts a designed page whose form_item_view shows the list's form ([[form-list-viewer-filter]]); My topics lists Topics you follow, the "How following works" card says they appear there; the staff note and the FAQ say a reply is signed with the profile's name (#1490); template 1.0.1.
+- The watcher fix (#1545): the form list's watcher filter accepts a designed page whose form_item_view shows the list's form ([[form-list-viewer-filter]]); My topics lists Topics you follow, the "How following works" card says they appear there; the staff note and the FAQ say a reply is signed with the profile's name (#1490); template 1.0.1.
 
 ## What is left?
 4. Recent comments mode of the comments widget: newest comments across the records a detail page shows, published for everyone, awaiting approval for staff, the viewer's own; record title and link tokens. After designable-comments 18.
