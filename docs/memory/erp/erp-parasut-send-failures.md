@@ -14,7 +14,7 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 - The order screen's own Create Invoice searches the same way (erp-parasut-legacy-invoice.md).
 
 ## What does Cancel do while the mark is set?
-- `erp_edoc_invoice_provider_cancel()` hands an `error` row without an id to the driver: `erp_edoc_parasut_cancel_unsure()` runs the same search (no contact in the mark: the whole day). One draft: deleted (404 = gone), mark cleared. None: no write. Several, an e-document among them (`_written_documents()`), a failed or incomplete search, a refused delete: refused; past an incomplete one only a return is left (#PR).
+- `erp_edoc_invoice_provider_cancel()` hands an `error` row without an id to the driver: `erp_edoc_parasut_cancel_unsure()` runs the same search (no contact in the mark: the whole day). One draft: deleted (404 = gone), mark cleared. None: no write. Several, an e-document among them (`_written_documents()`), a failed or incomplete search, a refused delete: refused; past an incomplete one only a return is left (#1508).
 
 ## What if the total differs and the record will not be deleted?
 - The `DELETE` answer is read (404 = gone). Not deleted: the refusal names the id, the service keeps it on the `error` row; the send gate refuses and cancelling the invoice deletes it there (#1019).
