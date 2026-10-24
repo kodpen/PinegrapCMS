@@ -453,7 +453,18 @@
             face.classList.add('ws-palette-face');
             row.appendChild(face);
         } else {
-            row.appendChild(el('span', 'ws-palette-icon')).appendChild(icon(item.icon || 'bi-dot'));
+            var sign = row.appendChild(el('span', 'ws-palette-icon'));
+
+            // A channel's own icon carries the mark of its kind in its
+            // corner (includes/workspace/channel_icons.php).
+            if (item.badge) {
+                var badged = sign.appendChild(el('span', 'ws-icon-badged'));
+                badged.setAttribute('aria-hidden', 'true');
+                badged.appendChild(el('i', 'bi ' + (item.icon || 'bi-dot')));
+                badged.appendChild(el('i', 'bi ' + item.badge + ' ws-icon-badge'));
+            } else {
+                sign.appendChild(icon(item.icon || 'bi-dot'));
+            }
         }
 
         var main = el('div', 'ws-palette-main');

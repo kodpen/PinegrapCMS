@@ -100,6 +100,12 @@ function ws_channel_brief($row, $unread = 0, $mentions = 0)
         'customer_type' => (string) ($row['customer_type'] ?? ''),
         'customer_id' => (int) ($row['customer_id'] ?? 0),
         'icon'       => ws_channel_icon($row),
+        // Whether the icon was chosen (channel_icons.php), the mark of the
+        // channel's kind drawn in its corner when it was, and the icon the
+        // kind gives (the channel form's "none").
+        'icon_chosen' => (ws_channel_icon_chosen($row) !== ''),
+        'icon_badge' => ws_channel_icon_badge($row),
+        'kind_icon'  => ws_channel_kind_icon($row),
         'department_id' => (int) $row['department_id'],
         'archived'   => ((int) $row['archived_at'] > 0),
         'unread'     => (int) $unread,
@@ -362,7 +368,7 @@ function ws_channel_add_members($viewer, $channel, $user_ids, $announce = true)
  * Creates a channel.
  *
  * @param array $viewer
- * @param array $data name, kind, topic, contact_id, department_id, members (ids)
+ * @param array $data name, kind, topic, contact_id, department_id, members (ids), color, icon
  * @return array ok, error, field, channel_id
  */
 function ws_channel_create($viewer, $data)
@@ -379,6 +385,13 @@ function ws_channel_create($viewer, $data)
 
     if (ws_channel_name_taken($name)) {
         return array('ok' => false, 'error' => lang('There is already a channel with this name.'), 'field' => 'name', 'channel_id' => 0);
+    }
+
+    // Asked before anything is written: the channel is made in several steps.
+    $icon = ws_channel_icon_check($data['icon'] ?? '');
+
+    if (!$icon['ok']) {
+        return array('ok' => false, 'error' => $icon['error'], 'field' => 'icon', 'channel_id' => 0);
     }
 
     $kind = (($data['kind'] ?? 'public') === 'private') ? 'private' : 'public';
@@ -437,6 +450,10 @@ function ws_channel_create($viewer, $data)
         db("UPDATE ws_channels SET color = '" . ws_palette_place($data['color']) . "' WHERE id = '" . $channel_id . "'");
     }
 
+    if (($icon['icon'] !== '') && ws_channel_icons_ready()) {
+        db("UPDATE ws_channels SET icon = '" . e($icon['icon']) . "' WHERE id = '" . $channel_id . "'");
+    }
+
     // Made inside a group (staff): the access given on it lets its people in.
     $group_id = (int) ($data['group_id'] ?? 0);
 
@@ -451,7 +468,8 @@ function ws_channel_create($viewer, $data)
 }
 
 /**
- * Renames a channel or changes its topic, customer or department.
+ * Renames a channel or changes its topic, customer, department, colour or
+ * icon.
  *
  * @param array $viewer
  * @param array $channel
@@ -501,6 +519,20 @@ function ws_channel_update($viewer, $channel, $data)
 
     if (array_key_exists('color', $data) && ws_channel_colors_ready()) {
         $set[] = "color = '" . ws_palette_place($data['color']) . "'";
+    }
+
+    // The icon is the channel's like its name: whoever may rename it may
+    // choose one, from the list only.
+    if (array_key_exists('icon', $data)) {
+        $icon = ws_channel_icon_check($data['icon']);
+
+        if (!$icon['ok']) {
+            return array('ok' => false, 'error' => $icon['error'], 'field' => 'icon');
+        }
+
+        if (ws_channel_icons_ready()) {
+            $set[] = "icon = '" . e($icon['icon']) . "'";
+        }
     }
 
     // Whether the events of its records are written in it (watch.php); a

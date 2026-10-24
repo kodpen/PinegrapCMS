@@ -82,6 +82,28 @@
         return node;
     }
 
+    // An icon with a small mark in its corner (ws_icon_badged_html() in
+    // includes/workspace/channel_icons.php); the plain icon without one.
+    function badgedIcon(name, badge, extra) {
+        if (!badge) {
+            return icon(name, extra);
+        }
+
+        var node = el('span', 'ws-icon-badged' + (extra ? ' ' + extra : ''));
+        node.setAttribute('aria-hidden', 'true');
+        node.appendChild(el('i', 'bi ' + name));
+        node.appendChild(el('i', 'bi ' + badge + ' ws-icon-badge'));
+        return node;
+    }
+
+    // A channel's icon: the one it was given, with the mark of its kind in
+    // the corner (a lock, a door, a person), or the one its kind gives.
+    function channelIcon(channel, extra) {
+        var name = channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash'));
+
+        return badgedIcon(name, channel.icon_badge || '', extra);
+    }
+
     function button(className, label, iconName, title) {
         var node = el('button', className);
         node.type = 'button';
@@ -2811,7 +2833,7 @@
                 data.items.forEach(function (item) {
                     var row = el('button', 'ws-picker-item');
                     row.type = 'button';
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                     row.appendChild(el('span', 'ws-picker-label', item.label));
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));
                     row.addEventListener('click', function () {
@@ -2861,7 +2883,7 @@
             chip.href = ref.url;
         }
 
-        chip.appendChild(icon(ref.icon || 'bi-dot'));
+        chip.appendChild(badgedIcon(ref.icon || 'bi-dot', ref.badge || ''));
         chip.appendChild(el('span', '', ref.label));
 
         if (onRemove) {
@@ -3202,7 +3224,7 @@
             f.refs = el('div', 'ws-refs-field mb-2');
             refsWrap.appendChild(f.refs);
             refsWrap.appendChild(refSearchField(BOOT.ref_types, function (item) {
-                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, url: '' });
+                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, badge: item.badge || '', url: '' });
                 self.drawRefs();
             }));
             body.appendChild(refsWrap);
@@ -3906,6 +3928,176 @@
         return box;
     }
 
+    // An icon of the channel's own from the curated list
+    // (includes/workspace/channel_icons.php), or none: then the icon its
+    // kind gives, which the first cell shows. A radiogroup: Tab reaches the
+    // chosen icon, the arrow keys, Home and End move through the ones the
+    // search leaves, and Enter in the search takes the first of them.
+    function iconPicker(value, kindIcon) {
+        var box = el('div', 'ws-icon-picker');
+        var search = el('input', 'form-control form-control-sm ws-icon-search');
+        var grid = el('div', 'ws-icon-grid');
+        var empty = el('div', 'ws-icon-empty d-none', t('icon_nothing'));
+        var current = value || '';
+        var cells = [];
+
+        search.type = 'search';
+        search.placeholder = t('icon_search');
+        search.setAttribute('aria-label', t('icon_search'));
+        search.autocomplete = 'off';
+        search.spellcheck = false;
+
+        grid.setAttribute('role', 'radiogroup');
+        grid.setAttribute('aria-label', t('icon'));
+
+        [{ icon: '', label: t('icon_none'), words: '' }].concat(CFG.channel_icons || []).forEach(function (choice) {
+            var cell = el('button', 'ws-icon-choice' + (choice.icon ? '' : ' ws-icon-choice-none'));
+
+            cell.type = 'button';
+            cell.title = choice.label;
+            cell.setAttribute('role', 'radio');
+            cell.setAttribute('aria-label', choice.label);
+            cell.appendChild(icon(choice.icon || kindIcon || 'bi-hash'));
+            cell.addEventListener('click', function () {
+                choose(choice.icon, false);
+            });
+
+            cells.push({ node: cell, icon: choice.icon, words: ' ' + foldText(choice.label + ' ' + choice.words).replace(/[\s,]+/g, ' ') });
+            grid.appendChild(cell);
+        });
+
+        function shown() {
+            return cells.filter(function (cell) {
+                return !cell.node.classList.contains('d-none');
+            });
+        }
+
+        // Only one cell is in the Tab order: the chosen one, or the first
+        // shown when the search hides it.
+        function mark() {
+            var visible = shown();
+            var reachable = null;
+
+            cells.forEach(function (cell) {
+                var on = (cell.icon === current);
+
+                cell.node.classList.toggle('active', on);
+                cell.node.setAttribute('aria-checked', on ? 'true' : 'false');
+
+                if (on && !cell.node.classList.contains('d-none')) {
+                    reachable = cell;
+                }
+            });
+
+            reachable = reachable || visible[0] || null;
+
+            cells.forEach(function (cell) {
+                cell.node.tabIndex = (cell === reachable) ? 0 : -1;
+            });
+        }
+
+        function choose(name, focus) {
+            current = name || '';
+            mark();
+
+            if (focus) {
+                cells.forEach(function (cell) {
+                    if (cell.icon === current) {
+                        cell.node.focus();
+                    }
+                });
+            }
+        }
+
+        // Every word typed must start a word of the icon, in either language.
+        search.addEventListener('input', function () {
+            var words = foldText(search.value).split(/[\s,]+/).filter(Boolean);
+            var found = 0;
+
+            cells.forEach(function (cell) {
+                var keep = !cell.icon || words.every(function (word) {
+                    return cell.words.indexOf(' ' + word) !== -1;
+                });
+
+                cell.node.classList.toggle('d-none', !keep);
+                found += (keep && cell.icon) ? 1 : 0;
+            });
+
+            empty.classList.toggle('d-none', found > 0);
+            mark();
+        });
+
+        search.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            var first = shown().filter(function (cell) { return cell.icon; })[0];
+
+            if (search.value.trim() && first) {
+                choose(first.icon, true);
+            }
+        });
+
+        grid.addEventListener('keydown', function (event) {
+            var visible = shown();
+            var at = -1;
+
+            visible.forEach(function (cell, index) {
+                if (cell.node === document.activeElement) {
+                    at = index;
+                }
+            });
+
+            if ((at === -1) || !visible.length) {
+                return;
+            }
+
+            // As many cells as share the first one's line make a row.
+            var columns = visible.filter(function (cell) {
+                return cell.node.offsetTop === visible[0].node.offsetTop;
+            }).length || 1;
+            var moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+            var next;
+
+            if (event.key === 'Home') {
+                next = 0;
+            } else if (event.key === 'End') {
+                next = visible.length - 1;
+            } else if (moves[event.key]) {
+                next = Math.max(0, Math.min(visible.length - 1, at + moves[event.key]));
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+            choose(visible[next].icon, true);
+        });
+
+        box.appendChild(search);
+        box.appendChild(grid);
+        box.appendChild(empty);
+        mark();
+
+        box.value = function () {
+            return current;
+        };
+
+        // The icon the kind gives, drawn on "none": a new channel's changes
+        // with the kind chosen above it.
+        box.setKindIcon = function (name) {
+            var none = cells[0].node;
+
+            clear(none);
+            none.appendChild(icon(name || 'bi-hash'));
+        };
+
+        return box;
+    }
+
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
     function eraSection(channel, node) {
@@ -4184,6 +4376,25 @@
             body.appendChild(formRow(t('color'), colors, t('color_help')));
         }
 
+        // Its own icon beside the colour, the same for everybody; whoever may
+        // rename the channel may choose it.
+        var icons = null;
+
+        if ((CFG.channel_icons || []).length) {
+            icons = iconPicker(channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
+                channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
+            body.appendChild(formRow(t('icon'), icons, t('icon_help')));
+
+            // A new channel's "none" follows the kind picked above.
+            if (kind) {
+                kind.addEventListener('change', function () {
+                    var picked = kind.querySelector('input:checked');
+
+                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
+                });
+            }
+        }
+
         var members = null;
 
         if (!channel) {
@@ -4246,6 +4457,10 @@
 
             if (colors) {
                 data.color = colors.value();
+            }
+
+            if (icons) {
+                data.icon = icons.value();
             }
 
             if (watch) {
@@ -5030,7 +5245,7 @@
                     self.makeDraggable(link, channel);
                 }
 
-                link.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash')), 'ws-ch-icon'));
+                link.appendChild(channelIcon(channel, 'ws-ch-icon'));
                 link.appendChild(el('span', 'ws-channel-name', channel.name));
 
                 if (channel.notify === 'none') {
@@ -7415,7 +7630,7 @@
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : 'bi-hash'), 'me-1 text-body-secondary'));
+            h.appendChild(channelIcon(channel, 'me-1 text-body-secondary'));
             h.appendChild(document.createTextNode(channel.name));
             title.appendChild(h);
 
@@ -12367,7 +12582,7 @@
                     }
 
                     var records = results[0].items.map(function (item) {
-                        return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
+                        return { label: item.label, meta: item.meta, icon: item.icon, badge: item.badge || '', token: item.token, shown: shownLabel('#', item.label) };
                     });
                     var titled = (results[1].items || []).slice(0, 5).map(function (item) {
                         return { label: item.title, meta: t('pull_kind_' + item.kind) + ' · ' + item.where + ' · ' + item.author, icon: blockIcon(item.kind), block: item.id };
@@ -12439,7 +12654,7 @@
                     img.alt = '';
                     row.appendChild(img);
                 } else {
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
 
                 // A second, muted line under the label (a command's example).

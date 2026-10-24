@@ -35,7 +35,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function ws_chip_html($ref)
 {
     $class = 'ws-chip ws-chip-' . preg_replace('/[^a-z]/', '', $ref['type']) . ($ref['known'] ? '' : ' ws-chip-muted');
-    $icon = ($ref['icon'] !== '') ? '<i class="bi ' . h($ref['icon']) . '" aria-hidden="true"></i>' : '';
+    // A channel's own icon carries the mark of its kind (ws_channel_icon_badge()).
+    $icon = ($ref['icon'] !== '') ? ws_icon_badged_html($ref['icon'], (string) ($ref['badge'] ?? '')) : '';
     $title = trim($ref['meta'] . (($ref['status'] !== '') ? ' · ' . $ref['status'] : ''), ' ·');
     $title_attr = ($title !== '') ? ' title="' . h($title) . '"' : '';
     $data = ' data-ws-ref="' . h($ref['type'] . ':' . $ref['id']) . '"';
