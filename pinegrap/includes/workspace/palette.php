@@ -575,7 +575,9 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
 
 /**
  * The writing box's commands whose names start with what is typed, one line
- * per command, with the name to write.
+ * per command, with the name to write: the registry's (ws_commands()), so
+ * /claude and /ai are listed once they are set up. With nothing typed each
+ * command shows the name of the screen's language.
  *
  * @param string     $query
  * @param array|null $viewer leaves out the commands this person may not use
@@ -584,35 +586,30 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
 function ws_palette_commands($query, $viewer = null)
 {
     $query = ws_lower((string) $query);
-    $help = array();
-
-    foreach (ws_command_help($viewer) as $entry) {
-        foreach (preg_split('/\s*·\s*/u', (string) $entry['command']) as $name) {
-            $help[ltrim($name, '/')] = $entry;
-        }
-    }
-
     $out = array();
 
-    foreach (ws_command_names() as $name => $command) {
-        if (isset($out[$command]) || (($query !== '') && (strpos($name, $query) !== 0)) || !ws_command_offered($viewer, $command)) {
-            continue;
+    foreach (ws_commands($viewer) as $entry) {
+        $names = ($query === '') ? array($entry['name']) : $entry['names'];
+
+        foreach ($names as $name) {
+            if (($query !== '') && (strpos(ws_lower(ltrim($name, '/')), $query) !== 0)) {
+                continue;
+            }
+
+            $out[] = array(
+                'type'   => 'command',
+                'id'     => 0,
+                'title'  => $name,
+                'sub'    => (string) $entry['description'],
+                'date'   => '',
+                'icon'   => 'bi-slash-square',
+                'insert' => $name . ' ',
+            );
+            break;
         }
-
-        $entry = $help[$command] ?? null;
-
-        $out[$command] = array(
-            'type'   => 'command',
-            'id'     => 0,
-            'title'  => '/' . $name,
-            'sub'    => $entry ? (string) $entry['description'] : lang('Lists the commands and what they do.'),
-            'date'   => '',
-            'icon'   => 'bi-slash-square',
-            'insert' => '/' . $name . ' ',
-        );
     }
 
-    return array_values($out);
+    return $out;
 }
 
 /**

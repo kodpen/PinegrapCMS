@@ -900,6 +900,9 @@ function ws_handle_action($action, $request)
                     return ws_change_allowed($viewer, $type, 0);
                 })),
                 'commands'    => ws_command_help($viewer),
+                // The days, estimates and priorities the argument popup
+                // offers after a command.
+                'command_values' => ws_command_suggestions(),
                 'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
@@ -1183,6 +1186,9 @@ function ws_handle_action($action, $request)
 
                 return ws_action_ok(array('command' => $command));
             }
+
+            // "//word ..." is the text "/word ..." posted as a message.
+            $body = ws_command_unescape($body);
 
             $result = ws_message_send($viewer, $channel, $body, array(
                 'parent_id' => (int) ($request['parent_id'] ?? 0),

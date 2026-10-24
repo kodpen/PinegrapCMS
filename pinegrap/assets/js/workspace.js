@@ -10817,13 +10817,23 @@
             self.replyBar = el('div');
             wrap.appendChild(self.replyBar);
 
+            // While a command is written: its usage, the argument expected
+            // now highlighted (drawCommandStrip()).
+            self.commandStrip = el('div');
+            wrap.appendChild(self.commandStrip);
+
             var box = el('div', 'ws-composer');
 
             // The keys the box leaves to the conversation: the picker's,
-            // Escape, and Arrow Up in an empty box to change one's last
-            // message. true when used.
+            // Tab in a command's arguments, Escape, and Arrow Up in an empty
+            // box to change one's last message. true when used.
             function keys(event) {
                 if (self.picker && self.pickerKey(event)) {
+                    return true;
+                }
+
+                if ((event.key === 'Tab') && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && self.commandTab()) {
+                    event.preventDefault();
                     return true;
                 }
 
@@ -11179,6 +11189,12 @@
             }
 
             this.labels = [];
+            this.argDismissed = null;
+
+            if (this.commandStrip) {
+                clear(this.commandStrip);
+            }
+
             this.autosize();
         },
 
@@ -11411,6 +11427,13 @@
                 return;
             }
 
+            // The argument popup does not outlive the line it was for: it
+            // stays away until the next argument, or until Tab asks for it.
+            if (self.picker && (self.pickerMode === 'arg')) {
+                self.argDismissed = self.argument ? self.argumentKey(self.argument) : null;
+                self.closePicker();
+            }
+
             var body = self.tokens(raw);
             self.busy = true;
 
@@ -11499,6 +11522,12 @@
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
                     self.scrollToEnd();
+
+                    // A command that does not exist: nothing was posted, and
+                    // the text stays in the box to be put right.
+                    if (result.command.keep) {
+                        return;
+                    }
                 }
 
                 if (result.command && result.command.type === 'done' && result.command.task_id) {
@@ -11689,6 +11718,12 @@
                 dt.appendChild(el('code', '', item.command));
                 list.appendChild(dt);
                 var dd = el('dd', '', item.description);
+
+                if (item.usage) {
+                    dd.appendChild(el('br'));
+                    dd.appendChild(el('code', 'ws-help-usage', item.usage));
+                }
+
                 dd.appendChild(el('br'));
                 dd.appendChild(el('span', 'text-body-secondary', item.example));
                 list.appendChild(dd);
@@ -11968,8 +12003,23 @@
             var match;
 
             if (!self.noCommands && (match = /^\/([^\s]*)$/.exec(before))) {
+                self.argDismissed = null;
+                self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
                 return;
+            }
+
+            // After "/name ": the argument the command expects next
+            // (commandArgument()), shown in the strip above the box. Only the
+            // channel's composer reads commands.
+            var argument = self.noCommands ? null : self.commandArgument(before);
+
+            if (!self.noCommands) {
+                if (!argument) {
+                    self.argDismissed = null;
+                }
+
+                self.drawCommandStrip(argument);
             }
 
             // A chip right before the sigil counts as a word boundary.
@@ -11983,7 +12033,371 @@
                 return;
             }
 
+            // Its suggestions, unless Escape sent them away for this argument.
+            if (argument && self.argumentSource(argument) && (self.argDismissed !== self.argumentKey(argument))) {
+                self.argument = argument;
+                self.openPicker('arg', argument.query, argument.start);
+                return;
+            }
+
             self.closePicker();
+        },
+
+        // \u2500\u2500 The argument popup after a command \u2500\u2500
+        //
+        // The registry (BOOT.commands, includes/workspace/commands.php
+        // ws_commands()) gives each command its arguments in order, each
+        // with a kind and where its values come from. After "/name " the
+        // popup offers values for the argument expected next: people from
+        // BOOT.people, tasks and products from ws_ref_search (only what the
+        // person may see), the days, estimates and priorities of
+        // BOOT.command_values. Tab writes the first row (or the one picked
+        // with the arrows, as Enter then does) and a space, and the popup
+        // opens for the next argument; Enter with no row picked sends the
+        // line as it is; a space moves on; Escape closes it until the next
+        // argument, and Tab brings it back.
+
+        // The registry entry a typed name belongs to: any of its names, in
+        // Turkish lower case or plain lower case, as the server reads it.
+        commandEntry: function (typed) {
+            var lower = typed.toLocaleLowerCase('tr');
+            var plain = typed.toLowerCase();
+            var found = null;
+
+            (BOOT.commands || []).forEach(function (item) {
+                (item.names || []).forEach(function (name) {
+                    if (!found && ((name.toLocaleLowerCase('tr') === lower) || (name.toLowerCase() === plain))) {
+                        found = item;
+                    }
+                });
+            });
+
+            return found;
+        },
+
+        // Where the writer is in a command, from what is written before the
+        // caret: the entry, the name as typed, the word being typed (query)
+        // and where it starts, and the argument expected now (index, arg).
+        // Written in order, each word or tag fills the next argument; one
+        // that takes several keeps the rest. A free text first (/task's
+        // title) takes every word, until the arguments the parser reads
+        // anywhere are offered (extras) once it has one; a poll's options
+        // start at the first |. null outside a command, before the space
+        // after its name, and while a message or a scheduled one is edited.
+        commandArgument: function (before) {
+            var self = this;
+
+            if (self.noCommands || self.editing || self.editingScheduled || !BOOT || !BOOT.commands) {
+                return null;
+            }
+
+            var match = /^\/(\S+)(\s+)([\s\S]*)$/.exec(before);
+            var entry = match ? self.commandEntry('/' + match[1]) : null;
+
+            if (!entry) {
+                return null;
+            }
+
+            var rest = match[3];
+            var word = /[^\s\uFFFC]*$/.exec(rest)[0];
+            var done = rest.slice(0, rest.length - word.length).replace(/\uFFFC/g, ' \uFFFC ').split(/\s+/).filter(Boolean);
+            var args = entry.args || [];
+            var state = { entry: entry, typed: '/' + match[1], query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+
+            if (!args.length) {
+                return state;
+            }
+
+            if (args[0].kind === 'text') {
+                var anywhere = args.filter(function (arg) { return arg.anywhere; });
+                var options = args.filter(function (arg) { return arg.kind === 'options'; })[0];
+
+                if (anywhere.length && done.length) {
+                    state.index = 'extras';
+                    state.extras = self.commandExtras(anywhere, done);
+                } else if (options && (rest.indexOf('|') !== -1)) {
+                    state.index = args.indexOf(options);
+                    state.arg = options;
+                } else {
+                    state.index = 0;
+                    state.arg = args[0];
+                }
+
+                return state;
+            }
+
+            var index = 0;
+
+            done.forEach(function () {
+                if ((index < args.length) && !args[index].multiple) {
+                    index++;
+                }
+            });
+
+            state.index = index;
+            state.arg = args[index] || null;
+
+            return state;
+        },
+
+        // Which of the arguments read anywhere (/task's people, day,
+        // estimate, priority, records) the line does not hold yet: the tags
+        // are looked for in the whole text, the words before the caret.
+        commandExtras: function (args, done) {
+            var markup = this.tokens(this.inputText());
+            var days = ((BOOT.command_values && BOOT.command_values.dates) || []).map(function (item) { return foldText(item.value); });
+            var isDay = function (word) {
+                return (days.indexOf(foldText(word)) !== -1) || /^\+\d{1,3}\D*$/.test(word) || /^\d{1,2}[.\/]\d{1,2}([.\/]\d{2,4})?(-\d{1,2}[.\/]\d{1,2}([.\/]\d{2,4})?)?$/.test(word);
+            };
+            var starts = function (sign) {
+                return done.some(function (word) { return word.charAt(0) === sign; });
+            };
+
+            return args.filter(function (arg) {
+                switch (arg.suggest) {
+                    case 'people_departments':
+                    case 'people':
+                        return !/<@(user|dept):\d+>/.test(markup);
+                    case 'records':
+                        return !/<#[a-z_]+:\d+>/.test(markup);
+                    case 'dates':
+                        return !done.some(isDay);
+                    case 'estimates':
+                        return !starts('~');
+                    case 'priorities':
+                        return !starts('!');
+                }
+
+                return false;
+            });
+        },
+
+        // Where the popup finds values for the argument: its registry
+        // source, 'extras' for /task's missing parts, '' for none (a free
+        // text, an amount, a quantity, a poll's options).
+        argumentSource: function (argument) {
+            if (argument.extras) {
+                return argument.extras.length ? 'extras' : '';
+            }
+
+            return (argument.arg && argument.arg.suggest) || '';
+        },
+
+        // What Escape sends the popup away for: one argument of one
+        // command; /task's parts all together.
+        argumentKey: function (argument) {
+            return argument.entry.key + ':' + argument.index;
+        },
+
+        // Tab in a command with no popup open (or after Escape): the
+        // suggestions for the argument at the caret. false when there are
+        // none, and Tab does what it always does.
+        commandTab: function () {
+            var argument = this.commandArgument(this.beforeCaret());
+
+            if (!argument || !this.argumentSource(argument)) {
+                return false;
+            }
+
+            this.argDismissed = null;
+            this.pickerCheck();
+
+            return !!this.picker;
+        },
+
+        // The popup's rows for the argument expected now (this.argument).
+        openArgument: function (query) {
+            var self = this;
+            var argument = self.argument;
+            var source = self.argumentSource(argument);
+            var values = BOOT.command_values || {};
+            var typed = foldText(query);
+            var first = query.charAt(0);
+
+            self.argTicket = null;
+            clearTimeout(self.pickerTimer);
+
+            // Before anything is typed the first values, then every one that
+            // starts with what is typed.
+            var fixed = function (list, icon) {
+                return (list || []).filter(function (item) {
+                    return typed ? (foldText(item.value).indexOf(typed) === 0) : item.top;
+                }).map(function (item) {
+                    return { label: item.value, meta: item.meta, icon: icon, insert: item.value + ' ' };
+                });
+            };
+
+            // A fixed list that has nothing for the word typed closes: the
+            // word belongs to the text (a title), not to the list.
+            var show = function (items) {
+                if (!items.length) {
+                    self.closePicker();
+                    return;
+                }
+
+                self.drawPicker(items);
+            };
+
+            if (source === 'extras') {
+                var rows = [];
+
+                // The parts with a sign of their own come as the sign, which
+                // opens its own list: @ the people, # the records, ~ and !
+                // their values.
+                argument.extras.forEach(function (arg) {
+                    if (arg.suggest === 'people_departments' || arg.suggest === 'people') {
+                        if (!query) {
+                            rows.push({ label: '@', meta: t('cmd_extra_people'), icon: 'bi-at', insert: '@' });
+                        }
+                    } else if (arg.suggest === 'dates') {
+                        if ((first !== '~') && (first !== '!')) {
+                            rows = rows.concat(fixed(values.dates, 'bi-calendar-event'));
+                        }
+                    } else if (arg.suggest === 'estimates') {
+                        if (!query) {
+                            rows.push({ label: '~', meta: t('cmd_extra_estimate'), icon: 'bi-hourglass-split', insert: '~' });
+                        } else if (first === '~') {
+                            rows = rows.concat(fixed(values.estimates, 'bi-hourglass-split'));
+                        }
+                    } else if (arg.suggest === 'priorities') {
+                        if (!query) {
+                            rows.push({ label: '!', meta: t('cmd_extra_priority'), icon: 'bi-flag', insert: '!' });
+                        } else if (first === '!') {
+                            rows = rows.concat(fixed(values.priorities, 'bi-flag'));
+                        }
+                    } else if ((arg.suggest === 'records') && !query) {
+                        rows.push({ label: '#', meta: t('tag_record'), icon: 'bi-hash', insert: '#' });
+                    }
+                });
+
+                show(rows);
+                return;
+            }
+
+            if (source === 'dates') {
+                show(fixed(values.dates, 'bi-calendar-event'));
+                return;
+            }
+
+            if (source === 'estimates') {
+                show(fixed(values.estimates, 'bi-hourglass-split'));
+                return;
+            }
+
+            if (source === 'priorities') {
+                show(fixed(values.priorities, 'bi-flag'));
+                return;
+            }
+
+            // The team, as the @ picker lists it, without whoever the line
+            // already names; never the site's members.
+            if (source === 'people' || source === 'people_departments') {
+                var needle = query.toLocaleLowerCase();
+                var markup = self.tokens(self.inputText());
+                var people = [];
+                var fits = function (text) {
+                    return !needle || String(text || '').toLocaleLowerCase().indexOf(needle) !== -1;
+                };
+
+                (BOOT.people || []).forEach(function (member) {
+                    if ((markup.indexOf('<@user:' + member.id + '>') === -1) && (fits(member.name) || fits(member.username))) {
+                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                    }
+                });
+
+                if (source === 'people_departments') {
+                    (BOOT.departments || []).forEach(function (item) {
+                        if ((markup.indexOf('<@dept:' + item.id + '>') === -1) && fits(item.name)) {
+                            people.push({ label: item.name, meta: t('department'), icon: 'bi-people', token: '<@dept:' + item.id + '>', shown: shownLabel('@', item.name) });
+                        }
+                    });
+                }
+
+                if (!people.length && !query) {
+                    self.closePicker();
+                    return;
+                }
+
+                self.drawPicker(people.slice(0, 8), t('nothing_found'));
+                return;
+            }
+
+            // Tasks and records from the search the # picker uses: only what
+            // the person may see. A task is written as its number (T-42), a
+            // record as its tag.
+            var type = { tasks: 'task', products: 'product', records: 'all' }[source];
+
+            if (!type || ((type !== 'all') && !(BOOT.ref_types && BOOT.ref_types[type]))) {
+                self.closePicker();
+                return;
+            }
+
+            if ((type === 'all') && (query.trim().length < 2)) {
+                self.drawPicker([], t('type_to_search'));
+                return;
+            }
+
+            // Only the latest search draws: an answer for an earlier popup
+            // (another command, the same empty query) is dropped.
+            var ticket = {};
+
+            self.argTicket = ticket;
+            self.drawPicker(null);
+
+            clearTimeout(self.pickerTimer);
+            self.pickerTimer = setTimeout(function () {
+                api('ws_ref_search', { type: type, q: query }).then(function (data) {
+                    if (!self.picker || (self.pickerMode !== 'arg') || (self.argTicket !== ticket)) {
+                        return;
+                    }
+
+                    self.drawPicker((data.items || []).map(function (item) {
+                        if (type === 'task') {
+                            return { label: item.label, meta: item.meta, icon: item.icon || 'bi-check2-square', insert: String(item.label).split(' \u00B7 ')[0] + ' ' };
+                        }
+
+                        return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
+                    }), t('nothing_found'));
+                }).catch(function () {});
+            }, 220);
+        },
+
+        // Above the box while a command is written: the name as typed and
+        // its arguments, <required> and [optional], the one expected now
+        // highlighted, then the command's example.
+        drawCommandStrip: function (argument) {
+            var strip = this.commandStrip;
+
+            if (!strip) {
+                return;
+            }
+
+            clear(strip);
+
+            if (!argument) {
+                return;
+            }
+
+            var entry = argument.entry;
+            var row = el('div', 'ws-cmd-strip');
+            var usage = el('span', 'ws-cmd-usage');
+
+            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+
+            (entry.args || []).forEach(function (arg, index) {
+                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+
+                usage.appendChild(document.createTextNode(' '));
+                usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
+            });
+
+            row.appendChild(usage);
+
+            if (entry.example) {
+                row.appendChild(el('span', 'ws-cmd-example', t('cmd_example', entry.example)));
+            }
+
+            strip.appendChild(row);
         },
 
         // Is what follows a # still a search? Not once it is a tag that was
@@ -12029,9 +12443,15 @@
             self.pickerStart = start;
             self.pickerQuery = query;
 
+            if (mode === 'arg') {
+                self.openArgument(query);
+                return;
+            }
+
             // Every name a command answers to, Turkish or English: the name
             // as typed first ("/gö" shows /görev), then with the Turkish
             // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
+            // With nothing typed, the name in the screen's language.
             if (mode === 'command') {
                 var typed = ('/' + query).toLocaleLowerCase('tr');
                 var typedFolded = foldText(typed);
@@ -12040,7 +12460,7 @@
                 (BOOT.commands || []).forEach(function (item) {
                     var aliases = item.command.split(' · ');
                     var names = (item.names && item.names.length) ? item.names : aliases;
-                    var match = aliases[0];
+                    var match = item.name || aliases[0];
 
                     if (query !== '') {
                         match = null;
@@ -12262,15 +12682,19 @@
                 return;
             }
 
+            // The argument popup after a command picks no row by itself, so
+            // Enter still sends the line; the row Tab would write is marked.
+            var argMode = (self.pickerMode === 'arg');
+
             self.pickerItems = items;
-            self.pickerIndex = 0;
+            self.pickerIndex = argMode ? -1 : 0;
 
             if (!items.length) {
                 list.appendChild(el('div', 'ws-picker-empty', emptyText || t('nothing_found')));
             }
 
             items.forEach(function (item, index) {
-                var row = el('button', 'ws-picker-item' + (index === 0 ? ' active' : ''));
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
                 row.type = 'button';
 
                 if (item.avatar) {
@@ -12303,6 +12727,10 @@
                 });
                 list.appendChild(row);
             });
+
+            if (argMode && items.length && !touchScreen()) {
+                picker.appendChild(el('div', 'ws-picker-keys', t('cmd_keys')));
+            }
 
             if (self.notesMode || self.caretPicker) {
                 self.placePicker();
@@ -12342,9 +12770,16 @@
 
         pickerKey: function (event) {
             var items = this.pickerItems || [];
+            var argMode = (this.pickerMode === 'arg');
 
             if (event.key === 'Escape') {
                 event.preventDefault();
+
+                // A command's suggestions stay away until its next argument.
+                if (argMode && this.argument) {
+                    this.argDismissed = this.argumentKey(this.argument);
+                }
+
                 this.closePicker();
                 return true;
             }
@@ -12355,18 +12790,34 @@
 
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
-                this.pickerIndex = (this.pickerIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+
+                if (argMode && (this.pickerIndex < 0)) {
+                    this.pickerIndex = (event.key === 'ArrowDown') ? 0 : items.length - 1;
+                } else {
+                    this.pickerIndex = (this.pickerIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+                }
 
                 Array.prototype.forEach.call(this.picker.querySelectorAll('.ws-picker-item'), function (row, index) {
                     row.classList.toggle('active', index === this.pickerIndex);
+
+                    if (argMode) {
+                        row.classList.toggle('ws-picker-next', index === this.pickerIndex);
+                    }
                 }, this);
 
                 return true;
             }
 
             if (event.key === 'Enter' || event.key === 'Tab') {
+                // After a command Enter writes only a row picked with the
+                // arrows, otherwise the line is sent; Shift+Tab is the
+                // browser's.
+                if (argMode && (((event.key === 'Enter') && (this.pickerIndex < 0)) || event.shiftKey)) {
+                    return false;
+                }
+
                 event.preventDefault();
-                this.pick(items[this.pickerIndex]);
+                this.pick(items[Math.max(0, this.pickerIndex)]);
                 return true;
             }
 
@@ -12403,6 +12854,14 @@
                     : { text: item.insert || '' });
                 this.closePicker();
                 this.autosize();
+
+                // In the channel's composer a pick inside a command opens the
+                // popup for the argument after it (after a command's name:
+                // its first argument).
+                if (!this.noCommands) {
+                    this.pickerCheck();
+                }
+
                 return;
             }
 
@@ -12422,6 +12881,10 @@
             this.closePicker();
             this.autosize();
             input.focus();
+
+            if (!this.noCommands) {
+                this.pickerCheck();
+            }
         },
 
         closePicker: function () {
