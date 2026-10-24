@@ -69,6 +69,7 @@ $query =
         custom_form_pages.confirmation_alternative_page,
         custom_form_pages.confirmation_alternative_page_contact_group_id,
         custom_form_pages.confirmation_alternative_page_id
+        " . (pg_fs_ready() ? ", custom_form_pages.double_opt_in" : '') . "
     FROM page
     LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
     WHERE page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "'";
@@ -119,6 +120,8 @@ $confirmation_page_id = $row['confirmation_page_id'];
 $confirmation_alternative_page = $row['confirmation_alternative_page'];
 $confirmation_alternative_page_contact_group_id = $row['confirmation_alternative_page_contact_group_id'];
 $confirmation_alternative_page_id = $row['confirmation_alternative_page_id'];
+// Read only once the 11.0.27 column is there; off until then.
+$double_opt_in = isset($row['double_opt_in']) ? (int) $row['double_opt_in'] : 0;
 
 // If auto-registration is disabled, then check if we need to show an error
 // about the user not being logged in, if this form grants membership or private access.
@@ -241,7 +244,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 // The hidden fields the form carries, the CAPTCHA answer, and every field but a
 // check box group or a multi-select post a single value. The CAPTCHA honeypot
 // (body) is left out: anything in it, an array too, marks the submitter a bot.
-$single_value_fields = array('folder_id', 'send_to', 'add_watcher', 'add_watcher_page_id', 'captcha_submitted_answer', 'captcha_validation');
+$single_value_fields = array('folder_id', 'send_to', 'add_watcher', 'add_watcher_page_id', 'captcha_submitted_answer', 'captcha_validation', 'pg_form_issued');
 
 foreach ($fields as $field) {
     // A file control sends one file. One sent as name[] arrives with every key an
@@ -416,14 +419,86 @@ foreach ($fields as $field) {
     }
 }
 
+// The protections below hold every submission but staff's
+// (pg_user_has_panel_access()); saving for later writes nothing to anyone.
+$form_protected = ($action == 'submit') && !pg_user_has_panel_access();
+
+// A person needs a few seconds to fill a form; a script posting the moment
+// it loaded the page, or a form drawn more than a day ago, is sent back. The
+// time is signed when the form is drawn (pg_cf_issued_field()).
+if ($form_protected && ($liveform->check_form_errors() == false)) {
+    $form_issued = pg_cf_issued_verdict($liveform->get_field_value('pg_form_issued'), time(), pg_cf_issued_key());
+
+    if ($form_issued == 'fast') {
+        $liveform->mark_error('', lang('Please take a moment to check your entries and submit again.'));
+    } else if ($form_issued != 'ok') {
+        $liveform->mark_error('', lang('This form has expired. Please submit it again.'));
+    }
+}
+
 // if CAPTCHA is enabled then validate CAPTCHA
 if (CAPTCHA == TRUE) {
     validate_captcha_answer($liveform);
 }
 
+// The per address, per e-mail and per domain limits (Site Settings,
+// Security). The address and domain counters apply only when the form mails,
+// subscribes or registers the address typed in it, the case a stranger's
+// inbox is flooded through; the visitor's own counter always applies.
+$form_throttle_rows = array();
+
+if ($form_protected && ($liveform->check_form_errors() == false)) {
+    // StopForumSpam, when switched on, whether or not the CAPTCHA is; the
+    // service is asked once per request (pg_form_spam_check()).
+    pg_form_spam_check($liveform);
+
+    // An office-use-only field a visitor cannot see is given its default
+    // further down; the address is worked out from that same value.
+    $form_field_values = array();
+
+    foreach ($fields as $field) {
+        if (($field['office_use_only'] == 1) && ($office_use_only == FALSE)) {
+            $form_field_values[$field['id']] = ($field['use_folder_name_for_default_value'] == 1) ? '' : $field['default_value'];
+        } else {
+            $form_field_values[$field['id']] = $liveform->get_field_value($field['id']);
+        }
+    }
+
+    $form_throttle_email = pg_cf_form_writes_to_submitter(array(
+            'submitter_email'   => $submitter_email,
+            'contact_group_id'  => $contact_group_id,
+            'auto_registration' => $auto_registration))
+        ? pg_cf_submitter_address_guess($fields, $form_field_values, (defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : ''))
+        : '';
+
+    // An address the server could not resolve, or a proxy's or the local
+    // network's, would count every visitor as one.
+    $form_client_ip = waf_client_ip();
+    $form_ip_subject = (pg_cf_visitor_address_counted($form_client_ip) && !waf_ip_is_infrastructure($form_client_ip)) ? waf_ip_subject($form_client_ip) : '';
+
+    $form_throttle_rows = pg_cf_throttle_subjects($form_throttle_email, $form_ip_subject, pg_cf_throttle_limits());
+
+    // Counted and tested in one step, before the hook code, so parallel
+    // requests cannot all pass and a hook that ends the request is counted.
+    if ($liveform->check_form_errors() == false) {
+        $form_full_row = pg_cf_throttle_take($form_throttle_rows);
+
+        if ($form_full_row) {
+            pg_cf_throttle_log($form_full_row);
+            $liveform->mark_error('', lang('Too many submissions. Please try again later.'));
+        }
+    }
+}
+
 // If hooks are enabled and there is hook code, then run it.
 if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && ($hook_code != '')) {
     eval(prepare_for_eval($hook_code));
+}
+
+// A visitor sent back with an error has spent the fill time once; the form
+// drawn for them next is signed accordingly (pg_cf_issued_time()).
+if ($form_protected && $liveform->check_form_errors()) {
+    $_SESSION['software']['pg_form_retry'] = time();
 }
 
 // if an error does not exist
@@ -1112,8 +1187,17 @@ if ($liveform->check_form_errors() == false) {
     
     // if there is a contact, then add contact to contact groups and connect contact to submitted form
     if ($contact_id) {
+        // The form's own group. With double opt-in the contact joins it only
+        // through the confirmation link (includes/fn/form_subscription.php).
+        // Kept apart because the loop below reuses $contact_group_id.
+        $form_contact_group_id = (int) $contact_group_id;
+        $form_contact_group_held = ($double_opt_in === 1)
+            && ($form_contact_group_id > 0)
+            && pg_fs_hold_group($double_opt_in, $form_contact_group_id, pg_fs_is_member($contact_id, $form_contact_group_id))
+            && (pg_fs_group($form_contact_group_id) !== null);
+
         // if contact group is set for custom form, add it to array
-        if ($contact_group_id != 0) {
+        if (($contact_group_id != 0) && !$form_contact_group_held) {
             $contact_groups[] = $contact_group_id;
         }
         
@@ -1123,6 +1207,12 @@ if ($liveform->check_form_errors() == false) {
         // then add membership contact group to contact groups array
         if (($membership == 1) && ($membership_days > 0) && (MEMBERSHIP_CONTACT_GROUP_ID != 0) && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)) {
             $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
+        }
+
+        // The registration or membership group may be the form's group too;
+        // the contact joins it through that, and nothing waits for a link.
+        if ($form_contact_group_held && in_array($form_contact_group_id, array_map('intval', $contact_groups), true)) {
+            $form_contact_group_held = false;
         }
         
         // loop through contact groups that contact should be added to
@@ -1162,6 +1252,11 @@ if ($liveform->check_form_errors() == false) {
             SET contact_id = '$contact_id'
             WHERE id = '$form_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // Mail the confirmation link to the contact's own address.
+        if ($form_contact_group_held) {
+            pg_fs_hold_submission($form_id, $contact_id, $form_contact_group_id);
+        }
     }
 
     // If this form grants private access and there is a user,

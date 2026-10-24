@@ -281,6 +281,12 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_LANGUAGE_COOKIE, true, lang('Remembers the language you chose for the site.'));
     }
 
+    // The page cache marks a session with a cart, a sign-in or a message
+    // (pg_page_cache_marker_hook()); it writes the cookie only when it is on.
+    if (function_exists('pg_page_cache_ttl') && (pg_page_cache_ttl() > 0)) {
+        $catalogue['necessary'][] = array(PG_PAGE_CACHE_MARKER, true, lang('Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.'));
+    }
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {
@@ -295,6 +301,14 @@ function pg_consent_catalogue($content)
 
     if ($tracking && defined('AFFILIATE_PROGRAM') && AFFILIATE_PROGRAM) {
         $catalogue['marketing'][] = array('software[affiliate_code]', true, lang('Remembers the partner who referred you, so the partner can be credited.'));
+    }
+
+    // The CAPTCHA provider of the Security settings guards the site's forms
+    // and a form cannot be sent without it, so it is not held for consent.
+    $captcha_provider = (defined('CAPTCHA') && CAPTCHA && function_exists('pg_captcha_provider')) ? pg_captcha_provider() : '';
+
+    if ($captcha_provider !== '') {
+        $catalogue['necessary'][] = array(pg_captcha_provider_definition($captcha_provider)['label'], false, lang('Checks that a form is sent by a person; loaded only on pages with a form.'));
     }
 
     foreach (pg_consent_page_services($content) as $category => $names) {
@@ -489,11 +503,13 @@ function pg_consent_ui_keys()
         'Remembers your cookie choices.',
         'For a signed-in user, remembers whether pages show their editing tools.',
         'Remembers the language you chose for the site.',
+        'Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',
         'Google Analytics: tells visits apart to measure how the site is used.',
         'Remembers the partner who referred you, so the partner can be credited.',
+        'Checks that a form is sent by a person; loaded only on pages with a form.',
         'Other services',
         'A service added by this site. It starts only if you allow it.',
         'Necessary',
@@ -529,7 +545,16 @@ function pg_consent_ui_keys()
  */
 function pg_consent_inject($content)
 {
-    if (!pg_consent_enabled() || (defined('IS_BOT') && IS_BOT)) {
+    if (!pg_consent_enabled()) {
+        return $content;
+    }
+
+    if (defined('IS_BOT') && IS_BOT) {
+        // A page without the notice must never be shared with people.
+        if (function_exists('pg_page_cache_personal')) {
+            pg_page_cache_personal('crawler');
+        }
+
         return $content;
     }
 

@@ -841,6 +841,10 @@ function pg_sw_index_form_data($data_rows)
                     'data'    => $value,
                     'type'    => $type,
                     'wysiwyg' => (!empty($data_row['field_wysiwyg']) && $type === 'text area') ? 1 : 0,
+                    // Whether the field's answers are translated
+                    // (form_fields.translate_values); read before the column
+                    // existed, they are.
+                    'translate' => (isset($data_row['field_translate']) && (string)$data_row['field_translate'] === '0') ? 0 : 1,
                 );
             }
         }
@@ -1998,7 +2002,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
-            form_fields.wysiwyg AS field_wysiwyg,
+            form_fields.wysiwyg AS field_wysiwyg,"
+            . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
             files.name          AS file_name
          FROM form_data
          LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -2825,7 +2830,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
-                form_fields.wysiwyg AS field_wysiwyg,
+                form_fields.wysiwyg AS field_wysiwyg,"
+                . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
              LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -7111,8 +7117,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     _pg_inject_messages_node($tree_decoded, $form_page_id > 0 ? (string)$form_page_id : '');
 
     // Section bindings. `captcha` is the site-wide block, honoured only when
-    // the CAPTCHA setting is on and the visitor is not signed in — the same
-    // gate get_captcha_fields() applies, so an empty container disappears
+    // the CAPTCHA setting is on and the visitor is not staff — the same gate
+    // get_captcha_fields() applies, so an empty container disappears
     // rather than leaving a labelled box with nothing in it.
     $cf_sections = array(
         'captcha' => ($cf_liveform && defined('CAPTCHA') && CAPTCHA && function_exists('get_captcha_fields'))
@@ -7149,6 +7155,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      (function_exists('get_token_field') ? get_token_field() : '') .
                      '<input type="hidden" name="page_id" value="' . $form_page_id . '">' .
                      '<input type="hidden" name="send_to" value="' . h($cf_send_to) . '">' .
+                     pg_cf_issued_field() .
                      ($cf_contact_off ? '<input type="hidden" name="connect_to_contact" value="false">' : '') .
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 
