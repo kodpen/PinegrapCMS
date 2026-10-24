@@ -22,6 +22,7 @@ description: Why an empty $_POST is an error (post_max_size), pg_post_body_disca
 ## How should uploads stay under the limits?
 - Staying under the limit beats raising it (the limit is the server's; operators often cannot change it).
 - Multi-file uploads are split into batches sent sequentially (`uploadBatches()` / `sendBatch()` in `assets/js/product_builder.js`; a new multi-file uploader follows them); parallel sending puts the same bytes on the wire at once. One batch failing must not drop later ones: `sendBatch()` never rejects.
+- Exception: the Workspace notes import sends one request on purpose, since a stage is all-or-nothing; its cap counts request_max (`workspace/workspace-notes-import-upload.md`).
 - A single file above `upload_max_filesize` is NOT sent.
 - Upload screens and the Settings screen state the limits.
 

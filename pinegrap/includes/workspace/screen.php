@@ -729,11 +729,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
-        // size and how many files the server takes in one request; and how
-        // many notes a person keeps.
+        // size, how many files the server takes in one request and the kinds
+        // of file it reads; and how many notes a person keeps.
         'notes_import' => function_exists('ws_note_import_upload_max') ? array(
             'max'   => ws_note_import_upload_max(),
             'files' => ws_note_import_files_max(),
+            'types' => ws_note_import_extensions(),
             'limit' => WS_NOTE_LIMIT,
         ) : null,
         // The paperclip also picks from the file manager (library.php).

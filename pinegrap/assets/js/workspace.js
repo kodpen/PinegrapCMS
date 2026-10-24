@@ -20223,13 +20223,27 @@
         }
 
         // Notes brought in from another app, in the steps of
-        // workspace_notes_import.php: the files are picked and read through,
+        // workspace_notes_import.php: the files are picked into a list and
+        // checked as the server would check them, sent and read through,
         // the person sees what each would become and unticks what they do
         // not want, the rest is written a batch at a time, then the links
         // between the notes are pointed at them.
         function openImport() {
             var limits = CFG.notes_import || {};
+            var types = limits.types || [];
+            var maxMb = Math.max(1, Math.floor((limits.max || 0) / 1048576));
+            // Each file's part headers travel in the body too, and the 64 KB
+            // the server's request_max keeps for them is not enough for
+            // hundreds of files.
+            var partBytes = 1024;
+            var kindIcons = { md: 'bi-markdown', markdown: 'bi-markdown', txt: 'bi-file-earmark-text', zip: 'bi-file-earmark-zip', enex: 'bi-journal-text' };
             var node = el('div', 'modal fade ws-nb-import');
+            // Each { file, folder }, kept between the steps: a cancelled or
+            // refused upload goes back to the same list.
+            var picked = [];
+            // The step on screen: pick, send, read, preview or run.
+            var phase = 'pick';
+            var uploadXhr = null;
             var stage = '';
             var rows = [];
             var mode = 'update';
@@ -20239,6 +20253,9 @@
 
             node.tabIndex = -1;
             node.setAttribute('data-bs-backdrop', 'static');
+            // As the file manager's upload window: Escape pressed by habit
+            // does not stop an upload.
+            node.setAttribute('data-bs-keyboard', 'false');
             node.innerHTML = '<div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-md-down"><div class="modal-content">'
                 + '<div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
                 + '<div class="modal-body"></div><div class="modal-footer"></div></div></div>';
@@ -20251,18 +20268,21 @@
 
             closeX.setAttribute('aria-label', t('close'));
 
+            // The JSON steps after the upload.
             function send(payload) {
-                var form = (payload instanceof FormData);
-
                 return fetch(CFG.urls.notes_import, {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: form ? {} : { 'Content-Type': 'application/json' },
-                    body: form ? payload : JSON.stringify(payload)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 }).then(function (response) {
                     return response.json().catch(function () {
                         throw new Error(t('error_generic'));
                     });
+                }, function () {
+                    // No answer at all: the browser's own words ("Failed to
+                    // fetch") are not the person's language.
+                    throw new Error(t('notes_import_request_failed'));
                 }).then(function (json) {
                     if (!json || json.status !== 'success') {
                         throw new Error((json && json.message) ? json.message : t('error_generic'));
@@ -20272,29 +20292,203 @@
                 });
             }
 
+            // The upload step as XMLHttpRequest: fetch() says nothing while
+            // the body is on its way, and the person would watch a spinner
+            // for minutes. The listeners go on before send(), or no progress
+            // is reported.
+            function sendFiles(form, onProgress, onSent) {
+                var xhr = new XMLHttpRequest();
+                var done = new Promise(function (resolve, reject) {
+                    xhr.open('POST', CFG.urls.notes_import);
+                    xhr.upload.addEventListener('progress', function (event) {
+                        onProgress(event.lengthComputable ? event.loaded : 0, event.lengthComputable ? event.total : 0);
+                    });
+                    xhr.upload.addEventListener('load', onSent);
+                    xhr.addEventListener('load', function () {
+                        var json = null;
+
+                        try {
+                            json = JSON.parse(xhr.responseText);
+                        } catch (error) {
+                            json = null;
+                        }
+
+                        if (json && json.status === 'success') {
+                            resolve(json.data || {});
+                            return;
+                        }
+
+                        // Not an answer of ours: a web server or proxy refused
+                        // the body before PHP saw it (nginx answers 413, IIS
+                        // without its request limit rule 404.13), or a
+                        // gateway gave up waiting (504, 524).
+                        reject(new Error((json && json.message) ? json.message
+                            : ((xhr.status === 413 || xhr.status === 404) ? t('notes_import_too_large_server') : t('error_generic'))));
+                    });
+                    xhr.addEventListener('error', function () {
+                        reject(new Error(t('notes_import_request_failed')));
+                    });
+                    xhr.addEventListener('abort', function () {
+                        var error = new Error('');
+
+                        error.aborted = true;
+                        reject(error);
+                    });
+                    xhr.send(form);
+                });
+
+                return { xhr: xhr, done: done };
+            }
+
             function closeButton(label) {
                 var close = button('btn btn-sm btn-ghost', label || t('cancel'));
                 close.setAttribute('data-bs-dismiss', 'modal');
                 return close;
             }
 
-            function busy(text) {
-                clear(body);
-                clear(footer);
+            // Leaving the page while the files travel, are read or are
+            // written asks first, as the file manager does. The listener
+            // stands only for those steps: one left in place keeps the page
+            // out of the browser's back-forward cache.
+            function leaveGuard(event) {
+                event.preventDefault();
+                event.returnValue = t('notes_import_leave');
 
-                var box = el('div', 'd-flex align-items-center gap-2 py-4 justify-content-center text-body-secondary');
-                var spinner = el('span', 'spinner-border spinner-border-sm');
-                spinner.setAttribute('role', 'status');
-                box.appendChild(spinner);
-                box.appendChild(el('span', '', text));
-                body.appendChild(box);
-
-                return box;
+                return event.returnValue;
             }
 
             // ── the files ──
 
+            // Sizes in the list and while the files travel, as the file
+            // manager writes them (uploadSizeLabel() in view_folders.php).
+            // The unit letters are the one literal in this file: the
+            // server's convert_bytes_to_string() writes the same ones in
+            // every language.
+            function sizeLabel(bytes) {
+                var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
+
+                for (var i = 0; i < steps.length; i++) {
+                    if (bytes >= steps[i][0]) {
+                        return (bytes / steps[i][0]).toLocaleString(CFG.locale || undefined, { minimumFractionDigits: steps[i][2], maximumFractionDigits: steps[i][2] }) + steps[i][1];
+                    }
+                }
+
+                return bytes + ' B';
+            }
+
+            // The kind the server reads a file as: its last extension, in
+            // lower case (ws_note_import_stage()).
+            function kindOf(name) {
+                var dot = String(name).lastIndexOf('.');
+
+                return (dot === -1) ? '' : String(name).slice(dot + 1).toLowerCase();
+            }
+
+            // What was dropped. A folder arrives as a File as well, passes
+            // for one by its name ("Vault.md") and fails the request as a
+            // network error, so it is told apart by its entry, which the
+            // browser lends only while the drop lasts. Its contents are not
+            // walked: PHP keeps only the base names, and max_file_uploads
+            // would cut a vault short.
+            function dropped(transfer) {
+                var items = Array.prototype.slice.call((transfer && transfer.items) || []);
+                var out = [];
+
+                if (!items.length || !items[0].webkitGetAsEntry) {
+                    return Array.prototype.slice.call((transfer && transfer.files) || []).map(function (file) {
+                        return { file: file, folder: false };
+                    });
+                }
+
+                items.forEach(function (item) {
+                    var file = (item.kind === 'file') ? item.getAsFile() : null;
+                    var entry = file ? item.webkitGetAsEntry() : null;
+
+                    if (file) {
+                        out.push({ file: file, folder: !!(entry && entry.isDirectory) });
+                    }
+                });
+
+                return out;
+            }
+
+            // Adds to what is picked already; the same file twice (name,
+            // size and time) is kept once.
+            function add(entries) {
+                entries.forEach(function (entry) {
+                    var known = picked.some(function (have) {
+                        return have.file.name === entry.file.name && have.file.size === entry.file.size && have.file.lastModified === entry.file.lastModified;
+                    });
+
+                    if (!known) {
+                        picked.push(entry);
+                    }
+                });
+
+                var go = drawPick();
+
+                if (!go.disabled) {
+                    go.focus();
+                }
+            }
+
+            // What the server would do with the picked files, asked before a
+            // byte is sent. A folder, a file of another kind or one over the
+            // limit is left out, as the file manager does; the rules of
+            // ws_note_import_stage() then run, in its order, over the files
+            // that go, and the first that fails holds the upload back.
+            function check() {
+                var result = { files: [], total: 0, over: 0, blocked: 0, error: '' };
+                var zips = 0;
+                var exports = 0;
+
+                picked.forEach(function (entry) {
+                    var kind = kindOf(entry.file.name);
+
+                    entry.state = '';
+
+                    if (entry.folder || types.indexOf(kind) === -1) {
+                        entry.state = 'blocked';
+                        result.blocked++;
+                    } else if (limits.max && entry.file.size + partBytes > limits.max) {
+                        entry.state = 'over';
+                        result.over++;
+                    } else {
+                        result.files.push(entry.file);
+                        result.total += entry.file.size;
+                        zips += (kind === 'zip') ? 1 : 0;
+                        exports += (kind === 'enex') ? 1 : 0;
+                    }
+                });
+
+                var count = result.files.length;
+
+                if (!count) {
+                    result.error = result.blocked ? t('notes_import_choose') : (result.over ? t('notes_import_too_large', maxMb) : '');
+                } else if (limits.files && count > limits.files) {
+                    // The server takes only so many files in one request and
+                    // drops the rest without a word.
+                    result.error = t('notes_import_too_many', limits.files);
+                } else if (limits.max && result.total + count * partBytes > limits.max) {
+                    result.error = t('notes_import_too_large', maxMb);
+                } else if (zips && count > 1) {
+                    result.error = t('notes_import_zip_alone');
+                } else if (exports && exports < count) {
+                    result.error = t('notes_import_enex_alone');
+                }
+
+                return result;
+            }
+
+            // The drop area, then the picked files as the file manager lists
+            // them (renderUploadPicked() in view_folders.php): what will not
+            // be sent is said before the upload, while it can still be
+            // changed. A failed upload comes back here with its message and
+            // the same list, so Upload tries again.
             function drawPick(error) {
+                var result = check();
+
+                phase = 'pick';
                 clear(body);
                 clear(footer);
 
@@ -20305,13 +20499,26 @@
 
                 input.type = 'file';
                 input.multiple = true;
-                input.accept = '.md,.markdown,.txt,.zip,.enex';
+                input.accept = types.map(function (kind) { return '.' + kind; }).join(',');
                 drop.appendChild(icon('bi-cloud-arrow-up'));
                 drop.appendChild(el('span', 'fw-semibold', t('notes_import_pick')));
-                drop.appendChild(el('span', 'small text-body-secondary', t('notes_import_limit', Math.max(1, Math.floor((limits.max || 0) / 1048576)))));
+                drop.appendChild(el('span', 'small text-body-secondary', t('notes_import_limit', maxMb)));
+
+                // Said up front: at PHP's default of 20 files a request it is
+                // the limit people meet first.
+                if (limits.files) {
+                    drop.appendChild(el('span', 'small text-body-secondary', t('notes_import_too_many', limits.files)));
+                }
+
                 drop.appendChild(input);
 
-                input.addEventListener('change', function () { upload(input.files); });
+                // The files are taken before the list is drawn again, which
+                // puts a new, empty picker in place.
+                input.addEventListener('change', function () {
+                    add(Array.prototype.slice.call(input.files || []).map(function (file) {
+                        return { file: file, folder: false };
+                    }));
+                });
 
                 drop.addEventListener('dragover', function (event) {
                     event.preventDefault();
@@ -20321,37 +20528,155 @@
                 drop.addEventListener('drop', function (event) {
                     event.preventDefault();
                     drop.classList.remove('ws-nb-import-over');
-                    upload(event.dataTransfer ? event.dataTransfer.files : []);
+                    add(dropped(event.dataTransfer));
                 });
 
                 body.appendChild(drop);
 
-                if (error) {
-                    body.appendChild(el('div', 'alert alert-danger small mt-3 mb-0', error));
+                if (picked.length) {
+                    var head = el('div', 'd-flex align-items-baseline gap-2 mt-3 mb-1');
+                    var heading = t('notes_import_picked', picked.length, sizeLabel(result.total));
+                    var clearAll = button('btn btn-sm btn-link p-0', t('notes_import_clear'));
+                    var list = el('div', 'list-group ws-nb-import-list');
+
+                    if (result.over) {
+                        heading += ' — ' + t('notes_import_over', result.over);
+                    }
+
+                    if (result.blocked) {
+                        heading += ' — ' + t('notes_import_blocked', result.blocked);
+                    }
+
+                    clearAll.addEventListener('click', function () {
+                        picked = [];
+                        drawPick();
+                    });
+
+                    head.appendChild(el('span', 'small fw-semibold flex-grow-1', heading));
+                    head.appendChild(clearAll);
+
+                    picked.forEach(function (entry) {
+                        var row = el('div', 'list-group-item d-flex gap-2 align-items-start' + (entry.state ? ' ws-nb-import-row ws-nb-import-off' : ''));
+                        var main = el('div', 'ws-nb-import-main');
+                        var line = el('div', 'ws-nb-import-path');
+                        var glyph = entry.folder ? 'bi-folder-x' : (entry.state === 'blocked' ? 'bi-file-earmark-x' : (kindIcons[kindOf(entry.file.name)] || 'bi-file-earmark'));
+
+                        main.appendChild(el('div', 'fw-semibold text-truncate', entry.file.name));
+
+                        if (entry.state) {
+                            line.appendChild(el('span', 'ws-nb-import-kind ws-nb-import-error', (entry.state === 'blocked') ? t('notes_import_not_allowed') : sizeLabel(entry.file.size)));
+                        } else {
+                            line.textContent = sizeLabel(entry.file.size);
+                        }
+
+                        main.appendChild(line);
+                        row.appendChild(icon(glyph, 'mt-1'));
+                        row.appendChild(main);
+                        list.appendChild(row);
+                    });
+
+                    body.appendChild(head);
+                    body.appendChild(list);
                 }
 
+                if (result.error || error) {
+                    body.appendChild(el('div', 'alert alert-danger small mt-3 mb-0', result.error || error));
+                }
+
+                var go = button('btn btn-sm btn-primary rounded-pill px-3', t('notes_import_upload'), 'bi-cloud-arrow-up');
+
+                go.disabled = !result.files.length || !!result.error;
+                go.addEventListener('click', upload);
                 footer.appendChild(closeButton());
+                footer.appendChild(go);
+
+                return go;
             }
 
-            function upload(files) {
-                var list = Array.prototype.slice.call(files || []);
-                var size = 0;
+            // ── the upload ──
 
-                if (!list.length) {
-                    return;
+            // The bytes on their way: the file manager's label and a bar
+            // that moves with them, then the reading look once the last byte
+            // has left. Cancel goes back to the list with the files kept.
+            function drawSending() {
+                phase = 'send';
+                clear(body);
+                clear(footer);
+
+                var row = el('div', 'd-flex justify-content-between gap-2 small text-body-secondary mb-2');
+                var left = el('span');
+                var label = el('span', '', t('uploading'));
+                var percent = el('span');
+                var bytes = el('span');
+                var bar = progressBar({ percent: 0 });
+                var fill = bar.firstChild;
+                var stop = button('btn btn-sm btn-ghost', t('notes_import_cancel_upload'));
+
+                // The step is announced, not every percent.
+                label.setAttribute('role', 'status');
+                bar.setAttribute('aria-label', t('uploading'));
+                left.appendChild(label);
+                left.appendChild(document.createTextNode(' '));
+                left.appendChild(percent);
+                row.appendChild(left);
+                row.appendChild(bytes);
+                body.appendChild(row);
+                body.appendChild(bar);
+
+                // The list comes back once, where the request ends.
+                stop.addEventListener('click', function () {
+                    if (uploadXhr) {
+                        uploadXhr.abort();
+                    }
+                });
+                footer.appendChild(stop);
+                stop.focus();
+
+                // No figures to show (a browser that cannot tell the size,
+                // or the server at work): a moving bar.
+                function moving() {
+                    fill.className = 'progress-bar progress-bar-striped progress-bar-animated';
+                    fill.style.width = '100%';
+                    bar.removeAttribute('aria-valuenow');
+                    percent.textContent = '';
+                    bytes.textContent = '';
                 }
 
-                list.forEach(function (file) { size += file.size; });
+                return {
+                    progress: function (loaded, total) {
+                        if (!total) {
+                            moving();
+                            return;
+                        }
 
-                // The server takes only so many files in one request and
-                // drops the rest without a word.
-                if (limits.files && list.length > limits.files) {
-                    drawPick(t('notes_import_too_many', limits.files));
-                    return;
-                }
+                        var share = Math.min(100, Math.round(100 * loaded / total));
 
-                if (limits.max && size > limits.max) {
-                    drawPick(t('notes_import_too_large', Math.max(1, Math.floor(limits.max / 1048576))));
+                        fill.style.width = share + '%';
+                        bar.setAttribute('aria-valuenow', String(share));
+                        percent.textContent = t('percent', share);
+                        bytes.textContent = t('notes_import_sent', sizeLabel(loaded), sizeLabel(total));
+                    },
+                    // All sent; the server stages and reads the files. Closing
+                    // now lets the request finish, and its stage is dropped
+                    // when the answer comes.
+                    reading: function () {
+                        var close = closeButton();
+
+                        phase = 'read';
+                        label.textContent = t('notes_import_reading');
+                        bar.setAttribute('aria-label', t('notes_import_reading'));
+                        moving();
+                        clear(footer);
+                        footer.appendChild(close);
+                        close.focus();
+                    }
+                };
+            }
+
+            function upload() {
+                var result = check();
+
+                if (!result.files.length || result.error) {
                     return;
                 }
 
@@ -20359,11 +20684,27 @@
 
                 form.append('step', 'upload');
                 form.append('token', CFG.token);
-                list.forEach(function (file) { form.append('files[]', file, file.name); });
+                result.files.forEach(function (file) { form.append('files[]', file, file.name); });
 
-                busy(t('notes_import_reading'));
+                var view = drawSending();
 
-                send(form).then(function (data) {
+                // A progress or load event may still come after a cancel or
+                // after the answer (the order differs between browsers); it
+                // must not draw over the list or the preview.
+                var request = sendFiles(form, function (loaded, total) {
+                    if (phase === 'send' && request.xhr === uploadXhr) {
+                        view.progress(loaded, total);
+                    }
+                }, function () {
+                    if (phase === 'send' && request.xhr === uploadXhr) {
+                        view.reading();
+                    }
+                });
+
+                uploadXhr = request.xhr;
+                window.addEventListener('beforeunload', leaveGuard);
+
+                request.done.then(function (data) {
                     // Closed while the files were read: nothing is kept.
                     if (closed) {
                         send({ step: 'discard', token: CFG.token, stage: data.stage || '' }).catch(function () {});
@@ -20375,9 +20716,13 @@
                     capacity = data.capacity || 0;
                     drawPreview(data);
                 }).catch(function (error) {
+                    // Cancelled: nothing is lost, so nothing is said.
                     if (!closed) {
-                        drawPick(error.message);
+                        drawPick(error.aborted ? '' : error.message).focus();
                     }
+                }).then(function () {
+                    uploadXhr = null;
+                    window.removeEventListener('beforeunload', leaveGuard);
                 });
             }
 
@@ -20408,6 +20753,7 @@
             }
 
             function drawPreview(data) {
+                phase = 'preview';
                 clear(body);
                 clear(footer);
 
@@ -20610,7 +20956,9 @@
                 var skip = rows.filter(function (row) { return !row.checked; }).map(function (row) { return row.i; });
                 var failed = [];
 
+                phase = 'run';
                 running = true;
+                window.addEventListener('beforeunload', leaveGuard);
                 closeX.classList.add('d-none');
                 clear(body);
                 clear(footer);
@@ -20650,6 +20998,7 @@
                     drawResult(null, failed, error.message);
                 }).then(function () {
                     running = false;
+                    window.removeEventListener('beforeunload', leaveGuard);
                     closeX.classList.remove('d-none');
                     loadList();
                 });
@@ -20706,6 +21055,14 @@
 
             node.addEventListener('hidden.bs.modal', function () {
                 closed = true;
+                window.removeEventListener('beforeunload', leaveGuard);
+
+                // Closed while the files travel: the request stops and
+                // nothing is staged. Once they are all sent it is left to
+                // answer, so that its stage can be dropped.
+                if (uploadXhr && phase === 'send') {
+                    uploadXhr.abort();
+                }
 
                 if (stage) {
                     send({ step: 'discard', token: CFG.token, stage: stage }).catch(function () {});
