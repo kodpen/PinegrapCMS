@@ -13917,6 +13917,126 @@ a.ws-chip:hover {
   font-size: .78rem;
   color: var(--bs-secondary-color);
 }
+/* Voice messages (assets/js/workspace_voice.js): the player every sound file
+   is drawn with, and the recording row that stands in for the writing box
+   while the microphone is on. */
+.ws-voice {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  width: 22rem;
+  max-width: 100%;
+  padding: var(--ws-space-2) var(--ws-space-2) var(--ws-space-2) var(--ws-space-3);
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-tertiary-bg);
+}
+.ws-voice audio {
+  display: none;
+}
+.ws-voice-play {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ws-avatar);
+  height: var(--ws-avatar);
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+}
+.ws-voice-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-voice-name {
+  overflow: hidden;
+  font-size: .8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-voice-bar {
+  position: relative;
+  height: .3rem;
+  margin: .3rem 0 .2rem;
+  border-radius: 999px;
+  background: var(--bs-border-color);
+  cursor: pointer;
+}
+.ws-voice-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--ws-accent);
+}
+.ws-voice-time {
+  font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+.ws-voice .btn-sm {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ws-voice-speed {
+  min-width: 2.75rem;
+  padding-left: .35rem;
+  padding-right: .35rem;
+  font-size: .75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ws-voice-error .ws-voice-bar {
+  opacity: .4;
+}
+.ws-composer.ws-voice-recording > :not(.ws-voice-rec) {
+  display: none;
+}
+.ws-voice-rec {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-height: 2.6rem;
+  padding: 0 var(--ws-space-1);
+}
+.ws-voice-rec .ws-grow {
+  flex: 1 1 auto;
+}
+.ws-voice-rec-dot {
+  flex: 0 0 auto;
+  width: .7rem;
+  height: .7rem;
+  border-radius: 50%;
+  background: var(--bs-danger);
+}
+.ws-voice-rec-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ws-voice-rec-cap {
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+.ws-voice-rec-ending .ws-voice-rec-time {
+  color: var(--bs-danger);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-voice-rec-dot {
+    animation: ws-voice-rec-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes ws-voice-rec-pulse {
+  50% {
+    opacity: .3;
+  }
+}
 .ws-file-card {
   display: flex;
   align-items: center;
@@ -15055,6 +15175,16 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-composer-tools .btn {
     padding: .3rem .5rem;
+  }
+  /* A recording row as tall as the box it stands in for, with buttons a
+     finger hits; the player's small buttons the same. */
+  .ws-voice-rec {
+    min-height: 3.4rem;
+  }
+  .ws-voice-rec .btn,
+  .ws-voice .btn-sm {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
   }
   body.ws-keyboard .ws-center > .ws-brief {
     display: none;
