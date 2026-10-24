@@ -4,7 +4,7 @@ description: process_order_cancellation as the only cancel path, admin cancel UI
 ---
 
 ## What is the single cancel entry point?
-- `process_order_cancellation($order_id, $reason, $is_admin, $user_id, $attempt_refund = null)` (functions.php). Callers: `cancel_order.php` (customer + admin per-row), `edit_orders.php` (`action=cancel` bulk), `view_order.php` (detail modal). There is no other path; legacy `cancel_order()` was REMOVED and the gift-card invalidation logic moved into this function.
+- `process_order_cancellation($order_id, $reason, $is_admin, $user_id, $attempt_refund = null)` (ecommerce.php). Callers: `cancel_order.php` (customer + admin per-row), `edit_orders.php` (`action=cancel` bulk), `view_order.php` (detail modal, full refund), the API, the Workspace, the marketplace sync (`commerce/order-status-moves.md`). There is no other path; legacy `cancel_order()` was REMOVED and its gift-card invalidation moved here.
 - It does status/shipment gates + DB update + log + optional email + optional refund through the payment method's driver, and cancels a waiting review request e-mail (`pg_review_request_cancel()`, product-review-request-email.md). Returns `['status' => 'success'|'already'|'shipped'|'not_found'|'error', 'refund_status' => ...]`.
 - 5th param `$attempt_refund`: `null` = follow config, `true`/`false` = force. The detail-screen modal passes `true` (operator confirmed the "payment will be cancelled" modal).
 - Cancels once: the status UPDATE carries `AND status <> 'cancelled'` and a request that changes no row returns `already`. Two cancellations at once (double submit, row and bulk Cancel) used to both void the payment, mail the customer and announce `order.cancelled`; the second void's failure overwrote the first one's `refunded` (#733, #962).
@@ -22,9 +22,9 @@ description: process_order_cancellation as the only cancel path, admin cancel UI
 - The detail-page cancel button must not depend on `ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay' && $transaction_id` (it hid the button for bank transfer / cash on delivery).
 
 ## Restore
-- One path: `pg_order_restore_cancelled($order_id, $status)` (ecommerce.php), called by the order screen's Restore and by `POST /orders/{id}` moving a cancelled order to `complete`/`exported` (#877, PR #1258). It moves only a cancelled row (`AND status = 'cancelled'`, false otherwise), CLEARS `cancelled_at`/`cancelled_by`/`cancellation_reason` and (unless refunded) `refund_status`/`refunded_at`/`refund_reference`, and gives the expired gift cards their date back (`pg_order_restore_gift_cards()`). Callers write the audit row and announce `order.status_changed`.
+- One path: `pg_order_restore_cancelled($order_id, $status)` (ecommerce.php), called by the order screen's Restore, `POST /orders/{id}` (#877, PR #1258) and the Workspace (PR #PRNUM) moving a cancelled order to `complete`/`exported`. It moves only a cancelled row (`AND status = 'cancelled'`, false otherwise), CLEARS `cancelled_at`/`cancelled_by`/`cancellation_reason` and (unless refunded) `refund_status`/`refunded_at`/`refund_reference`, and gives the expired gift cards their date back (`pg_order_restore_gift_cards()`). Callers write the audit row and announce `order.status_changed`.
 - Before, the API wrote the status alone: the order timeline kept "Order Cancelled", the refund banner stayed and the gift cards stayed expired.
 
-- The external API's status moves (which go through it, which are refused): docs/memory/commerce/api-order-status-moves.md
+- The status rule the API and the Workspace follow: docs/memory/commerce/order-status-moves.md
 
 Related: docs/memory/commerce/order-cancellation-config.md, docs/memory/commerce/order-cancel-shipping-gate.md, docs/memory/commerce/order-cancel-gift-cards.md
