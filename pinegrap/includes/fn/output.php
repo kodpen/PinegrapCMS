@@ -3964,6 +3964,7 @@ function output_menu($properties = false)
         case 'settings_commerce.php':
         case 'settings_api.php':
         case 'settings_languages.php':
+        case 'translations.php':
         case 'view_log.php':
         case 'smtp_settings.php':
         case 'api_settings.php':
@@ -4132,9 +4133,11 @@ function pg_menu_settings_entries($user, $parent_target)
     include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
     $categories = pg_settings_categories();
+    $screens = pg_settings_category_screens($user);
 
     foreach ($categories as $key => $category) {
         $categories[$key]['url'] = pg_settings_url($key);
+        $categories[$key]['screens'] = isset($screens[$key]) ? $screens[$key] : array();
     }
 
     return pg_menu_settings_markup($categories, pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
@@ -4143,13 +4146,15 @@ function pg_menu_settings_entries($user, $parent_target)
 /**
  * The Site Settings row's entries and second-level panels, from its lists.
  *
- * Each category opens a panel with its page and its sections; each group of
- * neighbouring screens opens a panel with its screens. The category pages are
+ * Each category opens a panel with its page, its sections and, under a
+ * divider, the screens that go with it (pg_settings_category_screens()); each
+ * group of neighbouring screens opens a panel with its screens. The category pages are
  * the page path of the settings (settings_<category>.php), so every link to
  * them carries data-pg-settings-page, which tells pgSettingsModal not to
  * answer it with the modal (backend.src.js).
  *
- * @param array  $categories    key => label, icon, url, sections (id => label)
+ * @param array  $categories    key => label, icon, url, sections (id => label),
+ *                              screens (optional: label, icon, url)
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
@@ -4181,6 +4186,14 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
 
         foreach ($category['sections'] as $section => $label) {
             $sections .= '<a href=\'' . h($base . $page . '#' . $section) . '\'' . $parent_target . ' class=\'' . $class . 'bi-dot bi-me-2\' data-pg-settings-page>' . h($label) . '</a>';
+        }
+
+        if (!empty($category['screens'])) {
+            $sections .= '<hr class=\'divider my-2\' />';
+
+            foreach ($category['screens'] as $screen) {
+                $sections .= '<a href=\'' . h($base . $screen['url']) . '\'' . $parent_target . ' class=\'' . $class . h($screen['icon']) . ' bi-me-2\'>' . h($screen['label']) . '</a>';
+            }
         }
 
         $panels .= pg_menu_panel($panel_id, $entry_id, $category['label'], $sections);

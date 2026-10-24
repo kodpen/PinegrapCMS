@@ -125,3 +125,22 @@ function test_menu_settings_markup_in_the_toolbar()
 	pg_assert_same(5, substr_count($all, 'target=\'_parent\''), 'every link but the one with its own target leaves the toolbar frame');
 	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
 }
+
+function test_menu_settings_markup_lists_a_category_s_screens_under_its_sections()
+{
+	$categories = array(
+		'languages' => array('label' => 'Languages', 'icon' => 'bi-globe', 'url' => 'settings_languages.php', 'sections' => array('pgset-languages' => 'Site Languages'),
+			'screens' => array(array('label' => 'Translations', 'icon' => 'bi-translate', 'url' => 'translations.php'))),
+		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server')));
+
+	$menu = pg_menu_settings_markup($categories, array(), '/pinegrap/', '');
+	$languages = substr($menu['panels'], strpos($menu['panels'], 'id="menu_panel_20_languages"'));
+	$languages = substr($languages, 0, strpos($languages, 'id="menu_panel_20_general"'));
+
+	pg_assert_contains('href=\'/pinegrap/translations.php\'', $languages, 'the screen is in its category panel');
+	pg_assert_true(strpos($languages, '#pgset-languages') < strpos($languages, 'translations.php'), 'under the sections');
+	pg_assert_same(1, substr_count($languages, '<hr'), 'after a divider');
+	pg_assert_false(strpos($languages, 'translations.php\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\' data-pg-settings-page') !== false, 'not a settings page, so the modal may answer nothing');
+	pg_assert_false(strpos($menu['panels'], '<hr') !== strrpos($menu['panels'], '<hr'), 'a category with no screens gets no divider');
+	pg_assert_false(strpos($menu['entries'], '<hr') !== false, 'no groups, no divider on the first level');
+}
