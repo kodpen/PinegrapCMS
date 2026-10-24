@@ -26806,5 +26806,7 @@
     "You will find the widget theme settings in Site Settings, under Appearance.": "Widget tema ayarlarını Site Ayarları'nda, Görünüm altında bulursun.",
     "Store Lists": "Mağaza Listeleri",
     "Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.": "Panel ekranındaki kartları varsayılan sıralarına döndürür. Bu düğme bu ekrandaki diğer ayarları da kaydeder.",
-    "Change menu view": "Menü görünümünü değiştir"
+    "Change menu view": "Menü görünümünü değiştir",
+    "The list found records": "Liste kayıt buldu",
+    "The list found nothing": "Liste kayıt bulamadı"
 }
