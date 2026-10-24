@@ -26883,6 +26883,8 @@
     "This order's sales invoice in Paraşüt (ID: {var:1}) carries the shipment: its goods left stock with it, so a shipment document would count them out a second time. A separate e-waybill needs the invoice issued without shipment. No shipment document was created.": "Bu siparişin Paraşüt'teki satış faturası (ID: {var:1}) irsaliyeli: mallar bu faturayla stoktan çıktı, ayrı bir irsaliye onları ikinci kez stoktan düşerdi. Ayrı bir e-irsaliye için faturanın irsaliyesiz kesilmesi gerekir. İrsaliye oluşturulmadı.",
     "The full amount was refunded.": "Tutarın tamamı iade edildi.",
     "An order cannot be moved from {var:1} to {var:2}.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz.",
+    "The list found records": "Liste kayıt buldu",
+    "The list found nothing": "Liste kayıt bulamadı",
     "Shipping carrier": "Kargo firması",
     "Trendyol's contracted carrier (tracking number comes from Trendyol)": "Trendyol'un anlaşmalı kargosu (takip numarası Trendyol'dan gelir)",
     "My own carrier (the tracking link recorded here is sent to Trendyol)": "Kendi kargom (burada kaydedilen takip bağlantısı Trendyol'a gönderilir)",
