@@ -9,11 +9,12 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 
 ## What if the create gets no answer?
 - A timeout, dropped connection or 5xx may still have written the record (`erp_edoc_parasut_answer_unsure()`; 4xx/429 wrote nothing). Before `POST sales_invoices`, `erp_invoices.parasut_invoice_id` is set to `?<issue date>:<contact id>` (`erp_edoc_parasut_unsure_mark()`, read by `_unsure_read()`); a definite answer clears it (#1019, #1210).
-- The next send searches with the date and contact the mark holds, not the invoice's current ones (a redate or party fix may have changed them; a bare `?` from before falls back to current): `GET sales_invoices?filter[contact_id]&filter[issue_date]&sort=-id&include=active_e_document`, up to 20 pages (`ERP_EDOC_PARASUT_FIND_PAGES`). Match (`erp_edoc_parasut_written_matches()`): description (ERP number), date, contact, not cancelled, no active e-document, not the row's own `edoc_external_id` (the issued record of a rejected invoice sent again).
-- One found: taken over (total check, no POST). If its date or contact is not the invoice's now, it is deleted (2xx/404) and the invoice written fresh; not deleted: refused with its id, mark kept (#1210).
-- None: written. Several: refused with the ids. Search fails, or nothing matched with pages left unread (`erp_edoc_parasut_search_incomplete()`): refused, nothing written. Way out of the last: delete the record on Paraşüt or cancel the invoice.
-- Open: cancelling the invoice while the mark is set does not look at Paraşüt.
+- The next send searches with the mark's date and contact, not the invoice's current ones (a bare `?` falls back to current): `GET sales_invoices?filter[contact_id]&filter[issue_date]&sort=-id&include=active_e_document`, up to 20 pages (`ERP_EDOC_PARASUT_FIND_PAGES`). Match (`erp_edoc_parasut_written_matches()`): description (`erp_edoc_parasut_invoice_description()`), date, contact, not cancelled, no active e-document, not the row's own `edoc_external_id`.
+- One found: taken over (total check, no POST); with another date or contact than now it is deleted (2xx/404) and written fresh, refused with its id if not deleted (#1210). None: written. Several: refused with the ids. Search fails, or nothing matched with pages unread (`erp_edoc_parasut_search_incomplete()`): refused.
 - The order screen's own Create Invoice searches the same way (erp-parasut-legacy-invoice.md).
+
+## What does Cancel do while the mark is set?
+- `erp_edoc_invoice_provider_cancel()` hands an `error` row without an id to the driver: `erp_edoc_parasut_cancel_unsure()` runs the same search (no contact in the mark: the whole day). One draft: deleted (404 = gone), mark cleared. None: no write. Several, an e-document among them (`_written_documents()`), a failed or incomplete search, a refused delete: refused; past an incomplete one only a return is left (#1508).
 
 ## What if the total differs and the record will not be deleted?
 - The `DELETE` answer is read (404 = gone). Not deleted: the refusal names the id, the service keeps it on the `error` row; the send gate refuses and cancelling the invoice deletes it there (#1019).
@@ -28,4 +29,4 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 - Sendable again: `none`, `error` without an id, `rejected`, and a stalled `sending` row (no id, untouched 15 minutes: the process died waiting, `erp_edoc_invoice_send_stalled()`), so the mark is searched (#1412).
 
 ## Tests
-- `tests/erp_edoc_parasut_test.php` (job reading, unsure answer and mark, written matches, search incomplete, submit refusal, detail count), `tests/erp_edoc_service_test.php` (held refusal, stalled send).
+- `tests/erp_edoc_parasut_test.php` (job reading, unsure answer and mark, written matches, search incomplete, cancel with the mark, submit refusal, detail count), `tests/erp_edoc_service_test.php` (held refusal, stalled send, cancel).

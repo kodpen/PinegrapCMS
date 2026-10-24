@@ -27027,5 +27027,10 @@
     "Music": "Müzik",
     "Idea": "Fikir",
     "Break": "Mola",
-    "Premium": "Premium"
+    "Premium": "Premium",
+    "The last send got no answer from Paraşüt, and Paraşüt could not be asked whether it kept the invoice: {var:1}. Nothing was cancelled; try again in a minute.": "Son gönderimde Paraşüt'ten cevap gelmedi ve faturayı tutup tutmadığı Paraşüt'e sorulamadı: {var:1}. Hiçbir şey iptal edilmedi; bir dakika sonra yeniden deneyin.",
+    "Paraşüt holds this invoice as an e-document (record {var:1}), written by the send that got no answer and converted there. Nothing was cancelled; an e-Archive invoice is cancelled on Paraşüt's screen first, an e-Invoice is answered with a return invoice.": "Paraşüt bu faturayı e-belge olarak tutuyor (kayıt {var:1}): cevapsız kalan gönderim yazmış, orada e-belgeye dönüştürülmüş. Hiçbir şey iptal edilmedi; e-Arşiv fatura önce Paraşüt ekranında iptal edilir, e-Faturaya iade faturasıyla cevap verilir.",
+    "The last send got no answer from Paraşüt, and the buyer has more invoices on that day than can be looked through, so whether Paraşüt kept it is not known. Nothing was cancelled; look for the record on Paraşüt's screen, and take the invoice back here with a return invoice.": "Son gönderimde Paraşüt'ten cevap gelmedi ve alıcının o gün taranabilecek olandan çok faturası var; Paraşüt'ün faturayı tutup tutmadığı bilinmiyor. Hiçbir şey iptal edilmedi; kaydı Paraşüt ekranında arayın ve faturayı burada iade faturasıyla geri alın.",
+    "Paraşüt holds {var:1} records of this invoice from earlier tries (ids {var:2}). Nothing was cancelled; delete them on Paraşüt's screen, then cancel again.": "Paraşüt'te önceki denemelerden bu faturanın {var:1} kaydı var (id {var:2}). Hiçbir şey iptal edilmedi; bunları Paraşüt ekranında silin, sonra yeniden iptal edin.",
+    "Paraşüt holds the record of the send that got no answer (id {var:1}) and would not delete it ({var:2}). Nothing was cancelled; delete it on Paraşüt's screen, then cancel again.": "Paraşüt'te cevapsız kalan gönderimin kaydı var (id {var:1}) ve Paraşüt onu silmedi ({var:2}). Hiçbir şey iptal edilmedi; kaydı Paraşüt ekranında silin, sonra yeniden iptal edin."
 }
