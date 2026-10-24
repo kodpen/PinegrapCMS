@@ -575,7 +575,7 @@ function pg_settings_link($pane = '', $section = '')
     include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
     // There is no hub screen: the sidebar of the dialog is the hub, and the
-    // page path is the eight category screens with nothing above them. So the
+    // page path is the category screens with nothing above them. So the
     // address for "the settings, no category in particular" is the first of
     // them. The dialog then opens on THAT category rather than on the one last
     // used, because the address names one -- the gear in the header is what
@@ -3048,7 +3048,7 @@ function output_menu($properties = false)
         $menu_items[1]['title'] = 'File Manager';
         $menu_items[1]['context'] = true;
         $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder-plus bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
@@ -3061,7 +3061,7 @@ function output_menu($properties = false)
         // PAGES > Search Index
         if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[2]['data-bs-content'] .= '<a  onclick=\'open_search_index_window();\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-input-cursor bi-me-2\'>' . lang('Update Search Index') . '</a>';
+            $menu_items[2]['data-bs-content'] .= '<a  onclick=\'open_search_index_window();\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-clockwise bi-me-2\'>' . lang('Update Search Index') . '</a>';
         }
         // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
         if ($user['role'] < 3) {
@@ -3076,7 +3076,7 @@ function output_menu($properties = false)
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
         if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-circle-square bi-me-2\'>' . lang('Auto Dialogs') . '</a>';
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_auto_dialogs.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-stack bi-me-2\'>' . lang('Auto Dialogs') . '</a>';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_auto_dialog.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Auto Dialog'))) . '</a>';
         }
         // PAGES > Comments
@@ -3094,10 +3094,10 @@ function output_menu($properties = false)
         $menu_items[3]['color_class'] = 'files-color';
         $menu_items[3]['title'] = 'Files';
         $menu_items[3]['context'] = true;
-        $menu_items[3]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-image bi-me-2\'>' . lang('Files') . '</a>';
+        $menu_items[3]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark bi-me-2\'>' . lang('Files') . '</a>';
         $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-images bi-me-2\'>' . lang('Pictures') . '</a>';
         $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
-        $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-plus bi-me-2\'>' . lang('Create File') . '</a>';
+        $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
 
     }
 
@@ -3110,13 +3110,13 @@ function output_menu($properties = false)
         $menu_items[4]['color_class'] = 'calendars-color';
         $menu_items[4]['title'] = 'Calendars';
         $menu_items[4]['context'] = true;
-        $menu_items[4]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate\'><svg style=\'font-size:10px\' width=\'16px\' height=\'16px\' class=\'me-2\' data-name=\'calendar icon\' fill=\'currentcolor\' xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'><path d=\'M3.6.18c.27,0,.49.22.49.49v.49h7.82v-.49c0-.27.22-.49.49-.49s.49.22.49.49v.49h.98c1.08,0,1.96.88,1.96,1.96v10.76c0,1.08-.88,1.96-1.96,1.96H2.13c-1.08,0-1.96-.88-1.96-1.96V3.11c0-1.08.88-1.96,1.96-1.96h.98v-.49c0-.27.22-.49.49-.49M1.16,4.09v9.78c0,.54.44.98.98.98h11.73c.54,0,.98-.44.98-.98V4.09H1.16Z\'/><text class=\'b\' transform=\'translate(2.55 12.73)\'><tspan x=\'0\' y=\'0\'>' . date('d') . '</tspan></text></svg>' . lang('Calendars') . '</a>';
+        $menu_items[4]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-event bi-me-2\'>' . lang('Calendars') . '</a>';
         $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php?date=&calendar_id=&view=monthly&status=\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar2-range bi-me-2\'>' . lang('All Calendars') . '</a>';
         if ($user['role'] != 3) {
-            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-plus bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar'))) . '</a>';
+            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar'))) . '</a>';
             // CALENDARS > Events Locations
             $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi bi-pin-map bi-me-2\'>' . lang('Event Locations') . '</a>';
+            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
     }
@@ -3147,13 +3147,13 @@ function output_menu($properties = false)
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
             // ECOMMERCE > Order Reports
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
         }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up bi-me-2\'>' . lang('Shipping Report') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
         // VISITORS > Google Search Console
@@ -3199,9 +3199,9 @@ function output_menu($properties = false)
         $menu_items[8]['title'] = 'Users';
         $menu_items[8]['context'] = true;
         $menu_items[8]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Users') . '</a>';
-        $menu_items[8]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_user.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-plus bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('User'))) . '</a>';
+        $menu_items[8]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_user.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('User'))) . '</a>';
         $menu_items[8]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[8]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sessions.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-shield-lock bi-me-2\'>' . lang('Sessions') . '</a>';
+        $menu_items[8]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sessions.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-laptop bi-me-2\'>' . lang('Sessions') . '</a>';
     }
 
     if ((($user['role'] < 3) || ($user['manage_emails'] == true))) {
@@ -3215,10 +3215,10 @@ function output_menu($properties = false)
         $menu_items[9]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-megaphone bi-me-2\'>' . lang('My Campaigns') . '</a>';
         $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Campaign'))) . '</a>';
         $menu_items[9]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_history.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-envelope-dash bi-me-2\'>' . lang('My Campaign History') . '</a>';
+        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_history.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-send-check bi-me-2\'>' . lang('My Campaign History') . '</a>';
         $menu_items[9]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-envelope-check bi-me-2\'>' . lang('My Campaign Profiles') . '</a>';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign_profile.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-envelope-plus bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Campaign Profile'))) . '</a>';
+        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-envelope-paper bi-me-2\'>' . lang('My Campaign Profiles') . '</a>';
+        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign_profile.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Campaign Profile'))) . '</a>';
     }
 
     // ECOMMERCE
@@ -3232,26 +3232,26 @@ function output_menu($properties = false)
             $menu_items[10]['color_class'] = 'ecommerce-color';
             $menu_items[10]['title'] = 'All Orders';
             $menu_items[10]['context'] = true;
-            $menu_items[10]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart4 bi-me-2\'>' . lang('All Orders') . '</a>';
+            $menu_items[10]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bag-check bi-me-2\'>' . lang('All Orders') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=incomplete\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-basket bi-me-2\'>' . lang('Shopping Carts') . '</a>';
-            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?type=online\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-fill bi-me-2\'>' . lang('All Online Orders') . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?type=online\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart bi-me-2\'>' . lang('All Online Orders') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=any&type=local\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Local Orders') . ' </a>';
-            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-plus bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=any&type=local\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-shop-window bi-me-2\'>' . lang('Local Orders') . ' </a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-return-left bi-me-2\'>' . lang('Returns') . '</a>';
 
             if ((ECOMMERCE === true) and USER_MANAGE_ECOMMERCE_REPORTS) {
                 // ECOMMERCE > Order Reports
                 $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
                 $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
             }
             if (USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
                 // ECOMMERCE > Shipping Reports
                 $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up bi-me-2\'>' . lang('Shipping Report') . '</a>';
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
             }
             if (defined('ENABLE_PARASUT') && ENABLE_PARASUT && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== '') {
                 // ECOMMERCE > Parasut E-Invoice Inbox
@@ -3267,24 +3267,24 @@ function output_menu($properties = false)
             $menu_items[11]['color_class'] = 'ecommerce-color';
             $menu_items[11]['title'] = 'All Products';
             $menu_items[11]['context'] = true;
-            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box2-heart bi-me-2\'>' . lang('All Products') . '</a>';
+            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box2-heart bi-me-2\'>' . lang('All Products') . '</a>';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_increase_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-node-plus bi-me-2\'>' . lang('Product Inventory Quantity Increase') . '</a>';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_decrease_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-node-minus bi-me-2\'>' . lang('Product Inventory Quantity Decrease') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_increase_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-up-circle bi-me-2\'>' . lang('Product Inventory Quantity Increase') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/barcode_decrease_inventory.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-down-circle bi-me-2\'>' . lang('Product Inventory Quantity Decrease') . '</a>';
             // ECOMMERCE > Product 
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_attributes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-card-checklist bi-me-2\'>' . lang('All Product Attributes') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_attributes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-tags bi-me-2\'>' . lang('All Product Attributes') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product_attribute.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product Attribute'))) . '</a>';
 
             // ECOMMERCE > Products > Featured and New
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-funnel bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-star bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
 
             // ECOMMERCE > Product Groups
             $menu_items[12]['id'] = 12;
@@ -3306,7 +3306,7 @@ function output_menu($properties = false)
             $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product Group'))) . '</a>';
             // ECOMMERCE > > Featured and New
             $menu_items[12]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-funnel bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
+            $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-star bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
 
             // ECOMMERCE > Offers
             $menu_items[14]['id'] = 14;
@@ -3319,11 +3319,11 @@ function output_menu($properties = false)
             $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_offer.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Offer'))) . '</a>';
             // ECOMMERCE > Gift Cards
             $menu_items[14]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-wallet bi-me-2\'>' . lang('All Gift Cards') . '</a>';
+            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-gift bi-me-2\'>' . lang('All Gift Cards') . '</a>';
             $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_gift_card.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Gift Card'))) . '</a>';
             // ECOMMERCE > Gift Cards
             $menu_items[14]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_key_codes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-key bi-me-2\'>' . lang('All Key Codes') . '</a>';
+            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_key_codes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-ticket-perforated bi-me-2\'>' . lang('All Key Codes') . '</a>';
             $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_key_code.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Key Code'))) . '</a>';
         }
 
@@ -3332,7 +3332,7 @@ function output_menu($properties = false)
             $menu_items[14]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_commissions.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cash-coin bi-me-2\'>' . lang('All Commissions') . '</a>';
             // ECOMMERCE > Commissions Profiles
-            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_recurring_commission_profiles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-cash-stack bi-me-2\'>' . lang('All Commission Profiles') . '</a>';
+            $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_recurring_commission_profiles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-repeat bi-me-2\'>' . lang('All Commission Profiles') . '</a>';
         }
 
 
@@ -3349,34 +3349,34 @@ function output_menu($properties = false)
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_shipping_method.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Shipping Method'))) . '</a>';
             // ECOMMERCE > Zones
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_zones.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-map bi-me-2\'>' . lang('All Shipping Zones') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_zones.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-globe2 bi-me-2\'>' . lang('All Shipping Zones') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_zone.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Shipping Zone'))) . '</a>';
             // ECOMMERCE > Arrival Dates
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_arrival_dates.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-calendar2-day bi-me-2\'>' . lang('All Shipping Arrival Dates') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_arrival_dates.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar2-check bi-me-2\'>' . lang('All Shipping Arrival Dates') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_arrival_date.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Arrival Date'))) . '</a>';
             // ECOMMERCE > Shipping Addresses
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_verified_shipping_addresses.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-mailbox bi-me-2\'>' . lang('All Verified Shipping Addresses') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_verified_shipping_addresses.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-house-check bi-me-2\'>' . lang('All Verified Shipping Addresses') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_verified_shipping_address.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Verified Shipping Address'))) . '</a>';
             // ECOMMERCE > Containers
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_containers.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-box-seam bi-me-2\'>' . lang('All Containers') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_containers.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box bi-me-2\'>' . lang('All Containers') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_container.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Container'))) . '</a>';
         }
 
         if (USER_MANAGE_ECOMMERCE) {
             // ECOMMERCE > Countries
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-globe-americas bi-me-2\'>' . lang('All Countries') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-flag bi-me-2\'>' . lang('All Countries') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_country.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Country'))) . '</a>';
             // ECOMMERCE > States
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_states.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-globe-europe-africa bi-me-2\'>' . lang('All States') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_states.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-map bi-me-2\'>' . lang('All States') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_state.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('State'))) . '</a>';
             // ECOMMERCE > Tax
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_tax_zones.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-file-text bi-me-2\'>' . lang('All Tax Zones') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_tax_zones.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calculator bi-me-2\'>' . lang('All Tax Zones') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_tax_zone.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Tax Zone'))) . '</a>';
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         }
@@ -3384,11 +3384,11 @@ function output_menu($properties = false)
         if (USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
 
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-graph-up bi-me-2\'>' . lang('Shipping Report') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
             if (USER_MANAGE_ECOMMERCE) {
                 // ECOMMERCE > Ship Date Adjustments
                 $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-                $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-calendar4-range bi-me-2\'>' . lang('All Ship Date Adjustments') . '</a>';
+                $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar4-range bi-me-2\'>' . lang('All Ship Date Adjustments') . '</a>';
                 $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ship_date_adjustment.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ship Date Adjustment'))) . '</a>';
             }
         }
@@ -3414,34 +3414,34 @@ function output_menu($properties = false)
         $menu_items[17]['color_class'] = 'design-color';
         $menu_items[17]['title'] = 'Page Styles';
         $menu_items[17]['context'] = true;
-        $menu_items[17]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-palette bi-me-2\'>' . lang('Page Styles') . '</a>';
+        $menu_items[17]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('Page Styles') . '</a>';
         $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_custom_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page Style'))) . '</a>';
         // DESIGN > Import Design
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-up bi-me-2\'>' . lang('Import My Site') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-down bi-me-2\'>' . lang('Import My Site') . '</a>';
 
         // DESIGN > Themes
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-palette2 bi-me-2\'>' . lang('All Themes') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-palette bi-me-2\'>' . lang('All Themes') . '</a>';
         $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_theme_file.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Theme'))) . '</a>';
 
         // DESIGN > Design File
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi-file-earmark-image bi-me-2\'>' . lang('All Design Files') . '</a>';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_design_file.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Upload Design Files') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-code bi-me-2\'>' . lang('All Design Files') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_design_file.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Design Files') . '</a>';
         // DESIGN > Import Zip
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_zip.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-arrow-up bi-me-2\'>' . lang('Import ZIP File') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_zip.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import ZIP File') . '</a>';
         // if the user is an administrator and migration enabled
         if (($user['role'] < 1) && (defined('MIG') == true) && (MIG == true)) {
             // DESIGN > Migration
             $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-            $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/migration.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sign-merge-right bi-me-2\'>' . lang('Migration') . '</a>';
+            $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/migration.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-database-down bi-me-2\'>' . lang('Migration') . '</a>';
         }
         // DESIGN > Find And Replace
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-binoculars bi-me-2\'>' . lang('Find And Replace') . '</a>';
         // DESIGN > Mass Edit
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mass_edit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders2 bi-me-2\'>' . lang('Mass Edit') . '</a>';
+        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mass_edit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-pencil-square bi-me-2\'>' . lang('Mass Edit') . '</a>';
 
         // VISUAL PAGE EDITOR — designs made with the visual editor. Its own
         // entry: the Page Styles list is the legacy HTML-template screen.
@@ -3475,16 +3475,16 @@ function output_menu($properties = false)
         $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_common_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Common Region'))) . '</a>';
         // DESIGN > Designer Regions
         $design_regions_content .= '<hr class=\'divider my-2\' />';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-dock bi-me-2\'>' . lang('All Designer Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-code-square bi-me-2\'>' . lang('All Designer Regions') . '</a>';
         $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_designer_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Designer Region'))) . '</a>';
         // DESIGN > Login Regions
         $design_regions_content .= '<hr class=\'divider my-2\' />';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-up bi-me-2\'>' . lang('All Login Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-right bi-me-2\'>' . lang('All Login Regions') . '</a>';
         $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_login_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Login Region'))) . '</a>';
         if (ADS === true) {
             // DESIGN > Ad Regions
             $design_regions_content .= '<hr class=\'divider my-2\' />';
-            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window-desktop bi-me-2\'>' . lang('All Ad Regions') . '</a>';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-aspect-ratio bi-me-2\'>' . lang('All Ad Regions') . '</a>';
             $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad Region'))) . '</a>';
         }
         // if the user is an administrator and dynamic regions are enabled, then prepare to output dynamic regions link
@@ -3517,7 +3517,7 @@ function output_menu($properties = false)
         // Open sales invoices past due; the dashboard card's number.
         $menu_items[22]['badge'] = pg_erp_overdue_badge_count();
         $menu_items[22]['badge_title'] = lang(array('string' => '{var:1} document(s) past due', 'vars' => $menu_items[22]['badge']));
-        $menu_items[22]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_dashboard.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('ERP Dashboard') . '</a>';
+        $menu_items[22]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_dashboard.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('ERP Dashboard') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
@@ -3533,20 +3533,20 @@ function output_menu($properties = false)
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_account_sync.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-left-right bi-me-2\'>' . lang('Account sync') . '</a>';
         }
 
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_aging.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-hourglass-split bi-me-2\'>' . lang('Aging report') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_aging.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-steps bi-me-2\'>' . lang('Aging report') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_profit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up bi-me-2\'>' . lang('Profit and loss') . '</a>';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_vat_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-percent bi-me-2\'>' . h(pg_erp_tax_report_label()) . '</a>';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-boxes bi-me-2\'>' . lang('Stock and cost') . '</a>';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt-cutoff bi-me-2\'>' . lang('Expenses') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_vat_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-bar-graph bi-me-2\'>' . h(pg_erp_tax_report_label()) . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-pie-chart bi-me-2\'>' . lang('Stock and cost') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-wallet2 bi-me-2\'>' . lang('Expenses') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_waybills.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-check bi-me-2\'>' . lang('Delivery Notes') . '</a>';
-        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up bi-me-2\'>' . lang('Export') . '</a>';
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-download bi-me-2\'>' . lang('Export') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accountant.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-briefcase bi-me-2\'>' . lang('Accountant pack') . '</a>';
 
         if (USER_MANAGE_ERP_CASH) {
             $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cash-stack bi-me-2\'>' . lang('Cash and Bank') . '</a>';
-            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cashflow.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('Cash flow') . '</a>';
-            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cheques.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-check bi-me-2\'>' . lang('Cheques and notes') . '</a>';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cashflow.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Cash flow') . '</a>';
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cheques.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-postcard bi-me-2\'>' . lang('Cheques and notes') . '</a>';
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_bank_statements.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bank bi-me-2\'>' . lang('Bank statements') . '</a>';
         }
 
@@ -3581,7 +3581,7 @@ function output_menu($properties = false)
             // Mentions, assignments and invitations not yet looked at.
             $menu_items[23]['badge'] = ws_inbox_unread_count((int) $user['id']);
             $menu_items[23]['badge_title'] = lang(array('string' => '{var:1} new item(s) for you', 'vars' => $menu_items[23]['badge']));
-            $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-text bi-me-2\'>' . lang('Channels') . '</a>';
+            $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-hash bi-me-2\'>' . lang('Channels') . '</a>';
             $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_tasks.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-check2-square bi-me-2\'>' . lang('My Tasks') . '</a>';
 
             if (function_exists('ws_notes_ready') && ws_notes_ready()) {

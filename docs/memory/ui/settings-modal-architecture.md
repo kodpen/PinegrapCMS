@@ -13,7 +13,7 @@ Modal (main path)
   settings_pane.php                endpoint: GET ?pane=<cat> cards, POST saves, both JSON
   includes/settings/fragment.php   pg_settings_fragment() / pg_settings_apply()
   assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgInitInjected()
-Page (no-JavaScript path; not linked from the panel)
+Page (no-JavaScript path; linked from the main menu's Site Settings row, main-menu-settings-row.md)
   settings_<category>.php          8 thin wrappers: init + PG_SETTINGS_KEY + screen.php
   includes/settings/screen.php     page flow: shell, toolbar, save bar, POST/redirect
   settings2.php                    hub (deleted later)
