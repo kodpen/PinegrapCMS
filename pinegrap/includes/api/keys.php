@@ -93,6 +93,65 @@ function api_secret_hint($secret) {
 
 }
 
+// Whether a stored secret hash takes the hash of a supplied secret. An empty
+// stored hash takes nothing, an empty supplied hash included, which
+// hash_equals() alone would call equal: a 'server' key made without a
+// secret (api_app_create() with $with_secret false) and a previous secret
+// that was cleared open nothing.
+function api_secret_hash_accepts($stored_hash, $supplied_hash) {
+
+	$stored_hash   = (string)$stored_hash;
+	$supplied_hash = (string)$supplied_hash;
+
+	return ($stored_hash !== '') && ($supplied_hash !== '') && hash_equals($stored_hash, $supplied_hash);
+
+}
+
+// Whether an application row has any way to sign in at $now. A 'device' or
+// 'oauth' application signs people in with tokens (includes/api/devices.php,
+// includes/oauth/); every other row only with its key and a secret
+// (api_secret_matches()), so it needs a stored secret hash, or the previous
+// one while its grace runs. Pinegrap AI's key, made without a secret, answers
+// false: it is an identity and a set of scopes inside the site, never a way
+// in. The status is not looked at: a disabled row is refused later anyway.
+function api_app_can_sign_in(array $app, $now) {
+
+	$kind = isset($app['kind']) ? (string)$app['kind'] : 'server';
+
+	if (($kind === 'device') || ($kind === 'oauth')) {
+
+		return true;
+
+	}
+
+	if (isset($app['api_secret_hash']) && ((string)$app['api_secret_hash'] !== '')) {
+
+		return true;
+
+	}
+
+	return isset($app['api_secret_prev_hash'], $app['api_secret_prev_expires'])
+		&& ((string)$app['api_secret_prev_hash'] !== '')
+		&& ((int)$app['api_secret_prev_expires'] > (int)$now);
+
+}
+
+// Whether a new secret may be issued for an application row: only for a
+// 'server' key that already has one. A 'device' or 'oauth' application has
+// none to replace. A 'server' key made without a secret (api_app_create()
+// with $with_secret false, Pinegrap AI's) stays without one: it is an
+// identity inside the site, and a secret would turn it into a way in carrying
+// its owner's rights for whoever issued it, Application Access being open to
+// roles 0-2. Both places that issue a secret ask this: Application Access's
+// rotation and api_app_rotate_secret().
+function api_app_secret_can_rotate(array $app) {
+
+	$kind = isset($app['kind']) ? (string)$app['kind'] : 'server';
+
+	return ($kind === 'server') && isset($app['api_secret_hash']) && ((string)$app['api_secret_hash'] !== '');
+
+}
+
 // Makes an application key for a panel screen that sets one up by itself (the
 // assistants' cards in the Workspace settings). Always kind 'server': a
 // 'device' or 'oauth' application lets people sign in, which nothing made
@@ -158,15 +217,17 @@ function api_app_create($name, $description, array $scopes, $owner_id, $with_sec
 
 }
 
-// Issues a new secret for a 'server' application; any other kind has none to
-// replace and is refused. With $grace_seconds the outgoing secret keeps
-// answering that long, the way Application Access rotates. With 0 it stops at
-// once, and so does a previous secret still inside an earlier rotation's grace:
-// api_secret_matches() then accepts only the new one.
+// Issues a new secret for a 'server' application that has one. Any other kind
+// has none to replace, and a key made without a secret is never given one
+// (api_app_secret_can_rotate()): both are refused. With $grace_seconds the
+// outgoing secret keeps answering that long, the way Application Access
+// rotates. With 0 it stops at once, and so does a previous secret still inside
+// an earlier rotation's grace: api_secret_matches() then accepts only the new
+// one.
 //
 // The plain secret exists only in the answer, as with api_app_create().
 // Answers array('name', 'key', 'secret'), or null when there is no such
-// application or the row could not be written.
+// application, it may not be given a secret, or the row was not written.
 //
 // api_settings.php still writes its own rotation (24 hours of grace): a
 // change to one belongs in the other too.
@@ -177,11 +238,11 @@ function api_app_rotate_secret($app_id, $grace_seconds, $username) {
 	$grace_seconds = max(0, (int)$grace_seconds);
 
 	$existing = ($app_id > 0)
-		? db_item("SELECT id, name, api_key, api_secret_hash FROM api_apps
+		? db_item("SELECT id, name, api_key, api_secret_hash, kind FROM api_apps
 			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1")
 		: null;
 
-	if (!$existing) {
+	if (!$existing || !api_app_secret_can_rotate($existing)) {
 
 		return null;
 
@@ -202,9 +263,10 @@ function api_app_rotate_secret($app_id, $grace_seconds, $username) {
 			api_secret_hash = '" . escape(api_secret_hash($secret)) . "',
 			api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
 			updated_timestamp = UNIX_TIMESTAMP()
-		WHERE id = '" . $app_id . "' AND kind = 'server'");
+		WHERE id = '" . $app_id . "' AND kind = 'server' AND api_secret_hash <> ''");
 
-	if ($written === false) {
+	// No row matched: the secret in hand was stored nowhere and must not be shown.
+	if (($written === false) || (mysqli_affected_rows(db::$con) < 1)) {
 
 		return null;
 

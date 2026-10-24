@@ -6,7 +6,8 @@
  * make for an assistant (api_assistant_scopes(), includes/api/scopes.php),
  * that need no database: one choice per permission group, the read of every
  * group but the ones left out, and the write only for the Workspace and the
- * Tasks.
+ * Tasks; then cut to what the person making the key may hand on
+ * (api_assistant_scopes_handed_on()), nothing without both writes.
  *
  * The checks read the result itself and the Claude card's own scope rule
  * (ws_claude_scopes_of()), never api_scopes_expand(): the runner does not
@@ -190,4 +191,37 @@ function test_api_assistant_scopes_site_groups()
 
 	pg_assert_contains('orders:read', $result, 'a core read');
 	pg_assert_contains('meta:read', $result, 'the site info');
+}
+
+// What the person making the key may hand on: the common part, in the
+// key's own order, as a list.
+function test_api_assistant_scopes_handed_on_keeps_the_common_part()
+{
+	$scopes = array('customers:read', 'orders:read', 'products:read', 'tasks:write', 'workspace:write');
+	$owner = array('workspace:write', 'workspace:read', 'tasks:write', 'tasks:read', 'products:read', 'products:write', 'webhooks:manage');
+
+	pg_assert_same(array('products:read', 'tasks:write', 'workspace:write'), api_assistant_scopes_handed_on($scopes, $owner), 'only what both lists hold');
+	pg_assert_same($scopes, api_assistant_scopes_handed_on($scopes, array_merge($scopes, array('erp:write'))), 'an owner holding more hands on the key\'s scopes only');
+}
+
+// Without writing in both the Workspace and the Tasks no key is made.
+function test_api_assistant_scopes_handed_on_needs_both_writes()
+{
+	$scopes = array('orders:read', 'tasks:write', 'workspace:write');
+
+	pg_assert_same(array(), api_assistant_scopes_handed_on($scopes, array('orders:read', 'workspace:write')), 'no tasks:write');
+	pg_assert_same(array(), api_assistant_scopes_handed_on($scopes, array('orders:read', 'tasks:write')), 'no workspace:write');
+	pg_assert_same(array(), api_assistant_scopes_handed_on($scopes, array()), 'an owner who may hand on nothing');
+	pg_assert_same(array(), api_assistant_scopes_handed_on(array('orders:read'), array('orders:read', 'tasks:write', 'workspace:write')), 'a key without the writes');
+}
+
+// An administrator's ceiling, whatever it holds, never adds a scope the key
+// was not given. (The runner's own api_scope_groups() has no Workspace
+// groups, the module being off, so the test groups stand in for them.)
+function test_api_assistant_scopes_handed_on_never_widens()
+{
+	$scopes = api_assistant_scopes(api_assistant_scopes_test_groups(), api_assistant_scopes_left_out());
+	$owner = array_merge($scopes, array('webhooks:manage', 'system:read', 'orders:write'));
+
+	pg_assert_same($scopes, api_assistant_scopes_handed_on($scopes, $owner), 'the key\'s scopes, no more');
 }
