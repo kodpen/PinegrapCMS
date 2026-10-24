@@ -1737,6 +1737,18 @@ const StyleDesigner = (function () {
         return { sid: sid, cfg: cfg, tree: _sharedCache[sid].tree, owns: owns };
     }
 
+    // The comments widget a node lives in, as { sid, cfg }, or null: for the
+    // widget's placement itself (a shared_ref, whose panel holds the
+    // settings) and for a node of any other widget or none.
+    function _sdCommentsWidgetOf(node) {
+        if (!node || node.type === 'shared_ref') return null;
+        var sid = (typeof _isInsideSystemWidget === 'function') ? _isInsideSystemWidget(node) : 0;
+        if (!sid) return null;
+        var cfg = _cfCfgOf(sid);
+        if (!cfg || cfg.regionType !== 'comments') return null;
+        return { sid: sid, cfg: cfg };
+    }
+
     // Every custom_form widget on a page tree, as {sid, cfg, tree, owns}.
     function _cfWidgetsOn(pageTree) {
         var out = [], seen = {};
@@ -3057,9 +3069,10 @@ const StyleDesigner = (function () {
         return hit;
     }
 
-    // Select the widget's placement so the panel shows its form settings,
-    // and bring the Custom Form Settings section into view.
-    function _cfOpenFormSettings(sid) {
+    // Select a widget's placement so the panel shows its settings, open the
+    // section that holds the element `anchorId` if it was collapsed, and
+    // bring it into view.
+    function _sdOpenWidgetSection(sid, anchorId) {
         var ref = _cfRefOf(parseInt(sid, 10) || 0);
         if (!ref) return;
         selectedNode  = ref;
@@ -3067,13 +3080,39 @@ const StyleDesigner = (function () {
         if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
         _sdSelectRender();
         setTimeout(function () {
-            var src  = document.getElementById('sd-sw-cf-source');
-            var sect = src ? src.closest('.sd-props-section') : null;
+            var anchor = document.getElementById(anchorId);
+            var sect = anchor ? anchor.closest('.sd-props-section') : null;
             if (!sect) return;
             var hdr = sect.querySelector('.sd-sect-hdr');
             if (hdr && !hdr.classList.contains('sd-sect-open')) hdr.click();
             sect.scrollIntoView({ block: 'start', behavior: 'smooth' });
         }, 0);
+    }
+
+    // The Custom Form Settings section of a custom form widget.
+    function _cfOpenFormSettings(sid) {
+        _sdOpenWidgetSection(sid, 'sd-sw-cf-source');
+    }
+
+    // The "Comment settings" bar on top of the panel of any node inside a
+    // comments widget: a click on the canvas lands on a part of the comment
+    // card or the form, never on the widget, whose panel holds the page's
+    // comment settings. While comments are off for the page it says so: the
+    // widget then draws nothing on the site.
+    function _sdCommentsSettingsShortcut(node) {
+        var w = _sdCommentsWidgetOf(node);
+        if (!w) return '';
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
+                '<i class="bi bi-chat-square-text me-1"></i>' + esc(_sdT('Comment settings')) +
+            '</button>' +
+            (_getCmtVal('pg_comments') !== '1'
+                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                      esc(_sdT('Comments are off for this page: the widget draws nothing until they are on.')) +
+                  '</div>'
+                : '') +
+        '</div>';
     }
 
     // The "Form settings" bar on top of the panel of any node inside a
@@ -11729,6 +11768,18 @@ const StyleDesigner = (function () {
                 cfSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
                 cfSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _cfOpenFormSettings(_cfTbW.sid); });
                 tbBtns.appendChild(cfSetBtn);
+            }
+            // Inside a comments widget: the page's comment settings, which
+            // sit in the widget's panel.
+            var _cmtTbW = (node.type !== 'root') ? _sdCommentsWidgetOf(node) : null;
+            if (_cmtTbW) {
+                var cmtSetBtn = doc.createElement('button');
+                cmtSetBtn.type = 'button';
+                cmtSetBtn.className = 'bi bi-chat-square-text';
+                cmtSetBtn.title = _sdT('Comment settings');
+                cmtSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                cmtSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdOpenWidgetSection(_cmtTbW.sid, 'sd-cmt-settings'); });
+                tbBtns.appendChild(cmtSetBtn);
             }
             // Notes — opens a floating notes popup anchored to this node
             if (node.type !== 'root') {
@@ -29885,11 +29936,14 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
+            _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
         if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
+        var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
+        if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
@@ -30138,6 +30192,151 @@ const StyleDesigner = (function () {
     function _setCmtVal(fieldName, val) {
         var el = document.querySelector('#style_designer_form [name="' + fieldName + '"]');
         if (el) el.value = val;
+        // The Preview draws a comments widget with the page's settings as
+        // the editor holds them, saved or not.
+        _sdLivePreviewSchedule();
+    }
+
+    // A comment setting changed in the panel. A switch or the e-mail page
+    // (`final`) redraws everything: the panel's warning and the canvas's
+    // fades follow them. A text box redraws only the canvas once it is left
+    // (its words show in the comments widget), so the click that left it
+    // is not lost to a panel drawn again under the pointer.
+    function _sdCommentSettingsChanged(final) {
+        if (final) {
+            render();
+            return;
+        }
+        renderCanvas();
+        _sdLivePreviewSchedule();
+    }
+
+    // The page's comment settings: the section of the fixed comments block
+    // (opts.widget false) and of the comments widget (opts.widget true). They
+    // live in the hidden pg_comments* inputs, one set per page, saved with
+    // the page. On the widget the heading names the page, because every page
+    // that places the widget keeps its own; its display options are the
+    // widget's (_sdCommentsDisplaySect()).
+    function _sdCommentSettingsSect(opts) {
+        opts = opts || {};
+        var _cmtEnabled  = _getCmtVal('pg_comments')           === '1';
+        var _cmtAllowNew = _getCmtVal('pg_comments_allow_new') !== '0';
+        var _cmtRating   = _getCmtVal('pg_comments_rating')    === '1';
+        var _cmtLabel    = _getCmtVal('pg_comments_label');
+        var _cmtAuto     = _getCmtVal('pg_comments_auto_publish') === '1';
+        var _cmtDate     = _getCmtVal('pg_comments_show_date')    === '1';
+        var _cmtLogin    = _getCmtVal('pg_comments_login')        === '1';
+        var _cmtSwitch   = function (prop, on) {
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="' + prop + '"' + (on ? ' checked' : '') + '>' +
+                '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+            '</label>';
+        };
+        var _cmtHint = function (text) {
+            return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
+        };
+        var title = _sdT('Comment Settings');
+        var lead = '';
+        var offWarn = '';
+        if (opts.widget) {
+            var _cmtPage = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+            title = _sdT('Comment settings for {var}', esc((_cmtPage && _cmtPage.page_name) ? _cmtPage.page_name : _sdT('this page')));
+            lead = '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
+                esc(_sdT('Saved with this page; other pages that show this widget keep their own.')) + '</div>';
+            if (!_cmtEnabled) {
+                offWarn = '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                    '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                    esc(_sdT('Comments are off for this page: the widget draws nothing until they are on.')) + '</div>';
+            }
+        }
+        return sect('bi-chat-square-text', title,
+            '<div id="sd-cmt-settings">' +
+            lead +
+            row(_sdT('Comments'), _cmtSwitch('pg_comments', _cmtEnabled) + offWarn) +
+            row(_sdT('Title'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_label" ' +
+                    'value="' + esc(_cmtLabel) + '" placeholder="' + esc(_sdT('Comments...')) + '">'
+            ) +
+            row(_sdT('New Comment'), _cmtSwitch('pg_comments_allow_new', _cmtAllowNew)) +
+            row(_sdT('Scoring'), _cmtSwitch('pg_comments_rating', _cmtRating)) +
+            row(_sdT('Publish at once'),
+                _cmtSwitch('pg_comments_auto_publish', _cmtAuto) +
+                _cmtHint(_sdT('While off, a visitor\'s comment waits for approval; the site staff always see it.'))
+            ) +
+            row(_sdT('Show the date'),
+                _cmtSwitch('pg_comments_show_date', _cmtDate)
+            ) +
+            row(_sdT('Signed-in visitors only'),
+                _cmtSwitch('pg_comments_login', _cmtLogin)
+            ) +
+            // E-mails. The page is sent when a comment is published: to
+            // whoever sent the record (on a Form Item View page) and to
+            // the visitors watching the page. Its System region carries
+            // the comment and a "View or Reply" button.
+            row(_sdT('E-mail page'),
+                '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
+                    _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
+                '</select>' +
+                _cmtHint(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.'))
+            ) +
+            row(_sdT('E-mail subject'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_email_subject" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_email_subject')) + '" maxlength="255" placeholder="' + esc(_sdT('New comment')) + '">'
+            ) +
+            row(_sdT('Notify the staff'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_notify_email" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_notify_email')) + '" maxlength="100" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
+                _cmtHint(_sdT('Every new comment is sent to this address (plain text). Leave it empty and nobody is notified.'))
+            ) +
+            '<div style="font-size:.66rem;color:#888;margin-top:2px">' + esc(_sdT('On a page with a Form Item View widget the comments belong to the record shown, and only visitors who may see that record see them.')) + '</div>' +
+            '</div>'
+        );
+    }
+
+    // The comments widget's display options, kept in its system_region_config
+    // and shared by every page that places it. The generic [data-sw-cfg]
+    // handler writes them; a choice is stored as its text ('10', '2'), which
+    // pg_comments_widget_options() reads as a number. The selected values
+    // follow that function's defaults and clamps.
+    function _sdCommentsDisplaySect(sid, cfg) {
+        cfg = cfg || {};
+        var word = function (key, allowed, def) {
+            var v = (typeof cfg[key] === 'string') ? cfg[key] : '';
+            return (allowed.indexOf(v) !== -1) ? v : def;
+        };
+        var depth = parseInt(cfg.max_depth, 10);
+        depth = isNaN(depth) ? 1 : Math.min(3, Math.max(1, depth));
+        var perPage = String(parseInt(cfg.per_page, 10));
+        if (['0', '10', '20', '50'].indexOf(perPage) === -1) perPage = '0';
+        var choice = function (key, opts, current) {
+            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+                opts.map(function (o) { return o[0]; }).join(',') + '">' +
+                opts.map(function (o) {
+                    return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                }).join('') +
+            '</select>';
+        };
+        var hint = function (text) {
+            return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
+        };
+        var layout = word('layout', ['flat', 'threaded'], 'flat');
+        return sect('bi-sliders', _sdT('Display'),
+            '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
+                esc(_sdT('Shared: every page that shows this widget uses these options.')) + '</div>' +
+            row(_sdT('Comment order'), choice('order',
+                [['oldest', _sdT('Oldest first')], ['newest', _sdT('Newest first')]], word('order', ['oldest', 'newest'], 'oldest'))) +
+            row(_sdT('Featured comments'), choice('featured',
+                [['first', _sdT('First, then the others')], ['filter', _sdT('Only these, until Show all')], ['none', _sdT('Not marked')]],
+                word('featured', ['first', 'filter', 'none'], 'first'))) +
+            row(_sdT('Replies'), choice('layout',
+                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout)) +
+            (layout === 'threaded'
+                ? row(_sdT('Reply depth'), choice('max_depth', [['1', '1'], ['2', '2'], ['3', '3']], String(depth)))
+                : '') +
+            row(_sdT('Comments per page'), choice('per_page',
+                [['0', _sdT('All on one page')], ['10', '10'], ['20', '20'], ['50', '50']], perPage) +
+                hint(_sdT('Counted by top-level comments; each keeps its replies.')))
+        );
     }
 
     function propsRegion(n) {
@@ -30154,77 +30353,11 @@ const StyleDesigner = (function () {
         var nameOpts = buildRegionNames(n.props.regionType);
         var show = needsName(n.props.regionType);
 
-        // Comments block: show interactive settings controls
+        // Comments block: the page's comment settings (_sdCommentSettingsSect()).
         var commentsInfo = '';
         if (n.props.regionType === 'comments_block') {
             if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
-            var _cmtEnabled  = _getCmtVal('pg_comments')           === '1';
-            var _cmtAllowNew = _getCmtVal('pg_comments_allow_new') !== '0';
-            var _cmtRating   = _getCmtVal('pg_comments_rating')    === '1';
-            var _cmtLabel    = _getCmtVal('pg_comments_label');
-            var _cmtAuto     = _getCmtVal('pg_comments_auto_publish') === '1';
-            var _cmtDate     = _getCmtVal('pg_comments_show_date')    === '1';
-            var _cmtLogin    = _getCmtVal('pg_comments_login')        === '1';
-            var _cmtSwitch   = function (prop, on) {
-                return '<label class="sd-prop-switch">' +
-                    '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="' + prop + '"' + (on ? ' checked' : '') + '>' +
-                    '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                '</label>';
-            };
-            commentsInfo = sect('bi-chat-square-text', _sdT('Comment Settings'),
-                row(_sdT('Comments'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments"' + (_cmtEnabled ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Title'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_label" ' +
-                        'value="' + esc(_cmtLabel) + '" placeholder="' + esc(_sdT('Comments...')) + '">'
-                ) +
-                row(_sdT('New Comment'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments_allow_new"' + (_cmtAllowNew ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Scoring'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments_rating"' + (_cmtRating ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Publish at once'),
-                    _cmtSwitch('pg_comments_auto_publish', _cmtAuto) +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While off, a visitor\'s comment waits for approval; the site staff always see it.')) + '</div>'
-                ) +
-                row(_sdT('Show the date'),
-                    _cmtSwitch('pg_comments_show_date', _cmtDate)
-                ) +
-                row(_sdT('Signed-in visitors only'),
-                    _cmtSwitch('pg_comments_login', _cmtLogin)
-                ) +
-                // E-mails. The page is sent when a comment is published: to
-                // whoever sent the record (on a Form Item View page) and to
-                // the visitors watching the page. Its System region carries
-                // the comment and a "View or Reply" button.
-                row(_sdT('E-mail page'),
-                    '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
-                        _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
-                    '</select>' +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.')) + '</div>'
-                ) +
-                row(_sdT('E-mail subject'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_email_subject" ' +
-                        'value="' + esc(_getCmtVal('pg_comments_email_subject')) + '" maxlength="255" placeholder="' + esc(_sdT('New comment')) + '">'
-                ) +
-                row(_sdT('Notify the staff'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_notify_email" ' +
-                        'value="' + esc(_getCmtVal('pg_comments_notify_email')) + '" maxlength="100" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Every new comment is sent to this address (plain text). Leave it empty and nobody is notified.')) + '</div>'
-                ) +
-                '<div style="font-size:.66rem;color:#888;margin-top:2px">' + esc(_sdT('On a page with a Form Item View widget the comments belong to the record shown, and only visitors who may see that record see them.')) + '</div>'
-            );
+            commentsInfo = _sdCommentSettingsSect({});
         }
         // commentsInfo is itself a sect() — append AFTER the Region section, not inside it
         return sect('bi-puzzle', _sdT('Region'),
@@ -32473,6 +32606,13 @@ const StyleDesigner = (function () {
                         _acHint(_sdT('Each block is its own form: a form element bound to the Account security form action, holding buttons bound to the action they take. A tree with no bound form is sent as one form.')));
                 }
                 systemSection += sect((_swTypeInfo(_regionType) || {}).icon || 'bi-person', _sdT('Account Page Settings'), _acRows);
+            }
+
+            // ── comments: the widget's display options, then the page's
+            // comment settings (every page that places it keeps its own) ──
+            if (_isComments) {
+                systemSection += _sdCommentsDisplaySect(sid, _cfg) + _sdCommentSettingsSect({ widget: true });
+                if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
             }
         }
 
@@ -43045,9 +43185,14 @@ const StyleDesigner = (function () {
 
         // ── Comments settings controls (data-cmt-prop / data-cmt-txt) ──────────
         // These update the hidden form fields instead of node props.
+        // A switch and the e-mail page redraw the panel and the canvas, which
+        // fade and hide by them; a text box redraws the canvas once it is
+        // left (_sdCommentSettingsChanged()). Every change reaches the live
+        // preview (_setCmtVal()).
         document.querySelectorAll('#sd-properties [data-cmt-prop]').forEach(function(el) {
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-prop'), this.checked ? '1' : '0');
+                _sdCommentSettingsChanged(true);
             });
         });
         // The e-mail page picker may name an unsaved tab (`tab:<key>`); the
@@ -43055,6 +43200,7 @@ const StyleDesigner = (function () {
         document.querySelectorAll('#sd-properties [data-cmt-page]').forEach(function(el) {
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-page'), _swPageVal(this));
+                _sdCommentSettingsChanged(true);
             });
         });
         document.querySelectorAll('#sd-properties [data-cmt-txt]').forEach(function(el) {
@@ -43063,6 +43209,7 @@ const StyleDesigner = (function () {
             });
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-txt'), this.value);
+                _sdCommentSettingsChanged(false);
             });
         });
 
