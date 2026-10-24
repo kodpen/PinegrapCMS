@@ -10,7 +10,7 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `ecommerce`: order/cart items, quotes, tax, zones, stock/reservation, gift card, barcode, product copy, order cancellation, carrier recognition. `shipping` (2026.11.0): the only writer of shipment rows (`docs/memory/commerce/shipment-write-path.md`).
 - `seo`: structured data, OG, robots, sitemap, tag cloud, visitor/form view summaries, performance monitor.
 - `content`: menu content, submitted-form content, catalog search/URL, image ids (the `$image_ids_in_array` global lives here), `render_layout`.
-- `calendar`, `editor` (WYSIWYG, code editor fields, image editor), `mail` (PHPMailer + `email()` + notification mails), `contacts` (`merge_contacts`).
+- `calendar`, `editor` (WYSIWYG, code editor fields, image editor), `mail` (PHPMailer + `email()` + notification mails), `contacts` (`merge_contacts`, `pg_contact_display_name()`).
 - `designer`: system styles, tree validation/expansion, node/component render, page/style save, CSS output.
 - Widgets: `widgets_catalog` (catalog), `widgets_cart` (cart), `widgets_express_order` (`_eo_*` + order view), `widgets` (the others).
 - `custom_form` (`pg_cf_*` + form submission), `files` (file name/upload limits), `cron` (scheduled jobs), `tour` (tours; `PG_TOUR_SHELL_KEY` lives here).
@@ -21,7 +21,6 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - System and visitors: `events` (`pg_announce()`), `backup_cloud`, `backup_restore`, `innodb`, `db_maintenance`, `ops_alerts`, `sms`, `captcha` (Turnstile, hCaptcha: `waf/form-captcha-providers.md`), `visitor_retention`, `visitor_texts`, `visitor_partitions`, `visitor_ip`. Loaded only where needed: `search_console` (`seo_search_job.php`).
 - `system_status`: the status card and checks, cache clearing, file integrity, write permissions, changelog, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
-- Added in 2026.4.8: `errors`, `mail_queue`, `backup`, `consent` (see `docs/memory/core/fn-module-errors-mail-backup-consent.md`).
-- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see `core/consent-log-and-audit-trail.md`; `privacy_export` (one person's data pack, `core/personal-data-export.md`); `reviews` (product review rights, rating, AggregateRating: `commerce/product-reviews-verified.md`); `comments` (which thread a posted comment joins: `designer/comment-thread-verify.md`).
+- Added in 2026.4.8 and 2026.11.0 (`errors`, `mail_queue`, `backup`, `consent`, `privacy`, `audit`, `privacy_export`, `reviews`, `comments`): [[fn-module-map-additions]].
 
 Related: docs/memory/core/functions-php-split-rules.md

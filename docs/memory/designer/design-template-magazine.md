@@ -27,5 +27,5 @@ description: Long-Read Magazine template (pinegrap-magazine): what it ships, the
 - The DB-less preview repeats every loop three times; `.pm-one article:not(:first-of-type){display:none}` shows one cover, quote and letter there. Live lists have `max_results 1`. On the canvas each row has its own `.sd-wrap`, so every row shows (editor only).
 
 ## What can the platform not do yet?
-- A byline link to the contributor archive (needs a link with a parameter); "more from this issue" (no current-record filter); per-value sitemap entries; a status-change e-mail; author edits after sending; italic web fonts (the loader asks `:wght@` only); a letter name other than the login username (7r, [[design-templates-newsroom]]); `ugc` on author links and blocking remote pictures in visitor HTML ([[custom-form-rich-text]]).
+- A byline link to the contributor archive (needs a link with a parameter); "more from this issue" (no current-record filter); per-value sitemap entries; a status-change e-mail; author edits after sending; italic web fonts (the loader asks `:wght@` only); `ugc` on author links and blocking remote pictures in visitor HTML ([[custom-form-rich-text]]).
 - Lists fail closed on a missing or invalid filter row since #1299 ([[form-list-filters-fail-closed]]).
