@@ -469,5 +469,11 @@ function test_wishlist_widget_templates()
 
 		$account = isset($tpl['widgets']['my_account']['tree']) ? json_encode($tpl['widgets']['my_account']['tree']) : '';
 		pg_assert_contains('"href":"__my_account_wishlist_url"', $account, $id . ' linked from My Account');
+
+		// The My Account link is drawn for a signed-in visitor only and its
+		// page sends a guest to sign in, so the footer carries the link a
+		// guest follows to their cookie list.
+		$footer = isset($tpl['shared']['footer']['tree']) ? json_encode($tpl['shared']['footer']['tree']) : '';
+		pg_assert_contains('"href":"{{page:favourites}}"', $footer, $id . ' linked from the footer for guests');
 	}
 }

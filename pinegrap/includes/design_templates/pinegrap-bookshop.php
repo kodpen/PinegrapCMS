@@ -386,6 +386,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $hours, $c
                             $link(lang('About'), '{{page:about}}', $plain),
                             $link(lang('Newsletter'), '{{page:newsletter}}', $plain),
                             $link(lang('My Account'), '{{page:my_account}}', $plain),
+                            $link(lang('Favourites'), '{{page:favourites}}', $plain),
                             $link(lang('Inbox'), '{{page:inbox}}', $plain),
                             $link(lang('Support Center'), '{{page:search}}', $plain),
                         )))),

@@ -366,6 +366,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $container
                         $link(lang('Log In'), '{{page:login}}', $plain),
                         $link(lang('Sign Up'), '{{page:register}}', $plain),
                         $link(lang('Shopping bag'), '{{page:cart}}', $plain),
+                        $link(lang('Favourites'), '{{page:favourites}}', $plain),
                     )),
                 ), '4'),
             )),

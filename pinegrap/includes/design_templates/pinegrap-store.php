@@ -322,6 +322,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                     $link(lang('Log In'), '{{page:login}}', $plain),
                     $link(lang('Sign Up'), '{{page:register}}', $plain),
                     $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
+                    $link(lang('Favourites'), '{{page:favourites}}', $plain),
                 )),
                 $el('div', 'col-6 col-lg-2', lang('Contact Details'), array(
                     $heading('h2', lang('Get in Touch'), 'h6 text-uppercase small fw-bold mb-3'),

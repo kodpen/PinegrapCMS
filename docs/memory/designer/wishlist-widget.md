@@ -26,6 +26,6 @@ description: Favourites system widget (kind wishlist, widgets_wishlist.php): who
 
 ## Where is it linked?
 - My Account: `__my_account_wishlist_url` (`_pg_my_account_extras()`, shop sites, `pg_wishlist_widget_page_url()`: first page with the widget the visitor may open; no legacy page type). Starter link and `SW_MY_ACCOUNT_TOKEN_GROUPS`.
-- Store, boutique, bookshop templates: page `favourites` (public folder, `requires` ecommerce) and an account card or link.
+- Store, boutique, bookshop templates: page `favourites` (public folder, `requires` ecommerce), an account card or link, and a footer link `{{page:favourites}}`: the way a guest reaches their list, since the My Account link is empty for guests and that page asks them to sign in.
 
 Related: docs/memory/commerce/wishlist.md, docs/memory/designer/system-widget-bindings.md
