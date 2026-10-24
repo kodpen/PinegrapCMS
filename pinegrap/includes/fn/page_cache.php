@@ -1002,6 +1002,10 @@ function pg_page_cache_lock($file)
     $handle = @fopen($lock, 'x');
 
     if ($handle === false) {
+        // PHP keeps a file's time in its stat cache, and touch() does not clear
+        // it on every build: a lock this process looked at before would keep
+        // its old time and never be taken over.
+        clearstatcache(true, $lock);
         $made = @filemtime($lock);
 
         if (($made === false) || ($made > (time() - PG_PAGE_CACHE_LOCK_SECONDS))) {

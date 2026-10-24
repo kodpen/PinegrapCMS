@@ -18,7 +18,7 @@ description: Pinegrap's own page cache on disk (PR #1402): router serving, the k
 - Kept headers: Content-Type, Content-Language, Link, X-Robots-Tag, CSP, CSP-Report-Only, HSTS (sent by `init.php`, not by the router).
 
 ## How does a stale copy behave?
-- Age < TTL fresh; < 2×TTL stale: the request that gets `<key>.lock` (`fopen 'x'`, taken over after 30 s) draws it again, the others get it with `X-Pinegrap-Cache: stale` and `s-maxage=0`. Older: a normal miss.
+- Age < TTL fresh; < 2×TTL stale: the request that gets `<key>.lock` (`fopen 'x'`, taken over after 30 s; `clearstatcache()` first, since `touch()` does not clear PHP's stat cache on every build and an old time stayed cached) draws it again, the others get it with `X-Pinegrap-Cache: stale` and `s-maxage=0`. Older: a normal miss.
 
 ## How are copies dropped?
 - `config.page_cache_generation` (2026.11.0, 11.0.29): raising it moves to a new folder, so nothing older is read. Which writes raise it: `page-cache-invalidation.md`.
