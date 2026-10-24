@@ -276,8 +276,13 @@ function test_designer_search_index_anonymous_record_access()
 	pg_assert_contains("return \$access_control !== 'logged_in' && \$access_control !== 'submitter_only';", $body);
 
 	$source = _designer_search_index_source('get_page_content.php');
-	pg_assert_contains("\$comments_for_search_index = (\$comments_record !== null)", $source);
-	pg_assert_contains("if ((!\$edit_access && !\$form_editor) || \$comments_for_search_index) {", $source);
+	pg_assert_true(strpos($source, "\$comments_for_search_index = (\$comments_record !== null)") !== false, 'the block knows an index run');
+	pg_assert_same(1, substr_count($source, ": null, \$comments_for_search_index);\n"), 'and tells the comment rules who reads the thread');
+
+	// The rules then read the published comments only, for staff and the
+	// form editor too, and none of the session's own (includes/fn/comments.php).
+	$viewer = pg_comments_viewer_decision(true, array('form_editor_user_id' => '5', 'form_editor_username' => 'ed'), true, 5, array(41));
+	pg_assert_same(" AND ((comments.published = '1'))", pg_comments_visible_sql($viewer));
 }
 
 // Each record drawn on the same detail page in one run gets its own
