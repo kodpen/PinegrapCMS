@@ -444,3 +444,52 @@ function api_effective_scopes($granted, $owner) {
 	return array_values(array_intersect($expanded, $allowed));
 
 }
+
+// What the key an assistant's card makes is granted, one choice per group the
+// way the permission screen stores it: the write for the Workspace and the
+// Tasks, whose reads the write includes, and the read of every other group
+// unless it is left out. No other write, and never webhooks:manage: the
+// assistant changes records only through drafts a person applies.
+//
+// $groups is api_scope_groups(); the caller still narrows the result to what
+// the person making the key may delegate (api_owner_scopes()), and every call
+// is capped again by api_effective_scopes().
+function api_assistant_scopes(array $groups, array $leave_out = array()) {
+
+	$scopes = array();
+
+	foreach ($groups as $group) {
+
+		$read  = isset($group['read']) ? (string)$group['read'] : '';
+		$write = isset($group['write']) ? (string)$group['write'] : '';
+
+		if (in_array($write, array('workspace:write', 'tasks:write'), true)) {
+
+			$scopes[] = $write;
+
+		} elseif (($read !== '') && !in_array($read, $leave_out, true)) {
+
+			$scopes[] = $read;
+
+		}
+
+	}
+
+	$scopes = array_values(array_unique($scopes));
+
+	sort($scopes);
+
+	return $scopes;
+
+}
+
+// The reads an assistant's key is made without. Neither assistant needs them:
+// the owner's own bell and devices, codes a shopper could redeem, spendable
+// gift card codes, who did what from which address, and the firewall and
+// file integrity state. An administrator can still add any of them to the key
+// in Application Access.
+function api_assistant_scopes_left_out() {
+
+	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read');
+
+}

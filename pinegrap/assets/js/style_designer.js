@@ -3879,6 +3879,14 @@ const StyleDesigner = (function () {
         if (node.type === 'content') {
             return ['heading', 'paragraph', 'button', 'link', 'span', 'text'].indexOf(node.props.contentType) !== -1;
         }
+        // The atomic components keep their label in props.text, which the
+        // content-level save takes (pg_designer_merge_restricted_tree()):
+        // the call-to-action button of every ready-made block and a badge.
+        // An older opaque component (card, pricing, hero) is left out: its
+        // in-place edit writes props the save does not take.
+        if (node.type === 'component') {
+            return node.props.componentType === 'btn' || node.props.componentType === 'badge';
+        }
         return node.type === 'semantic';
     }
 
@@ -25676,7 +25684,10 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
         var structural = _sdCanEditNode(node);
         if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
-        var textOk = structural || _sdCanEditNode(node, 'text');
+        // A text island only where _sdCodeApplyText() writes it back: a
+        // component prints its own label (a btn, a badge), so a keystroke
+        // there would be taken and then dropped by the next redraw.
+        var textOk = structural || (_sdCanEditNode(node, 'text') && _sdCodeTextKind(node) !== 'none');
         if (!structural) {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
@@ -44999,6 +45010,9 @@ const StyleDesigner = (function () {
                     content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
                 }
                 if (darkBefore) {
+                    // Found again: the cut above tidies the text in front of
+                    // the dark block, so its old offset may be stale.
+                    dark = _themeFindBlock(content, 'dark');
                     content = content.slice(0, dark.selStart) + sharedPart + '\n\n' + content.slice(dark.selStart);
                 }
                 if (taken.length && light) {
