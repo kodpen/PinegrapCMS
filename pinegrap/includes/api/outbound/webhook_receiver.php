@@ -107,7 +107,9 @@ function mp_webhook_receive() {
 
 	$counts = array('imported' => 0, 'skipped' => 0, 'failed' => 0);
 
-	foreach ($packages as $package) {
+	// A delivery can carry a split's cancelled old package and its new one;
+	// the same order as a pull's pass gives the stock back before it is taken.
+	foreach (mp_order_cancellations_first($account, $packages) as $package) {
 
 		$outcome = mp_import_order($account, $package);
 
