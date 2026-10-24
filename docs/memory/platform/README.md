@@ -17,7 +17,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Before a new door gives, zips, copies or renames a file, ask `pg_file_withheld()`; a stored name built outside `prepare_file_name()` asks `pg_file_name_reserved()` (`dkim-key-in-file-manager.md`).
 - Set an optional cookie with `pg_consent_setcookie()` (keep a session copy), list it in `pg_consent_catalogue()`, hold third-party tags with `pg_consent_hold_scripts()` (`cookie-consent-new-cookies.md`).
 - Use `HOSTNAME` only for answers back to the visitor; links that leave the request (mails, documents, feeds) use `HOSTNAME_SETTING` (`hostname-in-mail-links.md`).
-- Cut a name a person gave (upload, archive entry, link) with `pg_basename()`, never `basename()`: before PHP 8.0 that drops the non-ASCII letters the name starts with (`file-name-last-segment.md`).
+- Cut a name a person gave (upload, archive entry, link) with `pg_basename()` and take its stem with `pg_file_name_stem()`, never `basename()` or `pathinfo()`: before PHP 8.0 they drop the non-ASCII letters the name starts with (`file-name-last-segment.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -38,7 +38,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
-- file-name-last-segment.md: pg_basename(), not basename(), for a name a person gave: before PHP 8.0 basename() drops the non-ASCII letters a name starts with; the doors that use it, what still uses pathinfo()
+- file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-color-profile.md: ICC colour profiles in the image engine: Imagick and GD keep a non-sRGB RGB profile, GD writes it into JPEG/PNG/WebP itself and refuses (color_profile) only what it cannot carry; how a profile is read

@@ -287,6 +287,18 @@ function pg_basename($path)
     return ($slash === false) ? $path : substr($path, $slash + 1);
 }
 
+// The last segment without its last extension, as pathinfo($path,
+// PATHINFO_FILENAME) gives it from PHP 8.0: "Özet.tar.gz" is "Özet.tar",
+// ".htaccess" is "". For a name a person gave, for the reason pg_basename()
+// gives.
+function pg_file_name_stem($path)
+{
+    $base = pg_basename($path);
+    $dot = strrpos($base, '.');
+
+    return ($dot === false) ? $base : substr($base, 0, $dot);
+}
+
 // Whether a name, as the operator or the visitor gave it, is one the rule
 // above refuses. Asked before prepare_file_name() so the refusal can name the
 // file as it was sent; a dotfile counts, because a name with nothing in front
