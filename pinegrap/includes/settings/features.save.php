@@ -119,6 +119,36 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              page_revisions_days = " . (int) $page_revisions_retention['days'] . ",";
     }
 
+    // Page cache: its lifetime is a line in data/config.php, written only
+    // when it changes. A file that cannot be read or written keeps the old
+    // value and says so; the other settings are saved all the same.
+    if (function_exists('pg_page_cache_ttl_from_form')) {
+
+        $page_cache_ttl_old = pg_page_cache_ttl();
+        $page_cache_ttl_new = pg_page_cache_ttl_from_form(post_value('page_cache'), (string) post_value('page_cache_ttl'), $page_cache_ttl_old);
+
+        if ($page_cache_ttl_new !== $page_cache_ttl_old) {
+
+            $page_cache_config = @file_get_contents(CONFIG_FILE_PATH);
+
+            if (is_string($page_cache_config) && (trim($page_cache_config) !== '')
+                && pg_write_config_file(update_config_define($page_cache_config, 'PAGE_CACHE_TTL', (string) $page_cache_ttl_new))) {
+
+                // Copies kept under the old setting are never served again.
+                if (function_exists('pg_page_cache_bump')) {
+                    pg_page_cache_bump();
+                }
+
+                log_activity(($page_cache_ttl_new > 0)
+                    ? lang(array('string' => 'the page cache was turned on with a lifetime of {var:1} seconds', 'vars' => array($page_cache_ttl_new)))
+                    : lang('the page cache was turned off'), $_SESSION['sessionusername']);
+
+            } else {
+                $liveform->add_error(lang('The page cache setting was not saved, because the config.php file could not be written. The other settings were saved.'));
+            }
+        }
+    }
+
     // The workspace switch, only once its column exists.
     $sql_workspace_setting = '';
 

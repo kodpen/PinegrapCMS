@@ -1,6 +1,6 @@
 ---
 name: marketplace-order-import
-description: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, unmatched lines and their retry, relay emails.
+description: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, product matching, unmatched lines and their retry, relay emails.
 ---
 
 ## What is the unit of import?
@@ -18,7 +18,8 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 
 ## What happens with unmatched or code-matched lines?
 - One unmatched line makes the WHOLE order rejected: an order missing a line shows an incomplete shipment and decrements stock from the wrong product.
-- A product matched by code is mapped at that moment; otherwise its stock change would never enter the queue and the product drifts from its first sale.
+- Match order (`mp_order_match_product()`): mapping row by `remote_code = code`; for a barcode-keyed provider (Trendyol) `product_barcodes.barcode = code`; `products.name = sku` when the line has one (Trendyol `stockCode`); `products.name = code` last (n11).
+- A product matched without a mapping is mapped at that moment under `code`; otherwise its stock change would never enter the queue and the product drifts from its first sale. `INSERT IGNORE`: a product already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key.
 
 ## How is a refused package tried again?
 - A `failed` row with `order_id` 0 (refused before any order was written) is re-claimed when the feed hands the package back: one `UPDATE ... SET status='importing' WHERE status='failed' AND order_id=0`; only the pass that changed the row writes (`mp_import_claimed()`).
@@ -28,6 +29,6 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 - Symptom before the fix (#1021): after matching the product the package stayed "Failed" for ever; the import answered `skipped` and the queue's "Try again" only reset `marketplace_sync_queue`.
 
 ## How are customers matched?
-- Persons are NOT matched by relay email addresses (`mp_order_email_is_personal()`): marketplaces issue a relay address per order; matching on it would write every order to one customer.
+- Persons are NOT matched by relay email addresses (`mp_order_email_is_personal()`): marketplaces issue a relay address per order; matching on it would write every order to one customer. Trendyol's buyers arrive as `pf+…@trendyolmail.com`.
 
 Related: docs/memory/data/orders-table-write-traps.md

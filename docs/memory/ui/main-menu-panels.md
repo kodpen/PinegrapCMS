@@ -10,23 +10,25 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 
 ## Where do the entries and their permissions come from?
 - The panel body is the row's `data-bs-content` string, built in `output_menu()` under each entry's own gate (role, `USER_MANAGE_*`, ERP, workspace rights, module switches), drawn as it is. No gate is repeated or moved: a new entry goes into that string under its check, as before.
-- When this replaced the right-click menu, every row and entry was compared old against new for admin, designer, manager and seven basic users with different rights on five screens: the same rows, links, texts, icons, targets and controls.
+- When this replaced the right-click menu, old and new were compared for admin, designer, manager and seven basic users with different rights on five screens: the same rows, links, texts, icons, targets and controls.
 
 ## What happens on the collapsed rail?
 - No room for a panel, so the click widens the rail over the content to `--pg-rail-w-expanded` (`.pg-menu-peek` on `.software-container`); the grid column stays the rail's, nothing under it moves. The back arrow, Escape, a click outside the sidebar or focus leaving it put the rail back. Changing the menu state settles it (`settleMenuPanel()`).
-- In the phone drawer the panel opens in the drawer; the first Escape goes back, the next closes the drawer.
+- Focus that goes into a frame (a rich text editor) also puts it back: such a click or key never reaches this document, so `focusout` without a `relatedTarget` and `window` `blur` look for the frame as the active element on the next turn.
+- In the phone drawer the panel opens in the drawer; the first Escape goes back wherever the focus is (the drawer's own Escape handler checks for an open panel), the next closes the drawer.
 
 ## Does the panel stay open across pages?
 - While the labels show (expanded, drawer) the open panel is kept for the tab in `sessionStorage` (`pgMenuPanel`). The next page opens it again, without the slide, only when it is about that page: one of its entries is the page, or its row is the page's row. Otherwise it is forgotten. The rail never reopens one by itself.
 
 ## How are the current entry and the row's hint found?
-- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's and whose query parameters are all on the page with the same values (more of them wins, the same set best): `.pg-menu-current`, `aria-current="page"`. The page's own row (`.active`, server-drawn) shows that entry's name in `.pg-menu-hint` unless it is the row's own name.
+- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's and whose query parameters are all on the page with the same values (more of them wins, the same set best): `.pg-menu-current`, `aria-current="page"`, coloured through `--bs-emphasis-color-rgb` because `.link-body-emphasis` is `!important`. Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
+- `MENU_PANEL_KEY` is assigned above the menu section's init calls; beside the panel functions it was still undefined when `initMenuPanels()` ran.
 
 ## What else had to change with it?
 - The loading curtain skips clicks on `[data-pg-menu-panel]` rows (`pg_preloader_markup()`): they used to be skipped as `data-bs-toggle` links.
 - The rows carry `no-popover`: without the context toggle `pgBindTitlePopovers()` would have made their titles hover popovers; the browser's title hint names the icon on the rail.
 - The drawer's "close on any menu link" handler ignores panel rows.
-- The panel CSS outweighs the menu's `#menu .menu-body .bi { font-size: 1.3rem }`, which would size the entries (they carry `bi`).
+- The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (the entries carry `bi`).
 - The dashboard tip that said to right-click Panel now says to click it.
 
 Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/loading-curtain.md

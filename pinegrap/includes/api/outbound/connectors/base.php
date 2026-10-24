@@ -23,6 +23,11 @@
 //   push_stock_price($account, $rows)     one batch out, answers a task handle
 //   read_task($account, $task_id)         the result of an earlier batch
 //   pull_orders($account, $since)         their orders, ours to import
+//   order_stage($remote_status)           their status as open, shipped,
+//                                         delivered or cancelled
+//   approve_lines($account, $line_ids, $package)
+//                                         accept a package's lines (Picking);
+//                                         $package is the imported package
 //   update_order($account, $lines, $to)   move their order along
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values

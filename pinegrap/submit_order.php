@@ -6413,6 +6413,12 @@ function submit_order($type) {
                     AND (out_of_stock != '1')") or output_error('Query failed.');
 
             if (mysqli_affected_rows(db::$con) > 0) {
+                // The product shows as sold out from now on: every page the
+                // page cache keeps is made old once the order is through.
+                if (function_exists('pg_page_cache_mark_dirty')) {
+                    pg_page_cache_mark_dirty();
+                }
+
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 

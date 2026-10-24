@@ -54,6 +54,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_translate();   // 11.0.26
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
+	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
 
 }
 
@@ -1234,5 +1235,18 @@ function upgrade_2026_11_0_form_double_opt_in() {
 	install_add_column('custom_form_pages', 'double_opt_in', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Forms: a form that adds its sender to a contact group can now ask for confirmation by e-mail first (double opt-in). The switch is off on every form until it is turned on in the settings of the form.');
+
+}
+
+// The page cache's generation number (2026.11.0, 11.0.29;
+// includes/fn/page_cache.php). Pages kept on disk live in the folder of one
+// generation; a change that may alter what pages show raises the number, so
+// no copy made before it is served again. The router reads it from the config
+// row it reads anyway. The cache itself is off until switched on.
+function upgrade_2026_11_0_page_cache_generation() {
+
+	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
 
 }
