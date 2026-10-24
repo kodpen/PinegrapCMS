@@ -5,7 +5,7 @@ description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): whi
 
 ## Which comments are product reviews?
 - Comments with `item_type = 'product'`, or `'product_group'` when the group's `display_type` is `select` (a product with options): `pg_review_item_is_product()`, `pg_review_gate_applies()` in `includes/fn/reviews.php`. A browsing group's comments are about the category and are not gated.
-- They exist only on legacy `catalog detail` (and `catalog`) pages. A visual-designer product page has page-level comments (`item_type = ''`), so nothing there is gated or counted.
+- They exist only on legacy `catalog detail` (and `catalog`) pages; a post naming them elsewhere is refused ([[comment-thread-verify]]). A visual-designer product page has page-level comments (`item_type = ''`), so nothing there is gated or counted.
 
 ## Who may write one, and why?
 - Ticari Reklam Yönetmeliği 28/B (RG 33297, in force 2026-08-01): only buyers review; a review whose purchase was not verified may not be published or used in advertising; a refused review is told to its author at once.

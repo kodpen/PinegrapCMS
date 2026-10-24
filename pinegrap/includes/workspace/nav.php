@@ -62,6 +62,12 @@ function ws_nav_groups($viewer)
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
+    // Flows: staff draw them, and whoever may run a channel's live flow
+    // finds it here too (flows.php).
+    if (function_exists('ws_flows_nav_visible') && ws_flows_nav_visible($viewer)) {
+        $groups['work'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
+    }
+
     // Each person's own accounts on the MCP servers and their tool forms,
     // while a server is on (mcp_form.php).
     if (function_exists('ws_mcp_active_servers') && ws_mcp_active_servers()) {
@@ -92,7 +98,7 @@ function ws_nav_group_titles()
  * The rail and its drawer, for the left edge of a workspace screen.
  *
  * @param array  $viewer
- * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, mcp, settings)
+ * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, flows, mcp, settings)
  * @return string
  */
 function ws_screen_rail($viewer, $current)
@@ -132,7 +138,9 @@ function ws_screen_rail($viewer, $current)
     };
 
     $channel_link = function ($channel) use ($base) {
-        $icon = ws_channel_icon($channel);
+        // The brief's icon, with the mark of the channel's kind in its corner
+        // when it was chosen (channel_icons.php).
+        $icon = ws_icon_badged_html($channel['icon'], $channel['icon_badge'], 'ws-ch-icon');
         $count = '';
 
         if ($channel['mentions']) {
@@ -143,7 +151,7 @@ function ws_screen_rail($viewer, $current)
 
         return '<a class="ws-channel-link' . ($channel['unread'] ? ' ws-unread' : '') . ($channel['joined'] ? '' : ' ws-notjoined') . '" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '"'
             . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
-            . '<i class="bi ' . $icon . ' ws-ch-icon" aria-hidden="true"></i>'
+            . $icon
             . '<span class="ws-channel-name">' . h($channel['name']) . '</span>' . $count . '</a>';
     };
 
@@ -191,14 +199,16 @@ function ws_screen_rail($viewer, $current)
 
     $rail .= '<span class="ws-rail-sep" aria-hidden="true"></span>';
 
-    // The pinned channels by their first letter; the channel screen itself
-    // opens on the first of them.
+    // The pinned channels by their first letter, or by the icon they were
+    // given; the channel screen itself opens on the first of them.
     foreach (array_slice($pinned, 0, 8) as $channel) {
-        $initial = pg_initials_upper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1));
+        $initial = !empty($channel['icon_chosen'])
+            ? ws_icon_badged_html($channel['icon'], $channel['icon_badge'])
+            : h(pg_initials_upper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1)));
 
         $rail .= '<a class="ws-rail-item ws-rail-channel" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '" title="#' . h($channel['name']) . '" aria-label="#' . h($channel['name']) . '"'
             . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
-            . '<span class="ws-rail-initial">' . h($initial) . '</span>'
+            . '<span class="ws-rail-initial">' . $initial . '</span>'
             . (($channel['unread'] || $channel['mentions']) ? '<span class="ws-rail-dot' . ($channel['mentions'] ? ' ws-rail-dot-mention' : '') . '"></span>' : '')
             . '</a>';
     }

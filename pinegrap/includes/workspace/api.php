@@ -37,10 +37,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -177,6 +179,11 @@ function ws_openapi_objects()
         'WorkspaceDecisionChange'   => 'ws_api_decision_change_schema',
         'WorkspaceDecisionFile'     => 'ws_api_decision_file_schema',
         'WorkspaceNoteSource'       => 'ws_api_note_source_schema',
+        'WorkspaceFlow'             => 'ws_api_flow_schema',
+        'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
+        'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
+        'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
+        'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
     );
 }
 
@@ -216,6 +223,16 @@ function ws_api_routes()
         array('name' => 'meeting_url', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'The video call: a Google Meet, Teams, Zoom, Jitsi or other http(s) address. Empty clears it. A timed item with one tells its people ten minutes before it starts.'),
     );
 
+    // The parts of a flow's draft (includes/workspace/flows.php); a change
+    // replaces each part sent as a whole.
+    $flow_fields = array(
+        array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'description' => 'What the flow is called. Runs of spaces are made one.'),
+        array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'Its home: a public or private channel the owner of the application reads, whose readers may run the flow once it is live. 0 for none, a flow only its owner sees.'),
+        array('name' => 'nodes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'kind' => 'string', 'label' => 'string', 'x' => 'integer', 'y' => 'integer', 'config' => 'object'), 'max_items' => 1000, 'description' => 'The boxes, as objects of {id, kind, label, x, y, config}. id: small letters, digits and _, starting with a letter, at most 32 characters, once in the flow. kind: manual, the box that starts the flow by hand (config {subject}: empty, or the kind of record a run is about, such as order or contact); task, which opens a task and waits for it (config {title, up to 200 characters; description; assignees, up to 20 user ids, or assign: creator, whoever starts the run, department_lead, department:ID, user:ID or none; due_in, days from when the box is reached, 0-3650, or empty for none; priority: low, normal, high or urgent}); or end. x and y place it on the canvas. Replaces every box of the draft; left out of a change, the boxes are kept.'),
+        array('name' => 'edges', 'in' => 'body', 'type' => 'list', 'of' => array('from' => 'string', 'to' => 'string', 'on' => 'string'), 'max_items' => 5000, 'description' => 'The arrows, as objects of {from, to, on}: from the box with the id from to the box with the id to, taken when from ends on the outcome on: next for a start box, done or cancelled for a task; left out, the box\'s first. A box with several arrows in waits for all of them. Replaces every arrow of the draft; left out of a change, the arrows are kept.'),
+        array('name' => 'notes', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer'), 'max_items' => 1000, 'description' => 'Notes on the canvas, as objects of {id, text, x, y, w, h}, up to 2,000 characters each; they are never checked. Replaces every note of the draft; left out of a change, the notes are kept.'),
+    );
+
     $routes = array(
 
         array(
@@ -226,7 +243,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_list',
             'returns'     => array('list' => 'WorkspaceChannel'),
             'summary'     => 'List workspace channels',
-            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
+            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). color is the channel\'s colour from the palette, null for none; icon is the Bootstrap Icons class it is drawn with: the one chosen for it when icon_chosen is true (a private, guest or customer channel then shows its mark in the corner), else the one its kind gives. active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
             'params'      => array(
                 array('name' => 'archived', 'in' => 'query', 'type' => 'bool', 'description' => 'The archived channels instead.'),
                 array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the channels tied to this customer.'),
@@ -251,6 +268,8 @@ function ws_api_routes()
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
                 array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a channel group shows it; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty keeps the icon the kind gives (a hash, or a lock for a private channel).'),
             ),
         ),
 
@@ -270,6 +289,8 @@ function ws_api_routes()
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 80),
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Empty clears it.'),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty brings back the icon the kind gives.'),
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
             ),
         ),
@@ -1691,6 +1712,146 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'template_id', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'required' => true, 'description' => 'An id from GET /workspace/templates.'),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_list',
+            'returns'     => array('list' => 'WorkspaceFlow'),
+            'summary'     => 'List flows',
+            'description' => 'The flows of the owner of the application - drafts, live and paused ones - and the live flows of others whose home channel (channel_id) the owner reads, which the owner may run; the latest changed first. A flow is seen by nobody but its owner until it is published with a home channel, administrators included. access says edit (the owner\'s own; building flows is for staff in the team) or run. version is the live version, null before the first publish. draft, graph and problems are null in the listing; GET /workspace/flows/{id} carries them. Deleted flows are not listed.',
+            'params'      => array(
+                array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, shared the ones of others.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_get',
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'One flow, with its graph',
+            'description' => 'A flow the owner of the application reaches. To its owner it carries draft, the graph being edited, with draft_rev, the number to send back with a change, and problems, what stops the draft from being published (an empty list when nothing does): each has a code (too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle, unreachable), the box (node) or the place of the arrow in edges (edge) it is about, and a text to show. graph is the live version as it was published, null before the first publish. To somebody who may only run the flow, draft and problems are null.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_create',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'status'      => 201,
+            'summary'     => 'Draft a flow',
+            'description' => 'Starts a new draft flow of the owner of the application, as the flow canvas does. Building flows is for staff in the team: anybody else is refused with 403. A draft never runs, so an application key or an OAuth connection may write one - an assistant can lay a process out for the person to look at and publish. It may hold problems, which the answer lists instead of refusing it; a dry run answers them too. A draft is at most ' . (int) (WS_FLOW_GRAPH_BYTES / 1024) . ' KB of JSON, a published flow at most ' . WS_FLOW_MAX_NODES . ' boxes, and one person keeps at most ' . WS_FLOW_MAX_PER_OWNER . ' flows. Send an Idempotency-Key so a retried call does not create two flows.',
+            'params'      => array_merge(array(
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'required' => true, 'description' => 'What the flow is called. Runs of spaces are made one.'),
+            ), array_slice($flow_fields, 1)),
+        ),
+
+        array(
+            'id'           => 'workspace.flows.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/flows/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_flows_update',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceFlow',
+            'summary'      => 'Change a flow\'s draft',
+            'description'  => 'Changes only the fields sent, on a flow of the owner\'s own (access edit): its name, its home channel, or the parts of its draft - nodes, edges and notes each replace that part as a whole, and a part left out is kept. draft_rev is the one the flow was read at: when the draft was saved meanwhile from another screen or device the change is refused with 409 changed_meanwhile; the answer carries the new draft_rev. A live flow goes on running its published version until the draft is published again. An application key or an OAuth connection may change a draft. PATCH is accepted beside POST.',
+            'params'       => array_merge(array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'draft_rev', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The draft_rev the flow was read at.'),
+            ), $flow_fields),
+        ),
+
+        // Published, a flow later opens tasks in the person's own name, so it
+        // is published from their team devices session only; an MCP client's
+        // OAuth connection is refused, and is offered no tool for it. Drafting
+        // stays a tool.
+        array(
+            'id'          => 'workspace.flows.publish',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/publish',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_publish',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Publish a flow',
+            'description' => 'Publishes the draft of a flow of the owner\'s own as its next version and makes the flow live; earlier versions are kept for the runs that started on them. A published flow later opens tasks in the person\'s own name, so only a team devices session (a Bearer token from POST /auth/login) may publish one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. A draft with problems is refused with 422 (GET /workspace/flows/{id} lists them), and so is a task box with people on it the owner may not give work to. Send draft_rev, the one the draft was read at, to have the publish refused with 409 changed_meanwhile when the draft changed since; a second publish of the same moment is refused with 409 too. Publishing a paused flow makes it live again. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'draft_rev', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The draft_rev the draft was read at.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.pause',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/pause',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_pause',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Pause a flow',
+            'description' => 'Pauses a live flow of the owner\'s own: nothing starts it until it is published again, and its versions stay as they are. A flow that is not live is refused with 422. The activity log gets a line.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/flows/{id}',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Delete a flow',
+            'description' => 'Deletes a flow of the owner\'s own, in any state: nobody reaches it any more, and the answer is the flow as it was, with status binned. It cannot be undone through the API. The activity log gets a line. POST /workspace/flows/{id}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flows.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/flows/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flows_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceFlow',
+            'summary'     => 'Delete a flow, addressed as a POST',
+            'description' => 'The same as DELETE /workspace/flows/{id}, for clients and servers that cannot send DELETE. It has an address of its own because POST /workspace/flows/{id} is the change.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.catalogue',
+            'method'      => 'GET',
+            'path'        => '/workspace/mcp-servers/catalogue',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mcp_catalogue',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceMcpConnector'),
+            'summary'     => 'Ready-made MCP connectors',
+            'description' => 'The other services\' MCP servers the Workspace Settings add with one click, for an application whose owner is an administrator (403 for anybody else). auth says how the site signs in: none (the server answers without an account), oauth (the service registers the site on its own and an administrator signs in once) or bearer (a token made on token_url). alias is the one offered when it is free; tools read_only means the first read of the tools turns on the ones the server marks as reading only. added says whether the site already has a server at url, under server_alias. The list is bundled with the site, not fetched. Adding a server, its credential and its sign-in are done in the Workspace Settings only; no MCP tool lists this.',
+            'params'      => array(),
         ),
 
     );
