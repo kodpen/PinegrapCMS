@@ -793,6 +793,9 @@ function mp_sync_orders_account($account, &$summary) {
 	// never calls the marketplace back, so they wait for this pass.
 	mp_sync_approve_pending($account);
 
+	// Parcels the shop sent with its own carrier are reported after that.
+	mp_sync_ship_pending($account);
+
 	mp_account_outcome($account_id, true);
 
 }
@@ -853,6 +856,210 @@ function mp_sync_package_from_row($row) {
 		'remote_status'     => isset($row['remote_status']) ? (string)$row['remote_status'] : '',
 		'lines'             => is_array($lines) ? $lines : array()
 	);
+
+}
+
+// Report the packages the shop shipped with its own carrier.
+//
+// Only for an account that says it ships itself (mp_account_ships_itself());
+// otherwise the marketplace's carrier collects the parcel and its number comes
+// in with the package. A candidate is a package imported in the last thirty
+// days, with an order, that the marketplace still has as not shipped and that
+// carries no error. It is reported once the order has a parcel this shop
+// recorded (order screen, API, carrier, CSV) whose tracking link is known -
+// the link the order screen shows. A package with no such parcel yet makes no
+// call; the next pass looks again.
+//
+// A package still Created is accepted (Picking) first, whatever the account's
+// auto-accept says: shipping it is the stronger promise, and their status
+// page has Picking come before the later statuses.
+//
+// A refusal is written on the map row, which takes the package out of this
+// pass for good and shows the reason on the Imported orders card; the
+// operator ships it in the marketplace's panel. A failure worth repeating
+// (their outage, a rate limit) writes nothing, so the next pass tries again.
+//
+// The candidates are read two hundred at a time, oldest first, so that
+// packages waiting for their parcel do not hide the ones already shipped
+// behind them, and at most fifty calls are made in a pass.
+function mp_sync_ship_pending($account) {
+
+	if (!mp_can($account['provider'], 'ship_package') || !mp_account_ships_itself($account)) {
+
+		return;
+
+	}
+
+	// Before the parcel rows carry their source, a number the marketplace
+	// handed over cannot be told from one the shop recorded, and theirs must
+	// never be sent back as the shop's carrier.
+	if (!function_exists('pg_shipment_rows_ready') || !pg_shipment_rows_ready()) {
+
+		return;
+
+	}
+
+	$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, lines_json
+		FROM marketplace_order_map
+		WHERE (account_id = '" . e((int)$account['id']) . "')
+		  AND (status = 'imported')
+		  AND (order_id > 0)
+		  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
+		  AND (last_error = '')
+		  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
+		ORDER BY id ASC
+		LIMIT 200");
+
+	$default = pg_shipping_default_carrier();
+
+	$calls = 50;
+
+	foreach ($rows as $row) {
+
+		if ($calls <= 0) {
+
+			return;
+
+		}
+
+		$link = null;
+
+		foreach ((array) db_items("SELECT id, shipping_method_code FROM ship_tos
+			WHERE order_id = '" . e((int)$row['order_id']) . "' ORDER BY id ASC") as $ship_to) {
+
+			$link = mp_sync_shipment_link(pg_shipment_rows((int)$ship_to['id']), (string)$ship_to['shipping_method_code'], $default);
+
+			if ($link !== null) {
+
+				break;
+
+			}
+
+		}
+
+		if ($link === null) {
+
+			continue;
+
+		}
+
+		$map_id = (int) $row['id'];
+
+		$package = mp_sync_package_from_row($row);
+
+		if ($package['remote_status'] === 'Created') {
+
+			$line_ids = array();
+
+			foreach ($package['lines'] as $line) {
+
+				if (isset($line['remote_line_id']) && (string)$line['remote_line_id'] !== '') {
+
+					$line_ids[] = (string)$line['remote_line_id'];
+
+				}
+
+			}
+
+			$calls--;
+
+			$accepted = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
+
+			if (!$accepted['ok']) {
+
+				if (empty($accepted['retry'])) {
+
+					db("UPDATE marketplace_order_map
+						SET last_error = '" . e(mb_substr((string)$accepted['error'], 0, 500)) . "',
+							updated_timestamp = UNIX_TIMESTAMP()
+						WHERE id = '" . e($map_id) . "'");
+
+				}
+
+				continue;
+
+			}
+
+			// Written at once: if the shipment below has to wait for the next
+			// pass, that pass must not send Picking for a package that is
+			// Picking already - they refuse it, and the refusal would stop
+			// the shipment.
+			db("UPDATE marketplace_order_map
+				SET remote_status = 'Picking', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . e($map_id) . "'");
+
+			$package['remote_status'] = 'Picking';
+
+		}
+
+		$calls--;
+
+		$shipped = mp_call($account['provider'], 'ship_package', array($account, $package, $link['url']));
+
+		if ($shipped['ok']) {
+
+			// Shipped here at once, because the marketplace turns the package
+			// Shipped as it accepts the link; the next pull confirms it and
+			// brings the cargo number the marketplace gives it, which is
+			// recorded as a parcel of its own (source marketplace).
+			db("UPDATE marketplace_order_map
+				SET remote_status = 'Shipped', approved = 1, last_error = '', updated_timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . e($map_id) . "'");
+
+			log_activity(lang(array(
+				'string' => 'Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.',
+				'vars'   => array((string)$row['remote_order_id'], mp_provider_name($account['provider']), $link['url'])
+			)), 'system');
+
+			continue;
+
+		}
+
+		if (empty($shipped['retry'])) {
+
+			db("UPDATE marketplace_order_map
+				SET last_error = '" . e(mb_substr((string)$shipped['error'], 0, 500)) . "',
+					updated_timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . e($map_id) . "'");
+
+		}
+
+	}
+
+}
+
+// The parcel whose tracking link reports a package shipped, or null.
+//
+// $rows are an address's parcels (pg_shipment_rows()), $method its shipping
+// method code, $default the site's default carrier. The first parcel with a
+// number and a link is taken, the link being the one the order screen shows
+// (pg_shipment_view(): the row's own page, else its carrier's, else the one
+// the method, the default or the number's shape points to). A parcel the
+// marketplace handed over (source marketplace) is never taken: that number is
+// theirs, and sending it back would report their carrier as the shop's.
+//
+// Answers array(number, url).
+function mp_sync_shipment_link($rows, $method, $default) {
+
+	foreach ((array)$rows as $row) {
+
+		if (!is_array($row) || (isset($row['source']) && (string)$row['source'] === 'marketplace')) {
+
+			continue;
+
+		}
+
+		$view = pg_shipment_view($row, $method, $default);
+
+		if ($view['number'] !== '' && $view['url'] !== '') {
+
+			return array('number' => $view['number'], 'url' => $view['url']);
+
+		}
+
+	}
+
+	return null;
 
 }
 
