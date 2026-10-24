@@ -7,9 +7,9 @@ description: Which system widget records carry the front-end edit pencil (produc
 - `catalog_listing`: every product card and product group card (`edit_product.php`, `edit_product_group.php`, tone `ecommerce`, `pg_sw_can_edit_products()`).
 - `catalog_item_view`: the product, or the group on a variant group's page.
 - `form_list_view`: every record row; `form_item_view`: the record when the design places no `^^__edit_url^^` button (`edit_submitted_form.php`, tone `forms`, `pg_sw_can_edit_submitted_forms()`).
-- `calendar_view`: every event row of the loop (month, week and upcoming views); `calendar_event_view`: the event, on the widget's first element (`edit_calendar_event.php`, tone `calendar`, `_pg_sw_calendar_event_edit_chip()`).
-- Comments on a record or classic page: `get_page_content.php` (`edit_comment.php`, tone `page`).
-- None draws in a search-index, SEO, canvas/Preview (`pg_seo_rendering(true)`) or e-mail render: `pg_sw_edit_chips_on()`, rule `pg_sw_edit_chips_rule()` (`tests/widget_edit_chip_gate_test.php`). `get_page_content()` keeps `pg_sw_render_context()['email']` for its whole render, so the comment pencil drawn after the widget pass stays out too (campaign, form and order e-mails carried staff pencils).
+- `calendar_view`: every event row of the loop (month, week and upcoming views); `calendar_event_view`: the event, on the widget's first element (`edit_calendar_event.php`, tone `calendar`, `_pg_sw_calendar_event_edit_chip()`; #1553).
+- Comments on a Bootstrap visual-design page (its own or a record's): `get_page_content.php` (`edit_comment.php`, tone `page`).
+- None draws in a search-index, SEO, canvas/Preview (`pg_seo_rendering(true)`) or e-mail render: `pg_sw_edit_chips_on()`, rule `pg_sw_edit_chips_rule()` (`tests/widget_edit_chip_gate_test.php`). `get_page_content()` keeps `pg_sw_render_context()['email']` for its whole render, so the comment pencil drawn after the widget pass stays out too (campaign, form and order e-mails carried staff pencils; #1553).
 
 ## Who sees the pencil on a calendar event?
 - The users `edit_calendar_event.php` lets in: role 0-2 always; role 3 only with the calendars right, one of the event's calendars among their own (`users_calendars_xref`) and, since a page shows only published events, the right to publish events.
