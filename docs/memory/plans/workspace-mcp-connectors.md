@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-connectors
-description: Plan (2026-10-23, not started, answers 1, 3, 4 given): Workspace MCP client as simple as Claude's connectors: protocol and card fixes, bundled catalogue, URL-only add, API
+description: Plan (2026-10-23, steps 1, 3-6 in PR #1463, answers 1, 3, 4 given): Workspace MCP client as simple as Claude's connectors: protocol and card fixes, bundled catalogue, URL-only add, API
 ---
 
 ## What is asked? (owner, 2026-10-23)
