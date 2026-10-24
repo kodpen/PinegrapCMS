@@ -2277,6 +2277,164 @@ function decode_json($content)
 {
     return json_decode($content, true);
 }
+
+// Finds the keys written more than once in one object of a JSON text.
+// json_decode() keeps the last copy without a word, so a second copy of a
+// tr.json key with another value hides a translation from every check that
+// reads the decoded file (tools/check_lang.php reports what this returns).
+//
+// Each duplicate comes back once, in the order its first copy appears:
+// array('key' => decoded key, 'lines' => line of every copy,
+// 'values_differ' => whether any copy's value differs from the first once
+// decoded). Keys of different objects never clash; "ç" and "ç" are one
+// key, as json_decode() reads them. The text is expected to be valid JSON
+// (check json_decode() first): reading stops at a fault, and only the objects
+// closed before it are reported.
+function pg_json_duplicate_keys($json)
+{
+    $json = (string) $json;
+    $length = strlen($json);
+    $position = 0;
+    $line = 1;
+    $sequence = 0;
+
+    // One frame per open object or array. An object frame keeps every copy of
+    // each key read in it as array(sequence, line, value start, value end),
+    // the key whose value comes next, and whether the next string is a key.
+    $frames = array();
+    $found = array();
+
+    while ($position < $length) {
+
+        $blank = strspn($json, " \t\r\n", $position);
+
+        // Valid JSON has its line breaks only between tokens. substr_count()
+        // refuses a zero length before PHP 8.0, hence the guard.
+        if ($blank > 0) {
+            $line += substr_count($json, "\n", $position, $blank);
+            $position += $blank;
+            continue;
+        }
+
+        $start = $position;
+        $character = $json[$position];
+        $top = count($frames) - 1;
+
+        if ($character === '"') {
+
+            // Possessive quantifiers: a long string full of escapes cannot
+            // run PCRE out of backtracking room.
+            if (!preg_match('/"[^"\\\\]*+(?:\\\\.[^"\\\\]*+)*+"/As', $json, $match, 0, $position)) {
+                break;
+            }
+
+            $position += strlen($match[0]);
+
+            if (($top >= 0) && $frames[$top]['object'] && $frames[$top]['expect_key']) {
+
+                $key = (strpos($match[0], '\\') === false) ? (string) substr($match[0], 1, -1) : json_decode($match[0]);
+
+                if (!is_string($key)) {
+                    break;
+                }
+
+                $frames[$top]['keys'][$key][] = array($sequence++, $line, null, null);
+                $frames[$top]['pending'] = $key;
+                $frames[$top]['expect_key'] = false;
+
+                continue;
+            }
+
+        } elseif (($character === '{') || ($character === '[')) {
+
+            $frames[] = array(
+                'object' => ($character === '{'),
+                'start' => $position,
+                'keys' => array(),
+                'pending' => null,
+                'expect_key' => true,
+            );
+
+            $position++;
+
+            continue;
+
+        } elseif (($character === '}') || ($character === ']')) {
+
+            if ($top < 0) {
+                break;
+            }
+
+            $frame = array_pop($frames);
+            $start = $frame['start'];
+            $position++;
+
+            foreach ($frame['keys'] as $key => $copies) {
+
+                if (count($copies) < 2) {
+                    continue;
+                }
+
+                $lines = array();
+                $values = array();
+
+                foreach ($copies as $copy) {
+                    $lines[] = $copy[1];
+                    $values[] = ($copy[2] === null) ? null : json_decode(substr($json, $copy[2], $copy[3] - $copy[2]), true);
+                }
+
+                $values_differ = false;
+
+                foreach ($values as $value) {
+                    if ($value !== $values[0]) {
+                        $values_differ = true;
+                        break;
+                    }
+                }
+
+                $found[$copies[0][0]] = array('key' => (string) $key, 'lines' => $lines, 'values_differ' => $values_differ);
+            }
+
+        } elseif ($character === ',') {
+
+            if (($top >= 0) && $frames[$top]['object']) {
+                $frames[$top]['expect_key'] = true;
+            }
+
+            $position++;
+
+            continue;
+
+        } elseif ($character === ':') {
+
+            $position++;
+
+            continue;
+
+        } else {
+
+            // A number, true, false or null.
+            $position += max(1, strcspn($json, " \t\r\n{}[]:,\"", $position));
+
+        }
+
+        // A value ended between $start and $position: it belongs to the key
+        // waiting in the enclosing object, if there is one.
+        $top = count($frames) - 1;
+
+        if (($top >= 0) && $frames[$top]['object'] && ($frames[$top]['pending'] !== null)) {
+            $key = $frames[$top]['pending'];
+            $last = count($frames[$top]['keys'][$key]) - 1;
+            $frames[$top]['keys'][$key][$last][2] = $start;
+            $frames[$top]['keys'][$key][$last][3] = $position;
+            $frames[$top]['pending'] = null;
+        }
+    }
+
+    ksort($found);
+
+    return array_values($found);
+}
 // Create function that is used to encode the path part of a URL (e.g. /example/example)
 // This is used in order to prepare valid URLs for page names or file names
 // that might contain special characters.  We do not encode forward slashes
