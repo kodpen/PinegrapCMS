@@ -32,6 +32,6 @@ description: Columns, joins and edit-screen URLs for page, pregion, cregion, dre
 
 ## Where are `ads` and `comments` edited?
 - `ads`: reachable only when `ADS === true`; edit `edit_ad.php?id={id}`.
-- `comments`: edit `edit_comment.php?id={id}`.
+- `comments`: edit `edit_comment.php?id={id}`. Thread key, reply column and indexes: `comments-table.md`.
 
 Related: docs/memory/designer/multi-page-design-model.md

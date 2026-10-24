@@ -16,6 +16,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Delete inbox lines only with `ws_inbox_delete()` and call `ws_inbox_reach_lost()` / `_regained()` when access changes, or `changed_since` misses it (`workspace-api-sync-inbox.md`).
 - Call a panel function that logs with `$_SESSION['sessionusername']` inside `ws_api_as_owner()`, or its Site Log line has no name (`workspace-api-endpoint-rules.md`).
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
+- Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -26,6 +27,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, what is planned
+- workspace-assistant-keys.md: "Create Claude's key" and "Reset secret" on the Claude card: the key made, its scopes (five reads left out), the config link, who sees it, no-grace reset, one-time window
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
@@ -42,6 +44,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
 - workspace-record-changes.md: How the Workspace writes site records: changes.php pipeline and callers, Recycle Bin guard, stock flag, money ceilings, whose name the sentences carry, writes that die half way
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
+- workspace-record-kinds.md: Every list a Workspace record kind (order, product, contact, invoice...) must be in, the kinds each leaves out and why, and the test that names the list a new kind was missed in
+- workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message

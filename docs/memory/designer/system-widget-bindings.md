@@ -13,6 +13,7 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 | `_bindings.text=X` | content heading/paragraph/text, semantic | writes backend token X into text |
 | `_bindings.src=X` | content[image], semantic `<img>` | token to `src` |
 | `_bindings.href=X` | content[link], semantic `<a>` | replaces href with token URL |
+| `_bindings.href=__page_link` + `_bindParams.href` | link in a form list/detail | opens another page with record values ([[record-value-page-links]]) |
 | `_bindings.action=X` | semantic `<button>`/`<a>`, content[link], component[btn] | binds to an action (submit, navigate, qty stepper, remove) |
 | `_bindings.eo_field=X` | semantic input/select/textarea | Express Order form field (name, id, value pre-fill) |
 | `_bindings.value=X` | semantic `<input>` | system-managed input in cart loop (e.g. cart_qty) |

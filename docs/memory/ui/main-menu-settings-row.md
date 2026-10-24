@@ -12,10 +12,13 @@ description: The Site Settings row of the main menu (slot 20): two levels of pan
 - On a settings page `fromHash()` leaves a `#pgset-…` that names a card of the page alone (many of them are also old-link keys in the anchor map), so a section link lands on the page and a same-page one scrolls; on a hashchange `markMenuCurrent()` runs again.
 
 ## Who sees it, and which entries?
-- The same people and the same entries as the modal's sidebar, from the same two functions: the row only for role <= 2 (`pg_settings_modal_markup()` and the pages' `validate_area_access($user, 'manager')`), each tool under its own gate inside `pg_settings_tool_groups($user)` (Repair Software for role 0, Cloudflare for role < 1 with its keys, the Store Lists group with `USER_MANAGE_ECOMMERCE`, ...). No gate is written a second time in the menu.
+- The same people and the same entries as the modal's sidebar, from the same two functions: the row only for role <= 2 (`pg_settings_modal_markup()` and the pages' `validate_area_access($user, 'manager')`), each tool under its own gate inside `pg_settings_tool_groups($user)` (Repair Software for role 0, Check for Updates and Repair Software not on a hosted site (`pg_hosted()`), Cloudflare for role < 1 with its keys, the Store Lists group with `USER_MANAGE_ECOMMERCE`, ...). No gate is written a second time in the menu.
+
+## What else does a category panel list?
+- Under its sections and a divider, the screens that go with the category without being settings pages: `pg_settings_category_screens($user)` (registry), each under its screen's gate. Translations under Languages and Translation (role <= 2), Private Label Branding under Appearance (role 0). They carry no `data-pg-settings-page`. Why: `main-menu-entry-gates.md`.
 
 ## Which screens mark it active?
-- The category pages and the screens of its tool panels (`view_log.php`, `smtp_settings.php`, `backups.php`, ...), in `output_menu()`'s switch; a new category or tool screen needs its `case` there. `view_sessions.php` stays unmarked: it is in the Users panel too.
+- The category pages, their screens (`translations.php`, `private_label.php`) and the screens of its tool panels (`view_log.php`, `smtp_settings.php`, `backups.php`, ...), in `output_menu()`'s switch; a new one needs its `case` there. `view_sessions.php` stays unmarked: it is in the Users panel too. The Store Lists screens mark it for role <= 2 and the shipping row (15) for role 3, who has no Site Settings row.
 
 ## How do the two levels behave?
 - A second-level panel's `data-pg-menu-row` is the first-level entry's id (`menu_entry_20_<cat>`); `backMenuPanel()` sees that the entry sits in a panel and opens that panel (sliding in from the left, `.pg-menu-returning`) instead of the rows.

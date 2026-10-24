@@ -97,8 +97,10 @@ function test_workspace_audit_target_delete_and_recycle()
 }
 
 // An order moved to cancelled is a "cancel" and one taken out of cancelled a
-// "restore", as the order screen and the API record them; any other change
-// to an order, a cancelled one included, is an "update".
+// "restore", as the order screen and the API record them: the move
+// pg_order_status_move() names, which the writer carries out. Any other
+// change to an order, a cancelled one included, is an "update"; a move the
+// rule refuses is never written, so its "update" is never recorded.
 function test_workspace_audit_target_order_cancel_and_restore()
 {
 	$ok = array('ok' => true, 'error' => '', 'id' => 7);
@@ -116,7 +118,10 @@ function test_workspace_audit_target_order_cancel_and_restore()
 
 	pg_assert_same($restore, ws_change_audit_target('order', 'update', $ok, array('status' => 'complete'), $cancelled), 'cancelled to complete');
 	pg_assert_same($restore, ws_change_audit_target('order', 'update', $ok, array('status' => 'exported', 'notes' => 'x'), $cancelled), 'cancelled to exported');
-	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'incomplete'), $cancelled), 'back to a basket is no restore (the API refuses it)');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'incomplete'), $cancelled), 'back to a basket is no restore (the rule refuses it)');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled'), array('id' => 7, 'status' => 'incomplete')), 'a basket is not cancelled (the rule refuses it)');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'canceled'), $cancelled), 'the single-L spelling is no restore');
+	pg_assert_same($cancel, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled'), array('id' => 7, 'status' => '')), 'a lost status cancelled');
 
 	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'exported'), $complete), 'complete to exported');
 	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('notes' => 'x'), $complete), 'a note');
