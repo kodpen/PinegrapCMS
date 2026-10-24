@@ -96,8 +96,8 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
-- erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: its status line, the three connect steps, what Connect answers (fill, status read with the token's owner), the company number on save
-- erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect endpoint, company id discovery
+- erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, connecting another account
+- erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, a code token's owner stamp, the Connect endpoint, company id
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live

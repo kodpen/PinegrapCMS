@@ -60,13 +60,9 @@ if (!function_exists('parasut_connect_with_code')) {
     $ok = !empty($result['success']);
 
     if ($ok) {
-        $lines[] = lang(array(
-            'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
-            'vars' => array(
-                ((string) $result['email'] !== '') ? (string) $result['email'] : lang('the authorized user'),
-                ((string) $result['company_name'] !== '') ? $result['company_name'] . ' (' . $result['company_id'] . ')' : (string) $result['company_id'],
-            ),
-        ));
+        // Whom and which company; also when the saved company was given up
+        // for the authorized user's one company.
+        $lines = array_merge($lines, parasut_connect_lines($result));
 
         $fill = array(
             'parasut_company_id' => (string) $result['company_id'],

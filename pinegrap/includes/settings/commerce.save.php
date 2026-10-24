@@ -594,13 +594,9 @@ function pg_parasut_credentials_for_save()
         $parasut_connected = parasut_connect_with_code($parasut_code, $parasut_text('parasut_client_id'), $parasut_text('parasut_client_secret'), $parasut_text('parasut_company_id'));
 
         if (!empty($parasut_connected['success'])) {
-            $liveform->add_notice(h(lang(array(
-                'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
-                'vars' => array(
-                    ((string) $parasut_connected['email'] !== '') ? (string) $parasut_connected['email'] : lang('the authorized user'),
-                    ((string) $parasut_connected['company_name'] !== '') ? $parasut_connected['company_name'] . ' (' . $parasut_connected['company_id'] . ')' : (string) $parasut_connected['company_id'],
-                ),
-            ))));
+            foreach (parasut_connect_lines($parasut_connected) as $parasut_line) {
+                $liveform->add_notice(h($parasut_line));
+            }
 
             log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $parasut_connected['company_id'])),
                 (string) ($_SESSION['sessionusername'] ?? ''));

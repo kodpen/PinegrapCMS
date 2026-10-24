@@ -434,11 +434,26 @@ function _parasut_credentials($fresh = false)
         return $credentials;
     }
 
-    $credentials = ['client_secret' => '', 'password' => ''];
-
-    $stored = $fresh
+    $credentials = _parasut_credentials_decode($fresh
         ? (string) db_value("SELECT parasut_credentials_enc FROM config LIMIT 1")
-        : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : '');
+        : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : ''));
+
+    return $credentials;
+}
+
+/**
+ * One config.parasut_credentials_enc value decoded: what _parasut_credentials()
+ * reads, for a caller holding the column's value (the settings card).
+ *
+ * @param string $stored  "<ciphertext>:<iv>", or ''
+ * @return array ['client_secret' => string, 'password' => string]; empty
+ *               strings for a value that is not there or cannot be read
+ */
+function _parasut_credentials_decode($stored)
+{
+    $credentials = ['client_secret' => '', 'password' => ''];
+    $stored = (string) $stored;
+
     if ($stored === '' || strpos($stored, ':') === false) {
         return $credentials;
     }
@@ -453,6 +468,39 @@ function _parasut_credentials($fresh = false)
     }
 
     return $credentials;
+}
+
+/**
+ * The placeholder and the help text of the settings card's Client Secret and
+ * Password boxes, each from what is stored for it. A connection made with an
+ * authorization code stores the client secret alone; one "Saved" mark for
+ * both boxes told the operator a password was on file to fall back on when
+ * there was none.
+ *
+ * @param array $credentials  _parasut_credentials_decode() output
+ * @return array ['secret' => ['placeholder' => string, 'help' => string],
+ *                'password' => ['placeholder' => string, 'help' => string]]
+ */
+function parasut_credential_boxes($credentials)
+{
+    $credentials = (array) $credentials;
+    $secret = (trim((string) ($credentials['client_secret'] ?? '')) !== '');
+    $password = (trim((string) ($credentials['password'] ?? '')) !== '');
+
+    return [
+        'secret' => [
+            'placeholder' => $secret ? lang('Saved') : '',
+            'help' => $secret
+                ? lang('The client secret is stored and is not shown. Leave the box empty to keep it.')
+                : lang('The client secret is stored encrypted and is never shown again after saving.'),
+        ],
+        'password' => [
+            'placeholder' => $password ? lang('Saved') : '',
+            'help' => $password
+                ? lang('The password is stored and is not shown. Leave the box empty to keep it.')
+                : lang('No password is stored. One typed here is stored encrypted and is never shown again after saving.'),
+        ],
+    ];
 }
 
 /**
@@ -492,21 +540,66 @@ function _parasut_credentials_store($values)
  * Which Parasut account a cached token belongs to. A token kept from another
  * company, client or user is not offered after the settings change.
  *
+ * A token from the authorization code is the account of whoever signed in
+ * to Paraşüt; the user name box serves the password grant only. Its stamp
+ * leaves the user name out, so typing, changing or clearing that box (Save
+ * with a code writes it before the code is exchanged) does not orphan the
+ * token. Its stamp is the one a code token got while the box was empty.
+ *
  * The connect endpoint computes the owner for the values it has just saved,
  * which the constants of the running request do not know yet.
  *
  * @param string|null $company_id  PARASUT_COMPANY_ID when null
  * @param string|null $client_id   PARASUT_CLIENT_ID when null
- * @param string|null $username    PARASUT_USERNAME when null
+ * @param string|null $username    PARASUT_USERNAME when null; not used for a code token
+ * @param string      $grant       The token's grant; 'code' leaves the user name out
  * @return string
  */
-function _parasut_token_owner($company_id = null, $client_id = null, $username = null)
+function _parasut_token_owner($company_id = null, $client_id = null, $username = null, $grant = '')
 {
     $company_id = ($company_id === null) ? (defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : $company_id;
     $client_id = ($client_id === null) ? (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '') : $client_id;
-    $username = ($username === null) ? (defined('PARASUT_USERNAME') ? PARASUT_USERNAME : '') : $username;
+
+    if ((string) $grant === 'code') {
+        $username = '';
+    } else {
+        $username = ($username === null) ? (defined('PARASUT_USERNAME') ? PARASUT_USERNAME : '') : $username;
+    }
 
     return md5((string) $company_id . '|' . (string) $client_id . '|' . (string) $username);
+}
+
+/**
+ * Whether a cached token belongs to the saved settings, judged by its own
+ * grant (_parasut_token_owner()).
+ *
+ * A code token stamped before its stamp left the user name out carries the
+ * user name saved when it was connected; it is still read while that user
+ * name is saved, and the next renewal writes the new stamp
+ * (_parasut_token_cache_write()).
+ *
+ * @param array       $cache       The sealed token
+ * @param string|null $company_id  PARASUT_COMPANY_ID when null
+ * @param string|null $client_id   PARASUT_CLIENT_ID when null
+ * @param string|null $username    PARASUT_USERNAME when null
+ * @return bool
+ */
+function _parasut_token_owner_matches($cache, $company_id = null, $client_id = null, $username = null)
+{
+    $cache = (array) $cache;
+    $stamp = (string) ($cache['owner'] ?? '');
+
+    if ($stamp === '') {
+        return false;
+    }
+
+    $grant = (string) ($cache['grant'] ?? '');
+
+    if ($stamp === _parasut_token_owner($company_id, $client_id, $username, $grant)) {
+        return true;
+    }
+
+    return ($grant === 'code') && ($stamp === _parasut_token_owner($company_id, $client_id, $username));
 }
 
 /**
@@ -518,10 +611,11 @@ function _parasut_token_owner($company_id = null, $client_id = null, $username =
  * from then is moved in on the first read and deleted. Before the database
  * upgrade has run there is nowhere to move it, and the file is read as it was.
  *
- * @param string|null $owner  The owner stamp to match; _parasut_token_owner() of
- *                            the running request when null. The connect endpoint
- *                            names the one it has just written with, which the
- *                            constants of its own request do not know yet.
+ * @param string|null $owner  The owner stamp to match; the saved settings' when
+ *                            null (_parasut_token_owner_matches(), by the token's
+ *                            grant). The connect endpoint names the one it has
+ *                            just written with, which the constants of its own
+ *                            request do not know yet.
  * @return array  Cache contents, or an empty array
  */
 function _parasut_token_cache_read($owner = null)
@@ -539,7 +633,7 @@ function _parasut_token_cache_read($owner = null)
 
             // The file was written for the settings of its day, which are the
             // settings of today on every site that has not changed them since.
-            $legacy['owner'] = _parasut_token_owner();
+            $legacy['owner'] = _parasut_token_owner(null, null, null, (string) ($legacy['grant'] ?? ''));
 
             if (pg_connect_service_put('parasut', 'Paraşüt', $legacy)) {
                 @unlink(PARASUT_TOKEN_CACHE);
@@ -549,9 +643,11 @@ function _parasut_token_cache_read($owner = null)
         }
     }
 
-    $owner = ($owner === null) ? _parasut_token_owner() : (string) $owner;
+    if ($owner === null) {
+        return _parasut_token_owner_matches($cache) ? $cache : [];
+    }
 
-    if (!isset($cache['owner']) || ($cache['owner'] !== $owner)) {
+    if (!isset($cache['owner']) || ($cache['owner'] !== (string) $owner)) {
         return [];
     }
 
@@ -569,12 +665,13 @@ function _parasut_token_cache_read($owner = null)
  * one.
  *
  * @param array       $cache
- * @param string|null $owner  _parasut_token_owner() of the running request when null
+ * @param string|null $owner  _parasut_token_owner() of the running request, for
+ *                            the token's grant, when null
  * @return void
  */
 function _parasut_token_cache_write($cache, $owner = null)
 {
-    $cache['owner'] = ($owner === null) ? _parasut_token_owner() : (string) $owner;
+    $cache['owner'] = ($owner === null) ? _parasut_token_owner(null, null, null, (string) ($cache['grant'] ?? '')) : (string) $owner;
 
     if (pg_connect_service_put('parasut', 'Paraşüt', $cache)) {
         return;
@@ -913,12 +1010,111 @@ function _parasut_me_parse($body)
 }
 
 /**
+ * The company a connection by code works in, from the Company ID box as
+ * posted, the saved number and the companies the authorized user can see.
+ *
+ * An empty box takes the user's one company, and lists them when there are
+ * several. A number the user cannot see is refused with the user's companies
+ * listed - except the saved number itself while the user has exactly one
+ * company: the card draws the saved number in the box, so connecting another
+ * account whose one company is a different one posted it, and the code was
+ * spent on the refusal. That company is taken instead, and 'replaced' names
+ * the saved number given up so that the answer can say so. A number typed in
+ * the box is never replaced.
+ *
+ * @param string $posted     The Company ID box as posted
+ * @param string $saved      The saved company number
+ * @param array  $companies  id => name, from parasut_me()
+ * @return array ['company_id' => string, 'replaced' => string, 'error' => string]
+ */
+function parasut_connect_company($posted, $saved, $companies)
+{
+    $posted = trim((string) $posted);
+    $saved = trim((string) $saved);
+    $companies = (array) $companies;
+    $ids = array_map('strval', array_keys($companies));
+
+    $named = [];
+    foreach ($companies as $id => $name) {
+        $named[] = ((string) $name !== '') ? $name . ' (' . $id . ')' : (string) $id;
+    }
+
+    $refuse = function ($error) {
+        return ['company_id' => '', 'replaced' => '', 'error' => $error];
+    };
+
+    if ($posted === '') {
+        if (count($ids) === 1) {
+            return ['company_id' => $ids[0], 'replaced' => '', 'error' => ''];
+        }
+
+        if (count($ids) === 0) {
+            return $refuse(lang('This Paraşüt user has no company to work in.'));
+        }
+
+        return $refuse(lang(array(
+            'string' => 'This Paraşüt user works in more than one company. Write the id of the one to use in the Company ID box and connect again: {var:1}',
+            'vars' => implode(', ', $named),
+        )));
+    }
+
+    if (empty($ids) || in_array($posted, $ids, true)) {
+        return ['company_id' => $posted, 'replaced' => '', 'error' => ''];
+    }
+
+    if (($posted === $saved) && (count($ids) === 1)) {
+        return ['company_id' => $ids[0], 'replaced' => $saved, 'error' => ''];
+    }
+
+    return $refuse(lang(array(
+        'string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}',
+        'vars' => array($posted, implode(', ', $named)),
+    )));
+}
+
+/**
+ * The lines Connect answers with, the same for the Connect button and for
+ * a code saved with the page: whom and which company it connected to, and
+ * when the saved company was given up for the authorized user's one company
+ * (parasut_connect_company()), that it was - the default product/service and
+ * warehouse ids on the card were set for the company before.
+ *
+ * @param array $result  A successful parasut_connect_with_code() answer
+ * @return array  Plain text lines, not escaped
+ */
+function parasut_connect_lines($result)
+{
+    $result = (array) $result;
+    $company_id = (string) ($result['company_id'] ?? '');
+    $company_name = (string) ($result['company_name'] ?? '');
+    $company = ($company_name !== '') ? $company_name . ' (' . $company_id . ')' : $company_id;
+
+    $lines = [lang(array(
+        'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
+        'vars' => array(
+            ((string) ($result['email'] ?? '') !== '') ? (string) $result['email'] : lang('the authorized user'),
+            $company,
+        ),
+    ))];
+
+    if (trim((string) ($result['replaced_company_id'] ?? '')) !== '') {
+        $lines[] = lang(array(
+            'string' => 'The saved company {var:1} is not among the companies of the Paraşüt user you authorized; its one company, {var:2}, is saved instead. Check the default product/service and warehouse IDs: they were set for the company before.',
+            'vars' => array(trim((string) $result['replaced_company_id']), $company),
+        ));
+    }
+
+    return $lines;
+}
+
+/**
  * Turns the authorization code Paraşüt showed into a connection: the code is
  * exchanged for a token pair, the account is asked who it is and which
  * companies it can see, and what the next request needs is written down -
  * client id and secret in the config row, the company id when the box was
- * empty and the account has exactly one, and the sealed token with its
- * refresh token. No password is involved, so none is stored.
+ * empty (or held only the saved number) and the account has exactly one
+ * (parasut_connect_company()), and the sealed token with its refresh token.
+ * No password is involved, so none is stored.
  *
  * A code is good for one exchange and a few minutes; a second click with
  * the same code is refused by Paraşüt, which is what the error says.
@@ -928,12 +1124,14 @@ function _parasut_me_parse($body)
  * @param string $client_secret  As typed (the saved one when empty)
  * @param string $company_id     As typed; '' lets the account's one company fill it
  * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
- *                'email' => string, 'owner' => string (the token's owner stamp), 'error' => string]
+ *                'email' => string, 'owner' => string (the token's owner stamp),
+ *                'replaced_company_id' => string (the saved number given up, or ''),
+ *                'error' => string]
  */
 function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
 {
     $fail = function ($error) {
-        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'owner' => '', 'error' => $error];
+        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'owner' => '', 'replaced_company_id' => '', 'error' => $error];
     };
 
     $code = trim((string) $code);
@@ -977,44 +1175,26 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         return $fail(lang(array('string' => 'Paraşüt gave a token but would not say whose it is: {var:1}', 'vars' => $me['error'])));
     }
 
-    $companies = $me['companies'];
+    // The constant holds the number saved before this request: Save with a
+    // code writes the box to the config row before the code is exchanged.
+    $company = parasut_connect_company($company_id, defined('PARASUT_COMPANY_ID') ? (string) PARASUT_COMPANY_ID : '', $me['companies']);
 
-    if ($company_id === '') {
-        if (count($companies) === 1) {
-            $company_id = (string) key($companies);
-        } elseif (count($companies) === 0) {
-            return $fail(lang('This Paraşüt user has no company to work in.'));
-        } else {
-            $named = [];
-            foreach ($companies as $id => $name) {
-                $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
-            }
-            return $fail(lang(array(
-                'string' => 'This Paraşüt user works in more than one company. Write the id of the one to use in the Company ID box and connect again: {var:1}',
-                'vars' => implode(', ', $named),
-            )));
-        }
-    } elseif (!empty($companies) && !isset($companies[$company_id])) {
-        $named = [];
-        foreach ($companies as $id => $name) {
-            $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
-        }
-        return $fail(lang(array(
-            'string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}',
-            'vars' => array($company_id, implode(', ', $named)),
-        )));
+    if ($company['error'] !== '') {
+        return $fail($company['error']);
     }
 
-    $company_name = (string) ($companies[$company_id] ?? '');
+    $company_id = $company['company_id'];
+    $company_name = trim((string) ($me['companies'][$company_id] ?? ''));
 
     // Kept in this order: the config row first, so the owner of the sealed
-    // token matches what the next request reads from the constants.
+    // token matches what the next request reads from the constants. A code
+    // token's stamp leaves the user name out (_parasut_token_owner()).
     db("UPDATE config SET
         parasut_client_id = '" . escape($client_id) . "',
         parasut_company_id = '" . escape($company_id) . "'");
     _parasut_credentials_store(['client_secret' => $client_secret]);
 
-    $owner = _parasut_token_owner($company_id, $client_id, null);
+    $owner = _parasut_token_owner($company_id, $client_id, null, 'code');
 
     _parasut_token_cache_write([
         'access_token' => (string) $data['access_token'],
@@ -1032,6 +1212,7 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         'company_name' => $company_name,
         'email' => $me['email'],
         'owner' => $owner,
+        'replaced_company_id' => $company['replaced'],
         'error' => '',
     ];
 }

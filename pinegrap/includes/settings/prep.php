@@ -414,13 +414,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $parasut_username = $row['parasut_username'] ?? '';
     // The secret and the password are never handed back to the screen - the form
     // used to render them into value attributes, which put them in the page
-    // source. All the screen gets is whether something is stored; an empty box
-    // means "keep what is there" (see pg_parasut_credentials_for_save()).
-    $parasut_credentials_stored = (($row['parasut_credentials_enc'] ?? '') !== '');
-    $parasut_credential_placeholder = $parasut_credentials_stored ? lang('Saved') : '';
-    $parasut_credential_help = $parasut_credentials_stored
-        ? lang('The secret and the password are stored and are not shown. Leave these boxes empty to keep them.')
-        : lang('The secret and the password are stored encrypted and are never shown again after saving.');
+    // source. All the screen gets is whether each one is stored; an empty box
+    // means "keep what is there" (see pg_parasut_credentials_for_save()). The
+    // blob holds both, and a connection by code stores the secret alone.
+    $parasut_credential_boxes = parasut_credential_boxes(_parasut_credentials_decode((string) ($row['parasut_credentials_enc'] ?? '')));
+    $parasut_secret_placeholder = $parasut_credential_boxes['secret']['placeholder'];
+    $parasut_secret_help = $parasut_credential_boxes['secret']['help'];
+    $parasut_password_placeholder = $parasut_credential_boxes['password']['placeholder'];
+    $parasut_password_help = $parasut_credential_boxes['password']['help'];
     $parasut_company_id = $row['parasut_company_id'] ?? '';
 
     // The connection as the sealed token tells it (nothing is asked of
