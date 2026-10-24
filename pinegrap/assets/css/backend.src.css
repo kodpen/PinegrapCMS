@@ -1638,6 +1638,14 @@ body:not(.toolbar) .software-content {
 #menu .pg-menu-panels {
   padding: 0 6px;
 }
+/* Laid out at about the width it ends at, so a rail that widens to show it
+   uncovers it instead of reflowing it on every frame of the widening (the
+   title broke over two lines and the entries ellipsised on the way). Short
+   of the full width by a scrollbar and the list padding, so it never sticks
+   out of a menu that has a scrollbar. */
+#menu .pg-menu-panel {
+  min-width: calc(var(--pg-rail-w-expanded) - 2rem);
+}
 #menu .pg-menu-panel-head {
   display: flex;
   align-items: center;
