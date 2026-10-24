@@ -70,12 +70,19 @@ function parasut_stale_ids_test_has($needle, $source, $label)
 }
 
 // What Paraşüt answered, live on the demo company, for a record that is
-// there and for one deleted on its screen, and the answers that say nothing.
+// there and for one deleted on its screen, and the answers that say nothing
+// about the record: among them the 404s of a company number that is wrong
+// or not the token user's, and of a path Paraşüt has no route for.
 function parasut_stale_ids_test_answers()
 {
 	return array(
 		'found' => array('http_code' => 200, 'body' => array('data' => array('id' => '1104339388', 'type' => 'sales_invoices', 'attributes' => array('shipment_included' => false))), 'raw' => '{"data":{}}'),
-		'deleted' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found', 'detail' => 'Record was not found'))), 'raw' => '{"errors":[]}'),
+		'deleted invoice' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found', 'detail' => 'SalesInvoice-1104339388'))), 'raw' => '{"errors":[{"title":"Record was not found","detail":"SalesInvoice-1104339388"}]}'),
+		'deleted document' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found', 'detail' => 'ShipmentDocument-1003775252'))), 'raw' => '{"errors":[{"title":"Record was not found","detail":"ShipmentDocument-1003775252"}]}'),
+		'wrong company' => array('http_code' => 404, 'body' => array('status' => 404, 'error' => 'Not Found'), 'raw' => '{"status":404,"error":"Not Found"}'),
+		'no route' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Not Found', 'detail' => 'No route matches.'))), 'raw' => '{"errors":[{"title":"Not Found","detail":"No route matches."}]}'),
+		'page not found' => array('http_code' => 404, 'body' => null, 'raw' => '<html><body>Not Found</body></html>'),
+		'not found, no record named' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found'))), 'raw' => '{"errors":[{"title":"Record was not found"}]}'),
 		'timeout' => array('http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => 'Operation timed out after 30001 milliseconds'),
 		'server error' => array('http_code' => 500, 'body' => null, 'raw' => ''),
 		'bad gateway' => array('http_code' => 502, 'body' => null, 'raw' => '<html></html>'),
@@ -85,20 +92,46 @@ function parasut_stale_ids_test_answers()
 	);
 }
 
-// 200 is a record that is there, 404 one Paraşüt no longer holds; every
-// other answer is no answer.
+// The answers that say nothing about the record read.
+function parasut_stale_ids_test_no_answer_labels()
+{
+	return array('wrong company', 'no route', 'page not found', 'not found, no record named', 'timeout', 'server error', 'bad gateway', 'unauthorized', 'forbidden', 'rate limit');
+}
+
+// 200 is a record that is there; a 404 that names the record as not found
+// (title "Record was not found", detail SalesInvoice-<id> or
+// ShipmentDocument-<id>) one Paraşüt no longer holds. Every other answer is
+// no answer, a 404 for a wrong company number or path included.
 function test_parasut_stale_ids_record_state()
 {
-	foreach (parasut_stale_ids_test_answers() as $label => $answer) {
-		$want = ($label === 'found') ? 'kept' : (($label === 'deleted') ? 'gone' : 'unknown');
+	$answers = parasut_stale_ids_test_answers();
 
-		pg_assert_same($want, parasut_stored_record_state($answer), $label);
+	foreach (array('sales_invoices' => 'deleted invoice', 'shipment_documents' => 'deleted document') as $type => $deleted) {
+		pg_assert_same('kept', parasut_stored_record_state($answers['found'], $type), $type . ' found');
+		pg_assert_same('gone', parasut_stored_record_state($answers[$deleted], $type), $type . ' ' . $deleted);
+
+		foreach (parasut_stale_ids_test_no_answer_labels() as $label) {
+			pg_assert_same('unknown', parasut_stored_record_state($answers[$label], $type), $type . ' ' . $label);
+		}
 	}
 
+	// A 404 that names a record of the other kind does not say this one is gone.
+	pg_assert_same('unknown', parasut_stored_record_state($answers['deleted document'], 'sales_invoices'));
+	pg_assert_same('unknown', parasut_stored_record_state($answers['deleted invoice'], 'shipment_documents'));
+	pg_assert_same('unknown', parasut_stored_record_state($answers['deleted invoice'], 'products'));
+
+	// Any of several errors may name it; spacing around the words is not read.
+	pg_assert_same('gone', parasut_stored_record_state(array('http_code' => 404, 'body' => array('errors' => array(
+		array('title' => 'Not Found', 'detail' => 'No route matches.'),
+		array('title' => ' Record was not found ', 'detail' => ' SalesInvoice-77 '),
+	))), 'sales_invoices'));
+
 	// A cURL error is never taken for an answer, whatever code came with it.
-	pg_assert_same('unknown', parasut_stored_record_state(array('http_code' => 404, 'body' => null, 'curl_error' => 'Connection reset')));
-	pg_assert_same('unknown', parasut_stored_record_state(array()));
-	pg_assert_same('unknown', parasut_stored_record_state(null));
+	pg_assert_same('unknown', parasut_stored_record_state($answers['deleted invoice'] + array('curl_error' => 'Connection reset'), 'sales_invoices'));
+	pg_assert_same('unknown', parasut_stored_record_state(array('http_code' => 404, 'body' => null, 'curl_error' => 'Connection reset'), 'sales_invoices'));
+	pg_assert_same('unknown', parasut_stored_record_state(array(), 'sales_invoices'));
+	pg_assert_same('unknown', parasut_stored_record_state(null, 'sales_invoices'));
+	pg_assert_same('unknown', parasut_stored_record_state(array('http_code' => 404, 'body' => array('errors' => 'Record was not found')), 'sales_invoices'));
 }
 
 // The stored record is read by its own path, the id trimmed and escaped;
@@ -139,22 +172,27 @@ function test_parasut_stale_ids_check_says_what_it_left_out()
 		'state' => 'gone',
 		'notice' => lang(array('string' => 'This order\'s earlier sales invoice (ID: {var:1}) is no longer at Paraşüt, so it was left out.', 'vars' => array('1104339388'))),
 		'error' => '',
-	), parasut_stored_record_check('sales_invoices', '1104339388', parasut_stale_ids_test_get($answers['deleted'], $asked)));
+	), parasut_stored_record_check('sales_invoices', '1104339388', parasut_stale_ids_test_get($answers['deleted invoice'], $asked)));
 
 	pg_assert_same(array(
 		'state' => 'gone',
 		'notice' => lang(array('string' => 'This order\'s earlier shipment document (ID: {var:1}) is no longer at Paraşüt, so it was left out.', 'vars' => array('1003775252'))),
 		'error' => '',
-	), parasut_stored_record_check('shipment_documents', '1003775252', parasut_stale_ids_test_get($answers['deleted'], $asked)));
+	), parasut_stored_record_check('shipment_documents', '1003775252', parasut_stale_ids_test_get($answers['deleted document'], $asked)));
 
 	pg_assert_same(parasut_stored_record_gone_notice('sales_invoices', '7'), lang(array('string' => 'This order\'s earlier sales invoice (ID: {var:1}) is no longer at Paraşüt, so it was left out.', 'vars' => array('7'))));
 	pg_assert_same(parasut_stored_record_gone_notice('shipment_documents', '8'), lang(array('string' => 'This order\'s earlier shipment document (ID: {var:1}) is no longer at Paraşüt, so it was left out.', 'vars' => array('8'))));
 
-	foreach (array('timeout', 'server error', 'bad gateway', 'unauthorized', 'forbidden', 'rate limit') as $label) {
-		$check = parasut_stored_record_check('shipment_documents', '1003775252', parasut_stale_ids_test_get($answers[$label], $asked));
+	foreach (parasut_stale_ids_test_no_answer_labels() as $label) {
+		foreach (array('sales_invoices', 'shipment_documents') as $type) {
+			$check = parasut_stored_record_check($type, '1003775252', parasut_stale_ids_test_get($answers[$label], $asked));
 
-		pg_assert_same(array('state' => 'unknown', 'notice' => '', 'error' => _parasut_extract_error($answers[$label])), $check, $label);
+			pg_assert_same(array('state' => 'unknown', 'notice' => '', 'error' => _parasut_extract_error($answers[$label])), $check, $type . ' ' . $label);
+		}
 	}
+
+	// A wrong company number reads as Paraşüt's bare 404, never as a record gone.
+	pg_assert_same('HTTP 404', parasut_stored_record_check('sales_invoices', '1104339388', parasut_stale_ids_test_get($answers['wrong company'], $asked))['error']);
 }
 
 // E-Shipment after an invoice deleted on Paraşüt's screen: the read answers
@@ -165,7 +203,7 @@ function test_parasut_stale_ids_shipment_invoice_link_leaves_a_deleted_invoice_o
 	$answers = parasut_stale_ids_test_answers();
 	$asked = array();
 
-	pg_assert_same(array('invoice_id' => '', 'error' => '', 'gone' => '1104339388'), parasut_shipment_invoice_link(' 1104339388 ', parasut_stale_ids_test_get($answers['deleted'], $asked)));
+	pg_assert_same(array('invoice_id' => '', 'error' => '', 'gone' => '1104339388'), parasut_shipment_invoice_link(' 1104339388 ', parasut_stale_ids_test_get($answers['deleted invoice'], $asked)));
 	pg_assert_same(array('/sales_invoices/1104339388'), $asked);
 
 	// Found: as before, named when issued without shipment.
@@ -173,12 +211,14 @@ function test_parasut_stale_ids_shipment_invoice_link_leaves_a_deleted_invoice_o
 	pg_assert_same(array('invoice_id' => '1104339388', 'error' => ''), parasut_shipment_invoice_link('1104339388', parasut_stale_ids_test_get($answers['found'], $asked)));
 }
 
-// Any other answer than 200 or 404 still refuses E-Shipment in so many words.
+// Any other answer than 200 or a 404 naming the invoice as not found still
+// refuses E-Shipment in so many words: a 404 for a wrong company number,
+// which leaves the invoice id in place, among them.
 function test_parasut_stale_ids_shipment_invoice_link_still_refuses_without_an_answer()
 {
 	$answers = parasut_stale_ids_test_answers();
 
-	foreach (array('timeout', 'server error', 'bad gateway', 'unauthorized', 'forbidden', 'rate limit') as $label) {
+	foreach (array_merge(parasut_stale_ids_test_no_answer_labels(), array('deleted document')) as $label) {
 		$asked = array();
 		$link = parasut_shipment_invoice_link('77', parasut_stale_ids_test_get($answers[$label], $asked));
 
@@ -190,9 +230,10 @@ function test_parasut_stale_ids_shipment_invoice_link_still_refuses_without_an_a
 }
 
 // Create Invoice on an order that keeps its invoice's id reads that invoice
-// before anything else is asked or written: still there (or no answer) it
-// refuses as before; deleted there, the id is cleared, the screen told, and
-// the order invoiced as one never sent.
+// before anything else is asked or written: still there it refuses as
+// before, and a read that does not say refuses with Paraşüt's words; deleted
+// there, the id is cleared, the screen told, and the order invoiced as one
+// never sent.
 function test_parasut_stale_ids_create_invoice_reads_its_stored_invoice_first()
 {
 	$body = parasut_stale_ids_test_source('parasut_create_invoice');
@@ -201,13 +242,16 @@ function test_parasut_stale_ids_create_invoice_reads_its_stored_invoice_first()
 
 	$stored = strpos($body, "\$existing_invoice_id = trim((string) (\$order['parasut_invoice_id'] ?? ''));");
 	$read = strpos($body, "\$stored = _parasut_stored_record_check('sales_invoices', \$existing_invoice_id);");
+	$unknown = strpos($body, "if (\$stored['state'] === 'unknown') {");
+	$unknown_message = strpos($body, "'string' => 'This order already has a sales invoice in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',\n                    'vars' => array(\$existing_invoice_id, \$stored['error']),");
 	$refused = strpos($body, "if (\$stored['state'] !== 'gone') {");
 	$message = strpos($body, "'This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created.");
 	$cleared = strpos($body, "_parasut_order_forget_record(\$order_id, 'parasut_invoice_id', \$existing_invoice_id);");
 	$told = strpos($body, "\$notices[] = \$stored['notice'];");
 
 	pg_assert_true(($stored !== false) && ($read !== false) && ($stored < $read), 'the stored id is read');
-	pg_assert_true(($refused !== false) && ($read < $refused) && ($message !== false) && ($refused < $message), 'anything but gone refuses as before');
+	pg_assert_true(($unknown !== false) && ($read < $unknown) && ($unknown_message !== false) && ($unknown < $unknown_message), 'no answer refuses with Paraşüt\'s words');
+	pg_assert_true(($refused !== false) && ($unknown_message < $refused) && ($message !== false) && ($refused < $message), 'kept refuses as before');
 	pg_assert_true(($cleared !== false) && ($message < $cleared), 'a gone id is cleared');
 	pg_assert_true(($told !== false) && ($cleared < $told), 'and the screen told');
 	pg_assert_contains("\$order['parasut_invoice_id'] = '';", $body);
@@ -247,10 +291,11 @@ function test_parasut_stale_ids_create_invoice_reads_the_shipment_before_naming_
 }
 
 // E-Shipment on an order that keeps its document's id reads that document
-// before anything is written: still there (or no answer) it refuses as
-// before; deleted there, the id is cleared, the screen told, the buyer's
-// VKN/TCKN asked (the order screen skipped it for an order with an id), and
-// the order shipped as one never shipped.
+// before anything is written: still there it refuses as before, and a read
+// that does not say refuses with Paraşüt's words; deleted there, the id is
+// cleared, the screen told, the buyer's VKN/TCKN asked (the order screen
+// skipped it for an order with an id), and the order shipped as one never
+// shipped.
 function test_parasut_stale_ids_create_shipment_reads_its_stored_document_first()
 {
 	$body = parasut_stale_ids_test_source('parasut_create_shipment');
@@ -259,6 +304,8 @@ function test_parasut_stale_ids_create_shipment_reads_its_stored_document_first(
 
 	$stored = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
 	$read = strpos($body, "\$stored = _parasut_stored_record_check('shipment_documents', \$existing_shipment_id);");
+	$unknown = strpos($body, "if (\$stored['state'] === 'unknown') {");
+	$unknown_message = strpos($body, "'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',\n                    'vars' => array(\$existing_shipment_id, \$stored['error']),");
 	$refused = strpos($body, "if (\$stored['state'] !== 'gone') {");
 	$message = strpos($body, "'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.'");
 	$cleared = strpos($body, "_parasut_order_forget_record(\$order_id, 'parasut_shipment_id', \$existing_shipment_id);");
@@ -266,7 +313,8 @@ function test_parasut_stale_ids_create_shipment_reads_its_stored_document_first(
 	$identity = strpos($body, '_parasut_shipment_identity_refusal(');
 
 	pg_assert_true(($stored !== false) && ($read !== false) && ($stored < $read), 'the stored id is read');
-	pg_assert_true(($refused !== false) && ($read < $refused) && ($message !== false) && ($refused < $message), 'anything but gone refuses as before');
+	pg_assert_true(($unknown !== false) && ($read < $unknown) && ($unknown_message !== false) && ($unknown < $unknown_message), 'no answer refuses with Paraşüt\'s words');
+	pg_assert_true(($refused !== false) && ($unknown_message < $refused) && ($message !== false) && ($refused < $message), 'kept refuses as before');
 	pg_assert_true(($cleared !== false) && ($message < $cleared) && ($told !== false) && ($cleared < $told), 'a gone id is cleared and the screen told');
 	pg_assert_true(($identity !== false) && ($told < $identity), 'the VKN/TCKN is asked then');
 

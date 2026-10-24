@@ -1335,9 +1335,10 @@ function parasut_shipment_stock_movement($product_id, $warehouse_id, $quantity)
  * ilişkilendirilemez."); an unlinked document would take the goods out a
  * second time. One kept with shipment_included false moved no stock: the
  * shipment document names it in relationships.invoices and takes the goods
- * out once. An invoice deleted on Paraşüt's screen since (404,
- * parasut_stored_record_state()) is no invoice: the document goes unlinked,
- * and 'gone' names the id for the caller to clear. The unsure mark
+ * out once. An invoice deleted on Paraşüt's screen since (a 404 naming it
+ * as not found, parasut_stored_record_state()) is no invoice: the document
+ * goes unlinked, and 'gone' names the id for the caller to clear. Any other
+ * 404 (a wrong company number, say) is no answer. The unsure mark
  * (parasut_order_invoice_unsure()) is not a record whose answer can be
  * read, and a read that fails is no answer either: both refuse rather than
  * guess.
@@ -1362,11 +1363,11 @@ function parasut_shipment_invoice_link($invoice_id, $get)
 
     $read = $get('/sales_invoices/' . rawurlencode($invoice_id));
 
-    if (parasut_stored_record_state((array) $read) === 'gone') {
+    if (parasut_stored_record_state((array) $read, 'sales_invoices') === 'gone') {
         return array('invoice_id' => '', 'error' => '', 'gone' => $invoice_id);
     }
 
-    $attributes =(((int) ($read['http_code'] ?? 0) === 200) && is_array($read['body']['data']['attributes'] ?? null))
+    $attributes = (((int) ($read['http_code'] ?? 0) === 200) && is_array($read['body']['data']['attributes'] ?? null))
         ? $read['body']['data']['attributes']
         : array();
     $included = array_key_exists('shipment_included', $attributes) ? $attributes['shipment_included'] : null;
@@ -1987,15 +1988,24 @@ function parasut_order_invoice_with_shipment($body, $shipment_id)
 /**
  * What a read of a record whose id an order keeps (orders.parasut_invoice_id,
  * parasut_shipment_id) says about that record: 'kept' when Paraşüt answers
- * it (200); 'gone' when it answers 404 ("Record was not found"), as it does
- * for a record deleted on Paraşüt's screen; 'unknown' for any other answer
- * (no connection, a timeout, a 5xx, 401/403, 429), on which nothing is
- * guessed.
+ * it (200); 'gone' when it answers 404 naming that record as not found
+ * (title "Record was not found", detail SalesInvoice-<id> or
+ * ShipmentDocument-<id>), as it does for a record deleted on Paraşüt's
+ * screen; 'unknown' for any other answer, on which nothing is guessed.
  *
- * @param array $read  The _parasut_request() answer of GET sales_invoices/{id} or shipment_documents/{id}
+ * A 404 that does not name the record says nothing about it. Paraşüt can
+ * answer a bare one ({"status":404,"error":"Not Found"}) for a company
+ * number that is wrong or not the token user's, which the settings box saves
+ * as typed and a password-grant token still works with (an authorization-code
+ * token gets 401 "No access to company"), and "No route matches." for a path
+ * it does not know; the id must not be cleared on either. No connection, a
+ * timeout, a 5xx, 401/403 and 429 are no answer either.
+ *
+ * @param array  $read  The _parasut_request() answer of GET sales_invoices/{id} or shipment_documents/{id}
+ * @param string $type  'sales_invoices' or 'shipment_documents': the kind of record read
  * @return string 'kept' | 'gone' | 'unknown'
  */
-function parasut_stored_record_state($read)
+function parasut_stored_record_state($read, $type)
 {
     $read = (array) $read;
 
@@ -2009,7 +2019,25 @@ function parasut_stored_record_state($read)
         return 'kept';
     }
 
-    return ($code === 404) ? 'gone' : 'unknown';
+    // The model name Paraşüt writes before the id in a not-found detail.
+    $models = array('sales_invoices' => 'SalesInvoice-', 'shipment_documents' => 'ShipmentDocument-');
+    $model = $models[(string) $type] ?? '';
+    $errors = $read['body']['errors'] ?? null;
+
+    if (($code !== 404) || ($model === '') || !is_array($errors)) {
+        return 'unknown';
+    }
+
+    foreach ($errors as $error) {
+        $title = is_string($error['title'] ?? null) ? trim($error['title']) : '';
+        $detail = is_string($error['detail'] ?? null) ? trim($error['detail']) : '';
+
+        if (($title === 'Record was not found') && (strpos($detail, $model) === 0)) {
+            return 'gone';
+        }
+    }
+
+    return 'unknown';
 }
 
 /**
@@ -2038,7 +2066,7 @@ function parasut_stored_record_check($type, $id, $get)
     }
 
     $read = (array) $get('/' . $type . '/' . rawurlencode($id));
-    $state = parasut_stored_record_state($read);
+    $state = parasut_stored_record_state($read, $type);
 
     return array(
         'state' => $state,
@@ -2174,11 +2202,24 @@ function parasut_create_invoice($order_id, &$notices = array())
     $unsure = parasut_order_invoice_unsure($existing_invoice_id);
 
     // A kept id is read first: an invoice deleted on Paraşüt's screen since
-    // leaves its id on the order, which no screen clears. One Paraşüt no
-    // longer holds (404) is forgotten and the order invoiced as one never
-    // sent; one still there, or a read that does not say, refuses as before.
+    // leaves its id on the order, which no screen clears. One Paraşüt names
+    // as not found is forgotten and the order invoiced as one never sent;
+    // one still there refuses as before, and a read that does not say (a
+    // 404 for a wrong company number among them) refuses with Paraşüt's
+    // words.
     if (($existing_invoice_id !== '') && !$unsure) {
         $stored = _parasut_stored_record_check('sales_invoices', $existing_invoice_id);
+
+        if ($stored['state'] === 'unknown') {
+            return [
+                'success' => false,
+                'parasut_invoice_id' => $existing_invoice_id,
+                'error' => lang(array(
+                    'string' => 'This order already has a sales invoice in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',
+                    'vars' => array($existing_invoice_id, $stored['error']),
+                )),
+            ];
+        }
 
         if ($stored['state'] !== 'gone') {
             return [
@@ -2547,19 +2588,31 @@ function parasut_create_shipment($order_id, &$notices = array())
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
     }
 
-    // One outgoing shipment document per order, refused before any request.
-    // Every create takes the stock-tracked lines out of Paraşüt's stock again
-    // and shipment_documents has no idempotency key, so a second press would
-    // leave a second waybill for the same sale and overwrite the stored id
-    // of the first. The kept id is read first: a document deleted on
-    // Paraşüt's screen since leaves its id on the order, which no screen
-    // clears. One Paraşüt no longer holds (404) is forgotten and the order
-    // shipped as one never shipped; one still there, or a read that does not
-    // say, refuses as before.
+    // One outgoing shipment document per order, refused before anything is
+    // written. Every create takes the stock-tracked lines out of Paraşüt's
+    // stock again and shipment_documents has no idempotency key, so a second
+    // press would leave a second waybill for the same sale and overwrite the
+    // stored id of the first. The kept id is read first: a document deleted
+    // on Paraşüt's screen since leaves its id on the order, which no screen
+    // clears. One Paraşüt names as not found is forgotten and the order
+    // shipped as one never shipped; one still there refuses as before, and a
+    // read that does not say (a 404 for a wrong company number among them)
+    // refuses with Paraşüt's words.
     $existing_shipment_id = trim((string) ($order['parasut_shipment_id'] ?? ''));
 
     if ($existing_shipment_id !== '') {
         $stored = _parasut_stored_record_check('shipment_documents', $existing_shipment_id);
+
+        if ($stored['state'] === 'unknown') {
+            return [
+                'success' => false,
+                'parasut_shipment_id' => $existing_shipment_id,
+                'error' => lang(array(
+                    'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. A second one was not created; try again in a minute.',
+                    'vars' => array($existing_shipment_id, $stored['error']),
+                )),
+            ];
+        }
 
         if ($stored['state'] !== 'gone') {
             return [
