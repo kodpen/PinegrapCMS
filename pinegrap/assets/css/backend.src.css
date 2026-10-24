@@ -1036,6 +1036,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi.ecommerce-color { --pg-mi-2: var(--ecommerce-color-highlight); --pg-mi-2-dark: var(--ecommerce-color); }
 #menu .pg-mi.ads-color { --pg-mi-2: var(--ads-color-highlight); --pg-mi-2-dark: var(--ads-color); }
 #menu .pg-mi.design-color { --pg-mi-2: var(--design-color-highlight); --pg-mi-2-dark: var(--design-color); }
+#menu .pg-mi.settings-color { --pg-mi-2: var(--settings-color-highlight); --pg-mi-2-dark: var(--settings-color); }
 
 /* The second colour of each icon. */
 #menu .pg-mi-dashboard { --pg-mi-a: var(--pg-mi-orange); }
@@ -1057,6 +1058,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-offers { --pg-mi-a: var(--pg-mi-rose); }
 #menu .pg-mi-shipping { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-ads { --pg-mi-a: var(--pg-mi-yellow); }
+#menu .pg-mi-settings { --pg-mi-a: var(--pg-mi-sky); }
 /* Page Styles: the paint on the palette is every colour but its own. */
 #menu .pg-mi-styles .pg-mi-c1 { color: var(--pg-mi-sky); }
 #menu .pg-mi-styles .pg-mi-c2 { color: var(--pg-mi-amber); }
@@ -1291,6 +1293,12 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(2) { animation-delay: 0.08s; }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(3) { animation-delay: 0.16s; }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(4) { animation-delay: 0.24s; }
+
+  /* Site Settings: the gear turns one tooth, which lands it where it began. */
+  #menu .pg-mi-settings .pg-mi-gear { transform-origin: 12px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-settings .pg-mi-gear {
+    animation: pg-mi-turn 0.6s var(--pg-mi-spring);
+  }
 }
 
 @keyframes pg-mi-spin2 { to { transform: rotate(720deg); } }
@@ -1314,6 +1322,7 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 @keyframes pg-mi-stream { from { transform: translateX(1.2px); } to { transform: translateX(-1.2px); } }
 @keyframes pg-mi-flare { 45% { transform: rotate(90deg) scale(1.7); } 75% { transform: rotate(160deg) scale(0.9); } to { transform: rotate(180deg); } }
 @keyframes pg-mi-tip { 30% { transform: rotate(-16deg); } 60% { transform: rotate(8deg); } 82% { transform: rotate(-3deg); } }
+@keyframes pg-mi-turn { to { transform: rotate(45deg); } }
 /*ADS*/
 body .ads-color {
   color: var(--ads-color) !important;
@@ -1496,12 +1505,6 @@ body:not(.toolbar) .software-content {
 #menu .menu-body .bi{
   font-size: 1.3rem;
 }
-#menu .menu-footer {
-  position: sticky;
-  top: 100%;
-  bottom: 0;
-}
-
 /* The rail is 50px wide and the sidebar carries a hairline on its right, so an
    item that spans the full width has its background clipped by that line. The
    list is padded instead and every item is a rounded pill inside it, which
@@ -1558,6 +1561,238 @@ body:not(.toolbar) .software-content {
   font-size: 0.6rem;
   padding: 0.25em 0.4em;
 }
+
+/* ── Rows that open a panel ──────────────────────────────────────────────
+   output_menu() gives a row with several entries a panel of its own
+   (pg_menu_panel()); a plain click on the row shows that panel in place of
+   the rows, headed by the way back and the row's name (backend.src.js). The
+   row lays its parts out in a line: the icon, the name, the entry of the
+   panel that is the current page (.pg-menu-hint, filled by the script) and
+   the arrow. Collapsed to the rail only the icon shows; a click there widens
+   the rail over the content to the expanded width (.pg-menu-peek, below). */
+#menu .pg-menu-main .list-group-item {
+  display: flex;
+  align-items: center;
+}
+#menu .pg-menu-main .list-group-item .list-group-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#menu .pg-menu-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  margin-left: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--bs-secondary-color);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+#menu .pg-menu-hint:empty {
+  display: none;
+}
+/* The hint names the current page of the active row only. backend.src.js
+   writes it for every row whose panel holds the page, so it follows .active
+   when workspace.js moves that between the Workspace row and My Notes. */
+#menu .pg-menu-main .list-group-item:not(.active) .pg-menu-hint {
+  display: none;
+}
+/* The arrow sits in the row's right padding, so it takes nothing from the
+   name: the expanded width was chosen for the longest Turkish label. */
+#menu .pg-menu-main .list-group-item.pg-menu-parent,
+#menu.expanded .pg-menu-main .list-group-item.pg-menu-parent {
+  padding-right: 0.875rem;
+}
+#menu .menu-body .pg-menu-chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  transform: translateY(-50%);
+  font-size: 0.625rem;
+  line-height: 1;
+  color: var(--bs-secondary-color);
+}
+/* With the labels showing the count stands in the line, before the arrow,
+   instead of over the row's right edge where the arrow is. */
+#menu.expanded .pg-menu-main .list-group-item .pg-menu-badge {
+  position: static;
+  transform: none;
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+}
+#menu:not(.expanded) .pg-menu-hint {
+  display: none;
+}
+/* On the rail the name is hidden, so the arrow is what says a row opens a
+   panel: a small one at the row's right edge, beside the icon. Above lg
+   only: below it #menu is never .expanded either, and the drawer shows the
+   full arrow with the names. */
+@media (min-width: 992px) {
+  #menu:not(.expanded) .pg-menu-main .pg-menu-chevron {
+    right: 0.1875rem;
+    font-size: 0.5rem;
+    opacity: 0.75;
+  }
+}
+
+/* One of the two at a time: the rows, or the panel one of them opened. */
+#menu .pg-menu-panel {
+  display: none;
+}
+#menu .pg-menu-panel.is-open {
+  display: block;
+}
+#menu.pg-menu-drilled .pg-menu-main {
+  display: none;
+}
+#menu .pg-menu-panels {
+  padding: 0 6px;
+}
+/* Laid out at about the width it ends at, so a rail that widens to show it
+   uncovers it instead of reflowing it on every frame of the widening (the
+   title broke over two lines and the entries ellipsised on the way). Short
+   of the full width by a scrollbar and the list padding, so it never sticks
+   out of a menu that has a scrollbar. */
+#menu .pg-menu-panel {
+  min-width: calc(var(--pg-rail-w-expanded) - 2rem);
+}
+/* The head stands apart from the entries: a tinted bar with the way back
+   and the name, a little smaller than the entries' weight would make it so a
+   long name keeps to one line. */
+#menu .pg-menu-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.125rem;
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--pg-tint-strong);
+  box-shadow: inset 0 -1px 0 var(--bs-border-color);
+}
+#menu .pg-menu-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  background: transparent;
+  color: var(--bs-body-color);
+}
+#menu .pg-menu-back:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
+}
+#menu .menu-body .pg-menu-back .bi {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+/* Centred over the entries, near enough: the padding on the right stands in
+   for most of the button on the left, and is short of it so the longest name
+   ("Tüm Nakliye Yöntemleri") keeps to one line in a menu narrowed by a
+   classic scrollbar. Anything longer ends in an ellipsis rather than wrap. */
+#menu .pg-menu-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+/* The entries are the links output_menu() builds for each row, with the
+   Bootstrap button and icon classes they carry; they are drawn here as rows
+   of the menu. The id and two classes are what outweighs the 1.3rem the menu
+   gives every .bi. Their colour comes from .link-body-emphasis, which is
+   !important and drawn from --bs-emphasis-color-rgb at --bs-link-opacity, so
+   those two variables are what is set here: full strength on hover, and the
+   primary ink for the current page. */
+#menu .menu-body .pg-menu-panel-body > a {
+  --bs-link-opacity: 1;
+  display: block;
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 0.45rem 0.625rem;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: start;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+#menu .menu-body .pg-menu-panel-body > a::before {
+  font-size: 1rem;
+  vertical-align: -0.15em;
+}
+#menu .menu-body .pg-menu-panel-body > a:is(:hover, :focus-visible) {
+  background: var(--pg-tint-hover);
+}
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-current {
+  --bs-emphasis-color-rgb: var(--pg-primary-ink-rgb);
+  background: rgba(var(--pg-primary-rgb), 0.18);
+  font-weight: 600;
+}
+/* An entry that opens a second-level panel (Site Settings): its arrow sits
+   in its right padding, as on the rows. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
+  position: relative;
+  padding-right: 1.25rem;
+}
+#menu .pg-menu-panel-body > hr {
+  height: 0;
+  margin: 0.375rem 0.625rem;
+  border: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.1;
+}
+
+/* Into a panel from the right, back to the rows from the left. Only once
+   the person has opened one (.pg-menu-animate): a panel shown again as a
+   page loads is simply there. */
+@keyframes pgMenuPanelIn {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pgMenuMainIn {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #menu.pg-menu-animate .pg-menu-panel.is-open {
+    animation: pgMenuPanelIn 0.22s ease both;
+  }
+  #menu.pg-menu-animate:not(.pg-menu-drilled) .pg-menu-main,
+  #menu.pg-menu-animate.pg-menu-returning .pg-menu-panel.is-open {
+    animation: pgMenuMainIn 0.22s ease both;
+  }
+}
 @media only screen and (max-width: 991px) {
   #menu.expanded {
     box-shadow: 3px 3px 3px #00000040;
@@ -1593,112 +1828,6 @@ body:not(.toolbar) .software-content {
   }
 }
 
-/* ── The foot of the menu: how it shows ──────────────────────────────────
-   pg_menu_mode_switch(). One button, opening the three states in a small
-   menu of its own -- expanded, mini, hidden -- the way the theme is chosen in
-   the account menu rather than by a control that flips on every click. The
-   button's picture is the state the menu is in; on the expanded menu it
-   carries its name as well, like the rows above it. The old caret that
-   rotated in place had no name and only two answers. */
-#menu .pg-railfoot {
-  padding: 0.375rem 6px;
-}
-#menu .pg-railmode-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  min-height: 2.5rem;
-  padding: 0 0.8rem;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--bs-border-radius-lg);
-  background: transparent;
-  color: var(--bs-secondary-color);
-  font-size: 0.875rem;
-  white-space: nowrap;
-}
-#menu.expanded .pg-railmode-btn {
-  padding: 0 0.625rem;
-}
-#menu .pg-railmode-btn:is(:hover, :focus-visible),
-#menu .pg-railmode-btn[aria-expanded="true"] {
-  background: var(--pg-tint-hover);
-  color: var(--bs-body-color);
-}
-#menu .pg-railmode-btn > .bi {
-  flex: 0 0 auto;
-  font-size: 1.15rem;
-  line-height: 1;
-}
-#menu .pg-railmode-when-expanded,
-#menu.expanded .pg-railmode-when-collapsed,
-#menu:not(.expanded) .pg-railmode-label {
-  display: none;
-}
-#menu.expanded .pg-railmode-when-expanded {
-  display: inline-block;
-}
-#menu .pg-railmode-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#menu .pg-railmode-menu {
-  --bs-dropdown-min-width: 15rem;
-  --bs-dropdown-padding-x: 0.375rem;
-  --bs-dropdown-padding-y: 0.375rem;
-  --bs-dropdown-header-padding-x: 0.625rem;
-  --bs-dropdown-header-padding-y: 0.375rem;
-  --bs-dropdown-item-border-radius: var(--bs-border-radius-lg);
-  --bs-dropdown-link-hover-bg: var(--pg-tint-hover);
-  --bs-dropdown-link-active-bg: var(--pg-tint-strong);
-  --bs-dropdown-link-active-color: var(--bs-body-color);
-  border-radius: 0.875rem;
-  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.16), 0 0.125rem 0.375rem rgba(0, 0, 0, 0.08);
-}
-#menu .pg-railmode-menu .dropdown-header {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bs-secondary-color);
-}
-#menu .pg-railmode-menu .dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.4375rem 0.625rem;
-  white-space: normal;
-}
-#menu .pg-railmode-menu .dropdown-item > .bi:first-child {
-  flex: 0 0 1.25rem;
-  font-size: 1.0625rem;
-  text-align: center;
-  color: var(--bs-secondary-color);
-}
-#menu .pg-railmode-text {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-  font-size: 0.875rem;
-  line-height: 1.25;
-}
-#menu .pg-railmode-text > small {
-  font-size: 0.75rem;
-  color: var(--bs-secondary-color);
-}
-#menu .pg-railmode-check {
-  flex: 0 0 auto;
-  visibility: hidden;
-  color: var(--pg-primary-ink);
-}
-#menu .pg-railmode-menu [aria-checked="true"] > .bi:first-child,
-#menu .pg-railmode-menu [aria-checked="true"] .pg-railmode-check {
-  visibility: visible;
-  color: var(--pg-primary-ink);
-}
-
 .dropdown-item-sm {
   font-size: 85%;
 }
@@ -1715,7 +1844,9 @@ body:not(.toolbar) .software-content {
    further down. Nine cards ended up hiding the fact that they had more to show
    -- one of them with nine hundred pixels of list out of reach and nothing on
    screen to say so. They are styled with everything else now. */
-#menu:not(.expanded) .menu-body::-webkit-scrollbar {
+/* Only the plain rail: a panel opened from it widens the rail, and the
+   phone drawer is wide too, so a long panel keeps its scrollbar there. */
+#menu:not(.expanded):not(.pg-menu-drilled) .menu-body::-webkit-scrollbar {
   width: 0px;
   height: 0px;
   background: transparent; /* make scrollbar transparent */
@@ -1764,13 +1895,20 @@ body:not(.toolbar) .software-content {
   #menu:not(.expanded) .list-group .list-group-item .list-group-text {
     visibility: visible;
   }
-  /* And a count goes back to the row's edge with them. */
+  /* And a count goes back into the line with them, before the arrow. */
   #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
-    right: 0.6rem;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
+    transform: none;
+    margin-left: 0.5rem;
+    flex: 0 0 auto;
     font-size: 0.7rem;
     padding: 0.3em 0.55em;
+  }
+  #menu:not(.expanded) .pg-menu-hint {
+    display: block;
+  }
+  #menu:not(.expanded) .pg-menu-hint:empty {
+    display: none;
   }
 
   /* Labels are nowrap by default and only get ellipsis in the expanded rail state;
@@ -1778,12 +1916,6 @@ body:not(.toolbar) .software-content {
   #menu .list-group .list-group-item {
     text-overflow: ellipsis;
     overflow: hidden;
-  }
-
-  /* How the menu shows on a wide screen means nothing to a drawer; the button
-     in the bar, the scrim and Escape are the ways in and out. */
-  #menu .pg-railfoot {
-    display: none;
   }
 
   .software-menu-backdrop {
@@ -1880,6 +2012,21 @@ body:not(.toolbar) .software-content {
     display: none;
   }
 
+  /* A panel opened from the collapsed rail: the rail widens over the
+     content to the expanded width while the grid keeps the rail's column,
+     so nothing under it moves. The pocket corner would hang in the middle
+     of the content, so it goes for as long as the rail is wide. */
+  .software-container.pg-menu-peek:not(.expanded) .software-sidebar {
+    width: var(--pg-rail-w-expanded);
+    /* Cast to the right only, and cut above the rail's top edge: the bar
+       above and the rail read as one surface. */
+    box-shadow: 0 0 1.5rem rgba(0, 0, 0, 0.18);
+    clip-path: inset(0 -2rem 0 0);
+  }
+  .software-container.pg-menu-peek:not(.expanded) .software-sidebar::after {
+    display: none;
+  }
+
   /* The button in the bar sits over the rail, centred on it, so its picture
      lines up with the icons of the menu below. */
   #header .pg-menu-toggle-item {
@@ -1942,11 +2089,11 @@ body:not(.toolbar) .software-content {
   border: 0;
   line-height: 1;
 }
-/* The drawer toggle lives in the left group, so the rule above never reached
+/* The menu button lives in the left group, so the rule above never reached
    it and Bootstrap's own .btn padding sized it: 46px against the 44px of every
    control opposite, sitting a pixel higher on the row. It is the same kind of
    control, so it reads the same token. */
-#header #menu_drawer_toggle {
+#header #menu_mode_toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1978,7 +2125,7 @@ body:not(.toolbar) .software-content {
 #header .pg-rightcluster > ul > li > .nav-link > .bi,
 #header .pg-rightcluster > ul > li > .btn > .bi,
 #header .pg-rightcluster > ul > li > .nav-link.bi::before,
-#header #menu_drawer_toggle > .bi {
+#header #menu_mode_toggle > .bi {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1991,27 +2138,25 @@ body:not(.toolbar) .software-content {
 #header > ul.navbar-nav {
   align-items: center;
 }
-/* The two pictures of the menu button (pg_menu_toggle_button()): the side
-   panel filled while the menu is on screen, empty while it is not -- the
-   drawer below lg, the rail above. Both are printed, so the right one is
-   there before the script runs; the ids are repeated to outrank the rule
-   above that makes every icon of the button a flex box. */
-#header #menu_drawer_toggle > .pg-mt-open {
+/* The pictures of the menu button (pg_menu_mode_button()). Above lg the
+   state the menu is in: mini, open or hidden. Below lg the drawer: the side
+   panel empty while it is shut, filled while it is open. All five are
+   printed, so the right one is there before the script runs; the id is
+   repeated to outrank the rule above that makes every icon of the button a
+   flex box. */
+#header #menu_mode_toggle > .bi {
   display: none;
 }
 @media (min-width: 992px) {
-  .software-container:not(.menu-hidden) #header #menu_drawer_toggle > .pg-mt-shut {
-    display: none;
-  }
-  .software-container:not(.menu-hidden) #header #menu_drawer_toggle > .pg-mt-open {
+  .software-container:not(.expanded):not(.menu-hidden) #header #menu_mode_toggle > .pg-mt-collapsed,
+  .software-container.expanded:not(.menu-hidden) #header #menu_mode_toggle > .pg-mt-expanded,
+  .software-container.menu-hidden #header #menu_mode_toggle > .pg-mt-hidden {
     display: inline-flex;
   }
 }
 @media (max-width: 991.98px) {
-  .software-container.drawer-open #header #menu_drawer_toggle > .pg-mt-shut {
-    display: none;
-  }
-  .software-container.drawer-open #header #menu_drawer_toggle > .pg-mt-open {
+  .software-container:not(.drawer-open) #header #menu_mode_toggle > .pg-mt-shut,
+  .software-container.drawer-open #header #menu_mode_toggle > .pg-mt-open {
     display: inline-flex;
   }
 }
@@ -3071,14 +3216,6 @@ body:not(.toolbar) .software-content {
 
 .contextmenu.popover .divider {
   opacity: 0.1;
-}
-
-/* Long pressing a menu entry opens our own context menu, so suppress the iOS
-   callout (copy / share sheet) and the text selection that fights with it. */
-#menu a.list-group-item-action[data-bs-toggle="context"] {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 .pointer,
@@ -4623,13 +4760,6 @@ div#software_image_picker_container {
   opacity: 1;
 }
 
-/* A form inside a left-menu context popover. The popover body pads its own
-   links; a form needs the padding on itself and a width that does not collapse
-   onto the number input. */
-.contextmenu .pg-ctx-form {
-  min-width: 12.5rem;
-  padding: 0.25rem 0.5rem 0.375rem;
-}
 .pg-row-heading .pg-row-aside {
   margin-left: auto;
   font-weight: 400;
@@ -6007,15 +6137,15 @@ html[data-bs-theme="dark"] #system_status_card .card-header i {
 
 /* ══ Card appearance themes ════════════════════════════════════════════════
 
-   Four treatments of the same card. An administrator picks one from the Panel
-   entry's context menu and it is stored in dashboard.widget_theme;
-   welcome.php writes the choice onto #content, so everything below is scoped to
-   that attribute and the settings screen's own copy of the system status card
-   is left out of it.
+   Four treatments of the same card. A designer or an administrator picks one
+   on the Dashboard card of Site Settings > Appearance and it is stored in
+   dashboard.widget_theme; welcome.php writes the choice onto #content, so
+   everything below is scoped to that attribute and the settings screen's own
+   copy of the system status card is left out of it.
 
    "flat" has no rules here at all, and that is the point. Flat IS the block of
    per-widget backgrounds above, so the default costs nothing and an
-   installation that never opens the menu keeps exactly the dashboard it had.
+   installation that never changes it keeps exactly the dashboard it had.
    The other three replace background, border and shadow, and they read
    --pg-accent -- which every widget already declares -- so one rule set dresses
    all twenty-two cards instead of three more colour tables.

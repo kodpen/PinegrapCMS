@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The one list of settings screens: the eight the site settings are split into,
- * and the neighbouring screens that live under the Settings menu.
+ * The one list of settings screens: the categories the site settings are split
+ * into, and the neighbouring screens that live beside them.
  *
- * Read by three places -- the dialog's sidebar and the link helper
- * (includes/fn/output.php), the category screens (includes/settings/screen.php)
- * and the command palette (api.php). One list, because they all name the same
+ * Read by four places -- the dialog's sidebar and the link helper
+ * (includes/fn/output.php), the main menu's Site Settings row
+ * (pg_menu_settings_entries(), same file), the category screens
+ * (includes/settings/screen.php) and the command palette (api.php). One list, because they all name the same
  * screens with the same gates, and copies of that answer drift: a screen added
  * to one is missing from the others and nothing says so.
  *
@@ -115,15 +116,17 @@ function pg_settings_categories()
 
         'appearance' => array(
             'label' => lang('Appearance'),
-            'icon'  => 'bi-palette',
-            'description' => lang('The panel theme and the rich-text editor.'),
+            'icon'  => 'bi-brush',
+            'description' => lang('The panel theme, the dashboard and the rich-text editor.'),
             'sections' => array(
-                'pgset-theme'  => lang('Theme'),
-                'pgset-editor' => lang('Rich-text Editor'),
+                'pgset-theme'     => lang('Theme'),
+                'pgset-dashboard' => lang('Dashboard'),
+                'pgset-editor'    => lang('Rich-text Editor'),
             ),
             'keywords' => array(
-                'pgset-theme'  => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
-                'pgset-editor' => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
+                'pgset-theme'     => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
+                'pgset-dashboard' => pg_settings_keywords(lang('dashboard, widget, card style, backdrop, refresh, reset widgets, welcome')),
+                'pgset-editor'    => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
             ),
         ),
 
@@ -135,19 +138,21 @@ function pg_settings_categories()
                 'pgset-features' => lang('Feature Options'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
+                'pgset-page-cache' => lang('Page Cache'),
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
+                'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),
                 'pgset-signature' => pg_settings_keywords(lang('signature, timestamp, time stamp, tsa, rfc 3161, credit, kamusm, kamu sm, e-guven, e-tugra, contract, evidence, proof')),
             ),
         ),
 
         'seo' => array(
             'label' => 'SEO',
-            'icon'  => 'bi-graph-up-arrow',
+            'icon'  => 'bi-search',
             'description' => lang('Search engines, structured data and visitor tracking.'),
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
@@ -211,6 +216,7 @@ function pg_settings_categories()
             'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.'),
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
+                'pgset-captcha'    => lang('Spam Protection'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
@@ -218,6 +224,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
+                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
@@ -229,7 +236,7 @@ function pg_settings_categories()
 
         'firewall' => array(
             'label' => lang('Firewall'),
-            'icon'  => 'bi-shield-exclamation',
+            'icon'  => 'bi-bricks',
             'description' => lang('The request filter, bot policy and address lists.'),
             'sections' => array(
                 'pgset-waf'     => lang('Firewall'),
@@ -278,7 +285,7 @@ function pg_settings_categories()
 
         'api' => array(
             'label' => lang('API'),
-            'icon'  => 'bi-plug',
+            'icon'  => 'bi-braces',
             'description' => lang('The application API: the master switch, HTTPS, the public description, log retention and the upload folder.'),
             'sections' => array(
                 'pgset-api'         => lang('Application API'),
@@ -298,6 +305,14 @@ function pg_settings_categories()
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
         unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
         $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+    }
+
+    // The Dashboard card is drawn for designers and administrators only
+    // (pg_dashboard_appearance_allowed()); for anyone else, a manager opening
+    // Appearance included, no chip or search result points at it.
+    if (!pg_dashboard_appearance_allowed(defined('USER_ROLE') ? USER_ROLE : null)) {
+        unset($categories['appearance']['sections']['pgset-dashboard'], $categories['appearance']['keywords']['pgset-dashboard']);
+        $categories['appearance']['description'] = lang('The panel theme and the rich-text editor.');
     }
 
     return $categories;
@@ -435,8 +450,8 @@ function pg_settings_tool_groups($user)
         'label' => lang('Monitoring'),
         'icon'  => 'bi-activity',
         'items' => array(
-            array('label' => lang('Site Log'), 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
-            array('label' => lang('Sessions'), 'icon' => 'bi-shield-lock',  'url' => 'view_sessions.php'),
+            array('label' => lang('Site Log'), 'icon' => 'bi-card-list', 'url' => 'view_log.php'),
+            array('label' => lang('Sessions'), 'icon' => 'bi-laptop',    'url' => 'view_sessions.php'),
         ),
     );
 
@@ -444,11 +459,11 @@ function pg_settings_tool_groups($user)
     $connections = array(
         array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
-        array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg',  'url' => 'connections.php'),
+        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
     );
 
     if ($ecommerce) {
-        $connections[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-shop', 'url' => 'marketplace_settings.php');
+        $connections[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php');
     }
 
     $groups[] = array('label' => lang('Connections'), 'icon' => 'bi-plug', 'items' => $connections);
@@ -457,12 +472,14 @@ function pg_settings_tool_groups($user)
     // (role < 3, or a role-3 user carrying the flag); the menu has always
     // applied it together with the feature switch.
     if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE && $ecommerce) {
+        // Named apart from the Ecommerce category: the menu lists both as
+        // entries of one panel.
         $groups[] = array(
-            'label' => lang('Ecommerce'),
-            'icon'  => 'bi-shop',
+            'label' => lang('Store Lists'),
+            'icon'  => 'bi-bag',
             'items' => array(
                 array('label' => lang('All Referral Sources'), 'icon' => 'bi-signpost-2',        'url' => 'view_referral_sources.php'),
-                array('label' => lang('All Currencies'),       'icon' => 'bi-currency-exchange', 'url' => 'view_currencies.php'),
+                array('label' => lang('All Currencies'),       'icon' => 'bi-coin',              'url' => 'view_currencies.php'),
             ),
         );
     }
@@ -499,7 +516,7 @@ function pg_settings_tool_groups($user)
         'confirm' => lang('All server-side caches will be cleared.'),
     );
 
-    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope', 'url' => 'mail_queue.php');
+    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope-arrow-up', 'url' => 'mail_queue.php');
 
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.
@@ -610,9 +627,14 @@ function pg_settings_status($key, $row)
             return array('ok', $on('chat_enabled') ? lang('Chat is on') : lang('Chat is off'));
 
         case 'security':
+            $captcha_provider = ($on('captcha') && function_exists('pg_captcha_provider')) ? pg_captcha_provider() : '';
             return array(
                 'ok',
-                ($on('captcha') ? lang('CAPTCHA is on') : lang('CAPTCHA is off'))
+                ($on('captcha')
+                    ? (($captcha_provider !== '')
+                        ? lang(array('string' => 'CAPTCHA is on ({var:1})', 'vars' => array(h(pg_captcha_provider_definition($captcha_provider)['label']))))
+                        : lang('CAPTCHA is on'))
+                    : lang('CAPTCHA is off'))
                 . ' · ' . ($on('oauth_google_enabled') ? lang('Google sign-in is on') : lang('Google sign-in is off')));
 
         case 'firewall':

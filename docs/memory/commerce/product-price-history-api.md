@@ -15,7 +15,7 @@ description: GET /products/{id}/price-history (2026.11.0): a product's price his
 
 ## What do the rows say about offers?
 - Rows of source `offer` are the price the open offers gave a visitor with no offer code, no account and an empty cart, written by the general job within the hour (docs/memory/commerce/product-price-history-offers.md). The route description says how to read the line: the newest row at or before a moment is what such a visitor paid then. A coded, member-only or cart-conditioned discount is not in it.
-- No retention trims the rows yet (plan, retention step). The merchant's `compare_at_price` is a field of the product object, not a history row (docs/memory/commerce/product-compare-at-price.md).
+- Rows older than 13 months are trimmed daily, except the ones that say the price then (docs/memory/commerce/product-price-history-retention.md). The merchant's `compare_at_price` is a field of the product object, not a history row (docs/memory/commerce/product-compare-at-price.md).
 
 ## How was it verified?
 - `php tools/check_api_schema.php` (presenter and declaration agree, the object is registered), `php tools/test.php price_history`; the paging, the `since` filter, the 404, the 422 and the 400 were walked with stubbed `api_rows()` / response helpers over an in-memory table. No running site was set up, so the route was not called over HTTP.

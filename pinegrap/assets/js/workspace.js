@@ -18511,6 +18511,14 @@
         // The row in the menu, added or taken away without a reload; the
         // next page draws it on the server the same way (includes/fn/output.php).
         function drawMenuRow(svg) {
+            // The pinned row's panel, if open, goes back to the rows first:
+            // without its row it would stay open, and be kept for the tab.
+            var openPanel = document.querySelector('#menu_panel_24.is-open [data-pg-menu-back]');
+
+            if (openPanel && !menuPinned) {
+                openPanel.click();
+            }
+
             Array.prototype.forEach.call(document.querySelectorAll('#menu_item_24'), function (row) {
                 row.remove();
             });
@@ -18521,8 +18529,12 @@
                     return;
                 }
 
-                var row = el('a', 'list-group-item list-group-item-action border-0 active');
+                var row = el('a', 'list-group-item list-group-item-action border-0 no-popover active');
                 var label = el('span', 'list-group-text', t('notes_menu_label'));
+                // The panel of the pinned row (My Notes, Add Note) is drawn by
+                // the server whenever the notes are open to this person, pinned
+                // or not (output_menu()), so the new row opens it like any other.
+                var panel = document.getElementById('menu_panel_24');
 
                 row.id = 'menu_item_24';
                 row.href = CFG.urls.notes;
@@ -18539,6 +18551,15 @@
                 }
 
                 row.appendChild(label);
+
+                if (panel) {
+                    row.classList.add('pg-menu-parent');
+                    row.setAttribute('data-pg-menu-panel', panel.id);
+                    row.setAttribute('aria-controls', panel.id);
+                    row.setAttribute('aria-expanded', 'false');
+                    row.appendChild(el('span', 'pg-menu-hint'));
+                    row.appendChild(icon('bi-chevron-right', 'pg-menu-chevron'));
+                }
                 workspace.classList.remove('active');
                 workspace.parentNode.insertBefore(row, workspace.nextSibling);
             });

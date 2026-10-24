@@ -279,7 +279,7 @@ function api_schema() {
 			'handler' => 'api_products_price_history',
 			'returns' => array('list' => 'PriceHistoryEntry'),
 			'summary' => 'The price history of a product',
-			'description' => 'Every change of the price the product sold at since the history began, oldest first and cursor paged: the price it became, in which currency, when, and what changed it (initial, panel, import, api, offer, erp). The first row of a product is initial, the price it had when the history started on this site. An offer row is the price the open offers gave a visitor with no offer code, no account and an empty cart, recorded by the site\'s scheduled job within the hour an offer began, ended or changed; the other rows are the product\'s own price as its writers set it. The newest row at or before a moment is what such a visitor paid then (a price set while an offer runs is followed by its offer row within the hour). Pass since to read only the changes at or after a moment, which is how a client keeps a copy in step. A product in the Recycle Bin still answers; a site without the history table answers an empty list.',
+			'description' => 'Every change of the price the product sold at over the last thirteen months, oldest first and cursor paged: the price it became, in which currency, when, and what changed it (initial, panel, import, api, offer, erp). The first row of a product is initial, the price it had when the history started on this site. Rows older than thirteen months are removed by the site\'s scheduled job, except the few that still say what the price was at that point, so a longer history starts with those. An offer row is the price the open offers gave a visitor with no offer code, no account and an empty cart, recorded by the site\'s scheduled job within the hour an offer began, ended or changed; the other rows are the product\'s own price as its writers set it. The newest row at or before a moment is what such a visitor paid then (a price set while an offer runs is followed by its offer row within the hour). Pass since to read only the changes at or after a moment, which is how a client keeps a copy in step. A product in the Recycle Bin still answers; a site without the history table answers an empty list.',
 			'params'  => array(
 				array('name' => 'id',      'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only changes recorded at or after this moment.'),
@@ -597,7 +597,7 @@ function api_schema() {
 				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
-				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
+				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer and, for an order placed with an account, also starts the store\'s review request e-mail. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
 			)
 		),
 
@@ -612,6 +612,41 @@ function api_schema() {
 			'description' => 'The pre-information form and the distance sales contract the customer accepted at checkout, each as the HTML that was shown and stored with the order, with when it was accepted and from which address. The copy never changes after the order is placed, so it is the record of what was agreed to even after the templates are edited. One page, at most one document per type; an order placed before the documents were switched on, or on a store that never switched them on, has an empty list. Use ?fields=type,accepted,accepted_at to skip the HTML.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'orders.returns',
+			'method'  => 'GET',
+			'path'    => '/orders/{id}/returns',
+			'scope'   => 'orders:read',
+			'handler' => 'api_orders_returns',
+			'returns' => array('list' => 'OrderReturn'),
+			'summary' => 'The return requests of an order',
+			'description' => 'Every return request of the order, newest first, each with the order lines it sends back (order_item_id is the id of a line in GET /orders/{id}), its status and when each status was reached. status is requested, approved, rejected, shipped (the goods are on their way back), received, refunded or closed; source says who asked: customer (My Account), panel or api. The amount and the way a return was refunded are not kept on the return: they come only with the order.return.refunded event (amount, refund_method, and unclear when the payment service gave no clear answer). One page, as an order has few returns; an order with none, or a site not yet updated to the version that keeps returns, has an empty list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'orders.returns.create',
+			'method'  => 'POST',
+			'path'    => '/orders/{id}/returns',
+			'scope'   => 'orders:write',
+			'handler' => 'api_orders_returns_create',
+			'dry_run' => true,
+			'returns' => 'OrderReturn',
+			'status'  => array(201, 200),
+			'summary' => 'Record a return request',
+			'description' => 'Records a request to send back goods of one delivery of a completed or exported order, as the customer asks for one in My Account, with source api. It is recorded for the shop, so the customer\'s timing rules are not checked: neither the withdrawal period, nor that the goods have left, nor that a delivery date is known. The panel shows whether the request came in time, and staff decide; a delivery not yet sent is normally cancelled instead. No more of a line can be asked for than is left on it after the order\'s other returns. Staff are told on the panel bell; the customer is mailed only when notify is true. Announced as order.return.requested. The same request sent again by the same account within 60 seconds is answered with the return it repeats, with 200 instead of 201, and nothing else happens. 409 order_not_returnable: the order is not complete or exported. 409 no_shipping_address: none of the order\'s goods went to an address, so there is nothing to send back. 409 return_in_progress: another return of the order is being saved; send the call again in a moment. 503 service_unavailable: the site has not been updated to the version that keeps returns.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'ship_to_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The delivery the goods came in, from the shipments block of GET /orders/{id}. Optional while the order\'s goods went to one address; required when they went to several.'),
+				array('name' => 'items',      'in' => 'body', 'type' => 'list', 'of' => array('order_item_id' => 'integer', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {order_item_id, quantity}: lines of that delivery, each once - the lines in items of GET /orders/{id} whose ship_to_id is the delivery\'s (a line with a null ship_to_id went to no address and cannot be returned) - and how many of each go back, at most what is left on the line after the order\'s other returns.'),
+				array('name' => 'reason',     'in' => 'body', 'type' => 'enum', 'values' => array_keys(pg_return_reasons()), 'required' => true, 'description' => 'Why the goods go back.'),
+				array('name' => 'note',       'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'The customer\'s words. Required with reason other.'),
+				array('name' => 'notify',     'in' => 'body', 'type' => 'bool', 'description' => 'true sends the customer the "we received your return request" mail My Account sends. Left out it does not.')
 			)
 		),
 
