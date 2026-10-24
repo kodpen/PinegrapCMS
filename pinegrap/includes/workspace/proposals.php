@@ -13,7 +13,9 @@
  * sets it aside, as a change Claude proposed. The changes are checked as
  * Claude's answers are (ws_changes_input()), kept the same way
  * (ws_changes_store()) and applied by the same path; nothing here writes a
- * record.
+ * record, and no application applies or sets aside what an application
+ * proposed: only the card and the person's own team devices session do
+ * (ws_api_proposal_decision_gate()).
  *
  * Each proposal is a row of ws_ai_requests, so its cards hang off one place
  * as they do under an assistant's answer. Its agent names the application:
@@ -162,6 +164,32 @@ function ws_proposal_scopes($changes, $types)
 }
 
 /**
+ * The first change of a kind no application proposes: a user account (tag
+ * user_account). No API scope reads user accounts (account:read is the
+ * caller's own), and a proposal answers with what the record holds now, so
+ * an application acting for an administrator would read every sign-in
+ * e-mail under the Workspace's scopes alone. Read from the body as sent,
+ * before any record is looked up; a change that is not an object or names
+ * no known kind is left to ws_changes_input().
+ *
+ * @param mixed $changes the changes, as sent
+ * @param array $types   ws_change_types()
+ * @return int the change's index, -1 when there is none
+ */
+function ws_proposal_closed_change($changes, $types)
+{
+    foreach (is_array($changes) ? array_values($changes) : array() as $index => $change) {
+        $type = is_array($change) ? (string) ($change['type'] ?? '') : '';
+
+        if (isset($types[$type]) && ((string) $types[$type]['tag'] === 'user_account')) {
+            return $index;
+        }
+    }
+
+    return -1;
+}
+
+/**
  * Are the tables there for a proposal: the changes, the agent of a request
  * and, on a task, the columns that tie both to it?
  *
@@ -177,12 +205,27 @@ function ws_proposals_ready($on_task = false)
 
 /**
  * The name the application of a proposal is shown with: the OAuth client's
- * own (ChatGPT, Cursor), or the application's.
+ * own (ChatGPT, Cursor), or the application's, marked as an application
+ * (ws_proposal_name_shown()).
  *
  * @param string $agent
  * @return string '' for an assistant's agent
  */
 function ws_proposal_name($agent)
+{
+    $parsed = ws_proposal_agent_parse($agent);
+
+    return $parsed ? ws_proposal_name_shown(ws_proposal_own_name($agent), $parsed['kind']) : '';
+}
+
+/**
+ * The name the application of a proposal gave itself, cleaned, with no
+ * mark: for its initials.
+ *
+ * @param string $agent
+ * @return string '' for an assistant's agent or an application with no name
+ */
+function ws_proposal_own_name($agent)
 {
     static $cache = array();
 
@@ -196,12 +239,34 @@ function ws_proposal_name($agent)
         $name = ($parsed['kind'] === 'oauth')
             ? (string) db_value("SELECT name FROM oauth_clients WHERE id = '" . $parsed['id'] . "'")
             : (string) db_value("SELECT name FROM api_apps WHERE id = '" . $parsed['id'] . "'");
-        $name = ws_proposal_name_clean($name);
 
-        $cache[$agent] = ($name !== '') ? $name : (($parsed['kind'] === 'oauth') ? lang('OAuth connection') : lang('Application'));
+        $cache[$agent] = ws_proposal_name_clean($name);
     }
 
     return $cache[$agent];
+}
+
+/**
+ * An application's name as every line about its proposal carries it: the
+ * Site Log, a decision, the bell, a card's title, a task's drawer. Marked as
+ * an application, as its messages are (ws_app_sender()): an OAuth client
+ * names itself when it registers, and one called Claude, Pinegrap AI or
+ * after a colleague would otherwise read as them, also in the audit trail
+ * once the change is applied.
+ *
+ * @param string $name ws_proposal_name_clean()
+ * @param string $kind oauth | app
+ * @return string
+ */
+function ws_proposal_name_shown($name, $kind)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return ($kind === 'oauth') ? lang('OAuth connection') : lang('Application');
+    }
+
+    return lang(array('string' => '{var:1} (application)', 'vars' => $name));
 }
 
 /**
@@ -233,7 +298,9 @@ function ws_proposal_avatar($agent)
     $parsed = ws_proposal_agent_parse($agent);
 
     if ($parsed && function_exists('pg_initials_avatar_url')) {
-        return pg_initials_avatar_url(pg_initials(ws_proposal_name($agent), ''), 'contact', $parsed['kind'] . $parsed['id']);
+        $name = ws_proposal_own_name($agent);
+
+        return pg_initials_avatar_url(pg_initials(($name !== '') ? $name : 'App', ''), 'contact', $parsed['kind'] . $parsed['id']);
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg';
@@ -367,7 +434,7 @@ function ws_proposal_sender($sender, $agent)
         return $sender;
     }
 
-    $sender['name'] = lang(array('string' => '{var:1} (application)', 'vars' => ws_proposal_name($agent)));
+    $sender['name'] = ws_proposal_name($agent);
     $sender['avatar'] = ws_proposal_avatar($agent);
 
     return $sender;
@@ -393,6 +460,20 @@ function ws_proposal_request_state($row)
 }
 
 /**
+ * How many proposals this application made for this person in the last
+ * hour.
+ *
+ * @param string $agent
+ * @param int    $user_id
+ * @return int
+ */
+function ws_proposal_count($agent, $user_id)
+{
+    return (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE agent = '" . e($agent) . "' AND requested_by = '" . (int) $user_id . "' AND created_at > '" . (time() - 3600) . "'");
+}
+
+/**
  * Has this application made as many proposals for this person as it may in
  * the last hour (WS_PROPOSALS_PER_HOUR)?
  *
@@ -402,8 +483,7 @@ function ws_proposal_request_state($row)
  */
 function ws_proposal_limited($agent, $user_id)
 {
-    return (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE agent = '" . e($agent) . "' AND requested_by = '" . (int) $user_id . "' AND created_at > '" . (time() - 3600) . "'") >= WS_PROPOSALS_PER_HOUR;
+    return ws_proposal_count($agent, $user_id) >= WS_PROPOSALS_PER_HOUR;
 }
 
 /**
@@ -419,7 +499,8 @@ function ws_proposal_limited($agent, $user_id)
  * @param string $text   the words, checked
  * @param array  $rows   ws_changes_input() rows
  * @param int    $app_id the application the message is written as
- * @return array ok, error, request_id, message_id (0 on a task)
+ * @return array ok, error, limited (the hourly limit was reached meanwhile),
+ *               request_id, message_id (0 on a task)
  */
 function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
 {
@@ -427,8 +508,8 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
     $task = $channel ? null : (isset($place['task']) ? $place['task'] : null);
     $now = time();
 
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'request_id' => 0, 'message_id' => 0);
+    $fail = function ($error, $limited = false) {
+        return array('ok' => false, 'error' => $error, 'limited' => $limited, 'request_id' => 0, 'message_id' => 0);
     };
 
     if (!$channel && !$task) {
@@ -452,6 +533,15 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
 
     if ($request_id <= 0) {
         return $fail(lang('The proposal could not be saved.'));
+    }
+
+    // Counted again with this row in: requests sent at the same moment all
+    // passed ws_proposal_limited() before any of them was written, so one
+    // that went over the limit is taken back here, before anything is sent.
+    if (ws_proposal_count($agent, (int) $viewer['id']) > WS_PROPOSALS_PER_HOUR) {
+        db("DELETE FROM ws_ai_requests WHERE id = '" . $request_id . "'");
+
+        return $fail(lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.', 'vars' => WS_PROPOSALS_PER_HOUR)), true);
     }
 
     $message_id = 0;
@@ -487,5 +577,5 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
         ws_notify((int) $viewer['id'], 'task_assistant', array('task_id' => (int) $task['id'], 'actor_id' => 0));
     }
 
-    return array('ok' => true, 'error' => '', 'request_id' => $request_id, 'message_id' => $message_id);
+    return array('ok' => true, 'error' => '', 'limited' => false, 'request_id' => $request_id, 'message_id' => $message_id);
 }

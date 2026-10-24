@@ -31,6 +31,7 @@ description: Plan (2026-10-23, steps 1-2 done #1468, step 3 built, answers 1-2 g
 1. MCP on approvals.decide, changes.apply: (a) as now, (b) not offered (the card), (c) confirmed again → b.
 2. Direct record writes by AI apps: consent presets leave record write scopes unticked by default, the propose route always there (not kept as is, no OAuth ceiling, no column).
 Open: 3. Tool profiles: (a) consent presets, (b) tool groups per connection (schema) → a.
+Open: 4. An application's proposal is applied over REST from the team devices session only, no OAuth connection (slice 3, else a client applies its own card): keep?
 
 ## Where to start?
 - Slices 1-3 are in: slice 4 or 5 next. Read workspace/workspace-api-callers.md, workspace-change-proposals.md.

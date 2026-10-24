@@ -1509,6 +1509,7 @@ function ws_claude_js_strings()
         'proposal_change_stale' => ws_js_template('The record changed after {var:1} proposed this, so it was not applied. Ask {var:1} again.', 1),
         'change_failed'         => ws_js_template('Could not be applied: {var:1}', 1),
         'change_waiting'        => ws_js_template('Applied when {var:1}, who asked for it, approves', 1),
+        'proposal_change_waiting' => ws_js_template('Applied when {var:1}, to whom {var:2} proposed it, approves', 2),
         'change_no_right'       => lang('You may not change a record of this kind, so this cannot be applied.'),
         'change_hidden'         => ws_js_template('A change to {var:1} field(s)', 1),
         'change_done'           => lang('The change was applied and kept among the decisions.'),

@@ -421,6 +421,25 @@ function ws_delegation_status_open($status)
 }
 
 /**
+ * The run under way among a task's request rows, newest first: the newest
+ * row whose status is open, not the newest row, since an application's
+ * proposal (proposals.php) may have been written after the run began.
+ *
+ * @param array[] $rows ws_ai_requests rows, newest first
+ * @return array|null
+ */
+function ws_task_delegation_open_row($rows)
+{
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ws_delegation_status_open($row['status'] ?? '')) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
  * The column that ties a request to an MCP server, for a query that names
  * its columns: there only once its schema step (10.82) has run.
  *
@@ -752,7 +771,9 @@ function ws_task_delegation_told($row, $status)
 
 /**
  * The runs on a task a new run is told about: what the assistants were
- * asked and what they answered, oldest first.
+ * asked and what they answered, oldest first. An application's proposal
+ * (proposals.php) is left out: nobody asked for it, and its words would
+ * reach the model as earlier work the person had asked for.
  *
  * @param array $task
  * @param int   $before_id only runs before this request
@@ -766,7 +787,8 @@ function ws_task_delegation_earlier($task, $before_id = 0)
 
     $rows = (array) db_items("SELECT id, agent, note_text, note_reply, status, error, requested_by, created_at" . ws_delegation_server_column() . " FROM ws_ai_requests
         WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('answered', 'failed')"
-        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '') . "
+        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '')
+        . (function_exists('ws_proposal_where') ? " AND " . ws_proposal_where('', false) : '') . "
         ORDER BY id DESC LIMIT " . WS_DELEGATION_EARLIER);
 
     $out = array();
@@ -943,7 +965,9 @@ function ws_task_delegation_detail($viewer, $task)
         );
     }
 
-    $first = $rows ? $rows[0] : null;
+    // The run under way, which an application's proposal written after it
+    // began does not hide.
+    $first = ws_task_delegation_open_row($rows);
 
     // A run of an MCP server's own agent that waits for its asker's approval
     // (mcp_agent.php) has nothing for the screens to carry on until then.

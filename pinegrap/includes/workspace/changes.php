@@ -1630,13 +1630,16 @@ function ws_change_delete_blocked($type, $record)
  * task: a note proposed for it goes on that task unless it names another,
  * and nothing is proposed for a channel or for many records at once.
  *
- * @param mixed $changes    the answer's changes, as sent
- * @param int   $asker_id   the person who asked, who will apply them
- * @param int   $channel_id the channel the request came from
- * @param int   $task_id    the task the request came from
+ * @param mixed $changes      the answer's changes, as sent
+ * @param int   $asker_id     the person who asked, who will apply them
+ * @param int   $channel_id   the channel the request came from
+ * @param int   $task_id      the task the request came from
+ * @param bool  $for_proposal an application's proposal (proposals.php):
+ *                            nobody asked, so a refusal speaks of the person
+ *                            it is proposed to, not of an answer
  * @return array ok, error, rows (type, action, record_id, fields, reason, snapshot)
  */
-function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
+function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $for_proposal = false)
 {
     $out = array('ok' => true, 'error' => '', 'rows' => array());
 
@@ -1683,7 +1686,7 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
         if ($action === 'bulk') {
             $bulk = is_array($change['bulk'] ?? null) ? $change['bulk'] : array();
             $bulk['type'] = $type;
-            $checked = ws_bulk_input($asker, $bulk);
+            $checked = ws_bulk_input($asker, $bulk, $for_proposal);
 
             if (!$checked['ok']) {
                 return $refuse($checked['error']);
@@ -1714,7 +1717,9 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
 
         // Nobody gets a button for a change they could not make themselves.
         if (!ws_change_allowed($asker, $type, $record_id)) {
-            return $refuse(lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
+            return $refuse($for_proposal
+                ? lang(array('string' => 'The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.', 'vars' => $types[$type]['label']))
+                : lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
         }
 
         $record = null;
@@ -3106,7 +3111,11 @@ function ws_change_source($source = null)
 /**
  * The sentence a writer leaves on the record itself, in the name of whoever
  * made the change: the assistant that proposed it, the scheduled action, or
- * the person who edited the record from the drawer.
+ * the person who edited the record from the drawer. A change an application
+ * proposed (proposals.php) is named by the person who applied it: the
+ * sentence leaves the site (an order's cancellation reason goes with the
+ * refund and into the customer's e-mail), and an OAuth client chose its own
+ * name when it registered.
  *
  * @param string $by_assistant the sentence written for Claude's proposal
  * @param string $by_scheduled the sentence with {var:1} for the action's name
@@ -3124,6 +3133,16 @@ function ws_change_sentence($by_assistant, $by_scheduled, $var = null, $by_perso
 
     if ($named !== '') {
         return lang(array('string' => $named, 'vars' => ($var === null) ? (string) $source['name'] : array($var, (string) $source['name'])));
+    }
+
+    $change = function_exists('ws_ai_voice_change') ? ws_ai_voice_change() : null;
+
+    if (($by_person !== '') && function_exists('ws_change_proposer') && (ws_change_proposer($change) !== '')) {
+        // The person the application proposed it to is the one who applied
+        // it (ws_change_apply_check()).
+        $person = ws_person_name((int) ($change['requested_by'] ?? 0));
+
+        return lang(array('string' => $by_person, 'vars' => ($var === null) ? $person : array($var, $person)));
     }
 
     $text = ($var === null) ? lang($by_assistant) : lang(array('string' => $by_assistant, 'vars' => $var));

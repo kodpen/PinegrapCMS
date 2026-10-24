@@ -7,8 +7,9 @@
  * proposal is kept under for each kind of caller, how that agent is read
  * back, the SQL that tells proposals from the assistants' requests, the
  * agent the API lists a change under, the read scopes the kinds a body
- * names are asked with, and how an application's name is cleaned before it
- * goes into a message.
+ * names are asked with and the kind no application proposes, how an
+ * application's name is cleaned and shown, and which run on a task the
+ * drawer carries on when a proposal came after it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,6 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // An OAuth connection is kept under its client, since every client writes
 // through the one OAuth application; a key under its application; anything
@@ -73,12 +75,6 @@ function test_ws_proposal_where()
 	pg_assert_same("(agent LIKE 'oauth:%' OR agent LIKE 'app:%')", ws_proposal_where());
 	pg_assert_same("(r.agent LIKE 'oauth:%' OR r.agent LIKE 'app:%')", ws_proposal_where('r'));
 	pg_assert_same("NOT (agent LIKE 'oauth:%' OR agent LIKE 'app:%')", ws_proposal_where('', false));
-
-	// No assistant's agent matches the pattern, so none of the queues the
-	// assistants read can be told apart wrongly.
-	foreach (array('claude', 'ai', 'mcp') as $agent) {
-		pg_assert_false((strpos($agent, 'oauth:') === 0) || (strpos($agent, 'app:') === 0), $agent);
-	}
 }
 
 // The API lists a change under Pinegrap AI, an MCP agent, the application
@@ -123,6 +119,58 @@ function test_ws_proposal_scopes()
 	pg_assert_same(array(), ws_proposal_scopes(array('product', array('type' => 'nothing'), array('id' => 4), null), $types), 'nothing named, nothing asked');
 	pg_assert_same(array(), ws_proposal_scopes('product', $types), 'not a list');
 	pg_assert_same(array(), ws_proposal_scopes(null, $types));
+
+	// Every kind of the real catalogue an application may propose is read
+	// with a scope of its own, or is the Workspace's own (a channel's
+	// summary, a note): a new kind whose tag ws_ai_type_scope() does not
+	// know would otherwise be read back under workspace:read alone.
+	$catalogue = pg_test_ws_change_types();
+	$workspace_own = array('channel', '');
+
+	foreach ($catalogue as $kind => $type) {
+		if (ws_proposal_closed_change(array(array('type' => $kind)), $catalogue) === 0) {
+			continue;
+		}
+
+		$scopes = ws_proposal_scopes(array(array('type' => $kind)), $catalogue);
+
+		pg_assert_same(1, count($scopes), $kind . ' asks one scope');
+
+		if (in_array((string) $type['tag'], $workspace_own, true)) {
+			pg_assert_same(array('workspace:read'), $scopes, $kind . ' is the Workspace\'s own');
+		} else {
+			pg_assert_false($scopes === array('workspace:read'), $kind . ' (tag ' . $type['tag'] . ') is read with the scope of its kind, not workspace:read');
+		}
+	}
+}
+
+// A user account is read by no API scope (account:read is the caller's own
+// account), so its current e-mail, which a proposal answers with as from,
+// would reach an application under workspace:read: no application proposes
+// a change to one. Every other kind stays open.
+function test_ws_proposal_closed_change()
+{
+	$catalogue = pg_test_ws_change_types();
+
+	pg_assert_true(isset($catalogue['user']), 'the catalogue has user accounts');
+	pg_assert_same('user_account', (string) $catalogue['user']['tag']);
+
+	pg_assert_same(0, ws_proposal_closed_change(array(array('type' => 'user', 'id' => 4, 'fields' => array('email' => 'x@example.com'))), $catalogue));
+	pg_assert_same(2, ws_proposal_closed_change(array(
+		array('type' => 'product', 'id' => 1),
+		array('type' => 'order', 'id' => 2),
+		array('type' => 'user', 'id' => 3),
+	), $catalogue), 'the index of the first closed change');
+	pg_assert_same(1, ws_proposal_closed_change(array('user', array('type' => 'user')), $catalogue), 'a change that is no object is left to ws_changes_input()');
+
+	foreach (array_keys($catalogue) as $kind) {
+		if ($kind !== 'user') {
+			pg_assert_same(-1, ws_proposal_closed_change(array(array('type' => $kind)), $catalogue), $kind . ' is proposed');
+		}
+	}
+
+	pg_assert_same(-1, ws_proposal_closed_change(null, $catalogue));
+	pg_assert_same(-1, ws_proposal_closed_change(array(array('type' => 'nothing')), $catalogue));
 }
 
 // An application's name goes into the words of a decision, and an OAuth
@@ -138,10 +186,37 @@ function test_ws_proposal_name_clean()
 	pg_assert_false(strpos(ws_proposal_name_clean('a<b>c'), '<') !== false);
 }
 
-// A proposal is capped per application and person, and never carries more
-// cards than an assistant's answer.
-function test_ws_proposal_limits()
+// The name an application's proposal is shown with in the Site Log, a
+// decision, the bell and a task's drawer always says it is an application:
+// an OAuth client names itself when it registers, and a client called
+// Claude or after a colleague would otherwise read as them.
+function test_ws_proposal_name_shown()
 {
-	pg_assert_true(WS_PROPOSALS_PER_HOUR > 0, 'there is a limit');
-	pg_assert_same(10, WS_CHANGES_PER_ANSWER, 'the answer\'s own limit is the one reused');
+	pg_assert_same('ChatGPT (application)', ws_proposal_name_shown('ChatGPT', 'oauth'));
+	pg_assert_same('Stock sync (application)', ws_proposal_name_shown('Stock sync', 'app'));
+
+	foreach (array('Claude', 'Pinegrap AI', 'Erdal Güral') as $name) {
+		pg_assert_false(ws_proposal_name_shown($name, 'oauth') === $name, $name . ' is never shown bare');
+	}
+
+	pg_assert_same('OAuth connection', ws_proposal_name_shown('', 'oauth'), 'a client with no name');
+	pg_assert_same('Application', ws_proposal_name_shown('', 'app'));
+}
+
+// The drawer carries on the run that is still open, not the newest row: an
+// application's proposal may be written on the task after a run began.
+function test_ws_task_delegation_open_row()
+{
+	$proposal = array('id' => 11, 'agent' => 'oauth:5', 'status' => 'answered');
+	$run = array('id' => 10, 'agent' => 'ai', 'status' => 'running');
+	$earlier = array('id' => 9, 'agent' => 'claude', 'status' => 'answered');
+
+	pg_assert_same($run, ws_task_delegation_open_row(array($proposal, $run, $earlier)), 'the open run under a newer proposal');
+	pg_assert_same($run, ws_task_delegation_open_row(array($run, $earlier)));
+
+	$sent = array('id' => 12, 'agent' => 'mcp', 'status' => 'sent');
+
+	pg_assert_same($sent, ws_task_delegation_open_row(array($sent, $proposal)), 'a run waiting for its approval is open');
+	pg_assert_same(null, ws_task_delegation_open_row(array($proposal, $earlier)), 'nothing open');
+	pg_assert_same(null, ws_task_delegation_open_row(array()));
 }

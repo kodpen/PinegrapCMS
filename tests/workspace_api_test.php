@@ -356,6 +356,80 @@ function test_ws_api_change_proposals_never_write_records()
 
 	pg_assert_contains('ws_api_is_assistant(', ws_api_test_handler_source('ws_api_proposal_agent'), 'an assistant proposes in its answer');
 	pg_assert_contains("api_require_scope('tasks:read')", ws_api_test_handler_source('ws_api_task_changes_propose'), 'the task is seen under tasks:read');
+
+	// A user account is read by no API scope: refused before any record is
+	// read, so neither its e-mail nor a refusal about its role comes back.
+	pg_assert_contains('ws_proposal_closed_change(', ws_api_test_handler_source('ws_api_proposal_scopes'), 'a kind no application proposes is refused first');
+
+	// The refusals ws_changes_input() gives speak of a proposal, not of the
+	// person who asked an assistant.
+	pg_assert_contains('(int) $task_id, true)', ws_api_test_handler_source('ws_api_proposal_rows'), 'the changes are checked as a proposal\'s');
+	pg_assert_contains('ws_bulk_input($asker, $bulk, $for_proposal)', ws_api_test_handler_source('ws_changes_input'), 'and so are many records at once');
+
+	// Requests sent at the same moment all passed the hourly count before
+	// any was written: the row is counted again once it is in, before its
+	// message goes out.
+	$at = array();
+
+	foreach (array('INSERT INTO ws_ai_requests', 'ws_proposal_count(', 'ws_message_send(') as $step) {
+		$at[$step] = strpos($store, $step);
+		pg_assert_true($at[$step] !== false, 'ws_proposal_store: ' . $step);
+	}
+
+	pg_assert_true(($at['INSERT INTO ws_ai_requests'] < $at['ws_proposal_count(']) && ($at['ws_proposal_count('] < $at['ws_message_send(']), 'counted again after the insert, before the message');
+
+	// On a task a proposal waits for the run under way to end, so the bell
+	// at the run's end names the run, not a proposal written meanwhile.
+	pg_assert_contains('ws_task_delegation_open_run(', ws_api_test_handler_source('ws_api_task_changes_propose'), 'no proposal while an assistant works on the task');
+
+	// A proposal is no earlier answer an assistant gave on the task: nobody
+	// asked for it, so the next run is not told somebody did.
+	pg_assert_contains("ws_proposal_where('', false)", ws_api_test_handler_source('ws_task_delegation_earlier'), 'proposals are left out of a run\'s earlier work');
+	pg_assert_contains('ws_task_delegation_open_row(', ws_api_test_handler_source('ws_task_delegation_detail'), 'the drawer carries on the open run, not the newest row');
+}
+
+// A change an application proposed is applied or set aside by the person
+// alone, on the card or from their team devices session: an OAuth connection
+// is a device row too and passes ws_api_person_only(), so without this it
+// could apply the card it wrote itself, writing the record with workspace
+// scopes and no write scope of its kind. A change an assistant proposed
+// keeps the REST decision of an OAuth connection.
+function test_ws_api_proposals_are_decided_by_the_person()
+{
+	$gate = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_proposal_decision_gate'));
+
+	pg_assert_contains('ws_change_proposal_agent(', $gate, 'only a change an application proposed');
+	pg_assert_contains('ws_api_own_words_only(', $gate, 'needs the team devices session');
+
+	foreach (array('ws_api_changes_apply', 'ws_api_changes_dismiss') as $handler) {
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($handler));
+		$found = strpos($source, 'ws_api_proposal_decision_gate(');
+
+		pg_assert_true($found !== false, $handler . ' gates an application\'s proposal');
+		pg_assert_true(($found !== false) && ($found > strpos($source, 'ws_api_change_or_404(')) && ($found < strpos($source, 'api_dry_run_stop(')), $handler . ': after the change is found, before the rehearsal stops');
+		pg_assert_contains('ws_api_person_only(', $source, $handler . ' still refuses an application key');
+	}
+
+	// The connection a proposal was made through is the very device row the
+	// gate refuses; the person's own team devices session passes.
+	$connection = array('id' => 40, 'oauth_client_id' => 5);
+
+	pg_assert_same('oauth:5', ws_proposal_caller_key($connection, 9), 'the connection proposes as oauth:5');
+	pg_assert_false(ws_api_device_writes_as_person($connection), 'and cannot apply or set aside what oauth:5 proposed');
+	pg_assert_false(ws_api_device_writes_as_person(array('id' => 41, 'oauth_client_id' => 6)), 'nor can another connection');
+	pg_assert_false(ws_api_device_writes_as_person(null), 'nor an application key');
+	pg_assert_true(ws_api_device_writes_as_person(array('id' => 42, 'oauth_client_id' => 0)), 'the person\'s team devices session can');
+
+	// The route texts promise no more than this.
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.changes.apply', 'workspace.changes.dismiss') as $id) {
+		pg_assert_contains('team devices session', $routes[$id]['description'], $id . ' says who decides an application\'s proposal');
+	}
 }
 
 // An OAuth connection is a device row too, so a refusal of the team devices
@@ -1826,8 +1900,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_notes_update'         => array('ws_note_save_check(', 'api_dry_run_stop(', 'ws_note_save('),
 		'ws_api_plan_items_create'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
 		'ws_api_plan_items_update'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
-		'ws_api_changes_apply'        => array('ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
-		'ws_api_changes_dismiss'      => array('ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
+		'ws_api_changes_apply'        => array('ws_api_proposal_decision_gate(', 'ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
+		'ws_api_changes_dismiss'      => array('ws_api_proposal_decision_gate(', 'ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
 		'ws_api_flows_create'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
 		'ws_api_flows_update'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
 		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
@@ -1835,7 +1909,7 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
-		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
+		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);

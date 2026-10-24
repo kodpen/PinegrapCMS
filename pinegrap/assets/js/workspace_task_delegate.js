@@ -197,7 +197,7 @@
         }
 
         if ((change.status === 'pending') && !change.can_apply) {
-            card.appendChild(h.el('div', 'ws-draft-done', change.blocked || (change.no_right ? h.t('change_no_right') : h.t('change_waiting', change.asker))));
+            card.appendChild(h.el('div', 'ws-draft-done', change.blocked || (change.no_right ? h.t('change_no_right') : (change.proposer ? h.t('proposal_change_waiting', change.asker, change.proposer) : h.t('change_waiting', change.asker)))));
         } else if ((change.status === 'pending') && change.account) {
             var account = h.el('div', 'ws-draft-done', h.t('mcp_account', change.account.alias) + ' ');
             var off = h.el('a', '', h.t('mcp_disconnect_me'));

@@ -4750,6 +4750,24 @@ function ws_api_change_refused($result, $change = null)
     api_fail_validation($error);
 }
 
+/**
+ * A change an application proposed (proposals.php) is applied or set aside
+ * by the person alone: on its card, or from their own team devices session.
+ * An OAuth connection is a device row too and passes ws_api_person_only(),
+ * so it could otherwise apply the card it wrote itself and write the record
+ * with the Workspace's scopes and no write scope of its kind; another
+ * connection is no more the person than the one that proposed. A change an
+ * assistant proposed keeps ws_api_person_only() alone.
+ *
+ * @param array $change ws_ai_changes row
+ */
+function ws_api_proposal_decision_gate($change)
+{
+    if (function_exists('ws_change_proposal_agent') && (ws_change_proposal_agent($change) !== '')) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can apply or set aside a change an application proposed; an application key or an OAuth connection cannot, whichever application proposed it.'));
+    }
+}
+
 function ws_api_changes_apply($params)
 {
     $viewer = ws_api_viewer();
@@ -4757,6 +4775,7 @@ function ws_api_changes_apply($params)
 
     // Applying is the person's own decision, as on the card.
     ws_api_person_only();
+    ws_api_proposal_decision_gate($change);
 
     // The checks ws_change_apply() makes, made first so that a dry run meets
     // the same refusals: a change to one record is laid against the record
@@ -4799,6 +4818,7 @@ function ws_api_changes_dismiss($params)
     $change = ws_api_change_or_404($viewer, $params['id']);
 
     ws_api_person_only();
+    ws_api_proposal_decision_gate($change);
 
     $checked = ws_change_dismiss_check($viewer, (int) $change['id']);
 

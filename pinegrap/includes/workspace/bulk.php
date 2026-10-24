@@ -195,13 +195,15 @@ function ws_bulk_match($spec)
  * apply it: a kind they may change, a field that takes what is asked of it,
  * and records it reaches.
  *
- * @param array $asker the person who asked
- * @param mixed $bulk  type, action (update | delete), scope (all | group | search | ids),
- *                     group_id, search, ids, only_empty, field, operation (set | percent |
- *                     add | generate | values), value, instruction, values, round
+ * @param array $asker        the person who asked
+ * @param mixed $bulk         type, action (update | delete), scope (all | group | search | ids),
+ *                            group_id, search, ids, only_empty, field, operation (set | percent |
+ *                            add | generate | values), value, instruction, values, round
+ * @param bool  $for_proposal an application's proposal (proposals.php), whose
+ *                            refusal speaks of the person it is proposed to
  * @return array ok, error, spec, matched, sample
  */
-function ws_bulk_input($asker, $bulk)
+function ws_bulk_input($asker, $bulk, $for_proposal = false)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'spec' => null, 'matched' => 0, 'sample' => array());
@@ -223,7 +225,9 @@ function ws_bulk_input($asker, $bulk)
     }
 
     if (!ws_change_allowed($asker, $type, 0)) {
-        return $fail(lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
+        return $fail($for_proposal
+            ? lang(array('string' => 'The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.', 'vars' => $types[$type]['label']))
+            : lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
     }
 
     $action = ((string) ($bulk['action'] ?? 'update') === 'delete') ? 'delete' : 'update';

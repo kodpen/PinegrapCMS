@@ -9,8 +9,10 @@
  * An AI app connected over MCP, or an integration with a key, proposes; the
  * person the connection or the key acts for applies the change on its card,
  * with their own rights. Applying and setting aside are no MCP tools
- * (workspace.changes.apply, workspace.changes.dismiss), so an application
- * never applies what it proposed.
+ * (workspace.changes.apply, workspace.changes.dismiss), and over REST a
+ * change an application proposed is decided only from the person's own team
+ * devices session (ws_api_proposal_decision_gate()), so an application never
+ * applies what it proposed, nor what another application did.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,7 +67,7 @@ function ws_api_changes_param($applier, $required = false)
  */
 function ws_proposal_api_routes()
 {
-    $what = 'Nothing is written to a record here: this only proposes, the person applies, and the application never applies or sets aside a change itself (that is done on the card). Each change is checked as its card will be: the person must be allowed to change that kind of record and that record, the fields are laid against what the record holds now (the card shows from and to), and a change that alters nothing or cannot be made refuses the call with 422 naming changes[i] and why, so the call can be sent again with that change fixed or left out; nothing is kept from a refused call. The application must also hold the scope the kind of record is read with elsewhere in the API (orders:read for an order, products:read for a product or its stock, customers:read for a contact...), or the answer is 403 insufficient_scope. Every kind of record the Workspace changes is taken here; kinds added later (sales quotes, product variants, many new records at once) join this same endpoint. At most ' . WS_CHANGES_PER_ANSWER . ' changes in a call and ' . WS_PROPOSALS_PER_HOUR . ' proposals an hour for one person from one application (429 rate_limited, Retry-After). Proposed with an application key or through an OAuth connection (agent app:<application id> or oauth:<client id>, as GET /workspace/changes lists them); a team devices session changes the record itself and is refused with 403, as are the applications Claude and Pinegrap AI work through, which propose in their answers. Each change answers with status pending until the person applies it (applied), sets it aside (dismissed), or the record changes first (stale).';
+    $what = 'Nothing is written to a record here: this only proposes, the person applies, and the application never applies or sets aside a change itself (that is done on the card, or from the person\'s own team devices session: POST /workspace/changes/{id}/apply and /dismiss answer 403 to an application key and to every OAuth connection for a change an application proposed). Each change is checked as its card will be: the person must be allowed to change that kind of record and that record, the fields are laid against what the record holds now (the card shows from and to), and a change that alters nothing or cannot be made refuses the call with 422 naming changes[i] and why, so the call can be sent again with that change fixed or left out; nothing is kept from a refused call. The application must also hold the scope the kind of record is read with elsewhere in the API (orders:read for an order, products:read for a product or its stock, customers:read for a contact...), or the answer is 403 insufficient_scope. A user account (type user) is read by no API scope, so no application proposes a change to one: 403 forbidden naming changes[i]. Every kind of record the Workspace changes is taken here; kinds added later (sales quotes, product variants, many new records at once) join this same endpoint. At most ' . WS_CHANGES_PER_ANSWER . ' changes in a call and ' . WS_PROPOSALS_PER_HOUR . ' proposals an hour for one person from one application (429 rate_limited, Retry-After). Proposed with an application key or through an OAuth connection (agent app:<application id> or oauth:<client id>, as GET /workspace/changes lists them); a team devices session changes the record itself and is refused with 403, as are the applications Claude and Pinegrap AI work through, which propose in their answers. Each change answers with status pending until the person applies it (applied), sets it aside (dismissed), or the record changes first (stale).';
 
     return array(
 
@@ -97,7 +99,7 @@ function ws_proposal_api_routes()
             'returns'     => 'WorkspaceProposal',
             'status'      => 201,
             'summary'     => 'Propose record changes on a task',
-            'description' => 'The task twin of POST /workspace/channels/{id}/changes: the text and the cards wait in the task\'s drawer, under the assistants\' runs on it, for the person the key or the connection acts for, who is told on the bell. A task_note with no task_id goes on this task; many records at once (bulk) and a channel\'s summary are proposed in a channel, not on a task. Needs tasks:read as well, to see the task. ' . $what,
+            'description' => 'The task twin of POST /workspace/channels/{id}/changes: the text and the cards wait in the task\'s drawer, under the assistants\' runs on it, for the person the key or the connection acts for, who is told on the bell. A task_note with no task_id goes on this task; many records at once (bulk) and a channel\'s summary are proposed in a channel, not on a task. While an assistant works on the task the answer is 409 assistant_busy (Retry-After): propose when its run has ended, or in a channel. Needs tasks:read as well, to see the task. ' . $what,
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true, 'description' => 'What is proposed and why, for the person who reads the cards. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
@@ -132,14 +134,22 @@ function ws_api_proposal_agent()
 }
 
 /**
- * The read scope of each kind of record the changes name, asked before any
- * record is looked up, so a refusal says nothing about the record.
+ * The kinds of record the changes name, checked before any record is looked
+ * up, so a refusal says nothing about the record: a kind no application
+ * proposes (ws_proposal_closed_change()), then the read scope of each.
  *
  * @param mixed $changes as sent
  */
 function ws_api_proposal_scopes($changes)
 {
-    foreach (ws_proposal_scopes($changes, ws_change_types()) as $scope) {
+    $types = ws_change_types();
+    $closed = ws_proposal_closed_change($changes, $types);
+
+    if ($closed >= 0) {
+        api_fail(403, 'forbidden', 'changes[' . $closed . ']: ' . lang('No API scope reads user accounts, so an application cannot propose a change to one.'));
+    }
+
+    foreach (ws_proposal_scopes($changes, $types) as $scope) {
         api_require_scope($scope);
     }
 }
@@ -154,9 +164,30 @@ function ws_api_proposal_scopes($changes)
 function ws_api_proposal_limit($agent, $viewer)
 {
     if (ws_proposal_limited($agent, (int) $viewer['id'])) {
-        api_extra_headers('Retry-After', '3600');
-        api_fail(429, 'rate_limited', lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.', 'vars' => WS_PROPOSALS_PER_HOUR)));
+        ws_api_proposal_limit_fail();
     }
+}
+
+// The answer ws_api_proposal_limit() gives, also when the limit was reached
+// by requests sent at the same moment (ws_proposal_store()).
+function ws_api_proposal_limit_fail()
+{
+    api_extra_headers('Retry-After', '3600');
+    api_fail(429, 'rate_limited', lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.', 'vars' => WS_PROPOSALS_PER_HOUR)));
+}
+
+/**
+ * A proposal that could not be written, as the API answers it.
+ *
+ * @param array $result ws_proposal_store()
+ */
+function ws_api_proposal_store_failed($result)
+{
+    if (!empty($result['limited'])) {
+        ws_api_proposal_limit_fail();
+    }
+
+    api_fail_validation($result['error'], 'text');
 }
 
 /**
@@ -170,7 +201,7 @@ function ws_api_proposal_limit($agent, $viewer)
  */
 function ws_api_proposal_rows($changes, $viewer, $channel_id, $task_id)
 {
-    $checked = ws_changes_input($changes, (int) $viewer['id'], (int) $channel_id, (int) $task_id);
+    $checked = ws_changes_input($changes, (int) $viewer['id'], (int) $channel_id, (int) $task_id, true);
 
     if (!$checked['ok']) {
         api_fail_validation($checked['error'], 'changes');
@@ -230,7 +261,7 @@ function ws_api_changes_propose($params)
     $result = ws_proposal_store($viewer, $agent, array('channel' => $channel), $text, $rows, $app_id);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], 'text');
+        ws_api_proposal_store_failed($result);
     }
 
     ws_api_log(lang(array('string' => '{var:1} change(s) proposed in #{var:2}', 'vars' => array(count($rows), $channel['name']))));
@@ -264,6 +295,16 @@ function ws_api_task_changes_propose($params)
 
     $rows = ws_api_proposal_rows($params['changes'] ?? array(), $viewer, 0, $task['id']);
 
+    // A run under way on the task ends after this row would be written, and
+    // the bell at its end (task_assistant in notify.php) names the task's
+    // newest answered row: it would name the proposal instead of the run.
+    // The proposal waits until the run ends, as a second run does
+    // (ws_task_delegation_run_check()).
+    if (ws_task_delegation_open_run($task['id'])) {
+        api_extra_headers('Retry-After', '60');
+        api_fail(409, 'assistant_busy', lang('An assistant is working on this task. Propose the changes when its run has ended, or in a channel.'));
+    }
+
     ws_api_proposal_limit($agent, $viewer);
 
     api_dry_run_stop('proposed', 'workspace_proposal', array(
@@ -275,7 +316,7 @@ function ws_api_task_changes_propose($params)
     $result = ws_proposal_store($viewer, $agent, array('task' => $task), $checked['body'], $rows, ws_api_writer_app_id());
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], 'text');
+        ws_api_proposal_store_failed($result);
     }
 
     ws_api_log(lang(array('string' => '{var:1} change(s) proposed on task {var:2}', 'vars' => array(count($rows), ws_task_number($task['id'])))));

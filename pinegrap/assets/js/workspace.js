@@ -9927,7 +9927,7 @@
                 if (change.status === 'pending' && change.draft) {
                     // The one who asked has the form to open: nothing to wait for.
                 } else if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker))));
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : (change.proposer ? t('proposal_change_waiting', change.asker, change.proposer) : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker)))));
                 } else if (change.status === 'pending' && change.account) {
                     var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
                     var off = el('a', '', t('mcp_disconnect_me'));
