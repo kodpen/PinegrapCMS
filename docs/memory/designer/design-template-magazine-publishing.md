@@ -28,4 +28,4 @@ description: Magazine template publishing: the shared live rule and leak closure
 - Uploaded photos open for readers once the story is live and only for the editors before ([[designer-form-uploads-for-readers]]); until then the author sees a placeholder on `submission`.
 
 ## Which e-mails go when?
-- Submit: `email_article_new` to the site address (with the note), `email_article_received` to the author. A message under the story on `submission`: `email_desk_message`. Contact replies and letters: `email_reply`. Approving a letter mails its watchers (the writer too), never the story's author (`edit_comment.php`, 7t). Newsletter: `email_welcome`. No "published" e-mail: the editor writes "It is live" under the story.
+- Submit: `email_article_new` to the site address (with the note), `email_article_received` to the author. A message under the story on `submission`: `email_desk_message`. Contact replies and letters: `email_reply`. Approving a letter mails the story's author (unless they wrote it) and its watchers (the writer too). Newsletter: `email_welcome`. No "published" e-mail: the editor writes "It is live" under the story.

@@ -19,7 +19,7 @@ description: Views on designed record pages (form counters, people only, counted
 
 ## How is a duplicate row avoided?
 - `submitted_form_info` has no unique key. The writer updates first; on 0 rows it takes `GET_LOCK('pg_sfi_<form>_<page>', 1)`, updates again, inserts if still 0. A timed-out lock (`0`) drops that one view; no lock service (query fails or NULL, e.g. Galera) inserts unlocked like legacy, since the readers tolerate a duplicate.
-- Readers of the sort use `MAX()` subqueries, never a join. The five comment writers (read, DELETE, INSERT) stay unlocked; a UNIQUE key is deferred (schema step with dedup).
+- Readers of the sort use `MAX()` subqueries, never a join. The comment writers (`edit_comment.php` and the API through `pg_comment_refresh_record_info()`; `add_comment.php`, `job.php` and `submit_order.php` with their own copies) all read, DELETE, INSERT, unlocked; a UNIQUE key is deferred (schema step with dedup).
 - Every statement is `@mysqli_query`: `db()` makes a failed query an error screen.
 
 ## How do lists sort?
