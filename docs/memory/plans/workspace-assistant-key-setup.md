@@ -1,6 +1,6 @@
 ---
 name: workspace-assistant-key-setup
-description: Plan (2026-10-23; step 1 in PR #1462, step 2 built; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
+description: Plan (2026-10-23; step 1 in PR #1462, step 2 in PR #1523; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -18,7 +18,7 @@ description: Plan (2026-10-23; step 1 in PR #1462, step 2 built; answers 1-4 giv
 
 ## Slices
 1. No schema. Claude: helpers, scopes, Create, sheet, reset, guide and hint; the select stays in the Save form under "Use another application".
-2. Built. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; no rotation gives such a row a secret (`api_app_secret_can_rotate()`); see workspace/workspace-assistant-keys.md.
+2. PR #1523. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; no rotation gives such a row a secret (`api_app_secret_can_rotate()`); see workspace/workspace-assistant-keys.md.
 3. No schema. api_settings.php uses the helpers, same behaviour (keyless refusal included).
 4. Pinegrap AI measurements (question 5).
 
