@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Comment rules shared by the comment handlers: which thread a comment posted
- * to a page may join, which form record a stored comment is about, and the
- * record's comment counters moderation keeps up to date.
+ * to a page may join, which form record a stored comment is about, the
+ * record's comment counters moderation keeps up to date, and the name a
+ * signed-in member's comment is stored under.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -326,4 +327,145 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
     }
 
     return true;
+}
+
+// The name a comment is stored under. Who may type one is decided by the
+// comment form (get_page_content.php) and add_comment.php alike: a visitor
+// who is not signed in, staff (role < 3), a member with edit rights on the
+// page's folder and the record's form editor. Every other signed-in member
+// gets the name below; the form shows it and add_comment.php stores it, both
+// asking about the comment's own page.
+
+/**
+ * The name a signed-in member who may not type one comments under. Pure.
+ *
+ * On a page of a visual design ($designed, pg_sw_page_is_visual()) it is the
+ * account contact's display name (pg_contact_display_name()), else
+ * lang('Member'); on any other page the login username. With the page's name
+ * select on ($select), the posted name_type picks one of
+ * pg_comment_name_choices(); a value the select does not offer this member
+ * (empty, unknown, not a string, or an option whose names are missing)
+ * counts as no choice and gives the name above.
+ *
+ * The result is cut to 100 characters, the size of comments.name.
+ *
+ * @param mixed $username  the login username
+ * @param mixed $contact   the account's contact: first_name, last_name and
+ *                         nickname (pg_comment_member_contact())
+ * @param bool  $designed  whether the comment's page is a page of a visual design
+ * @param bool  $select    whether the page lets the member choose the name
+ * @param mixed $name_type the posted choice
+ * @return string
+ */
+function pg_comment_member_name($username, $contact, $designed, $select = false, $name_type = '')
+{
+    if ($select) {
+        $choices = pg_comment_name_choices($username, $contact, $designed);
+        $type = is_scalar($name_type) ? (string) $name_type : '';
+
+        if (($type !== '') && array_key_exists($type, $choices)) {
+            return $choices[$type];
+        }
+    }
+
+    if ($designed) {
+        $contact = is_array($contact) ? $contact : array();
+        $name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
+
+        if ($name === '') {
+            $name = lang('Member');
+        }
+    } else {
+        $name = is_scalar($username) ? (string) $username : '';
+    }
+
+    return mb_substr($name, 0, 100, 'UTF-8');
+}
+
+/**
+ * The names the comment form's name select offers a signed-in member, as
+ * value => stored name, in the order of the select. Pure; free of HTML (the
+ * caller escapes the labels).
+ *
+ * - username: the name the member gets without a choice
+ *   (pg_comment_member_name()): on a page of a visual design the contact's
+ *   display name, else lang('Member'); elsewhere the login username.
+ * - first_name: only when the contact has a first name.
+ * - first_name_last_initial, first_initial_last_name,
+ *   first_initial_last_initial and full_name: only when it has both names.
+ * - anonymous: the literal 'Anonymous', stored untranslated.
+ *
+ * Each name is cut to 100 characters, the size of comments.name.
+ *
+ * @param mixed $username the login username
+ * @param mixed $contact  the account's contact (pg_comment_member_contact())
+ * @param bool  $designed whether the comment's page is a page of a visual design
+ * @return array
+ */
+function pg_comment_name_choices($username, $contact, $designed)
+{
+    $contact = is_array($contact) ? $contact : array();
+    $first = (isset($contact['first_name']) && is_scalar($contact['first_name'])) ? (string) $contact['first_name'] : '';
+    $last = (isset($contact['last_name']) && is_scalar($contact['last_name'])) ? (string) $contact['last_name'] : '';
+
+    $choices = array('username' => pg_comment_member_name($username, $contact, $designed, false));
+
+    if ($first !== '') {
+        $choices['first_name'] = $first;
+    }
+
+    if (($first !== '') && ($last !== '')) {
+        $first_initial = mb_substr($first, 0, 1, 'UTF-8');
+        $last_initial = mb_substr($last, 0, 1, 'UTF-8');
+
+        $choices['first_name_last_initial'] = $first . ' ' . $last_initial . '.';
+        $choices['first_initial_last_name'] = $first_initial . '. ' . $last;
+        $choices['first_initial_last_initial'] = $first_initial . '. ' . $last_initial . '.';
+        $choices['full_name'] = $first . ' ' . $last;
+    }
+
+    $choices['anonymous'] = 'Anonymous';
+
+    foreach ($choices as $value => $name) {
+        $choices[$value] = mb_substr($name, 0, 100, 'UTF-8');
+    }
+
+    return $choices;
+}
+
+/**
+ * The first name, last name and nickname of a user account's contact, as
+ * strings: '' for each when there is no such user or the account has no
+ * contact. A failed query ends the request with an error page (db_item()),
+ * as the queries of the comment form and add_comment.php did.
+ *
+ * @param mixed $user_id
+ * @return array
+ */
+function pg_comment_member_contact($user_id)
+{
+    $contact = array('first_name' => '', 'last_name' => '', 'nickname' => '');
+    $id = is_scalar($user_id) ? (int) $user_id : 0;
+
+    if ($id <= 0) {
+        return $contact;
+    }
+
+    $row = db_item(
+        "SELECT
+            contacts.first_name,
+            contacts.last_name,
+            contacts.nickname
+        FROM user
+        LEFT JOIN contacts ON user.user_contact = contacts.id
+        WHERE user.user_id = '" . $id . "'
+        LIMIT 1");
+
+    if (is_array($row)) {
+        foreach ($contact as $key => $value) {
+            $contact[$key] = isset($row[$key]) ? (string) $row[$key] : '';
+        }
+    }
+
+    return $contact;
 }

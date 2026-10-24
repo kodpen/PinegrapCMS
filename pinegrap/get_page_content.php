@@ -4641,101 +4641,42 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         ) {
                             $output_name_optional_label = lang(' (optional)');
                             
-                            // if the user is logged in, and if the add comment form was not just submitted, then get contact info for user in order to prefill name field
+                            // If the user is signed in and the add comment form was not just submitted,
+                            // then prefill the name field with the display name of the account's contact.
                             if ((isset($_SESSION['sessionusername']) == TRUE) && (isset($_SESSION['software']['liveforms']['add_comment'][$system_region_properties['page_id']]) == FALSE)) {
-                                $query =
-                                    "SELECT
-                                        contacts.first_name,
-                                        contacts.last_name
-                                    FROM user
-                                    LEFT JOIN contacts ON user_contact = contacts.id
-                                    WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-                                
-                                // if a contact was found, then continue
-                                if (mysqli_num_rows($result) > 0) {
-                                    $contact = mysqli_fetch_assoc($result);
-                                    
-                                    $name = '';
-                                    
-                                    // if there is a first name, then add first name to name
-                                    if ($contact['first_name'] != '') {
-                                        $name .= $contact['first_name'];
-                                    }
-                                    
-                                    // if there is a last name, then add last name to name
-                                    if ($contact['last_name'] != '') {
-                                        // if there is already content in the name, then add a space
-                                        if ($name != '') {
-                                            $name .= ' ';
-                                        }
-                                        
-                                        // add last name
-                                        $name .= $contact['last_name'];
-                                    }
-                                    
-                                    // prefill name field
-                                    $liveform->assign_field_value('name', $name);
-                                }
+                                $contact = pg_comment_member_contact($user['id']);
+                                $liveform->assign_field_value('name', pg_contact_display_name($contact['first_name'], $contact['last_name'], $contact['nickname']));
                             }
                             
                             // output the name input field
                             $output_comment_name_field = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'comment_name', 'maxlength'=>'50', 'size'=>'32', 'class'=>$cm_text));
                         
-                        // else the user is logged in and does not have edit rights to the page, so output the name in a different way
+                        // Else the user is signed in and may not type a name: the name comes from
+                        // pg_comment_member_name(), which add_comment.php asks too. On a page of a
+                        // visual design it is the contact's display name, elsewhere the login
+                        // username. The comment's own page decides, also in a region that shows
+                        // another page's comments.
                         } else {
-                            // if the user is allowed to select name, then output pick list
+                            $comments_designed = pg_sw_page_is_visual($system_region_properties['page_id']);
+                            $contact = (($system_region_properties['comments_allow_user_to_select_name'] == 1) || $comments_designed)
+                                ? pg_comment_member_contact($user['id'])
+                                : array();
+
+                            // If the user is allowed to select a name, then output the pick list
+                            // (the options are keyed by their escaped label).
                             if ($system_region_properties['comments_allow_user_to_select_name'] == 1) {
-                                // get name for the user
-                                $query =
-                                    "SELECT
-                                        contacts.first_name,
-                                        contacts.last_name
-                                    FROM user
-                                    LEFT JOIN contacts ON user_contact = contacts.id
-                                    WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-                                $contact = mysqli_fetch_assoc($result);
-                                
                                 $name_options = array();
-                                
-                                // prepare username option
-                                $label = h($user['username']);
-                                $name_options[$label] = 'username';
-                                
-                                // if there is a first name, then prepare option for it
-                                if ($contact['first_name'] != '') {
-                                    $label = h($contact['first_name']);
-                                    $name_options[$label] = 'first_name';
+
+                                foreach (pg_comment_name_choices($user['username'], $contact, $comments_designed) as $value => $choice) {
+                                    $label = ($value === 'anonymous') ? lang('Anonymous') : h($choice);
+                                    $name_options[$label] = $value;
                                 }
-                                
-                                // if there is a first name and last name, then prepare additional options
-                                if (($contact['first_name'] != '') && ($contact['last_name'] != '')) {
-                                    // prepare option for first name last initial
-                                    $label = h($contact['first_name']) . ' ' . h(mb_substr($contact['last_name'], 0, 1)) . '.';
-                                    $name_options[$label] = 'first_name_last_initial';
-                                    
-                                    // prepare option for first initial last name
-                                    $label = h(mb_substr($contact['first_name'], 0, 1)) . '. ' . h($contact['last_name']);
-                                    $name_options[$label] = 'first_initial_last_name';
-                                    
-                                    // prepare option for first initial last initial
-                                    $label = h(mb_substr($contact['first_name'], 0, 1)) . '. ' . h(mb_substr($contact['last_name'], 0, 1)) . '.';
-                                    $name_options[$label] = 'first_initial_last_initial';
-                                    
-                                    // prepare option for full name
-                                    $label = h($contact['first_name']) . ' ' . h($contact['last_name']);
-                                    $name_options[$label] = 'full_name';
-                                }
-                                
-                                // prepare option for Anonymous
-                                $name_options[lang('Anonymous')] = 'anonymous';
-                                
+
                                 $output_comment_name_field .= $liveform->output_field(array('type'=>'select', 'name'=>'name_type', 'id'=>'comment_name', 'options'=>$name_options, 'class'=>$cm_select));
-                                
-                            // else the user is not allowed to select name, so just output the username
+
+                            // Else output the name the comment will be stored under.
                             } else {
-                                $output_comment_name_field = '<strong>' . h($user['username']) . '</strong>';
+                                $output_comment_name_field = '<strong>' . h(pg_comment_member_name($user['username'], $contact, $comments_designed, false)) . '</strong>';
                             }
                         }
                         

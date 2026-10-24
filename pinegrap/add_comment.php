@@ -435,62 +435,19 @@ if (
 ) {
     $name = $name;
 
-// else if user is allowed to select name, then set the name that the user selected
-} elseif ($comments_allow_user_to_select_name == 1) {
-    // if a certain type of name was selected, then get name for user, because we will need it below.
-    if (
-        ($name_type == 'first_name')
-        || ($name_type == 'first_name_last_initial')
-        || ($name_type == 'first_initial_last_name')
-        || ($name_type == 'first_initial_last_initial')
-        || ($name_type == 'full_name')
-    ) {
-        // get name for the user because we might need it below
-        $query =
-            "SELECT
-                contacts.first_name,
-                contacts.last_name
-            FROM user
-            LEFT JOIN contacts ON user_contact = contacts.id
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        $contact = mysqli_fetch_assoc($result);
-    }
-    
-    // prepare the name differently based on the type of name that was selected
-    switch ($name_type) {
-        case 'username':
-            $name = $_SESSION['sessionusername'];
-            break;
-            
-        case 'first_name':
-            $name = $contact['first_name'];
-            break;
-            
-        case 'first_name_last_initial':
-            $name = $contact['first_name'] . ' ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'first_initial_last_name':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . $contact['last_name'];
-            break;
-            
-        case 'first_initial_last_initial':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'full_name':
-            $name = $contact['first_name'] . ' ' . $contact['last_name'];
-            break;
-            
-        case 'anonymous':
-            $name = 'Anonymous';
-            break;
-    }
-
-// else save the user's username
+// A signed-in member who may not type a name gets the name
+// pg_comment_member_name() decides: on a page of a visual design the
+// contact's display name, elsewhere the login username. The posted name
+// field is never read for them, and with the page's name select on, a
+// name_type the form does not offer this member counts as no choice.
 } else {
-    $name = $_SESSION['sessionusername'];
+    $name = pg_comment_member_name(
+        (string) ($_SESSION['sessionusername'] ?? ''),
+        pg_comment_member_contact($user_id),
+        pg_sw_page_is_visual($page_id),
+        ($comments_allow_user_to_select_name == 1),
+        $name_type
+    );
 }
 
 // if there is not a name to save, then save anonymous

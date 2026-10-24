@@ -1,6 +1,6 @@
 ---
 name: design-template-magazine-publishing
-description: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (username until 7r), author HTML and photos, the staff note's rules for renaming fields.
+description: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (the contact's display name), author HTML and photos, the staff note's rules for renaming fields.
 ---
 
 ## What is the same as in the news template?
@@ -13,10 +13,10 @@ description: Magazine template publishing: the shared live rule and leak closure
 - Waiting for review, Being edited (`In review`), With the writer (`Changes requested`), Scheduled to go live, Live but no publication time, Live now, Every story (the page's one paginated list, with a search over title, byline, section, status, issue and tags).
 - Each row shows its Last activity (a list cannot be ordered by it; a long read can wait weeks).
 
-## Why do the editors fix a letter's name before they publish it?
-- `add_comment.php` keeps a typed name only for a signed-out visitor, role < 3, folder edit rights or the form editor; a member's letter is stored under the login username. A template cannot set `comments_allow_user_to_select_name`.
-- Every letter is held (`auto_publish false`), so editors change the name under Comments → Edit Comment before publishing. The platform fix is 7r ([[design-templates-newsroom]]); the template needs no change.
-- An editor's reply on `conversation` (`registration`, auto-published) is stored and mailed under their username, by the same rule: the note asks for user names readers may see.
+## Why do the editors check a letter's name before they publish it?
+- A member's letter is signed with the contact's display name, else Member ([[designed-page-comment-names]]); only a signed-out visitor, role < 3, folder edit rights or the form editor type a name. The designer cannot set the name select yet (designable-comments slice 16).
+- Every letter is held (`auto_publish false`): editors check or change the name under Comments → Edit Comment before publishing.
+- A role-3 editor without `registration` rights is a member on `conversation` (auto-published): their reply is signed the same way, so the note asks editors to fill in their name under My Profile.
 - Letters sit on `blog_post` (`public`): `edit_comment.php` and the Comments list need edit rights there, so the access note has editors tick `public`, as for contact messages.
 
 ## What do the staff note's rules on fields guard?
