@@ -17,6 +17,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Before a new door gives, zips, copies or renames a file, ask `pg_file_withheld()`; a stored name built outside `prepare_file_name()` asks `pg_file_name_reserved()` (`dkim-key-in-file-manager.md`).
 - Set an optional cookie with `pg_consent_setcookie()` (keep a session copy), list it in `pg_consent_catalogue()`, hold third-party tags with `pg_consent_hold_scripts()` (`cookie-consent-new-cookies.md`).
 - Use `HOSTNAME` only for answers back to the visitor; links that leave the request (mails, documents, feeds) use `HOSTNAME_SETTING` (`hostname-in-mail-links.md`).
+- Make a front-end renderer whose output depends on the visitor call `pg_page_cache_personal('<why>')`, and register a header callback only through `pg_header_callback_add()` (`page-cache-gate.md`).
 <!-- key-rules:end -->
 
 ## Files
