@@ -26706,5 +26706,8 @@
     "E-mail links": "E-posta bağlantıları",
     "E-mail preferences link": "E-posta tercihleri bağlantısı",
     "Subscription confirmation link": "Abonelik onay bağlantısı",
-    "Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.": "Yalnızca formu gönderen kişiye giden e-postada doldurulur; sayfada ve diğer kopyalarda boş kalır."
+    "Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.": "Yalnızca formu gönderen kişiye giden e-postada doldurulur; sayfada ve diğer kopyalarda boş kalır.",
+    "This page then shows its own copy, with the same layout and settings; the other places keep this widget.": "Bu sayfa bundan sonra aynı düzen ve ayarlarla kendi kopyasını gösterir; diğer yerler bu widget'ı göstermeye devam eder.",
+    "A later change to one of them stays in that one.": "Sonradan birinde yapılan değişiklik yalnız onda kalır.",
+    "Its layout has unsaved changes. The copy takes them, and the other places get them too when you save.": "Düzeninde kaydedilmemiş değişiklikler var. Kopya bunları alır; kaydettiğinizde diğer yerlere de geçer."
 }

@@ -31974,6 +31974,21 @@ const StyleDesigner = (function () {
                     (_uHere.length ? _uHere.join(', ') : '—') +
                     (_uElse.length ? '<br><span style="opacity:.75">' + esc(_sdT('Other designs')) + ': ' + esc(_uElse.join(', ')) + '</span>' : '') +
                 '</div>');
+            // A widget the other places also show gets its own copy for this
+            // page here, its kind kept (_swForkOffer() says when).
+            if (_swForkOffer(n)) {
+                usageHtml +=
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
+                            '<span class="bi bi-files me-1"></span>' + esc(_sdT('Make a copy for this page')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) +
+                        '</div>' +
+                    '</div>';
+            }
         }
         var nameHtml = _cfg
             ? row(_sdT('Name'),
@@ -32037,6 +32052,45 @@ const StyleDesigner = (function () {
                 var sid   = parseInt(this.dataset.swId, 10);
                 var sname = (this.dataset.swName || '').trim();
                 if (sid && typeof _systemDeleteFn === 'function') _systemDeleteFn(sid, sname);
+            });
+        }
+
+        // ── A copy of the widget for this page ──────────────────────────────
+        // The copy the type change offers, with the kind kept: a new row with
+        // the same layout and settings, this page's placements re-pointed at
+        // it, every other place left on the original. The row is created at
+        // once; the page's changed reference makes the page dirty, so Save
+        // writes it (_pgPageUnchanged() reads the tree).
+        var forkBtn = document.getElementById('sd-sw-fork-page');
+        if (forkBtn) {
+            forkBtn.addEventListener('click', function () {
+                var btn = this;
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                // Asked again: another tab may have dropped its placement
+                // since the panel was drawn.
+                var offer = _swForkOffer(selectedNode);
+                if (!offer || offer.sid !== parseInt(btn.dataset.swId, 10)) { renderProperties(); return; }
+                var cached = _sharedCache[offer.sid];
+                sdChoose({
+                    title: _sdT('This widget is on other pages too'),
+                    html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
+                          '<p class="mb-0">' + esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) + ' ' +
+                              esc(_sdT('A later change to one of them stays in that one.')) + '</p>' +
+                          (offer.unsaved
+                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes. The copy takes them, and the other places get them too when you save.')) + '</p>'
+                              : ''),
+                    choices: [
+                        { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
+                        { value: 'no',   label: _sdT('Cancel'),                    variant: 'outline-secondary' }
+                    ]
+                }).then(function (choice) {
+                    if (choice !== 'fork') return;
+                    // One copy per click: the button stays off until the
+                    // panel is drawn again.
+                    btn.disabled = true;
+                    _swForkForThisPage(offer.sid, {}, function () { renderProperties(); });
+                });
             });
         }
 
@@ -47549,6 +47603,31 @@ const StyleDesigner = (function () {
             if (parseInt(u.style_id, 10) !== styleId) out.push(_sharedUsageText(u));
         });
         return out;
+    }
+
+    // Whether the panel of placement `n` offers "Make a copy for this page",
+    // and what the question says: { sid, others, unsaved } or null. Only a
+    // system widget other pages or designs also place, at full access (the
+    // server refuses a content editor's `create`), placed in the page tree
+    // itself: one inside another shared component (a header) stands on every
+    // page that places that component, and _swForkForThisPage() re-points
+    // only the page's own placements. `unsaved` is a layout change the row
+    // does not hold yet: the copy takes it and the flush still writes it to
+    // the original. Selecting inside a widget marks it dirty without a
+    // change, so the snapshot decides when there is one.
+    function _swForkOffer(n) {
+        if (!n || n.type !== 'shared_ref' || _sdIsContentLevel()) return null;
+        var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+        var c = sid ? _sharedCache[sid] : null;
+        if (!c || !c.system_region_config || !findParent(n, tree)) return null;
+        var others = _swOtherPlacements(sid);
+        if (!others.length) return null;
+        var snap = _sharedSnapshots[sid];
+        return {
+            sid:     sid,
+            others:  others,
+            unsaved: !!c.tree && (snap ? _sdSharedTreeJSON(c.tree) !== snap : !!_sharedDirty[sid])
+        };
     }
 
     /* ── Page pickers: this design's pages first, unsaved ones included ──
