@@ -21,7 +21,6 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - System and visitors: `events` (`pg_announce()`), `backup_cloud`, `backup_restore`, `innodb`, `db_maintenance`, `ops_alerts`, `sms`, `captcha` (Turnstile and hCaptcha providers, `docs/memory/waf/form-captcha-providers.md`), `visitor_retention`, `visitor_texts`, `visitor_partitions`, `visitor_ip`. Loaded only where needed: `search_console` (`seo_search_job.php`).
 - `system_status`: system-status card and checks, cache clearing, file integrity, write permissions, changelog reading, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
-- Added in 2026.4.8: `errors`, `mail_queue`, `backup`, `consent` (see `docs/memory/core/fn-module-errors-mail-backup-consent.md`).
-- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see [[consent-log-and-audit-trail]]; `privacy_export` (one person's data pack, [[personal-data-export]]); `reviews` (who may review a product, the product rating, AggregateRating: [[product-reviews-verified]]); `comments` (which thread a posted comment joins, [[comment-thread-verify]]; which name a member's comment gets, `pg_comment_member_name()`).
+- Added in 2026.4.8 and 2026.11.0 (`errors`, `mail_queue`, `backup`, `consent`, `privacy`, `audit`, `privacy_export`, `reviews`, `comments`): [[fn-module-map-additions]].
 
 Related: docs/memory/core/functions-php-split-rules.md
