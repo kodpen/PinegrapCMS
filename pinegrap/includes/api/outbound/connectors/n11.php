@@ -1004,8 +1004,9 @@ function mp_n11_request_collection($account, $requests) {
 // The only status change their update service performs today, and it is a
 // commitment - it tells n11 the seller is preparing the goods, and their
 // dispatch clock is running from it. So the caller decides whether to do it;
-// this only carries it out.
-function mp_n11_approve_lines($account, $line_ids) {
+// this only carries it out. The line ids are all n11 needs; $package is the
+// contract's, for a marketplace that names the package too.
+function mp_n11_approve_lines($account, $line_ids, $package = array()) {
 
 	$lines = array();
 
