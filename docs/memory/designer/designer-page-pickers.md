@@ -18,6 +18,7 @@ description: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<
   - Server: `pg_designer_resolve_tab_refs()` / `pg_designer_resolve_tab_values()` (designer_screen.php) write the widget rows and the form's `confirmation_page_id` after pages get ids. So `pg_cf_reconcile_page_form` runs OUTSIDE the page loop, after `$id_map` is filled.
   - Client: `_swResolveTabRefs(keyMap)` in `_pgTabsAfterSave`, BEFORE tab keys are converted to `p<id>`.
 - An unmatched key (closed tab) becomes 0. Nothing is added to the renderer: every read does `(int)`, and `tab:` is 0.
+- A link's `_bindParams.*.page_id` in a widget tree too: server `pg_sw_page_link_resolve_tabs()`, written with `pg_designer_tree_encode()`; client `_swResolveTreeTabRefs()`, the snapshot swapped, not retaken ([[record-value-page-links]]).
 
 ## Which pickers belong to membership widgets?
 - `redirect_page_id`, `forgot_password_page_id`, `register_page_id`, `login_page_id`; `types` filters tabs that carry the relevant widget. See the membership widget files.

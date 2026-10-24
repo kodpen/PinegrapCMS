@@ -34069,6 +34069,20 @@ const StyleDesigner = (function () {
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
+    // A link in a form list row or on a form detail page that opens another
+    // page of the site with values from the record in its address
+    // (pg_sw_page_link_bindings() in includes/fn/widgets.php). The href
+    // binding is this sentinel, which the server expands per link; the page
+    // and the values are kept beside it in props._bindParams.href. It is in
+    // no token palette, so the code view's {{ list never offers a link that
+    // has no page to open.
+    var SW_PAGE_LINK_TOKEN = '__page_link';
+    // Twin of pg_sw_page_link_max(): the most values one link carries.
+    var _SW_PAGE_LINK_MAX = 8;
+    // The widget kinds whose renderer expands the link: the form list under
+    // its four names and the form detail.
+    var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
+
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
     // list). The form decides: a field answering to the name by its name or
@@ -36753,9 +36767,14 @@ const StyleDesigner = (function () {
             );
         }
 
+        // "Another page, with values from the record": a link's href only,
+        // and only in the widget kinds whose renderer expands it.
+        var _pageLinkOffered = _swPageLinkOffered(node);
+
         // Build the field-select options:  form fields → built-ins → custom input
-        function _buildOptionsHtml(currentVal) {
+        function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
+            var withPageLink = (prop === 'href' && _pageLinkOffered);
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             // Form fields group
             if (formFields.length) {
@@ -36786,8 +36805,12 @@ const StyleDesigner = (function () {
                 html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(_builtinLabel(o)) + '</option>';
             });
             html += '</optgroup>';
+            if (withPageLink) {
+                html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (currentVal === SW_PAGE_LINK_TOKEN ? ' selected' : '') + '>' + esc(_sdT('Another page, with values from the record')) + '</option>';
+            }
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
+                              !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
                               !_builtins.some(function (o) { return o[0] === currentVal; }));
@@ -36795,10 +36818,77 @@ const StyleDesigner = (function () {
             return { html: html, isCustom: isCustom };
         }
 
+        // The page a link opens and the values its address carries
+        // (props._bindParams.href), under the href select. The values are
+        // the record's fields as stored and the standard fields; the names
+        // follow the rules of the list filter that reads them there.
+        function _sdPageLinkRows(n, fields) {
+            var spec = _swPageLinkSpec(n.props && n.props._bindParams && n.props._bindParams.href);
+            if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+            var note = function (text, warn) {
+                return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                           (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+            };
+            var cur = spec.page_id ? String(spec.page_id) : '0';
+            var html = '<div class="sd-sw-plink mt-2">' +
+                '<div style="font-size:.7rem;font-weight:600;margin-bottom:2px">' + esc(_sdT('Page to open')) + '</div>' +
+                '<select class="form-select form-select-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                    _swPageOptions(cur, _allPagesCache, { none: _sdT('— Choose a page —') }) +
+                '</select>';
+            if (!spec.page_id) {
+                html += note(_sdT('Choose the page this link opens.'), false);
+            } else if (typeof spec.page_id === 'number' && _allPagesCache) {
+                var hit = null;
+                _allPagesCache.forEach(function (p) { if (parseInt(p.page_id, 10) === spec.page_id) hit = p; });
+                if (!hit || _swPageBinned(hit)) {
+                    html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
+                }
+            }
+            var tokenOptions = function (curToken) {
+                var lc = String(curToken || '').toLowerCase(), known = (lc === '');
+                var opt = function (token, label) {
+                    var on = (lc !== '' && String(token).toLowerCase() === lc);
+                    if (on) known = true;
+                    return '<option value="' + esc(token) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
+                };
+                var out = '<option value=""' + (lc === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                if (fields.length) {
+                    out += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
+                    fields.forEach(function (ff) { out += opt(_swFormFieldToken(ff), ff.label || ff.name || ('#' + ff.id)); });
+                    out += '</optgroup>';
+                }
+                out += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
+                SW_STANDARD_FIELD_OPTIONS.forEach(function (o) {
+                    if (_swStandardYields(o[0], fields)) return;
+                    out += opt(o[0], _builtinLabel(o));
+                });
+                out += '</optgroup>';
+                // A field the form no longer has stays chosen, marked.
+                if (!known) out += '<option value="' + esc(curToken) + '" selected>' + esc(curToken + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                return out;
+            };
+            html += '<div style="font-size:.7rem;font-weight:600;margin:8px 0 2px">' + esc(_sdT('Values in the address')) + '</div>';
+            spec.params.forEach(function (p, i) {
+                html +=
+                    '<div class="d-flex gap-1 mt-1 align-items-center">' +
+                        '<input type="text" class="form-control form-control-sm sd-sw-plink-name" data-plink-i="' + i + '" value="' + esc(p.name) + '" maxlength="32" placeholder="board" style="width:96px;flex:none" aria-label="' + esc(_sdT('Parameter name')) + '">' +
+                        '<select class="form-select form-select-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
+                    '</div>' +
+                    '<div class="sd-sw-plink-warn" data-plink-i="' + i + '">' + _swPageLinkNameWarn(spec.params, i) + '</div>';
+            });
+            html +=
+                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
+                    '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a value')) + '</button>' +
+                note(_sdT('Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.'), false) +
+            '</div>';
+            return html;
+        }
+
         var rowsHtml = '';
         bindable.forEach(function (b) {
             var current = bindings[b.prop] || '';
-            var built = _buildOptionsHtml(current);
+            var built = _buildOptionsHtml(current, b.prop);
             var sel =
                 '<select class="form-select form-select-sm sd-sw-bind-sel"' +
                 ' data-bind-prop="' + esc(b.prop) + '">' +
@@ -36810,7 +36900,9 @@ const StyleDesigner = (function () {
                 ' placeholder="' + esc(_sdT('custom_field_name')) + '"' +
                 ' value="' + esc(built.isCustom ? current : '') + '"' +
                 (built.isCustom ? '' : ' style="display:none"') + '>';
-            rowsHtml += row(b.label, sel + customInp + _sdBindFormatRow(b.prop, current, node));
+            var pageLinkRows = (b.prop === 'href' && _pageLinkOffered && current === SW_PAGE_LINK_TOKEN)
+                ? _sdPageLinkRows(node, formFields) : '';
+            rowsHtml += row(b.label, sel + customInp + pageLinkRows + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -36870,7 +36962,80 @@ const StyleDesigner = (function () {
             // The custom-token field calls this on every keystroke.
             saveState(_sdEditRun('bind:' + propName));
             _sdNodeSetBinding(selectedNode, propName, value);
+            // A link to another page keeps its page and values beside the
+            // binding (props._bindParams). Picking it starts one empty value
+            // row, or takes back what the code view left there; any other
+            // choice drops them. The code view never does (it writes through
+            // _sdNodeSetBinding() alone), so a token typed again there gets
+            // its page and values back.
+            var bp = selectedNode.props;
+            if (bp && value === SW_PAGE_LINK_TOKEN) {
+                if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+            } else if (bp && bp._bindParams) {
+                delete bp._bindParams[propName];
+                if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
+            }
             renderCanvas();
+        }
+
+        // One edit of a link's page or values: `fn` changes the spec, which
+        // is stored back normalised. `runKey` joins the keystrokes of one
+        // name into one undo step; `repaint` redraws the panel (not while a
+        // name is typed: the input would lose the caret).
+        function _sdPageLinkEdit(fn, runKey, repaint) {
+            if (!selectedNode || !selectedNode.props) return;
+            saveState(runKey);
+            var p = selectedNode.props;
+            if (!p._bindParams || typeof p._bindParams !== 'object' || Array.isArray(p._bindParams)) p._bindParams = {};
+            var spec = _swPageLinkSpec(p._bindParams.href);
+            fn(spec);
+            p._bindParams.href = _swPageLinkSpec(spec);
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+            if (repaint && typeof renderProperties === 'function') renderProperties();
+        }
+        var plinkPage = document.querySelector('.sd-sw-plink-page');
+        if (plinkPage) {
+            plinkPage.addEventListener('change', function () {
+                var v = _swPageVal(this);
+                _sdPageLinkEdit(function (spec) { spec.page_id = v; }, undefined, true);
+            });
+        }
+        document.querySelectorAll('.sd-sw-plink-name').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                var v = this.value;
+                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].name = v; }, _sdEditRun('plink:name:' + i), false);
+                // The warnings change in place: this row's, and a later
+                // row's that repeats or stops repeating this name.
+                var params = _swPageLinkSpec(selectedNode && selectedNode.props._bindParams && selectedNode.props._bindParams.href).params;
+                document.querySelectorAll('.sd-sw-plink-warn').forEach(function (w) {
+                    w.innerHTML = _swPageLinkNameWarn(params, parseInt(w.dataset.plinkI, 10));
+                });
+            });
+        });
+        document.querySelectorAll('.sd-sw-plink-token').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                var v = this.value;
+                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].token = v; }, undefined, true);
+            });
+        });
+        document.querySelectorAll('.sd-sw-plink-remove').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                _sdPageLinkEdit(function (spec) { spec.params.splice(i, 1); }, undefined, true);
+            });
+        });
+        var plinkAdd = document.querySelector('.sd-sw-plink-add');
+        if (plinkAdd) {
+            plinkAdd.addEventListener('click', function () {
+                _sdPageLinkEdit(function (spec) {
+                    if (spec.params.length < _SW_PAGE_LINK_MAX) spec.params.push({ name: '', token: '' });
+                }, undefined, true);
+            });
         }
 
         sels.forEach(function (sel) {
@@ -47757,6 +47922,49 @@ const StyleDesigner = (function () {
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
     }
+    // A link's page and values (props._bindParams.href) as the panel edits
+    // them. Not the server's normaliser (pg_sw_page_link_spec()): the page
+    // stays a positive id, a 'tab:<key>' of an unsaved tab, or 0; a name is
+    // kept trimmed and lowercased even when it cannot be used, so its
+    // warning stays under it; a row with no name or no field yet is kept to
+    // be filled in. The server leaves out what it cannot use.
+    function _swPageLinkSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        var params = [];
+        (Array.isArray(spec.params) ? spec.params : []).forEach(function (p) {
+            if (params.length >= _SW_PAGE_LINK_MAX || !p || typeof p !== 'object') return;
+            params.push({
+                name:  String(p.name == null ? '' : p.name).trim().toLowerCase(),
+                token: String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '')
+            });
+        });
+        return { page_id: page, params: params };
+    }
+    // Whether the Bind Data panel offers the link for `node`: only inside a
+    // widget whose renderer expands it. _getSystemWidgetRegionType() reads
+    // an unknown kind as a form list, so the stored kind is asked itself.
+    function _swPageLinkOffered(node) {
+        var cfg = _sdSystemWidgetCfgOf(node);
+        return !!(cfg && _SW_PAGE_LINK_TYPES[cfg.regionType] === 1);
+    }
+    // The warning under value row `i` of a link: a name the software reads
+    // itself, or one an earlier row already sends. '' when the name is fine
+    // or not typed yet.
+    function _swPageLinkNameWarn(params, i) {
+        var name = (params[i] && params[i].name) || '';
+        var text = '';
+        if (name !== '' && _swUrlParamName(name) === '') {
+            text = _sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.');
+        } else if (name !== '') {
+            for (var j = 0; j < i; j++) {
+                if (params[j] && params[j].name === name) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
+            }
+        }
+        return text ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(text) + '</div>' : '';
+    }
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
@@ -47921,6 +48129,7 @@ const StyleDesigner = (function () {
 
     function _swBindLabel(type, token) {
         if (type === 'form_list_view' || type === 'form_item_view') {
+            if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
@@ -48127,10 +48336,37 @@ const StyleDesigner = (function () {
         return '<option value="' + esc(cur) + '" selected>' + esc(lbl) + '</option>';
     }
 
-    // After a save: every `tab:<key>` in a cached widget config, and in the
-    // per-page form settings, becomes the page id the server handed out.
-    // `map` is {key: page_id}. Nothing is marked dirty — the server did the
-    // same substitution on its side.
+    // The page a link to another page opens, in a widget tree: every
+    // props._bindParams.*.page_id that reads 'tab:<key>' becomes the page id
+    // in `map` (0 for a key it lacks), as pg_sw_page_link_resolve_tabs()
+    // does on the server. Nothing else is read. Returns whether anything
+    // changed.
+    function _swResolveTreeTabRefs(node, map) {
+        if (!node || typeof node !== 'object') return false;
+        var changed = false;
+        var bp = node.props && node.props._bindParams;
+        if (bp && typeof bp === 'object') {
+            Object.keys(bp).forEach(function (k) {
+                var spec = bp[k];
+                if (spec && typeof spec === 'object' && typeof spec.page_id === 'string' && /^tab:/.test(spec.page_id)) {
+                    var key = spec.page_id.slice(4);
+                    spec.page_id = map[key] ? parseInt(map[key], 10) : 0;
+                    changed = true;
+                }
+            });
+        }
+        (Array.isArray(node.children) ? node.children : []).forEach(function (c) {
+            if (_swResolveTreeTabRefs(c, map)) changed = true;
+        });
+        return changed;
+    }
+
+    // After a save: every `tab:<key>` in a cached widget config, in the
+    // pages its links open (the widget tree) and in the per-page form
+    // settings becomes the page id the server handed out. `map` is
+    // {key: page_id}. Nothing is marked dirty — the server did the same
+    // substitution on its side. A tree's snapshot gets the same swap rather
+    // than being taken again, so an edit not saved yet still counts as one.
     function _swResolveTabRefs(map) {
         if (!map) return;
         var swap = function (obj) {
@@ -48149,7 +48385,16 @@ const StyleDesigner = (function () {
         };
         Object.keys(_sharedCache).forEach(function (sid) {
             var c = _sharedCache[sid];
-            if (!c || !c.system_region_config) return;
+            if (!c) return;
+            if (c.tree && _swResolveTreeTabRefs(c.tree, map) && _sharedSnapshots[sid]) {
+                var snap = null;
+                try { snap = JSON.parse(_sharedSnapshots[sid]); } catch (e) {}
+                if (snap && typeof snap === 'object') {
+                    _swResolveTreeTabRefs(snap, map);
+                    _sharedSnapshots[sid] = _sdSharedTreeJSON(snap);
+                }
+            }
+            if (!c.system_region_config) return;
             var cfg = null;
             try { cfg = JSON.parse(c.system_region_config); } catch (e) {}
             if (!cfg || typeof cfg !== 'object') return;
