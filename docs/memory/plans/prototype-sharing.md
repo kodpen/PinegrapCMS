@@ -7,32 +7,32 @@ description: Plan (2026-10-24, not started, answers open): a design's drafts pla
 - Share a prototype or a flow; going further, visual designs saved as drafts count as prototypes by themselves.
 
 ## What is there today?
-- A draft is a whole page in the private Drafts folder (`pg_page_draft_folder_id()`, `page_drafts`, 2026.4.7); a scheduled page is a draft with `page.publish_at` (11.0.17). No working copy of a live page; `page_revisions` (11.0.15) keep only published states.
-- Seen in the editor's Preview (blob page; widgets drawn signed out, `pg_designer_preview_widgets()`; page links to the live site) or at its address: `check_view_access()` lets in roles 0-2, role 3 with folder rights. No preview token; not in the sitemap or robots.txt.
-- Draft links are page-name hrefs (`__page_link` by id only in widgets); a rename rewrites no tree and gives a draft no 301 (plans/designer-prototype-links-code.md).
-- Token links: guests (`ws_guest_link_issue()`: a `short_links` row, SHA-256 `token_hash`, `token_hint`, once or timed by `pg_short_link_durations()`, token behind `#` claimed by POST, a hashed session cookie read each request); approval guests (own table, workspace_approval.php); `router_short_link_gate()` sends no-store, noindex, no-referrer; a bad token is `ws_guest_offence()`. Signed: `pg_fs_token()`. Notes: `ws_note_shares` (person or channel), no link.
-- Flows: `ws_flow_access()`: edit for the owner while staff, run for readers of a live flow's home channel; no shares (F7 of plans/workspace-flows.md).
+- A draft is a whole page in the private Drafts folder; every changing save of it is a revision. Roles 0-2 already open a saved draft at its address ("Open on Site") and click on by page name; role 3 needs folder rights, a signed-out visitor is sent to sign-in. Preview draws widgets as a background render, not signed out.
+- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel; flows have no shares.
+- Details: plans/prototype-sharing-code.md.
 
 ## What is proposed? (not approved yet)
 - Drafts are the prototype: a design's draft pages (scheduled ones with their time) and their links; a link to a live page opens it on the site, a broken one is marked. Opened from the Prototype view (plans/designer-prototype-links.md) or "Preview as prototype"; a toggle outlines hotspots.
-- Viewer prototype.php: the saved draft drawn signed out, links resolved by the split `pg_seo_resolve_link()`, forms, cart and sign-in inert; headers as workspace_guest.php; no page cache.
-- Link: token as the guests', expiry, revoke, optional password (`pg_login_throttle_guard()`), or team only; shows the latest saved draft; roles 0-1 make it, Site Log lines, an API route with `dry_run`.
-- Flows: F7 shares like `ws_note_shares` (person or channel; view, run or edit) read by `ws_flow_access()`; a read-only outside graph link (people, channels as kinds) and run state later.
-- Schema, ask first: `prototype_links` (style, start page, token hash, hint, expiry, password hash, audience, maker, revoked, uses) on a general label (11.0.1 on); `ws_flow_shares` on a Workspace one (11.0.80-89, 11.0.110-119); labels: release/version-numbering.md.
+- Viewer prototype.php: the saved draft drawn with no session (a true signed-out view), links resolved by the split `pg_seo_resolve_link()`, forms, cart and sign-in inert; headers as workspace_guest.php; no page cache.
+- Link: a hashed token, expiry, revoke, optional password with a counter of its own (the sign-in throttle's address bucket would lock sign-in, and is off with it), or team only; roles 0-1 make it, Site Log lines, an API route with `dry_run` and `'mcp' => false` (no AI app mints a public link); what it shows and whether its address shows again: questions 6, 7.
+- Flows: F7 shares read by `ws_flow_access()`: a person gets view, run or edit (edit only for staff), a channel view (run comes from the home channel); a run acts with the owner's rights. A read-only outside graph link (people, channels as kinds) and run state later.
+- Schema, ask first: `prototype_links` (style, start page, token hash (and secret if 7 b), hint, expiry, password hash, audience, maker, revoked, uses) on a general label (11.0.1 on); `ws_flow_shares` on a Workspace one (11.0.80-89, 11.0.110-119); labels: release/version-numbering.md.
 
 ## Slices (one PR each)
-1. Preview as prototype, no schema: a link to an open tab plays its preview (`tab:<key>`), others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
-2. prototype.php for signed-in roles 0-2, no schema.
+1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
+2. prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver; Open on Site already shows them saved drafts.
 3. Share links (schema): dialog, list, revoke, password, WAF offence.
 4. F7 flow shares (schema).
-5. Later (ask): outside flow link, run state, comments.
+5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
 ## Open questions (recommendation)
 1. Pages: (a) the design's drafts, scheduled too, (b) ticked per link, (c) every draft of the site → a.
 2. Who opens a link: (a) anyone holding it, expiry required, (b) team only, (c) chosen per link → c.
 3. Who makes links: (a) roles 0-1, like the Schedule section, (b) roles 0-2, as drafts open today → a.
 4. Flows: (a) F7 team shares first, outside link later, (b) a graph link now, (c) with a run's state → a.
-5. Own table, or a new `short_links.destination_type` (ENUM) → own: short link screens and checks untouched.
+5. Own table, or a new `short_links.destination_type` (ENUM) → own: 'workspace_guest' needed a filter in about ten places.
+6. A link shows (a) the latest saved draft, (b) the revision it was made at, (c) chosen per link → a.
+7. The address: (a) shown once, like guest links, (b) shown again, like calendar feeds → b.
 
 ## Where to start?
-- Slice 1; slice 2 after designer-prototype-links slice 1 (resolver). Read designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
+- Slice 1; slice 2 after designer-prototype-links slice 1 (resolver). Read plans/prototype-sharing-code.md, designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
