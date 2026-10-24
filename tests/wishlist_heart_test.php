@@ -83,16 +83,18 @@ function test_wishlist_heart_listing_binding_marks_the_button()
 	pg_assert_same('', $icon['props']['href'], 'no address');
 	pg_assert_same('rounded-circle d-none', $icon['props']['cssClass'], 'hidden until the script shows it');
 	pg_assert_same(array(
-		'data-pg-wishlist' => '^^__id^^',
-		'aria-pressed'     => 'false',
-		'aria-label'       => lang('Add to favourites'),
+		'data-pg-wishlist'        => '^^__id^^',
+		'aria-pressed'            => 'false',
+		'aria-label'              => lang('Add to favourites'),
+		'data-pg-wishlist-hidden' => '1',
 	), wishlist_heart_test_attrs($icon), 'icon-only heart');
 
 	pg_assert_same('btn btn-link d-none', $plain['props']['cssClass'], 'plain button hidden');
 	pg_assert_same(array(
-		'type'             => 'button',
-		'data-pg-wishlist' => '^^__id^^',
-		'aria-pressed'     => 'false',
+		'type'                    => 'button',
+		'data-pg-wishlist'        => '^^__id^^',
+		'aria-pressed'            => 'false',
+		'data-pg-wishlist-hidden' => '1',
 	), wishlist_heart_test_attrs($plain), 'a heart with words keeps them as its name');
 
 	// Twice changes nothing more.
@@ -146,6 +148,31 @@ function test_wishlist_heart_preview_keeps_it_visible()
 
 	pg_assert_same('rounded-circle', $tree['children'][0]['children'][0]['props']['cssClass'], 'no d-none');
 	pg_assert_same('false', wishlist_heart_test_attrs($tree['children'][0]['children'][0])['aria-pressed'], 'still marked');
+	pg_assert_false(isset(wishlist_heart_test_attrs($tree['children'][0]['children'][0])['data-pg-wishlist-hidden']), 'nothing for a script to show');
+}
+
+// A heart the designer hid (d-none, shown from md up by d-md-inline-block)
+// keeps its classes and gets no server mark: the script takes away only the
+// d-none the server added (data-pg-wishlist-hidden), never the designer's.
+function test_wishlist_heart_designer_d_none_is_not_the_servers()
+{
+	$tree = wishlist_heart_test_card();
+	$tree['children'][0]['children'][0]['props']['cssClass'] = 'rounded-circle d-none d-md-inline-block';
+	$used = array();
+	_apply_catalog_listing_bindings($tree, array('wishlist_ready' => true), $used);
+
+	$own = $tree['children'][0]['children'][0];
+	pg_assert_same('rounded-circle d-none d-md-inline-block', $own['props']['cssClass'], 'the designer\'s classes as they were');
+	pg_assert_false(isset(wishlist_heart_test_attrs($own)['data-pg-wishlist-hidden']), 'no server mark on the designer\'s d-none');
+
+	$ours = $tree['children'][0]['children'][1];
+	pg_assert_same('1', wishlist_heart_test_attrs($ours)['data-pg-wishlist-hidden'], 'the server\'s d-none is marked');
+
+	// A second pass keeps both as they are: the mark stays with the d-none
+	// the first pass added and is not given to the designer's.
+	$again = $tree;
+	_apply_catalog_listing_bindings($again, array('wishlist_ready' => true), $used);
+	pg_assert_same($tree, $again, 'idempotent');
 }
 
 // The product page's heart sits in the add-to-cart form: a plain button
@@ -163,6 +190,7 @@ function test_wishlist_heart_item_view_binding()
 	pg_assert_same('^^__id^^', $attrs['data-pg-wishlist'], 'the product shown');
 	pg_assert_same('false', $attrs['aria-pressed']);
 	pg_assert_contains('d-none', $icon['props']['cssClass']);
+	pg_assert_same('1', $attrs['data-pg-wishlist-hidden'], 'the d-none is the server\'s');
 
 	// The listing's action means nothing on a product page.
 	$other = wishlist_heart_test_card('catalog_wishlist');
@@ -232,24 +260,103 @@ function test_wishlist_heart_editor_offer_and_starters()
 	pg_assert_true($has("btnElement: 'button', btnType: 'button',\n            variant: 'secondary', outline: true, size: 'sm',\n            text: '', customName: _sdT('Favourite'),\n            _bindings: { action: action } }"), 'the starter heart is a plain button bound to the action');
 }
 
-// The design templates' product cards carry the heart.
+// The nodes of a tree of type $type, at any depth.
+function wishlist_heart_test_nodes($node, $type)
+{
+	$found = array();
+
+	if (!is_array($node)) {
+		return $found;
+	}
+
+	if (isset($node['type']) && $node['type'] === $type) {
+		$found[] = $node;
+	}
+
+	foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+		$found = array_merge($found, wishlist_heart_test_nodes($child, $type));
+	}
+
+	return $found;
+}
+
+// How many nodes of a tree are bound to the action $action.
+function wishlist_heart_test_bound($node, $action)
+{
+	if (!is_array($node)) {
+		return 0;
+	}
+
+	$n = (isset($node['props']['_bindings']['action']) && $node['props']['_bindings']['action'] === $action) ? 1 : 0;
+
+	foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+		$n += wishlist_heart_test_bound($child, $action);
+	}
+
+	return $n;
+}
+
+// Every product card the store, boutique and bookshop templates draw (the
+// loop of each catalog listing with a tree of its own) carries exactly one
+// heart; the listings on the starter tree get it from the starter.
 function test_wishlist_heart_design_templates()
 {
 	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop') as $name) {
-		$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $name . '.php');
-		pg_assert_true(strpos($source, "'_bindings' => array('action' => 'catalog_wishlist')") !== false, $name);
+		$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $name . '.php');
+		$listings = 0;
+
+		foreach ((isset($tpl['widgets']) && is_array($tpl['widgets'])) ? $tpl['widgets'] : array() as $key => $w) {
+			if (!isset($w['config']['regionType']) || $w['config']['regionType'] !== 'catalog_listing' || !is_array($w['tree'])) {
+				continue;
+			}
+
+			$loops = wishlist_heart_test_nodes($w['tree'], 'loop_area');
+			pg_assert_true(count($loops) > 0, $name . ' ' . $key . ': a card loop');
+
+			foreach ($loops as $loop) {
+				pg_assert_same(1, wishlist_heart_test_bound($loop, 'catalog_wishlist'), $name . ' ' . $key . ': the card carries one heart');
+			}
+
+			$listings++;
+		}
+
+		pg_assert_true($listings > 0, $name . ': product lists with cards of their own');
 	}
 }
 
-// A variant picked on a product page is announced, so the heart follows it;
-// the script's version stamp moved with the change.
+// A variant picked on a product page is announced, so the heart follows it:
+// applyVariant() hands the new id to announceProduct(), which sends a
+// bubbling pg-civ-product-change from the form. The script's version stamp
+// moved with the change.
 function test_wishlist_heart_variant_event()
 {
 	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_civ_variants.js');
-	pg_assert_true(strpos($js, "'pg-civ-product-change'") !== false, 'pg_civ_variants.js announces the product');
+
+	// One function of the script: from its name to the next function.
+	$body = function ($name) use ($js) {
+		$start = strpos($js, 'function ' . $name . '(');
+
+		if ($start === false) {
+			return '';
+		}
+
+		$end = preg_match('/\n\s*function\s/', $js, $m, PREG_OFFSET_CAPTURE, $start + 1) ? $m[0][1] : strlen($js);
+
+		return substr($js, $start, $end - $start);
+	};
+
+	$apply = $body('applyVariant');
+	pg_assert_contains('if (form) announceProduct(form, p.id);', $apply, 'a picked variant is announced');
+
+	$announce = $body('announceProduct');
+	pg_assert_contains('var detail = { productId: String(productId) };', $announce, 'with its id');
+	pg_assert_contains("new CustomEvent('pg-civ-product-change', { bubbles: true, detail: detail })", $announce, 'bubbling from the form');
+	pg_assert_contains("ev.initCustomEvent('pg-civ-product-change', true, false, detail);", $announce, 'old browsers too');
+	pg_assert_contains('form.dispatchEvent(ev);', $announce, 'sent');
 
 	$source = wishlist_heart_test_source('_render_system_widget_catalog_item_view');
-	pg_assert_false(strpos($source, "\$_civ_v_v   = '4';"), 'version stamp bumped');
+	pg_assert_same(1, preg_match('/\$_civ_v_v\s*=\s*\'([0-9]+)\';/', $source, $stamp), 'version stamp');
+	pg_assert_true((int)$stamp[1] >= 5, 'version stamp moved with the event');
 }
 
 // Runs assets/js/pg_wishlist.js under Node with the steps given; null when
@@ -326,9 +433,11 @@ var doc = {
 };
 function fire(type, event) { (listeners[type] || []).forEach(function (fn) { fn(event); }); }
 
-function heart(id) {
-	return new El('button', { type: 'button', 'class': 'btn d-none', 'data-pg-wishlist': id, 'aria-pressed': 'false' },
-		[new El('i', { 'class': 'bi bi-heart', 'aria-hidden': 'true' })]);
+// A heart as the server draws it: hidden by its own d-none, marked as such.
+function heart(id, cls) {
+	var attrs = { type: 'button', 'class': cls || 'btn d-none', 'data-pg-wishlist': id, 'aria-pressed': 'false' };
+	if (!cls) attrs['data-pg-wishlist-hidden'] = '1';
+	return new El('button', attrs, [new El('i', { 'class': 'bi bi-heart', 'aria-hidden': 'true' })]);
 }
 function look(el) {
 	return {
@@ -347,9 +456,14 @@ function fakeFetch(url, opts) {
 		cache: (opts && opts.cache) || '', credentials: (opts && opts.credentials) || '' });
 	var r = replies.shift();
 	if (!r) return Promise.reject(new Error('offline'));
-	return Promise.resolve({ ok: r.status >= 200 && r.status < 300, status: r.status,
-		json: function () { return Promise.resolve(r.data); } });
+	var response = { ok: r.status >= 200 && r.status < 300, status: r.status,
+		json: function () { return Promise.resolve(r.data); } };
+	// A held reply answers only when the step calls release().
+	if (r.hold) return new Promise(function (resolve) { held.push(function () { resolve(response); }); });
+	return Promise.resolve(response);
 }
+var held = [];
+function release() { var fn = held.shift(); if (fn) fn(); }
 function tick() { return new Promise(function (r) { setTimeout(r, 0); }); }
 JS;
 
@@ -508,4 +622,101 @@ JS;
 
 	pg_assert_same('btn d-none', $r['cls'], 'hidden');
 	pg_assert_same(1, $r['calls'], 'a click on a hidden heart sends nothing');
+}
+
+// A heart moved to another variant while its product is being saved does
+// not stay busy: the busy mark follows the product the heart stands for, so
+// a heart moved back onto the saving product is busy again until it is done.
+function test_wishlist_heart_script_busy_follows_variant()
+{
+	$steps = <<<'JS'
+var a = body.appendChild(heart('5'));
+var form = body.appendChild(new El('form', { 'data-pg-civ-form': '1' }));
+var e = form.appendChild(heart('5'));
+var out = {};
+
+var w = W.create({ document: doc, fetch: fakeFetch, config: { url: '/software/wishlist.php', labels: {} } });
+replies.push({ status: 200, data: { ids: [], token: 't' } });
+
+w.start().then(function () {
+	replies.push({ status: 200, data: { product_id: 5, on: true }, hold: true });
+	fire('click', { target: e, preventDefault: function () {} });
+	out.during = { a: a.getAttribute('aria-busy'), e: e.getAttribute('aria-busy') };
+
+	fire('pg-civ-product-change', { target: form, detail: { productId: 6 } });
+	out.moved = { a: a.getAttribute('aria-busy'), e: e.getAttribute('aria-busy'), e_pressed: look(e).pressed };
+
+	fire('pg-civ-product-change', { target: form, detail: { productId: 5 } });
+	out.back = e.getAttribute('aria-busy');
+
+	fire('pg-civ-product-change', { target: form, detail: { productId: 6 } });
+	release();
+	return tick();
+}).then(function () {
+	out.after = { a: a.getAttribute('aria-busy'), e: e.getAttribute('aria-busy'), e_id: look(e).id, a_pressed: look(a).pressed, e_pressed: look(e).pressed };
+	console.log(JSON.stringify(out));
+}).catch(function (err) { console.log('ERR ' + (err && err.stack)); });
+JS;
+
+	$r = wishlist_heart_test_node($steps);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($r['error']), isset($r['error']) ? $r['error'] : '');
+
+	if (isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array('a' => 'true', 'e' => 'true'), $r['during'], 'both hearts of the product are busy');
+	pg_assert_same(array('a' => 'true', 'e' => null, 'e_pressed' => 'false'), $r['moved'], 'the moved heart is not busy, its new product not saved');
+	pg_assert_same('true', $r['back'], 'back on the saving product: busy again');
+	pg_assert_same(array('a' => null, 'e' => null, 'e_id' => '6', 'a_pressed' => 'true', 'e_pressed' => 'false'), $r['after'], 'nothing stays busy once the save is done');
+}
+
+// The script takes away only the d-none the server added: a heart the
+// designer hid on small screens (d-none d-md-inline-block) keeps it, and a
+// heart that loses its product is hidden by the script's own mark again.
+function test_wishlist_heart_script_keeps_designer_d_none()
+{
+	$steps = <<<'JS'
+var own = body.appendChild(heart('7', 'btn d-none d-md-inline-block'));
+var form = body.appendChild(new El('form', { 'data-pg-civ-form': '1' }));
+var ours = form.appendChild(heart('7'));
+var out = {};
+
+var w = W.create({ document: doc, fetch: fakeFetch, config: { url: '/software/wishlist.php', labels: {} } });
+replies.push({ status: 200, data: { ids: [7], token: 't' } });
+
+w.start().then(function () {
+	out.own = { cls: look(own).cls, flag: own.getAttribute('data-pg-wishlist-hidden'), pressed: look(own).pressed };
+	out.ours = { cls: look(ours).cls, flag: ours.getAttribute('data-pg-wishlist-hidden') };
+
+	fire('pg-civ-product-change', { target: form, detail: { productId: 0 } });
+	out.no_product = { cls: look(ours).cls, flag: ours.getAttribute('data-pg-wishlist-hidden') };
+
+	fire('pg-civ-product-change', { target: form, detail: { productId: 7 } });
+	out.again = { cls: look(ours).cls, flag: ours.getAttribute('data-pg-wishlist-hidden') };
+	console.log(JSON.stringify(out));
+}).catch(function (err) { console.log('ERR ' + (err && err.stack)); });
+JS;
+
+	$r = wishlist_heart_test_node($steps);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($r['error']), isset($r['error']) ? $r['error'] : '');
+
+	if (isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array('cls' => 'btn d-none d-md-inline-block active', 'flag' => null, 'pressed' => 'true'), $r['own'], 'the designer\'s d-none stays');
+	pg_assert_same(array('cls' => 'btn active', 'flag' => null), $r['ours'], 'the server\'s d-none and its mark go');
+	pg_assert_same(array('cls' => 'btn active d-none', 'flag' => '1'), $r['no_product'], 'hidden again, by a d-none of the script\'s');
+	pg_assert_same(array('cls' => 'btn active', 'flag' => null), $r['again'], 'shown again');
 }

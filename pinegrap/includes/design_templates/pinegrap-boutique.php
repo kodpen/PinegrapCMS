@@ -2785,7 +2785,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

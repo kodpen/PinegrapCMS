@@ -2926,7 +2926,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

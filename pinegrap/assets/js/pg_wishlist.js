@@ -8,13 +8,14 @@
  * (pg_wishlist_inject(), with window.pgWishlist: the endpoint's address and
  * the words the script may show).
  *
- * The server draws every heart hidden (d-none) and empty, the same for every
- * visitor, so the page can come from the page cache. One request
- * (wishlist.php?action=state, never cached) brings the visitor's list and
- * the session token; each heart of a product in the list is pressed
- * (aria-pressed, the active class, bi-heart-fill for a bi-heart icon), and
- * all of them are shown. Without that answer they stay hidden: a heart that
- * could not save anything is not offered.
+ * The server draws every heart hidden (d-none, marked
+ * data-pg-wishlist-hidden so a d-none of the designer's is told apart) and
+ * empty, the same for every visitor, so the page can come from the page
+ * cache. One request (wishlist.php?action=state, never cached) brings the
+ * visitor's list and the session token; each heart of a product in the list
+ * is pressed (aria-pressed, the active class, bi-heart-fill for a bi-heart
+ * icon), and all of them lose the marked d-none. Without that answer they
+ * stay hidden: a heart that could not save anything is not offered.
  *
  * A click saves or removes the product: every heart of it on the page
  * follows at once, and goes back if the server refuses, whose words are
@@ -37,6 +38,7 @@
     'use strict';
 
     var MARK = '[data-pg-wishlist]';
+    var HIDDEN = 'data-pg-wishlist-hidden';
     var STATUS_ID = 'pg-wishlist-status';
 
     /**
@@ -99,15 +101,23 @@
         }
 
         // Shows a heart in its state, once the list is known and the heart
-        // has a product; hides it otherwise.
+        // has a product; hides it otherwise. Only a d-none marked
+        // data-pg-wishlist-hidden (the server's or the script's) is taken
+        // away: one the designer set (d-none d-md-inline-block) stays.
         function show(el) {
             var id = productOf(el);
             if (saved === null || !id) {
-                el.classList.add('d-none');
+                if (!el.classList.contains('d-none')) {
+                    el.classList.add('d-none');
+                    el.setAttribute(HIDDEN, '1');
+                }
                 return;
             }
             paint(el, !!saved[id]);
-            el.classList.remove('d-none');
+            if (el.hasAttribute(HIDDEN)) {
+                el.classList.remove('d-none');
+                el.removeAttribute(HIDDEN);
+            }
         }
 
         function paintProduct(id, on) {
@@ -230,13 +240,16 @@
         }
 
         // A variant picked on a product page: the hearts inside its form
-        // stand for the new product from now on.
+        // stand for the new product from now on, busy only while that
+        // product's change is on its way (the end of an earlier product's
+        // change no longer finds them).
         function onProductChange(event) {
             var id = (event.detail && event.detail.productId) ? String(event.detail.productId) : '';
             var scope = (event.target && event.target.querySelectorAll) ? event.target : null;
             if (!scope) return;
             hearts(scope).forEach(function (el) {
                 el.setAttribute('data-pg-wishlist', id);
+                if (id && pending[id]) el.setAttribute('aria-busy', 'true'); else el.removeAttribute('aria-busy');
                 show(el);
             });
         }

@@ -192,8 +192,9 @@ function _pg_catalog_binding_disabled($node, $context)
 //     with the product's id
 //   - aria-pressed="false", and an aria-label when the button has no words
 //     of its own (an icon alone)
-//   - d-none, which the script takes away once it knows the visitor's list:
-//     a page without the script shows no control that does nothing.
+//   - d-none with data-pg-wishlist-hidden, which the script takes away once
+//     it knows the visitor's list: a page without the script shows no
+//     control that does nothing. A d-none the designer set is left to them.
 //     $hidden is false for the editor's Preview and the canvas cards the
 //     server draws, where no script runs and the heart shows as designed.
 // No token and no form: the script reads the visitor's list and the session
@@ -209,18 +210,20 @@ function _pg_catalog_wishlist_heart(&$node, $product, $hidden = true)
     $is_tag = ($node['type'] === 'semantic' && isset($node['props']['tag']) && strtolower((string)$node['props']['tag']) === 'button');
     if (!$is_btn && !$is_tag) return false;
 
-    $managed = array('data-pg-wishlist' => 1, 'aria-pressed' => 1, 'aria-label' => 1);
+    $managed = array('data-pg-wishlist' => 1, 'aria-pressed' => 1, 'aria-label' => 1, 'data-pg-wishlist-hidden' => 1);
     if ($is_tag) $managed['type'] = 1;
 
     $existing = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
     $kept     = array();
     $label    = '';
+    $ours     = false;
     foreach ($existing as $a) {
         if (!is_array($a) || !isset($a['name'])) continue;
         $name = strtolower((string)$a['name']);
         // A name the button already has (the designer's, or ours from an
         // earlier pass) is kept and written again last.
         if ($name === 'aria-label') $label = trim(isset($a['value']) ? (string)$a['value'] : '');
+        if ($name === 'data-pg-wishlist-hidden') $ours = true;
         if (isset($managed[$name])) continue;
         $kept[] = $a;
     }
@@ -241,12 +244,20 @@ function _pg_catalog_wishlist_heart(&$node, $product, $hidden = true)
     $kept[] = array('name' => 'aria-pressed',     'value' => 'false');
     if ($label === '' && !_pg_catalog_node_has_words($node)) $label = lang('Add to favourites');
     if ($label !== '') $kept[] = array('name' => 'aria-label', 'value' => $label);
-    $node['props']['_attrs'] = $kept;
 
+    // The d-none added here is marked (data-pg-wishlist-hidden), and the
+    // script takes away only a marked one: a d-none the designer gave the
+    // button (d-none d-md-inline-block, shown from md up) is theirs and
+    // stays. The mark of an earlier pass stays with the d-none it added.
     if ($hidden) {
         $class = isset($node['props']['cssClass']) ? trim((string)$node['props']['cssClass']) : '';
-        if (!preg_match('/(^|\s)d-none(\s|$)/', $class)) $node['props']['cssClass'] = trim($class . ' d-none');
+        if (!preg_match('/(^|\s)d-none(\s|$)/', $class)) {
+            $node['props']['cssClass'] = trim($class . ' d-none');
+            $ours = true;
+        }
+        if ($ours) $kept[] = array('name' => 'data-pg-wishlist-hidden', 'value' => '1');
     }
+    $node['props']['_attrs'] = $kept;
 
     return true;
 }
