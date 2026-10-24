@@ -638,9 +638,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-image: radial-gradient(circle, rgba(255,255,255,.18) 1px, transparent 1px);
     background-size: 40px 40px;
 }
+/* The width buttons and the resize handle set this wrapper's width, and the
+   canvas must get all of it: Bootstrap lays the canvas out by the frame's
+   width. The side lines are shadows (below), not borders, which took 2px
+   and drew "768px · MD" at 766px, in the SM layout. */
 .sd-iframe-wrap {
     position:relative; width:100%; max-width:1400px; height:100%;
-    border-left:1px solid var(--sd-panel-border); border-right:1px solid var(--sd-panel-border);
     background:#fff; overflow:hidden;
     transition: max-width .3s ease;
     transform-origin: top left;
@@ -5203,7 +5206,7 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Canvas iframe area background refinement ── */
 .sd-iframe-wrap {
-    box-shadow: 0 0 40px rgba(0,0,0,.5);
+    box-shadow: -1px 0 0 var(--sd-panel-border), 1px 0 0 var(--sd-panel-border), 0 0 40px rgba(0,0,0,.5);
 }
 
 /* border-bottom on active tab is handled by the tab's own border-bottom property (line ~1064) */
