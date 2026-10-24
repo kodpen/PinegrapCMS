@@ -4,7 +4,7 @@ description: News template page shapes: the lead grid, most read inside the arti
 ---
 
 ## Why is the lead grid one widget, with `:first-of-type`?
-- `home_lead` lists the three newest Lead Story articles; CSS draws the newest large. `:first-child` fails for editors: `pg_sw_add_edit_chip()` puts a `<style>` before the first chipped row. So do the home tiles (`pn-stack`).
+- `home_lead` lists the three newest Lead Story articles; CSS draws the newest large. `:first-of-type` holds whatever else is there; an editor's edit pencil is the first child inside each record (`pg_sw_add_edit_chip()`). So do the home tiles (`pn-stack`).
 - On the canvas each loop row has its own `.sd-wrap`, so each counts as the first (editor only).
 
 ## How is the article page laid out?
