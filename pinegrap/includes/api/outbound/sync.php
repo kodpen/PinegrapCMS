@@ -866,22 +866,22 @@ function mp_sync_package_from_row($row) {
 // in with the package. A candidate is a package imported in the last thirty
 // days, with an order, that the marketplace still has as not shipped and that
 // carries no error. It is reported once the order has a parcel this shop
-// recorded (order screen, API, carrier, CSV) whose tracking link is known -
-// the link the order screen shows. A package with no such parcel yet makes no
-// call; the next pass looks again.
+// recorded (order screen, API, carrier, CSV) whose tracking link somebody
+// named (mp_sync_shipment_link()) - the link the order screen shows. A package
+// with no such parcel yet makes no call; the next pass looks again.
 //
-// A package still Created is accepted (Picking) first, whatever the account's
-// auto-accept says: shipping it is the stronger promise, and their status
-// page has Picking come before the later statuses.
+// A package still Created that nobody accepted yet is accepted (Picking)
+// first, whatever the account's auto-accept says: shipping it is the stronger
+// promise, and their status page has Picking come before the later statuses.
 //
 // A refusal is written on the map row, which takes the package out of this
 // pass for good and shows the reason on the Imported orders card; the
 // operator ships it in the marketplace's panel. A failure worth repeating
 // (their outage, a rate limit) writes nothing, so the next pass tries again.
 //
-// The candidates are read two hundred at a time, oldest first, so that
-// packages waiting for their parcel do not hide the ones already shipped
-// behind them, and at most fifty calls are made in a pass.
+// Only packages whose order has a parcel the shop recorded are read, two
+// hundred at a time, oldest first, so packages still waiting for their parcel
+// never hide the ones already shipped; at most fifty calls are made in a pass.
 function mp_sync_ship_pending($account) {
 
 	if (!mp_can($account['provider'], 'ship_package') || !mp_account_ships_itself($account)) {
@@ -899,7 +899,7 @@ function mp_sync_ship_pending($account) {
 
 	}
 
-	$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, lines_json
+	$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, approved, lines_json
 		FROM marketplace_order_map
 		WHERE (account_id = '" . e((int)$account['id']) . "')
 		  AND (status = 'imported')
@@ -907,6 +907,13 @@ function mp_sync_ship_pending($account) {
 		  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
 		  AND (last_error = '')
 		  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
+		  AND EXISTS (
+			SELECT 1
+			FROM ship_tos
+			INNER JOIN shipping_tracking_numbers ON shipping_tracking_numbers.ship_to_id = ship_tos.id
+			WHERE (ship_tos.order_id = marketplace_order_map.order_id)
+			  AND (shipping_tracking_numbers.source <> 'marketplace')
+		  )
 		ORDER BY id ASC
 		LIMIT 200");
 
@@ -947,7 +954,18 @@ function mp_sync_ship_pending($account) {
 
 		$package = mp_sync_package_from_row($row);
 
-		if ($package['remote_status'] === 'Created') {
+		// A package the acceptance pass took already is Picking over there
+		// although the row still reads Created; Picking sent again would be
+		// refused, and the refusal would stop the shipment.
+		if (($package['remote_status'] === 'Created') && empty($row['approved'])) {
+
+			// Accepting and shipping are two calls; both fit in this pass or
+			// neither is made, and the package waits for the next one.
+			if ($calls < 2) {
+
+				continue;
+
+			}
 
 			$line_ids = array();
 
@@ -1033,13 +1051,31 @@ function mp_sync_ship_pending($account) {
 // $rows are an address's parcels (pg_shipment_rows()), $method its shipping
 // method code, $default the site's default carrier. The first parcel with a
 // number and a link is taken, the link being the one the order screen shows
-// (pg_shipment_view(): the row's own page, else its carrier's, else the one
-// the method, the default or the number's shape points to). A parcel the
-// marketplace handed over (source marketplace) is never taken: that number is
-// theirs, and sending it back would report their carrier as the shop's.
+// (pg_shipment_view()). A parcel the marketplace handed over (source
+// marketplace) is never taken: that number is theirs, and sending it back
+// would report their carrier as the shop's.
+//
+// The link is sent only when somebody named where it points: the row's own
+// tracking page, a carrier stored on the row, or the site's default carrier.
+// On an imported order the method code holds the marketplace's carrier, so a
+// link built from it, or a row carrier that only repeats it, points at their
+// carrier with the shop's number; and the number's shape alone reads a plain
+// Turkish number as UPS or FedEx. Either would be sent to the marketplace and
+// shown to the buyer, and a shipment once reported cannot be taken back, so
+// such a parcel waits until its carrier is chosen on the order screen.
 //
 // Answers array(number, url).
 function mp_sync_shipment_link($rows, $method, $default) {
+
+	$theirs = pg_shipping_method_carrier((string)$method);
+
+	$default = pg_shipping_carrier_text($default);
+
+	if (!pg_shipping_carrier_exists($default)) {
+
+		$default = '';
+
+	}
 
 	foreach ((array)$rows as $row) {
 
@@ -1051,11 +1087,29 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 		$view = pg_shipment_view($row, $method, $default);
 
-		if ($view['number'] !== '' && $view['url'] !== '') {
+		if ($view['number'] === '' || $view['url'] === '') {
 
-			return array('number' => $view['number'], 'url' => $view['url']);
+			continue;
 
 		}
+
+		$own_page = isset($row['tracking_url']) && (pg_shipment_tracking_url_clean($row['tracking_url']) !== '');
+
+		if (!$own_page) {
+
+			$named = $view['named']
+				? ($view['carrier'] !== $theirs)
+				: (($theirs === '') && ($default !== '') && ($view['carrier'] === $default));
+
+			if (!$named) {
+
+				continue;
+
+			}
+
+		}
+
+		return array('number' => $view['number'], 'url' => $view['url']);
 
 	}
 

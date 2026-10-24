@@ -210,17 +210,88 @@ function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
 
 	pg_assert_same('https://track.example-carrier.com/p/ABC', mp_sync_shipment_link(array($own_page), '', '')['url']);
 
-	// A carrier the shipping method names builds the link from its pattern.
-	$by_method = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
-
-	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
-		mp_sync_shipment_link(array($by_method), 'Aras Kargo', '')['url']);
-
 	// A carrier chosen on the row wins over the method.
 	$named = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'mng'));
 
 	pg_assert_same('https://kargotakip.mngkargo.com.tr/?takipNo=9988776655',
 		mp_sync_shipment_link(array($named), 'Aras Kargo', '')['url']);
+
+	// With no carrier on the row and none in the method code, the site's
+	// default carrier names it.
+	$unnamed = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
+
+	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
+		mp_sync_shipment_link(array($unnamed), 'Trendyol Express', 'aras')['url']);
+}
+
+// On an imported order the method code is the carrier the marketplace named.
+// A link built from it, or from a row carrier that only repeats it, would send
+// their carrier's page with the shop's number.
+function test_marketplace_trendyol_shipping_link_never_takes_their_carrier()
+{
+	$by_method = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
+
+	pg_assert_same(null, mp_sync_shipment_link(array($by_method), 'Yurtiçi Kargo Marketplace', ''),
+		'the method code names their carrier');
+	pg_assert_same(null, mp_sync_shipment_link(array($by_method), 'Yurtiçi Kargo Marketplace', 'aras'),
+		'the default does not override what the order screen shows');
+
+	$inherited = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici'));
+
+	pg_assert_same(null, mp_sync_shipment_link(array($inherited), 'Yurtiçi Kargo Marketplace', ''),
+		'the row carrier only repeats theirs');
+
+	$chosen = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'surat'));
+
+	pg_assert_true(mp_sync_shipment_link(array($chosen), 'Yurtiçi Kargo Marketplace', '') !== null,
+		'a carrier chosen on the row that is not theirs');
+
+	$own_page = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici',
+		'tracking_url' => 'https://track.example-carrier.com/p/9988776655'));
+
+	pg_assert_same('https://track.example-carrier.com/p/9988776655',
+		mp_sync_shipment_link(array($own_page), 'Yurtiçi Kargo Marketplace', '')['url'], 'the row\'s own page');
+}
+
+// The number's shape reads a plain Turkish number as UPS (11 digits) or FedEx
+// (12 digits); a link nobody named is not sent.
+function test_marketplace_trendyol_shipping_link_never_comes_from_the_numbers_shape()
+{
+	foreach (array('12345678901', '123456789012') as $number) {
+
+		$row = trendyol_shipping_test_row(array('number' => $number));
+
+		pg_assert_true(pg_shipment_view($row, 'Trendyol Express', '')['url'] !== '', 'the order screen guesses a link');
+		pg_assert_same(null, mp_sync_shipment_link(array($row), 'Trendyol Express', ''), $number);
+		pg_assert_same(null, mp_sync_shipment_link(array($row), '', ''), $number . ' with no method code');
+
+	}
+}
+
+// The job step: a package the acceptance pass took already is not sent Picking
+// again, a Created one is accepted only when both calls fit, and only packages
+// whose order has a parcel the shop recorded are read.
+function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/sync.php');
+
+	$start = strpos($source, 'function mp_sync_ship_pending($account) {');
+	$end = strpos($source, 'function mp_sync_shipment_link(');
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end));
+
+	$step = substr($source, $start, $end - $start);
+
+	pg_assert_contains('remote_status, approved, lines_json', $step);
+	pg_assert_contains("if ((\$package['remote_status'] === 'Created') && empty(\$row['approved'])) {", $step);
+	pg_assert_contains("if (\$calls < 2) {", $step);
+	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
+
+	$orders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
+
+	pg_assert_contains('mp_order_apply_tracking($order_id, $package, $account);', $orders);
+	pg_assert_contains("if ((\$carrier !== '') && \$ship_to_id && !(is_array(\$account) && mp_account_ships_itself(\$account))) {",
+		$orders, 'an account that ships itself keeps their carrier out of the method code');
 }
 
 function test_marketplace_trendyol_shipping_link_is_null_without_a_linked_parcel()

@@ -253,7 +253,7 @@ function mp_order_apply_status($account, $package, $map) {
 
 	$stage = mp_order_stage($account, $package);
 
-	mp_order_apply_tracking($order_id, $package);
+	mp_order_apply_tracking($order_id, $package, $account);
 
 	if ($stage === 'shipped' || $stage === 'delivered') {
 
@@ -341,7 +341,12 @@ function mp_order_cancellations_first($account, $packages) {
 // Through the shipment write path (pg_shipment_record()), with the carrier's
 // name and its own tracking page as the marketplace gives them, so the row
 // says which courier took the parcel and links where the marketplace does.
-function mp_order_apply_tracking($order_id, $package) {
+//
+// The carrier's name also becomes the address's shipping method code, unless
+// the account ships with a carrier of its own: there the marketplace's carrier
+// is not the one that takes the parcel, and a parcel the shop records would
+// otherwise take that carrier and its tracking page from the method code.
+function mp_order_apply_tracking($order_id, $package, $account = null) {
 
 	$tracking = isset($package['tracking']) ? (array)$package['tracking'] : array();
 
@@ -385,7 +390,7 @@ function mp_order_apply_tracking($order_id, $package) {
 		'ship_date'        => null
 	));
 
-	if (($carrier !== '') && $ship_to_id) {
+	if (($carrier !== '') && $ship_to_id && !(is_array($account) && mp_account_ships_itself($account))) {
 
 		db("UPDATE ship_tos SET shipping_method_code = '" . e(mb_substr($carrier, 0, 50)) . "'
 			WHERE (id = '" . e($ship_to_id) . "') AND (shipping_method_code = '')");
