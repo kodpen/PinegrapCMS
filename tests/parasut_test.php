@@ -4,9 +4,9 @@
  *
  * Tests for the pure helpers of the Paraşüt client (includes/fn/parasut.php):
  * the authorization page address, the owner stamp of the sealed token, the
- * reading of the /v4/me answer and the words of a refusal; and, read from
- * the source, E-Shipment on an order whose shipment document is already in
- * Paraşüt.
+ * reading of the /v4/me answer, the words of a refusal and the query of the
+ * e-invoice inbox's lists; and, read from the source, E-Shipment on an order
+ * whose shipment document is already in Paraşüt.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -238,4 +238,81 @@ function test_parasut_shipment_button_is_disabled_once_sent()
 
 	pg_assert_contains("(\$parasut_shipment_id !== '')", $block);
 	pg_assert_contains("' disabled title=\"' . h(lang('This order already has a shipment document in Paraşüt.')) . '\"'", $block);
+}
+
+// The list reads of the e-invoice inbox send the date range with the range
+// operators Paraşüt takes (eq, lt, gt, gteq, lteq, not_eq): gte and lte were
+// answered 400 "'gte' is not a valid operator", so every date filter of the
+// inbox showed an error over an empty table.
+function test_parasut_list_params_send_the_date_range_as_gteq_and_lteq()
+{
+	pg_assert_same(array(
+		'page[number]' => 2,
+		'page[size]' => 25,
+		'sort' => '-issue_date',
+		'include' => 'supplier',
+		'filter[issue_date][gteq]' => '2026-10-01',
+		'filter[issue_date][lteq]' => '2026-10-31',
+		'filter[supplier_id]' => '1074055945',
+		'filter[item_type]' => 'purchase_bill',
+	), parasut_list_params(array(
+		'start_date' => '2026-10-01',
+		'end_date' => '2026-10-31',
+		'contact_id' => '1074055945',
+		'item_type' => 'purchase_bill',
+	), 2, 25, 'supplier', 'supplier_id'));
+
+	$start_only = parasut_list_params(array('start_date' => '2026-10-01'), 1, 25, 'contact', 'contact_id');
+	pg_assert_same('2026-10-01', $start_only['filter[issue_date][gteq]'] ?? null);
+	pg_assert_false(array_key_exists('filter[issue_date][lteq]', $start_only), 'no end without an end date');
+	pg_assert_same('contact', $start_only['include']);
+
+	$end_only = parasut_list_params(array('end_date' => '2026-10-31'), 1, 25, 'contact', 'contact_id');
+	pg_assert_same('2026-10-31', $end_only['filter[issue_date][lteq]'] ?? null);
+	pg_assert_false(array_key_exists('filter[issue_date][gteq]', $end_only), 'no start without a start date');
+
+	foreach (array($start_only, $end_only) as $params) {
+		pg_assert_false(array_key_exists('filter[issue_date][gte]', $params), 'no gte operator');
+		pg_assert_false(array_key_exists('filter[issue_date][lte]', $params), 'no lte operator');
+	}
+
+	pg_assert_same(
+		'page%5Bnumber%5D=1&page%5Bsize%5D=25&sort=-issue_date&include=contact&filter%5Bissue_date%5D%5Bgteq%5D=2026-10-01',
+		http_build_query($start_only)
+	);
+}
+
+// A date that is not a calendar day written Y-m-d is left out: Paraşüt
+// answers 400 "'issue_date' is not a date" for anything else.
+function test_parasut_list_params_leave_out_a_date_parasut_would_refuse()
+{
+	foreach (array('', '01.10.2026', '2026-10-1', '2026-13-01', '2026-02-30', '2026-10-01..2026-10-31', array('2026-10-01')) as $value) {
+		$params = parasut_list_params(array('start_date' => $value, 'end_date' => $value), 1, 25, 'supplier', 'supplier_id');
+		pg_assert_false(array_key_exists('filter[issue_date][gteq]', $params), 'start left out: ' . json_encode($value));
+		pg_assert_false(array_key_exists('filter[issue_date][lteq]', $params), 'end left out: ' . json_encode($value));
+	}
+
+	$params = parasut_list_params(array('start_date' => ' 2024-02-29 '), 1, 25, 'supplier', 'supplier_id');
+	pg_assert_same('2024-02-29', $params['filter[issue_date][gteq]'] ?? null, 'a leap day is a day');
+}
+
+// Both list reads of the inbox build their query with that helper.
+function test_parasut_list_reads_build_their_query_with_the_helper()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+
+	foreach (array(
+		'parasut_list_purchase_bills' => "parasut_list_params(\$filters, \$page, \$per_page, 'supplier', 'supplier_id')",
+		'parasut_list_sales_invoices' => "parasut_list_params(\$filters, \$page, \$per_page, 'contact', 'contact_id')",
+	) as $function => $call) {
+		$start = strpos($source, 'function ' . $function . '(');
+		pg_assert_true($start !== false, $function . '() is found');
+
+		$end = strpos($source, "\n}\n", (int) $start);
+		$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
+
+		pg_assert_contains($call, $body);
+		pg_assert_false(strpos($body, '[gte]') !== false, $function . ' sends no gte operator');
+		pg_assert_false(strpos($body, '[lte]') !== false, $function . ' sends no lte operator');
+	}
 }

@@ -9,7 +9,7 @@ description: Writing a design template file (includes/design_templates/<id>.php)
 - A structural node carries its role in `_label` (shown beside the tag in the layer tree), not in `customName`, which hides that label in the Overview.
 
 ## Which placeholders does `_pg_tpl_fill()` replace?
-- `{{page:<key>}}` the page's address; `{{tab:<key>}}` a page named in a widget or form setting (`tab:<tab key>` until Publish turns it into the page id); `{{folder:<key>}}` a folder id (a value that is only the placeholder becomes a number, e.g. `_cf.upload_folder_id`); `{{site_name}}`; `{{site_email}}` (`EMAIL_ADDRESS`); `{{year}}`. Catalog and contact group placeholders: `design-templates-catalog-and-look.md`.
+- `{{page:<key>}}` the page's address; `{{tab:<key>}}` a page named in a widget or form setting, or a link's `_bindParams.href.page_id` ([[record-value-page-links]]) (`tab:<tab key>` until Publish turns it into the page id); `{{folder:<key>}}` a folder id (a value that is only the placeholder becomes a number, e.g. `_cf.upload_folder_id`); `{{site_name}}`; `{{site_email}}` (`EMAIL_ADDRESS`); `{{year}}`. Catalog and contact group placeholders: `design-templates-catalog-and-look.md`.
 - A page places a widget with `props.templateWidget` and a shared part with `props.templateShared`; `_pg_tpl_link_widgets()` turns both into `shared_ref` nodes.
 
 ## What do the other keys do?

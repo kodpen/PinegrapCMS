@@ -106,6 +106,7 @@ $install_runner = array(
 	'guard' => false,
 	'started' => 0,
 	'pass_started' => 0,
+	'pass_executed' => 0,
 	'passes' => 0,
 );
 
@@ -817,6 +818,22 @@ function install_pause_budget() {
 
 }
 
+// True once this pass has run a statement and used up its budget: a step about to start
+// another ALTER that may copy a big table pauses (install_pause()) instead, so the copies
+// of one version spread over several passes. Counted from the start of the pass, so the
+// statements the earlier steps ran in it count too. A pass that has run nothing yet never
+// answers true: the earlier steps count only work they did (install_ran()), which a later
+// pass skips, so every pass gets at least one statement done and a version cannot pause
+// for ever.
+function install_pass_spent() {
+
+	global $install_runner;
+
+	return ((int) $install_runner['executed'] > (int) $install_runner['pass_executed'])
+		&& (install_pass_seconds() >= install_pause_budget());
+
+}
+
 // Ends this pass of the version: the note says where it got to, and the loop runs the
 // same version again, in a new request when the screen drives the upgrade one version at
 // a time. Never returns.
@@ -1498,6 +1515,8 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 
 						$install_runner['pass_started'] = microtime(true);
 
+						$install_runner['pass_executed'] = $install_runner['executed'];
+
 						try {
 
 							$function();
@@ -1743,9 +1762,11 @@ function install_heavy_tables() {
 		// 2026.11.0 adds products.compare_at_price (11.0.2), style.style_meta_tags
 		// and page.page_meta_tags (11.0.3), page.publish_at and page.unpublish_at
 		// with an index each (11.0.17), the review columns of `comments` and the
-		// rating of `products` (11.0.14), order_items.tax_rate (11.0.59). Where
+		// rating of `products` (11.0.14), order_items.tax_rate (11.0.59), and
+		// comments.parent_id with two indexes for replies (11.0.31). Where
 		// the server cannot add a column in place, the catalogue, the comments,
-		// the tables holding the page trees and the order lines are copied whole.
+		// the tables holding the page trees and the order lines are copied whole;
+		// on a table still on MyISAM every added index copies it too.
 		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items'),
 	);
 

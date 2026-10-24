@@ -19,10 +19,10 @@
 // What this connector does so far: prove the credentials, read the category
 // tree and what a category demands, open listings, send stock and price, read
 // the result of a batch, read order packages (pulled, or delivered by their
-// webhook), accept one (Picking), and register or remove that webhook. What it
-// does not name in the table below - invoices, shipping by the seller's own
-// carrier - mp_can() answers no for, so nothing queues work this connector
-// cannot do.
+// webhook), accept one (Picking), report one shipped with the seller's own
+// carrier, and register or remove that webhook. What it does not name in the
+// table below - invoices among them - mp_can() answers no for, so nothing
+// queues work this connector cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -73,6 +73,7 @@ function mp_trendyol_connector() {
 		'pull_orders'         => 'mp_trendyol_pull_orders',
 		'order_stage'         => 'mp_trendyol_order_stage',
 		'approve_lines'       => 'mp_trendyol_approve_lines',
+		'ship_package'        => 'mp_trendyol_ship_package',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
 		'remove_webhook'      => 'mp_trendyol_remove_webhook'
@@ -2159,6 +2160,53 @@ function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $tra
 	}
 
 	return mp_ok(array('accepted' => count($lines)));
+
+}
+
+// Report a package shipped with the seller's own carrier.
+//
+// Their alternative delivery service takes the carrier's tracking page, not a
+// number: the buyer follows that link from the order on Trendyol. The package
+// turns Shipped by itself, and Trendyol then gives it a cargo number of its
+// own, which the next pull brings in. (The same service takes a phone number
+// instead of a link, for a courier the buyer calls; there is no such number
+// here to give.) Their answer to a successful call has no documented body, so
+// any 2xx is success.
+//
+// The package id is held to eighteen digits, as for accepting a package.
+function mp_trendyol_ship_package($account, $package, $tracking_url, $transport = null) {
+
+	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
+
+	if (preg_match('/^[0-9]{1,18}$/', $package_id) !== 1) {
+
+		return mp_error(lang('That order has no package number to ship.'));
+
+	}
+
+	$tracking_url = trim((string)$tracking_url);
+
+	if (preg_match('#^https?://[^\s/?\#]+\S*$#i', $tracking_url) !== 1) {
+
+		return mp_error(lang('Trendyol needs the carrier\'s tracking page, an address that starts with http:// or https://, not a tracking number.'));
+
+	}
+
+	// params is an object on their side; an empty PHP array would be sent as
+	// [] instead of {}.
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/shipment-packages/' . $package_id . '/alternative-delivery',
+		65536, $transport,
+		array('isPhoneNumber' => false, 'trackingInfo' => $tracking_url, 'params' => new stdClass()),
+		'PUT', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('shipped' => true));
 
 }
 

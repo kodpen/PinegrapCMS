@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (approved 2026-10-23, not started): comments as a general designable system widget kind; layout shared in the widget row, comments and policy per page; replies via parent_id; 19 slices
+description: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -14,7 +14,7 @@ description: Plan (approved 2026-10-23, not started): comments as a general desi
 - Featured comments: new `featured: 'first'` (pinned on top, others shown) is the default of a new widget; `'filter'` keeps today's behaviour for converted pages.
 
 ## What are the slices? (one PR each, in order)
-1. Refuse forged threads on designed record pages: `pg_comment_thread_verify()` in new `includes/fn/comments.php`, `add_comment.php`.
+1. Refuse forged threads on designed record pages: `pg_comment_thread_verify()` in new `includes/fn/comments.php`, `add_comment.php`. Done (#1461).
 2. Verify product and calendar_event ids on classic pages (same helper).
 3. 7t: edit_comment.php, job.php and the API refresh `submitted_form_info` and mail the submitter on designed record pages.
 3b. One-time data step (owner, 2026-10-23): recount `submitted_form_info` for every (page, record) on designed record pages, no schema; after 3 and after the open PRs holding the migration file.
@@ -37,6 +37,6 @@ description: Plan (approved 2026-10-23, not started): comments as a general desi
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Built so far (branches, PRs pending): 1 `feature/comments-1-thread-verify`, 5 `feature/comments-5-parent-id-schema`, 9 `feature/widget-copy-for-this-page`; 3, 4 and 2 stack on 1 in that order (all add to `includes/fn/comments.php`).
-- 6 after 2 and 5, 7 after 4 and 6; 10 after 7 and 8.
+- In PRs: 3 #1475, 5 #1467, 9 #1472; 4 and 2 stack on 3.
+- Owner (2026-10-24): fewer, larger PRs from here: A = 6 + 3b; B = 7; C = 8 + 10 + 11; D = 12 + 13 + 14; E = 15 + 16 + 17 + 18; then 19.
 - Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).
