@@ -56,10 +56,6 @@ function mp_sync_run($seconds = 25) {
 	// marketplace from being handed a second batch of the same products.
 	mp_sync_poll($deadline, $summary);
 
-	// Then where the listings stand: a mapping set back to active here, its
-	// listing approved, has its stock and price queued again.
-	mp_sync_listing_states($deadline, $summary);
-
 	mp_sync_push($deadline, $summary);
 
 	// Orders last. Importing one takes stock off, which queues a push - and a
@@ -67,6 +63,12 @@ function mp_sync_run($seconds = 25) {
 	// the same run, which keeps a busy morning of orders from turning into one
 	// request per order.
 	mp_sync_orders($deadline, $summary);
+
+	// Where the listings stand comes after both, as the least urgent: a slow
+	// product read then cannot use up the time the stock and the orders need.
+	// A mapping set back to active here, its listing approved, has its stock
+	// and price queued again, and they go out on the next pass.
+	mp_sync_listing_states($deadline, $summary);
 
 	mp_sync_sweep();
 
@@ -707,17 +709,18 @@ function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 // A listing created from here goes to the marketplace's approval first, and a
 // stock line sent for it meanwhile can be refused, which puts its mapping in
 // error and stops it. So the rows whose listing has not been seen approved
-// (remote_id still empty) are asked about, except the ones already written as
-// rejected: those wait for the operator to fix the article and list it again,
-// which sets the row back to active. What each answer writes is
-// mp_sync_listing_row_update().
+// (remote_id still empty) are asked about. That includes the ones written as
+// rejected: a rejection is mostly fixed in the marketplace's own seller panel
+// (a document, the images), and the approval that follows has to set the row
+// back to active. A rejection read again unchanged writes nothing. What each
+// answer writes is mp_sync_listing_row_update().
 //
 // At most a hundred rows an account a pass, fifty to a call and two calls to
 // each fifty (approved and unapproved), far below the marketplace's limits.
-// Rows leave the set as they are approved or rejected. Rows the marketplace
-// answers for with neither (never listed there, deleted there) stay, and the
-// hundred asked about moves on every pass (mp_sync_listing_window()), so they
-// cannot hide the rest.
+// Rows leave the set as they are approved. Rows the marketplace answers for
+// with neither (never listed there, deleted there) stay, and the hundred asked
+// about start at a random place in the set every pass
+// (mp_sync_listing_window()), so they cannot hide the rest.
 function mp_sync_listing_states($deadline, &$summary) {
 
 	foreach (mp_accounts('', 'active') as $account) {
@@ -734,13 +737,13 @@ function mp_sync_listing_states($deadline, &$summary) {
 
 		}
 
-		mp_sync_listing_states_account($account, $summary);
+		mp_sync_listing_states_account($account, $deadline, $summary);
 
 	}
 
 }
 
-function mp_sync_listing_states_account($account, &$summary) {
+function mp_sync_listing_states_account($account, $deadline, &$summary) {
 
 	$account_id = (int) $account['id'];
 
@@ -750,11 +753,12 @@ function mp_sync_listing_states_account($account, &$summary) {
 		WHERE (account_id = '" . e($account_id) . "')
 		  AND (remote_code <> '')
 		  AND (remote_id = '')
-		  AND NOT ((status = 'error') AND (last_error LIKE '" . e(escape_like(mp_listing_rejected_prefix($provider_name))) . "%'))
 		ORDER BY id ASC"));
 
-	// A pass every five minutes moves the window on by one.
-	$ids = mp_sync_listing_window($ids, (int) floor(time() / 300), 100);
+	// A start drawn every pass rather than one read from the clock: a job that
+	// runs every ten or fifteen minutes would otherwise land on the same
+	// windows every time and never reach the rest.
+	$ids = mp_sync_listing_window($ids, mt_rand(), 100);
 
 	if (!$ids) {
 
@@ -768,6 +772,13 @@ function mp_sync_listing_states_account($account, &$summary) {
 		ORDER BY id ASC");
 
 	foreach (array_chunk($rows, 50) as $chunk) {
+
+		// Each chunk is two calls, so the time left is looked at before each.
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
 
 		$result = mp_call($account['provider'], 'listing_status', array($account, array_column($chunk, 'remote_code')));
 
@@ -833,7 +844,7 @@ function mp_sync_listing_states_account($account, &$summary) {
 //   there (information: the status is not changed for it).
 //
 //   rejected: the row goes to error with the reasons, under a prefix
-//   (mp_listing_rejected_prefix()) that keeps it out of the next passes.
+//   (mp_listing_rejected_prefix()) the screen knows it by.
 //
 //   pending: nothing, unless a document is needed, which is noted without
 //   touching the status.
@@ -841,11 +852,22 @@ function mp_sync_listing_states_account($account, &$summary) {
 //   unknown, or no answer: nothing. The listing may still be on its way
 //   through their batch, and a row written as missing would stop a product
 //   that is about to appear.
+//
+// An approval or a document note only replaces last_error on a row in error,
+// or when it holds nothing or one of these texts
+// (mp_sync_listing_text_is_ours()). On a row that still sends it may hold a
+// push refusal (no price, a second product under the barcode) that the
+// listing's state does not fix, and the next successful push clears it;
+// wiping it would leave the row silent while its stock is not sent.
 function mp_sync_listing_row_update($row, $state, $provider_name) {
 
 	$kind = (is_array($state) && isset($state['state'])) ? (string)$state['state'] : 'unknown';
 
 	$want = array();
+
+	// Whether a push refusal already on the row outranks the text written
+	// here (see above).
+	$keep_refusal = false;
 
 	if ($kind === 'approved') {
 
@@ -887,6 +909,8 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 
 		$want['last_error'] = mb_substr($note, 0, 500);
 
+		$keep_refusal = true;
+
 	} elseif ($kind === 'rejected') {
 
 		$reasons = (isset($state['reasons']) && is_array($state['reasons'])) ? $state['reasons'] : array();
@@ -898,14 +922,20 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 
 	} elseif ($kind === 'pending' && !empty($state['doc_needed'])) {
 
-		$want['last_error'] = lang(array(
-			'string' => '{var:1} needs a document for this listing; upload it in the seller panel.',
-			'vars'   => array($provider_name)
-		));
+		$want['last_error'] = mp_sync_listing_document_note($provider_name);
+
+		$keep_refusal = true;
 
 	} else {
 
 		return null;
+
+	}
+
+	if ($keep_refusal && ((string)$row['status'] !== 'error')
+		&& !mp_sync_listing_text_is_ours((string)$row['last_error'], $provider_name)) {
+
+		unset($want['last_error']);
 
 	}
 
@@ -924,10 +954,30 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 
 }
 
-// The $size ids asked about on pass number $pass: a window that moves on by
-// $size every pass and wraps round, so every id of a set larger than one
-// window is reached within ceil(count / size) passes.
-function mp_sync_listing_window($ids, $pass, $size) {
+// What a pending listing that waits for a document says on its mapping.
+function mp_sync_listing_document_note($provider_name) {
+
+	return lang(array(
+		'string' => '{var:1} needs a document for this listing; upload it in the seller panel.',
+		'vars'   => array($provider_name)
+	));
+
+}
+
+// Whether a mapping's last_error is empty or a text the listing read wrote
+// (a rejection or the document note), so a new answer may replace it.
+function mp_sync_listing_text_is_ours($text, $provider_name) {
+
+	return $text === ''
+		|| strpos($text, mp_listing_rejected_prefix($provider_name)) === 0
+		|| $text === mp_sync_listing_document_note($provider_name);
+
+}
+
+// The $size ids asked about from position $start (any number, counted round
+// the set): $size ids in a row that wrap round, so every id of a set larger
+// than one window is in the window of some start.
+function mp_sync_listing_window($ids, $start, $size) {
 
 	$ids = array_values((array)$ids);
 
@@ -939,7 +989,7 @@ function mp_sync_listing_window($ids, $pass, $size) {
 
 	}
 
-	$start = ((int)$pass * $size) % $count;
+	$start = abs((int)$start) % $count;
 
 	$window = array_slice($ids, $start, $size);
 

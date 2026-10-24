@@ -578,10 +578,13 @@ if ($_POST) {
 			$existing = db_value("SELECT id FROM marketplace_product_map
 				WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')");
 
+			// The content id read from the marketplace belongs to the old
+			// code, so it is forgotten and the next listing read finds the
+			// new code's own.
 			if ($existing) {
 
 				db("UPDATE marketplace_product_map
-					SET remote_code = '" . e($remote_code) . "', status = 'active', last_error = ''
+					SET remote_code = '" . e($remote_code) . "', remote_id = '', status = 'active', last_error = ''
 					WHERE id = '" . e((int)$existing) . "'");
 
 			} else {

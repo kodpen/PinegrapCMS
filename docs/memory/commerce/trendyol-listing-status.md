@@ -13,11 +13,13 @@ description: Trendyol listing approval read onto the mapping row: the two filter
 - pending: nothing; with `docNeeded` a note that a document is needed, status untouched.
 - unknown: nothing; the listing may still be going through their batch.
 - Only changed columns are written. A later successful stock push clears a note (`last_error = ''`).
+- The approval and document notes replace `last_error` only on an `error` row, or over nothing or this read's own texts (`mp_sync_listing_text_is_ours()`): a push refusal on an `active`/`paused` row (no price, a second product under the barcode) stays until a push succeeds.
 
 ## Which rows are asked about? (`mp_sync_listing_states()`)
-- After the poll step of each pass, per active account whose connector has `listing_status`: rows with a `remote_code`, `remote_id` empty, and not `error` with the rejected prefix (`mp_listing_rejected_prefix()`, read from the translated text so it matches what was written).
-- At most 100 a pass, 50 a call (4 calls); a window that moves on by 100 each 5-minute pass (`mp_sync_listing_window()`), so rows Trendyol never answers for (deleted, never listed, a failed batch) cannot hide the others. Approved and rejected rows leave the set. A failed call writes the account's error and stops that account for the pass; success does not clear the account's error (it would hide a push failure).
-- A rejected row comes back into the set when the article is listed again (its batch success sets it `active`) or the product is matched again.
+- Last step of each pass, after the push and the order pull (a slow read cannot use their time; the deadline is checked before each 50-row chunk), per active account whose connector has `listing_status`: rows with a `remote_code` and `remote_id` empty.
+- Rejected rows stay in the set: rejections are fixed in Trendyol's seller panel, and the approval read then sets the row `active` and queues it. An unchanged rejection writes nothing. The screen knows a rejected row by `mp_listing_rejected_prefix()` (from the translated text).
+- At most 100 a pass, 50 a call (4 calls), from a random start each pass (`mp_sync_listing_window($ids, mt_rand(), 100)`, wraps round). A clock-based start skipped rows when the job ran every 10 or 15 minutes. Rows Trendyol never answers for (deleted, never listed, a failed batch) cannot hide the others. Approved rows leave the set. A failed call writes the account's error and stops that account for the pass; success does not clear it (it would hide a push failure).
+- Matching a product again clears `remote_id` (the content id belongs to the old code), so its new code is read.
 
 ## What does the screen show?
 - Matched products, for a connector with `listing_status`: "On Trendyol" once `remote_id` is set, "Rejected" with the reason, "Awaiting approval" for an active row without it; a note on a non-error row is shown under the code.

@@ -259,13 +259,72 @@ function test_marketplace_trendyol_listing_status_approval_stores_the_content_an
 		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Ürün onaylı değil')), $approved, 'Trendyol'),
 		'a stock line refused while it waited no longer stops the product');
 
-	pg_assert_same(array('remote_id' => '1239111111', 'last_error' => ''),
+	pg_assert_same(array('remote_id' => '1239111111'),
 		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'paused', 'last_error' => 'old')), $approved, 'Trendyol'),
-		'a paused row stays paused');
+		'a paused row stays paused, and keeps what it says');
 
 	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('remote_id' => '1239111111')), $approved, 'Trendyol'),
 		'nothing to change');
 }
+
+// A push refusal on a row that still sends (no price, a second product under
+// the barcode) is not caused by the approval, so reading the approval does not
+// wipe it: the row would say nothing while its stock and price are not sent.
+function test_marketplace_trendyol_listing_status_approval_keeps_a_push_refusal_on_an_active_row()
+{
+	$approved = array('state' => 'approved', 'content_id' => '555', 'locked' => false, 'lock_reason' => '',
+		'archived' => false, 'blacklisted' => false);
+
+	$refused = listing_status_test_row(array('last_error' => 'Trendyol refuses a product without a price.'));
+
+	pg_assert_same(array('remote_id' => '555'), mp_sync_listing_row_update($refused, $approved, 'Trendyol'));
+
+	pg_assert_same(array('remote_id' => '555'),
+		mp_sync_listing_row_update($refused, array_merge($approved, array('archived' => true)), 'Trendyol'),
+		'a note does not replace it either');
+
+	pg_assert_same(array('remote_id' => '555', 'last_error' => ''),
+		mp_sync_listing_row_update(listing_status_test_row(array(
+			'last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.')), $approved, 'Trendyol'),
+		'the document note written while it waited is cleared');
+
+	pg_assert_same(array('remote_id' => '555', 'last_error' => 'Archived on Trendyol.'),
+		mp_sync_listing_row_update(listing_status_test_row(), array_merge($approved, array('archived' => true)), 'Trendyol'),
+		'an empty row takes the note');
+}
+
+// Rejections are fixed in Trendyol's seller panel (a document, the images), so
+// a rejected row is still asked about and its approval sends the product again.
+function test_marketplace_trendyol_listing_status_rejected_row_approved_after_a_fix_sends_again()
+{
+	$rejected = listing_status_test_row(array('status' => 'error', 'last_error' => 'Rejected by Trendyol: Görsel hatalı'));
+
+	pg_assert_same(array('remote_id' => '777', 'status' => 'active', 'last_error' => ''),
+		mp_sync_listing_row_update($rejected, array('state' => 'approved', 'content_id' => '777', 'locked' => false,
+			'lock_reason' => '', 'archived' => false, 'blacklisted' => false), 'Trendyol'));
+
+	pg_assert_same(null, mp_sync_listing_row_update($rejected, array('state' => 'rejected', 'reasons' => array('Görsel hatalı'),
+		'doc_needed' => false), 'Trendyol'), 'the same rejection read again writes nothing');
+
+	$source = listing_status_test_function_source('mp_sync_listing_states_account');
+
+	pg_assert_true(strpos($source, 'mp_listing_rejected_prefix') === false, 'rejected rows are not left out of the set');
+	pg_assert_contains("(remote_id = '')", $source);
+}
+
+function listing_status_test_function_source($name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/sync.php');
+
+	$start = strpos($source, "\nfunction " . $name . '(');
+
+	pg_assert_true($start !== false, $name . ' is found');
+
+	$end = strpos($source, "\n}\n", (int)$start);
+
+	return (string) substr($source, (int)$start, (int)$end - (int)$start);
+}
+
 
 function test_marketplace_trendyol_listing_status_approval_notes_a_locked_archived_or_blacklisted_listing()
 {
@@ -300,7 +359,7 @@ function test_marketplace_trendyol_listing_status_rejection_and_document_request
 		'last_error' => 'Rejected by Trendyol: Görsel hatalı: Beyaz arka plan; Marka uyuşmazlığı: Belge eksik'), $update);
 
 	pg_assert_same(0, strpos($update['last_error'], mp_listing_rejected_prefix('Trendyol')),
-		'the job knows a rejected row by this prefix and does not ask again');
+		'the screen knows a rejected row by this prefix');
 	pg_assert_same('Rejected by Trendyol: ', mp_listing_rejected_prefix('Trendyol'));
 
 	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row($update), $rejected, 'Trendyol'), 'already written');
@@ -316,23 +375,78 @@ function test_marketplace_trendyol_listing_status_rejection_and_document_request
 	pg_assert_same(array('last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.'),
 		mp_sync_listing_row_update(listing_status_test_row(), array('state' => 'pending', 'reasons' => array(), 'doc_needed' => true), 'Trendyol'),
 		'information, not a failure: the status stays');
+
+	$document = array('state' => 'pending', 'reasons' => array(), 'doc_needed' => true);
+
+	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('last_error' => 'Trendyol refuses a product without a price.')),
+		$document, 'Trendyol'), 'a push refusal on an active row stays');
+
+	pg_assert_same(array('last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.'),
+		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Ürün onaylı değil')),
+			$document, 'Trendyol'), 'a row stopped while it waits says what it waits for');
+
+	pg_assert_same(array('last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.'),
+		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Rejected by Trendyol: Belge eksik')),
+			$document, 'Trendyol'), 'a rejected listing sent back for approval');
 }
 
 /* --------------------------------------------------------- the set */
 
-// The rows asked about move on a hundred at a time, so rows whose barcode
-// Trendyol never answers for cannot hide the others for ever.
+// The rows asked about are a hundred from a start picked at random each pass,
+// so rows whose barcode Trendyol never answers for cannot hide the others,
+// whatever the job's period.
 function test_marketplace_trendyol_listing_status_window_turns_through_the_set()
 {
 	$ids = range(1, 250);
 
 	pg_assert_same(range(1, 100), mp_sync_listing_window($ids, 0, 100));
-	pg_assert_same(range(101, 200), mp_sync_listing_window($ids, 1, 100));
-	pg_assert_same(array_merge(range(201, 250), range(1, 50)), mp_sync_listing_window($ids, 2, 100), 'it wraps round');
-	pg_assert_same(range(51, 150), mp_sync_listing_window($ids, 3, 100));
+	pg_assert_same(range(101, 200), mp_sync_listing_window($ids, 100, 100));
+	pg_assert_same(array_merge(range(201, 250), range(1, 50)), mp_sync_listing_window($ids, 200, 100), 'it wraps round');
+	pg_assert_same(range(51, 150), mp_sync_listing_window($ids, 300, 100), 'a start past the end counts on from the top');
 
 	pg_assert_same(array(4, 5, 6), mp_sync_listing_window(array(4, 5, 6), 17, 100), 'a small set is asked about whole');
 	pg_assert_same(array(), mp_sync_listing_window(array(), 3, 100));
+
+	// Every row is in some window: a start of k asks about rows k+1 to k+100.
+	$seen = array();
+
+	for ($start = 0; $start < 200; $start += 100) {
+
+		$seen = array_merge($seen, mp_sync_listing_window(range(1, 200), $start, 100));
+
+	}
+
+	pg_assert_same(range(1, 200), $seen);
+
+	$source = listing_status_test_function_source('mp_sync_listing_states_account');
+
+	pg_assert_true(strpos($source, 'time()') === false, 'the start does not come from the clock');
+	pg_assert_contains('mt_rand()', $source);
+}
+
+// Reading listings is the least urgent step: it runs after the push and the
+// order pull, and stops between calls when the pass's time is up.
+function test_marketplace_trendyol_listing_status_runs_last_and_keeps_the_deadline()
+{
+	$run = listing_status_test_function_source('mp_sync_run');
+
+	pg_assert_true(strpos($run, 'mp_sync_listing_states(') > strpos($run, 'mp_sync_orders('), 'after the order pull');
+	pg_assert_true(strpos($run, 'mp_sync_listing_states(') > strpos($run, 'mp_sync_push('), 'after the push');
+
+	$account = listing_status_test_function_source('mp_sync_listing_states_account');
+
+	pg_assert_contains('$deadline', $account);
+	pg_assert_true(strpos($account, 'microtime(true) >= $deadline') > strpos($account, 'array_chunk('),
+		'checked before each call, not only before each account');
+}
+
+// The content id belongs to the code: matching the product under another code
+// leaves it to be read again.
+function test_marketplace_trendyol_listing_status_matching_again_forgets_the_content_id()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	pg_assert_contains('SET remote_code = \'" . e($remote_code) . "\', remote_id = \'\', status = \'active\', last_error = \'\'', $source);
 }
 
 /* ---------------------------------------------------------- screen */
