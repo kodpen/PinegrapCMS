@@ -150,6 +150,40 @@ function ws_action_task_fields($request)
 }
 
 /**
+ * Only the fields a flow save may carry, in the shape ws_flow_save() reads.
+ * draft_rev is always passed, so a save that does not say which draft it
+ * was made on meets "changed meanwhile" rather than writing over it.
+ *
+ * @param array $request
+ * @return array
+ */
+function ws_action_flow_fields($request)
+{
+    $data = array('draft_rev' => (int) ($request['draft_rev'] ?? 0));
+
+    foreach (array('name', 'channel_id', 'graph') as $field) {
+        if (array_key_exists($field, $request)) {
+            $data[$field] = $request[$field];
+        }
+    }
+
+    return $data;
+}
+
+/**
+ * A refused flow write as the screen reads it: a draft saved meanwhile from
+ * another screen is told apart (field changed_meanwhile), so the editor
+ * offers to load it again instead of saving over it.
+ *
+ * @param array $result a ws_flow_*() result
+ * @return array
+ */
+function ws_action_flow_refused($result)
+{
+    return ws_action_error($result['error'], ((int) $result['status'] === 409) ? 'changed_meanwhile' : (string) $result['field']);
+}
+
+/**
  * The entry point api.php calls.
  *
  * @param string $action
@@ -513,6 +547,74 @@ function ws_handle_action($action, $request)
                 'names' => array_values(array_unique($names)),
             ));
 
+        // Flows (includes/workspace/flows.php), drawn on workspace_flows.php:
+        // the owner's own and the live ones of the channels the person reads.
+        // Every write goes through the store's *_check(), the same the API's
+        // flow routes make.
+        case 'ws_flow_list':
+            if (!ws_flows_ready()) {
+                return ws_action_error(lang('The database has to be updated first.'));
+            }
+
+            $rows = ws_flows_list($viewer);
+            $numbers = ws_flow_version_numbers($rows);
+
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers) {
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0);
+            }, $rows)));
+
+        case 'ws_flow_get':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+
+            return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
+
+        case 'ws_flow_create':
+        case 'ws_flow_save':
+            $flow = null;
+
+            if ($action === 'ws_flow_save') {
+                $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+                if (!$flow) {
+                    return ws_action_error(lang('Only the owner of a flow can change it.'));
+                }
+            }
+
+            $result = ws_flow_save($viewer, ws_action_flow_fields($request), $flow);
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            if ($flow === null) {
+                return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit'))));
+            }
+
+            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems']));
+
+        case 'ws_flow_publish':
+        case 'ws_flow_pause':
+        case 'ws_flow_bin':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            if ($action === 'ws_flow_publish') {
+                $result = ws_flow_publish($viewer, $flow, array('draft_rev' => (int) ($request['draft_rev'] ?? 0)));
+            } elseif ($action === 'ws_flow_pause') {
+                $result = ws_flow_pause($viewer, $flow);
+            } else {
+                $result = ws_flow_bin($viewer, $flow);
+            }
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
+
         // Personal notes (includes/workspace/notes.php): the person's own and
         // the ones shared with them; nobody else's, whatever their role.
         case 'ws_notes':
@@ -658,6 +760,8 @@ function ws_handle_action($action, $request)
                 'customer_id'   => $request['customer_id'] ?? 0,
                 'department_id' => $request['department_id'] ?? 0,
                 'members'       => (array) ($request['members'] ?? array()),
+                'color'         => $request['color'] ?? 0,
+                'icon'          => $request['icon'] ?? '',
             ));
 
             if (!$result['ok']) {
@@ -900,6 +1004,9 @@ function ws_handle_action($action, $request)
                     return ws_change_allowed($viewer, $type, 0);
                 })),
                 'commands'    => ws_command_help($viewer),
+                // The days, estimates and priorities the argument popup
+                // offers after a command.
+                'command_values' => ws_command_suggestions(),
                 'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
@@ -1183,6 +1290,9 @@ function ws_handle_action($action, $request)
 
                 return ws_action_ok(array('command' => $command));
             }
+
+            // "//word ..." is the text "/word ..." posted as a message.
+            $body = ws_command_unescape($body);
 
             $result = ws_message_send($viewer, $channel, $body, array(
                 'parent_id' => (int) ($request['parent_id'] ?? 0),
@@ -1527,9 +1637,19 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
+            // The message it answers (a voice reply): one the API's upload
+            // would take (ws_message_parent_check()). Any other - deleted or
+            // cleared away while the recording ran - is left out and the
+            // file posted on its own, rather than lost.
+            $parent_id = (int) ($request['parent_id'] ?? 0);
+
+            if (ws_message_parent_check($channel, $parent_id) !== '') {
+                $parent_id = 0;
+            }
+
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
-            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
+            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array('parent_id' => $parent_id));
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
@@ -1677,6 +1797,7 @@ function ws_handle_action($action, $request)
                 'department_id' => $request['department_id'] ?? 0,
                 'members'    => (array) ($request['members'] ?? array()),
                 'color'      => $request['color'] ?? 0,
+                'icon'       => $request['icon'] ?? '',
                 'group_id'   => $request['group_id'] ?? 0,
             ));
 
@@ -1755,7 +1876,7 @@ function ws_handle_action($action, $request)
 
             $data = array();
 
-            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'watch') as $field) {
+            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'icon', 'watch') as $field) {
                 if (array_key_exists($field, $request)) {
                     $data[$field] = $request[$field];
                 }

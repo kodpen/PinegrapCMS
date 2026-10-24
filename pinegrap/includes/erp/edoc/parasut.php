@@ -1049,6 +1049,29 @@ function erp_edoc_parasut_total_refusal($lines, $currency)
 }
 
 /**
+ * The outgoing shipment document an order's sales invoice names: the one the
+ * order screen's E-Shipment wrote at Paraşüt (orders.parasut_shipment_id),
+ * typically for an order shipped before the store switched the ERP's
+ * Paraşüt provider on. A real record id is digits, kept as a string (ids
+ * outgrow a 32-bit integer); an empty column, anything else in it and a
+ * typed invoice name none.
+ *
+ * @param array $invoice  An erp_invoices row; an order's invoice carries
+ *                        order_shipment_id (orders.parasut_shipment_id)
+ * @return string  The shipment document's id, '' for none
+ */
+function erp_edoc_parasut_order_shipment_id($invoice)
+{
+    if ((int) ($invoice['order_id'] ?? 0) <= 0) {
+        return '';
+    }
+
+    $id = trim((string) ($invoice['order_shipment_id'] ?? ''));
+
+    return preg_match('/^[1-9][0-9]*$/', $id) ? $id : '';
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
@@ -1056,8 +1079,14 @@ function erp_edoc_parasut_total_refusal($lines, $currency)
  * rate's amount moves by a kurus or so to keep the ERP's total
  * (erp_edoc_parasut_vat_shift()); a total it cannot keep is refused.
  *
+ * An order that already has its outgoing shipment document at Paraşüt
+ * (erp_edoc_parasut_order_shipment_id()) is invoiced without shipment,
+ * naming that document; any other invoice carries no shipment field and
+ * Paraşüt keeps its default, the shipment included.
+ *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
- *                            order_number and order_date (Y-m-d)
+ *                            order_number, order_date (Y-m-d) and
+ *                            order_shipment_id (orders.parasut_shipment_id)
  * @param array  $lines
  * @param string $contact_id  The Paraşüt contact
  * @return array  The payload, or ['error' => string]
@@ -1155,7 +1184,7 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
     $currency = strtoupper(trim((string) $invoice['currency']));
     $attributes = array(
         'item_type' => 'invoice',
-        'description' => mb_substr(trim((string) $invoice['full_number'] . (($order_number !== '') ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => $order_number)) : '')), 0, 255),
+        'description' => erp_edoc_parasut_invoice_description($invoice),
         'issue_date' => (string) $invoice['issue_date'],
         'due_date' => (((string) $invoice['due_date'] !== '0000-00-00') && ((string) $invoice['due_date'] !== '')) ? (string) $invoice['due_date'] : (string) $invoice['issue_date'],
         'currency' => erp_edoc_parasut_currency($currency),
@@ -1178,14 +1207,46 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         $attributes['invoice_note'] = mb_substr(trim((string) $invoice['notes']), 0, 1000);
     }
 
+    $relationships = array(
+        'contact' => array('data' => array('type' => 'contacts', 'id' => (string) $contact_id)),
+        'details' => array('data' => $details),
+    );
+
+    // A sales invoice Paraşüt keeps with the shipment included, its default,
+    // takes its goods out of stock itself; beside the order's shipment
+    // document that counts them out twice. Without shipment and naming the
+    // document it moves no stock, and both records name each other (live,
+    // 201). The link is made here or never: a shipment document PUT with
+    // relationships.invoices answers 200 and links nothing. A document that
+    // no longer exists answers 404 and nothing is written.
+    $shipment_id = erp_edoc_parasut_order_shipment_id($invoice);
+
+    if ($shipment_id !== '') {
+        $attributes['shipment_included'] = false;
+        $relationships['shipment_documents'] = array('data' => array(array('type' => 'shipment_documents', 'id' => $shipment_id)));
+    }
+
     return array('data' => array(
         'type' => 'sales_invoices',
         'attributes' => $attributes,
-        'relationships' => array(
-            'contact' => array('data' => array('type' => 'contacts', 'id' => (string) $contact_id)),
-            'details' => array('data' => $details),
-        ),
+        'relationships' => $relationships,
     ));
+}
+
+/**
+ * The description a sales invoice carries at Paraşüt: the ERP number, and
+ * for an order's invoice the order's number (orders.order_number, the one on
+ * the receipt). The search for the record of a send that got no answer
+ * matches by it (erp_edoc_parasut_written_matches()).
+ *
+ * @param array $invoice  An erp_invoices row; an order's invoice also carries order_number
+ * @return string
+ */
+function erp_edoc_parasut_invoice_description($invoice)
+{
+    $order_number = ((int) ($invoice['order_id'] ?? 0) > 0) ? trim((string) ($invoice['order_number'] ?? '')) : '';
+
+    return mb_substr(trim((string) $invoice['full_number'] . (($order_number !== '') ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => $order_number)) : '')), 0, 255);
 }
 
 /**
@@ -1410,7 +1471,7 @@ function erp_edoc_parasut_submit_refusal($invoice)
  *
  * @param array  $body        The decoded answer of GET sales_invoices
  * @param array  $payload     The request erp_edoc_parasut_invoice_payload() built
- * @param string $contact_id
+ * @param string $contact_id  '' takes any contact (a mark that carries none)
  * @param string $skip_id     A record id that is never a match
  * @return array  id => attributes
  */
@@ -1442,7 +1503,7 @@ function erp_edoc_parasut_written_matches($body, $payload, $contact_id, $skip_id
         if ((trim((string) ($attributes['description'] ?? '')) !== $description)
             || (substr((string) ($attributes['issue_date'] ?? ''), 0, 10) !== $date)
             || ((string) ($attributes['item_type'] ?? '') === 'cancelled')
-            || (($contact !== '') && ($contact !== (string) $contact_id))) {
+            || (($contact !== '') && ((string) $contact_id !== '') && ($contact !== (string) $contact_id))) {
             continue;
         }
 
@@ -1450,6 +1511,38 @@ function erp_edoc_parasut_written_matches($body, $payload, $contact_id, $skip_id
     }
 
     return $matches;
+}
+
+/**
+ * The records in a list answer that erp_edoc_parasut_written_matches() would
+ * take for this invoice's but for the e-document Paraşüt holds for them (one
+ * converted on Paraşüt's screen after a send that got no answer): id => the
+ * e-document's id. Such a record is not deleted through the API.
+ *
+ * @param array  $body        The decoded answer of GET sales_invoices (include=active_e_document)
+ * @param array  $payload     Description and issue date, as for erp_edoc_parasut_written_matches()
+ * @param string $contact_id  '' takes any contact
+ * @return array  id => e-document id
+ */
+function erp_edoc_parasut_written_documents($body, $payload, $contact_id)
+{
+    $documents = array();
+
+    foreach ((array) ($body['data'] ?? array()) as $item) {
+        $edoc_id = is_array($item) ? trim((string) ($item['relationships']['active_e_document']['data']['id'] ?? '')) : '';
+
+        if ($edoc_id === '') {
+            continue;
+        }
+
+        unset($item['relationships']['active_e_document']);
+
+        foreach (array_keys(erp_edoc_parasut_written_matches(array('data' => array($item)), $payload, $contact_id)) as $id) {
+            $documents[$id] = $edoc_id;
+        }
+    }
+
+    return $documents;
 }
 
 /**
@@ -1602,9 +1695,11 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     }
 
     // The order's number and day (orders.order_date is a UNIX timestamp; the
-    // document wants the day).
-    if (((int) ($invoice['order_id'] ?? 0) > 0) && (!isset($invoice['order_date']) || !isset($invoice['order_number']))) {
-        $order = db_item("SELECT order_number, order_date FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+    // document wants the day), and the shipment document the order screen's
+    // E-Shipment wrote for it (erp_edoc_parasut_order_shipment_id()).
+    if (((int) ($invoice['order_id'] ?? 0) > 0)
+        && (!isset($invoice['order_date']) || !isset($invoice['order_number']) || !isset($invoice['order_shipment_id']))) {
+        $order = db_item("SELECT order_number, order_date, parasut_shipment_id FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
 
         if (!isset($invoice['order_number'])) {
             $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
@@ -1613,6 +1708,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         if (!isset($invoice['order_date'])) {
             $stamp = is_array($order) ? (int) $order['order_date'] : 0;
             $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+        }
+
+        if (!isset($invoice['order_shipment_id'])) {
+            $invoice['order_shipment_id'] = is_array($order) ? trim((string) $order['parasut_shipment_id']) : '';
         }
     }
 
@@ -2587,10 +2686,109 @@ function erp_edoc_parasut_panel_url($external_id)
 }
 
 /**
+ * Takes back at Paraşüt what a send that got no answer may have written,
+ * for an invoice whose row names no record but still carries the unsure
+ * mark. The record is looked for the way the next send looks for it: the
+ * sales invoices of the date and contact the mark holds, newest first,
+ * matched by erp_edoc_parasut_written_matches(); a mark without a contact
+ * (one from before it carried it) is looked for among the day's invoices of
+ * every contact. One plain record is deleted; none leaves nothing to take
+ * back. Several, one Paraşüt holds as an e-document, or a search that
+ * failed or left pages unread are refused, so that the invoice is not
+ * cancelled here while its record stays there with nothing pointing to it.
+ * Only GET and that one DELETE are sent.
+ *
+ * @param array    $invoice  An erp_invoices row (full_number, issue_date; an
+ *                           order's invoice also order_number)
+ * @param array    $unsure   erp_edoc_parasut_unsure_read() of its parasut_invoice_id
+ * @param callable $request  function (string $method, string $path): an
+ *                           erp_edoc_parasut_request() answer
+ * @return array ['success' => bool, 'error' => string, 'message' => string, 'outcome' => 'deleted'|'']
+ */
+function erp_edoc_parasut_cancel_unsure($invoice, $unsure, $request)
+{
+    $fail = function ($error) {
+        return array('success' => false, 'error' => $error, 'message' => '', 'outcome' => '');
+    };
+    $date = ((string) ($unsure['date'] ?? '') !== '') ? (string) $unsure['date'] : (string) ($invoice['issue_date'] ?? '');
+    $contact_id = (string) ($unsure['contact_id'] ?? '');
+    $payload = array('data' => array('attributes' => array(
+        'description' => erp_edoc_parasut_invoice_description($invoice),
+        'issue_date' => $date,
+    )));
+    $records = array();
+    $documents = array();
+    $page = 0;
+    $total_pages = 1;
+
+    while ($page < (int) ERP_EDOC_PARASUT_FIND_PAGES) {
+        $page++;
+        $list = $request('GET', '/sales_invoices?' . (($contact_id !== '') ? 'filter[contact_id]=' . rawurlencode($contact_id) . '&' : '')
+            . 'filter[issue_date]=' . rawurlencode($date) . '&sort=-id&include=active_e_document'
+            . '&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE);
+
+        if (((string) ($list['login_error'] ?? '') !== '') || !erp_edoc_parasut_ok($list) || !is_array($list['body'] ?? null)) {
+            return $fail(lang(array(
+                'string' => 'The last send got no answer from Paraşüt, and Paraşüt could not be asked whether it kept the invoice: {var:1}. Nothing was cancelled; try again in a minute.',
+                'vars' => erp_edoc_parasut_error_text($list),
+            )));
+        }
+
+        $records += erp_edoc_parasut_written_matches($list['body'], $payload, $contact_id);
+        $documents += erp_edoc_parasut_written_documents($list['body'], $payload, $contact_id);
+        $total_pages = max(1, (int) ($list['body']['meta']['total_pages'] ?? 1));
+
+        if ($page >= $total_pages) {
+            break;
+        }
+    }
+
+    if (!empty($documents)) {
+        return $fail(lang(array(
+            'string' => 'Paraşüt holds this invoice as an e-document (record {var:1}), written by the send that got no answer and converted there. Nothing was cancelled; an e-Archive invoice is cancelled on Paraşüt\'s screen first, an e-Invoice is answered with a return invoice.',
+            'vars' => implode(', ', array_keys($documents)),
+        )));
+    }
+
+    if (erp_edoc_parasut_search_incomplete($records, $page, $total_pages)) {
+        return $fail(lang('The last send got no answer from Paraşüt, and the buyer has more invoices on that day than can be looked through, so whether Paraşüt kept it is not known. Nothing was cancelled; look for the record on Paraşüt\'s screen, and take the invoice back here with a return invoice.'));
+    }
+
+    if (count($records) > 1) {
+        return $fail(lang(array(
+            'string' => 'Paraşüt holds {var:1} records of this invoice from earlier tries (ids {var:2}). Nothing was cancelled; delete them on Paraşüt\'s screen, then cancel again.',
+            'vars' => array(count($records), implode(', ', array_keys($records))),
+        )));
+    }
+
+    if (empty($records)) {
+        return array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted');
+    }
+
+    $record_id = (string) key($records);
+    $deleted = $request('DELETE', '/sales_invoices/' . rawurlencode($record_id));
+    $answered = ((string) ($deleted['login_error'] ?? '') === '');
+
+    if ($answered && ((int) ($deleted['http_code'] ?? 0) === 404)) {
+        return array('success' => true, 'error' => '', 'message' => lang('Paraşüt no longer has the record.'), 'outcome' => 'deleted');
+    }
+
+    if (!$answered || !erp_edoc_parasut_ok($deleted)) {
+        return $fail(lang(array(
+            'string' => 'Paraşüt holds the record of the send that got no answer (id {var:1}) and would not delete it ({var:2}). Nothing was cancelled; delete it on Paraşüt\'s screen, then cancel again.',
+            'vars' => array($record_id, erp_edoc_parasut_error_text($deleted)),
+        )));
+    }
+
+    return array('success' => true, 'error' => '', 'message' => lang('The record has been deleted at Paraşüt.'), 'outcome' => 'deleted');
+}
+
+/**
  * Takes a document back at Paraşüt. What Paraşüt holds is read first, so
  * the decision rests on its answer and not on a row that may be out of
  * date: a record that is no e-document is deleted, an e-Archive invoice is
- * cancelled, an e-Invoice is refused.
+ * cancelled, an e-Invoice is refused. A row that names no record but
+ * carries the unsure mark is looked for first (erp_edoc_parasut_cancel_unsure()).
  *
  * @param array  $invoice
  * @param string $reason
@@ -2608,7 +2806,28 @@ function erp_edoc_parasut_cancel_invoice($invoice, $reason = '')
     };
 
     if ($external_id === '') {
-        return array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted');
+        $unsure = erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '');
+
+        if ($unsure === null) {
+            return array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted');
+        }
+
+        // A send that got no answer may have written the record all the
+        // same; it carries the order's number in its description.
+        if (((int) ($invoice['order_id'] ?? 0) > 0) && !isset($invoice['order_number'])) {
+            $order = db_item("SELECT order_number FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+            $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
+        }
+
+        $taken = erp_edoc_parasut_cancel_unsure($invoice, $unsure, function ($method, $path) use ($context) {
+            return erp_edoc_parasut_request($method, $path, null, $context);
+        });
+
+        if (!empty($taken['success'])) {
+            $forget();
+        }
+
+        return $taken;
     }
 
     $detail = erp_edoc_parasut_request('GET', '/sales_invoices/' . rawurlencode($external_id) . '?include=active_e_document', null, $context);

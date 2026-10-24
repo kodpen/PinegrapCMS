@@ -1,6 +1,6 @@
 ---
 name: workspace-record-kinds
-description: Every list a Workspace record kind (order, product, contact, invoice...) must be in, the kinds each leaves out and why, and the test that names the list a new kind was missed in
+description: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
 ---
 
 ## How is a new record kind added?
@@ -13,8 +13,11 @@ description: Every list a Workspace record kind (order, product, contact, invoic
 - Drawer: user_account (role on the user screen), form (the drawer has no input for its answers), file, page (file manager). Bulk: order, user_account, form.
 - Events: only order, product, contact and form have one. Search scopes: user_account (no API scope reads users). Audit: product_group, contact, erp_account, form, calendar_event (tables not in `pg_audit_tables()`). Screens: file and page draw no Workspace button. Customers: only contact, user_account, erp_account.
 
-## Which differences does the test keep as they are?
-- `ws_ai_type_scope()` has no calendar_event, so the assistants read events under `workspace:read` while the API search asks `calendars:read`; for receipts it asks `erp:read` where the search asks `erp_cash:read`. Both are exceptions in the test: aligning them changes what Pinegrap AI may read, so it is a change of its own.
+## Which scope do the assistants read a kind with?
+- The one the external API reads it with: `ws_ai_type_scope()` asks what `ws_api_search_record_scopes()` asks, kind by kind, and the test allows no exception. So an assistant's key reads no record it could not read over the API.
+- Calendar events ask `calendars:read` (they fell to `workspace:read` before) and cash receipts `erp_cash:read` (was `erp:read`), as the API search, the calendar routes and the ERP's receipt routes do. Only user_account (no API scope reads users) and kinds without an API endpoint go with `workspace:read`.
+- Pinegrap AI: `search_records` and `read_record` offer only the kinds its application's scopes reach (`ws_ai_readable_types()`). Claude: `GET /workspace/claude/requests/{id}/records/{type}/{record_id}` is declared with `workspace:read` but asks the kind's scope too, before the record is looked up (403 `insufficient_scope`).
+- An application chosen for Pinegrap AI by hand now needs `calendars:read` for events and `erp_cash:read` for receipts. The key Claude's card makes holds both when the administrator may hand them on (every read but five, `api_assistant_scopes()`).
 
 ## How does the test read lists built with database probes?
 - From source, with `tests/helpers/source_reader.php` (docs/memory/workflow/unit-test-runner.md): the change catalogue, `ws_ai_type_scope()`, the drawer's short lists, the events catalogue, the resolve and search branches.

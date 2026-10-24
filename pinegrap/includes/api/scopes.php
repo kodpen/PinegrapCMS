@@ -493,3 +493,22 @@ function api_assistant_scopes_left_out() {
 	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read');
 
 }
+
+// What of an assistant key's scopes ($scopes, api_assistant_scopes()) the
+// person making it may hand on ($owner_scopes, api_owner_scopes() of that
+// person): the scopes both lists hold, in the key's order. An empty list when
+// that leaves out writing in the Workspace or the Tasks, which an assistant
+// cannot work without, so the card makes no key at all.
+function api_assistant_scopes_handed_on(array $scopes, array $owner_scopes) {
+
+	$handed = array_values(array_intersect($scopes, $owner_scopes));
+
+	if (!in_array('workspace:write', $handed, true) || !in_array('tasks:write', $handed, true)) {
+
+		return array();
+
+	}
+
+	return $handed;
+
+}

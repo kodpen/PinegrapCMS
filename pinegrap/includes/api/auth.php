@@ -284,25 +284,21 @@ function api_authenticate($input) {
 // every integration to be updated in the same instant is not how a live site
 // works, so the old secret keeps answering for a while and the operator can move
 // the sync over without a window of failing calls.
+//
+// A row with no stored hash is never matched (api_secret_hash_accepts()): a
+// key made without a secret, as Pinegrap AI's is, cannot sign in this way.
 function api_secret_matches($app, $supplied) {
 
 	$supplied_hash = api_secret_hash($supplied);
 
-	if ($app['api_secret_hash'] !== '' && hash_equals((string)$app['api_secret_hash'], $supplied_hash)) {
+	if (api_secret_hash_accepts($app['api_secret_hash'], $supplied_hash)) {
 
 		return true;
 
 	}
 
-	if ($app['api_secret_prev_hash'] !== ''
-		&& (int)$app['api_secret_prev_expires'] > time()
-		&& hash_equals((string)$app['api_secret_prev_hash'], $supplied_hash)) {
-
-		return true;
-
-	}
-
-	return false;
+	return ((int)$app['api_secret_prev_expires'] > time())
+		&& api_secret_hash_accepts($app['api_secret_prev_hash'], $supplied_hash);
 
 }
 

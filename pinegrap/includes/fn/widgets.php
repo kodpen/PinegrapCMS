@@ -147,7 +147,7 @@ function pg_sw_standard_fields()
     // classic pages, wrong for a public byline, where it publishes half of a
     // credential (a member's username defaults to the local part of their
     // e-mail address). This one is the contact's name, the same rule as the
-    // BlogPosting author (pg_submitted_form_author_name()).
+    // BlogPosting author, pg_contact_display_name() (includes/fn/contacts.php).
     $fields['submitter_name'] = array(
         'label' => lang('Author Name'),
         'sql'   => pg_sw_submitter_name_sql('submitter_contact'),
@@ -161,7 +161,7 @@ function pg_sw_standard_fields()
 // The SQL for a submission's author name, read from the contact joined as
 // $alias (forms.contact_id): the first and last name, else the nickname, ''
 // when the record has no contact or the contact no name. The login username
-// is never read. Mirrors pg_submitted_form_author_name() (includes/fn/seo.php):
+// is never read. Mirrors pg_contact_display_name() (includes/fn/contacts.php):
 // CONCAT_WS skips the NULL halves, so a name with one part has no stray space.
 function pg_sw_submitter_name_sql($alias)
 {

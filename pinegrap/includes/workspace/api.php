@@ -42,6 +42,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -184,6 +185,7 @@ function ws_openapi_objects()
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
+        'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
     );
 }
 
@@ -243,7 +245,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_list',
             'returns'     => array('list' => 'WorkspaceChannel'),
             'summary'     => 'List workspace channels',
-            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
+            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). color is the channel\'s colour from the palette, null for none; icon is the Bootstrap Icons class it is drawn with: the one chosen for it when icon_chosen is true (a private, guest or customer channel then shows its mark in the corner), else the one its kind gives. active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
             'params'      => array(
                 array('name' => 'archived', 'in' => 'query', 'type' => 'bool', 'description' => 'The archived channels instead.'),
                 array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the channels tied to this customer.'),
@@ -268,6 +270,8 @@ function ws_api_routes()
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
                 array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a channel group shows it; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty keeps the icon the kind gives (a hash, or a lock for a private channel).'),
             ),
         ),
 
@@ -287,6 +291,8 @@ function ws_api_routes()
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 80),
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Empty clears it.'),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty brings back the icon the kind gives.'),
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
             ),
         ),
@@ -451,12 +457,13 @@ function ws_api_routes()
             'form_file'   => 'file',
             'mcp'         => false,
             'summary'     => 'Post a file in a channel',
-            'description' => 'Posts a picture, a video, a document or any other file into a channel the owner may post in, as a message carrying it, the way the paperclip in the panel does; text goes with it. Send the file as multipart/form-data in a part named file, with name and text as form fields if wanted - the way for a large file - or as content_base64 in a JSON body with name. What the channel takes is what the panel takes: at most 20 MB, or less where the server sets a lower limit (422 beyond it); no programs, scripts or server files, no SVG, HTML, XML or JavaScript, and no Office files with macros; a picture has to be a picture. The file goes into the channel\'s folder in the file manager, and a discussion\'s into its channel\'s. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. The answer is the message; its file.api_url fetches the file with the same token (GET /workspace/messages/{id}/file). A dry run checks the file the same way without keeping it - nothing reaches the disk or the file manager - and its detail.file gives the name, kind and size that would be posted. Send an Idempotency-Key so a retried upload does not post twice; the same key sent with another file, or another name or text, is refused with 409 idempotency_key_reused.',
+            'description' => 'Posts a picture, a video, a document or any other file into a channel the owner may post in, as a message carrying it, the way the paperclip in the panel does; text goes with it. Send the file as multipart/form-data in a part named file, with name and text as form fields if wanted - the way for a large file - or as content_base64 in a JSON body with name. What the channel takes is what the panel takes: at most 20 MB, or less where the server sets a lower limit (422 beyond it); no programs, scripts or server files, no SVG, HTML, XML or JavaScript, and no Office files with macros; a picture has to be a picture. The file goes into the channel\'s folder in the file manager, and a discussion\'s into its channel\'s. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. parent_id makes the file an answer to a message, as Reply does in the panel (where a sound\'s own microphone answers it with a voice message): the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id. A voice message is a sound file posted this way; the panel records it as voice-YYYYMMDD-HHMMSS with .weba, .ogg or .m4a. The answer is the message; its file.api_url fetches the file with the same token (GET /workspace/messages/{id}/file). A dry run checks the file and parent_id the same way without keeping anything - nothing reaches the disk or the file manager - and its detail.file gives the name, kind and size that would be posted. Send an Idempotency-Key so a retried upload does not post twice; the same key sent with another file, or another name, text or parent_id, is refused with 409 idempotency_key_reused.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The file\'s name with its extension, as readers see it. Required with content_base64; a form part\'s own file name is used when it is left out.'),
                 array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The file, base64 encoded, in a JSON body. Leave it out when the file is sent as a form part named file.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words to go with the file. Tags are written as tokens, as when writing.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message the file answers (GET /workspace/channels/{id}/messages), in the same channel or discussion. Left out, the file is a message of its own.'),
             ),
         ),
 
@@ -1903,6 +1910,19 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.catalogue',
+            'method'      => 'GET',
+            'path'        => '/workspace/mcp-servers/catalogue',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mcp_catalogue',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceMcpConnector'),
+            'summary'     => 'Ready-made MCP connectors',
+            'description' => 'The other services\' MCP servers the Workspace Settings add with one click, for an application whose owner is an administrator (403 for anybody else). auth says how the site signs in: none (the server answers without an account), oauth (the service registers the site on its own and an administrator signs in once) or bearer (a token made on token_url). alias is the one offered when it is free; tools read_only means the first read of the tools turns on the ones the server marks as reading only. added says whether the site already has a server at url, under server_alias. The list is bundled with the site, not fetched. Adding a server, its credential and its sign-in are done in the Workspace Settings only; no MCP tool lists this.',
+            'params'      => array(),
         ),
 
     );

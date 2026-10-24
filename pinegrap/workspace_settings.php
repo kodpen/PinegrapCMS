@@ -17,7 +17,8 @@
 include('init.php');
 $user = validate_user();
 
-// The Claude card makes and rotates an application key (includes/api/keys.php).
+// The Claude and Pinegrap AI cards make an application key, the Claude card
+// also rotates its secret (includes/api/keys.php).
 define('PG_API_PANEL', true);
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
@@ -371,8 +372,9 @@ if ($_POST) {
         // Pinegrap AI in the channels (includes/workspace/ai.php).
         case 'ai':
         case 'ai_test':
+        case 'ai_key_create':
             if (function_exists('ws_ai_settings_post')) {
-                ws_ai_settings_post($viewer, $action, $liveform);
+                ws_ai_settings_post($viewer, $action, $liveform, $user);
             }
 
             $anchor = '#ws-ai';
@@ -387,6 +389,8 @@ if ($_POST) {
         case 'mcp_tools':
         case 'mcp_connect':
         case 'mcp_disconnect':
+        case 'mcp_catalogue_add':
+        case 'mcp_probe':
         case 'mcp_connect_me':
         case 'mcp_disconnect_me':
             $anchor = ws_mcp_settings_post($viewer, $action, $liveform);

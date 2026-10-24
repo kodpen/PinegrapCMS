@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 in PR #1503, F3a engine and API built, answers given): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 done #1503, F2 in #1529, F3a built): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -13,7 +13,7 @@ description: Plan (2026-10-24, F1 in PR #1503, F3a engine and API built, answers
 
 ## What is proposed? (not approved yet)
 - One "Flow" ("Akış"): graph JSON (boxes, arrows, notes), draft, versions; engine: plans/workspace-flows-engine.md.
-- Canvas (main): new workspace_flows.php, bundle `assets/js/workspace_flow.min.js` (`pg_js_bundles()`); HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_sync`).
+- Canvas (main): workspace_flows.php, bundle `assets/js/workspace_flow.min.js` (`pg_js_bundles()`); HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_sync`).
 - Process template: task boxes on "after" arrows; also from a channel template or table rows (workflow mode).
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
 - Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds the runs started there (a run keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
@@ -21,16 +21,16 @@ description: Plan (2026-10-24, F1 in PR #1503, F3a engine and API built, answers
 - From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 moved here; T1, T2, T6, S1, S2 stay.
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
-1. F1 store (schema, ask first): four tables, `flow_id`, graph check, API.
-2. F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows, from a template.
-3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine and API built (workspace/workspace-flows-runner.md); F3b run view on the canvas next.
+1. Done (PR #1503): F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
+2. PR #1529: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. Later: from a template, notes/whiteboard, undo/redo, auto-layout, multi-select, Help link.
+3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine and API built (workspace/workspace-flows-runner.md); F3b run view next.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
 7. F7 shares (schema); F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
-Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members only personal flows with steps in their own reach), 3 a (publishing decides; a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". Recommendations taken for 5-8 (owner: decide without asking).
+Owner 2026-10-24: 1 a, 2 b (role-3 members only personal flows with steps in their own reach), 3 a (a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". 5-8: recommendations taken (owner: decide without asking).
 1. Editor: own vanilla (not JointJS, not Drawflow).
 2. Builders: staff; home channel readers Run; role-3 personal flows from F6.
 3. Record writes: publish decides, like `change`.
@@ -41,4 +41,4 @@ Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members o
 8. Rules: the scheduled-actions form stays, shared steps, "Open on canvas".
 
 ## Where to start?
-- F1, then F2. Read workspace/README.md, plans/workspace-growth-terms.md.
+- F3 next (plans/workspace-flows-engine.md). Read workspace/README.md, plans/workspace-growth-terms.md.
