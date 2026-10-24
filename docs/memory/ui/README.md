@@ -70,6 +70,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-card-own-button.md: A settings card that runs a job beside saving: named type=submit button, pressed handling, why serializers drop it, no save-less button contract.
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
+- settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-modal-architecture.md: Site Settings modal architecture: file map, the eight categories and their cards, moving a card, adding a new category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.

@@ -13,7 +13,7 @@ description: Decisions list, access part: public pi.php/si.php and test_secure_m
 
 ## Which gates stay as they are?
 - `backups.php` and the `software_backup` action (`pg_panel_software_backup()`, `includes/panel/software.php`): manager (role <= 2) and up, the written "manager and above" policy (#62 item 3).
-- `update_dashboard_appearance`: not exempt in `includes/panel/actions.php`, so behind the general gate (signed in, role <= 1), because its selects are drawn only in the `role < 2` branch of `includes/fn/output.php`; a site-wide write. Its siblings (`update_dashboard_widgets`, the `push_*` actions) are exempt; "siblings exempt, this one not" is not a finding (2026-10-08; `core/panel-action-table.md`).
+- `update_dashboard_appearance`: not exempt in `includes/panel/actions.php`, so behind the general gate (signed in, role <= 1), the reach of the Dashboard card of Site Settings > Appearance (`pg_dashboard_appearance_allowed()`, `ui/settings-dashboard-card.md`), which writes the same columns through its own save; a site-wide write. Its siblings (`update_dashboard_widgets`, the `push_*` actions) are exempt; "siblings exempt, this one not" is not a finding (2026-10-08; `core/panel-action-table.md`).
 - `edit_calendar.php`, `edit_contact_group.php`: a role 3 user may rename, and when empty delete, a calendar or contact group assigned to them. Creating one stays refused (`add_calendar.php`, `add_contact_group.php`), a separate decision (#59 item 3).
 
 ## Which secrets and TLS choices are deliberate?

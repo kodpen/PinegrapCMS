@@ -6148,15 +6148,15 @@ html[data-bs-theme="dark"] #system_status_card .card-header i {
 
 /* ══ Card appearance themes ════════════════════════════════════════════════
 
-   Four treatments of the same card. An administrator picks one from the Panel
-   row's menu panel and it is stored in dashboard.widget_theme;
-   welcome.php writes the choice onto #content, so everything below is scoped to
-   that attribute and the settings screen's own copy of the system status card
-   is left out of it.
+   Four treatments of the same card. A designer or an administrator picks one
+   on the Dashboard card of Site Settings > Appearance and it is stored in
+   dashboard.widget_theme; welcome.php writes the choice onto #content, so
+   everything below is scoped to that attribute and the settings screen's own
+   copy of the system status card is left out of it.
 
    "flat" has no rules here at all, and that is the point. Flat IS the block of
    per-widget backgrounds above, so the default costs nothing and an
-   installation that never opens the menu keeps exactly the dashboard it had.
+   installation that never changes it keeps exactly the dashboard it had.
    The other three replace background, border and shadow, and they read
    --pg-accent -- which every widget already declares -- so one rule set dresses
    all twenty-two cards instead of three more colour tables.

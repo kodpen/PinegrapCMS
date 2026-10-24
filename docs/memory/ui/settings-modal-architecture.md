@@ -29,7 +29,7 @@ Shared
 | Pane | Cards |
 |---|---|
 | `general` | server, software, channel, datetime, cron |
-| `appearance` | theme, editor |
+| `appearance` | theme, dashboard (role < 2 only, `settings-dashboard-card.md`), editor |
 | `features` | features, images |
 | `seo` | seo, analytics |
 | `contact` | campaigns, chat, mailchimp |

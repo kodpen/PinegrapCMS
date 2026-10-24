@@ -116,14 +116,16 @@ function pg_settings_categories()
         'appearance' => array(
             'label' => lang('Appearance'),
             'icon'  => 'bi-palette',
-            'description' => lang('The panel theme and the rich-text editor.'),
+            'description' => lang('The panel theme, the dashboard and the rich-text editor.'),
             'sections' => array(
-                'pgset-theme'  => lang('Theme'),
-                'pgset-editor' => lang('Rich-text Editor'),
+                'pgset-theme'     => lang('Theme'),
+                'pgset-dashboard' => lang('Dashboard'),
+                'pgset-editor'    => lang('Rich-text Editor'),
             ),
             'keywords' => array(
-                'pgset-theme'  => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
-                'pgset-editor' => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
+                'pgset-theme'     => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
+                'pgset-dashboard' => pg_settings_keywords(lang('dashboard, widget, card style, backdrop, refresh, reset widgets, welcome')),
+                'pgset-editor'    => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
             ),
         ),
 
@@ -302,6 +304,14 @@ function pg_settings_categories()
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
         unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
         $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+    }
+
+    // The Dashboard card is drawn for designers and administrators only
+    // (pg_dashboard_appearance_allowed()); for anyone else, a manager opening
+    // Appearance included, no chip or search result points at it.
+    if (!pg_dashboard_appearance_allowed(defined('USER_ROLE') ? USER_ROLE : null)) {
+        unset($categories['appearance']['sections']['pgset-dashboard'], $categories['appearance']['keywords']['pgset-dashboard']);
+        $categories['appearance']['description'] = lang('The panel theme and the rich-text editor.');
     }
 
     return $categories;
