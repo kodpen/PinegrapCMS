@@ -49,6 +49,11 @@ if ($_POST['users']) {
         if (($user['role'] == 0) || ($user['role'] < $user_role)) {
             // if this user is not an administrator or the number of administrators is greater than one, then we can allow this user to be deleted, so prepare checkbox
             if (($user_role != 0) || ($number_of_administrators > 1)) {
+                // The account as it was, before anything that goes with it is
+                // removed.
+                $audit_user_id = is_scalar($user_id) ? (int) $user_id : 0;
+                $audit_before = pg_audit_fetch('user', $audit_user_id);
+
                 // Sign-in tokens first: a token outliving its user is a row
                 // that still names a user_id nobody owns any more, and the
                 // browser holding it keeps presenting it on every request.
@@ -65,6 +70,8 @@ if ($_POST['users']) {
                 // delete user record
                 $query = "DELETE FROM user WHERE user_id = '" . escape($user_id) . "'";
                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+
+                pg_audit_record('delete', 'user', $audit_user_id, $audit_before);
                 
                 // delete aclfolder records
                 $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "'";

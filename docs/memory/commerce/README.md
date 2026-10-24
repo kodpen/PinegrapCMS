@@ -26,6 +26,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups
 - api-order-status-moves.md: What POST /orders/{id} does with a status (plain write, cancellation, restore) and which moves it refuses; incomplete is the cart's status and is not accepted (#877, PR #1258)
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
+- card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
@@ -43,6 +44,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
+- iyzipay-sdk-php71-patch.md: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched for 7.1: typed properties dropped, \stdClass in the refund mapper; why, what is left, what an SDK update re-applies
 - key-code-import.md: Key code CSV import (import_key_codes.php): a code already there is updated, not re-added (a used single-use code stays used); BOM, separator, dates, yes/no cells
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, unmatched lines and their retry, relay emails.
@@ -71,7 +73,9 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
+- order-returns-api.md: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, the refund fields the object lacks
 - order-returns-customer.md: Customer side of returns in My Account's order view: the switch, __returns / __return_form and flags, order_return.php, messages, mail, bell, the block for older layouts, the hourly limit
+- order-returns-events.md: The order.return.* webhooks (requested, approved, received, refunded): payload, where each is announced and why refunded is not from the move, what is not announced, the Workspace trigger
 - order-returns-panel.md: Panel side of returns (PR #808): list and bulk approve, one return's moves, pg_return_staff_move() (audit, log, mail), decision mails, suggested return carrier and code
 - order-returns-refund.md: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock, revert on refusal, what is written, the ERP return invoice hand-off, the refund mail
 - order-returns-reminders.md: Daily refund reminder of customer returns (return_reminder_job.php): the two stages, the once-only stamps on order_returns (step 11.0.25), how the job is scheduled
@@ -97,6 +101,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
 - product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
+- product-price-history-retention.md: product_price_history keeps 13 months (396 days, PR #1425): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
 - product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation

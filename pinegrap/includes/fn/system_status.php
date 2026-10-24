@@ -1064,6 +1064,13 @@ function pg_purge_caches()
         $cleared[] = lang('Image derivatives');
     }
 
+    // The pages the page cache keeps (includes/fn/page_cache.php): all made
+    // old at once and their folder set aside for the general job to delete.
+    // Each is drawn and kept again on its next anonymous visit.
+    if (function_exists('pg_page_cache_purge') && pg_page_cache_purge()) {
+        $cleared[] = lang('Page Cache');
+    }
+
     // The pages drawn in the other languages (page_translations): their
     // bodies, and what they answered the search engines, which sitemap.xml
     // and the hreflang alternates follow. Each is drawn and answered again

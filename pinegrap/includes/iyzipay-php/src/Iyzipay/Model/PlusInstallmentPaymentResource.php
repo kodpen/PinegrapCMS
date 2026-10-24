@@ -5,20 +5,20 @@ namespace Iyzipay\Model;
 use Iyzipay\IyzipayResource;
 
 class PlusInstallmentPaymentResource extends IyzipayResource {
-    private float $price;
-    private float $paidPrice;
-    private string $currency;
-    private int $installment;
-    private string $paymentChannel;
-    private string $basketId;
-    private string $paymentGroup;
-    private string $connectorName;
-    private int $plusInstallmentUsage;
-    private PaymentCard $paymentCard;
-    private Buyer $buyer;
-    private Address $shippingAddress;
-    private Address $billingAddress;
-    private array $basketItems;
+    private $price;
+    private $paidPrice;
+    private $currency;
+    private $installment;
+    private $paymentChannel;
+    private $basketId;
+    private $paymentGroup;
+    private $connectorName;
+    private $plusInstallmentUsage;
+    private $paymentCard;
+    private $buyer;
+    private $shippingAddress;
+    private $billingAddress;
+    private $basketItems;
 
     public function getPrice(): float {
         return $this->price;

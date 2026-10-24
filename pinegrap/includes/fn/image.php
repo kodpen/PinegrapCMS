@@ -798,32 +798,28 @@ function pg_img_prefetch($srcs)
  * The delivery formats the markup may offer for one picture, given its colour
  * profile.
  *
- * GD writes no colour profile, so the engine makes no derivative of a picture
- * whose profile is not sRGB (or cannot be read) when GD would write it, and
- * every candidate would be the full-size original. Without Imagick that is
- * every derivative; with Imagick it is each modern format Imagick cannot
- * write and GD can (pg_image_format_writer()).
+ * The engine makes no derivative where GD would write it and cannot carry
+ * the picture's profile (pg_image_gd_icc_plan(): an unreadable or non-RGB
+ * profile, or AVIF output), and every such candidate would be the full-size
+ * original. Without Imagick a refused original means no derivative at all;
+ * otherwise each modern format GD would write and refuse is left out.
  *
  * @param array $formats webp, avif => bool (pg_image_delivery_formats())
- * @param bool $foreign the file carries a profile other than sRGB
- *                      (pg_image_has_foreign_color_profile())
+ * @param array $refuse  original, webp, avif => bool: GD would refuse the
+ *                       picture's profile for that output
  * @param bool $imagick Imagick is loaded
  * @param array $writers webp, avif => 'imagick', 'gd' or '' (pg_image_format_writer())
  * @return array|null the formats to offer, or null when the picture gets no
  *                    responsive markup at all
  */
-function pg_img_profile_formats($formats, $foreign, $imagick, $writers)
+function pg_img_profile_formats($formats, $refuse, $imagick, $writers)
 {
-    if (!$foreign) {
-        return $formats;
-    }
-
-    if (!$imagick) {
+    if (!$imagick && !empty($refuse['original'])) {
         return null;
     }
 
     foreach ($formats as $format => $on) {
-        if ($on && (!isset($writers[$format]) || ($writers[$format] !== 'imagick'))) {
+        if ($on && !empty($refuse[$format]) && (!isset($writers[$format]) || ($writers[$format] !== 'imagick'))) {
             $formats[$format] = false;
         }
     }
@@ -883,10 +879,10 @@ function pg_img_responsive($src)
         return null;
     }
 
-    // A colour profile other than sRGB: GD writes no profile, so the engine
-    // makes no derivative of such a picture where GD would write it, and
-    // those candidates would be the full-size original. Without Imagick the
-    // picture gets no responsive markup; with it, a format only GD writes is
+    // A colour profile GD cannot carry (pg_image_gd_icc_plan()): the engine
+    // makes no derivative where GD would write it, and those candidates
+    // would be the full-size original. Without Imagick a refused original
+    // means no responsive markup; otherwise the formats GD would refuse are
     // left out (pg_img_profile_formats()). The file is read only when GD
     // would write something.
     $formats = pg_image_delivery_formats();
@@ -899,8 +895,19 @@ function pg_img_responsive($src)
         $gd_writes = $gd_writes || ($on && ($writers[$format] !== 'imagick'));
     }
 
-    $foreign = $gd_writes && pg_image_has_foreign_color_profile(FILE_DIRECTORY_PATH . '/' . $name);
-    $formats = pg_img_profile_formats($formats, $foreign, $imagick, $writers);
+    $refuse = array();
+
+    if ($gd_writes) {
+
+        $icc = pg_image_icc_profile(FILE_DIRECTORY_PATH . '/' . $name);
+        $refuse['original'] = (pg_image_gd_icc_plan($icc, (string) pathinfo($name, PATHINFO_EXTENSION)) === 'refuse');
+
+        foreach ($formats as $format => $on) {
+            $refuse[$format] = (pg_image_gd_icc_plan($icc, $format) === 'refuse');
+        }
+    }
+
+    $formats = pg_img_profile_formats($formats, $refuse, $imagick, $writers);
 
     if ($formats === null) {
         return null;

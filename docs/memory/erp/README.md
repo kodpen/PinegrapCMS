@@ -113,7 +113,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132), and the bank statement suggestion offers only invoices (PR #1228).
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-recurring-documents.md: Repeating ERP expenses (4.96) and invoices (4.93): what may repeat, how a run claims a date, lock and error handling, where runs start, draft or issue mode, stop and restart.
-- erp-recurring-invoice-day.md: The day of the month a repeating invoice keeps: an invoice of the 31st repeats on every month's last day, not on the 28th the first February cut it to
+- erp-recurring-invoice-day.md: The day of the month a repeating invoice keeps: the 31st repeats on each month's last day, not the 28th; upgrade step 11.0.60 moves recurrences written before back
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, currency and date of a return, line VAT rate, returned_qty and parent_line_id.
 - erp-return-quantities-and-currency.md: An ERP return's currency, rate and date, and how returned quantities are tracked on the parent (returned_qty, parent_line_id 4.50, the product-match fallback, withholding and second tax caps).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
@@ -121,7 +121,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
-- erp-till-inactive-payments.md: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then
+- erp-till-inactive-payments.md: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then, how its till is changed
 - erp-translation-traps.md: Short tr.json keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.

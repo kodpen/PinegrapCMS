@@ -67,7 +67,32 @@ function test_consent_log_purposes_follow_their_writers()
 
 	// The order_documents.type ENUM of step 11.0.1.
 	pg_assert_same(array('preinfo', 'contract', 'kvkk'), $purposes['contract'], 'order_documents types');
-	pg_assert_same(array('granted', 'refused'), pg_consent_log_statuses(), 'statuses');
+	pg_assert_same(array('granted', 'refused', 'pending'), pg_consent_log_statuses(), 'statuses');
+	pg_assert_contains('form', pg_consent_log_sources(), 'forms write consents');
+}
+
+// An e-mail consent is for marketing or for one contact group, named by its id.
+function test_consent_log_purpose_valid_takes_contact_groups()
+{
+	pg_assert_true(pg_consent_log_purpose_valid('email', 'marketing'), 'marketing');
+	pg_assert_true(pg_consent_log_purpose_valid('email', 'group:12'), 'a contact group');
+	pg_assert_true(pg_consent_log_purpose_valid('email', 'group:4294967295'), 'the highest group id');
+
+	foreach (array('group:0', 'group:x', 'group:', 'group:012', 'group:-1', 'group:12 ', 'group:12345678901', 'Group:12', 'group:1.5') as $bad) {
+		pg_assert_false(pg_consent_log_purpose_valid('email', $bad), $bad);
+	}
+
+	pg_assert_false(pg_consent_log_purpose_valid('sms', 'group:12'), 'a group is an e-mail purpose only');
+	pg_assert_false(pg_consent_log_purpose_valid('cookie', 'group:12'), 'not a cookie category');
+	pg_assert_false(pg_consent_log_purpose_valid('email', array('group:12')), 'an array');
+	pg_assert_false(pg_consent_log_purpose_valid('fax', 'marketing'), 'unknown channel');
+
+	$row = pg_consent_log_row(array('channel' => 'email', 'purpose' => 'group:7', 'status' => 'pending', 'source' => 'form', 'contact_id' => 3), 1);
+
+	pg_assert_same('group:7', $row['purpose'], 'a pending group row');
+	pg_assert_same('pending', $row['status'], 'pending status');
+	pg_assert_same('form', $row['source'], 'form source');
+	pg_assert_same('purpose', pg_consent_log_row(array('purpose' => 'group:0') + $row), 'group 0');
 }
 
 // A valid event becomes the row in column order.

@@ -278,6 +278,43 @@ function pg_email_preferences_placeholder_value($email_address)
     return urlencode(pg_email_preferences_id($email_address)) . '&amp;sig=' . pg_email_preferences_signature($email_address);
 }
 
+/**
+ * The whole address of the e-mail preferences screen for one address, from
+ * the site's base address ($base: scheme, host and software directory, no
+ * trailing slash) and the signature over that address. '' when the address
+ * is empty or has no "@", or there is no signature (a site without
+ * ENCRYPTION_KEY), so a mail merge field filled with it falls back to the
+ * other half of its [[...||...]] block instead of a link that cannot work.
+ * The address is not validated further: the List-Unsubscribe header of a
+ * campaign uses this too, and every address mail is sent to keeps it.
+ *
+ * @param string $base
+ * @param string $email_address
+ * @param string $signature pg_email_preferences_signature() of the address
+ * @return string
+ */
+function pg_email_preferences_url_build($base, $email_address, $signature)
+{
+    $email_address = (string) $email_address;
+    $signature = (string) $signature;
+
+    if (($signature === '') || (strpos(trim($email_address), '@') === false)) {
+        return '';
+    }
+
+    return (string) $base . '/email_preferences.php?id=' . urlencode(pg_email_preferences_id($email_address)) . '&sig=' . urlencode($signature);
+}
+
+// The preferences link for $email_address on this site, or '' (see
+// pg_email_preferences_url_build()).
+function pg_email_preferences_url($email_address)
+{
+    return pg_email_preferences_url_build(
+        URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY,
+        $email_address,
+        pg_email_preferences_signature($email_address));
+}
+
 function get_email_campaign_status_name($status)
 {
     switch ($status) {
@@ -1280,7 +1317,8 @@ function replace_variables($properties)
         foreach ($conditionals as $conditional) {
             $whole_string = $conditional[0];
             $positive_string = $conditional[1];
-            $negative_string = $conditional[4];
+            // Optional capture group: absent when the conditional has no else part.
+            $negative_string = $conditional[4] ?? '';
             $field_name = $conditional[2];
             // Assume that the field name is not valid, until we find out otherwise.
             $field_name_valid = false;
@@ -2009,7 +2047,19 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             $from_email_address = EMAIL_ADDRESS;
         }
 
-        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_subject'], $prepare_for_html = false);
+        // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+        // are filled in for the address this copy goes to, and in no other e-mail.
+        pg_cf_mail_links_context(array(
+            'email_address' => $submitter_email_address,
+            'contact_id' => (int) $contact_id,
+            'custom_form_page_id' => (int) $custom_form['page_id'],
+            'form_id' => (int) $form_id));
+
+        $mail_link_values = pg_cf_mail_link_values();
+
+        // The link fields go into the template before the submitted values, so a
+        // value holding "[[" or "]]" cannot open or close a block around other text.
+        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links($custom_form['submitter_email_subject'], $mail_link_values, 'plain_text'), $prepare_for_html = false);
 
         // If the format of the e-mail should be plain text,
         // then prepare that.
@@ -2018,7 +2068,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             // Check the body for variable data and replace
             // any variables with content from the submitted form;
             // an empty body becomes the list of the form's fields.
-            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body'], true), $prepare_for_html = false);
+            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body'], true), $mail_link_values, 'plain_text'), $prepare_for_html = false);
 
         // Otherwise the format of the e-mail should be HTML, so prepare that.
         } else {
@@ -2026,6 +2076,9 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
             $body = get_page_content($custom_form['submitter_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+            // Bare link fields only: the body already holds the submitted values.
+            $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
 
         }
 
@@ -2036,8 +2089,12 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             'subject' => $subject,
             'format' => $custom_form['submitter_email_format'],
             'body' => $body,
+            // A signed link stays out of the failure log and the delivery-failed notice.
+            'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
             'queue' => true
         ));
+
+        pg_cf_mail_links_context(false);
 
     }
 
@@ -2083,7 +2140,9 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             or $custom_form['administrator_email_bcc_email_address']
         ) {
 
-            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_subject'], $prepare_for_html = false);
+            // The signed links belong to the sender alone: empty here, filled into
+            // the template before the submitted values go in.
+            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links($custom_form['administrator_email_subject'], array(), 'plain_text'), $prepare_for_html = false);
 
             // If the format of the e-mail should be plain text,
             // then prepare that.
@@ -2092,7 +2151,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
                 // Check the body for variable data and replace
                 // any variables with content from the submitted form;
                 // an empty body becomes the list of the form's fields.
-                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['administrator_email_body']), $prepare_for_html = false);
+                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['administrator_email_body']), array(), 'plain_text'), $prepare_for_html = false);
 
             // Otherwise the format of the e-mail should be HTML, so prepare that.
             } else {
@@ -2100,6 +2159,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
                 require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
                 $body = get_page_content($custom_form['administrator_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+                $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
 
             }
 

@@ -18,7 +18,7 @@ description: custom_form options live on the element, page_type is not the form 
 - **The editor writes the email body** with `pg_cf_default_email_body()` from the fields; the moment the operator changes one letter the body is theirs. A plain text body still empty at send time becomes the field list (`pg_cf_email_body_or_default()`). Both: custom-form-email-and-confirmation-fallbacks.md.
 - **Do not redraw the form after submit** (`?<page_id>_confirmation=true`).
 - **Errors come from liveform**, narrowed to this form (`_pg_inject_messages_node($tree, (string)$page_id)`).
-- **CAPTCHA is a section binding**; if it returns empty the container drops too.
+- **CAPTCHA is a section binding**; empty (off, or staff) drops the container.
 - `pg_rendered_page()` is registered **early** in `get_page.php`.
 - `pg_cf_page_form_ready()` probes three tables at once; on a non-upgraded install the feature silently disappears.
 - Old trees migrate on load (`_cfMigrateWidgetTree`: `_bindings.form_field` -> `name`, `__submit_label` binding -> button text) and are written in the new shape on first save.

@@ -3,8 +3,8 @@
 namespace Iyzipay\Model;
 
 class C2CSubMerchantApiCredentials {
-    private string $salt;
-    private string $secretKey;
+    private $salt;
+    private $secretKey;
 
     public function getSalt(): ?string {
         return $this->salt ?? null;

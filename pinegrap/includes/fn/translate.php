@@ -339,7 +339,11 @@ function pg_tr_define_from_request($body = null)
 
     // A script that answers a form with a redirect (to a confirmation page,
     // the next checkout step) sends the visitor to the page in this language.
-    if (!headers_sent() && function_exists('header_register_callback')) {
+    // Through the shared list: header_register_callback() keeps only one
+    // callback, and the page cache's marker cookie needs the slot too.
+    if (function_exists('pg_header_callback_add')) {
+        pg_header_callback_add('pg_tr_redirect_hook');
+    } elseif (!headers_sent() && function_exists('header_register_callback')) {
         header_register_callback('pg_tr_redirect_hook');
     }
 }
@@ -506,8 +510,8 @@ function pg_tr_editor_config($user)
  * on the raw values, before the widget escapes them and turns line breaks
  * into <br>. Unchanged in the source language.
  *
- * @param array $fields identifier => array('data', 'type', 'wysiwyg'), as
- *                      pg_sw_index_form_data() builds them
+ * @param array $fields identifier => array('data', 'type', 'wysiwyg',
+ *                      'translate'), as pg_sw_index_form_data() builds them
  * @return array
  */
 function pg_tr_record_fields($fields)
@@ -519,8 +523,7 @@ function pg_tr_record_fields($fields)
     pg_tr_load();
 
     foreach ($fields as $key => $field) {
-        if (!is_array($field) || !isset($field['data'], $field['type']) || ($field['data'] === '')
-            || !in_array($field['type'], array('text box', 'text area'), true)) {
+        if (!pg_tr_record_field_translatable($field)) {
             continue;
         }
 
@@ -530,6 +533,27 @@ function pg_tr_record_fields($fields)
     }
 
     return $fields;
+}
+
+/**
+ * Whether pg_tr_record_fields() translates one of a record's values: a text
+ * box or text area with a value, in a field not switched out of translation
+ * (form_fields.translate_values). A value left out is never looked up, so it
+ * neither shows a translation nor counts toward keeping the page out of the
+ * search engines. A value without the flag (read before the column existed)
+ * is included.
+ *
+ * @param mixed $field array('data', 'type', 'translate')
+ * @return bool
+ */
+function pg_tr_record_field_translatable($field)
+{
+    if (!is_array($field) || !isset($field['data'], $field['type']) || ($field['data'] === '')
+        || !in_array($field['type'], array('text box', 'text area'), true)) {
+        return false;
+    }
+
+    return !isset($field['translate']) || !empty($field['translate']);
 }
 
 /**

@@ -598,256 +598,6 @@ $(document).ready(function () {
         html: true
     });
 
-    //default context menu template.
-    var ContextMenuTemplate = [
-        '<div class="contextmenu popover shadow-lg backdrop">',
-        '<div class="popover-arrow"></div>',
-        '<div class="popover-body ">',
-        '</div>',
-        '</div>'].join('');
-
-    /*
-     * Left menu context menus.
-     *
-     * Bootstrap 5 has no "context" trigger. Any trigger it does not recognise silently
-     * falls back to focusin/focusout, so the menu only opened when the anchor actually
-     * received DOM focus on mouse press. Windows browsers do focus a link on mouse
-     * press, macOS browsers (Safari, Chrome and Firefox alike) never mouse-focus links
-     * or buttons - it is a platform convention baked into WebKit and Blink. The result
-     * was that on macOS the popover never opened while the native menu was suppressed
-     * as well, leaving the item completely dead. Register the popover as "manual" and
-     * drive it from a real contextmenu listener instead.
-     */
-    var contextmenu = $('[data-bs-toggle="context"]').popover({
-        trigger: 'manual',
-        placement: 'auto',
-        html: true,
-        template: ContextMenuTemplate,
-        sanitize: false
-    });
-
-    //we need titles, context will use bs-content only, converting title back
-    contextmenu.each(function () {
-        $(this).attr('title', $(this).attr('data-bs-original-title'));
-    });
-
-    // Bootstrap 5 keeps component instances in its own registry, so the Bootstrap 4 era
-    // $el.data('bs.popover') lookup always returns undefined here.
-    function getContextPopover(el) {
-        if (!el || !window.bootstrap || !window.bootstrap.Popover) {
-            return null;
-        }
-        return window.bootstrap.Popover.getInstance(el);
-    }
-
-    // Which trigger currently has its menu on screen, so the same menu is never shown
-    // twice - see the comment in openContextMenu() for why that matters.
-    var openContextTrigger = null;
-
-    contextmenu.on('hidden.bs.popover', function () {
-        if (openContextTrigger === this) {
-            openContextTrigger = null;
-        }
-    });
-
-    function hideContextMenus(except) {
-        $('[data-bs-toggle="context"]').each(function () {
-            if (except && this === except) {
-                return;
-            }
-            var instance = getContextPopover(this);
-            if (instance) {
-                instance.hide();
-            }
-            if (openContextTrigger === this) {
-                openContextTrigger = null;
-            }
-        });
-    }
-
-    function openContextMenu($el) {
-        var el = $el && $el[0];
-        if (!el) {
-            return;
-        }
-
-        /*
-         * Showing an already open popover closes it again. Bootstrap queues this after
-         * every show():
-         *
-         *     if (this._isHovered === false) this._leave()
-         *     this._isHovered = false
-         *
-         * and with a manual trigger _leave() has no active trigger to hold it back, so
-         * it schedules hide(). The first show() leaves _isHovered as false, so a second
-         * show() while still open walks straight into that branch and the menu closes
-         * itself one fade later.
-         *
-         * A long press raises that second call on its own: our own timer fires at 450ms
-         * and Chrome and Firefox on Android raise a native contextmenu event at about
-         * 500ms, so both paths opened the same menu. macOS never produced the second
-         * event, which is why this only showed up on Android.
-         */
-        if (openContextTrigger === el) {
-            return;
-        }
-
-        hideContextMenus(el);
-
-        // The body is whatever data-bs-content holds; Bootstrap already picked it up as
-        // the instance content when the popover was constructed, so nothing to set here.
-        var instance = getContextPopover(el);
-        if (!instance) {
-            $el.popover({
-                html: true,
-                placement: 'auto',
-                trigger: 'manual',
-                template: ContextMenuTemplate,
-                sanitize: false
-            });
-            instance = getContextPopover(el);
-        }
-
-        if (!instance) {
-            // Bootstrap bundle missing or replaced: fall back to the jQuery bridge.
-            $el.popover('show');
-            return;
-        }
-
-        openContextTrigger = el;
-        instance.show();
-
-        // show() bails out silently on a popover with no content. Bootstrap points
-        // aria-describedby at the tip synchronously when it really opened, so use that
-        // to avoid latching the guard on a menu that never appeared.
-        if (!el.getAttribute('aria-describedby')) {
-            openContextTrigger = null;
-        }
-    }
-
-    // Right click, and the macOS ctrl+click that raises the very same event.
-    document.addEventListener('contextmenu', function (e) {
-        var target = e.target;
-        if (!target || typeof target.closest !== 'function') {
-            return;
-        }
-
-        var trigger = target.closest('[data-bs-toggle="context"]');
-        if (trigger) {
-            e.preventDefault();
-            openContextMenu($(trigger));
-            return;
-        }
-
-        // Right clicking inside an open menu keeps it open and shows the native menu.
-        if (target.closest('.contextmenu.popover')) {
-            return;
-        }
-
-        hideContextMenus();
-
-        // Menu entries that have no context menu of their own: suppress the browser
-        // menu too, there is nothing meaningful behind it.
-        var plainMenuItem = target.closest('#menu a.list-group-item-action');
-        if (plainMenuItem && !plainMenuItem.hasAttribute('data-bs-toggle')) {
-            e.preventDefault();
-        }
-    });
-
-    /*
-     * Touch devices: long press opens the menu. The previous implementation delegated
-     * touchstart through jQuery on document, where browsers register the listener as
-     * passive - preventDefault() was ignored there and the link navigated away anyway.
-     * Bind natively on the menu container so the gesture can be handled properly.
-     */
-    var menuElement = document.getElementById('menu');
-    if (menuElement) {
-        var longPressTimer = null;
-        var longPressFired = false;
-        var longPressOrigin = null;
-
-        var contextTargetFrom = function (node) {
-            if (!node || typeof node.closest !== 'function') {
-                return null;
-            }
-            return node.closest('a.list-group-item-action[data-bs-toggle="context"]');
-        };
-
-        var cancelLongPress = function () {
-            if (longPressTimer) {
-                clearTimeout(longPressTimer);
-                longPressTimer = null;
-            }
-            longPressOrigin = null;
-        };
-
-        menuElement.addEventListener('touchstart', function (e) {
-            var anchor = contextTargetFrom(e.target);
-            if (!anchor) {
-                return;
-            }
-
-            cancelLongPress();
-            longPressFired = false;
-
-            var touch = e.touches && e.touches[0];
-            longPressOrigin = touch ? { x: touch.clientX, y: touch.clientY } : { x: 0, y: 0 };
-
-            longPressTimer = setTimeout(function () {
-                longPressTimer = null;
-                longPressFired = true;
-                openContextMenu($(anchor));
-            }, 450);
-        }, { passive: true });
-
-        menuElement.addEventListener('touchmove', function (e) {
-            if (!longPressOrigin) {
-                return;
-            }
-            var touch = e.touches && e.touches[0];
-            if (!touch) {
-                return;
-            }
-            // A scroll gesture is not a long press.
-            if (Math.abs(touch.clientX - longPressOrigin.x) > 10 || Math.abs(touch.clientY - longPressOrigin.y) > 10) {
-                cancelLongPress();
-            }
-        }, { passive: true });
-
-        menuElement.addEventListener('touchend', cancelLongPress, { passive: true });
-        menuElement.addEventListener('touchcancel', function () {
-            cancelLongPress();
-            longPressFired = false;
-        }, { passive: true });
-
-        // Swallow the click the browser synthesises after a long press.
-        menuElement.addEventListener('click', function (e) {
-            if (!longPressFired) {
-                return;
-            }
-            if (!contextTargetFrom(e.target)) {
-                return;
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            longPressFired = false;
-        }, true);
-    }
-
-    // Close context menu when clicking outside
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('.popover, [data-bs-toggle="context"]').length) {
-            hideContextMenus();
-        }
-    });
-
-    // Escape closes the menu, matching every other overlay in the software.
-    $(document).on('keydown', function (e) {
-        if (e.key === 'Escape' || e.key === 'Esc') {
-            hideContextMenus();
-        }
-    });
-
 
     /*
      * The main menu (output_header(), includes/fn/output.php).
@@ -871,11 +621,15 @@ $(document).ready(function () {
      */
     var MENU_DRAWER_BREAKPOINT = 992;
     var MENU_STATES = ['expanded', 'collapsed', 'hidden'];
+    // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
+    // init calls below run before the rest of this section is reached.
+    var MENU_PANEL_KEY = 'pgMenuPanel';
     var menuBackdrop = null;
 
     initMenuToggle();                 // The button in the bar, and the foot of the menu
     initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
+    initMenuPanels();                 // Rows that open their entries inside the menu
     initMenuClock();                  // Dashboard clock and Calendars day keep running
 
     function isMenuDrawerMode() {
@@ -964,6 +718,7 @@ $(document).ready(function () {
         });
 
         paintMenuToggle();
+        settleMenuPanel();
     }
 
     // Chooses a wide-screen state and remembers it, for a year rather than the
@@ -1014,15 +769,23 @@ $(document).ready(function () {
         });
 
         // Following any menu link should not leave the drawer open behind the new page
-        // in browsers that restore the DOM from the back-forward cache.
-        $('#menu').on('click', 'a[href]', function () {
+        // in browsers that restore the DOM from the back-forward cache. A row
+        // with a panel opens the panel in the drawer instead (initMenuPanels()).
+        $('#menu').on('click', 'a[href]:not([data-pg-menu-panel])', function () {
             if (isMenuDrawerMode()) {
                 closeMenuDrawer();
             }
         });
 
+        // A panel open in the drawer goes back first, wherever the focus is;
+        // the next Escape closes the drawer.
         $(document).on('keydown', function (e) {
             if ((e.key === 'Escape' || e.key === 'Esc') && isMenuDrawerOpen()) {
+                if ($('#menu').hasClass('pg-menu-drilled')) {
+                    closeMenuPanel({ animate: true, focus: true });
+                    return;
+                }
+
                 closeMenuDrawer();
             }
         });
@@ -1060,10 +823,388 @@ $(document).ready(function () {
                 // Back to the wide screen: whatever the user last chose there.
                 paintMenuState(savedMenuState());
             }
+
+            settleMenuPanel();
         }
 
         $(window).on('load resize orientationchange', syncMenuMode);
         syncMenuMode();
+    }
+
+    /*
+     * Panels of the main menu (output_menu(), pg_menu_panel()).
+     *
+     * A row with several entries carries data-pg-menu-panel. A plain click on
+     * it shows that panel in place of the rows; the arrow at the panel's head,
+     * or Escape, brings the rows back. A click with a modifier key or the
+     * middle button is left to the browser, so the row's own screen still
+     * opens in a new tab, and the right mouse button gets the browser's own
+     * menu: the rows no longer have a menu of their own there.
+     *
+     * The collapsed rail has no room for a panel, so there the click widens
+     * the rail over the content (.pg-menu-peek) for as long as the panel is
+     * open; the way back, Escape, a click outside or focus leaving the menu
+     * put it back to the rail.
+     *
+     * While the menu shows its labels the open panel is kept for this tab
+     * (sessionStorage), and the next page opens it again when it is about
+     * that page -- one of its entries is the page, or its row is the page's
+     * row -- so a panel stays open while its entries are followed.
+     */
+    function storeMenuPanel(id) {
+        try {
+            if (id) {
+                window.sessionStorage.setItem(MENU_PANEL_KEY, id);
+            } else {
+                window.sessionStorage.removeItem(MENU_PANEL_KEY);
+            }
+        } catch (e) {
+            // Storage refused (private mode, a full quota): the panel is simply not kept.
+        }
+    }
+
+    function storedMenuPanel() {
+        try {
+            return window.sessionStorage.getItem(MENU_PANEL_KEY) || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // The collapsed rail of a wide screen (hidden counts too): the one state
+    // with no room for a panel unless the rail is widened.
+    function isMenuRail() {
+        return !isMenuDrawerMode() && !$('#menu').hasClass('expanded');
+    }
+
+    function isMenuPeek() {
+        return $('.software-container').hasClass('pg-menu-peek');
+    }
+
+    function paintMenuPanelRows(menu, panelId) {
+        Array.prototype.forEach.call(menu.querySelectorAll('[data-pg-menu-panel]'), function (row) {
+            row.setAttribute('aria-expanded', (row.getAttribute('data-pg-menu-panel') === panelId) ? 'true' : 'false');
+        });
+    }
+
+    function openMenuPanel(panel, options) {
+        var menu = document.getElementById('menu');
+
+        if (!menu || !panel) {
+            return;
+        }
+
+        options = options || {};
+
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-panel.is-open'), function (open) {
+            if (open !== panel) {
+                open.classList.remove('is-open');
+            }
+        });
+
+        menu.classList.toggle('pg-menu-animate', !!options.animate);
+        panel.classList.add('is-open');
+        menu.classList.add('pg-menu-drilled');
+        paintMenuPanelRows(menu, panel.id);
+
+        if (isMenuRail()) {
+            $('.software-container').addClass('pg-menu-peek');
+            storeMenuPanel('');
+        } else {
+            storeMenuPanel(panel.id);
+        }
+
+        var body = menu.querySelector('.menu-body');
+
+        if (body) {
+            body.scrollTop = 0;
+        }
+
+        if (options.focus) {
+            var back = panel.querySelector('[data-pg-menu-back]');
+
+            if (back) {
+                back.focus({ preventScroll: true });
+            }
+        }
+    }
+
+    function closeMenuPanel(options) {
+        var menu = document.getElementById('menu');
+
+        if (!menu) {
+            return;
+        }
+
+        options = options || {};
+
+        var open = menu.querySelector('.pg-menu-panel.is-open');
+
+        menu.classList.toggle('pg-menu-animate', !!options.animate);
+        menu.classList.remove('pg-menu-drilled');
+        paintMenuPanelRows(menu, '');
+        $('.software-container').removeClass('pg-menu-peek');
+        storeMenuPanel('');
+
+        if (open) {
+            open.classList.remove('is-open');
+
+            if (options.focus) {
+                var row = document.getElementById(open.getAttribute('data-pg-menu-row'));
+
+                if (row) {
+                    row.focus();
+                }
+            }
+        }
+    }
+
+    // After the menu changed how it shows: the widened rail belongs to the
+    // collapsed rail alone, and a rail that is not widened has no room for a
+    // panel. A panel the labels now have room for is kept for the tab again.
+    function settleMenuPanel() {
+        var menu = document.getElementById('menu');
+
+        if (!menu) {
+            return;
+        }
+
+        if (!isMenuRail() || $('.software-container').hasClass('menu-hidden')) {
+            $('.software-container').removeClass('pg-menu-peek');
+        }
+
+        if (!menu.classList.contains('pg-menu-drilled')) {
+            return;
+        }
+
+        if (isMenuRail() && !isMenuPeek()) {
+            closeMenuPanel({});
+        } else if (!isMenuRail()) {
+            var open = menu.querySelector('.pg-menu-panel.is-open');
+
+            if (open) {
+                storeMenuPanel(open.id);
+            }
+        }
+    }
+
+    // The visible words of an entry: the Calendars entry draws the day of
+    // the month as svg text, which is not part of its name.
+    function menuEntryLabel(link) {
+        var text = '';
+
+        Array.prototype.forEach.call(link.childNodes, function (node) {
+            if (node.nodeType === 3) {
+                text += node.nodeValue;
+            } else if ((node.nodeType === 1) && (node.tagName.toLowerCase() !== 'svg')) {
+                text += node.textContent;
+            }
+        });
+
+        return text.replace(/\s+/g, ' ').trim();
+    }
+
+    // How closely an entry's address is the page's own: -1 for another page;
+    // otherwise every parameter of the entry is on the page with the same
+    // value, the more of them the closer, and the same set closest of all.
+    function menuEntryScore(link, here, params, paramCount) {
+        var url;
+
+        try {
+            url = new URL(link.getAttribute('href'), here.href);
+        } catch (e) {
+            return -1;
+        }
+
+        if ((url.origin !== here.origin) || (url.pathname !== here.pathname)) {
+            return -1;
+        }
+
+        var own = 0;
+        var matched = true;
+
+        url.searchParams.forEach(function (value, key) {
+            own++;
+
+            if (params.get(key) !== value) {
+                matched = false;
+            }
+        });
+
+        if (!matched) {
+            return -1;
+        }
+
+        return (own * 2) + ((own === paramCount) ? 1 : 0);
+    }
+
+    // Marks in each panel the entry that is the current page and writes its
+    // name as the hint of the panel's row. The stylesheet shows the hint on
+    // the active row only, so it follows .active when workspace.js moves it
+    // between the Workspace row and a pinned My Notes row.
+    function markMenuCurrent(menu) {
+        var here = window.location;
+        var params = new URLSearchParams(here.search);
+        var paramCount = 0;
+
+        params.forEach(function () {
+            paramCount++;
+        });
+
+        Array.prototype.forEach.call(menu.querySelectorAll('.pg-menu-panel'), function (panel) {
+            var best = null;
+            var bestScore = -1;
+
+            Array.prototype.forEach.call(panel.querySelectorAll('.pg-menu-panel-body a[href]'), function (link) {
+                var score = menuEntryScore(link, here, params, paramCount);
+
+                if (score > bestScore) {
+                    best = link;
+                    bestScore = score;
+                }
+            });
+
+            if (!best) {
+                return;
+            }
+
+            best.classList.add('pg-menu-current');
+            best.setAttribute('aria-current', 'page');
+
+            var row = document.getElementById(panel.getAttribute('data-pg-menu-row'));
+
+            if (!row) {
+                return;
+            }
+
+            var hint = row.querySelector('.pg-menu-hint');
+            var name = row.querySelector('.list-group-text');
+            var label = menuEntryLabel(best);
+
+            if (hint && (label !== '') && (!name || (label.toLocaleLowerCase() !== name.textContent.trim().toLocaleLowerCase()))) {
+                hint.textContent = label;
+            }
+        });
+    }
+
+    function initMenuPanels() {
+        var menu = document.getElementById('menu');
+        var sidebar = menu ? menu.closest('.software-sidebar') : null;
+
+        if (!menu || !menu.querySelector('.pg-menu-panel')) {
+            return;
+        }
+
+        markMenuCurrent(menu);
+
+        menu.addEventListener('click', function (e) {
+            var target = e.target;
+
+            if (!target || (typeof target.closest !== 'function')) {
+                return;
+            }
+
+            if (target.closest('[data-pg-menu-back]')) {
+                e.preventDefault();
+                closeMenuPanel({ animate: true, focus: true });
+                return;
+            }
+
+            var row = target.closest('a[data-pg-menu-panel]');
+
+            if (row) {
+                if (e.defaultPrevented || (e.button !== 0) || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                    return;
+                }
+
+                var panel = document.getElementById(row.getAttribute('data-pg-menu-panel'));
+
+                if (panel) {
+                    e.preventDefault();
+                    openMenuPanel(panel, { animate: true, focus: true });
+                }
+
+                return;
+            }
+
+            // An entry that leaves this page in place (a new tab, a window of
+            // its own) puts the widened rail back; one that loads a page here
+            // takes the rail with it anyway.
+            var entry = target.closest('.pg-menu-panel-body a');
+
+            if (entry && isMenuPeek() && (!entry.getAttribute('href') || (entry.getAttribute('target') === '_blank'))) {
+                closeMenuPanel({});
+            }
+        });
+
+        // Escape inside the menu goes back one step, and stops there: a
+        // second Escape is the drawer's.
+        menu.addEventListener('keydown', function (e) {
+            if (((e.key === 'Escape') || (e.key === 'Esc')) && menu.classList.contains('pg-menu-drilled')) {
+                e.stopPropagation();
+                closeMenuPanel({ animate: true, focus: true });
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (((e.key === 'Escape') || (e.key === 'Esc')) && isMenuPeek()) {
+                closeMenuPanel({});
+            }
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!isMenuPeek() || (sidebar && e.target && sidebar.contains(e.target))) {
+                return;
+            }
+
+            closeMenuPanel({});
+        });
+
+        // Focus leaving the menu puts the widened rail back. Focus that goes
+        // into a frame (a rich text editor) has no relatedTarget and its clicks
+        // and keys never reach this document, so the frame is looked for on
+        // the next turn, when it has become the active element.
+        function peekLostFocus() {
+            var active = document.activeElement;
+
+            if (isMenuPeek() && active && (active !== document.body) && sidebar && !sidebar.contains(active)) {
+                closeMenuPanel({});
+            }
+        }
+
+        menu.addEventListener('focusout', function (e) {
+            if (!isMenuPeek()) {
+                return;
+            }
+
+            if (!e.relatedTarget) {
+                window.setTimeout(peekLostFocus, 0);
+            } else if (sidebar && !sidebar.contains(e.relatedTarget)) {
+                closeMenuPanel({});
+            }
+        });
+
+        window.addEventListener('blur', function () {
+            if (isMenuPeek()) {
+                window.setTimeout(peekLostFocus, 0);
+            }
+        });
+
+        // The panel this tab had open, when the page is one it is about.
+        var stored = storedMenuPanel();
+
+        if (stored === '') {
+            return;
+        }
+
+        var panel = document.getElementById(stored);
+        var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
+
+        if (panel && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || (row && row.classList.contains('active')))) {
+            openMenuPanel(panel, {});
+        } else {
+            storeMenuPanel('');
+        }
     }
 
     // The Dashboard entry's icon is a clock and the Calendars entry's icon
@@ -4217,6 +4358,7 @@ function change_field_type($field_type) {
     $('#contact_field_row').removeClass('show');
     $('#required_row').removeClass('show');
     $('#office_use_only_row').removeClass('show');
+    $('#translate_values_row').removeClass('show');
     $('#upload_folder_id_row').removeClass('show');
     $('#wysiwyg_row').removeClass('show');
     $('#rows_row').removeClass('show');
@@ -4236,6 +4378,7 @@ function change_field_type($field_type) {
             $('#contact_field_row').addClass('show');
             $('#required_row').addClass('show');
             $('#office_use_only_row').addClass('show');
+            $('#translate_values_row').addClass('show');
             $('#quiz_question_row').addClass('show');
             break;
 
@@ -4249,6 +4392,7 @@ function change_field_type($field_type) {
             $('#contact_field_row').addClass('show');
             $('#required_row').addClass('show');
             $('#office_use_only_row').addClass('show');
+            $('#translate_values_row').addClass('show');
             $('#wysiwyg_row').addClass('show');
             $('#rows_row').addClass('show');
             break;
