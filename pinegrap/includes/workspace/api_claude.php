@@ -32,6 +32,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The route rows of the queue and the context.
  *
+ * A route whose handler calls ws_api_claude_guard() carries 'mcp' => false:
+ * it answers the key of Claude's application alone, never an OAuth
+ * connection, and the routine calls it over REST, so as an MCP tool it would
+ * refuse every client. The context has no guard and stays a tool.
+ *
  * @return array
  */
 function ws_claude_api_routes()
@@ -44,6 +49,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_claude_requests_list',
+            'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for Claude',
             'description' => 'For the application chosen for Claude in the Workspace Settings only. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
@@ -58,6 +64,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/claim',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_claim',
+            'mcp'         => false,
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
@@ -73,6 +80,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/answer',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_answer',
+            'mcp'         => false,
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
@@ -91,6 +99,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/fail',
             'scope'       => 'workspace:write',
             'handler'     => 'ws_api_claude_fail',
+            'mcp'         => false,
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Give a request up',
@@ -107,6 +116,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/change-types',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_claude_change_types',
+            'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceChangeType'),
             'summary'     => 'What a request\'s changes may set',
             'description' => 'The kinds of record the person who asked may have changes proposed for, from the table the answer\'s changes are checked against: each kind\'s actions, its fields with their kind of value (text, long, money in minor units, bool, int, enum, email, date, datetime, keywords, decimal, code, lines, ids, role), their limits and labels, the fields only a new record takes, and what a new one needs.',
@@ -121,6 +131,7 @@ function ws_claude_api_routes()
             'path'        => '/workspace/claude/requests/{id}/records/{type}/{record_id}',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_claude_record',
+            'mcp'         => false,
             'returns'     => 'WorkspaceRecord',
             'summary'     => 'A record as a change is laid against it',
             'description' => 'One record, read with the rights of the person who asked: its tag, name and state, every field a change may set with what the record holds in it now (money in minor units, the names the changes of the answer use), and an order\'s lines. A change whose from differs from this at the moment it is applied is not applied. 404 for a record the person may not see.',

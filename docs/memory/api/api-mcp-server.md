@@ -5,7 +5,12 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 
 ## Where do the tools come from?
 - Every route is a tool (`pg_mcp_tool_from_route()`, `includes/mcp/tools.php`): a new endpoint brings its tool with no line here. Name = the route id with dots as underscores; description = `summary` + `description`; input = the declared parameters, plus `dry_run` on a rehearsable write. These texts are what the model reads: English, short and true.
-- Left out (`pg_mcp_route_is_offered()`): routes with no scope or `'public' => true`, ids starting `auth.`, `push.` or `docs.`, ids ending `_post` (the IIS twins), and routes with `'mcp' => false` (`GET /workspace/sync` that an app polls, file downloads, own-words routes an OAuth client could never call). An IIS POST twin's id must end in `_post`, or one action becomes two tools. Only routes the caller's scopes cover are listed.
+- Left out (`pg_mcp_route_is_offered()`): routes with no scope or `'public' => true`, ids starting `auth.`, `push.` or `docs.`, ids ending `_post` (the IIS twins), and routes with `'mcp' => false` (below). An IIS POST twin's id must end in `_post`, or one action becomes two tools. Only routes the caller's scopes cover are listed.
+
+## Which routes carry `'mcp' => false`, and why?
+- `GET /workspace/sync` that an app polls, file downloads and uploads, and own-words routes an OAuth client could never call (`workspace/workspace-api-callers.md`).
+- Claude's queues: every route whose handler calls `ws_api_claude_guard()` (`workspace.claude.requests.list`/`claim`/`answer`/`fail`, `workspace.claude.change_types`, `workspace.claude.record`) or `translate_api_claude_guard()` (the five `translations.jobs.*`). They answer only the key of Claude's application, never an OAuth connection, and the routine calls them over REST, so as tools they would refuse every client. Keyed on the guard, not on `ws_claude_api_routes()`: `workspace.channels.context` has none and stays a tool (`test_ws_api_claude_only_routes_are_no_tools`).
+- The person's decisions on a card: `workspace.approvals.decide`, `workspace.changes.apply`, `workspace.changes.dismiss` (owner decision 2026-10-24: made on the card, not offered over MCP). Over MCP an assistant would decide in the person's name or apply its own proposal. REST is unchanged: a device session or an OAuth connection may call them, an application key gets 403 (`test_ws_api_card_decisions_are_no_tools`).
 
 ## How does tools/call run a route?
 - In-process, with the same checks as `integration.php`: scope, `api_validate_input()`, then the handler. The handler still leaves through `api_send()`/`api_fail()`; `api_send_hook()` turns the answer into the JSON-RPC result (a refusal becomes a result with `isError`).
