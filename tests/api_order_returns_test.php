@@ -83,6 +83,62 @@ function api_order_returns_test_param($route, $name)
 	return null;
 }
 
+// The top-level arguments of the call whose opening parenthesis is at
+// $open in $source, trimmed, in order; $offset is set past the closing
+// parenthesis. Commas inside nested parentheses, brackets or quotes do
+// not split.
+function api_order_returns_test_arguments($source, $open, &$offset)
+{
+	$arguments = array();
+	$current = '';
+	$depth = 0;
+	$quote = '';
+	$length = strlen($source);
+
+	for ($i = $open; $i < $length; $i++) {
+		$char = $source[$i];
+
+		if ($quote !== '') {
+			$current .= $char;
+
+			if ($char === '\\') {
+				$current .= ($i + 1 < $length) ? $source[++$i] : '';
+			} elseif ($char === $quote) {
+				$quote = '';
+			}
+
+			continue;
+		}
+
+		if (($char === "'") || ($char === '"')) {
+			$quote = $char;
+		} elseif (($char === '(') || ($char === '[')) {
+			if (++$depth === 1) {
+				continue;
+			}
+		} elseif (($char === ')') || ($char === ']')) {
+			if (--$depth === 0) {
+				break;
+			}
+		} elseif (($char === ',') && ($depth === 1)) {
+			$arguments[] = trim($current);
+			$current = '';
+
+			continue;
+		}
+
+		$current .= $char;
+	}
+
+	if (trim($current) !== '') {
+		$arguments[] = trim($current);
+	}
+
+	$offset = min($i + 1, $length);
+
+	return $arguments;
+}
+
 function test_api_order_returns_present_a_refunded_return()
 {
 	$return = api_order_return_present(api_order_returns_test_row());
@@ -216,30 +272,20 @@ function test_api_order_returns_routes_prepare_the_deliveries()
 
 		pg_assert_contains('api_order_return_windows(', $body, $handler . ' prepares the deliveries');
 
-		// Every presenter call passes the map: its own arguments, read up to
-		// the closing parenthesis, name $windows or build it. Comment lines
-		// (the next function's heading) are not calls.
+		// Every presenter call passes the map as its third argument ($windows,
+		// after $row and $reasons): $windows itself or one built on the spot.
+		// The map in the $reasons slot would be taken as the reason labels.
+		// Comment lines (the next function's heading) are not calls.
 		$body = (string) preg_replace('~^\s*//.*$~m', '', $body);
 		$calls = 0;
 		$with_map = 0;
 		$offset = 0;
 
 		while (($at = strpos($body, 'api_order_return_present(', $offset)) !== false) {
-			$depth = 0;
-			$end = $at + strlen('api_order_return_present');
-
-			for ($i = $end; $i < strlen($body); $i++) {
-				if ($body[$i] === '(') {
-					$depth++;
-				} elseif (($body[$i] === ')') && (--$depth === 0)) {
-					break;
-				}
-			}
-
-			$arguments = substr($body, $end, $i - $end + 1);
+			$arguments = api_order_returns_test_arguments($body, $at + strlen('api_order_return_present'), $offset);
+			$third = isset($arguments[2]) ? $arguments[2] : '';
 			$calls++;
-			$with_map += ((strpos($arguments, '$windows') !== false) || (strpos($arguments, 'api_order_return_windows(') !== false)) ? 1 : 0;
-			$offset = $i;
+			$with_map += (($third === '$windows') || (strpos($third, 'api_order_return_windows(') === 0)) ? 1 : 0;
 		}
 
 		pg_assert_true($calls > 0, $handler . ' presents returns');

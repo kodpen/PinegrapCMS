@@ -15,4 +15,4 @@ description: Returns over the API and the customer's timing rules (owner 2026-10
 - No query per row: `api_order_return_windows($rows)` reads each delivery once; GET and both POST answers pass its map to the presenter, which runs no query (a delivery missing from the map answers null).
 
 ## Tests?
-- `tests/returns_withdrawal_test.php` (timing cases, the deadline day in time, the rule helper, the check and the panel use them), `tests/api_order_returns_test.php` (withdrawal shape and schema, every presenter call in both handlers passes the windows map, `customer_rules` row, the three 409s). Sandbox: PR #1572 body.
+- `tests/returns_withdrawal_test.php` (timing cases, the deadline day in time, the rule helper, the check and the panel use them), `tests/api_order_returns_test.php` (withdrawal shape and schema, every presenter call in both handlers passes the windows map as its third argument, `customer_rules` row, the three 409s). Sandbox: PR #1572 body.
