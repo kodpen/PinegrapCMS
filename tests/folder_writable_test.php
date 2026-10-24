@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for pg_dir_writable() (includes/image_engine.php): a folder that is
- * not there takes nothing, one is_writable() allows takes a file, and one it
- * calls closed is asked by making a file in it on Windows only, where
- * is_writable() reads the folder's read-only attribute, which stops nothing.
- * The answer is yes only when the file landed inside that folder.
+ * Tests for pg_dir_writable() and pg_dir_probe_landed_in()
+ * (includes/image_engine.php): a folder that is not there takes nothing, one
+ * is_writable() allows takes a file, and one it calls closed is asked by
+ * making a file in it on Windows only, where is_writable() reads the folder's
+ * read-only attribute, which stops nothing. The answer is yes only when the
+ * file landed directly in that folder.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -184,6 +185,12 @@ function test_folder_writable_windows_probe_landed_elsewhere()
 			return 'pgdirclosed://temporary/pgw1234.tmp';
 		}), 'a sibling with a longer name');
 
+		// tempnam() makes its file directly in the folder it used, so a file
+		// further down is the system temporary folder sitting below this one
+		pg_assert_false(pg_dir_writable('pgdirclosed://temp', true, function ($directory, $prefix) {
+			return 'pgdirclosed://temp/sub/pgw1234.tmp';
+		}), 'a file in a folder below this one');
+
 		$made = '';
 
 		pg_assert_false(pg_dir_writable('pgdirclosed://temp', true, function ($directory, $prefix) use (&$made) {
@@ -197,4 +204,28 @@ function test_folder_writable_windows_probe_landed_elsewhere()
 	});
 
 	@rmdir($dir);
+}
+
+// Where tempnam() put its file, against the folder as it was asked and as
+// realpath() answers it: only a file directly in one of them counts.
+function test_folder_writable_probe_landed_in()
+{
+	pg_assert_true(pg_dir_probe_landed_in('C:\\site\\data\\temp\\pgw1A2B.tmp', 'C:\\site\\data\\temp', false), 'directly in it');
+	pg_assert_true(pg_dir_probe_landed_in('C:\\site\\data\\temp\\pgw1A2B.tmp', 'C:/site/data/temp/', false), 'trailing slash, other separators');
+	pg_assert_true(pg_dir_probe_landed_in('C:/site/data/temp//pgw1A2B.tmp', 'C:/site/data/temp/', false), 'a doubled separator');
+	pg_assert_true(pg_dir_probe_landed_in('/var/www/data/temp/pgwXyZ123', '/var/www/data/temp', false), 'a Linux path');
+	pg_assert_true(pg_dir_probe_landed_in('C:\\pgw1A2B.tmp', 'C:\\', false), 'a drive root');
+	pg_assert_true(pg_dir_probe_landed_in('/pgwXyZ123', '/', false), 'the root');
+
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\data\\temp\\sub\\pgw1A2B.tmp', 'C:\\site\\data\\temp', false), 'a folder below it');
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\data\\temporary\\pgw1A2B.tmp', 'C:\\site\\data\\temp', false), 'a sibling with a longer name');
+	pg_assert_false(pg_dir_probe_landed_in('C:\\Windows\\Temp\\pgw1A2B.tmp', 'C:\\site\\data\\temp', false), 'the system temporary folder');
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\data\\pgw1A2B.tmp', 'C:\\site\\data\\temp', false), 'the folder above it');
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\data\\temp\\pgw1A2B.tmp', '', false), 'no folder');
+
+	// tempnam() names its file under the folder's real path: the installer
+	// asks of install/../data, a junction or a short name reads the same way
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\pinegrap\\data\\pgw1A2B.tmp', 'C:/site/pinegrap/install/../data', false), 'not the asked form');
+	pg_assert_true(pg_dir_probe_landed_in('C:\\site\\pinegrap\\data\\pgw1A2B.tmp', 'C:/site/pinegrap/install/../data', 'C:\\site\\pinegrap\\data'), 'the real path');
+	pg_assert_false(pg_dir_probe_landed_in('C:\\site\\pinegrap\\data\\temp\\pgw1A2B.tmp', 'C:/site/pinegrap/install/../data', 'C:\\site\\pinegrap\\data'), 'below the real path');
 }

@@ -124,16 +124,46 @@ function pg_dir_writable($directory, $windows = null, $make_file = null)
 
     @unlink($probe);
 
-    // tempnam() falls back to the system temporary folder when the folder
-    // refuses, so only a file inside this one is an answer. It names the file
-    // under the folder's real path, which is compared too.
-    $probe = str_replace('\\', '/', $probe);
+    return pg_dir_probe_landed_in($probe, $directory, function_exists('realpath') ? @realpath($directory) : false);
+}
 
-    $inside = function ($folder) use ($probe) {
-        return is_string($folder) && ($folder !== '') && (strpos($probe, rtrim(str_replace('\\', '/', $folder), '/') . '/') === 0);
-    };
 
-    return $inside($directory) || (function_exists('realpath') && $inside(@realpath($directory)));
+/**
+ * Whether the file tempnam() made for pg_dir_writable() sits directly in the
+ * folder it was asked about.
+ *
+ * tempnam() makes its file directly in the folder it used, and falls back to
+ * the system temporary folder when the asked one refuses. That folder can sit
+ * anywhere, below the asked one too (sys_temp_dir or TMP set to a folder of
+ * the site), so a file one level down or more is the fallback, not an answer.
+ * tempnam() names its file under the folder's real path, so the folder is
+ * compared both as it was asked and as realpath() answers it.
+ *
+ * @param string       $probe          the path tempnam() answered
+ * @param string       $directory      the folder as it was asked
+ * @param string|false $real_directory realpath() of that folder, false when unknown
+ * @return bool
+ */
+function pg_dir_probe_landed_in($probe, $directory, $real_directory = false)
+{
+    $probe = str_replace('\\', '/', (string) $probe);
+    $slash = strrpos($probe, '/');
+
+    if ($slash === false) {
+        return false;
+    }
+
+    // trimmed like the folder: a root ('/', 'C:\\') reads '' or 'C:', and a
+    // folder given with a trailing separator may come back doubled
+    $parent = rtrim(substr($probe, 0, $slash), '/');
+
+    foreach (array($directory, $real_directory) as $folder) {
+        if (is_string($folder) && ($folder !== '') && (rtrim(str_replace('\\', '/', $folder), '/') === $parent)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
