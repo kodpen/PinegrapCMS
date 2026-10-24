@@ -12499,9 +12499,10 @@ const StyleDesigner = (function () {
         return _sdDateSample(true);
     }
 
-    // The record counters a form list can order by; the same list as
+    // The record statistics a form list can order by (the detail page's
+    // counters and the record's newest activity); the same list as
     // pg_sw_form_order_counters() (includes/fn/widgets.php).
-    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views'];
+    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views', 'newest_activity_date_and_time'];
 
     // Preview values for the system fields of a submitted form and for the
     // account fields beside them. Without these a reference code would fall
@@ -30207,11 +30208,12 @@ const StyleDesigner = (function () {
                     } else {
                         html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
                         html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
-                        // Counters of the detail page (pg_sw_counter_order_sql()).
+                        // Record statistics read on the detail page (pg_sw_counter_order_sql()).
                         html += '<optgroup label="' + esc(_sdT('Statistics')) + '">';
                         html += '<option value="number_of_views"'    + (selected === 'number_of_views'    ? ' selected' : '') + '>' + esc(_sdT('Number of Views')) + '</option>';
                         html += '<option value="number_of_comments"' + (selected === 'number_of_comments' ? ' selected' : '') + '>' + esc(_sdT('Number of Comments')) + '</option>';
                         html += '<option value="recent_views"'       + (selected === 'recent_views'       ? ' selected' : '') + '>' + esc(_sdT('Views in recent days')) + '</option>';
+                        html += '<option value="newest_activity_date_and_time"' + (selected === 'newest_activity_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Newest Activity Date & Time')) + '</option>';
                         html += '</optgroup>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
@@ -30229,10 +30231,10 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
-                // Counter orders: the counters are kept per detail page, so
-                // without one the list keeps the date order (say so), and the
-                // recent-views window gets its Days box (1-180, 7 by default,
-                // as pg_sw_recent_views_days()).
+                // Record statistic orders: the counters and the newest comment
+                // are kept per detail page, so without one the list keeps the
+                // date order (say so), and the recent-views window gets its
+                // Days box (1-180, 7 by default, as pg_sw_recent_views_days()).
                 var _orderCounter = !_isCatalogListing && (_SW_FORM_ORDER_COUNTERS.indexOf(_orderField) !== -1 || _SW_FORM_ORDER_COUNTERS.indexOf(_order2Field) !== -1);
                 var _orderNoDetail = _orderCounter && (_cfg.detail_page_id == null || String(_cfg.detail_page_id) === '' || String(_cfg.detail_page_id) === '0');
                 var _orderRecent = !_isCatalogListing && (_orderField === 'recent_views' || _order2Field === 'recent_views');
@@ -34063,9 +34065,12 @@ const StyleDesigner = (function () {
 
     // The list view offers the shared set plus its own state: the value a
     // URL-parameter filter took from the page address (?author=Jane),
-    // filled only when "is equal to" finds records for it.
+    // filled only when "is equal to" finds records for it, and how many
+    // records the list matched (capped at max results, as search results
+    // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
-        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
+        ['__result_count', _sdT('Number of results')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -35583,7 +35588,9 @@ const StyleDesigner = (function () {
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
-            ['no_filter_value',  _sdT('No value from the page address is applied')]
+            ['no_filter_value',  _sdT('No value from the page address is applied')],
+            ['has_records',      _sdT('The list found records')],
+            ['no_records',       _sdT('The list found nothing')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],

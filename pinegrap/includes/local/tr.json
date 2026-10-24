@@ -26831,5 +26831,7 @@
     "Marketplace account {var:1} was removed with its webhook {var:2} still registered on {var:3}; remove it in the seller panel.": "{var:1} pazaryeri hesabı, {var:2} webhook'u {var:3} üzerinde kayıtlı kalırken kaldırıldı; webhook'u satıcı panelinden kaldırın.",
     "The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, remove the webhook in your {var:1} seller panel first, or tick the box below the button to remove the marketplace anyway.": "Webhook'u {var:1} üzerinden kaldırılamadığı için pazaryeri kaldırılmadı: {var:2} Yeniden deneyin, önce webhook'u {var:1} satıcı panelinizden kaldırın ya da pazaryerini yine de kaldırmak için düğmenin altındaki kutuyu işaretleyin.",
     "Its webhook is still registered on {var:1}. Remove it in your {var:1} seller panel.": "Webhook'u hâlâ {var:1} üzerinde kayıtlı. {var:1} satıcı panelinizden kaldırın.",
-    "Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)": "Webhook'u {var:1} üzerinden kaldırılamasa da pazaryerini kaldır (sonra webhook'u satıcı panelinden kaldırın)"
+    "Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)": "Webhook'u {var:1} üzerinden kaldırılamasa da pazaryerini kaldır (sonra webhook'u satıcı panelinden kaldırın)",
+    "The list found records": "Liste kayıt buldu",
+    "The list found nothing": "Liste kayıt bulamadı"
 }

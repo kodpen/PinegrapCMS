@@ -898,13 +898,14 @@ function _pg_sw_current_page_id()
     return $page_id;
 }
 
-// The record counters a form_list_view can order by, beside the built-ins and
-// the form's own fields. They win over a form field of the same name, as a
+// The record statistics a form_list_view can order by, beside the built-ins
+// and the form's own fields: the detail page's counters and the record's
+// newest activity. They win over a form field of the same name, as a
 // standard field does in pg_sw_apply_tokens(). style_designer.js keeps the
 // same list in _SW_FORM_ORDER_COUNTERS.
 function pg_sw_form_order_counters()
 {
-    return array('number_of_views', 'number_of_comments', 'recent_views');
+    return array('number_of_views', 'number_of_comments', 'recent_views', 'newest_activity_date_and_time');
 }
 
 // The window of the recent_views order, in days: today and the days before
@@ -921,15 +922,18 @@ function pg_sw_recent_views_days($value)
 
 // The ORDER BY term of a counter order (pg_sw_form_order_counters()), or null
 // when $field is not one of them and '' when it is but the list names no
-// detail page: the counters are kept per detail page, so without one there is
-// nothing to order by and the list keeps its date order.
+// detail page: the counters and the newest comment are kept per detail page,
+// so without one there is nothing to order by and the list keeps its date
+// order.
 //
 // Correlated scalar subqueries rather than joins: submitted_form_info has no
 // unique key, and a joined duplicate row would print a record twice. MAX()
 // picks one row; the daily rows are summed over the window, counted in
 // MySQL's clock (CURDATE(), as the writer stamps them). Without the daily
-// table, recent_views reads the all-time counter. Every value that reaches
-// the SQL is whitelisted or cast to int.
+// table, recent_views reads the all-time counter. Newest activity is the later
+// of the record's submitted time and the time of the comment the detail
+// page's row names as its newest. Every value that reaches the SQL is
+// whitelisted or cast to int.
 function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_days, $stats_ready)
 {
     $field = (string)$field;
@@ -939,6 +943,18 @@ function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_da
     if ($page <= 0) return '';
 
     $dir = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+
+    // The same source as the ^^newest_activity_date_and_time^^ token and the
+    // classic list's order: submitted_form_info.newest_comment_id. MAX()
+    // because the row has no unique key. Compared as integers, with 0 (never
+    // '') when there is no row or the comment is gone, so the submitted time
+    // stands.
+    if ($field === 'newest_activity_date_and_time') {
+        return "GREATEST(forms.submitted_timestamp, IFNULL((SELECT MAX(pg_ord_c.created_timestamp)"
+             . " FROM submitted_form_info pg_ord_i"
+             . " INNER JOIN comments pg_ord_c ON pg_ord_c.id = pg_ord_i.newest_comment_id"
+             . " WHERE pg_ord_i.submitted_form_id = forms.id AND pg_ord_i.page_id = '$page'), 0)) $dir";
+    }
 
     if ($field === 'recent_views' && $stats_ready) {
         $back = pg_sw_recent_views_days($recent_days) - 1;
@@ -1444,14 +1460,18 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //
 // Config (`system_region_config`) keys used here:
 //   items_per_page      int (default 10, max 500)
+//   max_results         int (default 0 = no cap, max 100000): the records a
+//                       visitor can page through
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
-//   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
+//   empty_message       string         shown when no records match (default: the
+//                                      translated "No records found.")
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
-//                               recent_views | form_fields.name (the three
-//                               counters need detail_page_id, whose counters
-//                               they read: pg_sw_counter_order_sql())
+//                               recent_views | newest_activity_date_and_time |
+//                               form_fields.name (the record statistics need
+//                               detail_page_id, whose counters and newest
+//                               comment they read: pg_sw_counter_order_sql())
 //   order_by_direction  ASC | DESC (default DESC)
 //   order_by_2_field, order_by_2_direction — the second order, same values
 //   order_recent_days   int 1-180 (default 7): the recent_views window,
@@ -1469,6 +1489,14 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // records match; the visibility flags has_filter_value (that case) and
 // no_filter_value (no value applied) tell the states apart; the page's
 // head follows them through pg_sw_url_filter_state().
+//
+// ^^__result_count^^ prints, in the surround and in every row, how many
+// complete records the list matched (its filters, the visitor's search and
+// the viewer filter), capped at max_results like the classic list's "Found
+// N results", grouped with the site's separators. The flags has_records and
+// no_records follow that number. A list whose loop area is empty but whose
+// surround is not (a "1,284 topics" strip) runs only the count and returns
+// the surround, without rows or pagination.
 //
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
@@ -1555,7 +1583,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Only the flags a list evaluates are marked: a flag from another widget
     // type (a pasted record block's record_found) leaves its element drawn,
     // as lists did before they had flags of their own.
-    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));
     pg_sw_record_href_bindings($tree_decoded);
     $split = _split_widget_tree($tree_decoded, true);
 
@@ -1588,9 +1616,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($field === 'submitted_date_and_time') {
             return array('sql' => "forms.submitted_timestamp $direction", 'join' => '');
         }
-        // A record counter, read for the list's detail page. It wins over a
-        // form field of the same name; without a detail page it gives no
-        // order (the date order then applies) and no form field is tried.
+        // A record statistic (counter or newest activity), read for the
+        // list's detail page. It wins over a form field of the same name;
+        // without a detail page it gives no order (the date order then
+        // applies) and no form field is tried.
         $counter = pg_sw_counter_order_sql(
             $field,
             $direction,
@@ -1760,6 +1789,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $filter_join  = ($filter_where !== '' && $filter_sql['tokens'])
         ? pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'))
         : array('select' => '', 'join' => '');
+    // ^^__result_count^^ and its flags, set once the records are counted.
+    $result_count      = 0;
+    $result_count_html = '0';
 
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
@@ -1814,10 +1846,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // (the rows come from a template resolved the same way), so the pattern
     // never spans record HTML: a long span would exceed PCRE's backtrack
     // limit and empty the list, and a record's own text could close a span.
-    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags) {
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html) {
         if ($static_html === '') return $search_html . $rows . $pagination;
         $html = _pg_sw_resolve_visibility(
-            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array('__filter_value' => pg_sw_filter_value_html($filter_value)))),
+            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array(
+                '__filter_value' => pg_sw_filter_value_html($filter_value),
+                '__result_count' => $result_count_html,
+            ))),
             $flags
         );
         if (strpos($html, '<!--pg-loop-before-->') !== false) {
@@ -1830,13 +1865,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         return str_replace('<!--pg-loop-slot-->', $search_html . $rows . $pagination, $html);
     };
 
-    // If the loop template is empty, we still want to honor empty/search/pagination
-    // on the static surround. But absent a per-record visual there's nothing to repeat,
-    // so just return the static HTML with search/empty injected at the slot.
-    if ($loop_template === '') {
-        if ($static_html === '') return '';
-        return $stitch($empty_html, '');
-    }
+    // An empty loop area has no record to repeat, but its surround may still
+    // print the count, the flags and the search box (a "1,284 topics" strip):
+    // such a list runs only the count below and returns before the rows.
+    // Taken before "Show only when" is resolved on the template, so a loop
+    // area that only a flag empties stays a list with rows and pages.
+    // With neither loop nor surround there is nothing to print.
+    $loop_empty = ($loop_template === '');
+    if ($loop_empty && $static_html === '') return '';
 
     // ── Count total matching rows (for pagination) ────────────────────────
     $total_records = (int)db_value(
@@ -1848,6 +1884,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $search_where
            $sql_viewer_filter"
     );
+    // The number a visitor can page through, as the classic list's "Found
+    // N results" and the search results widget count it: max_results caps it.
+    $result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;
+    $result_count_html = h(pg_format_number($result_count, 0));
 
     // What the address applied, for this list's tokens and flags and for
     // the page's head (canonical, title, robots, feed link).
@@ -1870,7 +1910,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['inexact'] = true;
     }
     $filter_value = pg_sw_url_filter_value($filter_sql, $total_records);
-    $flags = array('has_filter_value' => $filter_value !== '', 'no_filter_value' => empty($filter_sql['params']));
+    $flags = array(
+        'has_filter_value' => $filter_value !== '',
+        'no_filter_value'  => empty($filter_sql['params']),
+        'has_records'      => $result_count > 0,
+        'no_records'       => $result_count === 0,
+    );
     // The flags are final: the per-record template is resolved once, before
     // any record is drawn into it.
     $loop_template = _pg_sw_resolve_visibility($loop_template, $flags);
@@ -1886,6 +1931,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     }
 
     if ($total_records === 0) return $stitch($empty_html, '');
+    // A count strip: the head state above is registered, no row is read.
+    if ($loop_empty) return $stitch('', '');
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
     // pages through the first $max_results rows. Final page's LIMIT may be
@@ -2031,6 +2078,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // form list printed an empty address.
         $extra['__detail_url'] = $extra['form_item_view'];
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
+        $extra['__result_count'] = $result_count_html;
 
         $rendered = pg_sw_apply_tokens(
             $loop_template,
