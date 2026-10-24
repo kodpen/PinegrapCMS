@@ -10907,6 +10907,7 @@ const StyleDesigner = (function () {
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
                     language_switcher:    _sdT('Language Switcher'),
+                    comments:             _sdT('Comments'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -11164,6 +11165,63 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Comments widget: the canvas twin of _pg_comments_binding_disabled()
+    // (widgets_comments.php). A control or section the page's comment
+    // settings or the site switch off is left out of the page and fades
+    // here, with the reason. The canvas reads the comments switch, the star
+    // rating and the watcher e-mail of the page being edited (its comment
+    // settings, kept in the pg_comments* fields) and the site's CAPTCHA
+    // setting. A page with comments off prints no widget, so the whole
+    // widget fades. The attachment box and the choose-a-name select have no
+    // page field in the designer yet; they join this twin with those fields.
+    function _sdCommentsBindingOff(node, cfg) {
+        if (!node || !cfg || cfg.regionType !== 'comments') return '';
+        var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
+        var SITE  = _sdT('Off — site setting');
+        var PAGE  = _sdT('Off — this page\'s comment settings');
+        var b = (node.props && node.props._bindings) || {};
+        var tag = (node.type === 'semantic' && node.props && node.props.tag) ? String(node.props.tag).toLowerCase() : '';
+
+        if (node.type === 'root' && node === _sysWidgetRenderTreeRoot && _getCmtVal('pg_comments') !== '1') {
+            return _sdT('Off — comments are off in this page\'s comment settings');
+        }
+        if (b.section === 'comment_captcha') return (flags && flags.captcha === false) ? SITE : '';
+        if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
+            return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
+        }
+        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on') {
+            return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PAGE : '';
+        }
+        // Only a button sends the comment; the site leaves anything else
+        // bound to the send action out.
+        if (b.action === 'comment_submit' && tag !== 'button' &&
+            !(node.type === 'component' && node.props && node.props.componentType === 'btn')) {
+            return _sdT('Off — only a button sends the comment');
+        }
+
+        // A label follows its control.
+        if (tag === 'label') {
+            var forId = _cfNodeAttr(node, 'for');
+            if (forId && _sysWidgetRenderTreeRoot) {
+                var target = _sdFindByPropId(_sysWidgetRenderTreeRoot, forId);
+                if (target && target !== node) return _sdCommentsBindingOff(target, cfg);
+            }
+            return '';
+        }
+        // A wrapper whose every child fades.
+        if (tag && Array.isArray(node.children) && node.children.length > 0 &&
+            ['div', 'fieldset', 'span', 'p'].indexOf(tag) !== -1) {
+            var reason = '';
+            for (var i = 0; i < node.children.length; i++) {
+                var r = _sdCommentsBindingOff(node.children[i], cfg);
+                if (!r) return '';
+                reason = reason || r;
+            }
+            return reason;
+        }
+        return '';
+    }
+
     // Builds what a wrapper's toolbar holds, the first time it is needed:
     // buildNodeEl() leaves the box empty.
     function _sdTbFill(w) {
@@ -11345,6 +11403,16 @@ const StyleDesigner = (function () {
                 wrapper.classList.add('sd-binding-off');
                 wrapper.setAttribute('data-sd-binding-off', '1');
                 wrapper.setAttribute('data-sd-off-reason', _memberOff);
+            }
+        }
+        // Comments widget: the same for the add-comment form's controls and
+        // sections (_sdCommentsBindingOff()).
+        if (_sysWidgetRenderCfg && !wrapper.classList.contains('sd-binding-off')) {
+            var _commentsOff = _sdCommentsBindingOff(node, _sysWidgetRenderCfg);
+            if (_commentsOff) {
+                wrapper.classList.add('sd-binding-off');
+                wrapper.setAttribute('data-sd-binding-off', '1');
+                wrapper.setAttribute('data-sd-off-reason', _commentsOff);
             }
         }
 
@@ -12643,6 +12711,23 @@ const StyleDesigner = (function () {
     }
 
     var _SD_HTML_PREVIEW_TOKENS = {
+        // Mirrors pg_comments_stars_html(): five stars, four of them filled.
+        '__comment_stars_html': function () {
+            var star = function (d, cls) {
+                return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi ' + cls + '" viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>';
+            };
+            var fill = star('M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z', 'bi-star-fill');
+            return '<span class="pg-comment-stars" role="img" aria-label="' + esc(_sdT('Rated {var:1} out of 5', 4)) + '">' +
+                   fill + fill + fill + fill + star('M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z', 'bi-star') + '</span>';
+        },
+        // The comment's text and the store's reply, as the page draws them
+        // (convert_text_to_html()).
+        '__comment_message_html': function () {
+            return esc(_sdT('Comment text'));
+        },
+        '__comment_seller_reply_html': function () {
+            return esc(_sdT('Reply text'));
+        },
         // The shape of the code pg_qr_svg() draws for the account security
         // widget: three finder squares and a few modules. A sample, not a
         // readable code; the page draws the real one.
@@ -30257,6 +30342,7 @@ const StyleDesigner = (function () {
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
             var _isAccountInvoices = (_regionType === 'account_invoices');
             var _isAccountEmail    = (_regionType === 'account_email');
+            var _isComments        = (_regionType === 'comments');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -30296,6 +30382,8 @@ const StyleDesigner = (function () {
             } else if (_isErrorPage) {
                 // No source: the error arrives with the request.
                 _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
+            } else if (_isComments) {
+                _sourceInfoHtml = _sdT('Shows the comments of the page it is placed on, under that page\'s comment settings, and the form that adds one. Placed on several pages, it keeps one look and shows each page its own comments.');
             } else if (_isCartLink) {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
@@ -34619,6 +34707,7 @@ const StyleDesigner = (function () {
             if (option[2] === 'date') out[option[0]] = true;
         });
         out.registered_date_and_time = true;   // my_account
+        out.__comment_datetime = true;         // comments
         return out;
     })();
 
@@ -35134,6 +35223,48 @@ const StyleDesigner = (function () {
             ['__current_language_code',  _sdT('Code of the language the page is shown in')],
             ['__current_language_label', _sdT('Name of the language the page is shown in')],
             ['__language_count',         _sdT('Number of languages listed')]
+        ]}
+    ];
+
+    // comments token palette — mirrors _render_system_widget_comments() in
+    // widgets_comments.php: the page's thread outside the loop_area, one
+    // comment per loop_area row. The add-comment form's controls are bound
+    // by value (Field binding), not by token.
+    var SW_COMMENTS_TOKEN_GROUPS = [
+        { label: _sdT('Thread'), tokens: [
+            ['__comments_title',          _sdT('Title ("12 Comments", "Featured Comments")')],
+            ['__comments_count',          _sdT('Number of comments the visitor reads')],
+            ['__comments_label',          _sdT('Comment label')],
+            ['__comments_label_plural',   _sdT('Comment label, plural')],
+            ['__comments_intro',          _sdT('Message above the form (the page\'s comment settings)')],
+            ['__comments_closed_message', _sdT('Message while new comments are closed')],
+            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
+            ['__comments_show_featured_url', _sdT('Show the featured comments (featured filter only; the link drops otherwise)')],
+            ['__login_url',                  _sdT('Sign-in page address (brings the visitor back to the form)')]
+        ]},
+        { label: _sdT('Comment (loop_area)'), tokens: [
+            ['__comment_id',                _sdT('Comment number')],
+            ['__comment_anchor',            _sdT('Comment anchor (c-123)')],
+            ['__comment_name',              _sdT('Name')],
+            ['__comment_staff_name',        _sdT('User name (staff only)')],
+            ['__comment_message_html',      _sdT('Comment text (HTML)')],
+            ['__comment_date',              _sdT('Date ("2 days ago"; empty when the page hides dates)')],
+            ['__comment_datetime',          _sdT('Date and time (takes a format)')],
+            ['__comment_rating',            _sdT('Rating (1-5)')],
+            ['__comment_stars_html',        _sdT('Stars (HTML)')],
+            ['__comment_badge',             _sdT('Badge label')],
+            ['__comment_status',            _sdT('Status ("Awaiting approval", "Not Published")')],
+            ['__comment_file_name',         _sdT('Attachment name')],
+            ['__comment_file_size',         _sdT('Attachment size')],
+            ['__comment_seller_reply_html', _sdT('Reply from the store (HTML)')],
+            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')]
+        ]},
+        { label: _sdT('Comment links (href)'), tokens: [
+            ['__comment_file_url',          _sdT('Attachment address')],
+            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')]
         ]}
     ];
 
@@ -35782,6 +35913,7 @@ const StyleDesigner = (function () {
             if (cfg && cfg.regionType === 'calendar_event_view') return 'calendar_event_view';
             if (cfg && _SW_ACCOUNT_TYPES[cfg.regionType] === 1) return cfg.regionType;
             if (cfg && cfg.regionType === 'error_page')        return 'error_page';
+            if (cfg && cfg.regionType === 'comments')          return 'comments';
             // login_region, cart_link, language_switcher: a palette of their own.
             if (cfg && SW_ACCOUNT_TOKEN_PALETTES[cfg.regionType]) return cfg.regionType;
             return 'form_list_view';
@@ -36135,6 +36267,35 @@ const StyleDesigner = (function () {
             ['is_maintenance', _sdT('The site is in maintenance mode (503)')],
             ['is_other_error', _sdT('Another error (not 404)')],
             ['has_error_code', _sdT('The error carries an HTTP code')]
+        ],
+        comments: [
+            ['comments_open',            _sdT('New comments are taken')],
+            ['comments_closed',          _sdT('New comments are closed')],
+            ['can_comment',              _sdT('The visitor can add a comment (the form is shown)')],
+            ['must_sign_in',             _sdT('The visitor must sign in to comment')],
+            ['is_signed_in',             _sdT('The visitor is signed in')],
+            ['is_signed_out',            _sdT('The visitor is signed out')],
+            ['has_comments',             _sdT('There are comments')],
+            ['no_comments',              _sdT('There are no comments yet')],
+            ['featured_view',            _sdT('Only the featured comments are shown')],
+            ['has_featured',             _sdT('There are featured comments')],
+            ['is_staff',                 _sdT('The visitor may edit this page (staff)')],
+            ['name_is_typed',            _sdT('The visitor types a name')],
+            ['name_is_chosen',           _sdT('The member chooses a name')],
+            ['name_is_fixed',            _sdT('The member comments under their own name')],
+            ['rating_on',                _sdT('Star ratings are on for the page')],
+            ['files_on',                 _sdT('Attachments are on for the page')],
+            ['watching_on',              _sdT('Notices of new comments are on for the page')],
+            ['comment_is_featured',      _sdT('Row: featured')],
+            ['comment_is_pending',       _sdT('Row: not published yet')],
+            ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],
+            ['comment_is_scheduled',     _sdT('Row: scheduled (staff only)')],
+            ['comment_has_rating',       _sdT('Row: has a rating')],
+            ['comment_has_file',         _sdT('Row: has an attachment')],
+            ['comment_has_badge',        _sdT('Row: the writer has a badge')],
+            ['comment_is_verified',      _sdT('Row: from a verified purchase')],
+            ['comment_has_seller_reply', _sdT('Row: the store replied')],
+            ['comment_can_edit',         _sdT('Row: the visitor may edit it')]
         ]
     };
 
@@ -36150,6 +36311,9 @@ const StyleDesigner = (function () {
         var isBtnLike = (node.type === 'component' && node.props.componentType === 'btn')
                      || (isSem && (tag === 'button' || tag === 'a'))
                      || (node.type === 'content' && node.props.contentType === 'link');
+        // A real button: an action that submits a form needs one.
+        var isRealButton = (node.type === 'component' && node.props.componentType === 'btn')
+                        || (isSem && tag === 'button');
         var isForm     = (isSem && tag === 'form');
         var isFormCtrl = (isSem && ['input', 'select', 'textarea'].indexOf(tag) !== -1);
         var cur = node.props._bindings || {};
@@ -36199,6 +36363,12 @@ const StyleDesigner = (function () {
             if (region === 'form_item_view') {
                 aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
             }
+            // A link sends nothing, so only a button is offered the send
+            // action; a link that already carries it still lists it, so it
+            // can be seen and cleared.
+            if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {
+                aOpts.push(['comment_submit',      _sdT('Send the comment')]);
+            }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
                 aOpts.push(['unlink_microsoft',        _sdT('Disconnect Microsoft')]);
@@ -36222,6 +36392,7 @@ const StyleDesigner = (function () {
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
             else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
+            else if (region === 'comments')        fOpts.push(['comment_form', _sdT('Add-comment form')]);
             out += mkSelect('data-bind-action', cur.action || '', fOpts, _sdT('Form action'),
                 _sdT('The backend adds the right action / method values and the hidden fields.'));
         }
@@ -36239,6 +36410,13 @@ const StyleDesigner = (function () {
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
+            }
+            if (region === 'comments') {
+                vOpts.push(['comment_message',   _sdT('Comment text (message)')]);
+                vOpts.push(['comment_name',      _sdT('Name the visitor types (name)')]);
+                vOpts.push(['comment_name_type', _sdT('Name a member chooses (name_type)')]);
+                vOpts.push(['comment_file',      _sdT('Attachment (file)')]);
+                vOpts.push(['comment_watcher',   _sdT('Notify me of new comments (watcher)')]);
             }
             out += mkSelect('data-bind-value', cur.value || '', vOpts, _sdT('Field binding'),
                 _sdT('The input behaves according to the system widget it sits in.'));
@@ -36983,6 +37161,42 @@ const StyleDesigner = (function () {
                     _sdT('You can bind it to the error and to the links back into the site.') +
                 '</div>' +
                 rowsHtmlEP
+            );
+        }
+
+        // ── comments branch — the page's thread and its comments
+        // (widgets_comments.php)
+        if (regionType === 'comments') {
+            var cmFlat = [];
+            SW_COMMENTS_TOKEN_GROUPS.forEach(function (g) { g.tokens.forEach(function (t) { cmFlat.push(t[0]); }); });
+            var rowsHtmlCM = '';
+            bindable.forEach(function (b) {
+                var current = bindings[b.prop] || '';
+                var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
+                SW_COMMENTS_TOKEN_GROUPS.forEach(function (g) {
+                    html += '<optgroup label="' + esc(g.label) + '">';
+                    g.tokens.forEach(function (t) {
+                        html += '<option value="' + esc(t[0]) + '"' + (t[0] === current ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
+                    });
+                    html += '</optgroup>';
+                });
+                var isCustom = !!(current && cmFlat.indexOf(current) === -1);
+                html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
+                rowsHtmlCM += row(b.label,
+                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
+                    ' data-bind-prop="' + esc(b.prop) + '"' +
+                    ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
+                    ' value="' + esc(isCustom ? current : '') + '"' +
+                    (isCustom ? '' : ' style="display:none"') + '>');
+            });
+            return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
+                '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);padding:4px 8px;margin-bottom:6px;border-radius:3px;line-height:1.4">' +
+                    '<span class="bi bi-info-circle me-1"></span>' +
+                    _sdT('This element is inside a <strong>{var}</strong> system widget.', _sdT('Comments')) + ' ' +
+                    _sdT('You can bind it to the page\'s comment thread, and inside the loop_area to each comment.') +
+                '</div>' +
+                rowsHtmlCM
             );
         }
 
@@ -38272,6 +38486,10 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {
                 _sectionOpts.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
+            } else if (_semSwRegion === 'comments') {
+                _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
+                _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
+                _sectionOpts.push(['comment_publish',      _sdT('Publish options (staff only)')]);
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
@@ -47828,7 +48046,8 @@ const StyleDesigner = (function () {
         { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
-        { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
+        { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' },
+        { type: 'comments',          label: _sdT('Comments'),          slug: _sdT('comments'),          icon: 'bi-chat-left-text' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -47981,6 +48200,15 @@ const StyleDesigner = (function () {
         } else if (newType === 'language_switcher') {
             if (cfg.show_codes === undefined) cfg.show_codes = false;
             if (cfg.hide_current === undefined) cfg.hide_current = false;
+        } else if (newType === 'comments') {
+            // The display options, with the defaults of the PHP twin
+            // pg_comments_widget_options(). layout, max_depth and per_page
+            // are kept for the thread's later shapes.
+            if (cfg.order === undefined) cfg.order = 'oldest';
+            if (cfg.featured === undefined) cfg.featured = 'first';
+            if (cfg.layout === undefined) cfg.layout = 'flat';
+            if (cfg.max_depth === undefined) cfg.max_depth = 1;
+            if (cfg.per_page === undefined) cfg.per_page = 0;
         } else if (newType === 'custom_form') {
             if (cfg.form_source === undefined) cfg.form_source = 'page';
         } else if (newType === 'form_list_view') {
@@ -48601,7 +48829,8 @@ const StyleDesigner = (function () {
             calendar_view:       SW_CALENDAR_VIEW_TOKEN_GROUPS,
             error_page:          SW_ERROR_PAGE_TOKEN_GROUPS,
             calendar_event_view: SW_CALENDAR_EVENT_VIEW_TOKEN_GROUPS,
-            express_order:       SW_EXPRESS_ORDER_TOKEN_GROUPS
+            express_order:       SW_EXPRESS_ORDER_TOKEN_GROUPS,
+            comments:            SW_COMMENTS_TOKEN_GROUPS
         };
         return palettes[type] || SW_ACCOUNT_TOKEN_PALETTES[type] || [];
     }
@@ -52341,6 +52570,139 @@ const StyleDesigner = (function () {
                             ])
                         ]),
                         createNode('loop_area', {}, [])
+                    ])
+                ]);
+            }
+
+            case 'comments': {
+                // The page's comments and the form that adds one. Mirrors
+                // pg_comments_default_tree() in widgets_comments.php node for
+                // node; tests/comments_widget_test.php compares the bindings
+                // of the two in document order, so the layout stays one
+                // nested expression. The Messages block comes first in the
+                // form: a refused post comes back to #software_add_comment
+                // and its errors show right there.
+                return createNode('root', {}, [
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3',
+                            customName: _sdT('Comments Heading'), _bindings: { eo_visible_if: 'has_comments' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Comments'), cssClass: 'h5 mb-0',
+                                _bindings: { text: '__comments_title' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 small pg-hide-if-empty', customName: _sdT('Featured Links'),
+                                _bindings: { eo_visible_if: 'has_featured' } }, [
+                                createNode('content', { contentType: 'link', text: _sdT('Show all'), href: '#', cssClass: '',
+                                    _bindings: { href: '__comments_show_all_url' } }),
+                                createNode('content', { contentType: 'link', text: _sdT('Show featured'), href: '#', cssClass: '',
+                                    _bindings: { href: '__comments_show_featured_url' } })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', customName: _sdT('Comment List') }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'card mb-3', customName: _sdT('Comment') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
+                                            customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
+                                        createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
+                                            _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
+                                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
+                                                _bindings: { text: '__comment_name' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
+                                                _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
+                                                _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
+                                                _bindings: { eo_visible_if: 'comment_is_verified' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
+                                                _bindings: { eo_visible_if: 'comment_is_featured' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
+                                            _bindings: { text: '__comment_date' } }),
+                                        createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
+                                            _bindings: { text: '__comment_message_html' } }),
+                                        createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
+                                            _bindings: { eo_visible_if: 'comment_has_file' } }, [
+                                            createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
+                                                _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
+                                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
+                                                _bindings: { text: '__comment_file_size' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
+                                            _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
+                                                _bindings: { text: '__comment_seller_reply_date' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
+                                                _bindings: { text: '__comment_seller_reply_html' } })
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ]),
+                        createNode('content', { contentType: 'paragraph', text: _sdT('No comments yet.'), cssClass: 'text-body-secondary',
+                            _bindings: { eo_visible_if: 'no_comments' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mt-4', customName: _sdT('Add a comment') }, [
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Add a comment'), cssClass: 'h6 mb-2',
+                                _bindings: { eo_visible_if: 'comments_open' } }),
+                            createNode('semantic', { tag: 'p', cssClass: 'small text-body-secondary mb-2 pg-hide-if-empty',
+                                _bindings: { text: '__comments_intro', eo_visible_if: 'comments_open' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary', customName: _sdT('Closed'),
+                                _bindings: { text: '__comments_closed_message', eo_visible_if: 'comments_closed' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap gap-2', customName: _sdT('Sign in'),
+                                _bindings: { eo_visible_if: 'must_sign_in' } }, [
+                                createNode('semantic', { tag: 'span', text: _sdT('Sign in to add your comment.') }),
+                                createNode('content', { contentType: 'link', text: _sdT('Sign in'), href: '#', cssClass: 'fw-semibold', rel: 'nofollow',
+                                    _bindings: { href: '__login_url' } })
+                            ]),
+                            createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
+                                _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
+                                createNode('content', { contentType: 'messages', cssClass: '' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-label visually-hidden', text: _sdT('Comment'),
+                                        _attrs: [{ name: 'for', value: 'comment_message' }] }),
+                                    createNode('semantic', { tag: 'textarea', cssClass: 'form-control', id: 'comment_message',
+                                        _attrs: [{ name: 'rows', value: '5' }], _bindings: { value: 'comment_message' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3', _bindings: { eo_visible_if: 'name_is_typed' } }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Your name (optional)'),
+                                        _attrs: [{ name: 'for', value: 'comment_name' }] }),
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', id: 'comment_name',
+                                        _attrs: [{ name: 'type', value: 'text' }], _bindings: { value: 'comment_name' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3', _bindings: { eo_visible_if: 'name_is_chosen' } }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Your Name'),
+                                        _attrs: [{ name: 'for', value: 'comment_name_type' }] }),
+                                    createNode('semantic', { tag: 'select', cssClass: 'form-select', id: 'comment_name_type',
+                                        _bindings: { value: 'comment_name_type' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3 small', _bindings: { eo_visible_if: 'name_is_fixed' } }, [
+                                    createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Posting as') }),
+                                    createNode('semantic', { tag: 'strong', _bindings: { text: '__comment_author_name' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3', _bindings: { eo_visible_if: 'rating_on' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'form-label', text: _sdT('Rating') }),
+                                    createNode('semantic', { tag: 'div', _bindings: { section: 'comment_rating_input' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3', _bindings: { eo_visible_if: 'files_on' } }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Attach a File'),
+                                        _attrs: [{ name: 'for', value: 'comment_file' }] }),
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', id: 'comment_file',
+                                        _attrs: [{ name: 'type', value: 'file' }], _bindings: { value: 'comment_file' } })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3 small', _bindings: { section: 'comment_publish' } }),
+                                createNode('semantic', { tag: 'div', cssClass: 'form-check mb-3', _bindings: { eo_visible_if: 'watching_on' } }, [
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: 'comment_watcher',
+                                        _attrs: [{ name: 'type', value: 'checkbox' }], _bindings: { value: 'comment_watcher' } }),
+                                    createNode('semantic', { tag: 'label', cssClass: 'form-check-label', text: _sdT('Notify me when a new comment is added.'),
+                                        _attrs: [{ name: 'for', value: 'comment_watcher' }] })
+                                ]),
+                                createNode('semantic', { tag: 'div', cssClass: 'mb-3', _bindings: { section: 'comment_captcha' } }),
+                                createNode('semantic', { tag: 'div' }, [
+                                    createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add comment'),
+                                        _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_submit' } })
+                                ])
+                            ])
+                        ])
                     ])
                 ]);
             }
