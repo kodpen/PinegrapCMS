@@ -264,6 +264,25 @@ function test_prototype_clean_fragment_keeps_a_safe_section_name()
 	pg_assert_same('', pg_proto_clean_fragment("a\nb"));
 	pg_assert_same('', pg_proto_clean_fragment(array('x')));
 	pg_assert_same('', pg_proto_clean_fragment(str_repeat('a', 201)));
+	// The limit counts the section name, not its escapes.
+	pg_assert_same(str_repeat('%C3%A9', 100), pg_proto_clean_fragment(str_repeat("\xC3\xA9", 100)));
+	pg_assert_same('', pg_proto_clean_fragment(str_repeat("\xC3\xA9", 101)));
+	pg_assert_same('', pg_proto_clean_fragment(str_repeat('%C3%A9', 101)));
+}
+
+// A section name the link accepted reaches the frame: the viewer cleans the
+// escaped form it is handed again and keeps it as it is.
+function test_prototype_long_section_name_survives_the_viewer()
+{
+	$fragment = 'как-оформить-заказ-и-оплатить-доставку';
+	$target = pg_proto_link_target('/pricing#' . $fragment, prototype_viewer_test_ctx());
+	$escaped = pg_proto_clean_fragment($fragment);
+
+	pg_assert_true(strlen($escaped) > 200, 'escaped form is longer than the limit');
+	pg_assert_same('/pinegrap/prototype.php?page=12&anchor=' . rawurlencode($escaped), $target['href']);
+
+	parse_str((string) parse_url($target['href'], PHP_URL_QUERY), $get);
+	pg_assert_same($escaped, pg_proto_clean_fragment($get['anchor']));
 }
 
 function test_prototype_frame_url_carries_the_section()
@@ -310,6 +329,37 @@ function test_prototype_link_bare_query_is_the_page_itself()
 
 	pg_assert_same('prototype', $target['kind']);
 	pg_assert_same('/pinegrap/prototype.php?page=11', $target['href']);
+}
+
+// A bare query string is read the way a browser reads it against the view
+// on screen: the path (page and item) stays, the record is the one the query
+// names, the fragment is the link's.
+function test_prototype_link_bare_query_keeps_the_view_it_sits_on()
+{
+	$ctx = prototype_viewer_test_ctx();
+
+	// A record named in the query, and its section.
+	pg_assert_same('/pinegrap/prototype.php?page=11&r=abc', pg_proto_link_target('?r=abc', $ctx)['href']);
+	pg_assert_same('/pinegrap/prototype.php?page=11&r=abc&anchor=sec', pg_proto_link_target('?r=abc#sec', $ctx)['href']);
+
+	// A catalog's pages and filters on a product group stay on that group.
+	$ctx['current_page'] = 17;
+	$ctx['current_sub'] = 'shirts';
+	$target = pg_proto_link_target('?page=2', $ctx);
+	pg_assert_same('prototype', $target['kind']);
+	pg_assert_same(17, $target['page_id']);
+	pg_assert_same('/pinegrap/prototype.php?page=17&sub=shirts', $target['href']);
+	pg_assert_same('/pinegrap/prototype.php?page=17&sub=shirts', pg_proto_link_target('?page_number=2&sort=new', $ctx)['href']);
+
+	// On a record, another query replaces it (as the browser does); the
+	// same record with a section scrolls inside the frame.
+	$ctx['current_page'] = 11;
+	$ctx['current_sub'] = '';
+	$ctx['current_record'] = 'abc';
+	pg_assert_same('/pinegrap/prototype.php?page=11', pg_proto_link_target('?page=2', $ctx)['href']);
+	$target = pg_proto_link_target('?r=abc#sec', $ctx);
+	pg_assert_same('anchor', $target['kind']);
+	pg_assert_same('#sec', $target['href']);
 }
 
 function prototype_viewer_test_rewrite($html)
@@ -511,6 +561,31 @@ function test_background_render_prints_no_analytics_tag()
 	pg_assert_same(1, preg_match("~if \(\(GOOGLE_ANALYTICS == TRUE\) && \(GOOGLE_ANALYTICS_WEB_PROPERTY_ID != ''\) && !pg_seo_rendering\(\)\)~", $source));
 }
 
+// A My Account widget set to send signed-out visitors to the sign-in page
+// draws its signed-out view in a background render (the prototype frame, the
+// SEO pass): a redirect there would end the request mid-render.
+function test_background_render_my_account_does_not_redirect()
+{
+	if (defined('USER_LOGGED_IN') && USER_LOGGED_IN) {
+		return;
+	}
+
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Notice: ^^not_logged_in^^'), 'children' => array()),
+	));
+	$cfg = array('redirect_to_login' => true, 'login_page_id' => 5, 'not_logged_in_message' => 'Sign in first');
+	$seo = pg_seo_rendering();
+	pg_seo_rendering(true);
+
+	try {
+		$html = _render_system_widget_my_account(json_encode($tree), 3, $cfg);
+	} finally {
+		pg_seo_rendering($seo);
+	}
+
+	pg_assert_same('<p>Notice: Sign in first</p>', $html);
+}
+
 function prototype_viewer_test_view()
 {
 	return array(
@@ -571,6 +646,12 @@ function test_prototype_frame_inject_adds_head_tags_and_helper()
 	pg_assert_contains('<script id="pg-proto-frame">', $out);
 	pg_assert_true(strpos($out, '<script id="pg-proto-frame">') < strpos($out, '</body>'));
 	pg_assert_contains('No forms', $out);
+
+	// Hotspots outline every kind of link that goes somewhere, a section of
+	// the view on screen included.
+	foreach (array('prototype', 'anchor', 'site', 'external', 'contact', 'broken', 'draft') as $kind) {
+		pg_assert_contains('.pg-proto-hotspots a[data-pg-proto="' . $kind . '"]', $out, $kind);
+	}
 }
 
 function test_prototype_frame_inject_primes_the_cookie_jar_and_hides_the_notice()

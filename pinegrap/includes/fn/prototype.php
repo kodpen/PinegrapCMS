@@ -84,7 +84,9 @@ function pg_proto_clean_text($value, $max)
  */
 function pg_proto_clean_fragment($value)
 {
-    if (!is_string($value) || ($value === '') || (strlen($value) > 200) || preg_match('/[\x00-\x1F\x7F]/', $value)) {
+    // The limit counts the name, not its escapes: the viewer cleans the
+    // escaped form it is handed again, and must keep what the link kept.
+    if (!is_string($value) || ($value === '') || (strlen(rawurldecode($value)) > 200) || preg_match('/[\x00-\x1F\x7F]/', $value)) {
         return '';
     }
 
@@ -436,6 +438,53 @@ function pg_proto_viewer_url($base, $page_id, $sub = '', $record = '', $anchor =
 }
 
 /**
+ * The record code (?r=) a link names, as the viewer passes it on; '' for
+ * none.
+ *
+ * @param string $href
+ * @return string
+ */
+function pg_proto_href_record($href)
+{
+    $query = parse_url((string) $href, PHP_URL_QUERY);
+
+    if (!is_string($query) || ($query === '')) {
+        return '';
+    }
+
+    parse_str($query, $query_values);
+
+    return pg_proto_clean_text(isset($query_values['r']) ? $query_values['r'] : '', 100);
+}
+
+/**
+ * Where a link to one view of a page of the prototype leads: a section of
+ * the view in the frame scrolls there ('#name'; drawing the view again would
+ * put the visitor back at the top), anything else goes through the viewer.
+ *
+ * @param array  $ctx      pg_proto_link_target()
+ * @param int    $page_id  a page of the prototype
+ * @param string $sub      the part of a pretty address after the page name
+ * @param string $record   a record code (?r=)
+ * @param string $fragment pg_proto_clean_fragment()
+ * @return array kind (anchor, prototype), page_id, href
+ */
+function pg_proto_view_target($ctx, $page_id, $sub, $record, $fragment)
+{
+    $page_id = (int) $page_id;
+    $same_view = ($page_id === (isset($ctx['current_page']) ? (int) $ctx['current_page'] : 0))
+        && ((string) $sub === (isset($ctx['current_sub']) ? (string) $ctx['current_sub'] : ''))
+        && ((string) $record === (isset($ctx['current_record']) ? (string) $ctx['current_record'] : ''));
+
+    if ($same_view && ((string) $fragment !== '')) {
+        return array('kind' => 'anchor', 'page_id' => $page_id, 'href' => '#' . $fragment);
+    }
+
+    return array('kind' => 'prototype', 'page_id' => $page_id,
+        'href' => pg_proto_viewer_url(isset($ctx['viewer']) ? (string) $ctx['viewer'] : '', $page_id, $sub, $record, $fragment));
+}
+
+/**
  * Where one link of a drawn draft leads in the prototype.
  *
  * Kinds: prototype (another page of the prototype, or the page on view
@@ -462,7 +511,6 @@ function pg_proto_link_target($href, $ctx)
     $env = isset($ctx['env']) ? $ctx['env'] : array();
     $maps = isset($ctx['maps']) ? $ctx['maps'] : array();
     $proto = isset($ctx['proto']) ? $ctx['proto'] : array();
-    $viewer = isset($ctx['viewer']) ? (string) $ctx['viewer'] : '';
     $out = array('kind' => '', 'page_id' => 0, 'href' => $href);
 
     $parsed = pg_link_parse($href, $env);
@@ -486,11 +534,15 @@ function pg_proto_link_target($href, $ctx)
                 return $out;
 
             case 'self':
-                // A bare query string is the page it sits on.
+                // A bare query string is read against the view on screen, as
+                // a browser reads it: the page and the item stay, the query
+                // (so the record) and the fragment are the link's own.
                 if (strpos($href, '?') === 0) {
-                    $current = isset($ctx['current_page']) ? (int) $ctx['current_page'] : 0;
-
-                    return array('kind' => 'prototype', 'page_id' => $current, 'href' => pg_proto_viewer_url($viewer, $current));
+                    return pg_proto_view_target($ctx,
+                        isset($ctx['current_page']) ? (int) $ctx['current_page'] : 0,
+                        isset($ctx['current_sub']) ? (string) $ctx['current_sub'] : '',
+                        pg_proto_href_record($href),
+                        pg_proto_clean_fragment(parse_url($href, PHP_URL_FRAGMENT)));
                 }
 
                 $out['kind'] = 'site';
@@ -517,14 +569,7 @@ function pg_proto_link_target($href, $ctx)
         return array('kind' => 'broken', 'page_id' => 0, 'href' => '');
     }
 
-    $record = '';
-    $query = parse_url($href, PHP_URL_QUERY);
-
-    if (is_string($query) && ($query !== '')) {
-        parse_str($query, $query_values);
-        $record = pg_proto_clean_text(isset($query_values['r']) ? $query_values['r'] : '', 100);
-    }
-
+    $record = pg_proto_href_record($href);
     $fragment = pg_proto_clean_fragment(parse_url($href, PHP_URL_FRAGMENT));
 
     // The page the address is drawn on: the page itself, or for a pretty
@@ -548,17 +593,7 @@ function pg_proto_link_target($href, $ctx)
     // The frame draws the source language only, so another language's
     // version of a draft opens on the site like any other page.
     if ($in_proto && ($split['language'] === '')) {
-        $same_view = ($page_id === (isset($ctx['current_page']) ? (int) $ctx['current_page'] : 0))
-            && ($sub === (isset($ctx['current_sub']) ? (string) $ctx['current_sub'] : ''))
-            && ($record === (isset($ctx['current_record']) ? (string) $ctx['current_record'] : ''));
-
-        // A section of the view on screen scrolls there; drawing the view
-        // again would put the visitor back at the top.
-        if ($same_view && ($fragment !== '')) {
-            return array('kind' => 'anchor', 'page_id' => $page_id, 'href' => '#' . $fragment);
-        }
-
-        return array('kind' => 'prototype', 'page_id' => $page_id, 'href' => pg_proto_viewer_url($viewer, $page_id, $sub, $record, $fragment));
+        return pg_proto_view_target($ctx, $page_id, $sub, $record, $fragment);
     }
 
     if (($resolved['type'] === 'page') && ($page_id <= 0)) {
@@ -889,7 +924,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         // one, and an answer given there would start the tags it holds.
         . '#pg-cc{display:none!important}'
         . 'a[data-pg-proto="broken"],a[data-pg-proto="draft"]{cursor:not-allowed;text-decoration-line:underline;text-decoration-style:wavy;text-decoration-color:#dc3545}'
-        . '.pg-proto-hotspots a[data-pg-proto="prototype"]{outline:2px solid rgba(13,110,253,.9)!important;outline-offset:2px;background-color:rgba(13,110,253,.12)!important}'
+        . '.pg-proto-hotspots a[data-pg-proto="prototype"],.pg-proto-hotspots a[data-pg-proto="anchor"]{outline:2px solid rgba(13,110,253,.9)!important;outline-offset:2px;background-color:rgba(13,110,253,.12)!important}'
         . '.pg-proto-hotspots a[data-pg-proto="site"],.pg-proto-hotspots a[data-pg-proto="external"],.pg-proto-hotspots a[data-pg-proto="contact"]{outline:2px dashed rgba(25,135,84,.9)!important;outline-offset:2px}'
         . '.pg-proto-hotspots a[data-pg-proto="broken"],.pg-proto-hotspots a[data-pg-proto="draft"]{outline:2px dashed rgba(220,53,69,.95)!important;outline-offset:2px}'
         . '.pg-proto-toast{position:fixed;left:50%;bottom:16px;z-index:2147483647;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:rgba(33,37,41,.95);color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;pointer-events:none;transform:translate(-50%,12px);transition:opacity .2s,transform .2s}'
