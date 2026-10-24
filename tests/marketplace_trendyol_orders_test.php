@@ -95,17 +95,18 @@ function trendyol_orders_test_packages($count, $first, $step, $prefix = 1000000)
 // A transport that answers the v2/orders feed out of $feed the way Trendyol
 // does: only the packages modified inside startDate..endDate, in ascending
 // order of modification, a page of the size asked for at a time. Every URL it
-// is asked for is written into $calls. Page $fail_page, when given, answers 500.
-function trendyol_orders_test_feed_transport($feed, &$calls, $fail_page = -1)
+// is asked for is written into $calls. Request $fail_call (counted from 0),
+// when given, answers 500.
+function trendyol_orders_test_feed_transport($feed, &$calls, $fail_call = -1)
 {
-	return function ($method, $url, $options) use ($feed, &$calls, $fail_page) {
+	return function ($method, $url, $options) use ($feed, &$calls, $fail_call) {
 
 		$calls[] = $url;
 
 		$query = array();
 		parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
-		if ((int) $query['page'] === $fail_page) {
+		if (count($calls) - 1 === $fail_call) {
 			return array('ok' => false, 'status' => 500, 'body' => '{"errors":[{"message":"down"}]}',
 				'error' => '', 'duration_ms' => 1);
 		}
@@ -495,7 +496,9 @@ function test_marketplace_trendyol_orders_pull_window_is_at_most_two_weeks()
 		&& (int) $query['startDate'] <= ($after - 604800 - 300) * 1000, 'a week: ' . $query['startDate']);
 }
 
-function test_marketplace_trendyol_orders_pull_asks_for_the_next_page_after_a_full_one()
+// After a full page the window starts again just before the last moment read,
+// from page 0; the last package comes back and is not handed over twice.
+function test_marketplace_trendyol_orders_pull_asks_again_from_the_last_moment_after_a_full_page()
 {
 	$since = time() - 3600;
 	$calls = array();
@@ -504,8 +507,10 @@ function test_marketplace_trendyol_orders_pull_asks_for_the_next_page_after_a_fu
 		trendyol_orders_test_feed_transport(trendyol_orders_test_packages(200, $since + 10, 1), $calls));
 
 	pg_assert_true($result['ok']);
-	pg_assert_same(2, count($calls), 'a full page, then an empty one');
-	pg_assert_same('1', trendyol_orders_test_query($calls[1])['page']);
+	pg_assert_same(2, count($calls), 'a full page, then one that holds only the last package again');
+	pg_assert_same('0', trendyol_orders_test_query($calls[1])['page']);
+	pg_assert_same((string) (($since + 10 + 199) * 1000 - 1), trendyol_orders_test_query($calls[1])['startDate'],
+		'a millisecond before the last package read');
 	pg_assert_same(200, count($result['data']['packages']));
 	pg_assert_true($result['data']['complete']);
 	pg_assert_false(!empty($result['data']['more']));
@@ -521,10 +526,11 @@ function test_marketplace_trendyol_orders_pull_at_the_page_cap_moves_the_cursor_
 
 	pg_assert_true($result['ok']);
 	pg_assert_same(20, count($calls), 'twenty pages, then it stops');
-	pg_assert_same(4000, count($result['data']['packages']));
+	pg_assert_same(200 + 19 * 199, count($result['data']['packages']),
+		'every page after the first starts with the last package of the one before');
 	pg_assert_true($result['data']['complete'], 'the cursor moves');
 	pg_assert_true(!empty($result['data']['more']));
-	pg_assert_same($since + 60 + 3999 * 10, $result['data']['read_to'],
+	pg_assert_same($since + 60 + 3980 * 10, $result['data']['read_to'],
 		'to the modification time of the last package read, not to now');
 
 	// The next pass starts there and reads the rest.
@@ -559,8 +565,8 @@ function test_marketplace_trendyol_orders_pull_cursor_counts_the_entries_it_skip
 	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $since, trendyol_orders_test_feed_transport($feed, $calls));
 
 	pg_assert_same(20, count($calls));
-	pg_assert_same(3900, count($result['data']['packages']), 'the hundred awaiting ones are not imported');
-	pg_assert_same($since + 60 + 3999 * 10, $result['data']['read_to'], 'the last entry read, which was skipped');
+	pg_assert_same(3981 - 81, count($result['data']['packages']), 'the awaiting ones read are not imported');
+	pg_assert_same($since + 60 + 3980 * 10, $result['data']['read_to'], 'the last entry read, which was skipped');
 }
 
 function test_marketplace_trendyol_orders_pull_reads_past_the_cap_when_the_cap_would_not_move_the_cursor()
@@ -612,8 +618,65 @@ function test_marketplace_trendyol_orders_pull_failure_hands_over_what_was_read_
 
 	pg_assert_false($result['ok']);
 	pg_assert_true(!empty($result['retry']), 'a 500 is worth trying again');
-	pg_assert_same(400, count($result['data']['packages']));
+	pg_assert_same(200 + 199, count($result['data']['packages']));
 	pg_assert_false($result['data']['complete']);
+}
+
+// A crowded overlap in bursts that each share one moment. A window started
+// again reads the entries of its last moment a second time; only the new
+// entries count toward the ceiling, so the pull still gets through the
+// overlap and the cursor moves on.
+function test_marketplace_trendyol_orders_pull_ceiling_counts_new_entries_not_requests()
+{
+	$since = time() - 86400;
+	$feed = array();
+
+	for ($group = 0; $group < 60; $group++) {
+		$feed = array_merge($feed, trendyol_orders_test_packages(100, $since - 290 + $group * 4, 0, 1000000 + $group * 1000));
+	}
+
+	$feed = array_merge($feed, trendyol_orders_test_packages(500, $since + 1000, 1, 9000000));
+	$calls = array();
+
+	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $since, trendyol_orders_test_feed_transport($feed, $calls));
+
+	pg_assert_true($result['ok']);
+	pg_assert_true($result['data']['complete'], 'the overlap is read through');
+	pg_assert_true($result['data']['read_to'] > $since, 'the cursor moves past where it started');
+	pg_assert_same(6000, count(array_intersect(trendyol_orders_test_ids($result['data']['packages']),
+		trendyol_orders_test_ids(array_map('mp_trendyol_package', array_slice($feed, 0, 6000))))), 'every package of the overlap');
+	pg_assert_true(count($calls) <= 150, 'at most three requests per page of the ceiling');
+}
+
+// A package read on the first page changes before the second page is asked
+// for. Asked by page number inside the same window, every later package would
+// move up one place and the one that moved onto the first page would never be
+// read; the cursor would then pass it for good.
+function test_marketplace_trendyol_orders_pull_loses_no_package_when_one_already_read_changes()
+{
+	$since = time() - 3600;
+	$feed = trendyol_orders_test_packages(300, $since + 10, 10);
+	$calls = array();
+	$requests = 0;
+
+	$transport = function ($method, $url, $options) use (&$feed, &$calls, &$requests) {
+
+		$requests++;
+
+		if ($requests === 2) {
+			$feed[5]['lastModifiedDate'] = (time() + 60) * 1000;
+		}
+
+		$answer = trendyol_orders_test_feed_transport($feed, $calls);
+
+		return $answer($method, $url, $options);
+	};
+
+	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $since, $transport);
+
+	pg_assert_true($result['ok']);
+	pg_assert_same(300, count(array_unique(trendyol_orders_test_ids($result['data']['packages']))),
+		'every package of the window is read');
 }
 
 function test_marketplace_trendyol_orders_pull_with_bad_credentials_makes_no_call()
