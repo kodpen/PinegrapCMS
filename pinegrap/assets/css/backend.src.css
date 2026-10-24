@@ -13248,6 +13248,20 @@ a.ws-chip:hover {
   white-space: nowrap;
   max-width: 45%;
 }
+/* A label with a second line under it (a slash command and its example). */
+.ws-picker-item .ws-picker-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-picker-item .ws-picker-detail {
+  font-size: .72rem;
+  color: var(--bs-secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-picker-empty {
   padding: .6rem .75rem;
   font-size: .85rem;
