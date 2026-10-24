@@ -27,7 +27,7 @@ description: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: pr
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
-7. F7 shares (schema); F8 MCP tool, assistant, AI draft cards, starters.
+7. F7 shares (schema, plans/prototype-sharing.md); F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members only personal flows with steps in their own reach), 3 a (publishing decides; a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". Recommendations taken for 5-7 (owner: decide without asking); 8 is open.

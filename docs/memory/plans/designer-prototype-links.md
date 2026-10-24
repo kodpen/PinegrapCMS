@@ -15,6 +15,7 @@ description: Plan (2026-10-24, not started, answers open): a Figma/XD-like proto
 - An arrow from another page first opens that tab (`_pgTabsSwitch()`), so `saveState()`, `_sdMayEdit()` and the page lock answer for it (or these helpers get a per-page form); then `_sdSharedMarkEdited()` and the normal Save (`pg_designer_save_page()`), so lock, revision and `_pgPageUnchanged()` apply. A shared header draws once, as its own frame saying how many pages it reaches (`pg_shared_component_usage()`).
 - Targets: design pages; other site pages, external, mailto, #anchor as end chips; an old href of a renamed page followed through its short link to the page. Broken (binned, deleted, unknown) has one definition: the resolution of `pg_seo_resolve_link()` split from its maps, with PHP tests, and a JS twin with finer classes than 'external'; at content level no hidden page name reaches the browser; drafts flagged.
 - Frames start as hotspot lists; positions per browser first, later shared in `style.style_tab_layout` (both normalisers, no ALTER).
+- Drafts played as a prototype, a view-only link to it, flow shares: plans/prototype-sharing.md.
 
 ## Slices (one PR each)
 1. Read-only map: frames and arrows from every tab (`_pgTreeOf()`, shared components prefetched), classic menus (`pg_menu_tree()`) and legacy regions by a new read, the resolver split and twin with tests, broken, draft and external marks; a hotspot selects its node.
