@@ -20,7 +20,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
-- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusal texts, no MCP tool, layout writes gated by the owner
+- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools, layout writes
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
