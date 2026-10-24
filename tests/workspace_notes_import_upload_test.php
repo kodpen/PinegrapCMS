@@ -267,6 +267,7 @@ function test_workspace_notes_import_upload_unreadable_file_named()
 	pg_assert_true(($check !== '') && ($draw !== '') && ($upload !== '') && ($send !== ''), 'check(), drawPick(), upload() and sendFiles() are found');
 	pg_assert_true(strpos($check, "entry.state = 'stale';") !== false, 'an unreadable file is left out');
 	pg_assert_true(strpos($draw, "t('notes_import_unreadable')") !== false, 'and its row says so');
+	pg_assert_true(strpos($draw, 'var said = error || result.error;') !== false && strpos($draw, 'result.error || error') === false, 'a refused upload is said ahead of the list\'s own rule');
 	pg_assert_true(strpos($send, 'error.network = true;') !== false, 'a request the browser could not send is told apart');
 	pg_assert_true(strpos($upload, 'error.network') !== false && strpos($upload, 'probe(') !== false, 'after it the files sent are read');
 	pg_assert_true(strpos($upload, "t('notes_import_cannot_read'") !== false, 'and the ones that cannot be read are named');

@@ -20666,13 +20666,18 @@
                     body.appendChild(list);
                 }
 
-                if (result.error || error) {
-                    var notice = el('div', 'alert alert-danger small mt-3 mb-0', result.error || error);
+                // A refused upload is said ahead of the list's own rule: it
+                // names the files that could not be read, which the rule
+                // does not. It is read out once; the rule is drawn again
+                // with every change, and would be read out again each time.
+                // The next change redraws with no refusal, so the rule's
+                // message comes back.
+                var said = error || result.error;
 
-                    // A refused upload is read out once. The list's own
-                    // rules are drawn again with every change, and would be
-                    // read out again each time.
-                    if (!result.error) {
+                if (said) {
+                    var notice = el('div', 'alert alert-danger small mt-3 mb-0', said);
+
+                    if (error) {
                         notice.setAttribute('role', 'alert');
                     }
 
