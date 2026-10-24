@@ -9,8 +9,9 @@
  * assets/js/workspace.js draws the writing box and the messages and calls in
  * here with its own helpers. A recording leaves as an ordinary file through
  * the screen's upload (uploadFiles(), ws_attach), so the server checks and
- * keeps it like any other file (includes/workspace/files.php). Every text
- * comes from the #ws-config block (includes/workspace/voice.php).
+ * keeps it like any other file (includes/workspace/files.php); one made from
+ * a sound's own microphone answers that sound (parent_id). Every text comes
+ * from the #ws-config block (includes/workspace/voice.php).
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -429,8 +430,10 @@
         return text + '×';
     }
 
-    // A sound file in the conversation: file {url, name}.
-    function player(file, h) {
+    // A sound file in the conversation: file {url, name}. options.reply,
+    // when given, draws a microphone that answers it with a recording: a
+    // tap, since a phone's long press opens the message's menu.
+    function player(file, h, options) {
         var t = h.t;
         var el = h.el;
         var locale = (h.cfg && h.cfg.locale) || '';
@@ -472,6 +475,16 @@
         box.appendChild(play);
         box.appendChild(main);
         box.appendChild(speed);
+
+        if (options && options.reply) {
+            var answer = h.button('btn btn-sm btn-ghost ws-voice-reply', '', 'bi-mic', t('voice_reply'));
+
+            answer.addEventListener('click', function () {
+                options.reply();
+            });
+            box.appendChild(answer);
+        }
+
         box.appendChild(save);
         box.appendChild(audio);
 
@@ -639,8 +652,15 @@
         return box;
     }
 
+    // Whether a recording is running, or the browser is still asked for the
+    // microphone.
+    function busy() {
+        return !!recording;
+    }
+
     window.PGWsVoice = {
         supported: supported,
+        busy: busy,
         start: start,
         player: player,
         isVoice: isVoice

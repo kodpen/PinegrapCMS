@@ -26893,5 +26893,6 @@
     "Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} takip bağlantısıyla kargolandı olarak işaretlendi.",
     "Voice message": "Sesli mesaj",
     "Play": "Oynat",
-    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek."
+    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek.",
+    "Reply with voice": "Sesli yanıtla"
 }
