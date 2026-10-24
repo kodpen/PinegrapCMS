@@ -195,8 +195,7 @@ function test_api_order_returns_present_the_withdrawal_timing()
 
 	pg_assert_same(true, api_order_return_present($row, null, $estimated)['withdrawal']['delivered_estimated'], 'an estimated delivery');
 
-	pg_assert_same(null, api_order_return_present($row, null, array(9008 => null))['withdrawal'], 'no delivery date known');
-	pg_assert_same(null, api_order_return_present($row, null, array())['withdrawal'], 'the delivery is gone');
+	pg_assert_same(null, api_order_return_present($row, null, array(9008 => null))['withdrawal'], 'no delivery date known, or the delivery is gone: the map holds null for it');
 	pg_assert_same(null, api_order_return_present($row)['withdrawal'], 'nothing prepared');
 
 	pg_assert_same('OrderReturnWithdrawal?', api_order_return_schema()['withdrawal'], 'a nested object that may be null');
@@ -216,7 +215,35 @@ function test_api_order_returns_routes_prepare_the_deliveries()
 		$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
 
 		pg_assert_contains('api_order_return_windows(', $body, $handler . ' prepares the deliveries');
-		pg_assert_same(0, preg_match('/api_order_return_present\(\$[a-z]+\)/', $body), $handler . ' never presents a return without them');
+
+		// Every presenter call passes the map: its own arguments, read up to
+		// the closing parenthesis, name $windows or build it. Comment lines
+		// (the next function's heading) are not calls.
+		$body = (string) preg_replace('~^\s*//.*$~m', '', $body);
+		$calls = 0;
+		$with_map = 0;
+		$offset = 0;
+
+		while (($at = strpos($body, 'api_order_return_present(', $offset)) !== false) {
+			$depth = 0;
+			$end = $at + strlen('api_order_return_present');
+
+			for ($i = $end; $i < strlen($body); $i++) {
+				if ($body[$i] === '(') {
+					$depth++;
+				} elseif (($body[$i] === ')') && (--$depth === 0)) {
+					break;
+				}
+			}
+
+			$arguments = substr($body, $end, $i - $end + 1);
+			$calls++;
+			$with_map += ((strpos($arguments, '$windows') !== false) || (strpos($arguments, 'api_order_return_windows(') !== false)) ? 1 : 0;
+			$offset = $i;
+		}
+
+		pg_assert_true($calls > 0, $handler . ' presents returns');
+		pg_assert_same($calls, $with_map, $handler . ': every return is presented with the deliveries\' windows');
 	}
 }
 
