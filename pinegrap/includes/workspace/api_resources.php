@@ -1168,8 +1168,18 @@ function ws_api_files_create($params)
         api_fail_validation($message['error'], 'text');
     }
 
+    // The message it answers, as Reply in the panel: one of this channel or
+    // discussion, not deleted, of the conversation as it is now.
+    $parent_id = (int) ($params['parent_id'] ?? 0);
+    $refused = ws_message_parent_check($channel, $parent_id);
+
+    if ($refused !== '') {
+        api_fail_validation($refused, 'parent_id');
+    }
+
     api_dry_run_stop('created', 'workspace_message', array(
         'channel_id' => (int) $channel['id'],
+        'parent_id'  => ($parent_id > 0) ? $parent_id : null,
         'file'       => array('name' => mb_substr($checked['name'], 0, 200), 'kind' => ws_file_kind($checked['name']), 'size' => strlen((string) $bytes)),
     ));
 
@@ -1187,6 +1197,7 @@ function ws_api_files_create($params)
         'app_id'    => $app_id,
         'file_id'   => $stored['file_id'],
         'file_name' => $stored['name'],
+        'parent_id' => $parent_id,
     ));
 
     if (!$result['ok']) {
