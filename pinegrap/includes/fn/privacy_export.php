@@ -593,7 +593,7 @@ function pg_privacy_export_summary_html(array $document)
     $documents = $rows_of('erp_documents');
 
     if ($documents) {
-        $kinds = array('invoice' => lang('Invoice'), 'quote' => lang('Price quote'), 'waybill' => lang('Delivery Note'));
+        $kinds = array('invoice' => lang('Invoice'), 'quote' => lang('Sales quote'), 'waybill' => lang('Delivery Note'));
 
         $html .= '<h2>' . h(lang('Accounting documents')) . '</h2><table><tr><th>' . h(lang('Type')) . '</th><th>' . h(lang('Document number')) . '</th><th>' . h(lang('Date')) . '</th><th class="num">' . h(lang('Total')) . '</th></tr>';
 

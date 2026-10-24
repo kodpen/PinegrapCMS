@@ -1786,6 +1786,13 @@
                     items.push({ icon: 'bi-check2-square', label: t('new_task_about'), action: function () {
                         taskDrawer.open(0, { refs: [{ type: type, id: id, label: label, icon: (BOOT.ref_types[type] || {}).icon, token: '<#' + type + ':' + id + '>' }], title: label }, null);
                     } });
+
+                    // A sales quote opens the quote editor filled from it,
+                    // as its own screen's Copy does; the address is given
+                    // only to those who may write ERP documents.
+                    if ((type === 'erp_quote') && chip.href && CFG.urls.erp_quote_copy) {
+                        items.push({ icon: 'bi-files', label: t('erp_quote_copy'), action: function () { window.location.href = CFG.urls.erp_quote_copy + '?copy=' + id; } });
+                    }
                 }
 
                 items.push('-');
