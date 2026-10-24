@@ -20434,17 +20434,23 @@
                 return out;
             }
 
-            // Adds to what is picked already; the same file twice (name,
-            // size and time) is kept once.
+            // Adds to what is picked already, one row a name, as the file
+            // manager keys its list on the path; here the newer pick takes
+            // the row. A file changed on disk after it was picked fails the
+            // whole request (the browser will not send it), and picking it
+            // again is the way out: kept beside the old row, the stale file
+            // would still go, and a second row of a zip would hold Upload
+            // back as a zip with others.
             function add(entries) {
                 entries.forEach(function (entry) {
-                    var known = picked.some(function (have) {
-                        return have.file.name === entry.file.name && have.file.size === entry.file.size && have.file.lastModified === entry.file.lastModified;
-                    });
-
-                    if (!known) {
-                        picked.push(entry);
+                    for (var i = 0; i < picked.length; i++) {
+                        if (picked[i].file.name === entry.file.name) {
+                            picked[i] = entry;
+                            return;
+                        }
                     }
+
+                    picked.push(entry);
                 });
 
                 drawPick().focus();
@@ -20452,9 +20458,11 @@
 
             // What the server would do with the picked files, asked before a
             // byte is sent. A folder, a file of another kind or one over the
-            // limit is left out, as the file manager does; the rules of
-            // ws_note_import_stage() then run, in its order, over the files
-            // that go, and the first that fails holds the upload back.
+            // limit is left out, as the file manager does. Over the files
+            // that go: none left, then PHP's file count (max_file_uploads,
+            // checked only here; the stage never sees the dropped files),
+            // then the rest of ws_note_import_stage()'s rules in its order.
+            // The first that fails holds the upload back.
             function check() {
                 var result = { files: [], total: 0, over: 0, blocked: 0, error: '' };
                 var zips = 0;
@@ -20798,7 +20806,13 @@
                 fit();
 
                 var head = el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2');
-                head.appendChild(el('span', 'fw-semibold me-auto', t('notes_import_found', rows.length)));
+                var found = el('span', 'fw-semibold me-auto', t('notes_import_found', rows.length));
+
+                // The reading step's button had the focus and went with the
+                // redraw. The heading takes it, below, and is read out; not
+                // Import, which a stray Enter would press unseen.
+                found.tabIndex = -1;
+                head.appendChild(found);
 
                 ['new', 'update', 'same', 'error'].forEach(function (kind) {
                     if (counts[kind]) {
@@ -20979,6 +20993,7 @@
                 }
 
                 drawRows();
+                found.focus();
             }
 
             // ── writing ──
@@ -21074,6 +21089,15 @@
                         openNote(data.first, true);
                     });
                     footer.appendChild(open);
+                }
+
+                // The Import button run() removed had the focus. What came
+                // of the import takes it and is read out.
+                var said = body.firstChild;
+
+                if (said) {
+                    said.tabIndex = -1;
+                    said.focus();
                 }
             }
 

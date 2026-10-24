@@ -483,16 +483,19 @@ function ws_note_import_stage($viewer, $files, $token = '')
             return $fail($choose);
         }
 
-        // A part PHP could not store is the server's fault: the error log
-        // gets its code. A file over the limit or cut short (a cancelled
-        // upload ends that way) is the person's to fix, and the answer
-        // names it.
+        // A temporary file that is not an upload of this request is a
+        // server fault: logged, and answered as a file the server could not
+        // accept.
         if (($error === UPLOAD_ERR_OK) && !is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
             ws_note_import_log_failure('receiving an uploaded file', 'its temporary file is not an upload of this request');
 
             return $fail(ws_note_import_upload_error($name, UPLOAD_ERR_CANT_WRITE, $file_max));
         }
 
+        // A part PHP could not store is the server's fault: the error log
+        // gets its code. A file over the limit or cut short (a cancelled
+        // upload ends that way) is the person's to fix, and the answer
+        // names it.
         if (!in_array($error, array(UPLOAD_ERR_OK, UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE, UPLOAD_ERR_PARTIAL), true)) {
             ws_note_import_log_failure('receiving an uploaded file', 'PHP upload error ' . $error);
         }

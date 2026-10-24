@@ -230,6 +230,34 @@ function test_workspace_notes_import_upload_screen_shows_the_steps()
 	pg_assert_false(strpos($change, 'upload(') !== false, 'picking does not send');
 }
 
+// A file changed on disk after it was picked fails every request with it.
+// Picking it again takes its row instead of adding a second one beside it
+// (a second row of a zip would also hold Upload back as "a zip with others").
+function test_workspace_notes_import_upload_repick_takes_the_row()
+{
+	$add = pg_test_notes_upload_between(pg_test_notes_upload_screen(), 'function add(entries)', 'function check()');
+
+	pg_assert_true($add !== '', 'add() is found');
+	pg_assert_true(preg_match('/picked\[\w+\]\s*=\s*entry;/', $add) === 1, 'a pick of a listed name replaces that entry');
+	pg_assert_false(strpos($add, 'lastModified') !== false, 'the key is the name alone, not the name, size and time');
+}
+
+// The preview and the result take the focus from the button their redraw
+// removes. In the preview it is something that commits nothing, never
+// Import: the footer gate keeps a stray Enter off it only for 800 ms.
+function test_workspace_notes_import_upload_preview_and_result_take_the_focus()
+{
+	$screen = pg_test_notes_upload_screen();
+	$preview = pg_test_notes_upload_between($screen, 'function drawPreview(data)', 'function run()');
+	$result = pg_test_notes_upload_between($screen, 'function drawResult(', "node.addEventListener('hide.bs.modal'");
+
+	pg_assert_true(($preview !== '') && ($result !== ''), 'drawPreview() and drawResult() are found');
+	pg_assert_true(preg_match('/(\w+)\.tabIndex = -1;/', $preview, $match) === 1, 'something in the preview can take the focus');
+	pg_assert_true(strpos($preview, ($match[1] ?? '?') . '.focus()') !== false, 'and takes it');
+	pg_assert_false(strpos($preview, 'go.focus()') !== false, 'Import does not');
+	pg_assert_true(strpos($result, '.focus()') !== false, 'the result takes it after the import');
+}
+
 // The bar of the reading step (and of a size the browser cannot tell) is
 // Bootstrap's striped, animated one inside the shared .ws-progress. The
 // colour rules of .ws-progress set the colour only: the background shorthand
