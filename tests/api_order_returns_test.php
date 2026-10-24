@@ -7,7 +7,8 @@
  * return against its declaration, a request nobody answered yet, the lines a
  * POST names, the two route rows (scopes, rehearsal, 201 or 200, the body
  * and its limits against the return model), the delivery each line of GET
- * /orders/{id} names, and the object in the OpenAPI registry.
+ * /orders/{id} names, the refund and the withdrawal timing a return carries,
+ * customer_rules and its refusals, and the objects in the OpenAPI registry.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -169,6 +170,52 @@ function test_api_order_returns_present_the_refund()
 	pg_assert_same(array_keys(api_order_return_refund_schema()), array_keys(api_order_return_present(api_order_returns_test_row())['refund']), 'every refund field declared, in order');
 }
 
+// Whether a return came in time, from its delivery as it is read today
+// (prepared once per delivery and handed to the presenter, as the panel
+// shows it); null without a delivery date.
+function test_api_order_returns_present_the_withdrawal_timing()
+{
+	$known = array(9008 => pg_return_window(array('delivered' => '2026-10-20'), '2026-10-24'));
+	$requested = mktime(12, 0, 0, 10, 23, 2026);
+	$row = api_order_returns_test_row(array('requested_at' => (string) $requested));
+
+	pg_assert_same(array('delivered_on' => '2026-10-20', 'delivered_estimated' => false, 'deadline' => '2026-11-03', 'requested_in_time' => true),
+		api_order_return_present($row, null, $known)['withdrawal'], 'a known delivery, asked in time');
+
+	$late = array(9008 => pg_return_window(array('delivered' => '2026-09-20'), '2026-10-24'));
+
+	pg_assert_same(array('delivered_on' => '2026-09-20', 'delivered_estimated' => false, 'deadline' => '2026-10-04', 'requested_in_time' => false),
+		api_order_return_present($row, null, $late)['withdrawal'], 'asked after the period');
+
+	$estimated = array(9008 => pg_return_window(array('ship_date' => '2026-10-18'), '2026-10-24'));
+
+	pg_assert_same(true, api_order_return_present($row, null, $estimated)['withdrawal']['delivered_estimated'], 'an estimated delivery');
+
+	pg_assert_same(null, api_order_return_present($row, null, array(9008 => null))['withdrawal'], 'no delivery date known');
+	pg_assert_same(null, api_order_return_present($row, null, array())['withdrawal'], 'the delivery is gone');
+	pg_assert_same(null, api_order_return_present($row)['withdrawal'], 'nothing prepared');
+
+	pg_assert_same('OrderReturnWithdrawal?', api_order_return_schema()['withdrawal'], 'a nested object that may be null');
+	pg_assert_same(array('delivered_on' => 'string', 'delivered_estimated' => 'boolean', 'deadline' => 'string', 'requested_in_time' => 'boolean'), api_order_return_withdrawal_schema());
+	pg_assert_same(array_keys(api_order_return_withdrawal_schema()), array_keys(api_order_return_present($row, null, $known)['withdrawal']), 'every timing field declared, in order');
+	pg_assert_same(array_keys(api_order_return_schema()), array_keys(api_order_return_present($row, null, $known)), 'every field declared, in order');
+}
+
+// Both answers of the routes prepare the deliveries once, so a page of
+// returns reads each delivery once.
+function test_api_order_returns_routes_prepare_the_deliveries()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/orders.php');
+
+	foreach (array('api_orders_returns', 'api_orders_returns_create') as $handler) {
+		$start = strpos($source, "\nfunction " . $handler . "(");
+		$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+		pg_assert_contains('api_order_return_windows(', $body, $handler . ' prepares the deliveries');
+		pg_assert_same(0, preg_match('/api_order_return_present\(\$[a-z]+\)/', $body), $handler . ' never presents a return without them');
+	}
+}
+
 // The lines of a POST, as pg_return_create() takes them.
 function test_api_order_returns_lines_of_a_request()
 {
@@ -223,6 +270,7 @@ function test_api_order_returns_list_route()
 	pg_assert_same(1, count($route['params']), 'the order id and nothing else: one page, no cursor');
 	pg_assert_contains('refund', $route['description'], 'names the refund the return keeps');
 	pg_assert_false(strpos($route['description'], 'come only with') !== false, 'the refund is no longer only in the event');
+	pg_assert_contains('requested_in_time', $route['description'], 'names the withdrawal timing');
 }
 
 function test_api_order_returns_create_route()
@@ -240,7 +288,9 @@ function test_api_order_returns_create_route()
 	pg_assert_same(array(201, 200), api_openapi_success_codes($route), '201 for a new return, 200 for the same request sent again');
 	pg_assert_false(isset($route['mcp']), 'an MCP tool like any other write');
 
-	pg_assert_same(array('id', 'ship_to_id', 'items', 'reason', 'note', 'notify'), array_map(function ($param) { return $param['name']; }, $route['params']));
+	pg_assert_same(array('id', 'ship_to_id', 'items', 'reason', 'note', 'notify', 'customer_rules'), array_map(function ($param) { return $param['name']; }, $route['params']));
+	pg_assert_same('bool', api_order_returns_test_param($route, 'customer_rules')['type']);
+	pg_assert_true(empty(api_order_returns_test_param($route, 'customer_rules')['required']), 'staff-like unless asked');
 
 	$items = api_order_returns_test_param($route, 'items');
 
@@ -268,8 +318,12 @@ function test_api_order_returns_create_route()
 		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
 	}
 
-	foreach (array('withdrawal period', 'goods have left', 'delivery date is known') as $skipped) {
-		pg_assert_contains($skipped, $route['description'], 'the description says the customer\'s rule is not checked: ' . $skipped);
+	foreach (array('withdrawal period', 'goods have left', 'delivery date is known', 'customer_rules') as $named) {
+		pg_assert_contains($named, $route['description'], 'the description names the customer\'s timing rules and the switch: ' . $named);
+	}
+
+	foreach (array('409 not_sent', '409 delivery_date_unknown', '409 return_period_ended') as $named) {
+		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
 	}
 
 	pg_assert_contains('ship_to_id', $items['description'], 'lines are matched to the delivery by their ship_to_id');
@@ -291,6 +345,26 @@ function test_api_order_returns_order_lines_name_their_delivery()
 	pg_assert_contains("'ship_to_id'     => ((int)\$item['ship_to_id'] > 0) ? (int)\$item['ship_to_id'] : null,", $body, 'null for 0');
 }
 
+// With customer_rules the customer's timing refusals answer 409, each by its
+// own code, mapped from the check's code and never from its sentence.
+function test_api_order_returns_customer_rule_refusals()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/orders.php');
+	$start = strpos($source, "\nfunction api_orders_returns_refuse(");
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	foreach (array('not_sent' => 'not_sent', 'delivery_date_unknown' => 'delivery_date_unknown', 'window_closed' => 'return_period_ended') as $code => $answer) {
+		pg_assert_contains("\$code === '" . $code . "'", $body, 'the check\'s code ' . $code);
+		pg_assert_contains("api_fail(409, '" . $answer . "', \$result['error'])", $body, 'answers 409 ' . $answer);
+	}
+
+	$start = strpos($source, "\nfunction api_orders_returns_create(");
+	$create = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains("'customer_rules' => (isset(\$params['customer_rules']) && \$params['customer_rules'])", $create, 'the switch reaches the model as an option');
+	pg_assert_contains("'source'         => 'api'", $create, 'the source stays api');
+}
+
 // The customer's words fit their column: a TEXT, wider than the limit.
 function test_api_order_returns_note_fits_its_column()
 {
@@ -305,6 +379,7 @@ function test_api_order_returns_object_is_registered()
 
 	pg_assert_same('api_order_return_schema', $objects['OrderReturn'] ?? null);
 	pg_assert_same('api_order_return_refund_schema', $objects['OrderReturnRefund'] ?? null, 'the refund is an object of its own, so it can be null');
+	pg_assert_same('api_order_return_withdrawal_schema', $objects['OrderReturnWithdrawal'] ?? null, 'the timing is an object of its own, so it can be null');
 	pg_assert_true(function_exists('api_order_return_schema'));
 
 	$catalogue = api_error_catalogue();
