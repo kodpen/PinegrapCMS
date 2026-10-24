@@ -124,7 +124,10 @@
         return node;
     }
 
-    function api(action, data) {
+    // options.keepalive: the request is finished even when the page is left
+    // meanwhile (a save as the page closes); browsers refuse such a body over
+    // 64 KiB.
+    function api(action, data, options) {
         var payload = { action: action, token: CFG.token };
 
         Object.keys(data || {}).forEach(function (key) {
@@ -134,6 +137,7 @@
         return fetch(CFG.api_url, {
             method: 'POST',
             credentials: 'same-origin',
+            keepalive: !!(options && options.keepalive),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         }).then(function (response) {

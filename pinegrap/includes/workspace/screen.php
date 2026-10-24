@@ -757,7 +757,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
-        'flows'        => ws_flow_js_config($viewer, $mode === 'flows'),
+        'flows'        => ws_flow_js_config($viewer, (string) $mode),
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
     ), $extra);
 }

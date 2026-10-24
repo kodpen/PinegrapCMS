@@ -139,3 +139,44 @@ function test_workspace_flows_canvas_brief_is_typed()
 	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2), $brief);
 	pg_assert_true(ws_flow_brief(array('id' => 4), $flow, 0)['mine'], 'the owner\'s own');
 }
+
+// A save always names the draft it was made on: without draft_rev,
+// ws_flow_save_check() would skip its "changed meanwhile" check and a stale
+// screen would write over a draft saved elsewhere. Only the three fields a
+// save may change are passed on.
+function test_workspace_flows_canvas_save_fields_always_carry_draft_rev()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_same(array('draft_rev' => 0), ws_action_flow_fields(array()), 'nothing sent: draft_rev 0');
+	pg_assert_same(array('draft_rev' => 0), ws_action_flow_fields(array('action' => 'ws_flow_save', 'token' => 'x', 'flow_id' => 7, 'status' => 'live')), 'other keys dropped');
+
+	$graph = array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array());
+
+	pg_assert_same(
+		array('draft_rev' => 5, 'name' => 'Onboarding', 'channel_id' => 3, 'graph' => $graph),
+		ws_action_flow_fields(array('flow_id' => 7, 'draft_rev' => '5', 'name' => 'Onboarding', 'channel_id' => 3, 'graph' => $graph)),
+		'name, channel and graph kept, draft_rev an integer'
+	);
+}
+
+// A 409 from the store (a draft saved meanwhile elsewhere) reaches the screen
+// as field changed_meanwhile, which its conflict banner listens for; any other
+// refusal keeps the store's own field.
+function test_workspace_flows_canvas_refusal_tells_a_conflict_apart()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	$conflict = ws_action_flow_refused(array('ok' => false, 'error' => 'Changed meanwhile.', 'status' => 409, 'field' => 'draft_rev'));
+	$refused = ws_action_flow_refused(array('ok' => false, 'error' => 'Too large.', 'status' => 422, 'field' => 'graph'));
+
+	pg_assert_same(array('status' => 'error', 'message' => 'Changed meanwhile.', 'field' => 'changed_meanwhile'), $conflict, '409');
+	pg_assert_same(array('status' => 'error', 'message' => 'Too large.', 'field' => 'graph'), $refused, '422');
+}
+
+// A record's drawer draws no channel sidebar: the flows config tells it
+// nothing, so the order, product and contact screens read nothing for it.
+function test_workspace_flows_canvas_record_drawer_gets_no_flows_config()
+{
+	pg_assert_same(array('nav' => false), ws_flow_js_config(array('id' => 4, 'member' => true, 'role' => 3), 'record'));
+}

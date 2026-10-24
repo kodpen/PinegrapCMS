@@ -48,6 +48,9 @@
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
+    // Browsers refuse a keepalive request body over 64 KiB; the action and
+    // the token ride on top of the draft.
+    var KEEPALIVE_BYTES = 60000;
     var SVG_NS = 'http://www.w3.org/2000/svg';
 
     // What each kind of box is: its sign, its name, whether an arrow may
@@ -84,6 +87,7 @@
         view: { x: 40, y: 40, k: 1 },
         outline: false,
         dirty: false,
+        changes: 0,         // counts every change, to tell one made while a request ran
         saving: null,
         saveTimer: 0,
         saveError: '',
@@ -161,6 +165,10 @@
 
     function typing(target) {
         return !!(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+
+    function bytes(text) {
+        return new Blob([text]).size;
     }
 
     // The graph as the editor keeps it: every part there, a box's settings
@@ -300,13 +308,14 @@
             state.flows = data.flows || [];
             drawList();
 
-            // The person's own flows are listed first, and the first of
-            // them opens.
+            // The flow the address names opens, else the first of the
+            // person's own (listed first); when the one asked for cannot be
+            // opened (deleted, out of reach), that first one opens instead.
             var mine = state.flows.filter(function (flow) { return flow.mine; });
-            var first = asked || (mine[0] || state.flows[0] || {}).id || 0;
+            var first = (mine[0] || state.flows[0] || {}).id || 0;
 
-            if (first) {
-                open(first);
+            if (asked || first) {
+                open(asked || first, first);
             } else {
                 showNone();
             }
@@ -405,12 +414,6 @@
     function drawList() {
         K.clear(ui.listCol);
 
-        if (FL.build) {
-            var create = K.button('btn btn-sm btn-primary rounded-pill w-100 mb-3', t('fl_new'), 'bi-plus-lg');
-            create.addEventListener('click', createFlow);
-            ui.listCol.appendChild(create);
-        }
-
         [[true, 'fl_list_mine'], [false, 'fl_list_shared']].forEach(function (part) {
             var flows = state.flows.filter(function (flow) { return flow.mine === part[0]; });
 
@@ -439,8 +442,13 @@
                     link.setAttribute('aria-current', 'true');
                 }
 
+                // The list is drawn again once the flow is open, and the
+                // focus comes back to its entry; on a phone the list closes,
+                // and the flow's name takes it.
+                link.setAttribute('data-refocus', 'flow-' + flow.id);
                 link.addEventListener('click', function () {
                     ui.app.classList.remove('wsf-show-list');
+                    state.refocus = 'flow-' + flow.id + ' name';
                     open(flow.id);
                 });
                 item.appendChild(link);
@@ -490,7 +498,17 @@
         state.flow = null;
         state.graph = graphOf(null);
         K.clear(ui.bar);
+        newFlowButton();
         listToggle();
+
+        // The address no longer names a flow, so a reload does not ask for
+        // one that is gone.
+        try {
+            window.history.replaceState(null, '', window.location.pathname);
+        } catch (error) {
+            // An address that cannot be changed changes nothing else.
+        }
+
         ui.problemBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         K.clear(ui.side);
@@ -501,25 +519,55 @@
         ui.empty.classList.remove('d-none');
         ui.stage.classList.remove('d-none');
         ui.outlineBox.classList.add('d-none');
+        refocus();
     }
 
     // ── Opening, creating ──────────────────────────────────────────────
 
-    function open(id) {
+    // Before another flow opens: what is still unsaved is saved. Changes
+    // that cannot be saved (a save that failed, a draft changed on another
+    // screen) are left behind only when the person says so.
+    function leaveFlow() {
         return flush().then(function () {
-            return K.api('ws_flow_get', { flow_id: id });
-        }).then(function (data) {
-            show(data.flow);
+            if (!state.flow || !state.edit || !(state.dirty || state.saveError || state.conflict)) {
+                return true;
+            }
+
+            return K.ask(t('fl_leave_ask'), t('fl_leave'), true);
+        });
+    }
+
+    // fallback: the flow opened instead when this one cannot be.
+    function open(id, fallback) {
+        return leaveFlow().then(function (go) {
+            if (!go) {
+                refocus();
+                return false;
+            }
+
+            return K.api('ws_flow_get', { flow_id: id }).then(function (data) {
+                show(data.flow);
+
+                return true;
+            });
         }).catch(function (error) {
+            state.refocus = '';
             K.fail(error);
+
+            if (!state.flow && fallback && (fallback !== id)) {
+                return open(fallback);
+            }
 
             if (!state.flow) {
                 showNone();
             }
+
+            return false;
         });
     }
 
     function show(flow) {
+        window.clearTimeout(state.saveTimer);
         state.flow = flow;
         state.edit = (flow.access === 'edit');
         state.graph = graphOf(state.edit ? flow.draft : flow.graph);
@@ -546,19 +594,36 @@
     }
 
     function createFlow() {
-        flush().then(function () {
-            return K.api('ws_flow_create', { name: t('fl_untitled'), graph: graphOf(null) });
-        }).then(function (data) {
-            show(data.flow);
-
-            if (ui.name) {
-                ui.name.focus();
-                ui.name.select();
+        leaveFlow().then(function (go) {
+            if (!go) {
+                return null;
             }
+
+            return K.api('ws_flow_create', { name: t('fl_untitled'), graph: graphOf(null) }).then(function (data) {
+                show(data.flow);
+
+                if (ui.name) {
+                    ui.name.focus();
+                    ui.name.select();
+                }
+            });
         }).catch(K.fail);
     }
 
     // ── The toolbar ────────────────────────────────────────────────────
+
+    // "New flow", what the screen is for, in the toolbar's first slot.
+    function newFlowButton() {
+        if (!FL.build) {
+            return;
+        }
+
+        var create = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_new'), 'bi-plus-lg');
+
+        create.setAttribute('data-refocus', 'new');
+        create.addEventListener('click', createFlow);
+        ui.bar.appendChild(create);
+    }
 
     function listToggle() {
         var toggle = K.button('btn btn-sm btn-ghost d-md-none', t('fl_nav'), 'bi-list-ul');
@@ -575,6 +640,7 @@
         var flow = state.flow;
 
         K.clear(ui.bar);
+        newFlowButton();
         listToggle();
 
         if (state.edit) {
@@ -583,6 +649,7 @@
             ui.name.maxLength = 160;
             ui.name.value = flow.name;
             ui.name.setAttribute('aria-label', t('fl_name'));
+            ui.name.setAttribute('data-refocus', 'name');
             ui.name.addEventListener('input', function () {
                 if (ui.name.value.trim() !== '') {
                     flow.name = ui.name.value.trim();
@@ -591,11 +658,19 @@
             });
             ui.bar.appendChild(ui.name);
         } else {
+            var nameText = el('span', 'fw-semibold wsf-name-text', flow.name);
+
             ui.name = null;
-            ui.bar.appendChild(el('span', 'fw-semibold wsf-name-text', flow.name));
+            nameText.tabIndex = -1;
+            nameText.setAttribute('data-refocus', 'name');
+            ui.bar.appendChild(nameText);
         }
 
+        // Publish and Pause redraw the bar; the focus then goes to the
+        // status they changed.
         ui.status = statusBadge(flow, false);
+        ui.status.tabIndex = -1;
+        ui.status.setAttribute('data-refocus', 'status');
         ui.bar.appendChild(ui.status);
 
         ui.unpublished = el('span', 'small text-body-secondary wsf-unpublished d-none', t('fl_unpublished'));
@@ -639,7 +714,7 @@
         });
         ui.bar.appendChild(ui.problemButton);
 
-        ui.publish = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_publish'), 'bi-send');
+        ui.publish = K.button('btn btn-sm btn-outline-secondary', t('fl_publish'), 'bi-send');
         ui.publish.addEventListener('click', publish);
         ui.bar.appendChild(ui.publish);
 
@@ -692,6 +767,7 @@
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
             retry.addEventListener('click', function () {
                 state.saveError = '';
+                state.dirty = true;
                 save();
             });
             ui.save.appendChild(retry);
@@ -865,6 +941,12 @@
 
             add.addEventListener('click', function () { addItem(item[0]); });
 
+            // The outline's buttons take the focus when the last box there
+            // is removed.
+            if (!draggable) {
+                add.setAttribute('data-refocus', 'outline-add-' + item[0]);
+            }
+
             if (draggable) {
                 add.draggable = true;
                 add.addEventListener('dragstart', function (event) {
@@ -1026,17 +1108,25 @@
         refocus();
     }
 
+    // A control drawn again takes the focus back: state.refocus names it by
+    // its data-refocus, or names several, space-separated, tried in turn
+    // (one hidden or disabled is passed over).
     function refocus() {
         if (!state.refocus) {
             return;
         }
 
-        var target = ui.root.querySelector('[data-refocus="' + state.refocus + '"]');
+        var keys = state.refocus.split(' ');
 
         state.refocus = '';
 
-        if (target) {
-            target.focus();
+        for (var i = 0; i < keys.length; i++) {
+            var target = keys[i] ? ui.root.querySelector('[data-refocus="' + keys[i] + '"]') : null;
+
+            if (target && !target.disabled && target.getClientRects().length) {
+                target.focus();
+                return;
+            }
         }
     }
 
@@ -1105,7 +1195,7 @@
         if (state.edit) {
             box.appendChild(connections(node));
 
-            var remove = K.button('btn btn-sm btn-outline-danger', t('fl_remove_box'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_box'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'node', id: node.id }); });
             box.appendChild(remove);
         }
@@ -1128,14 +1218,28 @@
         }
 
         var who = K.select(options, current);
-        var people = peopleList(node);
+        var people = el('div', 'wsf-people mt-2');
 
-        people.classList.toggle('d-none', current !== 'people');
+        // The team's ticks are built once "The people I pick" is chosen: a
+        // box given by a rule does not carry one tick per member in the DOM.
+        var showPeople = function () {
+            if (!people.firstChild) {
+                peopleList(node, people);
+            }
+        };
+
+        if (current === 'people') {
+            showPeople();
+        } else {
+            people.classList.add('d-none');
+        }
+
         who.addEventListener('change', function () {
             people.classList.toggle('d-none', who.value !== 'people');
 
             if (who.value === 'people') {
                 config.assign = '';
+                showPeople();
             } else {
                 config.assign = who.value;
                 config.assignees = [];
@@ -1178,10 +1282,9 @@
         }, true), t('fl_description_help')));
     }
 
-    // The team as ticks, with a filter once it is long.
-    function peopleList(node) {
+    // The team as ticks, with a filter once it is long, drawn into wrap.
+    function peopleList(node, wrap) {
         var config = node.config;
-        var wrap = el('div', 'wsf-people mt-2');
         var list = el('div', 'wsf-people-list');
         var chosen = config.assignees || [];
         var team = BOOT.people || [];
@@ -1239,14 +1342,41 @@
         return wrap;
     }
 
+    // The name of another box in a form, marked so that it follows a rename
+    // (refreshNode()).
+    function nameText(node, className) {
+        var text = el('span', className || '', nameOf(node));
+
+        text.setAttribute('data-name-of', node.id);
+
+        return text;
+    }
+
+    // A label built from another box's name, marked the same way.
+    function nameLabel(control, key, node) {
+        control.setAttribute('aria-label', t(key, nameOf(node)));
+        control.setAttribute('data-label-of', node.id);
+        control.setAttribute('data-label-key', key);
+    }
+
     // The arrows of a box, and the way to add one without dragging.
     function connections(node) {
         var box = el('div', 'wsf-links mb-3');
         var into = state.graph.edges.filter(function (edge) { return edge.to === node.id && nodeById(edge.from); });
 
         if (kindOf(node).into) {
+            var after = el('div', 'small text-body-secondary mb-2', into.length ? '' : t('fl_after_none'));
+
+            into.forEach(function (edge, index) {
+                if (index) {
+                    after.appendChild(document.createTextNode(', '));
+                }
+
+                after.appendChild(nameText(nodeById(edge.from)));
+            });
+
             box.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_after')));
-            box.appendChild(el('div', 'small text-body-secondary mb-2', into.length ? into.map(function (edge) { return nameOf(nodeById(edge.from)); }).join(', ') : t('fl_after_none')));
+            box.appendChild(after);
         }
 
         if (!kindOf(node).out.length) {
@@ -1265,14 +1395,16 @@
             var row = el('li', 'wsf-link');
 
             row.appendChild(K.icon('bi-arrow-right'));
-            row.appendChild(el('span', 'flex-grow-1 text-truncate', nameOf(nodeById(edge.to))));
+            row.appendChild(nameText(nodeById(edge.to), 'flex-grow-1 text-truncate'));
 
             if (kindOf(node).out.length > 1) {
                 row.appendChild(outcomeSelect(edge));
             }
 
-            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('fl_remove_arrow_to', nameOf(nodeById(edge.to))));
+            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg');
 
+            nameLabel(remove, 'fl_remove_arrow_to', nodeById(edge.to));
+            remove.title = remove.getAttribute('aria-label');
             remove.addEventListener('click', function () {
                 state.refocus = 'connect-' + node.id;
                 removeSelected({ type: 'edge', id: index });
@@ -1292,7 +1424,8 @@
         var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
         var add = K.button('btn btn-outline-secondary', t('fl_connect_add'), 'bi-plus-lg');
 
-        pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
+        pick.classList.add('wsf-connect');
+        nameLabel(pick, 'fl_connect_title', node);
         pick.setAttribute('data-refocus', 'connect-' + node.id);
         add.disabled = !targets.length;
         add.addEventListener('click', function () {
@@ -1335,7 +1468,7 @@
         }
 
         if (state.edit) {
-            var remove = K.button('btn btn-sm btn-outline-danger', t('fl_remove_arrow'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_arrow'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'edge', id: index }); });
             box.appendChild(remove);
         }
@@ -1398,9 +1531,13 @@
 
     // ── Changing the graph ─────────────────────────────────────────────
 
-    // The words of a box changed: its face and the outline's heading follow,
-    // nothing is drawn again (the field being written in keeps its focus).
+    // The words of a box changed: its face, the outline's heading and the
+    // other forms that name it (arrows into and out of it, "Connect to..."
+    // lists and their labels) follow; nothing is drawn again (the field
+    // being written in keeps its focus).
     function refreshNode(node) {
+        var name = nameOf(node);
+
         Array.prototype.forEach.call(ui.root.querySelectorAll('.wsf-node[data-node="' + node.id + '"]'), function (box) {
             fillBox(box, node);
         });
@@ -1409,20 +1546,39 @@
             title.textContent = outlineTitle(node);
         });
 
+        Array.prototype.forEach.call(ui.root.querySelectorAll('[data-name-of="' + node.id + '"], .wsf-connect option[value="' + node.id + '"]'), function (text) {
+            text.textContent = name;
+        });
+
+        Array.prototype.forEach.call(ui.root.querySelectorAll('[data-label-of="' + node.id + '"]'), function (control) {
+            var label = t(control.getAttribute('data-label-key'), name);
+
+            control.setAttribute('aria-label', label);
+
+            if (control.title) {
+                control.title = label;
+            }
+        });
+
         changed(false);
     }
 
     // Something changed: drawn again when boxes or arrows came or went, and
-    // saved a moment after the last change.
+    // saved a moment after the last change. The canvas hidden behind the
+    // outline is drawn when it is shown again (drawAll()).
     function changed(structure) {
         if (!state.edit) {
             return;
         }
 
         state.dirty = true;
+        state.changes++;
 
         if (structure) {
-            drawCanvas();
+            if (!state.outline) {
+                drawCanvas();
+            }
+
             drawOutline();
             drawSettings();
         }
@@ -1563,11 +1719,23 @@
             return;
         }
 
+        var selectedEdge = (state.selected && (state.selected.type === 'edge')) ? state.graph.edges[state.selected.id] : null;
+
         if (selected.type === 'node') {
             var node = nodeById(selected.id);
 
             if (!node) {
                 return;
+            }
+
+            // In the outline the button that removed the box goes with it:
+            // the next box's title takes the focus, or the buttons that add
+            // one when no box is left.
+            if (state.outline && !state.refocus) {
+                var order = orderedNodes();
+                var near = order[order.indexOf(node) + 1] || order[order.indexOf(node) - 1];
+
+                state.refocus = (near ? 'title-' + near.id + ' ' : '') + 'outline-add-task';
             }
 
             state.graph.nodes = state.graph.nodes.filter(function (item) { return item !== node; });
@@ -1584,6 +1752,12 @@
 
         if (!target || (state.selected && (state.selected.type === selected.type) && (state.selected.id === selected.id))) {
             state.selected = null;
+        } else if (selectedEdge) {
+            // An arrow is selected by its place in the list: the selection
+            // follows the arrow it was, and goes when a removed box took it.
+            var index = state.graph.edges.indexOf(selectedEdge);
+
+            state.selected = (index === -1) ? null : { type: 'edge', id: index };
         }
 
         var keep = state.refocus;
@@ -1624,7 +1798,8 @@
         return data;
     }
 
-    function save() {
+    // options: { keepalive } for the save sent as the page is left.
+    function save(options) {
         window.clearTimeout(state.saveTimer);
 
         if (!state.edit || !state.flow || state.conflict) {
@@ -1643,7 +1818,7 @@
 
         state.dirty = false;
         state.saveError = '';
-        state.saving = K.api('ws_flow_save', payload()).then(function (data) {
+        state.saving = K.api('ws_flow_save', payload(), options).then(function (data) {
             flow.draft_rev = data.draft_rev;
             flow.changed = true;
 
@@ -1679,23 +1854,23 @@
         return state.dirty ? save() : (state.saving || Promise.resolve());
     }
 
-    // The page is being left: the last changes go out on a request the
-    // browser finishes on its own.
-    function saveOnLeave() {
+    // The page is hidden or being left: the last changes go out on a
+    // request the browser finishes even after the page is gone (keepalive).
+    // It is an ordinary save otherwise: its answer is read, so a page that
+    // lives on (a tab shown again) holds the draft_rev the server moved to,
+    // and a refusal leaves the changes unsaved. Browsers refuse a keepalive
+    // body over 64 KiB: a larger draft is saved the usual way while the page
+    // is only hidden, and when it is left (leaving) it stays unsaved, which
+    // beforeunload asks about.
+    function saveOnLeave(leaving) {
         if (!state.edit || !state.flow || !state.dirty || state.saving || state.conflict) {
             return;
         }
 
-        var body = payload();
+        var keepalive = bytes(JSON.stringify(payload())) <= KEEPALIVE_BYTES;
 
-        body.action = 'ws_flow_save';
-        body.token = CFG.token;
-        state.dirty = false;
-
-        try {
-            fetch(CFG.api_url, { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        } catch (error) {
-            state.dirty = true;
+        if (keepalive || !leaving) {
+            save({ keepalive: keepalive });
         }
     }
 
@@ -1709,7 +1884,9 @@
 
         reload.addEventListener('click', function () {
             state.dirty = false;
+            state.saveError = '';
             state.conflict = '';
+            state.refocus = 'name';
             open(state.flow.id);
         });
         ui.conflictBox.appendChild(reload);
@@ -1736,16 +1913,51 @@
         });
     }
 
+    // Publish and Pause. What is still unsaved is saved first, so the
+    // request acts on the draft the screen shows; changes that could not be
+    // saved stop it. A change made while the request runs stays on the
+    // screen and is saved as usual: the answer then brings only the flow's
+    // new status and version, not its draft.
     function act(action, control, done) {
+        var flow = state.flow;
+
         control.disabled = true;
 
-        K.api(action, { flow_id: state.flow.id, draft_rev: state.flow.draft_rev }).then(function (data) {
-            var view = { x: state.view.x, y: state.view.y, k: state.view.k };
+        flush().then(function () {
+            if ((state.flow !== flow) || state.dirty || state.saveError || state.conflict) {
+                control.disabled = false;
+                drawState();
 
-            show(data.flow);
-            state.view = view;
-            applyView();
-            K.toast(done, 'success');
+                if (state.flow === flow) {
+                    K.toast(state.saveError || state.conflict || t('fl_unsaved'), 'danger');
+                }
+
+                return null;
+            }
+
+            var mark = state.changes;
+
+            return K.api(action, { flow_id: flow.id, draft_rev: flow.draft_rev }).then(function (data) {
+                if (state.flow !== flow) {
+                    listEntry(data.flow);
+                } else if ((state.changes !== mark) || state.dirty || state.saving) {
+                    flow.status = data.flow.status;
+                    flow.version = data.flow.version;
+                    flow.graph = data.flow.graph;
+                    flow.changed = true;
+                    listEntry(flow);
+                    redrawBar();
+                } else {
+                    var view = { x: state.view.x, y: state.view.y, k: state.view.k };
+
+                    state.refocus = 'status';
+                    show(data.flow);
+                    state.view = view;
+                    applyView();
+                }
+
+                K.toast(done, 'success');
+            });
         }).catch(function (error) {
             control.disabled = false;
 
@@ -1755,6 +1967,30 @@
                 K.fail(error);
             }
         });
+    }
+
+    // The bar drawn again while the person may be at work elsewhere on the
+    // screen: focus inside the bar stays on the same control (the name
+    // being typed keeps its caret), a control that is gone, or a focus lost
+    // to a closed dialog, hands it to the status; focus outside the bar is
+    // left alone.
+    function redrawBar() {
+        var active = document.activeElement;
+        var inBar = !!(active && ui.bar.contains(active));
+        var lost = !active || (active === document.body);
+        var key = inBar ? (active.getAttribute('data-refocus') || '') : '';
+        var caret = (key === 'name') ? [active.selectionStart, active.selectionEnd] : null;
+
+        drawBar();
+
+        if (inBar || lost) {
+            state.refocus = (key ? key + ' ' : '') + 'status';
+            refocus();
+        }
+
+        if (caret && ui.name && (document.activeElement === ui.name)) {
+            ui.name.setSelectionRange(caret[0], caret[1]);
+        }
     }
 
     function binFlow() {
@@ -1773,6 +2009,10 @@
                 state.flow = null;
                 drawList();
                 K.toast(t('fl_binned'), 'success');
+
+                // The menu that deleted it is gone: the next flow's name, or
+                // "New flow", takes the focus.
+                state.refocus = 'name new';
 
                 if (state.flows.length) {
                     open(state.flows[0].id);
@@ -1981,8 +2221,7 @@
         if (Object.keys(state.pointers).length === 2) {
             var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
 
-            state.drag = null;
-            ui.temp.classList.add('d-none');
+            cancelDrag();
             state.pinch = {
                 d: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
                 cx: (points[0].x + points[1].x) / 2,
@@ -2130,9 +2369,18 @@
             ui.temp.classList.add('d-none');
             Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
 
+            // Released on a box: the box the arrow leaves is selected,
+            // whether or not the arrow may go there (itself, the start, an
+            // arrow already drawn), so its highlight and settings show what
+            // the keys now act on.
             if (over && (event.type === 'pointerup')) {
                 state.selected = { type: 'node', id: drag.from.id };
-                connect(drag.from, nodeById(over.getAttribute('data-node')));
+
+                if (!connect(drag.from, nodeById(over.getAttribute('data-node')))) {
+                    markSelected();
+                    drawSettings();
+                }
+
                 focusSelected();
             }
         } else if ((drag.kind === 'move') && drag.moved) {
@@ -2151,6 +2399,24 @@
         } else if (drag.empty && !drag.moved && state.selected) {
             select(null);
             ui.viewport.focus({ preventScroll: true });
+        }
+    }
+
+    // A drag cut short (Esc, a second finger): a box being moved goes back
+    // to where it was, an arrow being drawn is dropped.
+    function cancelDrag() {
+        var drag = state.drag;
+
+        state.drag = null;
+        ui.temp.classList.add('d-none');
+        ui.viewport.classList.remove('wsf-panning');
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
+
+        if (drag && (drag.kind === 'move') && drag.moved) {
+            drag.item.x = drag.ix;
+            drag.item.y = drag.iy;
+            place(drag.node, drag.item);
+            drawEdges();
         }
     }
 
@@ -2194,11 +2460,7 @@
         } else if (key === '0') {
             fit();
         } else if ((key === 'Escape') && (state.drag || selected)) {
-            if (state.drag && (state.drag.kind === 'connect')) {
-                ui.temp.classList.add('d-none');
-            }
-
-            state.drag = null;
+            cancelDrag();
             select(null);
             ui.viewport.focus({ preventScroll: true });
         } else {
@@ -2211,9 +2473,10 @@
     }
 
     function bindWindow() {
-        // Space held down: dragging anywhere on the canvas moves it.
+        // Space held down on the canvas: dragging anywhere on it moves it.
+        // Elsewhere Space keeps its own work (a summary, a button).
         document.addEventListener('keydown', function (event) {
-            if ((event.key === ' ') && !typing(event.target) && ui.app.contains(event.target) && !event.target.closest('button')) {
+            if ((event.key === ' ') && !typing(event.target) && ui.viewport.contains(event.target)) {
                 state.space = true;
                 ui.viewport.classList.add('wsf-space');
                 event.preventDefault();
@@ -2240,17 +2503,29 @@
 
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'hidden') {
-                saveOnLeave();
+                saveOnLeave(false);
             }
         });
 
-        window.addEventListener('pagehide', saveOnLeave);
+        window.addEventListener('pagehide', function () {
+            saveOnLeave(true);
+        });
 
         window.addEventListener('beforeunload', function (event) {
-            saveOnLeave();
+            if (!state.edit || !state.flow) {
+                return;
+            }
 
-            // A save that failed or met a newer draft is not lost silently.
-            if (state.edit && (state.saveError || state.conflict)) {
+            // After a failed save or against a newer draft the person is
+            // asked first; pagehide sends the last changes if they leave.
+            if (!state.saveError && !state.conflict) {
+                saveOnLeave(true);
+            }
+
+            // Changes that are not on their way (a failed save, a newer
+            // draft, a draft too large to send as the page closes) are not
+            // lost silently.
+            if (state.dirty || state.saveError || state.conflict) {
                 event.preventDefault();
                 event.returnValue = '';
             }

@@ -26890,7 +26890,7 @@
     "Changes not published yet": "Henüz yayınlanmamış değişiklikler var",
     "Name of the flow": "Akışın adı",
     "Untitled flow": "Adsız akış",
-    "Draft saved": "Kaydedildi",
+    "Draft saved": "Taslak kaydedildi",
     "Changes not saved": "Değişiklikler kaydedilmedi",
     "Problems: {var:1}": "Sorunlar: {var:1}",
     "No problems": "Sorun yok",
@@ -26955,5 +26955,8 @@
     "Esc: clear the selection": "Esc: seçimi kaldırır",
     "A process drawn as boxes and arrows: what starts it and the tasks that follow one another.": "Kutular ve oklarla çizilmiş bir süreç: onu ne başlatır ve birbirini izleyen görevler.",
     "That flow could not be found.": "Bu akış bulunamadı.",
-    "Starts when somebody runs it": "Biri çalıştırınca başlar"
+    "Starts when somebody runs it": "Biri çalıştırınca başlar",
+    "Zoom controls": "Yakınlaştırma denetimleri",
+    "The changes to this flow could not be saved. Leave them and go on?": "Bu akıştaki değişiklikler kaydedilemedi. Onları bırakıp devam edilsin mi?",
+    "Discard the changes": "Değişikliklerden vazgeç"
 }

@@ -1116,9 +1116,22 @@ function ws_flows_nav_visible($viewer)
     if (ws_flows_ready() && !empty($viewer['member'])) {
         $visible = ws_can_schedule($viewer);
 
-        // The home channels of live flows, asked the way a flow of somebody
-        // else's is: run access, never edit.
+        // A live flow whose home is a public channel, or a private one the
+        // person is in: what ws_flow_access() answers "run" for, in one read
+        // (this runs on every Workspace screen, through the rail).
         if (!$visible) {
+            $visible = (bool) db_value("SELECT 1 FROM ws_flows f
+                JOIN ws_channels c ON c.id = f.channel_id
+                LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+                WHERE f.status = 'live' AND f.channel_id > 0
+                    AND (c.kind = 'public' OR (c.kind = 'private' AND m.user_id IS NOT NULL))
+                LIMIT 1");
+        }
+
+        // Staff also read a private channel opened for inspection
+        // (ws_audit_open()), which the session holds: asked channel by
+        // channel, the way ws_flow_access() asks it.
+        if (!$visible && ((int) ($viewer['role'] ?? 3) < 3)) {
             foreach ((array) db_values("SELECT DISTINCT channel_id FROM ws_flows WHERE status = 'live' AND channel_id > 0 LIMIT 500") as $channel_id) {
                 if (ws_flow_access($viewer, array('status' => 'live', 'owner_id' => 0, 'channel_id' => (int) $channel_id)) === 'run') {
                     $visible = true;
@@ -1220,7 +1233,7 @@ function ws_flow_js_strings()
         'fl_canvas'           => lang('Canvas'),
         'fl_canvas_help'      => lang('The flow canvas. Tab moves from box to box; C connects the selected box to another, Delete removes it, the arrow keys move it. The outline view lists everything without the canvas.'),
         'fl_palette'          => lang('Add a box'),
-        'fl_zoom'             => lang('Zoom'),
+        'fl_zoom'             => lang('Zoom controls'),
         'fl_zoom_in'          => lang('Zoom in'),
         'fl_zoom_out'         => lang('Zoom out'),
         'fl_fit'              => lang('Fit to the screen'),
@@ -1259,6 +1272,8 @@ function ws_flow_js_strings()
         'fl_read_only'        => lang('You can see this flow; only its owner changes it.'),
         'fl_conflict'         => lang('This flow was changed meanwhile, on another screen or device. Load it again.'),
         'fl_reload'           => lang('Load it again'),
+        'fl_leave_ask'        => lang('The changes to this flow could not be saved. Leave them and go on?'),
+        'fl_leave'            => lang('Discard the changes'),
         'fl_empty_canvas'     => lang('Start with "Start manually" in the palette, add tasks and an end, then drag from the dot on the right of a box to the box that comes after it.'),
         'fl_kind_manual'      => lang('Started by hand'),
         'fl_kind_task'        => lang('Task'),
@@ -1331,15 +1346,22 @@ function ws_flow_js_strings()
  * them, and on the flows screen whether the person builds them, the kinds of
  * record a start box may be about and the limits of a graph.
  *
- * @param array $viewer
- * @param bool  $screen the flows screen is the one drawn
+ * A record's drawer (mode record) draws no channel sidebar: it is told
+ * nothing and nothing is read for it.
+ *
+ * @param array  $viewer
+ * @param string $mode the screen's mode, as ws_screen_config() has it
  * @return array
  */
-function ws_flow_js_config($viewer, $screen)
+function ws_flow_js_config($viewer, $mode)
 {
+    if ($mode === 'record') {
+        return array('nav' => false);
+    }
+
     $config = array('nav' => ws_flows_nav_visible($viewer));
 
-    if (!$screen) {
+    if ($mode !== 'flows') {
         return $config;
     }
 

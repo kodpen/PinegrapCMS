@@ -1,36 +1,42 @@
 ---
 name: workspace-flows-canvas
-description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, the ws_flow_* panel actions, how the editor is built, autosave and 409, keyboard, outline view, read-only, what is left
+description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, the editor, autosave, leaving and 409, focus, keys, outline view, read-only, what is left
 ---
 
 ## What is there?
-- Screen `workspace_flows.php` (mode `flows`, rail key `flows`). `ws_flows_nav_visible()` shows it to staff (`ws_can_schedule()`) and to anyone who may run a live flow of a channel they read; the channel sidebar shows it through `CFG.flows.nav`.
-- `workspace.js` loads `ws_bootstrap`, then calls `window.PGWsFlow.start(root, BOOT)` (people, departments, channels, priorities). The canvas uses the `PGWsKit` helpers (`api`, `ask`, `toast`, `select`, `clear`). Bundle `workspace_flow.min.js`, printed by `ws_screen_assets()` in mode `flows` only.
-- Texts: `ws_flow_js_strings()` (`fl_*`). Config: `ws_flow_js_config($viewer, $screen)` (nav; on the screen also build, subjects from `ws_scheduled_record_types()`, limits).
+- Screen `workspace_flows.php` (mode `flows`, rail key `flows`). `ws_flows_nav_visible()` (one read) shows it to staff and to whoever may run a live flow of a channel they read; the channel sidebar reads `CFG.flows.nav`.
+- `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit` (`api` with `{keepalive}`, `ask`, `toast`, `select`, `clear`). Bundle `workspace_flow.min.js`, mode `flows` only.
+- Texts: `ws_flow_js_strings()` (`fl_*`). Config: `ws_flow_js_config($viewer, $mode)`: `nav` only; mode `record` gets `nav: false` with no query; mode `flows` adds build, subjects, limits.
 
 ## Which panel actions?
-- `ws_flow_list`, `ws_flow_get` (the owner gets the draft, problems and `changed`; a runner gets the live graph), `ws_flow_create`, `ws_flow_save`, `ws_flow_publish`, `ws_flow_pause`, `ws_flow_bin`. All are rows of the `ws_` family (exempt, token, write).
-- The cases call `ws_flow_save()` / `_publish()` / `_pause()` / `_bin()`. Their `*_check()` decide. `draft_rev` is always sent (`ws_action_flow_fields()`). A 409 answers `field: changed_meanwhile`, and the screen offers "Load it again".
-- Presenters: `ws_flow_brief()`, `ws_flow_detail()`, `ws_flow_graph_present()` (the API's graph presenter delegates to it).
+- `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`: rows of the `ws_` family (exempt, token, write). The store's `*_check()` decide.
+- `ws_action_flow_fields()` always passes `draft_rev`; `ws_action_flow_refused()` turns a 409 into `field: changed_meanwhile` (tested).
 
 ## How is the editor built?
-- The toolbar (`.pg-toolbar`) holds the name, the status badge, the save state, Problems, Publish, Pause and a ⋯ menu with Delete. Below it a grid: list | stage | side.
-- The stage has a viewport and a layer moved with a CSS translate+scale. On the layer: an SVG of cubic arrows (markers `wsf-arrow*`) under 208×80 HTML boxes. Places are canvas units snapped to 16. The out port is on the right, the in port on the left; a start has no in port, an end no out port.
-- Pan: drag the empty canvas, Space+drag, middle button or the plain wheel. Zoom: Ctrl/⌘+wheel, pinch with two pointers, or the − % + fit buttons (0.25 to 2). The palette adds by click or HTML5 drag; ids are `<kind>_<n>`. A second start is disabled in the palette.
-- Saving: 1.5 s after the last change, on window blur, Ctrl+S, and a keepalive fetch on pagehide or a hidden tab. The save answer brings the problems (server texts): boxes get `.wsf-bad`, arrows a dashed red line, and `#wsf-problems` lists them (a click selects the box).
-- Publish needs no problems. `ask()` names version n+1. Afterwards the badge reads `Live · vN`, and "Changes not published yet" shows while the draft differs.
+- Toolbar: "New flow" (slot 1, the one primary), name, status badge, save state, Problems, Publish, Pause, ⋯ (Delete). Below: list | stage | side.
+- Stage: a viewport and a layer moved by translate+scale; an SVG of arrows under 208×80 HTML boxes, places snapped to 16; out port right, in port left.
+- Pan: empty canvas, Space+drag (Space only on the canvas), middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25–2). Esc or a second finger puts a box being moved back.
+
+## How is it saved?
+- 1.5 s after the last change, on window blur, Ctrl+S; Publish, Pause, opening another flow and "New flow" save first.
+- Hidden tab or page left: a keepalive `ws_flow_save` whose answer is read, so `draft_rev` follows. Over 60 000 bytes (browsers refuse 64 KiB) no keepalive: a hidden tab saves the usual way, leaving asks.
+- `beforeunload` asks while changes are not on their way (failed save, conflict, too large) and then sends nothing; `pagehide` sends if the person leaves.
+- Changes that cannot be saved are dropped on a switch only after `ask()`. A change made while Publish/Pause runs is kept; only status and version are taken.
+- A 409 shows the banner with "Load it again". `?flow=` that cannot open falls back to the first flow; with none left the address drops it.
+
+## Where does the focus go?
+- `state.refocus` names `data-refocus` keys, space-separated fallbacks: list entry, `name`, `status` after Publish/Pause, `new`, the next box's title after an outline removal.
 
 ## Which keys?
-- Tab goes through the boxes in arrow order (`orderedNodes()` is also the DOM order). The arrow keys move a box 16 (Shift: 64). C opens "Connect to…" in the `ask()` dialog. Delete/Backspace removes the box (with its arrows) or the arrow. Enter goes to the first field; + − 0 zoom and fit; Esc clears.
-- The side panel offers the same without a pointer: "Connect to…" and Add the arrow, remove buttons, and done/cancelled for an arrow out of a task.
+- Tab goes through boxes in arrow order. Arrows move 16 (Shift 64). C "Connect to…". Delete removes the box or arrow. Enter: first field. + − 0 zoom; Esc clears.
+- The side panel does the same without a pointer. An arrow is selected by index; removing another arrow keeps the selection on its arrow.
 
 ## What is the outline view?
-- A toolbar toggle; it is the default under 768 px. It lists the boxes in arrow order, each with its full settings, its arrows and "Connect to…", with the palette below. A box added there goes right of the rightmost box.
+- A toggle, default under 768 px: boxes in arrow order with their settings, arrows and "Connect to…"; other boxes' names follow a rename. The hidden canvas is drawn when shown; people ticks only once "The people I pick" is chosen.
 
 ## What does run-only access show?
-- Access `run` shows the live graph read-only: no palette, disabled fields, no drag, no Publish.
+- The live graph read-only: no palette, no drag, no Publish.
 
 ## What is left?
-- Notes on the canvas: the store keeps them, and the editor passes them through untouched. A version with notes waits for its own PR.
-- Undo/redo, auto-layout, "from a template", multi-select. F3 adds Run and the run view.
+- Notes on the canvas (passed through untouched), undo/redo, auto-layout, "from a template", multi-select; F3 adds Run.
 - Tests: `tests/workspace_flows_canvas_test.php`. The headless harness is not in the repo.
