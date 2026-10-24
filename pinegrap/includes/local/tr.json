@@ -15224,7 +15224,6 @@
     "New Password (again)": "Yeni Şifre (tekrar)",
     "New Recipient": "Yeni Alıcı",
     "New account email (when the form opened one)": "Yeni hesabın e-postası (form hesap açtıysa)",
-    "New account password (when the form opened one)": "Yeni hesabın şifresi (form hesap açtıysa)",
     "New recipient address — the empty form (href)": "Yeni alıcı adresi — boş form (href)",
     "News and campaigns, once a month.": "Ayda bir haberler ve kampanyalar.",
     "No Password Yet": "Henüz Şifre Yok",
@@ -26700,5 +26699,8 @@
     "Vertical bar (|)": "Dikey çizgi (|)",
     "Split again": "Yeniden böl",
     "If the columns come out wrong, choose the separator and split the lines again.": "Sütunlar yanlış ayrıldıysa ayırıcıyı seçip satırları yeniden bölün.",
-    "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı."
+    "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı.",
+    "New account password note (a sentence with the set password link)": "Yeni hesabın parola notu (parola belirleme bağlantısını içeren cümle)",
+    "Set password link address (only for the person who sent the form)": "Parola belirleme bağlantısının adresi (yalnız formu gönderen kişi için)",
+    "A set password link is ready for the visitor": "Ziyaretçi için bir parola belirleme bağlantısı hazır"
 }
