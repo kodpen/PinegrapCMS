@@ -1,6 +1,6 @@
 ---
 name: trendyol-stock-price
-description: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result, webhook facts.
+description: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result; webhooks carry no stock.
 ---
 
 ## Which call sends stock and price?
@@ -26,7 +26,7 @@ description: Trendyol stock and price push: price-and-inventory batch by barcode
 ## What is still unknown?
 - Whether a stock line for a listing still awaiting approval is refused. If it is, the line's refusal puts the mapping in `error` and it stops syncing until re-matched (n11 rule, `mp_sync_apply_results()`); step 2b's approval read is where it would be set active again.
 
-## What do webhooks carry? (for order import)
-- `POST /integration/webhook/sellers/{sellerId}/webhooks` with `url`, `authenticationType` `BASIC_AUTHENTICATION` (username/password) or `API_KEY` (sent as `x-api-key`), `subscribedStatuses` (order package statuses; empty = all). Payload = an order package page. No stock, price or product events; no signature. Max 15 per seller; retried every 5 minutes, passive after 13 errors; URL must not contain "Trendyol", "Dolap" or "Localhost".
+## What do webhooks carry?
+- Order package changes only, no stock, price or product events, so they change nothing here. The receiver: `marketplace-webhook-receiver.md`; Trendyol's webhook facts: `marketplace-webhook-registration.md`.
 
 Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md

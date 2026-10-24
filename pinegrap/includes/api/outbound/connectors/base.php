@@ -23,6 +23,17 @@
 //   push_stock_price($account, $rows)     one batch out, answers a task handle
 //   read_task($account, $task_id)         the result of an earlier batch
 //   pull_orders($account, $since)         their orders, ours to import
+//   order_stage($remote_status)           their status as open, shipped,
+//                                         delivered or cancelled
+//   approve_lines($account, $line_ids, $package)
+//                                         accept a package's lines (Picking);
+//                                         $package is the imported package
+//   webhook_packages($account, $decoded)  the packages of one delivery their
+//                                         webhook posted, already parsed
+//   register_webhook($account, $url, $key)
+//                                         ask them to post orders to $url with
+//                                         $key; answers data['webhook_id']
+//   remove_webhook($account)              remove the one in the credentials
 //   update_order($account, $lines, $to)   move their order along
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values
@@ -82,6 +93,9 @@ function mp_providers() {
 			'name'   => 'Trendyol',
 			'file'   => 'trendyol.php',
 			'key'    => 'barcode',
+			// A registered webhook belongs to the seller and the environment
+			// these fields name (mp_webhook_owner_changed()).
+			'webhook_owner_fields' => array('seller_id', 'environment'),
 			'help'   => 'All three are in your Trendyol seller panel, under Account Information › Integration Information. The test environment has credentials of its own and only answers servers whose IP address Trendyol has authorised.',
 			'fields' => array(
 				'seller_id'   => array('label' => 'Seller ID',  'secret' => false),

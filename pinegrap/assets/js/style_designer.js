@@ -1490,6 +1490,10 @@ const StyleDesigner = (function () {
      *   wysiwyg             a text area visitors fill in with the rich-text
      *                       editor; absent, the field row keeps its own flag
      *                       (one set on the classic field screen survives)
+     *   translate           false: the answers of a text box or text area are
+     *                       left out of translation (icon names, codes,
+     *                       JSON); absent, the field row keeps its own flag
+     *                       (form_fields.translate_values, new fields on)
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1854,18 +1858,14 @@ const StyleDesigner = (function () {
         return v === true || String(v) === '1';
     }
 
-    // Whether a text area is filled in with the rich-text editor. Once the
-    // switch has been used the control's _cf.wysiwyg decides; before that the
-    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
-    // the panel shows. null while the page's rows are being loaded.
+    // The stored form_fields row of a control on the active page (by row id,
+    // then by name): null when there is none, undefined while the page's rows
+    // are being loaded (the panel redraws once they are in).
     var _cfRichRowsLoading = {};
-    function _cfRichOn(lead) {
-        if (_cfTagOf(lead) !== 'textarea') return false;
-        var rec = (lead.props && lead.props._cf) || {};
-        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+    function _cfStoredRow(lead) {
         var p   = _pgActivePage();
         var pid = p ? (parseInt(p.page_id, 10) || 0) : 0;
-        if (!pid) return false;
+        if (!pid) return null;
         var rows = _formFieldsCache[pid];
         if (!rows) {
             if (!_cfRichRowsLoading[pid]) {
@@ -1875,12 +1875,37 @@ const StyleDesigner = (function () {
                     _sdSchedulePropsRefresh();
                 });
             }
-            return null;
+            return undefined;
         }
         var id = _cfRowId(lead), key = String(_cfControlName(lead) || '').toLowerCase(), hit = null, i;
         for (i = 0; id && !hit && i < rows.length; i++) if (parseInt(rows[i].id, 10) === id) hit = rows[i];
         for (i = 0; key && !hit && i < rows.length; i++) if (String(rows[i].name || '').toLowerCase() === key) hit = rows[i];
+        return hit;
+    }
+
+    // Whether a text area is filled in with the rich-text editor. Once the
+    // switch has been used the control's _cf.wysiwyg decides; before that the
+    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
+    // the panel shows. null while the page's rows are being loaded.
+    function _cfRichOn(lead) {
+        if (_cfTagOf(lead) !== 'textarea') return false;
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+        var hit = _cfStoredRow(lead);
+        if (hit === undefined) return null;
         return !!hit && hit.type === 'text area' && _cfFlagOn(hit.wysiwyg);
+    }
+
+    // Whether the answers of a text box or text area are included in
+    // translation. The control's _cf.translate decides once the switch has
+    // been used; before that the field row's translate_values (on for a new
+    // field and on a site that has not run the upgrade, pg_cf_translate_flag()).
+    function _cfTranslateOn(lead) {
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.translate === 'boolean') return rec.translate;
+        var hit = _cfStoredRow(lead);
+        if (!hit || hit.translate_values === undefined || hit.translate_values === null) return true;
+        return _cfFlagOn(hit.translate_values);
     }
 
     // The control whose record a panel edits: the first control of the group
@@ -2232,6 +2257,17 @@ const StyleDesigner = (function () {
                     '</div></div>';
         }
 
+        // The answers of a text field are translated where a widget that
+        // includes its records shows them; codes, icon names or JSON typed
+        // into a field are left out with this switch.
+        var leadType = _cfControlType(lead);
+        if (leadType === 'text box' || leadType === 'text area') {
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-translate', _cfTranslateOn(lead), _sdT('Include in translation')) +
+                    _cfHint(esc(_sdT('When off, the answers to this field are never listed in Translations or sent to an engine (icons, codes, JSON).'))) +
+                    '</div></div>';
+        }
+
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
@@ -2429,6 +2465,10 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-rich', 'change', function (el) {
             _cfRec(lead).wysiwyg = !!el.checked;
+            commit(true);
+        });
+        on('sd-cf-translate', 'change', function (el) {
+            _cfRec(lead).translate = !!el.checked;
             commit(true);
         });
         on('sd-cf-contact', 'change', function (el) {
@@ -2732,6 +2772,7 @@ const StyleDesigner = (function () {
             rec.quiz_question      = !!f.quiz_question;
             rec.quiz_answer        = f.quiz_answer || '';
             if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
+            if (f.translate !== undefined) rec.translate = _cfFlagOn(f.translate);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -12188,7 +12229,8 @@ const StyleDesigner = (function () {
         '__recipient_address': _sdT('Sample Street 1, 34000 Istanbul, Türkiye'),
         '__recipient_phone': '+90 555 000 00 00',
         '__new_account_email': 'sample@example.com',
-        '__new_account_password': 'a1b2c3d4',
+        '__new_account_password': _sdT('Set it with this link: {var:1}', 'https://example.com/set-password'),
+        '__new_account_set_password_url': '#',
         '__ai_summary': _sdT('The main points of the post, written by the visitor\'s browser.'),
         '__item_name': _sdT('Sample Product Name'),
         '__item_short_description': _sdT('Sample Product Name'),
@@ -31677,7 +31719,19 @@ const StyleDesigner = (function () {
                                     return '<option value="' + esc(String(g.id)) + '"' + (String(g.id) === String(parseInt(_cfFS.contact_group_id || 0, 10) || 0) ? ' selected' : '') + '>' + esc(g.name) + '</option>';
                                 }).join('') +
                             '</select>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Fields bound to a contact create or update the sender\'s contact record, and that record joins this group.')) + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Fields bound to a contact create or update the sender\'s contact record, and that record joins this group.')) + '</div>' +
+                            // Double opt-in: the group waits for the link
+                            // mailed to the contact's own address. Shown only
+                            // once the server has the column; until then the
+                            // save would drop the value.
+                            (_cfMeta().doubleOptIn ? (
+                                '<div class="form-check form-switch mt-2">' +
+                                    '<input class="form-check-input sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '>' +
+                                    '<label class="form-check-label" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
+                                '</div>' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' + esc(_sdT('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) + ' ' +
+                                    esc(_sdT('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) + '</div>'
+                            ) : '')
                         ) +
                         // Opening an account and giving a membership are two
                         // settings: a contact form registers its sender so they
@@ -34060,7 +34114,8 @@ const StyleDesigner = (function () {
     // a confirmation page tells them how to sign in.
     var SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS = [
         ['__new_account_email',    _sdT('New account email (when the form opened one)')],
-        ['__new_account_password', _sdT('New account password (when the form opened one)')],
+        ['__new_account_password', _sdT('New account password note (a sentence with the set password link)')],
+        ['__new_account_set_password_url', _sdT('Set password link address (only for the person who sent the form)')],
         ['__edit_url',             _sdT('Edit screen address (only for users who may edit the record)')]
     ];
     // AI: the links that open an assistant with a question about the record
@@ -35543,6 +35598,7 @@ const StyleDesigner = (function () {
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
+            ['has_set_password_link',  _sdT('A set password link is ready for the visitor')],
             ['record_found',           _sdT('The record is shown')],
             ['record_not_found',       _sdT('There is no record to show (missing, or not for this visitor)')],
             ['submitted_this_session', _sdT('The visitor sent this record themselves, in this session')],

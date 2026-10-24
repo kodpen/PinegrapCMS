@@ -111,9 +111,12 @@ function test_marketplace_trendyol_connector_offers_only_what_it_does()
 	pg_assert_true(mp_can('trendyol', 'create_listings'));
 	pg_assert_true(mp_can('trendyol', 'read_task'));
 	pg_assert_true(mp_can('trendyol', 'push_stock_price'));
+	pg_assert_true(mp_can('trendyol', 'pull_orders'));
+	pg_assert_true(mp_can('trendyol', 'order_stage'));
+	pg_assert_true(mp_can('trendyol', 'approve_lines'));
 
-	// Nothing queues work it cannot do yet.
-	pg_assert_false(mp_can('trendyol', 'pull_orders'));
+	// Nothing queues work it cannot do: n11's courier request is not theirs.
+	pg_assert_false(mp_can('trendyol', 'request_collection'));
 }
 
 function test_marketplace_trendyol_is_keyed_on_barcodes_and_n11_is_not()

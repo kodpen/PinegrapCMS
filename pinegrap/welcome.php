@@ -37,19 +37,16 @@ switch ($user['role']){
 
 //db("UPDATE config SET version = '2026.1.23'");
 
-//we can set widget refresh frequent with url
-// welcome.php?refresh=1 will refresh widgets every sec.
-// More frequent refresh increases data consumption and creates more system load both server and visitor computer.
-// we limit it with min 10 sec.
-$widget_refresh_time = 60;//default 60 sec
-if(isset($_REQUEST['refresh']) && is_numeric($_REQUEST['refresh']) && $_REQUEST['refresh'] >= 10){
-    $_SESSION['software']['welcome']['widget']['refresh'] = $_REQUEST['refresh'];
+// How often the moving widgets are asked for again, in seconds: 60 unless this
+// sign-in chose otherwise, on the Dashboard card of Site Settings > Appearance
+// or with welcome.php?refresh=N. Kept in the session, never in a column. A
+// shorter cycle costs the server and the browser more, so it is held to 10
+// seconds at least, and to a day at most (pg_dashboard_refresh_seconds()).
+if (isset($_REQUEST['refresh']) && is_string($_REQUEST['refresh']) && is_numeric($_REQUEST['refresh'])) {
+    $_SESSION['software']['welcome']['widget']['refresh'] = pg_dashboard_refresh_seconds($_REQUEST['refresh']);
 }
 
-// if widget refresh time value was passed in the query string
-if(isset($_SESSION['software']['welcome']['widget']['refresh'])){
-    $widget_refresh_time = ($_SESSION['software']['welcome']['widget']['refresh'] ?? '');
-}
+$widget_refresh_time = pg_dashboard_refresh_seconds($_SESSION['software']['welcome']['widget']['refresh'] ?? '', 60);
 
 // Add pinegrap notices
 include_once('liveform.class.php');
@@ -68,44 +65,17 @@ $dashboard = mysqli_fetch_assoc($result);
 
 // ── Appearance ──────────────────────────────────────────────────────────────
 //
-// Two administrator-chosen settings, both on the dashboard row: which of the
-// four treatments the cards wear, and what sits behind them. They are read here
-// and written onto #content further down, where CSS can reach them.
-//
-// A plain ?? rather than a column check, because $dashboard is already a
-// SELECT *: an installation that has not run 2026.4.4 has neither key and
-// falls through to the pair it has been looking at all along. The whitelists do
-// the same job for a value that was hand-edited in the database.
-$widget_theme = (string) ($dashboard['widget_theme'] ?? '');
+// Two site-wide settings on the dashboard row, chosen by a designer or an
+// administrator on the Dashboard card of Site Settings > Appearance: which of
+// the four treatments the cards wear, and what sits behind them. They are
+// written onto #content further down, where CSS can reach them, with "auto"
+// already resolved to a backdrop (pg_dashboard_appearance()). $dashboard is a
+// SELECT *, so an installation that has not run 2026.4.4 has neither key and
+// keeps the flat cards it has always had.
+$dashboard_appearance = pg_dashboard_appearance($dashboard);
 
-if (!in_array($widget_theme, array('flat', 'neon', 'glass', 'aurora'), true)) {
-    $widget_theme = 'flat';
-}
-
-$panel_backdrop = (string) ($dashboard['panel_backdrop'] ?? '');
-
-if (!in_array($panel_backdrop, array('auto', 'none', 'mesh', 'dusk', 'ember'), true)) {
-    $panel_backdrop = 'auto';
-}
-
-// "auto" means "whatever the card theme needs", and that is a mapping CSS
-// cannot express -- an attribute selector cannot read a second attribute. It is
-// resolved here instead, which is also why changing the theme reloads the page.
-//
-// Flat maps to none deliberately: an installation that has never opened this
-// menu must look exactly as it did, and flat is the theme it is already on.
-// Glass maps to mesh because glass over a flat colour is not glass, it is a
-// tint -- the wash is the thing it refracts.
-if ($panel_backdrop == 'auto') {
-
-    $panel_backdrop_for_theme = array(
-        'flat'   => 'none',
-        'neon'   => 'dusk',
-        'glass'  => 'mesh',
-        'aurora' => 'mesh');
-
-    $panel_backdrop = $panel_backdrop_for_theme[$widget_theme];
-}
+$widget_theme = $dashboard_appearance['widget_theme'];
+$panel_backdrop = $dashboard_appearance['backdrop'];
 
 $output_header_includes = '';
 
@@ -792,9 +762,10 @@ foreach ($widget_order as $widget_id) {
 
 // ── Widget controls ─────────────────────────────────────────────────────────
 //
-// Manager and above. Printed into the page script block further down; the Reset
-// Widgets button that calls reset_widgets() is built by functions.php, in the
-// menu popover, and only on this screen.
+// Designers and administrators (role < 2): dragging a card by its header
+// stores the new order. Printed into the page script block further down. Card
+// style, backdrop, refresh time and Reset Widgets are on the Dashboard card of
+// Site Settings > Appearance (includes/settings/appearance.php).
 //
 // Built here rather than beside the other page furniture because it has to
 // carry $widget_order, and that is not known until the registry has been read.
@@ -845,7 +816,7 @@ if ($user['role'] < 2) {
         return merged;
     }
 
-    function pg_save_widget_order(order, message_text, on_success) {
+    function pg_save_widget_order(order, message_text) {
 
         $.ajax({
             contentType: "application/json",
@@ -856,47 +827,7 @@ if ($user['role'] < 2) {
                 message_text: message_text,
                 widgets: order
             }),
-            type: "POST",
-            success: function(response) {
-                if ((response.status == "success") && (on_success)) {
-                    on_success();
-                }
-            }
-        });
-    }
-
-    // The two appearance selects in the Panel entry\'s context menu. Both save
-    // through one call and both reload, because the backdrop is decided from
-    // the card theme whenever it is left on "auto" and only the server knows
-    // how to resolve that.
-    function set_dashboard_appearance(field, value) {
-
-        $.ajax({
-            contentType: "application/json",
-            url: "api.php",
-            data: JSON.stringify({
-                action: "update_dashboard_appearance",
-                token: software_token,
-                field: field,
-                value: value
-            }),
-            type: "POST",
-            success: function(response) {
-                if (response.status == "success") {
-                    location.reload();
-                }
-            }
-        });
-    }
-
-    // Restores the factory order. It has nothing to do with which widgets are
-    // switched on -- nothing on this screen switches a widget on or off any
-    // more, the settings do that -- so it no longer has anything to repair,
-    // only an arrangement to forget.
-    function reset_widgets() {
-
-        pg_save_widget_order(["default"], "restart", function() {
-            location.reload();
+            type: "POST"
         });
     }
 

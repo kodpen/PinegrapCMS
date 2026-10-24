@@ -1528,21 +1528,10 @@ function _pg_login_region_return_link($url, $page_url)
 
 // Whether the signed-in person has work in the control panel: the test
 // send_user_to_login_home() makes before it opens the panel for them
-// instead of the site.
+// instead of the site. The rule has one copy, waf_panel_access_from_row().
 function _pg_login_region_panel_access()
 {
-    if (!defined('USER_ID') || (int)USER_ID <= 0) return false;
-    if (defined('USER_ROLE') && (int)USER_ROLE < 3) return true;
-    $u = db_item("SELECT * FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
-    if (!is_array($u)) return false;
-    foreach (array('user_manage_contacts', 'user_manage_visitors', 'user_manage_ecommerce',
-                   'user_manage_forms', 'user_manage_calendars', 'user_manage_emails') as $k) {
-        if (isset($u[$k]) && (string)$u[$k] === 'yes') return true;
-    }
-    foreach (array('manage_ecommerce_reports', 'manage_erp', 'manage_workspace') as $k) {
-        if (!empty($u[$k])) return true;
-    }
-    return function_exists('no_acl_check') && no_acl_check((int)USER_ID);
+    return pg_user_has_panel_access();
 }
 
 // Render a 'login_region' system widget: what a site header shows about the

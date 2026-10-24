@@ -374,6 +374,12 @@ function pg_page_schedule_run($now = null, $limit = PG_PAGE_SCHEDULE_BATCH)
         }
     }
 
+    // A page that came on or went off the site changes menus and lists on
+    // other pages: every page the page cache keeps is made old.
+    if (($out['published'] || $out['unpublished']) && function_exists('pg_page_cache_bump')) {
+        pg_page_cache_bump();
+    }
+
     return $out;
 }
 

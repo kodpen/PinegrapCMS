@@ -2013,10 +2013,63 @@ function waf_rate_retention()
  */
 function waf_rate_sweep()
 {
-    @mysqli_query(
-        db::$con,
-        "DELETE FROM waf_rate WHERE window_start < " . (time() - waf_rate_retention()) . " LIMIT 5000"
-    );
+    foreach (waf_rate_sweep_queries(time(), waf_rate_retention()) as $query) {
+        @mysqli_query(db::$con, $query);
+    }
+}
+
+/**
+ * Scopes whose window is longer than the shared retention, with that window
+ * in seconds. A bucket's row records when its window started, so a day-long
+ * window swept on the firewall's hour would be forgotten 23 hours early and
+ * the limit would never be reached. 'cfr' is the custom form's per-address
+ * limit (pg_cf_throttle_subjects()).
+ *
+ * @return array scope => seconds
+ */
+function waf_rate_long_scopes()
+{
+    return array('cfr' => 86400);
+}
+
+/**
+ * The DELETE statements waf_rate_sweep() runs: one for every bucket on the
+ * shared retention, and one per long scope that outlives it. Pure, so the
+ * scope rule can be tested without a database.
+ *
+ * @param int $now
+ * @param int $retention Seconds, from waf_rate_retention()
+ * @return string[]
+ */
+function waf_rate_sweep_queries($now, $retention)
+{
+    $now       = (int) $now;
+    $retention = (int) $retention;
+    $kept      = array();
+    $queries   = array();
+
+    foreach (waf_rate_long_scopes() as $scope => $seconds) {
+        if ((int) $seconds > $retention) {
+            $kept[$scope] = (int) $seconds;
+        }
+    }
+
+    $short = "DELETE FROM waf_rate WHERE window_start < " . ($now - $retention);
+
+    // The key ends in '|' and its scope (waf_rate_key()); scopes are fixed
+    // words of this code, so nothing in them needs escaping for LIKE.
+    foreach ($kept as $scope => $seconds) {
+        $short .= " AND bucket_key NOT LIKE '%|" . $scope . "'";
+    }
+
+    $queries[] = $short . " LIMIT 5000";
+
+    foreach ($kept as $scope => $seconds) {
+        $queries[] = "DELETE FROM waf_rate WHERE window_start < " . ($now - $seconds)
+            . " AND bucket_key LIKE '%|" . $scope . "' LIMIT 5000";
+    }
+
+    return $queries;
 }
 
 
@@ -2335,6 +2388,14 @@ function waf_csp_policy()
             $policy,
             (string) waf_setting('ecommerce_payment_gateway', ''),
             ((int) waf_setting('ecommerce', 0) === 1) && ((int) waf_setting('ecommerce_credit_debit_card', 0) === 1));
+
+        // The CAPTCHA provider of the Security settings (Turnstile, hCaptcha)
+        // is loaded by the software itself on every form, so its hosts are
+        // listed like the payment service's. config.captcha rather than the
+        // CAPTCHA constant: this header is sent before init.php defines it.
+        if (((int) waf_setting('captcha', 0) === 1) && function_exists('pg_captcha_provider') && function_exists('pg_captcha_csp_sources')) {
+            $policy = waf_csp_add_sources($policy, pg_captcha_csp_sources(pg_captcha_provider()));
+        }
     }
 
     if (stripos($policy, 'report-uri') === false
@@ -2363,8 +2424,21 @@ function waf_csp_policy()
  */
 function waf_csp_add_payment_sources($policy, $gateway, $card_on)
 {
-    $sources = function_exists('pg_payment_csp_sources') ? pg_payment_csp_sources($gateway, $card_on) : array();
+    return waf_csp_add_sources($policy, function_exists('pg_payment_csp_sources') ? pg_payment_csp_sources($gateway, $card_on) : array());
+}
 
+/**
+ * The policy with more sources: each one is added to the end of its
+ * directive, and a directive the policy lacks is added after it. A new
+ * frame-src starts with what default-src already allows frames from, so
+ * adding a frame host does not shut out the site's own frames.
+ *
+ * @param string $policy
+ * @param array  $sources directive => list of sources
+ * @return string
+ */
+function waf_csp_add_sources($policy, $sources)
+{
     foreach ($sources as $directive => $hosts) {
         $hosts = implode(' ', $hosts);
 
@@ -3396,6 +3470,109 @@ function waf_user_is_authenticated()
 }
 
 /**
+ * Whether a user row has work in the control panel: an administrator,
+ * designer or manager (role below 3), or a role-3 user given a panel area
+ * (contacts, visitors, ecommerce, forms, calendars, campaigns, ecommerce
+ * reports, the ERP or the workspace) or edit rights on a folder.
+ *
+ * Pure: the row and the folder answer come from the caller, so the rule has
+ * one copy that the firewall, the CAPTCHA and the login region all ask.
+ *
+ * @param array $user_row        A row of the user table
+ * @param bool  $has_edit_folder Whether the user may edit at least one folder
+ * @return bool
+ */
+function waf_panel_access_from_row($user_row, $has_edit_folder)
+{
+    if (!is_array($user_row) || !isset($user_row['user_role'])) {
+        return false;
+    }
+
+    if ((int) $user_row['user_role'] < 3) {
+        return true;
+    }
+
+    foreach (array('user_manage_contacts', 'user_manage_visitors', 'user_manage_ecommerce',
+                   'user_manage_forms', 'user_manage_calendars', 'user_manage_emails') as $key) {
+        if (isset($user_row[$key]) && ((string) $user_row[$key] === 'yes')) {
+            return true;
+        }
+    }
+
+    foreach (array('manage_ecommerce_reports', 'manage_erp', 'manage_workspace') as $key) {
+        if (!empty($user_row[$key])) {
+            return true;
+        }
+    }
+
+    return (bool) $has_edit_folder;
+}
+
+/**
+ * Whether the signed-in session belongs to staff: someone with work in the
+ * control panel (waf_panel_access_from_row()). The site's own members are
+ * not staff, whatever their account holds.
+ *
+ * Staff are exempt from the sensitive rate limit, the concurrency ceiling,
+ * the CAPTCHA and the form submission limits; a member signed in through a
+ * form's auto-registration is not, or signing in would be the way around
+ * every one of them.
+ *
+ * One user query and, for role 3, one folder query per account and request.
+ * Fails closed: no session, no connection or no row is not staff.
+ *
+ * @return bool
+ */
+function waf_user_is_staff()
+{
+    static $cache = array();
+
+    $user_id = isset($_SESSION['sessionuserid']) ? (int) $_SESSION['sessionuserid'] : 0;
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    // Keyed by account: a form's auto-registration signs a visitor in partway
+    // through a request.
+    if (isset($cache[$user_id])) {
+        return $cache[$user_id];
+    }
+
+    // Without a connection, or when the query fails, nothing is known yet:
+    // the answer is "no" for now but is not kept, so a later call can still
+    // find staff.
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT * FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = @mysqli_fetch_assoc($result);
+
+    if (!is_array($row)) {
+        $cache[$user_id] = false;
+
+        return false;
+    }
+
+    $has_edit_folder = false;
+
+    if (!waf_panel_access_from_row($row, false)) {
+        $acl = @mysqli_query(db::$con, "SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = '" . $user_id . "' AND aclfolder_rights = '2' LIMIT 1");
+        $has_edit_folder = ($acl && (@mysqli_num_rows($acl) > 0));
+    }
+
+    $cache[$user_id] = waf_panel_access_from_row($row, $has_edit_folder);
+
+    return $cache[$user_id];
+}
+
+/**
  * REST API endpoints. Their whole purpose is to be called by scripts, so the
  * generic-HTTP-client bot class must not apply to them. They authenticate
  * with their own key/secret and are still rate limited. The MCP server and the
@@ -3407,7 +3584,9 @@ function waf_user_is_authenticated()
  * servers - Google's, Microsoft's, Apple's - with the token in the address
  * as its credential, under whatever user agent that service sends, from
  * whichever country it runs in. A product feed (feed.php) is read the same
- * way by a shopping platform's fetcher, with its token in the address.
+ * way by a shopping platform's fetcher, with its token in the address. A
+ * marketplace's servers post order packages to marketplace_webhook.php with
+ * the key they were given in a header, under no browser's user agent.
  */
 /**
  * Is this a call to the REST API?
@@ -3438,7 +3617,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php'));
+        $answer = waf_request_names_script(array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php'));
     }
 
     return $answer;
@@ -4362,8 +4541,10 @@ function waf_handle_rate_sensitive($ip, $blocking)
     }
 
     // Signed-in staff are exempt. This check is the reason the sensitive limit
-    // runs at the init stage rather than the router stage.
-    if (waf_user_is_authenticated()) {
+    // runs at the init stage rather than the router stage. A signed-in member
+    // is counted like any visitor: a form's auto-registration signs anyone in
+    // who types an address, so a session alone proves nothing.
+    if (waf_user_is_staff()) {
         return;
     }
 
@@ -4494,7 +4675,8 @@ function waf_handle_inflight($ip, $blocking)
         return;
     }
 
-    if (waf_user_is_authenticated()) {
+    // Staff only, as for the sensitive limit.
+    if (waf_user_is_staff()) {
         return;
     }
 

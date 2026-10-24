@@ -1069,9 +1069,15 @@ function pg_dashboard_brief($user, $changelog_sections)
     $greeting_tips = array_map('h', array(
         lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
         lang('Did you know the widgets can be dragged around by their headers?'),
-        lang('Right click the Panel button in the menu and you will find the widget theme settings.'),
         lang('If you prefer the light theme, it is in the user menu at the top right.'),
     ));
+
+    // The widget theme settings are on the Dashboard card of Site Settings >
+    // Appearance, drawn for designers and administrators only, so only those
+    // are told to look.
+    if ($user['role'] < 2) {
+        $greeting_tips[] = h(lang('You will find the widget theme settings in Site Settings, under Appearance.'));
+    }
 
     // Only for someone in the workspace team: a tip about a screen that will turn
     // the reader away is not a tip.
