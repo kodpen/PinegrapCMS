@@ -15,13 +15,13 @@ description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): whi
 - Staff with edit access to the page are not asked; their comment keeps `verified_order_id = 0` and counts in no rating.
 
 ## Where is it checked?
-- `get_page_content.php`: the comment form is not drawn for a refused reader; a visitor gets the sign-in link ("Please {var:1} to review a product you bought."), a customer the reason. A verified review shows a "Verified purchase" badge.
+- `get_page_content.php`: the comment form is not drawn for a refused reader; a visitor gets a sign-in link, a customer the reason. A verified review shows a "Verified purchase" badge.
 - `add_comment.php`: the same check before the INSERT (the form is only a courtesy), with a log line; it writes `verified_order_id` and clamps the stars to 0-5.
 - `tests/reviews_test.php` pins the rules and that each write path asks or refreshes.
 
 ## How is a product's rating kept?
 - `products.rating_avg` (DECIMAL 3,2) and `rating_count`: published, verified, starred (1-5) reviews of the product only (`pg_review_rating_sql()`). Comments from before 11.0.14 are unverified and never count. Group reviews have no rating yet.
-- Refreshed by `pg_review_refresh_products()` / `pg_review_comment_changed()` after add (when published), moderation save or delete (`edit_comment.php`), the scheduled publish (`job.php`) and the API update/delete. Paths that delete a page's comments (`edit_page.php`, `edit_pages.php`, the file manager) do not call it: `pg_review_refresh_daily()` in `job.php` recomputes every product once a day (one UPDATE...JOIN, changed rows only; state in `data/temp/review_ratings_refreshed.txt`).
+- Refreshed by `pg_review_refresh_products()` / `pg_review_comment_changed()` after add (when published), moderation save or delete (`edit_comment.php`), the scheduled publish (`job.php`) and the API update/delete. Paths that delete a page's comments (`edit_page.php`, `edit_pages.php`, the file manager) do not call it: `pg_review_refresh_daily()` in `job.php` recomputes every product once a day (state in `data/temp/review_ratings_refreshed.txt`).
 - Designer pages: catalog widget tokens `__rating_avg` / `__rating_count`, flags `has_rating` / `no_rating` (`designer/catalog-rating-tokens.md`).
 
 ## When does the markup carry aggregateRating?
