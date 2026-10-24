@@ -26793,5 +26793,6 @@
     "order review request": "sipariş değerlendirme isteği",
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
+    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
     "comments: replies are being added; {var:1} follows in the next pass": "comments: yanıtlar ekleniyor; {var:1} bir sonraki geçişte eklenecek"
 }
