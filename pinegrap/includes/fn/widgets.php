@@ -8052,9 +8052,10 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // the page itself is edited in the visual editor, and what its widgets show
 // - a product, a product group, a submitted form, a comment - is edited in
 // the panel. So the pencil is simply there for a user who may edit that
-// record, in the record's top start corner (top-left; top-right on a
-// right-to-left page; a comment keeps its share button at the other end),
-// and it opens the record's edit screen, which brings them back here.
+// record, in the record's top-left corner on every page (the comment card
+// keeps its share button top right through Bootstrap's physical utilities,
+// so a chip that followed a right-to-left page would cover it), and it
+// opens the record's edit screen, which brings them back here.
 
 /**
  * Whether this request draws edit chips: a signed-in user, and not a page
@@ -8159,11 +8160,10 @@ function pg_sw_edit_chip_css_inject($html)
  * !important, because a design's rules for links, svg and pictures
  * ("a {display:block}", ".card svg {width:100%}", ".row > *", ".ratio > *")
  * reach them too and made the pencil as wide as a card's picture, in the
- * flow above it. It sits .5rem inside the record's top start corner (left,
- * right on a right-to-left page: both sides are given, and the box keeps
- * the start one). The record is its positioning box through the page's
- * stylesheet (pg_sw_edit_chip_css()), not a position written on the record,
- * which would override the design's own. Opacity and transform stay plain
+ * flow above it. It sits .5rem inside the record's top-left corner in
+ * either direction (right is auto). The record is its positioning box
+ * through the page's stylesheet (pg_sw_edit_chip_css()), not a position
+ * written on the record, which would override the design's own. Opacity and transform stay plain
  * declarations, which a design's rules cannot reach either; the stylesheet
  * raises them on hover and focus.
  *
@@ -8198,9 +8198,9 @@ function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
         'calendar'  => 'rgba(93,64,55,.94)',
     );
     $tone = isset($backgrounds[$tone]) ? $tone : 'page';
-    // justify-self / align-self: the start corner, where a browser that
-    // aligns positioned boxes would otherwise follow a design's alignment.
-    $chip_style = 'position:absolute!important;top:.5rem!important;right:.5rem!important;bottom:auto!important;left:.5rem!important;'
+    // justify-self / align-self: the corner, where a browser that aligns
+    // positioned boxes would otherwise follow a design's alignment.
+    $chip_style = 'position:absolute!important;top:.5rem!important;right:auto!important;bottom:auto!important;left:.5rem!important;'
                 . 'z-index:6!important;display:flex!important;align-items:center!important;justify-content:center!important;'
                 . 'justify-self:start!important;align-self:start!important;box-sizing:border-box!important;'
                 . 'width:1.9rem!important;height:1.9rem!important;min-width:0!important;min-height:0!important;'

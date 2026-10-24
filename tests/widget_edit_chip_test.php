@@ -60,15 +60,16 @@ function test_widget_edit_chip_no_stylesheet_in_the_record()
 }
 
 // The chip's box: a 1.9rem circle taken out of the flow, .5rem inside the
-// record's top start corner (left and right are both given: the box keeps
-// the start one, right on a right-to-left page), every property a design
-// sets on links and inline elements pinned with !important.
+// record's top-left corner in either direction (right auto: a chip that
+// followed a right-to-left page would cover the comment card's share button,
+// which Bootstrap's physical utilities keep top right), every property a
+// design sets on links and inline elements pinned with !important.
 function test_widget_edit_chip_box_is_inline_and_important()
 {
 	$out = pg_sw_add_edit_chip(_widget_edit_chip_card(), '/e?id=1', 'Edit the record', 'forms');
 	$d = _widget_edit_chip_declarations(_widget_edit_chip_style_of($out, 'a'));
 	$expect = array(
-		'position' => 'absolute', 'top' => '.5rem', 'right' => '.5rem', 'bottom' => 'auto', 'left' => '.5rem',
+		'position' => 'absolute', 'top' => '.5rem', 'right' => 'auto', 'bottom' => 'auto', 'left' => '.5rem',
 		'z-index' => '6', 'display' => 'flex', 'box-sizing' => 'border-box',
 		'width' => '1.9rem', 'height' => '1.9rem', 'min-width' => '0', 'min-height' => '0',
 		'max-width' => 'none', 'max-height' => 'none', 'margin' => '0', 'padding' => '0',
