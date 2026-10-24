@@ -35,5 +35,5 @@ description: News template publishing: who may submit, the three-row live rule, 
 ## Which e-mails go when?
 - Submit: `email_article_new` to the site address (with the note), `email_article_received` to the author. Tips: `email_tip_new`, `email_tip_received`.
 - A message under the piece on `submission`: `email_desk_message` to the author and every watcher. Conversations: `email_reply`.
-- Reader comments are held; approving one (`edit_comment.php`) mails `email_reply` to watchers only, the commenter too. The author is not mailed (accepted platform limit; core follow-up: `add_comment.php`'s designed-page mapping).
+- Reader comments are held; approving one (`edit_comment.php`) mails `email_reply` to the author (unless they wrote it) and to watchers, the commenter too ([[comments-moderation-counters]]).
 - No "published" e-mail (no status-change hook): the editor writes "It is live" under the piece.

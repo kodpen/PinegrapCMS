@@ -127,8 +127,9 @@ function ws_mcp_form_url($server_id = 0, $tool = '', $channel_id = 0)
 
 /**
  * What a channel is told after an alias was written while Pinegrap AI cannot
- * answer: that the server's tools that read can be run with a form. '' when
- * the server has none.
+ * answer - it is not set up (ws_ai_after_send()), or the request's first call
+ * could not reach it (ws_ai_hold_form_hint()): that the server's tools that
+ * read can be run with a form. '' when the server has none.
  *
  * @param array $server
  * @param int   $channel_id
