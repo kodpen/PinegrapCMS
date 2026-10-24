@@ -314,6 +314,11 @@ if (isset($_GET['export'])) {
                     $output_action_item = '';
                     break;
 
+                case 'order_review_request':
+                    $output_action = lang('Order Review Request');
+                    $output_action_item = '';
+                    break;
+
                 case 'order_shipped':
                     $output_action = lang('Order Shipped');
                     $output_action_item = '';
