@@ -7,11 +7,15 @@
  * announcements, the boards, the latest activity, the topics waiting for an
  * answer, the week's most viewed topics and the featured guides; the forum
  * with its pinned topics and every topic by its newest activity; one board
- * at a time (?board=); the topic page, with its replies beside a column
- * about the topic; the form that starts a topic; the docs, which members
- * contribute and moderators review; a form to report a post; the sign-in
- * and account pages, the e-mails the site sends and a site search. Built on
- * Bootstrap 5. Read by pg_design_templates() (includes/fn/designer.php).
+ * at a time (?board=), the topics of a tag (?tag=) or of a member
+ * (?member=) and the topics nobody has answered; the topic page, with its
+ * replies beside a column about the topic; the form that starts a topic;
+ * the docs, which members contribute and moderators review: their sections
+ * (?section=) and each guide with its feedback; a form to report a post;
+ * the guidelines, the questions and answers, about, contact and the legal
+ * pages; the sign-in and account pages, the e-mails the site sends and a
+ * site search. Built on Bootstrap 5. Read by pg_design_templates()
+ * (includes/fn/designer.php).
  *
  * A topic is a record of the Forum Topics form, owned by the Start a Topic
  * page in the "registration" folder: a member sends it, and it is public at
@@ -21,7 +25,8 @@
  * Hidden ($topic_live). A guide is a record of the Community Docs form,
  * owned by the Contribute a Guide page: it is public only while its Status
  * is Published ($doc_live). A report (Forum Reports, the Report a Post page)
- * is never public. Replies are comments of the topic page.
+ * is never public. Replies are comments of the topic page, feedback (with a
+ * rating, held for the moderators) comments of the guide page.
  *
  * The look ships in the template's User Styles: the template's own rules,
  * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
@@ -143,6 +148,14 @@ $page_link = function ($page_key, $params) {
         '_bindParams' => array('href' => array('page_id' => '{{tab:' . $page_key . '}}', 'params' => $list)),
     );
 };
+// A part of a page the site search can point a result at (Search and SERP in
+// the editor's options): its anchor, the switch, and the topics a visitor
+// may search for that the part does not say itself.
+$searchable = function ($id, $topics = '') {
+    $props = array('id' => $id, 'searchSection' => true);
+    if ($topics !== '') $props['searchKeywords'] = $topics;
+    return $props;
+};
 // The language switcher button: the server draws it for each request and
 // leaves it out while the site has a single language. Its button carries
 // the language's name, so it is filled ($outline false): an outlined grey
@@ -218,6 +231,22 @@ $doc_sections = array(
 );
 $doc_section_names = array();
 foreach ($doc_sections as $s) $doc_section_names[] = $s[0];
+// The docs page of one section.
+$section_url = function ($key) use ($doc_sections) {
+    return '{{page:docs_section}}?section=' . rawurlencode($doc_sections[$key][0]);
+};
+
+// The tags the tag page offers to begin with: words the sample topics carry,
+// each as it is written there. A topic's tags are one line of words
+// separated by commas, so the tag page finds the topics whose line contains
+// the word. The moderators keep this short list in step with the forum.
+$popular_tags = array(
+    lang('sync'), lang('reminders'), lang('templates'), lang('tasks'), lang('search'),
+    lang('workspaces'), lang('keyboard shortcuts'), lang('export'), lang('feature request'), lang('getting started'),
+);
+$tag_url = function ($tag) {
+    return '{{page:tag}}?tag=' . rawurlencode($tag);
+};
 
 // A guide's Status on the docs desk: the magazine's six desk statuses,
 // adapted. Only the fourth makes a guide public ($doc_live below).
@@ -254,6 +283,15 @@ $in_board = function ($name) use ($f) {
 };
 // The board the address names (?board=); without one the filter is left out.
 $board_param     = $f('board', 'is equal to', '', 'url parameter', 'board');
+// The member the address names (?member=): the name a topic shows, which
+// comes from the profile of the member who started it.
+$member_param    = $f('submitter_name', 'is equal to', '', 'url parameter', 'member');
+// A word of the topic's tags (?tag=). "contains", since the tags are one
+// line: the page never prints the word or takes it as its title, and stays
+// out of search engines.
+$tag_param       = $f('tags', 'contains', '', 'url parameter', 'tag');
+// The section of the docs the address names (?section=).
+$section_param   = $f('section', 'is equal to', '', 'url parameter', 'section');
 $is_pinned       = $f('pinned', 'is equal to', $yes);
 // Not "is equal to No": a topic without the value (sent through the API)
 // is not pinned either.
@@ -370,6 +408,9 @@ $forum_css = implode("\n", array(
     // Bylines, dates and counts. Their links take the words' colour.
     '.pf-meta{font-size:.875rem;color:var(--bs-secondary-color)}',
     '.pf-meta a:not(.btn):not(.pf-badge){color:inherit}',
+    // A member's name that opens their topics: raised over the row's
+    // stretched title link, like the board's badge.
+    '.pf-person{position:relative;z-index:2;font-weight:600}',
     // The search on the home page.
     '.pf-search .form-control,.pf-search .btn{min-height:3.25rem}',
     // A card: the boards, the guides, the forum's numbers and the boxes of
@@ -423,6 +464,15 @@ $forum_css = implode("\n", array(
     '.pf-compact-title{margin:0 0 .125rem;font-weight:600;font-size:.9375rem;line-height:1.4;overflow-wrap:anywhere}',
     '.pf-compact-title a{color:var(--bs-emphasis-color);text-decoration:none}',
     '.pf-compact:hover .pf-compact-title a,.pf-compact-title a:focus-visible{text-decoration:underline;text-underline-offset:.15em}',
+    // A guide in a list: its title over the whole row, its summary and its
+    // details.
+    '.pf-guide{position:relative;padding:1rem 0;border-bottom:1px solid var(--bs-border-color)}',
+    '.pf-guide:hover .pf-topic-title a{text-decoration:underline;text-underline-offset:.15em}',
+    // The tags to pick from: 32px targets that wrap.
+    '.pf-tags{display:flex;flex-wrap:wrap;gap:.5rem;margin:0;padding:0;list-style:none}',
+    '.pf-tag{display:inline-flex;align-items:center;min-height:2rem;padding:.25rem .75rem;border:1px solid var(--bs-border-color);border-radius:var(--pg-radius-badge,50rem);font-weight:500;font-size:.875rem;color:var(--bs-body-color);background-color:var(--bs-body-bg);text-decoration:none}',
+    '.pf-tag:hover{color:var(--bs-emphasis-color);border-color:var(--pf-accent);text-decoration:underline}',
+    '.pf-tag:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
     // An announcement: on the primary's own subtle pair.
     '.pf-announce{position:relative;display:flex;gap:.875rem;align-items:flex-start;padding:1rem 1.25rem;border:1px solid var(--bs-primary-border-subtle);border-radius:var(--pg-radius-card,var(--bs-border-radius-lg));color:var(--bs-primary-text-emphasis);background-color:var(--bs-primary-bg-subtle)}',
     '.pf-announce a{color:inherit;text-decoration:none}',
@@ -446,6 +496,8 @@ $forum_css = implode("\n", array(
     '.pf-post code{padding:.1em .35em;border-radius:.25rem;font-size:.875em;color:var(--bs-emphasis-color);background-color:var(--bs-tertiary-bg)}',
     '.pf-post pre{margin:0 0 1.25em;padding:1rem;overflow-x:auto;border:1px solid var(--bs-border-color);border-radius:var(--pg-radius,.375rem);font-size:.875rem;line-height:1.6;color:var(--bs-emphasis-color);background-color:var(--bs-tertiary-bg)}',
     '.pf-post pre code{padding:0;font-size:inherit;background:none}',
+    // A guide reads at a comfortable line length on a wide screen.
+    '.pf-measure{max-width:42rem}',
     // The facts about a topic: a label and its value on each row.
     '.pf-fact{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.25rem 1rem;padding:.5rem 0;border-bottom:1px solid var(--bs-border-color);font-size:.875rem}',
     '.pf-fact dt{font-weight:400;color:var(--bs-secondary-color)}',
@@ -584,6 +636,15 @@ $fieldset = function ($legend, $children) use ($el) {
         $el('legend', 'h5 fw-bold mb-3 pb-2 border-bottom', lang('Legend'), array(), array('text' => $legend)),
     ), $children));
 };
+// The name and e-mail of whoever writes to the moderators: the contact's
+// own fields, so the site knows them next time.
+$person_fields = function ($prefix) use ($row, $col, $field, $input) {
+    return $row(array(
+        $col(array($field($prefix . '-first-name', lang('First Name'), $input($prefix . '-first-name', 'text', 'first_name', 'given-name', true, array('contact_field' => 'first_name')))), '6'),
+        $col(array($field($prefix . '-last-name', lang('Last Name'), $input($prefix . '-last-name', 'text', 'last_name', 'family-name', false, array('contact_field' => 'last_name')))), '6'),
+        $col(array($field($prefix . '-email', lang('Email'), $input($prefix . '-email', 'email', 'email', 'email', true, array('contact_field' => 'email_address')))), '12'),
+    ), '3');
+};
 
 // ── Records ─────────────────────────────────────────────────────────────
 
@@ -667,37 +728,49 @@ $topic_badges = function ($s, $pinned = false, $class = 'mb-1') use ($el, $icon,
     $children[] = $span($s['status'], 'pf-badge', lang('Status'), $bind('status'));
     return $el('p', trim('pf-badges ' . $class), lang('Badges'), $children);
 };
+// The name of the member who started the topic, linking to the topics they
+// started (/member?member=<the name>). The name comes from their profile
+// (submitter_name); the link is the element the empty test reads, so a
+// record without a name drops the whole byline around it.
+$member_link = function ($s, $class = 'pg-field-value pf-person') use ($link, $page_link) {
+    return $link($s['author'], '#', $class, array(),
+        array_merge($page_link('member', array('member' => 'submitter_name')), array('_bindings' => array('text' => 'submitter_name', 'href' => '__page_link'))));
+};
 // Who started the topic and when it was last active, and who wrote its last
-// reply. The author's name comes from their profile (submitter_name); a
-// record without one (a sample sent by the setup account) shows no "Started
-// by" at all, and a topic without replies no "last reply".
-$topic_meta = function ($s) use ($el, $span, $bind, $bind_date, $dot) {
-    return $el('p', 'pf-meta mb-0', lang('Byline and Activity'), array(
+// reply. A record without an author's name (a sample sent by the setup
+// account) shows no "Started by" at all, and a topic without replies no
+// "last reply". A list whose topics never have a reply (a sample with no
+// 'replier') leaves the last reply out.
+$topic_meta = function ($s) use ($el, $span, $bind, $bind_date, $dot, $member_link) {
+    $children = array(
         $el('span', 'pg-hide-if-empty', lang('Author'), array(
             $span(lang('Started by'), 'me-1', lang('Label')),
-            $span($s['author'], 'pg-field-value', lang('Author Name'), $bind('submitter_name')),
+            $member_link($s),
             $dot(),
         )),
         $span(lang('Last activity:'), 'me-1', lang('Label')),
         $span(lang('2 hours ago'), '', lang('Time'), $bind_date('newest_activity_date_and_time', 'relative')),
-        $el('span', 'pg-hide-if-empty', lang('Last Reply'), array(
+    );
+    if ($s['replier'] !== '') {
+        $children[] = $el('span', 'pg-hide-if-empty', lang('Last Reply'), array(
             $dot(),
             $span(lang('Last reply by'), 'me-1', lang('Label')),
             $span($s['replier'], 'pg-field-value', lang('Name'), $bind('newest_comment_name')),
-        )),
-    ));
+        ));
+    }
+    return $el('p', 'pf-meta mb-0', lang('Byline and Activity'), $children);
 };
 // A topic's replies and views: each number under its label, the label read
 // first by a screen reader.
-$topic_counts = function () use ($el, $span, $bind) {
+$topic_counts = function ($s) use ($el, $span, $bind) {
     return $el('div', 'pf-counts', lang('Counts'), array(
         $el('p', 'pf-count', lang('Replies'), array(
             $span(lang('Replies'), 'pf-count-label', lang('Label')),
-            $span('3', 'pf-count-num', lang('Number of Replies'), $bind('number_of_comments')),
+            $span($s['replies'], 'pf-count-num', lang('Number of Replies'), $bind('number_of_comments')),
         )),
         $el('p', 'pf-count', lang('Views'), array(
             $span(lang('Views'), 'pf-count-label', lang('Label')),
-            $span('48', 'pf-count-num', lang('Number of Views'), $bind('number_of_views')),
+            $span($s['views'], 'pf-count-num', lang('Number of Views'), $bind('number_of_views')),
         )),
     ));
 };
@@ -711,7 +784,7 @@ $topic_row = function ($s, $pinned = false, $tag = 'h3') use ($el, $link, $topic
             )),
             $topic_meta($s),
         )),
-        $topic_counts(),
+        $topic_counts($s),
     ));
 };
 // The rows of a list of topics, in the bordered list.
@@ -796,6 +869,80 @@ $board_nav = function () use ($el, $heading, $link, $icon, $span, $attr, $boards
         $heading('h2', lang('Boards'), 'h6 fw-bold mb-2'),
         $el('ul', 'list-unstyled mb-0', lang('Links'), $items),
     ), array('_attrs' => array($attr('aria-label', lang('Boards')))));
+};
+// (f) A guide in a list: its title over the row, its summary, and under them
+// its section ($with_section), the version it applies to and its byline.
+$doc_row = function ($g, $with_section = true, $tag = 'h3') use ($el, $link, $span, $para, $bind, $dot) {
+    $details = array();
+    if ($with_section) {
+        $details[] = $span($g['section'], '', lang('Section'), $bind('section'));
+        $details[] = $dot();
+    }
+    $details[] = $el('span', 'pg-hide-if-empty', lang('Version'), array(
+        $span(lang('Version:'), 'me-1', lang('Label')),
+        $span($g['version'], 'pg-field-value', lang('Value'), $bind('version')),
+        $dot(),
+    ));
+    $details[] = $span(lang('Written by'), 'me-1', lang('Label'));
+    $details[] = $span($g['byline'], '', lang('Byline'), $bind('byline'));
+    return $el('article', 'pf-guide', lang('Guide Row'), array(
+        $el($tag, 'pf-topic-title', lang('Title'), array(
+            $link($g['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+        )),
+        $para($g['summary'], 'text-body-secondary mb-1', $bind('summary')),
+        $el('p', 'pf-meta small mb-0', lang('Details'), $details),
+    ));
+};
+// (g) A section's tile: its icon, its name linking to its page, its line and
+// its number of published guides (a count of its own, 'doc_count_*').
+$section_tile = function ($key, $tag = 'h3') use ($el, $link, $para, $icon, $widget, $doc_sections, $section_url) {
+    $s = $doc_sections[$key];
+    return $el('article', 'pf-card pf-card-link pf-board h-100', $s[0], array(
+        $el('span', 'pf-board-icon', lang('Icon'), array($icon($s[2]))),
+        $el('div', 'pf-min-0', lang('Words'), array(
+            $el($tag, 'pf-card-title h6 mb-1', lang('Title'), array($link($s[0], $section_url($key), 'stretched-link'))),
+            $para($s[1], 'small text-body-secondary mb-2'),
+            $widget('doc_count_' . $key),
+        )),
+    ));
+};
+// Every section's tile, two to a row from md, three from lg.
+$section_tiles = function ($tag = 'h3') use ($el, $doc_sections, $section_tile) {
+    $cols = array();
+    foreach (array_keys($doc_sections) as $key) {
+        $cols[] = $el('div', 'col-md-6 col-lg-4', lang('Column'), array($section_tile($key, $tag)));
+    }
+    return $el('div', 'row g-3 g-lg-4', lang('Sections of the docs'), $cols);
+};
+// The sections as a short list of links, for a side column.
+$doc_nav = function () use ($el, $heading, $icon, $span, $attr, $doc_sections, $section_url) {
+    $items = array();
+    foreach ($doc_sections as $key => $s) {
+        $items[] = $el('li', '', lang('List Item'), array(
+            $el('a', 'pf-board-nav', lang('Link'), array(
+                $icon($s[2]),
+                $span($s[0], '', lang('Link Text')),
+            ), array('href' => $section_url($key))),
+        ));
+    }
+    $items[] = $el('li', '', lang('List Item'), array(
+        $el('a', 'pf-board-nav', lang('Link'), array(
+            $icon('bi-journal-text'),
+            $span(lang('All guides'), '', lang('Link Text')),
+        ), array('href' => '{{page:docs}}')),
+    ));
+    return $el('nav', 'pf-card mb-4', lang('Sections of the docs'), array(
+        $heading('h2', lang('Sections of the docs'), 'h6 fw-bold mb-2'),
+        $el('ul', 'list-unstyled mb-0', lang('Links'), $items),
+    ), array('_attrs' => array($attr('aria-label', lang('Sections of the docs')))));
+};
+// The tags to pick from, each opening the topics that carry it.
+$tag_list = function ($class = 'pf-tags') use ($el, $link, $popular_tags, $tag_url) {
+    $items = array();
+    foreach ($popular_tags as $tag) {
+        $items[] = $el('li', '', lang('List Item'), array($link($tag, $tag_url($tag), 'pf-tag')));
+    }
+    return $el('ul', $class, lang('Tags'), $items);
 };
 
 // ── The parts every page repeats ────────────────────────────────────────
@@ -1073,6 +1220,59 @@ $side_card = function ($name, $title, $children, $class = 'pf-card mb-4', $extra
 $buttons = function ($links, $class = 'd-flex flex-wrap align-items-center gap-2') use ($el) {
     return $el('div', $class, lang('Buttons'), $links);
 };
+// A part of a static page: an anchor, a title and its paragraphs, then
+// whatever else it holds.
+$prose = function ($id, $name, $title, $paras, $more = array()) use ($el, $heading, $para) {
+    $children = array($heading('h2', $title, 'h4 fw-bold mb-3'));
+    foreach ($paras as $text) $children[] = $para($text, 'mb-3');
+    return $el('section', 'pb-4 mb-4 border-bottom', $name, array_merge($children, $more), array('id' => $id));
+};
+// The note over the legal pages' sample text.
+$sample_note = function () use ($el, $icon, $span, $attr) {
+    return $el('div', 'alert alert-secondary d-flex gap-2 small', lang('Sample Text Note'), array(
+        $icon('bi-info-circle', 'mt-1'),
+        $span(lang('Sample text: adapt it to your community and to the law that applies to you before you publish.'), '', lang('Text')),
+    ), array('_attrs' => array($attr('role', 'note'))));
+};
+// A static page: its header, then its parts in the reading column and a
+// side column beside them, a landmark named $side_label.
+$static_page = function ($title, $lead, $parts, $side = array(), $side_label = '') use ($page, $page_header, $band, $row, $col, $el, $attr) {
+    $side_col = $side ? array($el('aside', '', lang('Side Column'), $side,
+        array('_attrs' => array($attr('aria-label', $side_label !== '' ? $side_label : lang('More help')))))) : array();
+    return $page(array(
+        $page_header($title, $lead),
+        $band(lang('Content'), array(
+            $row(array(
+                $col($parts, '', '8'),
+                $col($side_col, '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    ));
+};
+// A question of the FAQ: a search section of its own, so a search that
+// matches it opens the page at the question (the marking opens the answer).
+$faq = function ($n, $question, $answers, $topics = '') use ($el, $para, $attr, $searchable) {
+    $id = 'pf-faq-' . $n;
+    $body = array();
+    foreach ((array)$answers as $i => $text) $body[] = $para($text, $i === count((array)$answers) - 1 ? 'mb-0' : 'mb-2');
+    return $el('div', 'accordion-item', lang('Question'), array(
+        $el('h3', 'accordion-header', lang('Question Header'), array(
+            $el('button', 'accordion-button collapsed fw-semibold', lang('Question'), array(), array(
+                'text'   => $question,
+                '_attrs' => array(
+                    $attr('type', 'button'),
+                    $attr('data-bs-toggle', 'collapse'),
+                    $attr('data-bs-target', '#' . $id),
+                    $attr('aria-expanded', 'false'),
+                    $attr('aria-controls', $id),
+                ),
+            )),
+        )),
+        $el('div', 'accordion-collapse collapse', lang('Answer'), array(
+            $el('div', 'accordion-body', lang('Body'), $body),
+        ), array('id' => $id)),
+    ), $searchable($id . '-item', $topics));
+};
 
 // ── E-mail pages ────────────────────────────────────────────────────────
 // Sent as the body of an e-mail, never visited. E-mail programs drop linked
@@ -1288,10 +1488,11 @@ $topic_heads = array(
     array('general',         1, 0, false, true,  lang('The docs are open for community guides'), lang('docs, announcements, contributing')),
     array('tips',            1, 0, true,  false, lang('How to write a question that gets a quick answer'), lang('how to post, questions')),
 );
-// A sample topic's values as the rows bind them, by its index above.
-$topic_sample = function ($i) use ($topic_heads, $boards, $kinds, $topic_statuses, $people) {
+// A sample topic's values as the rows bind them, by its index above; $more
+// changes some (a topic without replies: 'replier' '' and 'replies' '0').
+$topic_sample = function ($i, $more = array()) use ($topic_heads, $boards, $kinds, $topic_statuses, $people) {
     $h = $topic_heads[$i];
-    return array(
+    return array_merge(array(
         'board'   => $boards[$h[0]][0],
         'kind'    => $kinds[$h[1]],
         'status'  => $topic_statuses[$h[2]],
@@ -1299,7 +1500,9 @@ $topic_sample = function ($i) use ($topic_heads, $boards, $kinds, $topic_statuse
         'tags'    => $h[6],
         'author'  => $people[$i % count($people)],
         'replier' => $people[($i + 2) % count($people)],
-    );
+        'replies' => '3',
+        'views'   => '48',
+    ), $more);
 };
 // Sample topic $i: its head and its text.
 $sample_topic = function ($i, $blocks) use ($topic_heads, $boards, $kinds, $topic_statuses, $yes, $no, $rich) {
@@ -1750,6 +1953,10 @@ $pages[] = array(
                 $col(array(
                     $el('aside', '', lang('Side Column'), array(
                         $board_nav(),
+                        $side_card(lang('Popular Tags'), lang('Popular tags'), array(
+                            $tag_list('pf-tags mb-3'),
+                            $link(lang('Browse topics by tag'), '{{page:tag}}', 'small fw-semibold'),
+                        )),
                         $side_card(lang('Waiting for an answer'), lang('Can you help?'), array(
                             $para(lang('These topics have no reply yet. A short answer is better than none.'), 'small text-body-secondary mb-3'),
                             $link(lang('Unanswered topics'), '{{page:unanswered}}', 'btn btn-sm btn-secondary'),
@@ -1824,6 +2031,219 @@ $pages[] = array(
                     $el('div', 'pf-replies d-print-none', lang('Replies'), array($comments_block())),
                 ), '', '8'),
                 $col(array($widget('topic_aside')), '', '4', '', '12', 'd-print-none'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    )),
+);
+
+// The topics that carry a tag (?tag=<word>): the tags to pick from, then the
+// live topics whose tags contain the word, the most recently active first
+// (the page's one list with page links). A topic's tags are one line of
+// words, so the word is looked for in it: the page cannot say which word it
+// found and never takes it as its title. Without a word the list holds
+// every live topic. Every address of the page lists topics the forum and
+// the boards already list, so search engines and the site search leave it
+// out.
+$pages[] = array(
+    'key'              => 'tag',
+    'name'             => lang('tag'),
+    'folder'           => 'public',
+    'title'            => lang('Topics by tag'),
+    'meta_description' => lang('The topics of the forum that carry a tag.'),
+    'search'           => false,
+    'sitemap'          => false,
+    'noindex'          => true,
+    'tree'             => $page(array(
+        $page_header(lang('Topics by tag'), lang('Pick a tag to see the topics that carry it, the most recently active first.'), array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Topics by tag'), ''))),
+        ), array(
+            $el('nav', 'mt-4', lang('Tags'), array($tag_list()), array('_attrs' => array($attr('aria-label', lang('Tags'))))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array($widget('tag_topics')), '', '', '', '12', 'col-xl-10'),
+            )),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// The topics a member started (?member=<their name>): the name a topic
+// shows, which comes from the profile of the member who started it. Every
+// byline of the forum links here. While a live topic carries the name, the
+// page names the member and lists their live topics, the most recently
+// active first (the page's one list with page links), under the title
+// "Topics started by <name>"; a name no live topic carries says so and keeps
+// the page out of search engines. Without a name the page says how to get
+// to one.
+$pages[] = array(
+    'key'              => 'member',
+    'name'             => lang('member'),
+    'folder'           => 'public',
+    'title'            => lang('Topics by member'),
+    'meta_description' => lang('The topics a member of the community started.'),
+    'sitemap'          => false,
+    'tree'             => $page(array(
+        $page_header(lang('Topics by member'), lang('Every topic a member started, the most recently active first.'), array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Topics by member'), ''))),
+        ), array(
+            $el('p', 'pf-meta mt-3 mb-0', lang('Names Note'), array(
+                $span(lang('The name on a topic comes from the profile of the member who started it.'), 'me-1', lang('Text')),
+                $link(lang('Edit my profile'), '{{page:profile}}', ''),
+            )),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array($widget('member_topics')), '', '', '', '12', 'col-xl-10'),
+            )),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// The topics nobody has answered yet, the oldest first, so the longest
+// wait comes first (the page's one list with page links); how to answer well
+// and the boards beside them.
+$pages[] = array(
+    'key'              => 'unanswered',
+    'name'             => lang('unanswered'),
+    'folder'           => 'public',
+    'title'            => lang('Unanswered topics'),
+    'meta_description' => lang('Topics that are still waiting for a first reply, the oldest first.'),
+    'tree'             => $page(array(
+        $page_header(lang('Unanswered topics'), lang('Topics that are still waiting for a first reply, the oldest first. A short answer is better than none.'), array(
+            $breadcrumb(array(array(lang('Forum'), '{{page:forum}}'), array(lang('Unanswered topics'), ''))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array($widget('unanswered_topics')), '', '8'),
+                $col(array(
+                    $el('aside', '', lang('Side Column'), array(
+                        $side_card(lang('How to Answer'), lang('How to answer well'), array(
+                            $check_list(array(
+                                lang('Answer the question that was asked, in a few clear steps.'),
+                                lang('Say which version of the app you tried it on.'),
+                                lang('Link to a guide in the docs when one covers it.'),
+                            )),
+                        ), 'pf-card pf-tint mb-4'),
+                        $board_nav(),
+                    ), array('_attrs' => array($attr('aria-label', lang('Help and boards'))))),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// The docs: the number of published guides first (the page's first list,
+// so its feed is every published guide), then the sections, the featured
+// guides, the newest guides and every guide from A to Z with a search (the
+// page's one list with page links).
+$pages[] = array(
+    'key'              => 'docs',
+    'name'             => lang('docs'),
+    'folder'           => 'public',
+    'title'            => lang('Docs'),
+    'meta_description' => lang('Guides to the app, written by the community and checked by the moderators.'),
+    'tree'             => $page(array(
+        $page_header(lang('Docs'), lang('Guides to the app, written by the community and checked by the moderators.'), array(), array(
+            $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3', lang('Docs Numbers'), array(
+                $widget('docs_count'),
+                $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-primary'),
+            )),
+        )),
+        $band(lang('Sections of the docs'), array(
+            $sec_head(lang('Browse by section')),
+            $section_tiles(),
+        ), 'pf-band pt-0', array('id' => 'doc-sections')),
+        // The featured guides; the band leaves the page while there is none.
+        $band(lang('Featured guides'), array(
+            $sec_head(lang('Featured guides')),
+            $widget('docs_featured'),
+        ), 'pf-band pt-0 pf-vanish'),
+        $band(lang('Latest guides'), array(
+            $sec_head(lang('Latest guides')),
+            $widget('docs_latest'),
+        ), 'pf-band pt-0'),
+        $band(lang('Every guide'), array(
+            $row(array(
+                $col(array(
+                    $el('section', '', lang('Every guide'), array(
+                        $sec_head(lang('Every guide, A to Z'), '', '', 'pf-every-guide'),
+                        $widget('docs_all'),
+                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-every-guide')))),
+                ), '', '8'),
+                $col(array(
+                    $el('aside', '', lang('Side Column'), array(
+                        $side_card(lang('Contribute'), lang('Know something others should?'), array(
+                            $para(lang('Write it down as a guide. A moderator reviews it before it is published, and the next person finds the answer here.'), 'small mb-3'),
+                            $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-sm btn-primary'),
+                        ), 'pf-card pf-tint mb-4'),
+                        $side_card(lang('Ask the Community'), lang('No guide for it yet?'), array(
+                            $para(lang('Ask in the forum: someone may have solved it already.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-secondary'),
+                        ), 'pf-card'),
+                    ), array('_attrs' => array($attr('aria-label', lang('Contribute and ask'))))),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0', array('id' => 'every-guide')),
+    )),
+);
+
+// A section of the docs (?section=<name>): its name and number of published
+// guides, then its guides in reading order: by their order in the section,
+// then by title (the page's one list with page links). The name comes from
+// the address; only a name a published guide carries prints, and an unknown
+// one keeps the page out of the index. Every section below. The list comes
+// first, so the page's feed is the section's guides.
+$pages[] = array(
+    'key'              => 'docs_section',
+    'name'             => lang('docs-section'),
+    'folder'           => 'public',
+    'title'            => lang('Sections of the docs'),
+    'meta_description' => lang('The guides of one section of the docs, in reading order.'),
+    'tree'             => $page(array(
+        $page_header(lang('Sections of the docs'), '', array(
+            $breadcrumb(array(array(lang('Docs'), '{{page:docs}}'), array(lang('Sections of the docs'), ''))),
+        )),
+        $band(lang('Section'), array(
+            $row(array(
+                $col(array($widget('section_guides')), '', '', '', '12', 'col-xl-10'),
+            )),
+        ), 'pf-band pt-0'),
+        $band(lang('All sections'), array(
+            $sec_head(lang('All sections'), lang('All guides'), '{{page:docs}}'),
+            $section_tiles(),
+        ), 'pf-band pt-0', array('id' => 'all-sections')),
+    )),
+);
+
+// A guide (?r=): shown while it is published, as long-form text, with the
+// feedback under it (signed in, with a rating, held until a moderator
+// publishes it) and the sections of the docs beside it. The bare page shows
+// "not found", so it stays out of the sitemap; its guides get there through
+// the lists. A printed guide leaves out the feedback and the side column.
+$pages[] = array(
+    'key'              => 'doc',
+    'name'             => lang('guide'),
+    'folder'           => 'public',
+    'title'            => lang('Guide'),
+    'meta_description' => lang('A guide from the community docs.'),
+    'sitemap'          => false,
+    'comments'         => $feedback_comments,
+    'tree'             => $page(array(
+        $el('div', 'container pf-band pt-4', lang('Guide'), array(
+            $row(array(
+                $col(array(
+                    $widget('doc_view'),
+                    $el('div', 'pf-replies d-print-none', lang('Feedback'), array($comments_block())),
+                ), '', '8'),
+                $col(array(
+                    $el('aside', 'pf-sticky', lang('Side Column'), array(
+                        $doc_nav(),
+                        $side_card(lang('Contribute'), lang('Know something others should?'), array(
+                            $para(lang('Write it down as a guide. A moderator reviews it before it is published, and the next person finds the answer here.'), 'small mb-3'),
+                            $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-sm btn-primary'),
+                        ), 'pf-card pf-tint'),
+                    ), array('_attrs' => array($attr('aria-label', lang('More from the docs'))))),
+                ), '', '4', '', '12', 'd-print-none'),
             ), '4', '', 'g-lg-5'),
         )),
     )),
@@ -2025,6 +2445,287 @@ $pages[] = array(
                 ), '', '4'),
             ), '4', '', 'g-lg-5'),
         ), 'pf-band pt-0'),
+    )),
+);
+
+// The community guidelines: what the forum expects of everyone, how to
+// write a topic that gets an answer, what to keep private and how the
+// moderators work. Each part is a search section.
+$pages[] = array(
+    'key'              => 'guidelines',
+    'name'             => lang('guidelines'),
+    'folder'           => 'public',
+    'title'            => lang('Community guidelines'),
+    'meta_description' => lang('How we keep the forum friendly, useful and easy to search.'),
+    'tree'             => $static_page(lang('Community guidelines'), lang('How we keep the forum friendly, useful and easy to search.'), array(
+        $prose('be-kind', lang('Be Kind'), lang('Be kind'), array(
+            lang('Everyone here was new once. Assume good intent, thank the people who help you, and disagree with ideas, not with people.'),
+            lang('No insults, threats, harassment or discrimination of any kind. The moderators remove such posts, and repeated breaches close an account.'),
+        )),
+        $prose('search-first', lang('Search First'), lang('Search first'), array(
+            lang('Many questions already have an answer in the forum or in the docs. Search before you post: you get your answer sooner, and the forum stays easy to search for the next person.'),
+            lang('If you find a topic about your problem, reply there instead of starting a new one, and say what is different for you.'),
+        )),
+        $prose('good-topic', lang('Write a Good Topic'), lang('Write a topic people can answer'), array(
+            lang('Pick the board that fits and keep to one question or idea for each topic.'),
+            lang('Give it a title that says what happens, such as "Reminders arrive an hour late", rather than "Help!". Then say what you tried, what you expected and what happened instead, and which version of the app and which device you use.'),
+            lang('When a reply solves your question, say so in a reply. A moderator then marks the topic as solved, so the next person finds the answer.'),
+        )),
+        $prose('stay-on-topic', lang('Stay on Topic'), lang('Stay on topic'), array(
+            lang('Keep replies to the topic they are under. A new question deserves a topic of its own.'),
+            lang('No advertising, no links that only promote something, and no posts written to gather clicks or votes.'),
+        )),
+        $prose('keep-it-private', lang('Keep It Private'), lang('Keep private things private'), array(
+            lang('Never post passwords, keys, invoices or anyone\'s personal details. Check screenshots and log files before you attach them.'),
+            lang('Everything you post is public, and search engines may show it. Share only files you have the right to share.'),
+        )),
+        $prose('moderation', lang('How Moderation Works'), lang('How moderation works'), array(
+            lang('The moderators keep the forum tidy: they mark topics as solved, pin the topics everyone should read, move a topic to the right board and hide posts that break these guidelines.'),
+            lang('If you see a post that breaks them, report it. Only the moderators see your report, and the member who wrote the post is not told who reported it.'),
+        ), array($buttons(array(
+            $link(lang('Report a post'), '{{page:report}}', 'btn btn-secondary'),
+            $link(lang('Contact us'), '{{page:contact}}', 'btn btn-secondary'),
+        )))),
+    ), array(
+        $side_card(lang('In Short'), lang('In short'), array(
+            $check_list(array(
+                lang('Be kind and assume good intent.'),
+                lang('Search before you ask.'),
+                lang('One question or idea for each topic.'),
+                lang('Keep private things out of your posts.'),
+                lang('Report what breaks the guidelines.'),
+            )),
+        ), 'pf-card pf-tint mb-4'),
+        $side_card(lang('Ready to Post'), lang('Ready to post?'), array(
+            $buttons(array(
+                $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-primary'),
+                $link(lang('Search'), '{{page:search}}', 'btn btn-sm btn-secondary'),
+            )),
+        ), 'pf-card'),
+    ), lang('In short')),
+);
+
+// Frequently asked questions, in three groups. Each question is a search
+// section: a search that matches it opens the page at the question.
+$pages[] = array(
+    'key'              => 'faq',
+    'name'             => lang('faq'),
+    'folder'           => 'public',
+    'title'            => lang('Frequently asked questions'),
+    'meta_description' => lang('Answers about posting, replies, your account and the docs.'),
+    'tree'             => $static_page(lang('Frequently asked questions'), lang('Answers about posting, replies, your account and the docs.'), array(
+        $el('section', 'mb-5', lang('Posting and Replying'), array(
+            $heading('h2', lang('Posting and replying'), 'h4 fw-bold mb-3'),
+            $el('div', 'accordion', lang('FAQ'), array(
+                $faq(1, lang('Do I need an account to post?'), array(
+                    lang('You can read every topic and guide without one. To start a topic, reply or contribute a guide, sign up: it takes a minute.'),
+                ), lang('sign up, register, account, join')),
+                $faq(2, lang('How do I start a topic?'), array(
+                    lang('Choose Start a topic at the top of any page, pick the board that fits and give the topic a title that says what happens. Your topic is public as soon as you post it.'),
+                ), lang('new topic, ask a question, post')),
+                $faq(3, lang('Will I know when someone replies?'), array(
+                    lang('Yes: every reply to a topic you started comes to you by e-mail. On other topics, tick the box under the reply form when you reply, and new replies come to you too.'),
+                ), lang('notifications, e-mail, follow, watch, replies')),
+                $faq(4, lang('Can I change or delete my topic?'), array(
+                    lang('Once a topic is posted, only the moderators can change it. Add details or corrections in a reply to your own topic. To have a topic changed or removed, write to the moderators through the contact page.'),
+                ), lang('edit, delete, remove, change a post')),
+                $faq(5, lang('What does Solved mean?'), array(
+                    lang('The question of the topic has an answer. When a reply solves your question, say so in a reply, and a moderator marks the topic as solved.'),
+                ), lang('solved, answered, accepted answer')),
+                $faq(6, lang('Why can I no longer find my topic?'), array(
+                    lang('A moderator hides a topic that breaks the community guidelines or repeats another topic. If you think that was a mistake, write to the moderators through the contact page.'),
+                ), lang('hidden, removed, missing topic, moderation')),
+            )),
+        )),
+        $el('section', 'mb-5', lang('Account and E-mails'), array(
+            $heading('h2', lang('Account and e-mails'), 'h4 fw-bold mb-3'),
+            $el('div', 'accordion', lang('FAQ'), array(
+                $faq(7, lang('How do I change the name others see on my topics?'), array(
+                    lang('The name on your topics comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name.'),
+                ), lang('display name, profile, rename, username')),
+                $faq(8, lang('I forgot my password. What now?'), array(
+                    lang('Choose Forgot Password on the sign-in page and enter your e-mail address. We send you a link to set a new password.'),
+                ), lang('password, reset, sign in, log in')),
+                $faq(9, lang('How do I close my account?'), array(
+                    lang('Write to the moderators through the contact page from the e-mail address of your account. Your topics and replies stay in the forum unless you ask us to remove them too.'),
+                ), lang('delete account, close account, privacy')),
+            )),
+        )),
+        $el('section', 'mb-5', lang('The Docs'), array(
+            $heading('h2', lang('The docs'), 'h4 fw-bold mb-3'),
+            $el('div', 'accordion', lang('FAQ'), array(
+                $faq(10, lang('Who writes the docs?'), array(
+                    lang('Members of the community and the team that makes the app. Anyone with an account can contribute a guide, and a moderator reviews every guide before it is published.'),
+                ), lang('docs, guides, contribute, write')),
+                $faq(11, lang('How do I follow the review of my guide?'), array(
+                    lang('Open My guides from My Account. Each guide you sent has its own page, where the moderators write to you and you can answer them; each message also comes by e-mail.'),
+                ), lang('review, my guides, status, moderators')),
+                $faq(12, lang('Why does my feedback on a guide not show yet?'), array(
+                    lang('Feedback on guides appears once a moderator has read it. Questions get the quickest answer as a topic in the forum.'),
+                ), lang('feedback, rating, comment, held')),
+            )),
+        )),
+    ), array(
+        $side_card(lang('Still Have a Question'), lang('Still have a question?'), array(
+            $para(lang('Ask the community, or write to the moderators about your account.'), 'small text-body-secondary mb-3'),
+            $buttons(array(
+                $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-primary'),
+                $link(lang('Contact us'), '{{page:contact}}', 'btn btn-sm btn-secondary'),
+            )),
+        ), 'pf-card pf-tint'),
+    ), lang('More help')),
+);
+
+// About the community: who it is for, who runs it, the docs and how to
+// reach the moderators.
+$pages[] = array(
+    'key'              => 'about',
+    'name'             => lang('about'),
+    'folder'           => 'public',
+    'title'            => lang('About the community'),
+    'meta_description' => lang('A place to ask questions about the app, share what you made and learn from each other.'),
+    'tree'             => $static_page(lang('About the community'), lang('A place to ask questions about the app, share what you made and learn from each other.'), array(
+        $prose('who-we-are', lang('Who We Are'), lang('Who we are'), array(
+            lang('This community is for everyone who uses the app to take notes, plan tasks and get things done: people who started last week and people who have used it for years.'),
+            lang('Most answers here come from other members. The team that makes the app reads along, answers where it can and takes the ideas you post to its planning.'),
+        )),
+        $prose('the-moderators', lang('The Moderators'), lang('The moderators'), array(
+            lang('A few volunteers from the community and members of the team look after the forum. They keep the boards tidy, mark solved topics, review the guides for the docs and act on reports.'),
+        ), array($link(lang('Read the guidelines'), '{{page:guidelines}}', 'fw-semibold'))),
+        $prose('the-docs', lang('The Docs'), lang('The docs'), array(
+            lang('The docs are guides written by members and by the team, from the first steps to the settings few people know about. A moderator reviews every guide before it is published, and readers can rate each one.'),
+        ), array($buttons(array(
+            $link(lang('Browse the docs'), '{{page:docs}}', 'btn btn-primary'),
+            $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-secondary'),
+        )))),
+        $prose('get-in-touch', lang('Get in Touch'), lang('Get in touch'), array(
+            lang('Questions about the app get the quickest answer as a topic in the forum. For anything about your account or the community itself, write to the moderators.'),
+        ), array($buttons(array(
+            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-primary'),
+            $link(lang('Contact us'), '{{page:contact}}', 'btn btn-secondary'),
+        )))),
+    ), array(
+        $side_card(lang('Where to Start'), lang('Where to start'), array(
+            $check_list(array(
+                lang('Say hello in Getting Started.'),
+                lang('Ask in Questions & Help.'),
+                lang('Share your setup in Show & Tell.'),
+            )),
+            $link(lang('Browse the boards'), '{{page:board}}', 'btn btn-sm btn-primary mt-3'),
+        ), 'pf-card pf-tint'),
+    ), lang('Where to start')),
+);
+
+// Contact: a message to the moderators. What is sent opens the conversation
+// page, and the answers follow there and in the inbox; a visitor without an
+// account gets one.
+$pages[] = array(
+    'key'              => 'contact',
+    'name'             => lang('contact-us'),
+    'folder'           => 'public',
+    'title'            => lang('Contact us'),
+    'meta_description' => lang('Questions about your account or the community: the moderators read every message.'),
+    'form'             => array(
+        'form_name'            => lang('Write to the Moderators'),
+        'confirmation_message' => lang('Thank you, your message has reached the moderators. Their answer comes to your inbox.'),
+        'confirmation_page_id' => '{{tab:conversation}}',
+        'auto_registration'    => 1,
+        'notify_email'         => '{{site_email}}',
+        'notify_subject'       => lang('New message to the moderators: ^^topic^^'),
+        'notify_page_id'       => '{{tab:email_new_message}}',
+        'confirm_email'        => 1,
+        'confirm_subject'      => lang('We received your message'),
+        'confirm_page_id'      => '{{tab:email_message_received}}',
+    ),
+    'tree'             => $page(array(
+        $page_header(lang('Contact us'), lang('Questions about your account or the community: the moderators read every message.')),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $el('div', 'card card-body p-4', lang('Form Card'), array($widget('contact_form'))),
+                ), '', '7'),
+                $col(array(
+                    $side_card(lang('Help With the App'), lang('A question about the app?'), array(
+                        $para(lang('Ask it in the forum: other members know the app well, and the answer helps the next person too.'), 'small mb-3'),
+                        $buttons(array(
+                            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-primary'),
+                            $link(lang('Search'), '{{page:search}}', 'btn btn-sm btn-secondary'),
+                        )),
+                    ), 'pf-card pf-tint mb-4'),
+                    $side_card(lang('Contact Details'), lang('Other ways to reach us'), array(
+                        $el('p', 'd-flex align-items-center gap-2 mb-2', lang('Email'), array(
+                            $icon('bi-envelope'),
+                            $link('community@example.com', 'mailto:community@example.com', 'link-body-emphasis'),
+                        )),
+                        $el('p', 'd-flex align-items-start gap-2 small text-body-secondary mb-0', lang('Hours'), array(
+                            $icon('bi-clock', 'mt-1'),
+                            $span(lang('We answer on weekdays, usually within two working days.'), '', lang('Text')),
+                        )),
+                    ), 'pf-card mb-4'),
+                    $el('div', 'pf-card', lang('Inbox Note'), array(
+                        $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
+                            $icon('bi-inbox'),
+                            $span(lang('We answer in your account\'s inbox.'), '', lang('Text')),
+                        )),
+                        $para(lang('Your message opens a conversation: the page that opens after you send it, and your inbox, show the moderators\' answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small text-body-secondary mb-3'),
+                        $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-secondary'),
+                    )),
+                ), '', '5'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// The legal pages: sample text, each with a note to adapt it.
+$pages[] = array(
+    'key'              => 'privacy',
+    'name'             => lang('privacy-policy'),
+    'folder'           => 'public',
+    'title'            => lang('Privacy Policy'),
+    'meta_description' => lang('What the community keeps about you, why, and what you can ask of us.'),
+    'tree'             => $static_page(lang('Privacy Policy'), lang('What the community keeps about you, why, and what you can ask of us.'), array(
+        $sample_note(),
+        $prose('your-data', lang('Your Data'), lang('Your data'), array(
+            lang('When you open an account, we keep your name, your e-mail address and the settings you choose. What you post, the topics, replies, guides and feedback, is public and kept with your account; reports and messages to the moderators are seen only by the moderators.'),
+            lang('We use your e-mail address to sign you in, to answer you and to tell you about replies to the topics you follow. We never sell it or give it to advertisers.'),
+            lang('The site uses the cookies it needs to keep you signed in and to remember your choices. You can see and change your account data from My Account, and ask us to delete it through the contact page.'),
+        )),
+    )),
+);
+$pages[] = array(
+    'key'              => 'terms',
+    'name'             => lang('terms-of-use'),
+    'folder'           => 'public',
+    'title'            => lang('Terms of Use'),
+    'meta_description' => lang('The rules for posting in the forum and contributing to the docs.'),
+    'tree'             => $static_page(lang('Terms of Use'), lang('The rules for posting in the forum and contributing to the docs.'), array(
+        $sample_note(),
+        $prose('using-the-site', lang('Using the Site'), lang('Using the site'), array(
+            lang('Anyone may read the forum and the docs. To post you need an account, and you are responsible for what you post with it.'),
+            lang('Posts must follow the community guidelines. The moderators may edit, hide or remove a post that breaks them, and close an account that keeps breaking them.'),
+            lang('What you post stays your own work. By posting it, you allow the community to show it on the site; by sending a guide, you also allow the moderators to edit it before they publish it.'),
+            lang('Answers in the forum come from other members and are given in good faith, without a guarantee. Keep a copy of anything important before you follow a step you are unsure of.'),
+        )),
+    )),
+);
+$pages[] = array(
+    'key'              => 'accessibility',
+    'name'             => lang('accessibility'),
+    'folder'           => 'public',
+    'title'            => lang('Accessibility'),
+    'meta_description' => lang('How the site works with a keyboard, a screen reader, the dark theme and reduced motion.'),
+    'tree'             => $static_page(lang('Accessibility'), lang('We want everyone to be able to take part in the community.'), array(
+        $sample_note(),
+        $prose('accessibility-help', lang('How the Site Helps'), lang('How the site helps'), array(
+            lang('Every page works with a keyboard alone: the first press of Tab shows a link that skips to the main content, and every link, button and field shows a clear outline when it has the focus.'),
+            lang('Pages have landmarks and headings in order, so a screen reader can jump to the topics, the replies or the side column.'),
+            lang('Words and buttons keep a readable contrast in the light and the dark theme; switch the theme with the button at the top of the page.'),
+            lang('Nothing on the site moves by itself, and the little motion there is stops when your device asks for less motion.'),
+            lang('A printed topic or guide leaves out the menus, the replies, the feedback and the side column, so the text alone is printed.'),
+            lang('If something on the site does not work for you, tell us and we will fix it.'),
+        ), array(
+            $link(lang('Contact us'), '{{page:contact}}', 'btn btn-primary'),
+        )),
     )),
 );
 
@@ -2413,9 +3114,9 @@ $stat_surround = function ($sample, $label) use ($el, $para, $bind) {
         $para($label, 'pf-stat-label'),
     )));
 };
-$count_line = function ($sample, $class = 'pf-meta mb-0') use ($el, $span, $bind) {
-    return array($el('p', $class, lang('Topic Count'), array(
-        $span(lang('Topics:'), 'me-1', lang('Label')),
+$count_line = function ($sample, $class = 'pf-meta mb-0', $label = '') use ($el, $span, $bind) {
+    return array($el('p', $class, lang('Count'), array(
+        $span($label !== '' ? $label : lang('Topics:'), 'me-1', lang('Label')),
         $span($sample, 'fw-semibold', lang('Number of Results'), $bind('__result_count')),
     )));
 };
@@ -2528,6 +3229,130 @@ $widgets['board_topics'] = $topic_list('board', 20, 0, array($board_param, $not_
         $topic_rows($topic_sample(1)),
     ), $show_when('has_filter_value'))));
 
+// The topics whose tags contain ?tag=, twenty to a page. "contains" never
+// prints the word, so the heading says what the list is, and a line says
+// so while no word is given and the list holds every topic.
+$widgets['tag_topics'] = $topic_list('tag', 20, 0, array($tag_param),
+    lang('No topic carries this tag yet. Pick another tag, or search the forum.'),
+    array($el('section', '', lang('Topics'), array(
+        $sec_head(lang('Matching topics'), '', '', 'pf-tag-topics'),
+        $para(lang('No tag is chosen, so every topic is listed. Pick a tag above to narrow the list.'), 'pf-meta mb-3', $show_when('no_filter_value')),
+        $topic_rows($topic_sample(15)),
+    ), array('_attrs' => array($attr('aria-labelledby', 'pf-tag-topics'))))));
+
+// A member's live topics: the name a topic shows must equal ?member=
+// exactly. While it does, the member's name, the number of their topics and
+// the topics, twenty to a page, under the title "Topics started by <name>".
+// A name no live topic carries says so; without a name, how to find one.
+$widgets['member_topics'] = $topic_list('member', 20, 0, array($member_param), '',
+    array(
+        $el('div', '', lang('Member\'s Topics'), array(
+            $el('div', 'mb-4 pb-4 border-bottom', lang('Member Header'), array(
+                $para(lang('Member'), 'pf-kicker mb-1'),
+                $heading('h2', $people[1], 'pf-display mb-2', $bind('__filter_value')),
+                $count_line('12', 'pf-meta mb-0', lang('Topics started:'))[0],
+            )),
+            $topic_rows($topic_sample(5)),
+        ), $show_when('has_filter_value')),
+        $el('div', 'alert alert-secondary d-flex gap-2 align-items-start', lang('No Topics Found'), array(
+            $icon('bi-info-circle', 'mt-1'),
+            $el('p', 'mb-0', lang('Text'), array(
+                $span(lang('No topics were found for this name.'), 'me-1', lang('Text')),
+                $link(lang('Search the forum'), '{{page:search}}', 'alert-link'),
+            )),
+        ), $show_when('no_records')),
+        $el('div', 'alert alert-secondary d-flex gap-2 align-items-start', lang('No Member Chosen'), array(
+            $icon('bi-person', 'mt-1'),
+            $para(lang('Open a member\'s name on any topic to see every topic they started.'), 'mb-0'),
+        ), $show_when('no_filter_value')),
+    ),
+    array('filter_title' => lang('Topics started by {value}')));
+
+// The live topics without a reply, the oldest first, twenty to a page, under
+// their number.
+$widgets['unanswered_topics'] = $topic_list('unanswered', 20, 0, array($unanswered),
+    lang('Every topic has a reply. Thank you, everyone.'),
+    array(
+        $el('p', 'pf-meta mb-3', lang('Count'), array(
+            $span(lang('Waiting for a reply:'), 'me-1', lang('Label')),
+            $span('12', 'fw-semibold', lang('Number of Results'), $bind('__result_count')),
+        ), $show_when('has_records')),
+        $topic_rows($topic_sample(4, array('replier' => '', 'replies' => '0', 'views' => '6')), false, 'h2'),
+    ),
+    array(
+        'order_by_field'     => 'submitted_date_and_time',
+        'order_by_direction' => 'ASC',
+        'order_by_2_field'   => '',
+    ));
+
+// The docs page's number of published guides: its first list, so its feed.
+$widgets['docs_count'] = $count_list('docs', $doc_pub, $doc_live, $count_line('48', 'pf-meta mb-0', lang('Guides:')));
+// Each section's number of published guides, on its tile (docs, a section).
+$section_samples = array('getting_started' => '6', 'how_to' => '14', 'reference' => '9', 'troubleshooting' => '8', 'integrations' => '5', 'release_notes' => '6');
+foreach ($doc_sections as $key => $s) {
+    $widgets['doc_count_' . $key] = $count_list('', $doc_pub, $with_doc_live(array($f('section', 'is equal to', $s[0]))),
+        $count_line($section_samples[$key], 'pf-meta small mb-0', lang('Guides:')));
+}
+// The featured guides of the docs page: the three newest.
+$widgets['docs_featured'] = $doc_list('docs', 3, 3, array($is_featured),
+    lang('Guides the moderators feature appear here.'),
+    array($el('div', 'row row-cols-1 row-cols-md-3 g-3 g-lg-4', lang('Featured guides'), array(
+        $loop(array($el('div', 'col', lang('Column'), array($guide_card($doc_sample(2)))))),
+    ))));
+// The six newest published guides.
+$widgets['docs_latest'] = $doc_list('docs', 6, 6, array(),
+    lang('No guides yet. Contribute the first one.'),
+    array($el('div', 'row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 g-lg-4', lang('Latest guides'), array(
+        $loop(array($el('div', 'col', lang('Column'), array($guide_card($doc_sample(0)))))),
+    ))));
+// Every published guide from A to Z, twelve to a page, with a search over
+// the title, the summary, the text, the tags and the section.
+$widgets['docs_all'] = $doc_list('docs', 12, 0, array(),
+    lang('No guides found. Try other words, or browse the sections.'),
+    array($el('div', 'pf-topics', lang('List'), array($loop(array($doc_row($doc_sample(8))))))),
+    array(
+        'order_by_field'     => 'title',
+        'order_by_direction' => 'ASC',
+        'search_enabled'     => true,
+        'search_fields'      => array('title', 'summary', 'body', 'tags', 'section'),
+        'search_width'       => 'full',
+        'search_label'       => lang('Search the guides…'),
+    ));
+
+// A section's published guides in reading order: their order in the
+// section, then their title (a guide without an order comes first),
+// twenty to a page. While a published guide carries ?section= exactly, the
+// section's name and number of guides head the list, under the title
+// "Docs: <name>". A name no published guide carries says so.
+$widgets['section_guides'] = $doc_list('docs_section', 20, 0, array($section_param), '',
+    array(
+        $el('div', '', lang('Section\'s Guides'), array(
+            $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-3 mb-4 pb-4 border-bottom', lang('Section Header'), array(
+                $el('div', 'pf-min-0', lang('Words'), array(
+                    $para(lang('Section'), 'pf-kicker mb-1'),
+                    $heading('h2', $doc_sections['how_to'][0], 'pf-display mb-2', $bind('__filter_value')),
+                    $count_line('14', 'pf-meta mb-0', lang('Guides:'))[0],
+                )),
+                $link(lang('Contribute a guide'), '{{page:doc_new}}', 'btn btn-primary'),
+            )),
+            $el('div', 'pf-topics', lang('List'), array($loop(array($doc_row($doc_sample(2), false))))),
+        ), $show_when('has_filter_value')),
+        $el('div', 'alert alert-secondary d-flex gap-2 align-items-start', lang('Empty Section'), array(
+            $icon('bi-info-circle', 'mt-1'),
+            $el('p', 'mb-0', lang('Text'), array(
+                $span(lang('There are no guides in this section yet.'), 'me-1', lang('Text')),
+                $link(lang('Contribute the first one'), '{{page:doc_new}}', 'alert-link'),
+            )),
+        ), $show_when('no_records')),
+    ),
+    array(
+        'filter_title'         => lang('Docs: {value}'),
+        'order_by_field'       => 'doc_order',
+        'order_by_direction'   => 'ASC',
+        'order_by_2_field'     => 'title',
+        'order_by_2_direction' => 'ASC',
+    ));
+
 // The topic: shown while it is not Hidden (anything else is "not found" and
 // not indexed). Its title is the page's title; its text gives the
 // description of the head and the feed. Above the replies, which the page
@@ -2578,7 +3403,7 @@ $widgets['topic_view'] = array(
                 $el('p', 'pf-meta mb-4', lang('Byline and Time'), array(
                     $el('span', 'pg-hide-if-empty', lang('Author'), array(
                         $span(lang('Started by'), 'me-1', lang('Label')),
-                        $span($topic['author'], 'pg-field-value fw-semibold text-body', lang('Author Name'), $bind('submitter_name')),
+                        $member_link($topic, 'pg-field-value pf-person link-body-emphasis'),
                         $dot(),
                     )),
                     $span(lang('Posted:'), 'me-1', lang('Label')),
@@ -2597,9 +3422,12 @@ $widgets['topic_view'] = array(
                         $span(lang('Open the attachment'), '', lang('Link Text')),
                     ), array('href' => '#', '_bindings' => array('href' => 'attachment'))),
                 )),
+                // The tags, and the page that finds the topics sharing one.
                 $el('p', 'pf-meta pg-hide-if-empty mb-4', lang('Tags'), array(
                     $span(lang('Tags:'), 'fw-semibold me-1', lang('Label')),
                     $span($topic['tags'], 'pg-field-value', lang('Value'), $bind('tags')),
+                    $dot(),
+                    $link(lang('Browse topics by tag'), '{{page:tag}}', 'd-print-none'),
                 )),
                 $el('div', 'border-top pt-4 d-print-none', lang('Replies'), array(
                     $heading('h2', lang('Replies'), 'pf-sec-title mb-1'),
@@ -2645,10 +3473,13 @@ $widgets['topic_aside'] = array(
                 )),
                 $topic_page_link(lang('More topics in this board'), 'btn btn-sm btn-secondary'),
             )),
+            // Report a Post opens with this topic's address in its Post
+            // field (/report?post=<the topic's address>; the field takes
+            // ?post= as its starting value).
             $el('div', 'pf-card mb-4', lang('Report'), array(
                 $heading('h2', lang('Something wrong?'), 'h6 fw-bold mb-2'),
-                $para(lang('If a post breaks the guidelines, tell the moderators. Copy its link with the reply\'s Share button, or the topic\'s address from your browser.'), 'small text-body-secondary mb-3'),
-                $link(lang('Report a post'), '{{page:report}}', 'btn btn-sm btn-secondary'),
+                $para(lang('If this topic or a reply breaks the guidelines, tell the moderators. The report starts with the topic\'s address; for a reply, paste the link its Share button copies instead.'), 'small text-body-secondary mb-3'),
+                $link(lang('Report a post'), '#', 'btn btn-sm btn-secondary', array(), $page_link('report', array('post' => 'form_item_view'))),
             )),
             $el('div', 'pf-card pf-tint', lang('Guidelines'), array(
                 $heading('h2', lang('Before you reply'), 'h6 fw-bold mb-2'),
@@ -2656,6 +3487,88 @@ $widgets['topic_aside'] = array(
                 $link(lang('Read the guidelines'), '{{page:guidelines}}', 'small fw-semibold'),
             )),
         ), array_merge(array('_attrs' => array($attr('aria-label', lang('About this topic')))), $show_when('record_found'))),
+    )),
+);
+
+// The guide: shown while it is published (anything else is "not found" and
+// not indexed). Its title is the page's title; its summary gives the
+// description of the head and the feed. The text keeps a reading measure.
+// Above the feedback, which the page puts right under it, its heading. The
+// heading leaves with a missing guide.
+$guide = $doc_sample(2);
+$widgets['doc_view'] = array(
+    'page'   => 'doc',
+    'slug'   => lang('form-detail'),
+    'config' => array(
+        'regionType'          => 'form_item_view',
+        'custom_form_page_id' => '{{tab:doc_new}}',
+        'access_control'      => 'public',
+        'filters'             => $doc_live,
+        'title_field'         => 'title',
+        'not_found_message'   => lang('This guide is not available. It may not be published yet, or it was taken out of the docs.'),
+    ),
+    'tree'   => $widget_root(array(
+        $el('div', 'text-center py-5', lang('Not Found'), array(
+            $icon('bi-journal-x', 'display-5 text-body-secondary'),
+            $heading('h1', lang('Guide not available'), 'h3 fw-bold mt-3'),
+            $para(lang('This guide is not available. It may not be published yet, or it was taken out of the docs.'), 'text-body-secondary mb-4', $bind('not_found')),
+            $buttons(array(
+                $link(lang('Back to the docs'), '{{page:docs}}', 'btn btn-primary'),
+                $link(lang('Search'), '{{page:search}}', 'btn btn-secondary'),
+            ), 'd-flex flex-wrap justify-content-center gap-2'),
+        ), $show_when('record_not_found')),
+        $el('article', '', lang('Guide'), array(
+            $el('nav', '', lang('Where You Are'), array(
+                $el('ol', 'breadcrumb small mb-3', lang('Links'), array(
+                    $el('li', 'breadcrumb-item', lang('List Item'), array($link(lang('Docs'), '{{page:docs}}', 'link-body-emphasis'))),
+                    $el('li', 'breadcrumb-item', lang('List Item'), array(
+                        $link($guide['section'], '#', 'link-body-emphasis', array(),
+                            array_merge($page_link('docs_section', array('section' => 'section')), array('_bindings' => array('text' => 'section', 'href' => '__page_link')))),
+                    )),
+                )),
+            ), array('_attrs' => array($attr('aria-label', lang('Where you are'))))),
+            $el('header', 'mb-4', lang('Guide Header'), array(
+                $el('div', 'd-flex flex-wrap align-items-start justify-content-between gap-2 mb-2', lang('Kicker and Moderation'), array(
+                    $para($guide['section'], 'pf-kicker mb-0', $bind('section')),
+                    $edit_button(lang('Moderate')),
+                )),
+                $heading('h1', $guide['title'], 'pf-page-title mb-3', $bind('title')),
+                $para($guide['summary'], 'lead text-body-secondary pf-measure mb-3', $bind('summary')),
+                $el('p', 'pf-meta mb-0', lang('Byline and Time'), array(
+                    $span(lang('Written by'), 'me-1', lang('Label')),
+                    $span($guide['byline'], 'fw-semibold text-body', lang('Byline'), $bind('byline')),
+                    $dot(),
+                    $span(lang('Last updated:'), 'me-1', lang('Label')),
+                    $span(lang('Date'), '', lang('Date'), $bind('last_modified_date_and_time')),
+                )),
+            )),
+            // Which version of the app the guide is for; it leaves when the
+            // guide applies to every version.
+            $el('p', 'alert alert-secondary d-flex align-items-center gap-2 py-2 small pf-measure pg-hide-if-empty mb-4', lang('Version Note'), array(
+                $icon('bi-info-circle'),
+                $span(lang('Applies to version:'), '', lang('Label')),
+                $span($guide['version'], 'pg-field-value fw-semibold', lang('Value'), $bind('version')),
+            )),
+            // The guide's text is rich text: a div holds what the author
+            // wrote, contained by the template's rules, at a reading measure.
+            $el('div', 'pf-post pf-measure mb-4', lang('Guide Text'), array(), array_merge(
+                array('text' => lang('The text of the guide appears here.')), $bind('body'))),
+            $el('p', 'pg-hide-if-empty mb-3', lang('Attachment'), array(
+                $span('/attachment.png', 'pg-field-value d-none', lang('Value'), $bind('attachment')),
+                $el('a', 'btn btn-sm btn-secondary d-inline-flex align-items-center gap-2', lang('Link'), array(
+                    $icon('bi-paperclip'),
+                    $span(lang('Open the attachment'), '', lang('Link Text')),
+                ), array('href' => '#', '_bindings' => array('href' => 'attachment'))),
+            )),
+            $el('p', 'pf-meta pg-hide-if-empty mb-4', lang('Tags'), array(
+                $span(lang('Tags:'), 'fw-semibold me-1', lang('Label')),
+                $span($guide['tags'], 'pg-field-value', lang('Value'), $bind('tags')),
+            )),
+            $el('div', 'border-top pt-4 d-print-none', lang('Feedback'), array(
+                $heading('h2', lang('Feedback'), 'pf-sec-title mb-1'),
+                $para(lang('Was this guide helpful? Rate it and say what could be clearer. A moderator reads all feedback before it appears.'), 'pf-meta mb-3'),
+            )),
+        ), $show_when('record_found')),
     )),
 );
 
@@ -2737,14 +3650,17 @@ $widgets['doc_form'] = array(
 );
 
 // The Forum Reports form, on Report a Post: the post's link, the reason and
-// the details; then the moderators' fields. A new report is Open.
+// the details; then the moderators' fields. A new report is Open. The topic
+// page's "Report a post" opens the form with the topic's address in the
+// link field (?post=, the field's starting value): the visitor can change
+// it, so it is only what they reported, never trusted as more.
 $widgets['report_form'] = array(
     'page'   => 'report',
     'slug'   => 'form',
     'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
     'tree'   => $widget_root(array(
-        $field_help('pf-report-post', lang('Link to the post'), $input('pf-report-post', 'text', 'post', 'off', true, array(), array('maxlength' => '300', 'inputmode' => 'url')),
-            lang('Copy the post\'s link with its Share button and paste it here. For the topic itself, copy the address from your browser.')),
+        $field_help('pf-report-post', lang('Link to the post'), $input('pf-report-post', 'text', 'post', 'off', true, array('url_param' => 'post'), array('maxlength' => '300', 'inputmode' => 'url')),
+            lang('Opened from a topic, this holds the topic\'s address. To report a reply, paste the link its Share button copies instead.')),
         $field('pf-report-reason', lang('Reason'), $select('pf-report-reason', 'reason', lang('Choose a reason…'), $report_reasons)),
         $field_help('pf-report-details', lang('Details (optional)'), $textarea('pf-report-details', 'details', 5, false, '', array(), array('maxlength' => '2000')),
             lang('What should the moderators look at? Only the moderators read this.')),
@@ -2753,6 +3669,28 @@ $widgets['report_form'] = array(
         $field('pf-report-staff-note', lang('Staff note'), $office($textarea('pf-report-staff-note', 'staff_note', 3, false))),
         $captcha(),
         $submit(lang('Send the report')),
+        $loop(array()),
+    )),
+);
+
+// The contact form: who is writing, what about and the message. What is
+// sent opens a conversation with the moderators.
+$widgets['contact_form'] = array(
+    'page'   => 'contact',
+    'slug'   => 'form',
+    'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+    'tree'   => $widget_root(array(
+        $person_fields('pf-contact'),
+        $field('pf-contact-topic', lang('What is it about?'), $select('pf-contact-topic', 'topic', lang('Choose a topic…'), array(
+            lang('My account'),
+            lang('A topic or a reply'),
+            lang('A guide in the docs'),
+            lang('A problem with the site'),
+            lang('Something else'),
+        ))),
+        $field('pf-contact-message', lang('Your message'), $textarea('pf-contact-message', 'message', 6)),
+        $captcha(),
+        $submit(lang('Send the message')),
         $loop(array()),
     )),
 );
@@ -2814,6 +3752,39 @@ $search_sections = array(
     ),
     'board' => array(
         '#all-boards' => array('all-boards', lang('boards, categories, where to post')),
+    ),
+    'docs' => array(
+        '#doc-sections' => array('doc-sections', lang('docs, documentation, guides, manual, help articles')),
+        '#every-guide'  => array('every-guide', lang('all guides, index, a to z, documentation')),
+    ),
+    'docs_section' => array(
+        '#all-sections' => array('all-sections', lang('docs sections, documentation, guides')),
+    ),
+    'guidelines' => array(
+        '#be-kind'          => array('be-kind', lang('code of conduct, rules, respect, harassment')),
+        '#search-first'     => array('search-first', lang('duplicate topics, search before posting')),
+        '#good-topic'       => array('good-topic', lang('how to ask, good question, title, details')),
+        '#stay-on-topic'    => array('stay-on-topic', lang('off-topic, advertising, spam, self-promotion')),
+        '#keep-it-private'  => array('keep-it-private', lang('privacy, passwords, personal data, screenshots')),
+        '#moderation'       => array('moderation', lang('moderators, hidden posts, reports, solved')),
+    ),
+    'about' => array(
+        '#who-we-are'     => array('who-we-are', lang('about us, community, who we are')),
+        '#the-moderators' => array('the-moderators', lang('moderators, volunteers, team')),
+        '#the-docs'       => array('the-docs', lang('docs, guides, documentation, contribute')),
+        '#get-in-touch'   => array('get-in-touch', lang('contact, help, support, questions')),
+    ),
+    'contact' => array(
+        lang('Contact Details') => array('contact-details', lang('e-mail, support, contact the moderators')),
+    ),
+    'privacy' => array(
+        '#your-data' => array('your-data', lang('privacy, personal data, cookies')),
+    ),
+    'terms' => array(
+        '#using-the-site' => array('using-the-site', lang('terms, rules, posting policy')),
+    ),
+    'accessibility' => array(
+        '#accessibility-help' => array('accessibility-help', lang('accessibility, screen reader, keyboard, print')),
     ),
 );
 $searchable_tree = function ($node, $marks, &$used) use (&$searchable_tree) {
