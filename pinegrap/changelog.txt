@@ -46,6 +46,7 @@
 [NEW] Added Cloudflare Turnstile and hCaptcha as optional CAPTCHA providers beside the built-in question: the answer is checked with the provider when a form is sent, and a form is refused while the provider cannot check it.
 [NEW] Added double opt-in for forms that add to a contact group: a per-form switch mails a signed confirmation link, the sender joins the group only after pressing the button behind it, and the request and the confirmation are kept in the consent log.
 [NEW] Added a built-in page cache: pages that look the same for every visitor who is not signed in are kept on the server and sent from there, with standard cache headers for a CDN or reverse proxy in front.
+[NEW] Added a Community Forum & Docs design template: boards and topics with replies, pinned topics and announcements, guides that members write and moderators review, reported posts, a moderation dashboard, and the account and e-mail pages.
 [NEW] Added ready-made connectors to the Workspace's MCP servers: DeepWiki, Linear, Notion, GitHub and others are added with one click, and any other server from its address alone, the way it signs in found by checking it.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.

@@ -17,7 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
-- design-template-forum.md: Plan (2026-10-23; 1a done #1473, 2 in #1474): Community Forum & Docs template from general features only; list, link and form steps, then the template on the existing comments block
+- design-template-forum-leftovers.md: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501 done, 5 the template built on feature/forum-5-template): step 4, the comments widget move and the watcher fix left
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
 - designable-comments.md: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
@@ -55,14 +55,14 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
+- workspace-assistant-key-setup.md: Plan (2026-10-23; step 1 in PR #1462, step 2 in PR #1523; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a helper in #1512, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, steps 1-2 in #1510, answers given): a channel icon its manager picks from a curated Bootstrap Icons list; kind marks stay visible; colour and icon in the API
 - workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, not started, answers open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
-- workspace-flows.md: Plan (2026-10-24, F1 in PR #1503, answers given): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+- workspace-flows.md: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route

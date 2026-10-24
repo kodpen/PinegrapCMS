@@ -4,9 +4,12 @@
  *
  * Syntax-checks every PHP file in the product tree with `php -l`.
  * Vendored third-party libraries are skipped: they ship as-is and a parse
- * error there is the vendor's, not ours.
+ * error there is the vendor's, not ours. With --vendored they are checked
+ * too, as CI's PHP 7.1 job does: a bundled file that does not parse on the
+ * oldest PHP the product supports breaks whatever loads it there (typed
+ * properties in the iyzico SDK stopped its refunds on PHP 7.1-7.3).
  *
- * Usage:  php tools/lint.php [directory]      (default: pinegrap/)
+ * Usage:  php tools/lint.php [--vendored] [directory]   (default: pinegrap/)
  * Exit:   0 when every file parses, 1 otherwise.
  *
  * @author      Erdal Güral (Kodpen)
@@ -20,8 +23,9 @@ if (PHP_SAPI !== 'cli') {
 	exit('Forbidden');
 }
 
-// Vendored libraries and generated output, relative to the scanned root.
-$skip_directories = array(
+// Vendored libraries, relative to the scanned root; tools/test.php lets their
+// deprecations through by the same list.
+$vendored_directories = array(
 	'includes/phpmailer',
 	'includes/stripe',
 	'includes/iyzipay-php',
@@ -29,12 +33,31 @@ $skip_directories = array(
 	'includes/boxpacker',
 	'includes/dompdf',
 	'assets/lib',
+);
+
+// Generated output and an installation's own data, never checked.
+$skip_directories = array(
 	'data/backups',
 	'data/temp',
 	'data/cache',
 );
 
-$root = isset($argv[1]) ? rtrim($argv[1], '/\\') : dirname(__DIR__) . '/pinegrap';
+$check_vendored = false;
+$root = dirname(__DIR__) . '/pinegrap';
+
+foreach (array_slice($argv, 1) as $argument) {
+
+	if ($argument === '--vendored') {
+		$check_vendored = true;
+	} else {
+		$root = rtrim($argument, '/\\');
+	}
+
+}
+
+if (!$check_vendored) {
+	$skip_directories = array_merge($vendored_directories, $skip_directories);
+}
 
 if (!is_dir($root)) {
 	fwrite(STDERR, "Directory not found: $root\n");
@@ -109,7 +132,7 @@ foreach ($failures as $path => $message) {
 }
 
 echo "\n";
-echo 'Checked ' . $checked . ' file(s), skipped ' . $skipped . ' vendored file(s).' . "\n";
+echo 'Checked ' . $checked . ' file(s), skipped ' . $skipped . ' in ' . ($check_vendored ? 'data/' : 'vendored libraries and data/') . '.' . "\n";
 
 if (count($failures) > 0) {
 	echo 'FAILED: ' . count($failures) . ' file(s) did not parse.' . "\n";

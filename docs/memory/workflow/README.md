@@ -17,7 +17,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
-- ci-workflows.md: GitHub Actions workflows: what each runs and when, action versions (major tags, node24) and how to bump them, the Node line of the JavaScript checks, runner labels
+- ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes and tracking_company, user.secret_key*, order_items.tax, orders.tracking_code, fixing a released migration, MySQL 5.7 support.
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, Lorem ipsum, publish-only editing, robots.txt vs noindex, legacy layer, ERP limits.

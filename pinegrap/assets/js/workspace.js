@@ -5,7 +5,8 @@
  * (workspace_tasks.php), the planning board (workspace_board.php), the work
  * calendar (workspace_calendar.php), the decision timeline
  * (workspace_timeline.php) and the Workspace drawer on the order, contact
- * and product screens.
+ * and product screens. The flows screen (workspace_flows.php) is drawn by
+ * workspace_flow.js, which is started from here.
  *
  * Served minified as part of assets/js/workspace.min.js, together with the
  * workspace_*.js files it leans on (pg_js_bundles(), includes/fn/output.php).
@@ -145,7 +146,10 @@
         return node;
     }
 
-    function api(action, data) {
+    // options.keepalive: the request is finished even when the page is left
+    // meanwhile (a save as the page closes); browsers refuse such a body over
+    // 64 KiB.
+    function api(action, data, options) {
         var payload = { action: action, token: CFG.token };
 
         Object.keys(data || {}).forEach(function (key) {
@@ -155,6 +159,7 @@
         return fetch(CFG.api_url, {
             method: 'POST',
             credentials: 'same-origin',
+            keepalive: !!(options && options.keepalive),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         }).then(function (response) {
@@ -5107,7 +5112,7 @@
             var navKeys = {
                 'bi-house': 'home', 'bi-inbox': 'inbox', 'bi-check2-square': 'tasks', 'bi-journal-text': 'notes',
                 'bi-calendar-week': 'board', 'bi-calendar3': 'calendar', 'bi-alarm': 'scheduled', 'bi-clock-history': 'timeline',
-                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings'
+                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings', 'bi-diagram-3': 'flows'
             };
 
             function link(box, label, iconName, handler, badge, active) {
@@ -5509,6 +5514,10 @@
                 }
                 link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
                 link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
+
+                if (CFG.flows && CFG.flows.nav) {
+                    link(work, t('fl_nav'), 'bi-diagram-3', function () { window.location.href = CFG.urls.flows; });
+                }
 
                 if (CFG.scheduled || CFG.scheduled_messages) {
                     link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
@@ -21393,6 +21402,8 @@
             api: api,
             toast: toast,
             fail: fail,
+            ask: ask,
+            clear: clear,
             debounce: debounce,
             onContext: onContext,
             taskMenu: taskMenu,
@@ -21509,6 +21520,10 @@
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
                 startNotes(root);
+            } else if (CFG.mode === 'flows' && root && window.PGWsFlow) {
+                // The canvas lives in workspace_flow.js; it takes the team
+                // from here for its people picker.
+                window.PGWsFlow.start(root, BOOT);
             }
 
             // What runs where no scheduler does (repeating tasks, requests to

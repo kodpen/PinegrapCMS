@@ -35,6 +35,8 @@ $name = $liveform->get_field_value('name');
 $name_type = $liveform->get_field_value('name_type');
 $message = $liveform->get_field_value('message');
 $watcher = $liveform->get_field_value('watcher');
+// The comment this one answers, if any; checked further down, after the page's gates.
+$parent_id_posted = $liveform->get_field_value('parent_id');
 
 // The stars are one to five, or none (0); whatever else was posted is none.
 $rating = (int) $liveform->get_field_value('rating');
@@ -92,8 +94,10 @@ $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 // visual editor shows a submitted form through its form_item_view widget
 // rather than a page type, and its comments are that record's: for the checks
 // below it is a form item view page, and the widget's access setting is its
-// submitter security (see pg_sw_record_comment_context()). A refusal is
-// answered further down, after the page's own gates.
+// submitter security (see pg_sw_record_comment_context()). A classic catalog,
+// catalog detail or calendar event view page takes only a product, product
+// group or calendar event it shows (pg_comment_classic_item_shown()). A
+// refusal is answered further down, after the page's own gates.
 $comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);
 $comment_record = null;
 if ($comment_thread['accept']) {
@@ -285,12 +289,28 @@ if ($comment_thread['refusal'] === 'record') {
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
-// If the page type or item type is not valid for a form item view/submitted form
-// (a legacy form item view page takes only a submitted form, a page without a
-// form_item_view widget never one), then log activity and output error.
+// If the item type is not valid for the page type (a legacy form item view
+// page takes only a submitted form, a page without a form_item_view widget
+// never one, and a page takes a product, product group or calendar event only
+// when its page type shows that kind of item), then log activity and output
+// error.
 if ($comment_thread['refusal'] === 'page_type') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// A product, product group or calendar event this classic page does not show
+// (it was deleted, the event is not published or not in this view's
+// calendars, or the id names nothing) is refused on an error page, as a
+// record the page does not show is: the page answers that item's address with
+// an error of its own, so there is no form to go back to. The form state is
+// dropped first: a hidden field prints the session value first, so the next
+// comment form of this page, about another item, would carry the refused item
+// and the typed text and post them again.
+if ($comment_thread['refusal'] === 'item') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->remove_form();
+    output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // If the item type is submitted form then prepare for that type of comment.
@@ -404,6 +424,52 @@ if ($item_type == 'submitted_form') {
     }
 }
 
+// A reply names the comment it answers in parent_id. Asked only now, after
+// the page's own gates, the thread refusals and the record's view check, so
+// a visitor who may not comment here learns nothing about the comments of
+// the thread. The named comment must sit in this same thread and be one the
+// writer can see: published, their own still waiting in this browser
+// session, or any for staff and the record's form editor
+// (includes/fn/comments.php). Anything else goes back to the form with what
+// was typed and is never stored as a comment that answers none. One sentence
+// answers every refusal, so a comment the writer cannot see reads as one that
+// does not exist. parent_id is dropped from the form state: a hidden field
+// prints the session value first, so the form drawn again would carry the
+// refused parent.
+$comment_parent = pg_comment_parent_row($parent_id_posted);
+$comment_parent_check = pg_comment_parent_ok(
+    $parent_id_posted,
+    $comment_parent,
+    $page_id,
+    $item_type,
+    $item_id,
+    array(
+        'staff' => check_edit_access($folder_id),
+        'form_editor' => (
+            ($item_type == 'submitted_form')
+            && USER_LOGGED_IN
+            && isset($submitted_form['form_editor_user_id'])
+            && ((int) $submitted_form['form_editor_user_id'] > 0)
+            && ((int) USER_ID === (int) $submitted_form['form_editor_user_id'])
+        ),
+        'own_ids' => (isset($_SESSION['software']['added_comments']) && is_array($_SESSION['software']['added_comments'])) ? $_SESSION['software']['added_comments'] : array(),
+    )
+);
+
+if (!$comment_parent_check['accept']) {
+    log_activity(lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->add_error(lang(array('string' => 'Sorry, the {var:1} was not added, because the one it replies to could not be found.', 'vars' => $output_comment_label_lowercase)));
+    $liveform->set_field('parent_id', array());
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    exit();
+}
+
+$parent_id = $comment_parent_check['parent_id'];
+
+if ($parent_id === 0) {
+    $comment_parent = null;
+}
+
 // A review of a product comes from somebody who bought it
 // (includes/fn/reviews.php): signed in, with a bought order holding the
 // product that no review of it names yet. The page's own form says so before
@@ -435,62 +501,19 @@ if (
 ) {
     $name = $name;
 
-// else if user is allowed to select name, then set the name that the user selected
-} elseif ($comments_allow_user_to_select_name == 1) {
-    // if a certain type of name was selected, then get name for user, because we will need it below.
-    if (
-        ($name_type == 'first_name')
-        || ($name_type == 'first_name_last_initial')
-        || ($name_type == 'first_initial_last_name')
-        || ($name_type == 'first_initial_last_initial')
-        || ($name_type == 'full_name')
-    ) {
-        // get name for the user because we might need it below
-        $query =
-            "SELECT
-                contacts.first_name,
-                contacts.last_name
-            FROM user
-            LEFT JOIN contacts ON user_contact = contacts.id
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        $contact = mysqli_fetch_assoc($result);
-    }
-    
-    // prepare the name differently based on the type of name that was selected
-    switch ($name_type) {
-        case 'username':
-            $name = $_SESSION['sessionusername'];
-            break;
-            
-        case 'first_name':
-            $name = $contact['first_name'];
-            break;
-            
-        case 'first_name_last_initial':
-            $name = $contact['first_name'] . ' ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'first_initial_last_name':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . $contact['last_name'];
-            break;
-            
-        case 'first_initial_last_initial':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'full_name':
-            $name = $contact['first_name'] . ' ' . $contact['last_name'];
-            break;
-            
-        case 'anonymous':
-            $name = 'Anonymous';
-            break;
-    }
-
-// else save the user's username
+// A signed-in member who may not type a name gets the name
+// pg_comment_member_name() decides: on a page of a visual design the
+// contact's display name, elsewhere the login username. The posted name
+// field is never read for them, and with the page's name select on, a
+// name_type the form does not offer this member counts as no choice.
 } else {
-    $name = $_SESSION['sessionusername'];
+    $name = pg_comment_member_name(
+        (string) ($_SESSION['sessionusername'] ?? ''),
+        pg_comment_member_contact($user_id),
+        pg_sw_page_is_visual($page_id),
+        ($comments_allow_user_to_select_name == 1),
+        $name_type
+    );
 }
 
 // if there is not a name to save, then save anonymous
@@ -606,6 +629,19 @@ if (pg_reviews_ready()) {
         '" . (int) $verified_order_id . "'";
 }
 
+// The comment this one answers, once the column is there (11.0.31). Before
+// that no reply gets this far: pg_comment_parent_row() finds no parent, so
+// the post was refused above.
+$sql_parent_column = '';
+$sql_parent_value = '';
+
+if (pg_comment_replies_ready()) {
+    $sql_parent_column = ",
+        parent_id";
+    $sql_parent_value = ",
+        '" . (int) $parent_id . "'";
+}
+
 // add comment to database
 $query = 
     "INSERT INTO comments (
@@ -622,7 +658,7 @@ $query =
         created_user_id,
         created_timestamp,
         last_modified_user_id,
-        last_modified_timestamp$sql_review_column)
+        last_modified_timestamp$sql_review_column$sql_parent_column)
      VALUES (
         '" . escape($page_id) . "',
         '" . escape($item_id) . "',
@@ -637,7 +673,7 @@ $query =
         '" . escape($user_id) . "',
         UNIX_TIMESTAMP(),
         '" . escape($user_id) . "',
-        UNIX_TIMESTAMP()$sql_review_value)";
+        UNIX_TIMESTAMP()$sql_review_value$sql_parent_value)";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // get new comment's id
@@ -847,6 +883,7 @@ if (count($administrator_email_addresses) > 0) {
             "\n" .
             lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
             "\n" .
+            pg_comment_parent_mail_line($comment_parent) .
             $comment_label . ': ' . $message . "\n" .
             $attachment_line;
             
@@ -914,6 +951,7 @@ if (count($administrator_email_addresses) > 0) {
             "\n" .
             lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
             "\n" .
+            pg_comment_parent_mail_line($comment_parent) .
             $comment_label . ': ' . $message . "\n" .
             $attachment_line .
             "\n" .

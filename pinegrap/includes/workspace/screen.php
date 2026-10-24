@@ -576,7 +576,7 @@ function ws_screen_board_from()
  * What the script is told when a screen opens.
  *
  * @param array  $viewer
- * @param string $mode  channels | tasks | board | calendar | timeline | notes | record
+ * @param string $mode  channels | tasks | board | calendar | timeline | notes | flows | record
  * @param array  $extra merged in (open_channel, ...)
  * @return array
  */
@@ -696,6 +696,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_delegation_js_strings());
     // Meetings on the plan: the call, the meeting note (meetings.php).
     $strings = array_merge($strings, ws_meetings_js_strings());
+    // Flows and their canvas (flows.php, assets/js/workspace_flow.js).
+    $strings = array_merge($strings, ws_flow_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -719,6 +721,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'calendar'  => $base . 'workspace_calendar.php',
             'timeline'  => $base . 'workspace_timeline.php',
             'notes'     => $base . 'workspace_notes.php',
+            'flows'     => $base . 'workspace_flows.php',
             'notes_export' => $base . 'workspace_notes_export.php',
             'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
@@ -768,6 +771,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
+        'flows'        => ws_flow_js_config($viewer, (string) $mode),
         'tour'         => (($mode === 'channels') && function_exists('ws_tour_js_config')) ? ws_tour_js_config($viewer) : null,
     ), $extra);
 }
@@ -777,8 +781,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
  *
  * The scripts come from pg_js_bundles() (includes/fn/output.php): one
  * minified file for what every screen runs, plus the search box on the
- * workspace's own screens and the channel board and tour on the channel
- * screen. A record's drawer (ws_record_button()) loads nothing up front: the
+ * workspace's own screens, the channel board and tour on the channel screen
+ * and the canvas on the flows screen. A record's drawer (ws_record_button()) loads nothing up front: the
  * order, product and contact screens it sits on are opened far more often
  * than the drawer is, so the script waits until the Workspace button is
  * first clicked.
@@ -825,6 +829,12 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     if ($mode === 'channels') {
         $output .= pg_js_bundle_tags('assets/js/workspace_board_channel.min.js')
             . pg_js_bundle_tags('assets/js/workspace_tour.min.js');
+    }
+
+    // The flow canvas (assets/js/workspace_flow.js), started by workspace.js
+    // once the team is known.
+    if ($mode === 'flows') {
+        $output .= pg_js_bundle_tags('assets/js/workspace_flow.min.js');
     }
 
     return $output;
