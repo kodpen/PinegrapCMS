@@ -3781,6 +3781,14 @@ const StyleDesigner = (function () {
         if (node.type === 'content') {
             return ['heading', 'paragraph', 'button', 'link', 'span', 'text'].indexOf(node.props.contentType) !== -1;
         }
+        // The atomic components keep their label in props.text, which the
+        // content-level save takes (pg_designer_merge_restricted_tree()):
+        // the call-to-action button of every ready-made block and a badge.
+        // An older opaque component (card, pricing, hero) is left out: its
+        // in-place edit writes props the save does not take.
+        if (node.type === 'component') {
+            return node.props.componentType === 'btn' || node.props.componentType === 'badge';
+        }
         return node.type === 'semantic';
     }
 
