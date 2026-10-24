@@ -18,10 +18,12 @@ description: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): 
 
 ## What does "E-Shipment" send? (#1458)
 - `POST shipment_documents` (`inflow` false) with the stock-tracked lines as `relationships.stock_movements`, each `parasut_shipment_stock_movement()`: `quantity`, `product`, `warehouse`. A line without a Paraşüt product is refused before the POST. Before #1458 the lines went as `details` (`shipment_document_details`), which Paraşüt answers 422 "Stok kalemleri doldurulmalı": the button never created a document. The list endpoint rejects `include=details` (400); read them with `include=stock_movements`. Checked live on the demo with the fixed code (inflow seed and outgoing document, 2026-10-24).
-- Short stock is first seeded by an inflow document (`inflow` true) built by the same helper for the shortfall (`parasut_ensure_product_stock_tracking()`).
+- Short stock is first seeded by an inflow document built by the same helper for the shortfall (`parasut_ensure_product_stock_tracking()`).
 - A product counts as tracked by `inventory_tracking` alone (`parasut_product_stock_tracked()`); v4 has no `product_type`, so the old check failed and every press PUT the product, once into a 429. Now only an untracked one gets PUT `{inventory_tracking: true}`.
 - `_parasut_request()` sends a 429 once more after a full rate window, as the ERP driver does.
-- Probed on the demo company (2026-10-24): `details` 422, `stock_movements` 201 for inflow and outflow.
+
+## And both on one order? (#1506)
+- erp-parasut-legacy-invoice-shipment.md: which press goes, the link, `shipment_included`.
 
 ## What is left?
 - Removing the invoice and shipment code from `includes/fn/parasut.php` once no store relies on it (plans/erp-edocument-leftovers.md); `view_parasut_inbox.php` keeps working.

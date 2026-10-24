@@ -9,8 +9,8 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
 
 ## What does the order screen refund through?
 - `pg_payment_refund_driver($payment_method)`: the order's driver when it defines `refund`.
-- view_order.php shows the Refund button and `#payment-refund-modal` (post `submit_payment_refund`) when that driver exists, the order has a `transaction_id`, is not `cancelled`/`incomplete` and has money left (`total - refunded_amount`). The title and note name the driver's `label`.
-- The post: same checks and ERP line amounts as before, then `pg_payment_call($key, 'refund', [orders row (SELECT *), hundredths, order_items rows])`. The answer's `log` lines are written first; a failure shows `error` (the driver's sentence); success writes `refunded_amount`, `order_refunds.transaction_id` = `refund_reference`, the `Refunded … for order #N.` line and, with full refund, status `cancelled`.
+- view_order.php shows the Refund button and `#payment-refund-modal` (post `submit_payment_refund`) when that driver exists, the order has a `transaction_id`, is not `cancelled`/`incomplete` and has money left (`total - refunded_amount`). Title and note name the driver's `label`.
+- The post: same checks and ERP line amounts, then `pg_payment_call($key, 'refund', [orders row (SELECT *), hundredths, order_items rows])`. The answer's `log` lines are written first; a failure shows `error` (the driver's sentence); success writes `refunded_amount`, `order_refunds.transaction_id` = `refund_reference`, the `Refunded … for order #N.` line and, on a full refund, the cancellation with no void (`order-status-moves.md`).
 - The ERP line dialog (includes/erp/order_refund.php, `payment_refund_*` ids) only works out the amount.
 
 ## Which driver voids a cancelled order's payment?
@@ -30,6 +30,6 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
 - `iyzipay_cancel_payment()` and the 3-D Secure return in submit_order.php (plan step 2b).
 
 ## How was it verified?
-- `tests/payment_refunds_test.php`: requests through `pg_payment_call()` against a stand-in for iyzico's HTTP client, compared with the statements the old view_order.php and process_order_cancellation() blocks used (copied as `legacy_refunds_*()`), and the outcome against the old log lines for success, refusal with and without a message, no answer and a thrown exception. A throwaway sandbox (iyzico unreachable): card and PWI orders on Iyzipay and Stripe stores, buttons, notes, void attempts, log lines; no iyzico sandbox.
+- `tests/payment_refunds_test.php`: requests through `pg_payment_call()` against a stand-in for iyzico's HTTP client, compared with the statements the old view_order.php and process_order_cancellation() blocks used (`legacy_refunds_*()`), and the outcome against the old log lines (success, refusal with or without a message, no answer, exception). A throwaway sandbox (iyzico unreachable): card and PWI orders on Iyzipay and Stripe stores, buttons, notes, void attempts, log lines; no iyzico sandbox.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/order-cancellation-config.md

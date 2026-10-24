@@ -153,8 +153,12 @@ function ws_claude_url_valid($url)
 /**
  * The application Claude works through.
  *
+ * The key is the application's public identifier and the hint the last four
+ * characters of its secret; the secret itself is never stored readable.
+ *
  * @param int $app_id 0 for the configured one
- * @return array|null id, name, status, owner_user_id, scopes (list)
+ * @return array|null id, name, status, owner_user_id, scopes (list), api_key,
+ *                    api_secret_hint, kind
  */
 function ws_claude_app($app_id = 0)
 {
@@ -164,7 +168,7 @@ function ws_claude_app($app_id = 0)
         return null;
     }
 
-    $row = db_item("SELECT id, name, status, owner_user_id, scopes FROM api_apps WHERE id = '" . (int) $app_id . "'");
+    $row = db_item("SELECT id, name, status, owner_user_id, scopes, api_key, api_secret_hint, kind FROM api_apps WHERE id = '" . (int) $app_id . "'");
 
     if (!is_array($row)) {
         return null;
@@ -236,7 +240,7 @@ function ws_claude_setup_hint()
     if (!$api_on) {
         $parts[] = lang('The site\'s application API is switched off; an administrator switches it on first:') . ' ' . $link(lang('Site Settings › API'), $base . 'settings_api.php');
     } elseif (!ws_claude_app() && empty(ws_claude_suitable_apps())) {
-        $parts[] = lang('There is no API application Claude could work through yet; an administrator creates one with read and write on Workspace and on Tasks:') . ' ' . $link(lang('Application Access'), $base . 'api_settings.php');
+        $parts[] = lang('There is no API application Claude could work through yet: an administrator makes it by pressing Create Claude\'s key on the card in the Workspace settings.');
     } else {
         $before = false;
     }
@@ -1515,13 +1519,15 @@ function ws_claude_js_strings()
    --------------------------------------------------------------------------- */
 
 /**
- * Saves the card, or tries the connection.
+ * Saves the card, tries the connection, makes Claude's key or gives that key
+ * a new secret.
  *
  * @param array    $viewer
- * @param string   $action claude | claude_test
+ * @param string   $action claude | claude_test | claude_key_create | claude_key_reset
  * @param liveform $liveform
+ * @param array    $user   validate_user(): whose rights cap a key made here
  */
-function ws_claude_settings_post($viewer, $action, $liveform)
+function ws_claude_settings_post($viewer, $action, $liveform, $user)
 {
     if (!ws_claude_schema_ready()) {
         $liveform->add_error(lang('The database has not been upgraded yet.'));
@@ -1534,6 +1540,11 @@ function ws_claude_settings_post($viewer, $action, $liveform)
     }
 
     $username = (string) ($_SESSION['sessionusername'] ?? '');
+
+    if (($action === 'claude_key_create') || ($action === 'claude_key_reset')) {
+        ws_claude_key_post($action, $liveform, $user, $username);
+        return;
+    }
 
     if ($action === 'claude_test') {
         $result = ws_claude_fire(true);
@@ -1590,14 +1601,122 @@ function ws_claude_settings_post($viewer, $action, $liveform)
 }
 
 /**
+ * The card's two key buttons, for an administrator (ws_claude_settings_post()
+ * checked the role). Create makes the application key Claude works through
+ * and links it; Reset secret gives the linked key a new secret, and the old
+ * one stops working at once. Either way the key and the plain secret are
+ * handed to the next request through the session, never the address (access
+ * logs record it) or a form field, and the card shows them once.
+ *
+ * Reset takes the application only from the config link, never from the
+ * post: no other application can be rotated from here. Create is offered only
+ * while no application row is linked (none was chosen, or the linked one was
+ * deleted in Application Access); a key linked by hand is kept and only its
+ * secret can be reset.
+ *
+ * @param string   $action claude_key_create | claude_key_reset
+ * @param liveform $liveform
+ * @param array    $user     validate_user()
+ * @param string   $username
+ */
+function ws_claude_key_post($action, $liveform, $user, $username)
+{
+    require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
+    require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
+
+    ws_claude_config(true);
+    $app = ws_claude_app();
+
+    if ($action === 'claude_key_create') {
+        if ($app) {
+            $liveform->add_error(lang('Claude already has a key; reset its secret instead.'));
+            return;
+        }
+
+        // Every read but the five left out, and writing in the Workspace and
+        // the Tasks, cut to what the administrator pressing the button may
+        // hand on; every call is capped again by the owner's rights then.
+        $scopes = array_values(array_intersect(
+            api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()),
+            api_owner_scopes($user)
+        ));
+
+        if (!in_array('workspace:write', $scopes, true) || !in_array('tasks:write', $scopes, true)) {
+            $liveform->add_error(lang('Claude\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
+            return;
+        }
+
+        $made = api_app_create(lang('Claude'), lang('Made in Workspace settings for Claude in the channels.'), $scopes, (int) $user['id'], true, $username);
+
+        if (!$made) {
+            $liveform->add_error(lang('Claude\'s key could not be made.'));
+            return;
+        }
+
+        db("UPDATE config SET ws_claude_app_id = '" . (int) $made['id'] . "', ws_claude_error = '', ws_claude_hold_until = 0");
+        ws_claude_config(true);
+
+        log_activity(lang('the Claude connection of the workspace was changed'), $username);
+
+        $_SESSION['software']['ws_assistant_credentials'] = array(
+            'agent'   => 'claude',
+            'name'    => lang('Claude'),
+            'key'     => $made['key'],
+            'secret'  => $made['secret'],
+            'rotated' => false,
+        );
+
+        return;
+    }
+
+    if (!$app) {
+        $liveform->add_error(lang('No application is chosen for Claude.'));
+        return;
+    }
+
+    if ((string) $app['kind'] !== 'server') {
+        $liveform->add_error(lang('This application has no secret to reset: it signs people in from devices or through OAuth.'));
+        return;
+    }
+
+    $rotated = api_app_rotate_secret((int) $app['id'], 0, $username);
+
+    if (!$rotated) {
+        $liveform->add_error(lang('That application could not be found.'));
+        return;
+    }
+
+    log_activity(lang('the Claude connection of the workspace was changed'), $username);
+
+    $_SESSION['software']['ws_assistant_credentials'] = array(
+        'agent'   => 'claude',
+        'name'    => $rotated['name'],
+        'key'     => $rotated['key'],
+        'secret'  => $rotated['secret'],
+        'rotated' => true,
+    );
+
+    $liveform->add_notice(lang('The old secret no longer works: put the new one on claude.ai.'));
+}
+
+/**
  * The card on the settings screen: the connection on the left, how it
  * stands on the right, and the setup steps under the form.
  *
- * @param string $self_url
- * @param array  $viewer
+ * An administrator sees Claude's key there: a button that makes it while no
+ * application is linked, otherwise the key, the last four characters of its
+ * secret, the prompt and a button that resets the secret. Somebody else who
+ * may open the settings sees neither.
+ *
+ * @param string     $self_url
+ * @param array      $viewer
+ * @param array|null $credentials the key and secret workspace_settings.php
+ *                                took out of the session once, after Create
+ *                                or Reset secret: shown in a window that is
+ *                                removed from the page when it is closed
  * @return string
  */
-function ws_claude_settings_card($self_url, $viewer)
+function ws_claude_settings_card($self_url, $viewer, $credentials = null)
 {
     if (!ws_claude_schema_ready()) {
         return '';
@@ -1700,6 +1819,77 @@ function ws_claude_settings_card($self_url, $viewer)
         ? '<div class="alert alert-warning small py-2">' . h(lang('This site is not opened over HTTPS. The routine runs on the internet and can only reach a site with a public HTTPS address; a site on localhost cannot be asked.')) . '</div>'
         : '';
 
+    // Claude's key, for an administrator only: made here while no
+    // application row is linked, otherwise shown with its prompt. The secret
+    // itself is never printed again, only its last four characters.
+    $key_block = '';
+
+    if ($admin && !$app) {
+        require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
+
+        $key_block = '
+                        <form method="post" action="' . h($self_url) . '#ws-claude" class="ws-claude-key mb-4">
+                            ' . get_token_field() . '
+                            <input type="hidden" name="ws_action" value="claude_key_create">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Claude\'s key')) . '</button>
+                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It cannot propose page layouts or take translation jobs: add those permissions in Application Access if Claude should.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
+                        </form>';
+    } elseif ($admin) {
+        $key_block = '
+                        <div class="ws-claude-key mb-4">
+                            <div class="small fw-semibold mb-2">' . h(lang('The application Claude works through')) . ': ' . h($app['name']) . '</div>
+                            <label class="form-label small" for="ws-claude-key">' . h(lang('Key')) . '</label>
+                            ' . $copy('ws-claude-key', (string) $app['api_key']) . '
+                            <div class="small mt-1 mb-3"><span class="font-monospace">' . h(lang('Secret')) . ': ••••' . h((string) $app['api_secret_hint']) . '</span> <span class="text-body-secondary">' . h(lang('Only its last four characters are kept.')) . '</span></div>
+                            <label class="form-label small" for="ws-claude-key-prompt">' . h(lang('The prompt for the routine')) . '</label>
+                            ' . $copy('ws-claude-key-prompt', $prompt, 4) . '
+                            ' . (((string) $app['kind'] === 'server') ? '
+                            <form method="post" action="' . h($self_url) . '#ws-claude" class="mt-2" onsubmit="return confirm(' . h(json_encode(lang('The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.'))) . ');">
+                                ' . get_token_field() . '
+                                <input type="hidden" name="ws_action" value="claude_key_reset">
+                                <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Reset secret')) . '</button>
+                            </form>' : '') . '
+                        </div>';
+    }
+
+    // The window with the key and the plain secret, drawn on the one request
+    // after Create or Reset secret. It is not a Bootstrap modal, which would
+    // keep the secret in the page once hidden: closing it removes it.
+    $sheet = '';
+
+    if ($admin && is_array($credentials) && (($credentials['agent'] ?? '') === 'claude')) {
+        $sheet = '
+        <div class="modal fade show" id="ws-claude-sheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="ws-claude-sheet-title" style="display:block; background:rgba(0,0,0,.6)">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title" id="ws-claude-sheet-title"><i class="bi bi-key me-2 text-warning" aria-hidden="true"></i>' . h(!empty($credentials['rotated']) ? lang('A new secret was issued') : lang('The application was created')) . ' · ' . h((string) ($credentials['name'] ?? '')) . '</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3"><b>' . h(lang('Once this window is closed the secret is never shown again.')) . '</b></p>
+                        <label class="form-label small" for="ws-claude-sheet-key">' . h(lang('Key')) . '</label>
+                        ' . $copy('ws-claude-sheet-key', (string) ($credentials['key'] ?? '')) . '
+                        <label class="form-label small mt-2" for="ws-claude-sheet-secret">' . h(lang('Secret')) . '</label>
+                        ' . $copy('ws-claude-sheet-secret', (string) ($credentials['secret'] ?? '')) . '
+                        <label class="form-label small mt-2" for="ws-claude-sheet-host">' . h(lang('Domain')) . '</label>
+                        ' . $copy('ws-claude-sheet-host', $host) . '
+                        <label class="form-label small mt-2" for="ws-claude-sheet-prompt">' . h(lang('The prompt for the routine')) . '</label>
+                        ' . $copy('ws-claude-sheet-prompt', $prompt, 4) . '
+                        <div class="small text-body-secondary mt-3">' . ws_claude_setup_credentials_text() . '</div>
+                        <div class="alert alert-warning py-2 px-3 small mt-3 mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.')) . '</div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="form-check me-auto">
+                            <input class="form-check-input" type="checkbox" id="ws-claude-sheet-ack">
+                            <label class="form-check-label small" for="ws-claude-sheet-ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success" id="ws-claude-sheet-close" disabled>' . h(lang('Close')) . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>';
+    }
+
     return '
         <div class="card mt-4" id="ws-claude">
             <div class="card-header d-flex align-items-center gap-2">
@@ -1710,6 +1900,7 @@ function ws_claude_settings_card($self_url, $viewer)
                 <div class="row g-4">
                     <div class="col-lg-7">
                         ' . $https_note . '
+                        ' . $key_block . '
                         <form method="post" action="' . h($self_url) . '#ws-claude">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="claude">
@@ -1718,14 +1909,17 @@ function ws_claude_settings_card($self_url, $viewer)
                                 <label class="form-check-label" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
                                 <div class="form-text">' . h(lang('A run on the routine owner\'s claude.ai subscription answers the requests; each run counts against that account\'s daily allowance. Public channels are open to Claude, private ones only when their manager allows it.')) . '</div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="ws_claude_app_id">' . h(lang('The application Claude works through')) . '</label>
-                                <select class="form-select form-select-sm" name="claude_app_id" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
-                                <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
-                                <div class="form-text">' . h(empty($readable)
-                                    ? lang('It reads no records: Claude sees the channels and the tasks only.')
-                                    : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable)))) . '</div>
-                            </div>
+                            <details class="mb-3">
+                                <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
+                                <div class="mt-2">
+                                    <label class="form-label" for="ws_claude_app_id">' . h(lang('The application Claude works through')) . '</label>
+                                    <select class="form-select form-select-sm" name="claude_app_id" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <div class="form-text">' . h(empty($readable)
+                                        ? lang('It reads no records: Claude sees the channels and the tasks only.')
+                                        : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable)))) . '</div>
+                                </div>
+                            </details>
                             <div class="mb-3">
                                 <label class="form-label" for="ws_claude_routine_url">' . h(lang('The routine\'s address')) . '</label>
                                 <input class="form-control form-control-sm font-monospace" type="url" name="claude_routine_url" id="ws_claude_routine_url" value="' . h($config['routine_url']) . '" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off"' . $disabled . '>
@@ -1766,7 +1960,30 @@ function ws_claude_settings_card($self_url, $viewer)
                 </div>
             </div>
         </div>
+        ' . $sheet . '
         <script>
+        (function () {
+            // The window with the secret closes only once the administrator
+            // says it is kept, and closing takes it out of the page.
+            var sheet = document.getElementById(\'ws-claude-sheet\');
+            var ack = document.getElementById(\'ws-claude-sheet-ack\');
+            var close = document.getElementById(\'ws-claude-sheet-close\');
+
+            if (!sheet || !ack || !close) {
+                return;
+            }
+
+            ack.addEventListener(\'change\', function () {
+                close.disabled = !ack.checked;
+            });
+
+            close.addEventListener(\'click\', function () {
+                if (ack.checked) {
+                    sheet.parentNode.removeChild(sheet);
+                }
+            });
+        })();
+
         document.addEventListener(\'click\', function (event) {
             var trigger = event.target.closest ? event.target.closest(\'[data-ws-copy-field]\') : null;
             var field = trigger ? document.getElementById(trigger.getAttribute(\'data-ws-copy-field\')) : null;

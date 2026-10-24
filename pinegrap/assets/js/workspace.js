@@ -11505,6 +11505,16 @@
                 return;
             }
 
+            // Enter (or Send) on a task preview still on screen, with the
+            // text it was drawn from, creates that task as its button does.
+            // A changed text is shown back again, and a clash with somebody's
+            // leave is overridden only from the card's own button.
+            var pending = self.pending;
+
+            if (!options && pending && pending.confirm && pending.card && pending.card.isConnected && !pending.hard && (body === pending.body)) {
+                options = pending.confirm();
+            }
+
             var data = { channel_id: self.channel.id, body: body, parent_id: self.reply ? self.reply.id : 0 };
 
             if (self.reply && self.replyMore && self.replyMore.length) {
@@ -11517,7 +11527,7 @@
                 self.busy = false;
 
                 if (result.command && result.command.type === 'preview') {
-                    self.pending = { body: body };
+                    self.pending = { body: data.body };
                     self.drawPreview(result.command);
                     return;
                 }
@@ -11632,15 +11642,30 @@
             }
 
             var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
-            var hard = command.check && command.check.hard;
+            var hard = !!(command.check && command.check.hard);
+            var pending = self.pending;
+
+            // What send() needs to create this task from Enter: the card it
+            // belongs to, whether a leave clash holds it, and the options of
+            // the Create button, with the text the preview was drawn from.
+            pending.card = card;
+            pending.hard = hard;
+            pending.confirm = function () {
+                return { confirm: 1, assignees: command.assignees, body: pending.body };
+            };
 
             if (!hard) {
                 var create = button('btn btn-sm btn-primary rounded-pill px-3', t('create_task'), 'bi-check2');
-                create.addEventListener('click', function () { self.send({ confirm: 1, assignees: command.assignees }); });
+                create.addEventListener('click', function () { self.send(pending.confirm()); });
                 actions.appendChild(create);
             } else if (command.may_override) {
                 var force = button('btn btn-sm btn-outline-warning', t('create_anyway'), 'bi-exclamation-triangle');
-                force.addEventListener('click', function () { self.send({ confirm: 1, force: 1, assignees: command.assignees }); });
+                force.addEventListener('click', function () {
+                    var options = pending.confirm();
+
+                    options.force = 1;
+                    self.send(options);
+                });
                 actions.appendChild(force);
             }
 
@@ -11651,6 +11676,13 @@
             });
             actions.appendChild(cancel);
             card.appendChild(actions);
+
+            // Enter creates only what the Create button would; a touch
+            // screen's Enter starts a new line instead.
+            if (!hard && !touchScreen()) {
+                card.appendChild(el('div', 'small text-body-secondary mt-1', t('preview_keys')));
+            }
+
             box.appendChild(card);
         },
 
@@ -12054,26 +12086,37 @@
             self.pickerStart = start;
             self.pickerQuery = query;
 
+            // Every name a command answers to, Turkish or English: the name
+            // as typed first ("/gö" shows /görev), then with the Turkish
+            // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
             if (mode === 'command') {
-                var typed = '/' + query.toLocaleLowerCase();
+                var typed = ('/' + query).toLocaleLowerCase('tr');
+                var typedFolded = foldText(typed);
                 var commands = [];
 
                 (BOOT.commands || []).forEach(function (item) {
                     var aliases = item.command.split(' · ');
+                    var names = (item.names && item.names.length) ? item.names : aliases;
                     var match = aliases[0];
 
                     if (query !== '') {
                         match = null;
 
-                        aliases.forEach(function (alias) {
-                            if (!match && alias.toLocaleLowerCase().indexOf(typed) === 0) {
-                                match = alias;
+                        names.forEach(function (name) {
+                            if (!match && name.toLocaleLowerCase('tr').indexOf(typed) === 0) {
+                                match = name;
+                            }
+                        });
+
+                        names.forEach(function (name) {
+                            if (!match && foldText(name).indexOf(typedFolded) === 0) {
+                                match = name;
                             }
                         });
                     }
 
                     if (match) {
-                        commands.push({ label: match, meta: item.description, icon: 'bi-slash-square', insert: match + ' ' });
+                        commands.push({ label: match, meta: item.description, detail: item.example, icon: 'bi-slash-square', insert: match + ' ' });
                     }
                 });
 
@@ -12296,7 +12339,16 @@
                     row.appendChild(icon(item.icon || 'bi-dot'));
                 }
 
-                row.appendChild(el('span', 'ws-picker-label', item.label));
+                // A second, muted line under the label (a command's example).
+                if (item.detail) {
+                    var text = el('span', 'ws-picker-text');
+
+                    text.appendChild(el('span', 'ws-picker-label', item.label));
+                    text.appendChild(el('span', 'ws-picker-detail', item.detail));
+                    row.appendChild(text);
+                } else {
+                    row.appendChild(el('span', 'ws-picker-label', item.label));
+                }
 
                 if (item.meta) {
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));

@@ -267,6 +267,7 @@ function ws_js_strings()
         'presence_away'          => lang('Away'),
         'presence_offline'       => lang('Offline'),
         'presence_online'        => lang('Online'),
+        'preview_keys'           => lang('Enter: create · Esc: cancel'),
         'previous'               => lang('Earlier days'),
         'priority'               => lang('Task priority'),
         'private_channels_audit' => lang('Private channels'),
