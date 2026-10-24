@@ -54,9 +54,16 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): personal-by-default workflow tables, board view, canvases holding them, automations on the scheduled-actions engine
+- workspace-catalog-create.md: Plan (2026-10-23, not started, answers open): a person creates products and groups in the Workspace; one group writer; bulk drafts from a list, xlsx or AI; variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, not started, answers open): a channel gets an icon its manager picks from a curated Bootstrap Icons list; kind and customer marks stay visible; colour and icon over the API
 - workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+- workspace-crm-seams.md: Plan (2026-10-23, not started, answers open): seams for a later CRM: one customer identity, its summary and history, a merge that re-points, tags on more sources
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
+- workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
+- workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
+- workspace-mcp-capabilities.md: Plan (2026-10-23, not started, answers open): an AI app connected over MCP in the Workspace: fewer dead tools, proposals as approval cards, resources and prompts, API gaps
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
+- workspace-quotes.md: Plan (2026-10-23, not started, answers open): Workspace quotes in two kinds never mixed: ERP sales quotes (built) and a new site cart quote; tags, prefill, templates, expiry
 - workspace-slash-commands.md: Plan (2026-10-23, not started, answers open): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
 - workspace-voice-messages.md: Plan (2026-10-23, not started, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
