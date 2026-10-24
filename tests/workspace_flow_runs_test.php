@@ -481,16 +481,22 @@ function test_workspace_flow_runs_channel_is_frozen()
 
 // Who may read a run and who may cancel it: the flow's editors; the people
 // who may run the flow, or who started the run, while they read the channel
-// the run was started in.
+// the run was started in; and the starter of a run while they may run the
+// flow, whatever the channel (a person the flow is shared with to run, who
+// may not read its home, or a flow with no home at all). A view share reads
+// no runs but the ones its holder started.
 function test_workspace_flow_runs_access()
 {
 	pg_assert_same('edit', ws_flow_run_access_from('edit', false, false));
 	pg_assert_same('read', ws_flow_run_access_from('run', false, true));
 	pg_assert_same('', ws_flow_run_access_from('run', false, false), 'a reader of the flow\'s home now who does not read the channel the run was started in');
-	pg_assert_same('', ws_flow_run_access_from('run', true, false));
+	pg_assert_same('read', ws_flow_run_access_from('run', true, false), 'the starter, while they may run the flow');
 	pg_assert_same('read', ws_flow_run_access_from('', true, true), 'the starter of a run of a paused flow');
 	pg_assert_same('', ws_flow_run_access_from('', true, false), 'a starter who no longer reads the run\'s channel');
 	pg_assert_same('', ws_flow_run_access_from('', false, true));
+	pg_assert_same('', ws_flow_run_access_from('view', false, true), 'a view share reads the graph, not the runs');
+	pg_assert_same('read', ws_flow_run_access_from('view', true, true), 'but the runs its holder started, in a channel they read');
+	pg_assert_same('', ws_flow_run_access_from('view', true, false));
 
 	pg_assert_true(ws_flow_run_cancel_allowed('edit', false), 'the flow\'s editor');
 	pg_assert_true(ws_flow_run_cancel_allowed('read', true), 'the run\'s starter');

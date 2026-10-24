@@ -62,7 +62,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
-- workspace-flows.md: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+- workspace-flows.md: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555, F7 built): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route

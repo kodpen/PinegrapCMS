@@ -411,6 +411,70 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 	pg_assert_same('/workspace/flow-runs/{id}/cancel', $routes['workspace.flow_runs.cancel']['path']);
 }
 
+// Who sees a flow is widened only by the person: sharing and taking a share
+// back are REST writes that rehearse, offered to no MCP client as a tool and
+// refused to the application an assistant works through; reading the shares
+// stays a tool. A share answers 201 when it is new, 200 when its level
+// changed; the removal addressed as a POST is the same handler.
+function test_ws_api_flow_shares_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expected = array(
+		'workspace.flow_shares.list'        => array('GET', '/workspace/flows/{id}/shares', 'workspace:read'),
+		'workspace.flow_shares.set'         => array('POST', '/workspace/flows/{id}/shares', 'workspace:write'),
+		'workspace.flow_shares.delete'      => array('DELETE', '/workspace/flows/{id}/shares/{share_id}', 'workspace:write'),
+		'workspace.flow_shares.delete_post' => array('POST', '/workspace/flows/{id}/shares/{share_id}/delete', 'workspace:write'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope']), $id . ' method, path, scope');
+	}
+
+	if (count(array_intersect_key($routes, $expected)) !== count($expected)) {
+		return;
+	}
+
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.flow_shares.list']), 'reading the shares is a tool');
+	pg_assert_same('WorkspaceFlowShare', $routes['workspace.flow_shares.list']['returns']['list'] ?? null);
+
+	foreach (array('workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_same('WorkspaceFlowShare', $routes[$id]['returns']);
+
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($routes[$id]['handler']));
+
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
+		pg_assert_true(strpos($source, 'ws_api_as_owner(') > strpos($source, 'api_dry_run_stop('), $id . ' writes in the owner\'s name after the rehearsal');
+	}
+
+	pg_assert_same(array(201, 200), $routes['workspace.flow_shares.set']['status']);
+	pg_assert_same($routes['workspace.flow_shares.delete']['handler'], $routes['workspace.flow_shares.delete_post']['handler']);
+
+	$params = array();
+
+	foreach ($routes['workspace.flow_shares.set']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('user', 'channel'), $params['target_type']['values'] ?? null, 'a person or a channel');
+	pg_assert_same(array('view', 'run', 'edit'), $params['level']['values'] ?? null, 'the three levels');
+	pg_assert_true(!empty($params['target_type']['required']) && !empty($params['target_id']['required']), 'what is shared with is required');
+}
+
 // The list reads changed messages with changed_since, a moment.
 function test_ws_api_messages_list_takes_changed_since()
 {
@@ -1813,6 +1877,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
+		'ws_api_flow_shares_set'      => array('ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
+		'ws_api_flow_shares_delete'   => array('ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),

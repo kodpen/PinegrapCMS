@@ -21380,9 +21380,10 @@
     // ═══════════════════════════════════════════════════════════════════
 
     // What the screens kept in files of their own lean on here
-    // (workspace_palette.js, workspace_board_channel.js): the small helpers,
-    // the dialogs and menus, the task drawer, the planning board's way of
-    // moving a task, and the channel screen as it stands.
+    // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
+    // the small helpers, the dialogs and menus, the people picker the note
+    // share uses, the task drawer, the planning board's way of moving a task,
+    // and the channel screen as it stands.
     function shareKit() {
         window.PGWsKit = {
             cfg: CFG,
@@ -21392,6 +21393,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            peoplePicker: peoplePicker,
             api: api,
             toast: toast,
             fail: fail,

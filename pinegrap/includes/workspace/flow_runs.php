@@ -691,9 +691,13 @@ function ws_flow_run_channel_id($run)
  * the channel the run was started in (ws_flow_run_channel_id()):
  *   edit  the flow is theirs to change: they read and cancel its runs
  *   read  they read the run's channel, and may run the flow or started this
- *         run (a run of a flow paused since)
+ *         run (a run of a flow paused since); or they started it and may
+ *         still run the flow, whatever the channel (a person the flow is
+ *         shared with to run, who may not read its home, or a flow with no
+ *         home at all: its runs have no channel)
  *   ''    nothing: a run started in a channel they do not read stays out of
- *         their sight, even when the flow's home is now one they read
+ *         their sight, even when the flow's home is now one they read; a
+ *         view share reads the flow, not its runs
  *
  * @param string $flow_access      ws_flow_access()
  * @param bool   $is_starter       they started the run
@@ -704,6 +708,10 @@ function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable)
 {
     if ($flow_access === 'edit') {
         return 'edit';
+    }
+
+    if ($is_starter && ($flow_access === 'run')) {
+        return 'read';
     }
 
     return ($channel_readable && (($flow_access === 'run') || $is_starter)) ? 'read' : '';
@@ -838,7 +846,9 @@ function ws_flow_run_access($viewer, $flow, $run)
     $flow_access = ws_flow_access($viewer, $flow);
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
 
-    if (($flow_access === 'edit') || (($flow_access === '') && !$starter)) {
+    // Decided without the run's channel: an editor, the starter who may
+    // still run the flow, and anybody else who may not run it.
+    if (($flow_access === 'edit') || ($starter && ($flow_access === 'run')) || (!$starter && ($flow_access !== 'run'))) {
         return ws_flow_run_access_from($flow_access, $starter, false);
     }
 
@@ -954,8 +964,15 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (ws_flow_access($viewer, $flow) === '') {
+    $access = ws_flow_access($viewer, $flow);
+
+    if ($access === '') {
         return ws_flow_refusal(lang('That flow could not be found.'), 404);
+    }
+
+    // A flow shared at view is looked at, not run.
+    if ($access === 'view') {
+        return ws_flow_refusal(lang('You can look at this flow but not run it.'), 403);
     }
 
     $token = $data['token'] ?? '';

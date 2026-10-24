@@ -9124,6 +9124,7 @@ function get_tables() {
 		'ws_flow_versions',
 		'ws_flow_runs',
 		'ws_flow_run_steps',
+		'ws_flow_shares',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',

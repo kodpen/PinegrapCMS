@@ -7,10 +7,10 @@ description: Workspace flow runs (F3a, flow_runs.php, no schema change): start, 
 - `includes/workspace/flow_runs.php`; handlers at the end of `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. Panel actions and the run view: `workspace-flows-canvas.md`.
 
 ## How does a run start?
-- `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access, then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.
+- `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access (a view share: 403), then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.
 
 ## Which channel is a run's?
-- The one in its context, never the flow's home now: a draft save changes the home at once. Its tasks open there; non-owners read it (`ws_flow_run_access()`) only while they read that channel. An application key or OAuth connection may not move a published flow's home (`ws_api_flow_home_move_gate()`).
+- The one in its context, never the flow's home now: a draft save changes the home at once. Its tasks open there; others than its editors read it (`ws_flow_run_access()`) while they read that channel, and its starter while they may run the flow (a run share; a flow without a home gives its runs no channel). An application key or OAuth connection may not move a published flow's home (`ws_api_flow_home_move_gate()`).
 
 ## How does it move?
 - Pure `ws_flow_walk()`: a box whose arrows in have all settled is ready when one was taken and none comes from a blocked box, else skipped. Blocked = failed, or skipped behind a blocked box, worked out from the statuses on every walk, so a join any number of boxes behind a failure is skipped. `ws_flow_run_state()`: running, waiting, done, failed.

@@ -10,7 +10,9 @@
  * list entries the screen is answered with, and the run view: its actions go
  * through the runner's own checks and writes and answer with the API's run
  * presenters, which the panel can load, and the states it draws are the
- * runner's.
+ * runner's. The shares of a flow go through the share writers' own checks
+ * and answer with the API's share presenter; every fl_ text handed over is
+ * read by a script.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -34,6 +36,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 
@@ -41,7 +44,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 function ws_flows_canvas_test_actions()
 {
 	return array('ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save', 'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
-		'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel');
+		'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
+		'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove');
 }
 
 // Every action is a row of the Workspace family: its handler checks the
@@ -218,7 +222,7 @@ function ws_flows_canvas_test_case_source($action)
 // and the answer is the API's presenter.
 function test_workspace_flows_canvas_run_actions_use_the_runner()
 {
-	$flow = "ws_flow_for(\$viewer, (int) (\$request['flow_id'] ?? 0), 'run')";
+	$flow = "ws_flow_for(\$viewer, (int) (\$request['flow_id'] ?? 0), 'view')";
 	$expected = array(
 		'ws_flow_run_start'  => array($flow, 'ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request))', 'ws_action_flow_run_answer('),
 		'ws_flow_runs_list'  => array($flow, 'ws_flow_runs_list($viewer, $flow,', 'ws_action_flow_run_present('),
@@ -340,4 +344,93 @@ function test_workspace_flows_canvas_run_states_are_the_runners()
 
 	pg_assert_same(array_keys(ws_flow_run_statuses()), $read('RUN_STATES'), 'run states');
 	pg_assert_same(array_merge(array_keys(ws_flow_step_statuses()), array('none')), $read('STEP_STATES'), 'box states, and none');
+}
+
+// Every fl_ text ws_flow_js_strings() hands over is read by a script: by its
+// literal name, or as a keyboard row built from its name.
+function test_workspace_flows_canvas_every_text_is_read()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	preg_match_all("/'(fl_[a-z_]+)'\\s*=>/", ws_flows_canvas_test_strings_source(), $handed);
+
+	pg_assert_true(count($handed[1]) > 50, 'keys found');
+	pg_assert_same(array_keys(ws_flow_js_strings()), $handed[1], 'every key written once, in order');
+
+	foreach ($handed[1] as $key) {
+		$row = (strpos($key, 'fl_key_') === 0) && (strpos($script, "'" . substr($key, 7) . "'") !== false);
+
+		pg_assert_true($row || (strpos($script . $channels, "'" . $key . "'") !== false), 'read by a script: ' . $key);
+	}
+
+	foreach (array('fl_share', 'fl_shared_with', 'fl_level_view', 'fl_level_run', 'fl_level_edit', 'fl_list_shared') as $key) {
+		pg_assert_true(isset(ws_flow_js_strings()[$key]), 'handed over: ' . $key);
+	}
+}
+
+// The share actions decide nothing themselves: the share writers' checks
+// refuse what they refuse (the API's share routes call the same), and the
+// list is the store's, in the API's shape.
+function test_workspace_flows_canvas_share_actions_use_the_share_writers()
+{
+	$flow = "ws_flow_for(\$viewer, (int) (\$request['flow_id'] ?? 0), 'view')";
+	$expected = array(
+		'ws_flow_shares'       => array($flow, 'ws_action_flow_shares_answer('),
+		'ws_flow_share_set'    => array($flow, 'ws_flow_share_set($viewer, $flow, ws_action_flow_share_fields($request))', 'ws_action_flow_shares_answer('),
+		'ws_flow_share_remove' => array($flow, "ws_flow_share_remove(\$viewer, \$flow, (int) (\$request['share_id'] ?? 0))", 'ws_action_flow_shares_answer('),
+	);
+
+	foreach ($expected as $action => $needles) {
+		$case = ws_flows_canvas_test_case_source($action);
+
+		pg_assert_true($case !== '', $action . ' case found');
+
+		foreach ($needles as $needle) {
+			pg_assert_contains($needle, $case, $action . ': ' . $needle);
+		}
+
+		pg_assert_false(strpos($case, 'ws_flow_access(') !== false, $action . ' asks no access of its own');
+	}
+
+	$answer = ws_flows_canvas_test_function_source('includes/workspace/actions.php', 'ws_action_flow_shares_answer');
+
+	pg_assert_contains('ws_flow_shares_list($viewer, $flow)', $answer, 'the store lists them');
+	pg_assert_contains('ws_api_flow_share_present', $answer, 'in the API\'s shape');
+	pg_assert_contains('ws_flow_share_manager($viewer, $flow)', $answer, 'with whether the person manages them');
+}
+
+// Only what a share may carry is passed on: the kind, the id and the level.
+function test_workspace_flows_canvas_share_fields()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_same(array('target_type' => '', 'target_id' => 0, 'level' => 'view'), ws_action_flow_share_fields(array()), 'nothing sent');
+	pg_assert_same(
+		array('target_type' => 'user', 'target_id' => 12, 'level' => 'edit'),
+		ws_action_flow_share_fields(array('flow_id' => 4, 'token' => 'x', 'target_type' => 'user', 'target_id' => '12', 'level' => 'edit', 'owner_id' => 9)),
+		'the three fields, the id an integer'
+	);
+}
+
+// The canvas sends the share actions and draws a share's level with the
+// level texts, and shows the dialog's controls to whoever manages the shares.
+function test_workspace_flows_canvas_share_dialog_is_drawn_by_the_script()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	// The list is read with ws_flow_shares; every change goes through
+	// shareRequest(), which sends it and draws the list from the answer.
+	foreach (array("K.api('ws_flow_shares'", "shareRequest('ws_flow_share_set'", "shareRequest('ws_flow_share_remove'") as $call) {
+		pg_assert_contains($call, $script);
+	}
+
+	$start = strpos($script, 'function shareRequest(');
+	$request = ($start !== false) ? substr($script, $start, (int) strpos($script, "\n    }\n", $start) - $start) : '';
+
+	pg_assert_contains('K.api(action, data)', $request, 'shareRequest() sends the action');
+	pg_assert_contains('share.data = answer', $request, 'and keeps the list it answers');
+
+	pg_assert_contains('data.manage', $script, 'the controls follow the answer');
+	pg_assert_contains('flow.manage', $script, 'the menu item follows the flow');
 }

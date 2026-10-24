@@ -320,6 +320,7 @@ function pg_panel_actions()
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
+        'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

@@ -36,6 +36,14 @@
  * is read again on a timer that slows while nothing changes and stops once the
  * run ends or the tab is hidden; what changed is told to screen readers.
  *
+ * A flow is shared from the "⋯" menu (includes/workspace/flow_shares.php):
+ * its owner sees whom it is shared with, changes a person's level (view, run,
+ * edit), takes a share back, and adds people (the people picker the note
+ * share uses) or a channel; everybody else who reaches the flow sees the same
+ * list read-only. A flow shared with the person is listed under "Shared with
+ * me" with what they may do with it. A person shared at edit edits the graph
+ * as its owner does, but the home channel and deleting stay the owner's.
+ *
  * assets/js/workspace.js starts it (window.PGWsFlow.start()) with the team
  * it has loaded and lends it its helpers through window.PGWsKit. Every text
  * comes from the #ws-config block (ws_flow_js_strings()); names and texts
@@ -102,6 +110,13 @@
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
 
+    // What a share lets its holder do (ws_flow_share_levels()), lowest first.
+    var LEVELS = {
+        view: 'fl_level_view',
+        run: 'fl_level_run',
+        edit: 'fl_level_edit'
+    };
+
     // What the palette adds.
     var PALETTE = [
         ['manual', 'bi-play-circle', 'fl_add_manual'],
@@ -147,7 +162,8 @@
         opening: {},        // run ids whose ws_flow_run_get from the list is on its way
         openSeq: 0,         // the run asked for last; an older answer is not shown
         poll: { timer: 0, delay: POLL_FIRST, busy: 0 }, // busy: the id of the run a look is on its way for
-        tickAt: 0
+        tickAt: 0,
+        share: null         // the Share dialog open: { flow, data (ws_flow_shares), busy }
     };
 
     var ui = {};
@@ -520,10 +536,18 @@
             flows.forEach(function (flow) {
                 var item = el('li');
                 var link = el('button', 'wsf-list-item' + ((state.flow && state.flow.id === flow.id) ? ' active' : ''));
+                var text = el('span', 'wsf-list-text');
 
                 link.type = 'button';
                 link.appendChild(K.icon('bi-diagram-3'));
-                link.appendChild(el('span', 'wsf-list-name', flow.name));
+                text.appendChild(el('span', 'wsf-list-name', flow.name));
+
+                // Somebody else's flow says what the person may do with it.
+                if (!flow.mine && LEVELS[flow.access]) {
+                    text.appendChild(el('span', 'wsf-list-level', t(LEVELS[flow.access])));
+                }
+
+                link.appendChild(text);
                 link.appendChild(statusBadge(flow, true));
 
                 if (state.flow && state.flow.id === flow.id) {
@@ -672,7 +696,10 @@
 
         state.flow = flow;
         state.edit = (flow.access === 'edit');
-        state.graph = graphOf(state.edit ? flow.draft : flow.graph);
+
+        // Somebody who only reaches the flow reads its live graph, or the
+        // draft, read-only, of a flow never published.
+        state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
         state.problems = flow.problems || [];
         state.selected = null;
         state.dirty = false;
@@ -876,6 +903,7 @@
                 ui.bar.appendChild(el('span', 'small text-body-secondary', t('fl_read_only')));
             }
 
+            moreMenu();
             return;
         }
 
@@ -903,20 +931,36 @@
             ui.bar.appendChild(pause);
         }
 
+        moreMenu();
+        drawState();
+    }
+
+    // "⋯": the flow's shares for everybody who reaches it (to change for its
+    // owner, to read for the others), and deleting it for its owner alone.
+    function moreMenu() {
+        var flow = state.flow;
         var more = el('div', 'dropdown');
         var moreButton = K.button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('fl_more'));
         var menu = el('ul', 'dropdown-menu dropdown-menu-end');
-        var bin = K.button('dropdown-item link-body-emphasis', t('fl_bin'), 'bi-trash');
+        var share = K.button('dropdown-item link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
         moreButton.setAttribute('data-bs-toggle', 'dropdown');
         moreButton.setAttribute('aria-expanded', 'false');
-        bin.addEventListener('click', binFlow);
-        menu.appendChild(el('li')).appendChild(bin);
+        moreButton.setAttribute('data-refocus', 'more');
+        share.setAttribute('data-wsf-share', '');
+        share.addEventListener('click', openShares);
+        menu.appendChild(el('li')).appendChild(share);
+
+        if (flow.manage && state.edit) {
+            var bin = K.button('dropdown-item link-body-emphasis', t('fl_bin'), 'bi-trash');
+
+            bin.addEventListener('click', binFlow);
+            menu.appendChild(el('li')).appendChild(bin);
+        }
+
         more.appendChild(moreButton);
         more.appendChild(menu);
         ui.bar.appendChild(more);
-
-        drawState();
     }
 
     // The save state, the problem count and whether Publish may be pressed.
@@ -1373,7 +1417,10 @@
 
     function flowForm() {
         var box = el('div');
-        var channels = [[0, t('fl_home_none')]];
+
+        // "Only you" is the owner's to read; somebody the flow is shared with
+        // reads that it has no home.
+        var channels = [[0, state.flow.manage ? t('fl_home_none') : t('fl_home_none_other')]];
 
         (BOOT.channels || []).forEach(function (channel) {
             if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
@@ -1381,13 +1428,22 @@
             }
         });
 
+        // A home the person does not read (a flow shared with them) is named
+        // as such rather than shown as no home at all.
+        if (state.flow.channel_id && !channels.some(function (option) { return option[0] === state.flow.channel_id; })) {
+            channels.push([state.flow.channel_id, t('fl_share_hidden')]);
+        }
+
         var home = K.select(channels, state.flow.channel_id || 0);
 
+        // The home decides who may run the flow: its owner moves it, a person
+        // the flow is shared with at edit does not.
+        home.disabled = !state.flow.manage;
         home.addEventListener('change', function () {
             state.flow.channel_id = parseInt(home.value, 10) || 0;
             changed(false);
         });
-        box.appendChild(field(t('fl_home'), home, t('fl_home_help')));
+        box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
 
         var keys = el('details', 'small wsf-keys');
         var list = el('ul', 'mb-0 ps-3 text-body-secondary');
@@ -2284,6 +2340,378 @@
                 }
             }).catch(K.fail);
         });
+    }
+
+
+    // ── Shares ─────────────────────────────────────────────────────────
+
+    // The Share dialog, made once: a title, the list and the controls drawn
+    // into its body, and Close. The focus goes back to the menu that opened
+    // it.
+    function shareModal() {
+        if (ui.shareModal) {
+            return ui.shareModal;
+        }
+
+        var modal = el('div', 'modal fade wsf-share-modal');
+        var dialog = el('div', 'modal-dialog modal-dialog-centered modal-dialog-scrollable');
+        var content = el('div', 'modal-content');
+        var head = el('div', 'modal-header');
+        var title = el('h2', 'modal-title fs-6');
+        var cross = el('button', 'btn-close');
+        var foot = el('div', 'modal-footer');
+        var close = K.button('btn btn-sm btn-ghost', t('fl_share_close'));
+
+        modal.id = 'wsf-share';
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-labelledby', 'wsf-share-title');
+        title.id = 'wsf-share-title';
+        cross.type = 'button';
+        cross.setAttribute('aria-label', t('fl_share_close'));
+        cross.setAttribute('data-bs-dismiss', 'modal');
+        close.setAttribute('data-bs-dismiss', 'modal');
+        head.appendChild(title);
+        head.appendChild(cross);
+        foot.appendChild(close);
+        content.appendChild(head);
+        content.appendChild(el('div', 'modal-body wsf-share-body'));
+        content.appendChild(foot);
+        dialog.appendChild(content);
+        modal.appendChild(dialog);
+        document.body.appendChild(modal);
+
+        modal.addEventListener('hidden.bs.modal', function () {
+            state.share = null;
+            state.refocus = 'more';
+            refocus();
+        });
+
+        ui.shareModal = modal;
+
+        return modal;
+    }
+
+    // The shares are read when the dialog opens, so a change made elsewhere
+    // meanwhile is shown.
+    function openShares() {
+        var flow = state.flow;
+
+        if (!flow) {
+            return;
+        }
+
+        K.api('ws_flow_shares', { flow_id: flow.id }).then(function (data) {
+            if (state.flow !== flow) {
+                return;
+            }
+
+            var modal = shareModal();
+
+            state.share = { flow: flow, data: data, busy: false };
+            modal.querySelector('.modal-title').textContent = t('fl_share_title', flow.name);
+            drawShares();
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        }).catch(K.fail);
+    }
+
+    // A share sent, or taken back: the answer carries the list as it is now.
+    // focus: the data-share-focus key of the control that takes the focus
+    // once the list is drawn again.
+    function shareRequest(action, data, focus) {
+        var share = state.share;
+
+        if (!share || share.busy) {
+            return Promise.resolve(null);
+        }
+
+        share.busy = true;
+        data.flow_id = share.flow.id;
+
+        return K.api(action, data).then(function (answer) {
+            if (state.share !== share) {
+                return null;
+            }
+
+            share.data = answer;
+            share.busy = false;
+            drawShares(focus);
+
+            return answer;
+        }).catch(function (error) {
+            share.busy = false;
+
+            if (state.share === share) {
+                drawShares(focus);
+            }
+
+            K.fail(error);
+
+            return null;
+        });
+    }
+
+    function shareName(share) {
+        if (share.target_type === 'channel') {
+            return share.name ? '#' + share.name : t('fl_share_hidden');
+        }
+
+        return share.name || ('#' + share.target_id);
+    }
+
+    // One row of the list: who, what they may do, and for the owner the
+    // level to change and the way to take the share back.
+    function shareRow(share, manage) {
+        var row = el('li', 'wsf-share-row');
+        var who = el('span', 'wsf-share-who');
+        var name = shareName(share);
+        var member = (share.target_type === 'user') ? person(share.target_id) : null;
+
+        if (share.target_type === 'user') {
+            who.appendChild(member ? K.avatar(member, '1.5rem') : K.icon('bi-person-circle'));
+        } else {
+            who.appendChild(K.icon('bi-hash'));
+        }
+
+        who.appendChild(el('span', 'text-truncate', name));
+        row.appendChild(who);
+
+        var level = el('span', 'wsf-share-level');
+
+        if (manage && (share.target_type === 'user')) {
+            var pick = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), share.level);
+
+            pick.setAttribute('aria-label', t('fl_share_level') + ': ' + name);
+            pick.setAttribute('data-share-focus', 'level-' + share.id);
+            pick.addEventListener('change', function () {
+                var chosen = pick.value;
+
+                shareRequest('ws_flow_share_set', { target_type: 'user', target_id: share.target_id, level: chosen }, 'level-' + share.id).then(function (answer) {
+                    if (answer) {
+                        announce(t('fl_share_changed', name, t(LEVELS[chosen])));
+                    }
+                });
+            });
+            level.appendChild(pick);
+        } else {
+            level.appendChild(el('span', 'small', t(LEVELS[share.level] || LEVELS.view)));
+        }
+
+        // What it gives now, when that is less than it was given.
+        if (share.effective_level === '') {
+            level.appendChild(el('span', 'form-text d-block m-0', t('fl_share_gone')));
+        } else if ((share.target_type === 'user') && (share.effective_level !== share.level)) {
+            level.appendChild(el('span', 'form-text d-block m-0', t('fl_share_as_run')));
+        }
+
+        row.appendChild(level);
+
+        if (manage) {
+            var remove = K.button('btn btn-sm btn-ghost wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
+
+            remove.setAttribute('data-share-focus', 'remove-' + share.id);
+            remove.addEventListener('click', function () {
+                // The focus goes to the row below, or the one above, or the
+                // people picker once the row is gone.
+                var rows = (state.share ? state.share.data.shares : []).map(function (item) { return item.id; });
+                var at = rows.indexOf(share.id);
+                var next = rows[at + 1] || rows[at - 1] || 0;
+
+                shareRequest('ws_flow_share_remove', { share_id: share.id }, next ? 'remove-' + next : 'add-people').then(function (answer) {
+                    if (answer) {
+                        K.toast(t('fl_share_removed', name), 'success');
+                        announce(t('fl_share_removed', name));
+                    }
+                });
+            });
+            row.appendChild(remove);
+        }
+
+        return row;
+    }
+
+    // The dialog's body: what sharing does, whom the flow is shared with
+    // (its owner first), and for the owner the people and the channel to
+    // share it with next.
+    function drawShares(focus) {
+        var share = state.share;
+        var body = ui.shareModal ? ui.shareModal.querySelector('.modal-body') : null;
+
+        if (!share || !body) {
+            return;
+        }
+
+        var data = share.data || {};
+        var manage = !!data.manage;
+        var shares = data.shares || [];
+        var owner = person(data.owner_id);
+
+        K.clear(body);
+        body.appendChild(el('p', 'small text-body-secondary', manage ? t('fl_share_help') : t('fl_share_read_help')));
+        body.appendChild(el('div', 'wsf-side-title', t('fl_share_list')));
+
+        var list = el('ul', 'list-unstyled wsf-share-list mb-3');
+        var first = el('li', 'wsf-share-row');
+        var who = el('span', 'wsf-share-who');
+
+        who.appendChild(owner ? K.avatar(owner, '1.5rem') : K.icon('bi-person-circle'));
+        who.appendChild(el('span', 'text-truncate', owner ? owner.name : '#' + data.owner_id));
+        first.appendChild(who);
+        first.appendChild(el('span', 'wsf-share-level small text-body-secondary', t('fl_share_owner')));
+        list.appendChild(first);
+
+        shares.forEach(function (item) {
+            list.appendChild(shareRow(item, manage));
+        });
+
+        body.appendChild(list);
+
+        if (!shares.length) {
+            body.appendChild(el('p', 'small text-body-secondary', t('fl_share_none')));
+        }
+
+        if (manage) {
+            body.appendChild(sharePeople(shares, data.owner_id));
+            body.appendChild(shareChannel(shares));
+        }
+
+        if (focus) {
+            var target = body.querySelector('[data-share-focus="' + focus + '"]');
+
+            if (target) {
+                target.focus();
+            }
+        }
+    }
+
+    // People to share the flow with: the note share's people picker, the
+    // team but the owner and the people it is shared with already, and the
+    // level they all get.
+    function sharePeople(shares, ownerId) {
+        var box = el('div', 'wsf-share-add mb-3');
+        var taken = {};
+
+        shares.forEach(function (item) {
+            if (item.target_type === 'user') {
+                taken[item.target_id] = true;
+            }
+        });
+
+        var others = (BOOT.people || []).map(function (member) { return member.id; }).filter(function (id) {
+            return (id !== ownerId) && !taken[id];
+        });
+
+        box.appendChild(el('div', 'wsf-side-title', t('fl_share_people')));
+
+        if (!others.length || !K.peoplePicker) {
+            return box;
+        }
+
+        var picker = K.peoplePicker([], others);
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-2 mt-2');
+        var level = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), 'run');
+        var add = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_share'), 'bi-share');
+
+        picker.setAttribute('role', 'group');
+        picker.setAttribute('aria-label', t('fl_share_people'));
+        level.classList.add('w-auto');
+        level.setAttribute('aria-label', t('fl_share_level'));
+        add.setAttribute('data-share-focus', 'add-people');
+        add.addEventListener('click', function () {
+            var ids = picker.value();
+            var chosen = level.value;
+            var names = [];
+
+            if (!ids.length) {
+                K.toast(t('fl_share_pick'), 'warning');
+                return;
+            }
+
+            // One share a person, one after another: the answer to the last
+            // carries the list with all of them.
+            ids.reduce(function (chain, id) {
+                return chain.then(function (ok) {
+                    if (!ok) {
+                        return false;
+                    }
+
+                    return shareRequest('ws_flow_share_set', { target_type: 'user', target_id: id, level: chosen }, 'add-people').then(function (answer) {
+                        if (answer) {
+                            names.push(person(id) ? person(id).name : '#' + id);
+                        }
+
+                        return !!answer;
+                    });
+                });
+            }, Promise.resolve(true)).then(function () {
+                if (names.length) {
+                    K.toast(t('fl_share_added', names.join(', ')), 'success');
+                    announce(t('fl_share_added', names.join(', ')));
+                }
+            });
+        });
+
+        box.appendChild(picker);
+        row.appendChild(level);
+        row.appendChild(add);
+        box.appendChild(row);
+
+        return box;
+    }
+
+    // A channel to share the flow in, for its readers to look at: the public
+    // and private channels the person is in or may read, as the note share
+    // offers them, but the ones it is shared in already.
+    function shareChannel(shares) {
+        var box = el('div', 'wsf-share-add');
+        var taken = {};
+
+        shares.forEach(function (item) {
+            if (item.target_type === 'channel') {
+                taken[item.target_id] = true;
+            }
+        });
+
+        var channels = (BOOT.channels || []).filter(function (channel) {
+            return ((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived
+                && (channel.joined || (channel.kind === 'public')) && !taken[channel.id];
+        });
+
+        box.appendChild(el('div', 'wsf-side-title', t('fl_share_channel')));
+
+        if (!channels.length) {
+            return box;
+        }
+
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-2');
+        var choice = K.select(channels.map(function (channel) {
+            return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
+        }), channels[0].id);
+        var add = K.button('btn btn-sm btn-outline-secondary', t('fl_share'), 'bi-hash');
+
+        choice.classList.add('w-auto', 'mw-100');
+        choice.setAttribute('aria-label', t('fl_share_channel'));
+        row.appendChild(choice);
+        row.appendChild(el('span', 'small text-body-secondary', t(LEVELS.view)));
+        add.setAttribute('data-share-focus', 'add-channel');
+        add.addEventListener('click', function () {
+            var id = parseInt(choice.value, 10) || 0;
+            var picked = channels.filter(function (channel) { return channel.id === id; })[0];
+
+            if (!id) {
+                return;
+            }
+
+            shareRequest('ws_flow_share_set', { target_type: 'channel', target_id: id, level: 'view' }, 'add-channel').then(function (answer) {
+                if (answer) {
+                    K.toast(t('fl_share_added', '#' + (picked ? picked.name : id)), 'success');
+                    announce(t('fl_share_added', '#' + (picked ? picked.name : id)));
+                }
+            });
+        });
+        row.appendChild(add);
+        box.appendChild(row);
+
+        return box;
     }
 
     // ── Runs ───────────────────────────────────────────────────────────

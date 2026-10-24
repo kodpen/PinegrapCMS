@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555, F7 built): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -18,16 +18,16 @@ description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555): one Fl
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
 - Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds the runs started there (a run keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is a shared step.
-- From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 moved here; T1, T2, T6, S1, S2 stay.
+- From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 came here; T1, T2, T6, S1, S2 stay.
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
 1. Done (PR #1503): F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
 2. PR #1529: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. What is left: workspace/workspace-flows-canvas.md.
-3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine, API: PR #1551 (workspace/workspace-flows-runner.md); F3b run view: PR #1555 (on the canvas).
+3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine, API: PR #1551 (workspace/workspace-flows-runner.md); F3b run view: PR #1555.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
-7. F7 shares (schema); F8 MCP tool, assistant, AI draft cards, starters.
+7. F7 shares built (11.0.83; workspace/workspace-flows-shares.md). F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b (role-3 members only personal flows with steps in their own reach), 3 a (a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". 5-8: recommendations taken (owner: decide without asking).
