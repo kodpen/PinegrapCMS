@@ -34,6 +34,9 @@
 //                                         ask them to post orders to $url with
 //                                         $key; answers data['webhook_id']
 //   remove_webhook($account)              remove the one in the credentials
+//   ship_package($account, $package, $tracking_url)
+//                                         tell them the seller shipped it with
+//                                         their own carrier
 //   update_order($account, $lines, $to)   move their order along
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values
@@ -106,6 +109,18 @@ function mp_providers() {
 					'type'    => 'select',
 					'options' => array('production' => 'Live', 'stage' => 'Test environment'),
 					'default' => 'production'
+				),
+				// Who carries the parcels: Trendyol's contracted carrier, whose
+				// number arrives with the package, or the shop's own, whose
+				// tracking link is sent to Trendyol (mp_account_ships_itself()).
+				'delivery' => array(
+					'label'   => 'Shipping carrier',
+					'type'    => 'select',
+					'options' => array(
+						'trendyol' => 'Trendyol\'s contracted carrier (tracking number comes from Trendyol)',
+						'own'      => 'My own carrier (the tracking link recorded here is sent to Trendyol)'
+					),
+					'default' => 'trendyol'
 				)
 			)
 		)
@@ -166,6 +181,15 @@ function mp_provider_keys_by_barcode($provider) {
 	$providers = mp_providers();
 
 	return isset($providers[$provider]['key']) && $providers[$provider]['key'] === 'barcode';
+
+}
+
+// Does this account ship with a carrier of its own, rather than the one the
+// marketplace contracts? Read from the account's 'delivery' choice; an account
+// saved before the choice existed, or one that never made it, does not.
+function mp_account_ships_itself($account) {
+
+	return isset($account['credentials']['delivery']) && $account['credentials']['delivery'] === 'own';
 
 }
 
