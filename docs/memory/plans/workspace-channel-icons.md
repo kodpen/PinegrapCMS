@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-icons
-description: Plan (2026-10-23, not started, answers open): a channel gets an icon its manager picks from a curated Bootstrap Icons list; kind and customer marks stay visible; colour and icon over the API
+description: Plan (2026-10-23, steps 1-2 in #1510, answers given): a channel icon its manager picks from a curated Bootstrap Icons list; kind marks stay visible; colour and icon in the API
 ---
 
 ## What is asked? (owner, 2026-10-23)
