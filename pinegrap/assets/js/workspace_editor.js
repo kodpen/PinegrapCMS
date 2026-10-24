@@ -854,10 +854,11 @@
     }
 
     // A new mark joined with the same mark beside it: <b>a</b><b>b</b> is
-    // one <b>ab</b>, as the markup will read it anyway.
+    // one <b>ab</b>, as the markup will read it anyway. Answers the mark
+    // that is left.
     function joinMark(mark) {
         if (!mark.parentNode) {
-            return;
+            return mark;
         }
 
         while (mark.previousSibling && (mark.previousSibling.nodeType === 3) && (mark.previousSibling.nodeValue === '')) {
@@ -887,6 +888,26 @@
             }
 
             next.remove();
+        }
+
+        return mark;
+    }
+
+    // Every pair of same marks side by side under a node joined, inner marks
+    // too. Letters typed into a mark of their own and a mark lifted off part
+    // of a run both leave <i>y</i><i>def</i>, which the markup would write as
+    // _y__def_ and every reader would show as underscores.
+    function joinMarks(root) {
+        for (var child = root.firstChild; child; child = child.nextSibling) {
+            if (child.nodeType !== 1) {
+                continue;
+            }
+
+            if (markName(child)) {
+                child = joinMark(child);
+            }
+
+            joinMarks(child);
         }
     }
 
@@ -1032,6 +1053,7 @@
         });
 
         spot.insertNode(top);
+        joinMarks(surface);
         select(typed, typed.nodeValue.length, typed, typed.nodeValue.length);
 
         return true;
@@ -1269,6 +1291,8 @@
                     liftOut(node, mark);
                 }
             });
+
+            joinMarks(surface);
         } else {
             var made = [];
 
@@ -1331,6 +1355,7 @@
         });
 
         made.forEach(joinMark);
+        joinMarks(surface);
 
         var last = texts[texts.length - 1];
 
