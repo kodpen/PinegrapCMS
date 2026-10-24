@@ -1049,6 +1049,29 @@ function erp_edoc_parasut_total_refusal($lines, $currency)
 }
 
 /**
+ * The outgoing shipment document an order's sales invoice names: the one the
+ * order screen's E-Shipment wrote at Paraşüt (orders.parasut_shipment_id),
+ * typically for an order shipped before the store switched the ERP's
+ * Paraşüt provider on. A real record id is digits, kept as a string (ids
+ * outgrow a 32-bit integer); an empty column, anything else in it and a
+ * typed invoice name none.
+ *
+ * @param array $invoice  An erp_invoices row; an order's invoice carries
+ *                        order_shipment_id (orders.parasut_shipment_id)
+ * @return string  The shipment document's id, '' for none
+ */
+function erp_edoc_parasut_order_shipment_id($invoice)
+{
+    if ((int) ($invoice['order_id'] ?? 0) <= 0) {
+        return '';
+    }
+
+    $id = trim((string) ($invoice['order_shipment_id'] ?? ''));
+
+    return preg_match('/^[1-9][0-9]*$/', $id) ? $id : '';
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
@@ -1056,8 +1079,14 @@ function erp_edoc_parasut_total_refusal($lines, $currency)
  * rate's amount moves by a kurus or so to keep the ERP's total
  * (erp_edoc_parasut_vat_shift()); a total it cannot keep is refused.
  *
+ * An order that already has its outgoing shipment document at Paraşüt
+ * (erp_edoc_parasut_order_shipment_id()) is invoiced without shipment,
+ * naming that document; any other invoice carries no shipment field and
+ * Paraşüt keeps its default, the shipment included.
+ *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
- *                            order_number and order_date (Y-m-d)
+ *                            order_number, order_date (Y-m-d) and
+ *                            order_shipment_id (orders.parasut_shipment_id)
  * @param array  $lines
  * @param string $contact_id  The Paraşüt contact
  * @return array  The payload, or ['error' => string]
@@ -1178,13 +1207,29 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         $attributes['invoice_note'] = mb_substr(trim((string) $invoice['notes']), 0, 1000);
     }
 
+    $relationships = array(
+        'contact' => array('data' => array('type' => 'contacts', 'id' => (string) $contact_id)),
+        'details' => array('data' => $details),
+    );
+
+    // A sales invoice Paraşüt keeps with the shipment included, its default,
+    // takes its goods out of stock itself; beside the order's shipment
+    // document that counts them out twice. Without shipment and naming the
+    // document it moves no stock, and both records name each other (live,
+    // 201). The link is made here or never: a shipment document PUT with
+    // relationships.invoices answers 200 and links nothing. A document that
+    // no longer exists answers 404 and nothing is written.
+    $shipment_id = erp_edoc_parasut_order_shipment_id($invoice);
+
+    if ($shipment_id !== '') {
+        $attributes['shipment_included'] = false;
+        $relationships['shipment_documents'] = array('data' => array(array('type' => 'shipment_documents', 'id' => $shipment_id)));
+    }
+
     return array('data' => array(
         'type' => 'sales_invoices',
         'attributes' => $attributes,
-        'relationships' => array(
-            'contact' => array('data' => array('type' => 'contacts', 'id' => (string) $contact_id)),
-            'details' => array('data' => $details),
-        ),
+        'relationships' => $relationships,
     ));
 }
 
@@ -1602,9 +1647,11 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     }
 
     // The order's number and day (orders.order_date is a UNIX timestamp; the
-    // document wants the day).
-    if (((int) ($invoice['order_id'] ?? 0) > 0) && (!isset($invoice['order_date']) || !isset($invoice['order_number']))) {
-        $order = db_item("SELECT order_number, order_date FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+    // document wants the day), and the shipment document the order screen's
+    // E-Shipment wrote for it (erp_edoc_parasut_order_shipment_id()).
+    if (((int) ($invoice['order_id'] ?? 0) > 0)
+        && (!isset($invoice['order_date']) || !isset($invoice['order_number']) || !isset($invoice['order_shipment_id']))) {
+        $order = db_item("SELECT order_number, order_date, parasut_shipment_id FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
 
         if (!isset($invoice['order_number'])) {
             $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
@@ -1613,6 +1660,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         if (!isset($invoice['order_date'])) {
             $stamp = is_array($order) ? (int) $order['order_date'] : 0;
             $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+        }
+
+        if (!isset($invoice['order_shipment_id'])) {
+            $invoice['order_shipment_id'] = is_array($order) ? trim((string) $order['parasut_shipment_id']) : '';
         }
     }
 
