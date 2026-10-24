@@ -4672,8 +4672,8 @@
     }
 
     // What the feature files draw with (workspace_approvals.js,
-    // workspace_acks.js): the screen's own helpers, so their parts look like
-    // the rest of it.
+    // workspace_acks.js, workspace_voice.js): the screen's own helpers, so
+    // their parts look like the rest of it.
     function featureHelpers() {
         return {
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
@@ -8760,6 +8760,13 @@
                 return link;
             }
 
+            // A sound, a voice message among them: play and pause, the time
+            // and the speed (assets/js/workspace_voice.js); the browser's own
+            // player below without it.
+            if ((kind === 'audio') && window.PGWsVoice) {
+                return window.PGWsVoice.player(file, featureHelpers());
+            }
+
             if (kind === 'video' || kind === 'audio') {
                 var box = el('div', 'ws-media ws-media-' + kind);
                 var player = el(kind);
@@ -10994,8 +11001,35 @@
                 tools.appendChild(send);
             }
 
+            // A voice message (assets/js/workspace_voice.js): the microphone
+            // stands where Send (with its second half) is while the box is
+            // empty; voiceSwap() trades them.
+            self.sendNode = sendGroup || send;
+            self.voiceMic = null;
+
+            if (window.PGWsVoice && window.PGWsVoice.supported() && !self.era) {
+                var mic = button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-mic', '', 'bi-mic', t('voice_record'));
+
+                mic.addEventListener('click', function () {
+                    window.PGWsVoice.start({
+                        box: box,
+                        send: function (file) { self.uploadFiles([file]); },
+                        done: function () {
+                            self.voiceSwap();
+
+                            if (!touchScreen() && self.input && self.input.isConnected) {
+                                self.input.focus();
+                            }
+                        }
+                    }, featureHelpers());
+                });
+                tools.appendChild(mic);
+                self.voiceMic = mic;
+            }
+
             box.appendChild(tools);
             wrap.appendChild(box);
+            self.voiceSwap();
 
             input.addEventListener('input', function () {
                 self.autosize();
@@ -11162,6 +11196,7 @@
                 input.style.height = Math.min(input.scrollHeight, 192) + 'px';
             }
 
+            this.voiceSwap();
             this.fit();
         },
 
@@ -11172,6 +11207,23 @@
 
         inputEmpty: function () {
             return this.rich ? this.rich.isEmpty() : (this.input.value === '');
+        },
+
+        // The microphone in place of Send while the box is empty. Not while a
+        // message is changed, nor beside a reply bar: a recording is sent by
+        // uploadFiles(), which posts no parent_id.
+        voiceSwap: function () {
+            var mic = this.voiceMic;
+
+            if (!mic || !this.sendNode || !this.input) {
+                return;
+            }
+
+            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.reply && !this.era
+                && !!this.channel && !!this.channel.can_post;
+
+            mic.classList.toggle('d-none', !show);
+            this.sendNode.classList.toggle('d-none', show);
         },
 
         clearInput: function () {
@@ -11287,6 +11339,8 @@
         drawReplyBar: function () {
             var self = this;
             var bar = clear(self.replyBar);
+
+            self.voiceSwap();
 
             if (!self.reply && !self.editing && !self.editingScheduled) {
                 return;
@@ -13079,6 +13133,8 @@
             composerWrap: null,
             input: null,
             rich: null,
+            sendNode: null,
+            voiceMic: null,
             picker: null,
             pickerMode: null,
             pickerItems: null,
