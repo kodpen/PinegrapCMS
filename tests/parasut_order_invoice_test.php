@@ -739,9 +739,9 @@ function test_parasut_order_contact_attributes_split_a_turkish_address()
 	pg_assert_false(array_key_exists('address', parasut_order_contact_attributes($order, '')), 'no street given');
 }
 
-// An address abroad keeps the card it was given before: one folded address
-// line, no city or district (Paraşüt's city and district are Turkey's
-// provinces and districts). The identity rules do not depend on the country.
+// An address abroad goes as one folded address line (street, city, state,
+// postcode, country) with no city, district or postal_code. The identity
+// rules do not depend on the country.
 function test_parasut_order_contact_attributes_keep_an_address_abroad_folded()
 {
 	$order = array(

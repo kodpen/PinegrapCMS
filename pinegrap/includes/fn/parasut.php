@@ -1443,14 +1443,16 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
  * sole proprietor trading under a name), as the ERP's Paraşüt driver opens
  * a card (erp_edoc_parasut_contact_attributes()).
  *
- * A Turkish billing address goes in Paraşüt's own fields, as the ERP opens
- * an account from the order (erp_account_data_with_order()) and its driver
- * writes that account's card: the street lines in address, the province in
- * city and the district in district (the checkout's state and city fields,
- * erp_address_from_checkout()), the postcode in postal_code. An e-Archive
- * or e-Invoice reads the city and the district off the card. An address
- * abroad is folded into address, as it always was: Paraşüt's city and
- * district are Turkey's.
+ * A Turkish billing address goes in Paraşüt's own fields, mapped as the
+ * ERP's driver writes a card (erp_address_from_checkout()): the street
+ * lines in address, the checkout's state field (the province) in city, its
+ * city field (the district) in district, the postcode in postal_code. An
+ * e-Archive or e-Invoice reads the city and the district off the card. The
+ * address is Turkish when its billing country is TR or, with none given,
+ * when the store's is (erp_account_country(), the way
+ * erp_address_from_checkout() reads an empty country). Any other address
+ * goes as one line in address (street, city, state, postcode, country)
+ * with no city, district or postal_code.
  *
  * @param array       $order      Order row (billing_* fields)
  * @param string      $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
