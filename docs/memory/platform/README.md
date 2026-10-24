@@ -20,6 +20,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Use `HOSTNAME` only for answers back to the visitor; links that leave the request (mails, documents, feeds) use `HOSTNAME_SETTING` (`hostname-in-mail-links.md`).
 - Make a front-end renderer whose output depends on the visitor call `pg_page_cache_personal('<why>')`, and register a header callback only through `pg_header_callback_add()` (`page-cache-gate.md`).
 - Make a change to what pages show that is not a signed-in POST, a content `api.php` row, an MCP write or a `pg_announce()` call `pg_page_cache_mark_dirty()`, and sort a new designer, shared component or explorer sub-action into `pg_page_cache_panel_sub_actions()`, or the file cache serves the old page for the TTL (`page-cache-invalidation.md`).
+- Cut a name a person gave (upload, archive entry, link) with `pg_basename()` and take its stem with `pg_file_name_stem()`, never `basename()` or `pathinfo()`: before PHP 8.0 they drop the non-ASCII letters the name starts with (`file-name-last-segment.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -40,6 +41,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
+- file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - gd-webp-read.md: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on an animated or cut-short WebP, imagecreatefromstring() reads WebP from 7.3; pg_image_webp_gd_readable(), pg_image_from_string()
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
