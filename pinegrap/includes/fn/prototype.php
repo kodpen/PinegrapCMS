@@ -74,27 +74,140 @@ function pg_proto_clean_text($value, $max)
 }
 
 /**
- * The signature of a frame address. Its own prefix keeps it apart from any
- * other HMAC made with the same key.
+ * A section name (the fragment of a link) as the viewer passes it on to the
+ * frame's address: at most 200 characters without control characters, every
+ * character a fragment may not hold written as a %-escape (an escape already
+ * written stays as it is); '' otherwise.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_proto_clean_fragment($value)
+{
+    if (!is_string($value) || ($value === '') || (strlen($value) > 200) || preg_match('/[\x00-\x1F\x7F]/', $value)) {
+        return '';
+    }
+
+    $clean = preg_replace_callback('~[^A-Za-z0-9\-._\~!$&\'()*+,;=:@/?%]~', function ($match) {
+        return rawurlencode($match[0]);
+    }, $value);
+
+    return is_string($clean) ? $clean : '';
+}
+
+/**
+ * The signature of a frame address: design, page, person, expiry, and the
+ * item and record the page shows, so an address opens only the view it was
+ * made for. Its own prefix keeps it apart from any other HMAC made with the
+ * same key; the item and the record are %-escaped, so no ':' of theirs can
+ * shift a part into the next.
  *
  * @param mixed  $style_id
+ * @param mixed  $page_id
  * @param mixed  $user_id  the person the viewer was opened by
  * @param mixed  $expires  Unix time
  * @param string $key      ENCRYPTION_KEY
+ * @param string $sub      the part of a pretty address after the page name
+ * @param string $record   a record code (?r=)
  * @return string 64 hex characters, '' when any part is missing
  */
-function pg_proto_frame_sign($style_id, $user_id, $expires, $key)
+function pg_proto_frame_sign($style_id, $page_id, $user_id, $expires, $key, $sub = '', $record = '')
 {
     $style_id = (int) $style_id;
+    $page_id = (int) $page_id;
     $user_id = (int) $user_id;
     $expires = (int) $expires;
     $key = (string) $key;
 
-    if (($style_id <= 0) || ($user_id <= 0) || ($expires <= 0) || ($key === '')) {
+    if (($style_id <= 0) || ($page_id <= 0) || ($user_id <= 0) || ($expires <= 0) || ($key === '')) {
         return '';
     }
 
-    return hash_hmac('sha256', 'prototype-frame:' . $style_id . ':' . $user_id . ':' . $expires, $key);
+    return hash_hmac('sha256', 'prototype-frame:' . $style_id . ':' . $page_id . ':' . $user_id . ':' . $expires
+        . ':' . rawurlencode((string) $sub) . ':' . rawurlencode((string) $record), $key);
+}
+
+/**
+ * The frame's address: the viewer, the signed query and the section the
+ * frame scrolls to. A fragment never reaches the server, so it is no part of
+ * the signature.
+ *
+ * @param string $viewer PATH . SOFTWARE_DIRECTORY . '/prototype.php'
+ * @param string $query  pg_proto_frame_query()
+ * @param string $anchor pg_proto_clean_fragment()
+ * @return string
+ */
+function pg_proto_frame_url($viewer, $query, $anchor = '')
+{
+    return (string) $viewer . '?' . (string) $query . (((string) $anchor !== '') ? '#' . (string) $anchor : '');
+}
+
+/**
+ * The address a visitor would ask the drawn page by: what the frame's
+ * widgets read as the request (get_request_uri()) for the links they build
+ * to the page itself (language switcher, calendar, sign-in's way back), in
+ * place of the frame's own signed address.
+ *
+ * @param string $path   PATH
+ * @param string $name   page name
+ * @param string $sub    the part of a pretty address after the page name
+ * @param string $record a record code (?r=)
+ * @return string
+ */
+function pg_proto_public_uri($path, $name, $sub = '', $record = '')
+{
+    $uri = (string) $path . encode_url_path((string) $name);
+
+    if ((string) $sub !== '') {
+        $uri .= '/' . encode_url_path((string) $sub);
+    }
+
+    if ((string) $record !== '') {
+        $uri .= '?r=' . rawurlencode((string) $record);
+    }
+
+    return $uri;
+}
+
+/**
+ * The pg_consent cookie value of a visitor who refused every optional
+ * category (pg_consent_parse() reads it back): the frame's answer to the
+ * cookie notice, so no tag held for consent starts in a prototype.
+ *
+ * @param array $letters pg_consent_category_letters()
+ * @return string
+ */
+function pg_proto_consent_refused($letters)
+{
+    $value = '1';
+
+    foreach ((array) $letters as $letter) {
+        $value .= '.' . $letter . '0';
+    }
+
+    return $value;
+}
+
+/**
+ * Cuts the language directory off an item name (/de/about is the page
+ * "about" in German): only a prefix the site has, compared as written, the
+ * way router.php compares it.
+ *
+ * @param string $item      pg_link_parse() item
+ * @param array  $languages prefix => language code (pg_tr_prefix_map())
+ * @return array language (the prefix, '' for none), item (the rest)
+ */
+function pg_proto_split_language($item, $languages)
+{
+    $item = (string) $item;
+    $slash = strpos($item, '/');
+    $first = ($slash === false) ? $item : substr($item, 0, $slash);
+
+    if (($first === '') || !is_array($languages) || !array_key_exists($first, $languages)) {
+        return array('language' => '', 'item' => $item);
+    }
+
+    return array('language' => $first, 'item' => ($slash === false) ? '' : ltrim((string) substr($item, $slash + 1), '/'));
 }
 
 /**
@@ -174,11 +287,12 @@ function pg_proto_frame_parse($source)
  */
 function pg_proto_frame_state($parsed, $key, $now)
 {
-    if (!is_array($parsed) || !isset($parsed['s'], $parsed['u'], $parsed['e'], $parsed['sig'])) {
+    if (!is_array($parsed) || !isset($parsed['s'], $parsed['p'], $parsed['u'], $parsed['e'], $parsed['sig'])) {
         return 'invalid';
     }
 
-    $expected = pg_proto_frame_sign($parsed['s'], $parsed['u'], $parsed['e'], $key);
+    $expected = pg_proto_frame_sign($parsed['s'], $parsed['p'], $parsed['u'], $parsed['e'], $key,
+        isset($parsed['sub']) ? $parsed['sub'] : '', isset($parsed['r']) ? $parsed['r'] : '');
 
     if (($expected === '') || !hash_equals($expected, (string) $parsed['sig'])) {
         return 'invalid';
@@ -299,9 +413,10 @@ function pg_proto_start_page($pages, $requested_id)
  * @param int    $page_id
  * @param string $sub    the part of a pretty address after the page name
  * @param string $record a record code (?r=)
+ * @param string $anchor the section the page opens at (pg_proto_clean_fragment())
  * @return string
  */
-function pg_proto_viewer_url($base, $page_id, $sub = '', $record = '')
+function pg_proto_viewer_url($base, $page_id, $sub = '', $record = '', $anchor = '')
 {
     $url = (string) $base . '?page=' . (int) $page_id;
 
@@ -313,23 +428,32 @@ function pg_proto_viewer_url($base, $page_id, $sub = '', $record = '')
         $url .= '&r=' . rawurlencode((string) $record);
     }
 
+    if ((string) $anchor !== '') {
+        $url .= '&anchor=' . rawurlencode((string) $anchor);
+    }
+
     return $url;
 }
 
 /**
  * Where one link of a drawn draft leads in the prototype.
  *
- * Kinds: prototype (another page of the prototype: the viewer's address for
- * it), site (a page, file or item on the site: opens there in a new tab),
- * draft (a draft of another design: marked, goes nowhere), broken (nothing
- * by that name, a binned page, an empty or unreadable address: marked, goes
- * nowhere), external (another host), contact (mailto, tel, sms), and ''
- * for what is left as it is (an anchor, a script address, a toggle).
+ * Kinds: prototype (another page of the prototype, or the page on view
+ * showing another item: the viewer's address for it, with the section the
+ * link names), anchor (a section of the view in the frame: '#name', scrolled
+ * there), site (a page, file or item on the site, or a page in another
+ * language: opens there in a new tab), draft (a draft of another design or
+ * an item under one: marked, goes nowhere), broken (nothing by that name, a
+ * binned page or an item under one, an empty or unreadable address: marked,
+ * goes nowhere), external (another host), contact (mailto, tel, sms), and
+ * '' for what is left as it is (a bare anchor, a script address, a toggle).
  *
  * @param string $href decoded attribute value
  * @param array  $ctx  env, maps, form_names (pg_link_resolve_item()),
  *                     proto (page id => true), draft_folder, bin_folders
- *                     (folder id => true), current_page, viewer
+ *                     (folder id => true), current_page, current_sub,
+ *                     current_record (the view in the frame), languages
+ *                     (pg_tr_prefix_map()), viewer
  * @return array kind, page_id, href ('' for draft and broken)
  */
 function pg_proto_link_target($href, $ctx)
@@ -383,7 +507,10 @@ function pg_proto_link_target($href, $ctx)
         }
     }
 
-    $item = $parsed['item'];
+    // A page in another language is the same page under a language
+    // directory; its name decides as it does without one.
+    $split = pg_proto_split_language($parsed['item'], isset($ctx['languages']) ? $ctx['languages'] : array());
+    $item = $split['item'];
     $resolved = pg_link_resolve_item($item, $maps, isset($ctx['form_names']) ? $ctx['form_names'] : array());
 
     if ($resolved['type'] === 'unknown') {
@@ -398,29 +525,47 @@ function pg_proto_link_target($href, $ctx)
         $record = pg_proto_clean_text(isset($query_values['r']) ? $query_values['r'] : '', 100);
     }
 
-    // A pretty address under a page of the prototype (a product, a record)
-    // is that page showing the item.
+    $fragment = pg_proto_clean_fragment(parse_url($href, PHP_URL_FRAGMENT));
+
+    // The page the address is drawn on: the page itself, or for a pretty
+    // address (a product, a record) the page before the slash, whose folder
+    // decides as it does for a link to that page. Under a page of the
+    // prototype it is that page showing the item.
     $page_id = ($resolved['type'] === 'page') ? (int) $resolved['id'] : 0;
     $sub = '';
 
     if (in_array($resolved['type'], array('page', 'product', 'product_group'), true) && (mb_strpos($item, '/') !== false)) {
         $prefix = mb_substr($item, 0, mb_strpos($item, '/'));
 
-        if (isset($maps['pages'][$prefix]) && isset($proto[(int) $maps['pages'][$prefix]['id']])) {
+        if (isset($maps['pages'][$prefix])) {
             $page_id = (int) $maps['pages'][$prefix]['id'];
             $sub = trim(mb_substr($item, mb_strpos($item, '/') + 1), '/');
         }
     }
 
-    if (($page_id > 0) && isset($proto[$page_id])) {
-        return array('kind' => 'prototype', 'page_id' => $page_id, 'href' => pg_proto_viewer_url($viewer, $page_id, $sub, $record));
-    }
+    $in_proto = ($page_id > 0) && isset($proto[$page_id]);
 
-    if ($resolved['type'] === 'page') {
-        if ($page_id <= 0) {
-            return array('kind' => 'broken', 'page_id' => 0, 'href' => '');
+    // The frame draws the source language only, so another language's
+    // version of a draft opens on the site like any other page.
+    if ($in_proto && ($split['language'] === '')) {
+        $same_view = ($page_id === (isset($ctx['current_page']) ? (int) $ctx['current_page'] : 0))
+            && ($sub === (isset($ctx['current_sub']) ? (string) $ctx['current_sub'] : ''))
+            && ($record === (isset($ctx['current_record']) ? (string) $ctx['current_record'] : ''));
+
+        // A section of the view on screen scrolls there; drawing the view
+        // again would put the visitor back at the top.
+        if ($same_view && ($fragment !== '')) {
+            return array('kind' => 'anchor', 'page_id' => $page_id, 'href' => '#' . $fragment);
         }
 
+        return array('kind' => 'prototype', 'page_id' => $page_id, 'href' => pg_proto_viewer_url($viewer, $page_id, $sub, $record, $fragment));
+    }
+
+    if (($resolved['type'] === 'page') && ($page_id <= 0)) {
+        return array('kind' => 'broken', 'page_id' => 0, 'href' => '');
+    }
+
+    if (($page_id > 0) && !$in_proto) {
         $folder = null;
 
         foreach ((isset($maps['pages']) ? $maps['pages'] : array()) as $page) {
@@ -589,9 +734,11 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
             $set['aria-disabled'] = 'true';
         } else {
             $set['href'] = (string) $target['href'];
-            $set['target'] = ($kind === 'prototype') ? '_top' : '_blank';
+            // A section of the view scrolls inside the frame, another page
+            // of the prototype moves the viewer, the rest opens a new tab.
+            $set['target'] = ($kind === 'prototype') ? '_top' : (($kind === 'anchor') ? '_self' : '_blank');
 
-            if ($kind !== 'prototype') {
+            if (($kind !== 'prototype') && ($kind !== 'anchor')) {
                 $rel = '';
 
                 foreach ($attributes as $attribute) {
@@ -676,16 +823,19 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
 /**
  * The frame's own additions to a drawn page: robots and referrer meta tags,
  * the cookie and storage shim and the marks' styles at the start of the
- * head, the helper script at the end of the body. The script outlines the links while the viewer's hotspots
- * switch is on (a message from the viewer), keeps inert links inert, opens a
- * link a script drew later in a new tab, and says why a form does not send
- * (the frame's sandbox stops the submission itself).
+ * head, the helper script at the end of the body. The script outlines the
+ * links while the viewer's hotspots switch is on (a message from the
+ * viewer), keeps inert links inert, opens a link a script drew later in a
+ * new tab, and says why a form does not send (the frame's sandbox stops the
+ * submission itself).
  *
  * @param string $html
  * @param array  $strings forms, broken, draft
+ * @param array  $cookies name => value the shim's jar starts with (the
+ *                        cookie notice's answer)
  * @return string
  */
-function pg_proto_frame_inject($html, $strings)
+function pg_proto_frame_inject($html, $strings, $cookies = array())
 {
     $html = (string) $html;
     $config = array(
@@ -694,13 +844,20 @@ function pg_proto_frame_inject($html, $strings)
         'draft' => isset($strings['draft']) ? (string) $strings['draft'] : '',
     );
 
+    $jar = array();
+
+    foreach ((array) $cookies as $name => $value) {
+        $jar[(string) $name] = (string) $value;
+    }
+
     // First in the head, before any script of the page: in the frame's
     // opaque origin reading document.cookie or the storage objects throws,
-    // which stopped the site's own scripts (the cookie notice). They get an
-    // empty cookie jar and storage that live in memory for this view only, a
-    // first visit that keeps nothing.
+    // which stopped the site's own scripts. They get a cookie jar and
+    // storage that live in memory for this view only, a first visit that
+    // keeps nothing; the jar holds the answer the server drew the page with,
+    // so a script reading the consent cookie sees the same refusal.
     $shim = '<script id="pg-proto-shim">(function () {'
-        . 'var jar = {};'
+        . 'var jar = ' . json_encode((object) $jar, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . ';'
         . 'try { void document.cookie; } catch (e) {'
         . 'try { Object.defineProperty(document, "cookie", { configurable: true,'
         . 'get: function () { var out = []; for (var k in jar) { if (Object.prototype.hasOwnProperty.call(jar, k)) out.push(k + "=" + jar[k]); } return out.join("; "); },'
@@ -727,6 +884,10 @@ function pg_proto_frame_inject($html, $strings)
     $head = '<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">'
         . $shim
         . '<style id="pg-proto-style">'
+        // The cookie notice is answered with no (prototype.php) and not
+        // shown: nothing is kept between pages, so it would open on every
+        // one, and an answer given there would start the tags it holds.
+        . '#pg-cc{display:none!important}'
         . 'a[data-pg-proto="broken"],a[data-pg-proto="draft"]{cursor:not-allowed;text-decoration-line:underline;text-decoration-style:wavy;text-decoration-color:#dc3545}'
         . '.pg-proto-hotspots a[data-pg-proto="prototype"]{outline:2px solid rgba(13,110,253,.9)!important;outline-offset:2px;background-color:rgba(13,110,253,.12)!important}'
         . '.pg-proto-hotspots a[data-pg-proto="site"],.pg-proto-hotspots a[data-pg-proto="external"],.pg-proto-hotspots a[data-pg-proto="contact"]{outline:2px dashed rgba(25,135,84,.9)!important;outline-offset:2px}'

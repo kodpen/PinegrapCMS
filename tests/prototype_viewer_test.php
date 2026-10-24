@@ -45,6 +45,9 @@ function prototype_viewer_test_ctx()
 				'binned-page' => array('id' => 14, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 60),
 				'other-draft' => array('id' => 16, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 50),
 				'shop' => array('id' => 17, 'type' => 'catalog', 'layout_type' => 'custom', 'folder' => 50),
+				'other-shop' => array('id' => 18, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 50),
+				'binned-shop' => array('id' => 19, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 60),
+				'live-shop' => array('id' => 21, 'type' => 'standard', 'layout_type' => 'system', 'folder' => 1),
 			),
 			'files' => array('brochure.pdf' => 5),
 			'short_links' => array(),
@@ -57,6 +60,9 @@ function prototype_viewer_test_ctx()
 		'draft_folder' => 50,
 		'bin_folders' => array(60 => true),
 		'current_page' => 11,
+		'current_sub' => '',
+		'current_record' => '',
+		'languages' => array('de' => 'de'),
 		'viewer' => '/pinegrap/prototype.php',
 	);
 }
@@ -164,6 +170,125 @@ function test_prototype_link_to_another_design_draft_is_marked()
 	pg_assert_same('', $target['href']);
 }
 
+function test_prototype_link_to_an_item_under_another_draft_or_a_binned_page()
+{
+	// The page before the slash decides, as it does for a plain page link.
+	$target = pg_proto_link_target('/other-shop/red-shirt', prototype_viewer_test_ctx());
+	pg_assert_same('draft', $target['kind']);
+	pg_assert_same(18, $target['page_id']);
+	pg_assert_same('', $target['href']);
+
+	$target = pg_proto_link_target('/binned-shop/red-shirt', prototype_viewer_test_ctx());
+	pg_assert_same('broken', $target['kind']);
+	pg_assert_same('', $target['href']);
+
+	$target = pg_proto_link_target('/live-shop/red-shirt', prototype_viewer_test_ctx());
+	pg_assert_same('site', $target['kind']);
+	pg_assert_same('/live-shop/red-shirt', $target['href']);
+}
+
+function test_prototype_link_keeps_the_section_it_names()
+{
+	$ctx = prototype_viewer_test_ctx();
+
+	// Another page of the prototype opens at that section.
+	$target = pg_proto_link_target('/pricing#plans', $ctx);
+	pg_assert_same('prototype', $target['kind']);
+	pg_assert_same('/pinegrap/prototype.php?page=12&anchor=plans', $target['href']);
+
+	// A section of the page on view scrolls inside the frame.
+	$target = pg_proto_link_target('/start#features', $ctx);
+	pg_assert_same('anchor', $target['kind']);
+	pg_assert_same(11, $target['page_id']);
+	pg_assert_same('#features', $target['href']);
+	pg_assert_same('#features', pg_proto_link_target('https://example.com/start?utm=x#features', $ctx)['href']);
+
+	// The same page showing a record is another view.
+	$target = pg_proto_link_target('/start?r=ab12#features', $ctx);
+	pg_assert_same('prototype', $target['kind']);
+	pg_assert_same('/pinegrap/prototype.php?page=11&r=ab12&anchor=features', $target['href']);
+
+	// An empty fragment is the page itself.
+	pg_assert_same('/pinegrap/prototype.php?page=12', pg_proto_link_target('/pricing#', $ctx)['href']);
+
+	// On a page showing an item, that item's sections stay in the frame and
+	// the page's list is another view.
+	$ctx['current_page'] = 17;
+	$ctx['current_sub'] = 'red-shirt';
+	pg_assert_same('#reviews', pg_proto_link_target('/shop/red-shirt#reviews', $ctx)['href']);
+	pg_assert_same('/pinegrap/prototype.php?page=17&anchor=reviews', pg_proto_link_target('/shop#reviews', $ctx)['href']);
+}
+
+function test_prototype_link_to_another_language_opens_the_site()
+{
+	$ctx = prototype_viewer_test_ctx();
+
+	// The language switcher's other entries: that language's version, on the
+	// site, since the frame draws the page in the source language only.
+	$target = pg_proto_link_target('/de/pricing', $ctx);
+	pg_assert_same('site', $target['kind']);
+	pg_assert_same(12, $target['page_id']);
+	pg_assert_same('/de/pricing', $target['href']);
+
+	pg_assert_same('site', pg_proto_link_target('/de/about', $ctx)['kind']);
+	pg_assert_same('site', pg_proto_link_target('/de/', $ctx)['kind']);
+	pg_assert_same('site', pg_proto_link_target('/de', $ctx)['kind']);
+	pg_assert_same('broken', pg_proto_link_target('/de/no-such-page', $ctx)['kind']);
+	pg_assert_same('broken', pg_proto_link_target('/de/binned-page', $ctx)['kind']);
+	pg_assert_same('draft', pg_proto_link_target('/de/other-draft', $ctx)['kind']);
+
+	// Not a language of the site (the router compares the prefix as written).
+	pg_assert_same('broken', pg_proto_link_target('/fr/pricing', $ctx)['kind']);
+	pg_assert_same('broken', pg_proto_link_target('/DE/pricing', $ctx)['kind']);
+}
+
+function test_prototype_split_language_cuts_a_known_prefix_only()
+{
+	$languages = array('de' => 'de', 'pt-br' => 'pt-BR');
+
+	pg_assert_same(array('language' => 'de', 'item' => 'pricing'), pg_proto_split_language('de/pricing', $languages));
+	pg_assert_same(array('language' => 'pt-br', 'item' => 'shop/red-shirt'), pg_proto_split_language('pt-br/shop/red-shirt', $languages));
+	pg_assert_same(array('language' => 'de', 'item' => ''), pg_proto_split_language('de', $languages));
+	pg_assert_same(array('language' => 'de', 'item' => ''), pg_proto_split_language('de/', $languages));
+	pg_assert_same(array('language' => '', 'item' => 'deutsch/x'), pg_proto_split_language('deutsch/x', $languages));
+	pg_assert_same(array('language' => '', 'item' => 'DE/x'), pg_proto_split_language('DE/x', $languages));
+	pg_assert_same(array('language' => '', 'item' => 'de/x'), pg_proto_split_language('de/x', array()));
+}
+
+function test_prototype_clean_fragment_keeps_a_safe_section_name()
+{
+	pg_assert_same('plans', pg_proto_clean_fragment('plans'));
+	pg_assert_same('caf%C3%A9', pg_proto_clean_fragment('caf%C3%A9'));
+	pg_assert_same('caf%C3%A9', pg_proto_clean_fragment("caf\xC3\xA9"));
+	pg_assert_same('a%20b%22%3C', pg_proto_clean_fragment('a b"<'));
+	pg_assert_same('', pg_proto_clean_fragment("a\nb"));
+	pg_assert_same('', pg_proto_clean_fragment(array('x')));
+	pg_assert_same('', pg_proto_clean_fragment(str_repeat('a', 201)));
+}
+
+function test_prototype_frame_url_carries_the_section()
+{
+	pg_assert_same('/pinegrap/prototype.php?frame=1&s=7', pg_proto_frame_url('/pinegrap/prototype.php', 'frame=1&s=7', ''));
+	pg_assert_same('/pinegrap/prototype.php?frame=1&s=7#plans', pg_proto_frame_url('/pinegrap/prototype.php', 'frame=1&s=7', 'plans'));
+}
+
+function test_prototype_public_address_of_the_drawn_page()
+{
+	// What the widgets read as the request in the frame: the page's own
+	// address, never the frame's signed one.
+	pg_assert_same('/start', pg_proto_public_uri('/', 'start', '', ''));
+	pg_assert_same('/site/my%20page/red%20shirt/x?r=ab%2012', pg_proto_public_uri('/site/', 'my page', 'red shirt/x', 'ab 12'));
+}
+
+function test_prototype_frame_answers_the_cookie_notice_with_no()
+{
+	$value = pg_proto_consent_refused(pg_consent_category_letters());
+
+	pg_assert_same('1.a0.m0', $value);
+	pg_assert_same(array('analytics' => false, 'marketing' => false), pg_consent_parse($value));
+	pg_assert_same('1', pg_proto_consent_refused(array()));
+}
+
 function test_prototype_link_outside_the_site_opens_normally()
 {
 	pg_assert_same('external', pg_proto_link_target('https://other.example.org/x', prototype_viewer_test_ctx())['kind']);
@@ -211,6 +336,13 @@ function test_prototype_rewrite_opens_site_and_outside_links_in_a_new_tab()
 	pg_assert_contains('<A href="https://other.example.org/x" target="_blank" rel="noopener noreferrer" data-pg-proto="external">X</A>', $out);
 }
 
+function test_prototype_rewrite_scrolls_a_section_of_the_page_in_view()
+{
+	$out = prototype_viewer_test_rewrite('<a href="/start#features" target="_blank" class="x">F</a>');
+
+	pg_assert_same('<a href="#features" target="_self" class="x" data-pg-proto="anchor">F</a>', $out);
+}
+
 function test_prototype_rewrite_makes_broken_links_inert_and_marked()
 {
 	$out = prototype_viewer_test_rewrite('<a href="/no-such-page" class="btn">Go</a>');
@@ -254,7 +386,7 @@ function test_prototype_html_hrefs_lists_link_addresses_outside_scripts()
 
 function test_prototype_frame_signature_round_trip()
 {
-	$sig = pg_proto_frame_sign(7, 3, 1000900, 'k');
+	$sig = pg_proto_frame_sign(7, 12, 3, 1000900, 'k', 'red-shirt', 'ab12');
 	$parsed = pg_proto_frame_parse(array('s' => '7', 'p' => '12', 'u' => '3', 'e' => '1000900', 'sig' => $sig, 'sub' => 'red-shirt', 'r' => 'ab12'));
 
 	pg_assert_same(64, strlen($sig));
@@ -265,8 +397,21 @@ function test_prototype_frame_signature_round_trip()
 
 function test_prototype_frame_signature_refuses_changes_age_and_no_key()
 {
-	$sig = pg_proto_frame_sign(7, 3, 1000900, 'k');
+	$sig = pg_proto_frame_sign(7, 12, 3, 1000900, 'k');
 	$base = array('s' => '7', 'p' => '12', 'u' => '3', 'e' => '1000900', 'sig' => $sig);
+
+	// An address opens only the page and the item it was made for.
+	$other_page = $base;
+	$other_page['p'] = '13';
+	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($other_page), 'k', 1000000));
+
+	$other_sub = $base;
+	$other_sub['sub'] = 'red-shirt';
+	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($other_sub), 'k', 1000000));
+
+	$other_record = $base;
+	$other_record['r'] = 'ab12';
+	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($other_record), 'k', 1000000));
 
 	$other_design = $base;
 	$other_design['s'] = '8';
@@ -279,17 +424,18 @@ function test_prototype_frame_signature_refuses_changes_age_and_no_key()
 	pg_assert_same('expired', pg_proto_frame_state(pg_proto_frame_parse($base), 'k', 1000901));
 	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($base), 'other', 1000000));
 	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($base), '', 1000000));
-	pg_assert_same('', pg_proto_frame_sign(7, 3, 1000900, ''));
+	pg_assert_same('', pg_proto_frame_sign(7, 12, 3, 1000900, ''));
+	pg_assert_same('', pg_proto_frame_sign(7, 0, 3, 1000900, 'k'));
 
 	// Made further ahead than a frame address ever is.
-	$far = pg_proto_frame_sign(7, 3, 1000000 + pg_proto_frame_ttl() + 3600, 'k');
+	$far = pg_proto_frame_sign(7, 12, 3, 1000000 + pg_proto_frame_ttl() + 3600, 'k');
 	$far_query = array('s' => '7', 'p' => '12', 'u' => '3', 'e' => (string) (1000000 + pg_proto_frame_ttl() + 3600), 'sig' => $far);
 	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($far_query), 'k', 1000000));
 }
 
 function test_prototype_frame_parse_takes_plain_numbers_only()
 {
-	$sig = pg_proto_frame_sign(7, 3, 1000900, 'k');
+	$sig = pg_proto_frame_sign(7, 12, 3, 1000900, 'k');
 
 	pg_assert_same(null, pg_proto_frame_parse(array('s' => '07', 'p' => '12', 'u' => '3', 'e' => '1000900', 'sig' => $sig)));
 	pg_assert_same(null, pg_proto_frame_parse(array('s' => array('7'), 'p' => '12', 'u' => '3', 'e' => '1000900', 'sig' => $sig)));
@@ -337,11 +483,32 @@ function test_prototype_php_gates_the_viewer_and_the_frame()
 	pg_assert_contains("header('X-Robots-Tag: noindex, nofollow');", $source);
 	pg_assert_contains("header('Cache-Control: no-store, private');", $source);
 
+	// The widgets read the page's own address as the request, not the
+	// signed frame address, and the cookie notice is answered with no;
+	// both before the page is drawn.
+	$render = strpos($source, 'get_page_content(');
+	pg_assert_true($render !== false);
+
+	foreach (array("\$_SERVER['REQUEST_URI'] = pg_proto_public_uri(", "unset(\$_SERVER['HTTP_X_REWRITE_URL']);", "\$_COOKIE['pg_consent'] = pg_proto_consent_refused(") as $needle) {
+		$at = strpos($source, $needle);
+		pg_assert_true(($at !== false) && ($at < $render), $needle);
+	}
+
 	// The session-less branch is decided before init.php and ends in exit;
 	// the viewer draws nothing before its gate.
 	pg_assert_true(strpos($source, "define('PG_NO_SESSION', true);") < strpos($source, "include('init.php');"));
 	pg_assert_true(strpos($source, "validate_area_access(\$user, 'manager');") < strpos($source, 'echo pg_proto_shell_html('));
 	pg_assert_true(strpos($source, 'echo $html;') < strpos($source, '$user = validate_user();'));
+}
+
+function test_background_render_prints_no_analytics_tag()
+{
+	// The SEO pass and the prototype frame are nobody's visit: the Google
+	// tag is not printed, so no page view is reported with the frame's
+	// address.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+	pg_assert_same(1, preg_match("~if \(\(GOOGLE_ANALYTICS == TRUE\) && \(GOOGLE_ANALYTICS_WEB_PROPERTY_ID != ''\) && !pg_seo_rendering\(\)\)~", $source));
 }
 
 function prototype_viewer_test_view()
@@ -404,6 +571,16 @@ function test_prototype_frame_inject_adds_head_tags_and_helper()
 	pg_assert_contains('<script id="pg-proto-frame">', $out);
 	pg_assert_true(strpos($out, '<script id="pg-proto-frame">') < strpos($out, '</body>'));
 	pg_assert_contains('No forms', $out);
+}
+
+function test_prototype_frame_inject_primes_the_cookie_jar_and_hides_the_notice()
+{
+	$out = pg_proto_frame_inject('<html><head></head><body></body></html>', array(), array('pg_consent' => '1.a0.m0'));
+
+	pg_assert_contains('var jar = {"pg_consent":"1.a0.m0"};', $out);
+	pg_assert_contains('#pg-cc{display:none!important}', $out);
+
+	pg_assert_contains('var jar = {};', pg_proto_frame_inject('<p>x</p>', array()));
 }
 
 function test_prototype_frame_inject_copes_without_head_or_body()

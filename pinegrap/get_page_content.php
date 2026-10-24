@@ -1145,8 +1145,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $content = $output_javascript_and_css . $content;
         }
         
-        // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript
-        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '')) {
+        // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript.
+        // Not in a background render (the SEO pass, the prototype frame): that is nobody's visit, and the
+        // tag would report a page view with the address the render was asked by.
+        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '') && !pg_seo_rendering()) {
 
             $output_ecommerce_tracking_data = '';
 

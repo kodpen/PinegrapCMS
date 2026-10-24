@@ -58836,9 +58836,11 @@ const StyleDesigner = (function () {
     // The prototype viewer (prototype.php) opened on a draft tab, or '': a
     // tab never saved, a page on the site, drafts not available, or an
     // operator the viewer does not admit (_design.prototypeUrl is '' then).
+    // A page picked from another design and not saved here yet still belongs
+    // to that design, whose prototype the viewer would open.
     // The viewer draws what was last saved, never the editor's unsaved trees.
     function _pgPrototypeUrl(p) {
-        if (!p || !(p.page_id > 0) || !p.page_draft || !_pgDraftsReady()) return '';
+        if (!p || !(p.page_id > 0) || !p.page_draft || p.pickedPending || !_pgDraftsReady()) return '';
         if (!_design || !_design.prototypeUrl || !(_design.styleId > 0)) return '';
         return _design.prototypeUrl + '?page=' + encodeURIComponent(p.page_id);
     }

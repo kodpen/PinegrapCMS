@@ -10,12 +10,13 @@
  * name, its drafts, a hotspots switch, close) around a sandboxed frame.
  *
  * prototype.php?frame=1&... is that frame. It runs with no session and no
- * cookie, admitted by the signed address the viewer made (design, person,
- * expiry; the person's role is read again on every frame), and draws the
- * draft as a background render: what a signed-out visitor would get once
- * the page is published, with no status code, redirect, page cache copy,
- * visitor statistics or record view count of its own. Its links are
- * rewritten to stay in the prototype, open the site or go nowhere.
+ * cookie, admitted by the signed address the viewer made (design, page,
+ * item, person, expiry; the person's role is read again on every frame),
+ * and draws the draft as a background render: what a signed-out visitor
+ * would get once the page is published, with no status code, redirect, page
+ * cache copy, visitor statistics, Analytics tag or record view count of its
+ * own. Its links are rewritten to stay in the prototype, open the site or go
+ * nowhere.
  *
  * Neither request goes through get_page.php: the private gate there is not
  * touched, and a draft's address still asks for the same rights it asked
@@ -112,6 +113,22 @@ if ($pg_proto_frame) {
         $_GET['r'] = $parsed['r'];
     }
 
+    // The request the widgets build links to the page itself from
+    // (get_request_uri(): language switcher, calendar, sign-in's way back) is
+    // the page's own address, not this frame's signed one, which would be
+    // drawn into the page as a link and opened outside the sandbox.
+    $_SERVER['REQUEST_URI'] = pg_proto_public_uri(PATH, $pg_proto_page['name'], $parsed['sub'], $parsed['r']);
+    unset($_SERVER['HTTP_X_REWRITE_URL']);
+
+    // The cookie notice is answered with no: a tag held for consent stays
+    // held, and the frame hides the notice (pg_proto_frame_inject()).
+    $pg_proto_cookies = array();
+
+    if (function_exists('pg_consent_enabled') && pg_consent_enabled()) {
+        $_COOKIE['pg_consent'] = pg_proto_consent_refused(pg_consent_category_letters());
+        $pg_proto_cookies['pg_consent'] = $_COOKIE['pg_consent'];
+    }
+
     // A custom form owning its fields asks which page it is drawn on.
     pg_rendered_page($pg_proto_page['id']);
 
@@ -149,15 +166,18 @@ if ($pg_proto_frame) {
         $html = pg_version_assets($html);
     }
 
-    // Every link on the page, resolved against the names it can reach.
+    // Every link on the page, resolved against the names it can reach; a
+    // link into a language directory by the name after it.
     $env = pg_link_resolve_env();
+    $languages = (function_exists('pg_tr_prefix_map') && function_exists('pg_tr_ready') && pg_tr_ready()) ? pg_tr_prefix_map() : array();
     $items = array();
 
     foreach (pg_proto_html_hrefs($html) as $href) {
         $link = pg_link_parse($href, $env);
 
         if ($link['result'] === null) {
-            $items[] = $link['item'];
+            $split = pg_proto_split_language($link['item'], $languages);
+            $items[] = $split['item'];
         }
     }
 
@@ -176,6 +196,9 @@ if ($pg_proto_frame) {
         'draft_folder' => pg_page_draft_folder_id(false),
         'bin_folders' => array_fill_keys(pg_recycle_bin_folder_ids(), true),
         'current_page' => $pg_proto_page['id'],
+        'current_sub' => $parsed['sub'],
+        'current_record' => $parsed['r'],
+        'languages' => $languages,
         'viewer' => $pg_proto_viewer,
     );
 
@@ -189,7 +212,7 @@ if ($pg_proto_frame) {
         return pg_proto_link_target($href, $ctx);
     }, $strings);
 
-    $html = pg_proto_frame_inject($html, $strings);
+    $html = pg_proto_frame_inject($html, $strings, $pg_proto_cookies);
 
     // Nothing of this answer is kept by the browser.
     header_remove('Set-Cookie');
@@ -222,14 +245,17 @@ $pg_proto_design = (string) db_value("SELECT style_name FROM style WHERE style_i
 $pg_proto_pages = pg_proto_design_pages($pg_proto_style_id);
 $pg_proto_start = pg_proto_start_page($pg_proto_pages, $pg_proto_page_id);
 
-// The item a pretty address or a record link named goes with the page it
-// was asked for, not with the one the prototype falls back to.
+// The item a pretty address or a record link named, and the section it
+// opens at, go with the page they were asked for, not with the one the
+// prototype falls back to.
 $pg_proto_sub = '';
 $pg_proto_record = '';
+$pg_proto_anchor = '';
 
 if (($pg_proto_start['id'] > 0) && !$pg_proto_start['fallback'] && ($pg_proto_start['id'] === $pg_proto_page_id)) {
     $pg_proto_sub = pg_proto_clean_text(isset($_GET['sub']) ? $_GET['sub'] : '', 255);
     $pg_proto_record = pg_proto_clean_text(isset($_GET['r']) ? $_GET['r'] : '', 100);
+    $pg_proto_anchor = pg_proto_clean_fragment(isset($_GET['anchor']) ? $_GET['anchor'] : '');
 }
 
 // One line in the Site Log per design and session, not one per click.
@@ -244,12 +270,16 @@ $pg_proto_error = '';
 
 if ($pg_proto_start['id'] > 0) {
     $pg_proto_expires = time() + pg_proto_frame_ttl();
-    $pg_proto_signature = pg_proto_frame_sign($pg_proto_style_id, $user['id'], $pg_proto_expires, $pg_proto_key);
+    $pg_proto_signature = pg_proto_frame_sign($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_key, $pg_proto_sub, $pg_proto_record);
 
     if ($pg_proto_signature === '') {
         $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
     } else {
-        $pg_proto_frame_url = $pg_proto_viewer . '?' . pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record);
+        $pg_proto_frame_url = pg_proto_frame_url(
+            $pg_proto_viewer,
+            pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record),
+            $pg_proto_anchor
+        );
     }
 }
 
