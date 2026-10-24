@@ -7,7 +7,7 @@ description: Main menu entries follow the gate of the screen they open: the scre
 - An entry is drawn for exactly the people its screen admits: no entry that leads to "Access denied", and no screen that admits someone without a way to it from the menu (Ctrl+K and links inside other screens do not count). A new screen gets its entry under its own gate (`main-menu-panels.md`). Set up so in #1516.
 
 ## Which screens got a menu path?
-- `view_system_styles.php` (Visual Page Editor home): it admits managers and role 3 users at content level (`pg_designer_access()`), but row 21 is for role < 2. The Pages panel has it for role >= 2; the active row is 2 for them, 21 below.
+- `view_system_styles.php` (Visual Page Editor home): it admits managers and role 3 users at content level (`pg_designer_access()`), but row 21 is for role < 2. The Pages panel has it for role >= 2; the active row is 2 for them, 21 below. The one exception to the rule: a role 3 user without a folder edit right gets no Pages row (`no_acl_check()`), so no entry, though the home lets them in; every page is locked for them there, so there is nothing to reach.
 - `translations.php` (manager) and `private_label.php` (administrator): under Site Settings › Languages and Translation and › Appearance (`pg_settings_category_screens()`, `main-menu-settings-row.md`).
 - `view_referral_sources.php`, `view_currencies.php`: also in the shipping row (15) under `USER_MANAGE_ECOMMERCE`, because Site Settings › Store Lists is drawn for role <= 2 only. Active row 20 for role <= 2, 15 for role 3.
 - `view_ship_date_adjustments.php`: it needs `validate_ecommerce_access()` only, so its entries moved from under the reports right to the shipping block of row 15.
