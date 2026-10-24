@@ -27794,5 +27794,8 @@
     "Your guide reached the moderators": "Rehberiniz moderatörlere ulaştı",
     "Thank you for writing it. A moderator reviews every guide: follow its status under My guides, where the moderators also write to you.": "Yazdığınız için teşekkürler. Her rehberi bir moderatör inceler: durumunu Rehberlerim altında takip edin; moderatörler size orada da yazar.",
     "Follow my guide": "Rehberimi takip et",
-    "Thank you for writing to the moderators. Their answer will be on the conversation page and in your inbox, and we will let you know by e-mail when it is there.": "Moderatörlere yazdığınız için teşekkürler. Yanıtları görüşme sayfasında ve gelen kutunuzda olacak; geldiğinde size e-postayla haber vereceğiz."
+    "Thank you for writing to the moderators. Their answer will be on the conversation page and in your inbox, and we will let you know by e-mail when it is there.": "Moderatörlere yazdığınız için teşekkürler. Yanıtları görüşme sayfasında ve gelen kutunuzda olacak; geldiğinde size e-postayla haber vereceğiz.",
+    "Voice message": "Sesli mesaj",
+    "Play": "Oynat",
+    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek."
 }
