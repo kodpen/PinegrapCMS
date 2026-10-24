@@ -97,7 +97,7 @@ function test_marketplace_trendyol_is_a_provider_with_its_fields()
 
 	pg_assert_true(isset($providers['trendyol']), 'trendyol is listed');
 	pg_assert_same('Trendyol', mp_provider_name('trendyol'));
-	pg_assert_same(array('seller_id', 'api_key', 'api_secret', 'environment'), array_keys($providers['trendyol']['fields']));
+	pg_assert_same(array('seller_id', 'api_key', 'api_secret', 'environment', 'delivery'), array_keys($providers['trendyol']['fields']));
 	pg_assert_true(!empty($providers['trendyol']['fields']['api_secret']['secret']), 'the secret is a password field');
 	pg_assert_true(mp_provider_field_is_select($providers['trendyol']['fields']['environment']));
 	pg_assert_false(mp_provider_field_is_select($providers['trendyol']['fields']['seller_id']));
@@ -141,7 +141,7 @@ function test_marketplace_provider_credentials_whitelist_the_select()
 		'unrelated'   => 'dropped',
 	));
 
-	pg_assert_same(array('seller_id' => '123456', 'api_key' => 'k', 'api_secret' => 's', 'environment' => 'stage'), $values);
+	pg_assert_same(array('seller_id' => '123456', 'api_key' => 'k', 'api_secret' => 's', 'environment' => 'stage', 'delivery' => 'trendyol'), $values);
 
 	$values = mp_provider_credentials('trendyol', array('environment' => 'https://evil.example'));
 

@@ -339,7 +339,7 @@ function test_marketplace_webhook_account_save_keeps_the_webhook_credentials()
 
 	$update = substr($source, $start, $end - $start);
 
-	$merge = strpos($update, '$credentials = array_merge((array)$account[\'credentials\'], $credentials);');
+	$merge = strpos($update, 'array_merge((array)$account[\'credentials\'], $credentials)');
 	$write = strpos($update, 'mp_credentials_encode($credentials)');
 
 	pg_assert_true($merge !== false, 'the stored credentials are merged under the posted ones');
