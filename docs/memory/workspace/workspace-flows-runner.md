@@ -4,7 +4,7 @@ description: Workspace flow runs (F3a, flow_runs.php, no schema change): start, 
 ---
 
 ## Where is it?
-- `includes/workspace/flow_runs.php`; handlers at the end of `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. No panel action or JavaScript yet (run view: F3b).
+- `includes/workspace/flow_runs.php`; handlers at the end of `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. Panel actions and the run view: `workspace-flows-canvas.md`.
 
 ## How does a run start?
 - `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access, then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.

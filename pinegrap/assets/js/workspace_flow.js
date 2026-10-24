@@ -25,6 +25,17 @@
  * without dragging, for phones (it is the default under 768 px) and for
  * screen readers. Somebody who may only run a flow sees it read-only.
  *
+ * A live flow is run from the toolbar (a question first, then one start: the
+ * request carries a token kept until an answer says what became of it, so a
+ * double click or a request sent again starts one run). "Flow runs" lists the
+ * runs in the side panel; a run opened there is drawn on the canvas as it
+ * went: the graph of the version it follows, each box with its state as a
+ * mark and a word, a waiting task box with a link to its task. Nothing can be
+ * changed while a run is shown; the draft and the editing tools come back when
+ * it is closed, and a change still on its way is saved meanwhile. An open run
+ * is read again on a timer that slows while nothing changes and stops once the
+ * run ends or the tab is hidden; what changed is told to screen readers.
+ *
  * assets/js/workspace.js starts it (window.PGWsFlow.start()) with the team
  * it has loaded and lends it its helpers through window.PGWsKit. Every text
  * comes from the #ws-config block (ws_flow_js_strings()); names and texts
@@ -52,6 +63,35 @@
     // the token ride on top of the draft.
     var KEEPALIVE_BYTES = 60000;
     var SVG_NS = 'http://www.w3.org/2000/svg';
+
+    // An open run is read again after POLL_FIRST ms, then each look that
+    // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
+    // failed look waits up to POLL_FAIL_MAX. The screen's ws_tick, which
+    // carries the runs on, is sent at most once in TICK_GAP ms.
+    var POLL_FIRST = 2000;
+    var POLL_GROW = 1.5;
+    var POLL_MAX = 30000;
+    var POLL_FAIL_MAX = 60000;
+    var TICK_GAP = 20000;
+
+    // How a run and a box of it stand (ws_flow_run_statuses(),
+    // ws_flow_step_statuses()): the word and the mark beside the colour.
+    var RUN_STATES = {
+        running: ['fl_run_running', 'bi-arrow-repeat'],
+        waiting: ['fl_run_waiting', 'bi-hourglass-split'],
+        done: ['fl_run_done', 'bi-check-circle-fill'],
+        failed: ['fl_run_failed', 'bi-x-octagon-fill'],
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+    };
+    var STEP_STATES = {
+        ready: ['fl_step_ready', 'bi-hourglass'],
+        running: ['fl_step_running', 'bi-arrow-repeat'],
+        waiting: ['fl_step_waiting', 'bi-hourglass-split'],
+        done: ['fl_step_done', 'bi-check-circle-fill'],
+        failed: ['fl_step_failed', 'bi-x-octagon-fill'],
+        skipped: ['fl_step_skipped', 'bi-skip-forward'],
+        none: ['fl_step_none', 'bi-circle']
+    };
 
     // What each kind of box is: its sign, its name, whether an arrow may
     // lead into it, and the outcomes an arrow may leave it on (the first is
@@ -97,7 +137,15 @@
         drag: null,
         pointers: {},
         pinch: null,
-        tap: null
+        tap: null,
+        panel: '',          // 'runs' while the side panel lists the runs
+        runs: { flow: 0, items: [], next: null, loading: false },
+        run: null,          // the run shown on the canvas (ws_flow_run_get)
+        stash: null,        // what the run view put aside: the draft, selection, view, edit
+        starting: false,    // a start is being asked or sent
+        startToken: null,   // { flow, value } kept until a start is answered
+        poll: { timer: 0, delay: POLL_FIRST, busy: false },
+        tickAt: 0
     };
 
     var ui = {};
@@ -169,6 +217,39 @@
 
     function bytes(text) {
         return new Blob([text]).size;
+    }
+
+    // The flow is the person's to change, whether or not a run is shown
+    // meanwhile: its draft keeps being saved.
+    function drafting() {
+        return !!(state.flow && (state.flow.access === 'edit'));
+    }
+
+    // The draft: what is drawn, or what the run view put aside.
+    function draftOf() {
+        return state.stash ? state.stash.graph : state.graph;
+    }
+
+    // A moment of a run (ISO 8601 in UTC) on the site's clock, like the
+    // other times of the Workspace; a zone the browser does not know falls
+    // back to its own.
+    function when(iso) {
+        var date = iso ? new Date(iso) : null;
+        var shape = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+
+        if (!date || isNaN(date.getTime())) {
+            return '';
+        }
+
+        try {
+            return date.toLocaleString(CFG.locale || undefined, Object.assign({ timeZone: CFG.timezone || undefined }, shape));
+        } catch (error) {
+            return date.toLocaleString(CFG.locale || undefined, shape);
+        }
+    }
+
+    function personName(id) {
+        return person(id) ? person(id).name : '#' + id;
     }
 
     // The graph as the editor keeps it: every part there, a box's settings
@@ -332,11 +413,14 @@
         ui.problemBox = el('div', 'wsf-problems d-none');
         ui.problemBox.id = 'wsf-problems';
         ui.conflictBox = el('div', 'alert alert-warning d-flex flex-wrap align-items-center gap-2 py-2 d-none');
+        // While a run is shown: which, and the way back to the flow.
+        ui.runBox = el('div', 'wsf-run-bar d-none');
         ui.app = el('div', 'wsf-app');
         ui.listCol = el('aside', 'wsf-list');
         ui.listCol.setAttribute('aria-label', t('fl_nav'));
         ui.main = el('div', 'wsf-main');
         ui.side = el('aside', 'wsf-side');
+        ui.side.id = 'wsf-side';
         ui.side.setAttribute('aria-label', t('fl_settings'));
         ui.live = el('div', 'visually-hidden');
         ui.live.setAttribute('aria-live', 'polite');
@@ -357,6 +441,7 @@
             + '<marker id="wsf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead" d="M0 0L10 5L0 10z"/></marker>'
             + '<marker id="wsf-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>'
             + '<marker id="wsf-arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-bad" d="M0 0L10 5L0 10z"/></marker>'
+            + '<marker id="wsf-arrow-taken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-taken" d="M0 0L10 5L0 10z"/></marker>'
             + '</defs>';
         ui.temp = svgEl('path', 'wsf-edge-temp d-none');
         ui.svg.appendChild(ui.temp);
@@ -402,6 +487,7 @@
 
         root.appendChild(ui.bar);
         root.appendChild(ui.conflictBox);
+        root.appendChild(ui.runBox);
         root.appendChild(ui.problemBox);
         root.appendChild(ui.app);
         root.appendChild(ui.live);
@@ -495,6 +581,8 @@
     }
 
     function showNone() {
+        endRun();
+        state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
         K.clear(ui.bar);
@@ -529,7 +617,7 @@
     // screen) are left behind only when the person says so.
     function leaveFlow() {
         return flush().then(function () {
-            if (!state.flow || !state.edit || !(state.dirty || state.saveError || state.conflict)) {
+            if (!state.flow || !drafting() || !(state.dirty || state.saveError || state.conflict)) {
                 return true;
             }
 
@@ -567,7 +655,18 @@
     }
 
     function show(flow) {
+        var same = !!(state.flow && (state.flow.id === flow.id));
+
         window.clearTimeout(state.saveTimer);
+        endRun();
+
+        // The runs panel stays open while the same flow is shown again
+        // (after Publish or Pause); another flow starts without it.
+        if (!same) {
+            state.panel = '';
+            state.runs = { flow: flow.id, items: [], next: null, loading: false };
+        }
+
         state.flow = flow;
         state.edit = (flow.access === 'edit');
         state.graph = graphOf(state.edit ? flow.draft : flow.graph);
@@ -636,11 +735,61 @@
         ui.bar.appendChild(toggle);
     }
 
+    // A flow that may be run now: live, published, and the person's to edit
+    // or to run (ws_flow_run_start_check() decides the rest).
+    function runnable() {
+        var flow = state.flow;
+
+        return !!(flow && (flow.status === 'live') && (flow.version > 0) && ((flow.access === 'edit') || (flow.access === 'run')));
+    }
+
+    // Run starts the live version; primary where "New flow" is not shown.
+    function runButton(primary) {
+        ui.runButton = null;
+
+        if (!runnable()) {
+            return;
+        }
+
+        var run = K.button(primary ? 'btn btn-sm btn-primary rounded-pill px-3' : 'btn btn-sm btn-outline-secondary', t('fl_run'), 'bi-play-fill');
+
+        run.title = t('fl_run_help');
+        run.setAttribute('data-refocus', 'run');
+        run.disabled = (state.starting === 'send');
+        run.addEventListener('click', startRun);
+        ui.runButton = run;
+        ui.bar.appendChild(run);
+    }
+
+    // "Flow runs": the runs in the side panel, pressed while they or one of
+    // them is shown. A flow never published has none.
+    function runsButton() {
+        if (!state.flow || !(state.flow.version > 0)) {
+            return;
+        }
+
+        var shown = !!(state.run || (state.panel === 'runs'));
+        var runs = K.button('btn btn-sm btn-ghost' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
+
+        runs.setAttribute('aria-pressed', shown ? 'true' : 'false');
+        runs.setAttribute('aria-controls', ui.side.id);
+        runs.setAttribute('data-refocus', 'runs');
+        runs.addEventListener('click', toggleRuns);
+        ui.bar.appendChild(runs);
+    }
+
     function drawBar() {
         var flow = state.flow;
 
         K.clear(ui.bar);
         newFlowButton();
+
+        // Without "New flow" (somebody who runs flows, not builds them) Run
+        // is what the screen is for: the toolbar's one primary button.
+        if (!FL.build) {
+            runButton(true);
+        }
+
         listToggle();
 
         if (state.edit) {
@@ -694,9 +843,18 @@
             }
         });
         ui.bar.appendChild(outline);
+        runsButton();
 
+        if (FL.build) {
+            runButton(false);
+        }
+
+        // A run shown says so in its own bar above the canvas.
         if (!state.edit) {
-            ui.bar.appendChild(el('span', 'small text-body-secondary', t('fl_read_only')));
+            if (!state.run) {
+                ui.bar.appendChild(el('span', 'small text-body-secondary', t('fl_read_only')));
+            }
+
             return;
         }
 
@@ -792,8 +950,12 @@
         ui.outlineBox.classList.toggle('d-none', !state.outline);
         ui.app.classList.toggle('wsf-outlined', state.outline);
         drawCanvas();
-        drawOutline();
+
+        // The side panel before the outline: a focus asked for in the side
+        // (the title of a run shown) is found there before the outline's
+        // drawing gives it up.
         drawSettings();
+        drawOutline();
         drawProblems();
         drawState();
     }
@@ -830,6 +992,7 @@
         box.setAttribute('role', 'group');
         box.setAttribute('aria-roledescription', t('fl_box'));
         box.setAttribute('data-node', node.id);
+        box.setAttribute('data-refocus', 'box-' + node.id);
 
         if (kind.into) {
             box.appendChild(port('in'));
@@ -870,6 +1033,45 @@
         titleNode.classList.toggle('wsf-placeholder', missing);
         box.querySelector('.wsf-node-meta').textContent = (title || missing) ? meta : '';
         box.setAttribute('aria-label', t(kindOf(node).name) + ': ' + (title || (missing ? t('fl_untitled_box') : '')) + '. ' + meta);
+        paintRun(box, node);
+    }
+
+    // A box as the run shown left it: the tone, mark and word of its state,
+    // its result in the line under the title, and in that line the link to
+    // the task a waiting box waits for. Without a run, nothing of it.
+    function paintRun(box, node) {
+        var head = box.querySelector('.wsf-node-head');
+        var meta = box.querySelector('.wsf-node-meta');
+        var badge = head.querySelector('.wsf-run-badge');
+
+        Object.keys(STEP_STATES).forEach(function (key) {
+            box.classList.remove('wsf-run-' + key);
+        });
+
+        if (badge) {
+            badge.remove();
+        }
+
+        if (!state.run) {
+            return;
+        }
+
+        var step = stepOf(node.id);
+        var status = step ? step.status : 'none';
+        var result = (step && step.result) || '';
+
+        box.classList.add('wsf-run-' + (STEP_STATES[status] ? status : 'none'));
+        head.appendChild(runBadge(STEP_STATES, status));
+
+        if (step && (step.status === 'waiting') && step.task_id) {
+            K.clear(meta);
+            meta.appendChild(taskLink(step, node, 'wsf-run-task', 'run-task-' + node.id));
+        } else if (result) {
+            meta.textContent = result;
+        }
+
+        box.title = result;
+        box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + stepWord(status) + '.' + (result ? ' ' + result : ''));
     }
 
     function place(box, item) {
@@ -902,6 +1104,14 @@
             var hit = svgEl('path', 'wsf-edge-hit');
 
             group.setAttribute('data-edge', String(index));
+
+            // In a run, an arrow its box ended on was taken.
+            var step = state.run ? stepOf(edge.from) : null;
+
+            if (step && (step.status === 'done') && (step.outcome === edge.on)) {
+                group.classList.add('wsf-edge-taken');
+            }
+
             line.setAttribute('d', path.d);
             hit.setAttribute('d', path.d);
             group.appendChild(line);
@@ -990,11 +1200,13 @@
         }
     }
 
+    // The draft's problems on its boxes; a run's boxes are those of its
+    // version, so none is marked there.
     function markProblems() {
         var byNode = {};
         var byEdge = {};
 
-        state.problems.forEach(function (problem) {
+        (state.run ? [] : state.problems).forEach(function (problem) {
             if (problem.node) {
                 (byNode[problem.node] = byNode[problem.node] || []).push(problem.text);
             }
@@ -1008,7 +1220,10 @@
             var texts = byNode[box.getAttribute('data-node')];
 
             box.classList.toggle('wsf-bad', !!texts);
-            box.title = texts ? texts.join('\n') : '';
+
+            if (!state.run) {
+                box.title = texts ? texts.join('\n') : '';
+            }
         });
 
         Array.prototype.forEach.call(ui.svg.querySelectorAll('.wsf-edge'), function (group) {
@@ -1094,7 +1309,11 @@
             return;
         }
 
-        if (selected && (selected.type === 'node') && nodeById(selected.id) && !state.outline) {
+        if (state.run) {
+            runSide();
+        } else if ((state.panel === 'runs') && (!selected || state.outline)) {
+            runsSide();
+        } else if (selected && (selected.type === 'node') && nodeById(selected.id) && !state.outline) {
             ui.side.appendChild(el('div', 'wsf-side-title', t(kindOf(nodeById(selected.id)).name)));
             ui.side.appendChild(nodeForm(nodeById(selected.id)));
         } else if (selected && (selected.type === 'edge') && state.graph.edges[selected.id] && !state.outline) {
@@ -1492,7 +1711,10 @@
             return;
         }
 
-        ui.outlineBox.appendChild(el('p', 'small text-body-secondary', t('fl_outline_help')));
+        // A run shown is read only: the bar over it says so, not this help.
+        if (!state.run) {
+            ui.outlineBox.appendChild(el('p', 'small text-body-secondary', t('fl_outline_help')));
+        }
 
         var list = el('ol', 'wsf-outline-list');
 
@@ -1505,7 +1727,16 @@
             head.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
             head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
             item.appendChild(head);
-            item.appendChild(nodeForm(node));
+
+            // A run shown: how each box went, in words, in place of its settings.
+            if (state.run) {
+                var step = stepOf(node.id);
+
+                item.classList.add('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none'));
+                item.appendChild(outlineRun(node, step));
+            } else {
+                item.appendChild(nodeForm(node));
+            }
             list.appendChild(item);
         });
 
@@ -1788,8 +2019,9 @@
 
     // ── Saving ─────────────────────────────────────────────────────────
 
+    // The draft as saved, also while a run is shown over it.
     function payload() {
-        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: state.flow.channel_id || 0, graph: state.graph };
+        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: state.flow.channel_id || 0, graph: draftOf() };
 
         if (String(state.flow.name || '').trim() !== '') {
             data.name = state.flow.name;
@@ -1802,7 +2034,7 @@
     function save(options) {
         window.clearTimeout(state.saveTimer);
 
-        if (!state.edit || !state.flow || state.conflict) {
+        if (!drafting() || !state.flow || state.conflict) {
             return Promise.resolve();
         }
 
@@ -1824,8 +2056,13 @@
 
             if (state.flow === flow) {
                 state.problems = data.problems || [];
-                drawProblems();
-                markProblems();
+
+                // A run shown keeps the canvas; the draft's problems are
+                // drawn once it is closed.
+                if (!state.run) {
+                    drawProblems();
+                    markProblems();
+                }
             }
         }).catch(function (error) {
             state.dirty = true;
@@ -1863,7 +2100,7 @@
     // is only hidden, and when it is left (leaving) it stays unsaved, which
     // beforeunload asks about.
     function saveOnLeave(leaving) {
-        if (!state.edit || !state.flow || !state.dirty || state.saving || state.conflict) {
+        if (!drafting() || !state.flow || !state.dirty || state.saving || state.conflict) {
             return;
         }
 
@@ -2020,6 +2257,720 @@
                     showNone();
                 }
             }).catch(K.fail);
+        });
+    }
+
+    // ── Runs ───────────────────────────────────────────────────────────
+
+    function runOpen(run) {
+        return !!(run && ((run.status === 'running') || (run.status === 'waiting')));
+    }
+
+    // The box of the run shown; a later pass of a box stands for it.
+    function stepOf(id) {
+        return state.run ? ((state.run.steps || []).filter(function (step) { return step.node_id === id; }).pop() || null) : null;
+    }
+
+    function runWord(status) {
+        return RUN_STATES[status] ? t(RUN_STATES[status][0]) : String(status || '');
+    }
+
+    function stepWord(status) {
+        return STEP_STATES[status] ? t(STEP_STATES[status][0]) : String(status || '');
+    }
+
+    // A state as a mark and a word in its tone: never the colour alone.
+    function runBadge(states, status) {
+        var known = states[status];
+        var badge = el('span', 'wsf-run-badge wsf-run-' + (known ? status : 'none'));
+
+        badge.appendChild(K.icon(known ? known[1] : 'bi-question-circle'));
+        badge.appendChild(document.createTextNode(known ? t(known[0]) : String(status || '')));
+
+        return badge;
+    }
+
+    // The task a box opened: a link to it on the tasks screen, which opens
+    // the Workspace's task drawer in place; a change made there reads the
+    // run again at once (the task done moves the run on).
+    function taskLink(step, node, className, key) {
+        var link = el('a', className, t('fl_run_task'));
+
+        link.href = ((CFG.urls && CFG.urls.tasks) || 'workspace_tasks.php') + '?task=' + step.task_id;
+        link.setAttribute('aria-label', t('fl_run_task_of', nameOf(node)));
+        link.setAttribute('data-refocus', key);
+        link.addEventListener('click', function (event) {
+            if (event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || !K.openTask) {
+                return;
+            }
+
+            event.preventDefault();
+            K.openTask(step.task_id, null, function () {
+                tick(true);
+            });
+        });
+
+        return link;
+    }
+
+    function narrow() {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
+    }
+
+    // Draws part of the screen again while the person may be at work in it:
+    // a control that went with the drawing hands the focus to the one drawn
+    // in its place (its data-refocus name), or to its box; a focus the caller
+    // asked for (state.refocus) comes first.
+    function keepFocus(draw) {
+        var active = document.activeElement;
+        var wanted = state.refocus;
+        var keys = [];
+
+        if (active && (active !== document.body) && ui.root.contains(active)) {
+            var box = active.closest('.wsf-node[data-node]');
+
+            if (active.getAttribute('data-refocus')) {
+                keys.push(active.getAttribute('data-refocus'));
+            }
+
+            if (box) {
+                keys.push('box-' + box.getAttribute('data-node'));
+            }
+        }
+
+        state.refocus = '';
+        draw();
+
+        var lost = !!active && (!document.activeElement || (document.activeElement === document.body) || !document.body.contains(active));
+
+        state.refocus = wanted || (lost ? keys.join(' ') : '');
+        refocus();
+    }
+
+    // "Flow runs" pressed: the list in the side panel, or back from it (and
+    // from a run shown) to the flow.
+    function toggleRuns() {
+        if (state.run) {
+            state.refocus = 'runs';
+            closeRun('');
+            return;
+        }
+
+        state.panel = (state.panel === 'runs') ? '' : 'runs';
+
+        if (state.panel) {
+            state.selected = null;
+            markSelected();
+            loadRuns(false);
+        }
+
+        // On a phone the side panel is under the canvas: its title takes the
+        // focus, which brings the list into sight.
+        state.refocus = (state.panel && narrow()) ? 'runs-title runs' : 'runs';
+        drawBar();
+        drawSettings();
+    }
+
+    // The runs of the flow, newest first, a page at a time; more: the next
+    // page after those listed.
+    function loadRuns(more) {
+        var flow = state.flow;
+        var list = state.runs;
+
+        if (!flow || list.loading) {
+            return;
+        }
+
+        if (list.flow !== flow.id) {
+            state.runs = list = { flow: flow.id, items: [], next: null, loading: false };
+        }
+
+        list.loading = true;
+
+        K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }).then(function (data) {
+            var runs = data.runs || [];
+
+            list.items = more ? list.items.concat(runs) : runs;
+            list.next = data.next || null;
+
+            // The older page's first run takes the focus from the button
+            // that brought it, which may be gone.
+            if (more && runs.length) {
+                state.refocus = 'run-' + runs[0].id;
+            }
+        }).catch(K.fail).then(function () {
+            list.loading = false;
+
+            if ((state.runs === list) && (state.panel === 'runs') && !state.run) {
+                keepFocus(drawSettings);
+            }
+        });
+    }
+
+    // A run read or started: its line in the list follows it.
+    function rememberRun(run) {
+        var list = state.runs;
+        var brief = {};
+        var found = false;
+
+        if (!state.flow || (list.flow !== run.flow_id)) {
+            return;
+        }
+
+        Object.keys(run).forEach(function (key) {
+            brief[key] = ((key === 'steps') || (key === 'graph')) ? null : run[key];
+        });
+
+        list.items = list.items.map(function (item) {
+            if (item.id === run.id) {
+                found = true;
+                return brief;
+            }
+
+            return item;
+        });
+
+        if (!found) {
+            list.items.unshift(brief);
+            list.items.sort(function (a, b) { return b.id - a.id; });
+        }
+    }
+
+    function runsSide() {
+        var list = state.runs;
+        var head = el('div', 'wsf-side-title', t('fl_runs_title'));
+
+        head.id = 'wsf-runs-title';
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'runs-title');
+        ui.side.appendChild(head);
+
+        if (!list.items.length) {
+            ui.side.appendChild(el('p', 'small text-body-secondary', list.loading ? t('loading') : t('fl_runs_none')));
+            return;
+        }
+
+        var rows = el('ul', 'list-unstyled mb-2 wsf-run-list');
+
+        rows.setAttribute('aria-labelledby', head.id);
+
+        list.items.forEach(function (run) {
+            var item = el('button', 'wsf-run-item');
+            var top = el('span', 'wsf-run-item-top');
+
+            item.type = 'button';
+            item.setAttribute('data-refocus', 'run-' + run.id);
+            top.appendChild(runBadge(RUN_STATES, run.status));
+            top.appendChild(el('span', 'fw-semibold', t('fl_run_name', run.id)));
+            top.appendChild(el('span', 'ms-auto small text-body-secondary', t('fl_run_version', run.version)));
+            item.appendChild(top);
+            item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_by', personName(run.started_by))));
+            item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_at', when(run.started_at))));
+            item.appendChild(el('span', 'wsf-run-item-line', run.finished_at ? t('fl_run_ended', when(run.finished_at)) : t('fl_run_open')));
+            item.addEventListener('click', function () {
+                openRun(run.id);
+            });
+            rows.appendChild(el('li')).appendChild(item);
+        });
+
+        ui.side.appendChild(rows);
+
+        if (list.next) {
+            var more = K.button('btn btn-sm btn-ghost', t('fl_runs_more'), 'bi-chevron-down');
+
+            more.setAttribute('data-refocus', 'runs-more');
+            more.disabled = list.loading;
+            more.addEventListener('click', function () {
+                more.disabled = true;
+                loadRuns(true);
+            });
+            ui.side.appendChild(more);
+        }
+    }
+
+    // A run from the list, read with its boxes, then shown.
+    function openRun(id) {
+        return K.api('ws_flow_run_get', { run_id: id }).then(function (data) {
+            state.refocus = 'run-title';
+            showRun(data.run, !!data.due);
+        }).catch(K.fail);
+    }
+
+    // The run on the canvas: the graph of its version, read-only, with how
+    // each box went. The draft, the selection and the view are put aside;
+    // the draft goes on being saved while it waits (payload()).
+    function showRun(run, due) {
+        if (!run || !state.flow || (run.flow_id !== state.flow.id)) {
+            return;
+        }
+
+        if (!state.stash) {
+            state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
+        }
+
+        stopPoll();
+        state.run = run;
+        state.edit = false;
+        state.graph = graphOf(run.graph);
+        state.selected = null;
+        state.panel = 'runs';
+        state.poll.delay = POLL_FIRST;
+        rememberRun(run);
+        ui.app.classList.add('wsf-run-view', 'wsf-readonly');
+        cancelDrag();
+        drawRunBar();
+        drawBar();
+        drawAll();
+        fit();
+        announce(t('fl_run_pair', t('fl_run_name', run.id), runWord(run.status)));
+
+        if (due) {
+            tick(false);
+        }
+
+        schedulePoll();
+    }
+
+    // The run view ends without drawing anything (another flow is shown).
+    function endRun() {
+        stopPoll();
+        state.run = null;
+        state.stash = null;
+
+        if (ui.app) {
+            ui.app.classList.remove('wsf-run-view');
+            ui.runBox.classList.add('d-none');
+        }
+    }
+
+    // Back from a run to the flow: the draft, the selection, the view and the
+    // editing tools as they were; panel: 'runs' keeps the list open.
+    function closeRun(panel) {
+        var stash = state.stash;
+
+        endRun();
+
+        // The list asked for shows in the side panel only with nothing
+        // selected; back to the flow, the box selected before comes back.
+        if (stash) {
+            state.graph = stash.graph;
+            state.selected = panel ? null : stash.selected;
+            state.edit = stash.edit;
+        }
+
+        state.panel = panel;
+        ui.app.classList.toggle('wsf-readonly', !state.edit);
+        drawBar();
+        drawAll();
+
+        if (stash) {
+            state.view = stash.view;
+            applyView();
+        } else {
+            fit();
+        }
+
+        if (panel) {
+            loadRuns(false);
+        }
+    }
+
+    // The bar over the canvas while a run is shown.
+    function drawRunBar() {
+        var run = state.run;
+
+        K.clear(ui.runBox);
+        ui.runBox.classList.toggle('d-none', !run);
+
+        if (!run) {
+            return;
+        }
+
+        var close = K.button('btn btn-sm btn-outline-secondary', t('fl_run_close'), 'bi-x-lg');
+
+        ui.runBox.appendChild(runBadge(RUN_STATES, run.status));
+        ui.runBox.appendChild(el('span', 'flex-grow-1', t('fl_run_shown', run.id, run.version)));
+        close.setAttribute('data-refocus', 'run-close');
+        close.addEventListener('click', function () {
+            state.refocus = 'runs';
+            closeRun('');
+        });
+        ui.runBox.appendChild(close);
+    }
+
+    // The side panel of a run: the run, then the box selected or its boxes.
+    function runSide() {
+        var run = state.run;
+        var head = el('div', 'wsf-side-title', t('fl_run_name', run.id));
+        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
+        var tools = el('div', 'd-flex flex-wrap gap-2 mb-3');
+
+        head.tabIndex = -1;
+        head.setAttribute('data-refocus', 'run-title');
+        ui.side.appendChild(head);
+        ui.side.appendChild(runBadge(RUN_STATES, run.status));
+
+        [t('fl_run_version', run.version), t('fl_run_by', personName(run.started_by)), t('fl_run_at', when(run.started_at)),
+            run.finished_at ? t('fl_run_ended', when(run.finished_at)) : t('fl_run_open')].forEach(function (text) {
+            facts.appendChild(el('li', '', text));
+        });
+        ui.side.appendChild(facts);
+
+        if (run.can_cancel) {
+            var cancel = K.button('btn btn-sm btn-outline-warning', t('fl_run_cancel'), 'bi-x-circle');
+
+            cancel.setAttribute('data-refocus', 'run-cancel');
+            cancel.addEventListener('click', function () { cancelRun(cancel); });
+            tools.appendChild(cancel);
+        }
+
+        var all = K.button('btn btn-sm btn-ghost', t('fl_run_all'), 'bi-clock-history');
+
+        all.setAttribute('data-refocus', 'run-all');
+        all.addEventListener('click', function () {
+            state.refocus = 'runs-title';
+            closeRun('runs');
+        });
+        tools.appendChild(all);
+        ui.side.appendChild(tools);
+
+        // The outline beside it says how every box went already.
+        if (state.outline) {
+            return;
+        }
+
+        var selected = (state.selected && (state.selected.type === 'node')) ? nodeById(state.selected.id) : null;
+
+        ui.side.appendChild(selected ? stepDetail(selected) : stepList());
+    }
+
+    // How one box went in the run.
+    function stepDetail(node) {
+        var step = stepOf(node.id);
+        var wrap = el('div', 'wsf-run-step');
+        var title = el('div', 'wsf-side-title', t(kindOf(node).name));
+        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
+
+        title.tabIndex = -1;
+        title.setAttribute('data-refocus', 'step');
+        wrap.appendChild(title);
+        wrap.appendChild(el('div', 'fw-semibold mb-1', nameOf(node)));
+        wrap.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+
+        [metaOf(node), (step && step.started_at) ? t('fl_run_at', when(step.started_at)) : '', (step && step.finished_at) ? t('fl_run_ended', when(step.finished_at)) : ''].forEach(function (text) {
+            if (text) {
+                facts.appendChild(el('li', '', text));
+            }
+        });
+        wrap.appendChild(facts);
+
+        if (step && step.result) {
+            wrap.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_run_result')));
+            wrap.appendChild(el('p', 'small wsf-run-result', step.result));
+        }
+
+        if (step && step.task_id) {
+            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'step-task'));
+        }
+
+        return wrap;
+    }
+
+    // The boxes of the run in the order of their arrows, each with its state;
+    // one picked is selected on the canvas.
+    function stepList() {
+        var wrap = el('div');
+        var list = el('ul', 'list-unstyled wsf-run-steps');
+
+        wrap.appendChild(el('p', 'small text-body-secondary mb-2', t('fl_run_pick')));
+        list.setAttribute('aria-label', t('fl_run_boxes'));
+
+        orderedNodes().forEach(function (node) {
+            var step = stepOf(node.id);
+            var row = K.button('wsf-run-step-row', '', kindOf(node).icon);
+
+            row.setAttribute('data-refocus', 'run-step-' + node.id);
+            row.appendChild(el('span', 'wsf-run-step-name', nameOf(node)));
+            row.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+            row.addEventListener('click', function () {
+                select({ type: 'node', id: node.id }, { reveal: true, focus: true });
+            });
+            list.appendChild(el('li')).appendChild(row);
+        });
+
+        wrap.appendChild(list);
+
+        return wrap;
+    }
+
+    // A box of the run in the outline: its state, what it does, its result
+    // and the link to a waiting box's task, all in words.
+    function outlineRun(node, step) {
+        var box = el('div', 'wsf-run-outline');
+        var meta = metaOf(node);
+
+        box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+
+        if (meta) {
+            box.appendChild(el('p', 'small text-body-secondary mb-1', meta));
+        }
+
+        if (step && step.result) {
+            box.appendChild(el('p', 'small mb-1 wsf-run-result', step.result));
+        }
+
+        if (step && (step.status === 'waiting') && step.task_id) {
+            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'run-otask-' + node.id));
+        }
+
+        return box;
+    }
+
+    // The run read again drawn where it shows: the boxes in place, the
+    // arrows, the outline, the side panel and the bar over the canvas.
+    function drawRunViews() {
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-node[data-node]'), function (box) {
+            var node = nodeById(box.getAttribute('data-node'));
+
+            if (node) {
+                fillBox(box, node);
+            }
+        });
+
+        drawEdges();
+        drawRunBar();
+        drawOutline();
+        drawSettings();
+    }
+
+    // A run read again: what changed is drawn, and told to screen readers
+    // in a few words. Answers whether anything changed.
+    function applyRun(run) {
+        var before = state.run;
+        var told = [];
+
+        if (!before || !run || (before.id !== run.id)) {
+            return false;
+        }
+
+        (run.steps || []).forEach(function (step) {
+            var was = (before.steps || []).filter(function (item) { return item.node_id === step.node_id; }).pop();
+            var node = nodeById(step.node_id);
+
+            if (!was || (was.status !== step.status)) {
+                told.push(t('fl_run_pair', node ? nameOf(node) : step.name, stepWord(step.status)));
+            }
+        });
+
+        if (before.status !== run.status) {
+            told.push(t('fl_run_pair', t('fl_run_name', run.id), runWord(run.status)));
+        }
+
+        var changed = !!told.length || (before.can_cancel !== run.can_cancel) || (JSON.stringify(before.steps) !== JSON.stringify(run.steps));
+
+        state.run = run;
+        rememberRun(run);
+
+        if (changed) {
+            keepFocus(drawRunViews);
+        }
+
+        if (told.length) {
+            announce(told.join('. '));
+        }
+
+        if (!runOpen(run)) {
+            stopPoll();
+        }
+
+        return changed;
+    }
+
+    function stopPoll() {
+        window.clearTimeout(state.poll.timer);
+        state.poll.timer = 0;
+    }
+
+    // The next look at the run shown, none once it ended or while the tab
+    // is hidden (it looks again when shown, bindWindow()).
+    function schedulePoll(delay) {
+        stopPoll();
+
+        if (!runOpen(state.run) || (document.visibilityState === 'hidden')) {
+            return;
+        }
+
+        state.poll.timer = window.setTimeout(pollRun, (delay === undefined) ? state.poll.delay : delay);
+    }
+
+    function pollRun() {
+        var run = state.run;
+
+        state.poll.timer = 0;
+
+        if (!runOpen(run) || state.poll.busy || (document.visibilityState === 'hidden')) {
+            return;
+        }
+
+        state.poll.busy = true;
+
+        K.api('ws_flow_run_get', { run_id: run.id }).then(function (data) {
+            state.poll.busy = false;
+
+            if (!state.run || (state.run.id !== run.id)) {
+                return;
+            }
+
+            state.poll.delay = applyRun(data.run) ? POLL_FIRST : Math.min(POLL_MAX, Math.round(state.poll.delay * POLL_GROW));
+
+            if (data.due) {
+                tick(false);
+            }
+
+            schedulePoll();
+        }).catch(function (error) {
+            state.poll.busy = false;
+
+            // A refusal (the run is gone or out of reach) is final; a look
+            // that got no answer is tried again, later each time.
+            if (error && (error.field !== undefined)) {
+                return;
+            }
+
+            if (state.run && (state.run.id === run.id)) {
+                state.poll.delay = Math.min(POLL_FAIL_MAX, state.poll.delay * 2);
+                schedulePoll();
+            }
+        });
+    }
+
+    // The screen's tick carries the runs on (ws_scheduled_run()); the run
+    // shown is read again once it is back. force: a task of the run was just
+    // changed in the drawer, so the gap between two ticks does not hold it.
+    function tick(force) {
+        var now = Date.now();
+
+        if (!force && (now - state.tickAt < TICK_GAP)) {
+            return;
+        }
+
+        state.tickAt = now;
+        K.api('ws_tick').catch(function () {}).then(function () {
+            if (runOpen(state.run)) {
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
+            }
+        });
+    }
+
+    // A token for one start (ws_flow_start_token_valid(): letters, digits
+    // and . _ : -, at most 56).
+    function startToken() {
+        var random = new Uint8Array(12);
+
+        if (window.crypto && window.crypto.getRandomValues) {
+            window.crypto.getRandomValues(random);
+        } else {
+            for (var i = 0; i < random.length; i++) {
+                random[i] = Math.floor(Math.random() * 256);
+            }
+        }
+
+        return 'canvas.' + Array.prototype.map.call(random, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
+    }
+
+    // Run: asked first, then started once. A second click while it is asked
+    // or sent does nothing; the token goes with the request and is kept
+    // until the server answers it, so a start sent again after an answer was
+    // lost gets the run the first one started instead of a second run.
+    function startRun() {
+        var flow = state.flow;
+
+        if (state.starting || !runnable()) {
+            return;
+        }
+
+        state.starting = 'ask';
+
+        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
+            if (!yes || (state.flow !== flow)) {
+                state.starting = false;
+                state.refocus = 'run';
+                refocus();
+                return null;
+            }
+
+            if (!state.startToken || (state.startToken.flow !== flow.id)) {
+                state.startToken = { flow: flow.id, value: startToken() };
+            }
+
+            state.starting = 'send';
+
+            if (ui.runButton) {
+                ui.runButton.disabled = true;
+            }
+
+            return K.api('ws_flow_run_start', { flow_id: flow.id, token: state.startToken.value }).then(function (data) {
+                state.startToken = null;
+                state.starting = false;
+                K.toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
+
+                if (data.run && (state.flow === flow)) {
+                    state.refocus = 'run-title';
+                    showRun(data.run, false);
+                } else if (ui.runButton) {
+                    ui.runButton.disabled = false;
+                }
+            });
+        }).catch(function (error) {
+            // An answer of the server ends this start; a request that got
+            // none (error.field unset) keeps its token for the next click.
+            if (error && (error.field !== undefined)) {
+                state.startToken = null;
+            }
+
+            state.starting = false;
+
+            if (ui.runButton) {
+                ui.runButton.disabled = false;
+            }
+
+            K.fail(error);
+        });
+    }
+
+    function cancelRun(control) {
+        var run = state.run;
+
+        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+            if (!yes || !state.run || (state.run.id !== run.id)) {
+                state.refocus = 'run-cancel run-title';
+                refocus();
+                return null;
+            }
+
+            control.disabled = true;
+
+            return K.api('ws_flow_run_cancel', { run_id: run.id }).then(function (data) {
+                K.toast(t('fl_run_cancelled'), 'success');
+
+                if (!data.run) {
+                    state.refocus = 'runs-title runs';
+                    closeRun('runs');
+                    return;
+                }
+
+                state.refocus = 'run-title';
+                applyRun(data.run);
+                refocus();
+            }).catch(function (error) {
+                control.disabled = false;
+                K.fail(error);
+
+                // Ended meanwhile, most likely: the run as it is now.
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
+            });
         });
     }
 
@@ -2235,6 +3186,13 @@
             return;
         }
 
+        // A link on a box (the task of a waiting box) keeps its own click:
+        // the canvas captures no pointer for it.
+        if (event.target.closest && event.target.closest('.wsf-node a[href]')) {
+            delete state.pointers[event.pointerId];
+            return;
+        }
+
         var target = event.target;
         var box = target.closest('[data-node]');
         var edge = target.closest('.wsf-edge');
@@ -2420,8 +3378,15 @@
         }
     }
 
-    // Enter: the first field of what is selected.
+    // Enter: the first field of what is selected; in a run, its task, or
+    // else how it went.
     function focusField() {
+        if (state.run) {
+            state.refocus = 'step-task step';
+            refocus();
+            return;
+        }
+
         var field = ui.side.querySelector('input, textarea, select');
 
         if (field && !state.outline) {
@@ -2430,7 +3395,8 @@
     }
 
     function canvasKey(event) {
-        if (typing(event.target) || event.altKey) {
+        // A link on a box answers its own keys (Enter follows it).
+        if (typing(event.target) || event.altKey || (event.target.closest && event.target.closest('.wsf-node a[href]'))) {
             return;
         }
 
@@ -2482,7 +3448,7 @@
                 event.preventDefault();
             }
 
-            if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && state.edit) {
+            if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
             }
@@ -2501,9 +3467,15 @@
             }
         });
 
+        // A hidden tab saves what is on its way and stops looking at the run
+        // shown; shown again, it looks at once.
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'hidden') {
                 saveOnLeave(false);
+                stopPoll();
+            } else if (runOpen(state.run)) {
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
             }
         });
 
@@ -2512,7 +3484,7 @@
         });
 
         window.addEventListener('beforeunload', function (event) {
-            if (!state.edit || !state.flow) {
+            if (!drafting() || !state.flow) {
                 return;
             }
 

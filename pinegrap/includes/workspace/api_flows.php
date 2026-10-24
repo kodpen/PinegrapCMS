@@ -568,9 +568,9 @@ function ws_api_flow_run_step_present($step, $graph)
         'outcome'     => ((string) $step['outcome'] !== '') ? (string) $step['outcome'] : null,
         'task_id'     => ($task_id > 0) ? $task_id : null,
         'attempt'     => (int) $step['attempt'],
-        'ready_at'    => api_time($step['ready_at']),
-        'started_at'  => api_time($step['claimed_at']),
-        'finished_at' => api_time($step['finished_at']),
+        'ready_at'    => ws_flow_time($step['ready_at']),
+        'started_at'  => ws_flow_time($step['claimed_at']),
+        'finished_at' => ws_flow_time($step['finished_at']),
         'result'      => mb_substr(ws_flow_result_text($step['result']), 0, WS_API_FLOW_RESULT_CHARS),
     );
 }
@@ -597,6 +597,11 @@ function ws_api_flow_run_step_schema()
  * One run. A single run read carries its boxes and the graph of the version
  * it follows; the listing carries neither.
  *
+ * The canvas's panel actions (ws_flow_run_*, actions.php) answer with this
+ * presenter and the one of a box too, so the screen and an application read
+ * a run alike; both therefore write their times with ws_flow_time(), which
+ * the panel has, rather than api_time(), which only the API loads.
+ *
  * @param array      $viewer
  * @param array      $run   ws_flow_runs row with access (edit or read)
  * @param int        $n     the number of the version it follows
@@ -621,9 +626,9 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'actor_id'    => (int) $run['actor_id'],
         'channel_id'  => (ws_flow_run_channel_id($run) > 0) ? ws_flow_run_channel_id($run) : null,
         'boxes_run'   => (int) $run['boxes_run'],
-        'started_at'  => api_time($run['started_at']),
-        'updated_at'  => api_time($run['updated_at']),
-        'finished_at' => api_time($run['finished_at']),
+        'started_at'  => ws_flow_time($run['started_at']),
+        'updated_at'  => ws_flow_time($run['updated_at']),
+        'finished_at' => ws_flow_time($run['finished_at']),
         'steps'       => $full ? array_map(function ($step) use ($graph) {
             return ws_api_flow_run_step_present($step, $graph);
         }, $steps) : null,
