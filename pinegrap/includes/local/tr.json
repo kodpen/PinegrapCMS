@@ -28049,5 +28049,11 @@
     "Report Details": "Şikâyet Ayrıntıları",
     "What is your message about?": "Mesajınız ne hakkında?",
     "Choose one…": "Birini seçin…",
-    "Topics desk": "Konu masası"
+    "Topics desk": "Konu masası",
+    "Text tools": "Metin araçları",
+    "Message tools": "Mesaj araçları",
+    "Note tools": "Not araçları",
+    "Strikethrough (Ctrl+Shift+X)": "Üstü Çizili (Ctrl+Shift+X)",
+    "Code (Ctrl+E)": "Kod (Ctrl+E)",
+    "Link (Ctrl+K)": "Bağlantı (Ctrl+K)"
 }

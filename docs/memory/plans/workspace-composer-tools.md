@@ -1,24 +1,24 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+description: Plan (2026-10-23, 1 built, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
 - More advanced tools in the Workspace text boxes, in notes and the channel composer alike.
 
 ## What is there today?
-- One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `pastePlain()`, table, checklist, code (also on ```), calc windows; formatting only by private `command()`.
-- Three hand-built rows in `assets/js/workspace.js`: `composer()` (no undo or B/I/S buttons), notes `toolbar()` (raw `document.execCommand` B/I/S; `noCommands`, no /), `richField().tools()` under task texts, approvals, status, scheduled actions.
+- One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `pastePlain()`, table, checklist, code (also on ```), calc windows.
+- Slice 1 built: `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
 - `ws_render_body()` (`includes/workspace/render.php`, escape first) draws bold, italic, strike, code, links, tables, checklists, fences, `::: Title`; headings, lists, quotes, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
 
 ## What is proposed? (not approved yet)
-- One factory, `PGWsEditor.toolbar()` (proposed), builds the three rows from their items; Editor `format()` (proposed) replaces raw calls. Vanilla JS, then `php tools/build_js.php`.
+- New tools go into `PGWsEditor.toolbar()` as item names and into `format()` / `applyMark()`. Vanilla JS, then `php tools/build_js.php`.
 - New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php` (proposed), red first.
 - Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys in `includes/local/tr.json`.
 - Saved replies live here, not in the CRM seams plan (proposed).
 
 ## Slices
-1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`.
+1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. Built.
 2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
 4. Highlight `==x==` (import keeps it; not read by `ws_calc_inline()`), autoformat (one Ctrl+Z undoes, IME guard, off switch), no schema.
@@ -39,4 +39,4 @@ description: Plan (2026-10-23, not started, answers open): one toolbar for all W
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Slice 1, then 2 with the render test.
+- Slice 2 with the render test; a list or quote button is a new `TOOLS` entry in workspace_editor.js.
