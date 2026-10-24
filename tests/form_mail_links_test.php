@@ -120,13 +120,13 @@ function test_form_mail_links_values_build_with_context()
 		array('email_address' => 'ayse@example.com', 'contact_id' => 5, 'custom_form_page_id' => 3, 'form_id' => 9),
 		false,
 		function ($email_address) use (&$seen) { $seen[] = $email_address; return 'https://example.com/p?for=' . $email_address; },
-		function ($page_id, $contact_id) use (&$seen) { $seen[] = array($page_id, $contact_id); return 'https://example.com/c/' . $page_id . '/' . $contact_id; });
+		function ($form_id, $contact_id, $email_address) use (&$seen) { $seen[] = array($form_id, $contact_id, $email_address); return 'https://example.com/c/' . $form_id . '/' . $contact_id; });
 
 	pg_assert_same(array(
 		'email_preferences_url' => 'https://example.com/p?for=ayse@example.com',
-		'confirm_subscription_url' => 'https://example.com/c/3/5',
+		'confirm_subscription_url' => 'https://example.com/c/9/5',
 	), $values, 'both links');
-	pg_assert_same(array('ayse@example.com', array(3, 5)), $seen, 'builders called with the context');
+	pg_assert_same(array('ayse@example.com', array(9, 5, 'ayse@example.com')), $seen, 'builders called with the context');
 
 	$never = function () { throw new Exception('builder called'); };
 	pg_assert_same(array('email_preferences_url' => '', 'confirm_subscription_url' => ''), pg_cf_mail_link_values_build(null, false, $never, $never), 'no context: builders not called');
@@ -146,10 +146,21 @@ function test_form_mail_links_values_suspended()
 	pg_assert_same(null, pg_cf_mail_links_context(), 'context cleared');
 }
 
-// Until a form can ask for a double opt-in there is no confirmation link.
-function test_form_mail_links_confirm_url_empty()
+// A submission that held no contact group back has no confirmation link.
+function test_form_mail_links_confirm_url_not_held()
 {
-	pg_assert_same('', pg_cf_confirm_subscription_url(3, 5), 'no double opt-in yet');
+	pg_assert_same('', pg_cf_confirm_subscription_url(98765, 5, 'ayse@example.com'), 'no link held for the form');
+}
+
+// The held link goes only to the contact's own address, compared normalised.
+function test_form_mail_links_confirm_url_for()
+{
+	$url = 'https://example.com/confirm_subscription.php?c=5&g=2&t=1&s=abc';
+	pg_assert_same($url, pg_cf_confirm_subscription_url_for($url, 'Ayse@Example.com ', 'ayse@example.com'), 'same address');
+	pg_assert_same('', pg_cf_confirm_subscription_url_for($url, 'mehmet@example.com', 'ayse@example.com'), 'another address');
+	pg_assert_same('', pg_cf_confirm_subscription_url_for($url, 'ayse@example.com', ''), 'contact without an address');
+	pg_assert_same('', pg_cf_confirm_subscription_url_for($url, '', ''), 'no address at all');
+	pg_assert_same('', pg_cf_confirm_subscription_url_for('', 'ayse@example.com', 'ayse@example.com'), 'no link');
 }
 
 // A body is kept out of the failure log when it carries one of the links.

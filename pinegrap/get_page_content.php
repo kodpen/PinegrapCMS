@@ -757,6 +757,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
     // If PHP regions are enabled, and there is a PHP region in the content, then execute PHP code.
     if (defined('PHP_REGIONS') and PHP_REGIONS and strpos($content, '<?') !== false) {
+        // What the code prints may depend on the visitor: never shared.
+        if (function_exists('pg_page_cache_personal')) {
+            pg_page_cache_personal('php_region');
+        }
+
         ob_start();
         eval('?>' . $content);
         $content = ob_get_clean();
@@ -773,6 +778,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $dregion_attribute = $attribute_value[1];
                 }
                 $dregion_name = $dregions[$key][2];
+
+                if (function_exists('pg_page_cache_personal')) {
+                    pg_page_cache_personal('dynamic_region');
+                }
+
                 $query = "SELECT dregion_code "
                         ."FROM dregion "
                         ."WHERE dregion_name = '" . escape($dregion_name) . "'";

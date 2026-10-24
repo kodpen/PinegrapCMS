@@ -21,7 +21,7 @@ description: Turnstile and hCaptcha beside the built-in maths question - where t
 - Fails closed: misconfigured and unavailable refuse with "The spam check could not be completed..." and one `log_activity` line per provider and outcome per 10 min (`waf_rate_record`, scope `cap_<outcome>`). A missing token never calls the provider.
 
 ## Who is exempt?
-- Only staff (`pg_user_has_panel_access()`, step a); signed-in members see the widget.
+- Only staff (`pg_user_has_panel_access()`, PR #1386); signed-in members see the widget.
 
 ## CSP and consent?
 - `waf_csp_policy()` adds `pg_captcha_csp_sources()` to the built-in policy through `waf_csp_add_sources()` while `config.captcha` is on (the `CAPTCHA` constant is defined after the header goes out). `waf_csp_add_payment_sources()` is a wrapper of it. An operator's own policy is never changed; the card lists the sources to add.

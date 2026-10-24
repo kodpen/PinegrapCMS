@@ -3072,11 +3072,10 @@ function output_menu($properties = false)
 
     // Widget controls, on the dashboard only. They used to be a gear beside the
     // clock, which put a settings surface in the middle of the content; they
-    // belong to the screen, so they ride the menu entry that opens it. The
-    // context popover is built with sanitize:false, which is what lets a form
-    // live in it, and reset_widgets() is declared by welcome.php - the only page
-    // this branch renders on. The attribute is quoted with ", so everything
-    // inside has to use '.
+    // belong to the screen, so they ride the menu entry that opens it, in its
+    // panel (pg_menu_panel() prints the string as markup). reset_widgets() is
+    // declared by welcome.php - the only page this branch renders on. The
+    // entries of every row quote their attributes with ', and these follow.
     if ($user['role'] < 2 && basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) === 'welcome.php') {
 
         // Card style and panel backdrop, above the refresh controls.
@@ -3133,9 +3132,9 @@ function output_menu($properties = false)
                 }
 
                 // The select's id is the column name, and the handler reads it
-                // back off this.id. That is not shorthand -- passing the field
-                // as a string would need double quotes inside an attribute the
-                // popover already delimits with them.
+                // back off this.id rather than taking the field as a string
+                // argument, which would need a second kind of quote inside the
+                // ' of the attribute.
                 $menu_items[0]['data-bs-content'] .=
                       '<label for=\'' . $appearance_control['field'] . '\' class=\'form-label small text-muted mb-1\'>'
                     . h($appearance_control['label']) . '</label>'

@@ -463,12 +463,25 @@ function pg_lang_redirect_decide($mode = null, $fallback = null)
  */
 function pg_lang_redirect_page($page_id, $is_home)
 {
-    if (!pg_lang_redirect_enabled() || !pg_lang_redirect_is_browser_visit()) {
+    if (!pg_lang_redirect_enabled()) {
+        return;
+    }
+
+    $codes = pg_lang_redirect_codes();
+
+    // An address this redirect may answer for depends on who asks (browser,
+    // Accept-Language, country, cookie, referer, staff), so its page is never
+    // kept by a shared cache, whichever way this visitor is answered.
+    if ((count($codes) >= 2) && !pg_tr_active() && function_exists('pg_page_cache_personal')
+        && ($is_home || (defined('LANGUAGE_REDIRECT_SCOPE') && (LANGUAGE_REDIRECT_SCOPE === 'all')))) {
+        pg_page_cache_personal('language_redirect');
+    }
+
+    if (!pg_lang_redirect_is_browser_visit()) {
         return;
     }
 
     $source = pg_tr_source_language();
-    $codes = pg_lang_redirect_codes();
 
     if (count($codes) < 2) {
         return;
