@@ -193,6 +193,37 @@ function mp_account_ships_itself($account) {
 
 }
 
+// The credentials as saved, with the moment the account began shipping itself.
+//
+// $before are the stored credentials (an empty array for a new account),
+// $after the ones about to be written. The moment is kept while the account
+// ships itself, set to $now when it starts to, and dropped when it stops.
+// Only packages imported from then on are reported with the shop's link
+// (mp_sync_ship_pending()): an older import carries the marketplace's carrier
+// in its address's method code, and a parcel recorded on it later would take
+// that carrier and its tracking page with the shop's number.
+function mp_account_delivery_stamp($before, $after, $now) {
+
+	$before = (array) $before;
+	$after = (array) $after;
+
+	if (!mp_account_ships_itself(array('credentials' => $after))) {
+
+		unset($after['delivery_since']);
+
+		return $after;
+
+	}
+
+	$since = (mp_account_ships_itself(array('credentials' => $before)) && isset($before['delivery_since']))
+		? (int) $before['delivery_since'] : 0;
+
+	$after['delivery_since'] = ($since > 0) ? $since : (int) $now;
+
+	return $after;
+
+}
+
 function mp_provider_is_valid($provider) {
 
 	$providers = mp_providers();

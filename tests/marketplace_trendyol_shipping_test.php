@@ -224,37 +224,31 @@ function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
 		mp_sync_shipment_link(array($unnamed), 'Trendyol Express', 'aras')['url']);
 }
 
-// On an order imported before the account shipped itself, the method code is
-// the carrier name the marketplace gave, and their own parcel on the address
-// carries the same carrier. A link built from it, or from a row carrier that
-// only repeats it, would send their carrier's page with the shop's number.
-function test_marketplace_trendyol_shipping_link_never_takes_their_carrier()
+// The moment an account began shipping itself: set when it starts, kept while
+// it goes on, dropped when it stops. Only packages imported from then on are
+// reported, because an older import holds the marketplace's carrier in its
+// address's method code.
+function test_marketplace_trendyol_shipping_delivery_stamp()
 {
-	$theirs = trendyol_shipping_test_row(array('id' => 9, 'number' => '7280027504111111', 'source' => 'marketplace',
-		'carrier' => 'yurtici', 'tracking_url' => 'https://tracking.trendyol.com/?id=1'));
+	$own = array('seller_id' => '1', 'delivery' => 'own');
+	$theirs = array('seller_id' => '1', 'delivery' => 'trendyol');
 
-	$by_method = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
+	pg_assert_same(1000, mp_account_delivery_stamp(array(), $own, 1000)['delivery_since'], 'a new account');
+	pg_assert_same(2000, mp_account_delivery_stamp($theirs, $own, 2000)['delivery_since'], 'starts shipping itself');
 
-	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $by_method), 'Yurtiçi Kargo Marketplace', ''),
-		'the method code names their carrier');
-	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $by_method), 'Yurtiçi Kargo Marketplace', 'aras'),
-		'the default does not override what the order screen shows');
+	$stamped = $own + array('delivery_since' => 1000);
 
-	$inherited = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici'));
+	pg_assert_same(1000, mp_account_delivery_stamp($stamped, $stamped, 3000)['delivery_since'], 'kept while it goes on');
+	pg_assert_same(1000, mp_account_delivery_stamp($stamped, $own, 3000)['delivery_since'], 'a save without the field keeps it');
+	pg_assert_same(3000, mp_account_delivery_stamp($own, $own, 3000)['delivery_since'], 'a stamp that was missing');
+	pg_assert_false(array_key_exists('delivery_since', mp_account_delivery_stamp($stamped, $theirs + array('delivery_since' => 1000), 3000)),
+		'dropped when it stops');
+	pg_assert_false(array_key_exists('delivery_since', mp_account_delivery_stamp(array(), $theirs, 1000)));
 
-	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $inherited), 'Yurtiçi Kargo Marketplace', ''),
-		'the row carrier only repeats theirs');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
 
-	$chosen = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'surat'));
-
-	pg_assert_true(mp_sync_shipment_link(array($theirs, $chosen), 'Yurtiçi Kargo Marketplace', '') !== null,
-		'a carrier chosen on the row that is not theirs');
-
-	$own_page = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici',
-		'tracking_url' => 'https://track.example-carrier.com/p/9988776655'));
-
-	pg_assert_same('https://track.example-carrier.com/p/9988776655',
-		mp_sync_shipment_link(array($theirs, $own_page), 'Yurtiçi Kargo Marketplace', '')['url'], 'the row\'s own page');
+	pg_assert_contains('$credentials = mp_account_delivery_stamp(array(), $credentials, time());', $source, 'on create');
+	pg_assert_contains("\$credentials = mp_account_delivery_stamp(\$account['credentials'],", $source, 'on save');
 }
 
 // On an order imported for an account that ships itself the method code stays
@@ -317,6 +311,9 @@ function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
 	pg_assert_contains("if (\$calls < 2) {", $step);
 	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
 	pg_assert_contains("\$named = (\$default !== '') ? '' : \"", $step, 'without a default, a shape-only parcel is not read');
+	pg_assert_contains("if (\$since <= 0) {", $step, 'nothing before the account began shipping itself');
+	pg_assert_contains("AND (imported_timestamp >= '\" . e(\$since) . \"')", $step);
+	pg_assert_contains("AND (id > '\" . e(\$after) . \"')", $step, 'read page after page');
 	pg_assert_contains("OR (ship_tos.shipping_method_code <> ''))", $step);
 
 	$orders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');

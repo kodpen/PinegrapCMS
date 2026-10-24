@@ -879,9 +879,12 @@ function mp_sync_package_from_row($row) {
 // operator ships it in the marketplace's panel. A failure worth repeating
 // (their outage, a rate limit) writes nothing, so the next pass tries again.
 //
-// Only packages whose order has a parcel the shop recorded are read, two
-// hundred at a time, oldest first, so packages still waiting for their parcel
-// never hide the ones already shipped; at most fifty calls are made in a pass.
+// Only packages imported since the account began shipping itself are
+// reported (mp_account_delivery_stamp()); an older one is shipped in the
+// marketplace's panel. Only packages whose order has a parcel the shop
+// recorded are read, oldest first, two hundred at a time and up to five
+// pages, so packages still waiting for their parcel do not hide the ones
+// already shipped; at most fifty calls are made in a pass.
 function mp_sync_ship_pending($account) {
 
 	if (!mp_can($account['provider'], 'ship_package') || !mp_account_ships_itself($account)) {
@@ -899,6 +902,14 @@ function mp_sync_ship_pending($account) {
 
 	}
 
+	$since = isset($account['credentials']['delivery_since']) ? (int) $account['credentials']['delivery_since'] : 0;
+
+	if ($since <= 0) {
+
+		return;
+
+	}
+
 	$default = pg_shipping_default_carrier();
 
 	// Without a site default, a parcel with no page, no carrier and no method
@@ -908,145 +919,161 @@ function mp_sync_ship_pending($account) {
 			  AND ((shipping_tracking_numbers.tracking_url <> '') OR (shipping_tracking_numbers.carrier <> '')
 				OR (ship_tos.shipping_method_code <> ''))";
 
-	$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, approved, lines_json
-		FROM marketplace_order_map
-		WHERE (account_id = '" . e((int)$account['id']) . "')
-		  AND (status = 'imported')
-		  AND (order_id > 0)
-		  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
-		  AND (last_error = '')
-		  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
-		  AND EXISTS (
-			SELECT 1
-			FROM ship_tos
-			INNER JOIN shipping_tracking_numbers ON shipping_tracking_numbers.ship_to_id = ship_tos.id
-			WHERE (ship_tos.order_id = marketplace_order_map.order_id)
-			  AND (shipping_tracking_numbers.source <> 'marketplace')
-			  AND (shipping_tracking_numbers.number <> '')" . $named . "
-		  )
-		ORDER BY id ASC
-		LIMIT 200");
-
 	$calls = 50;
 
-	foreach ($rows as $row) {
+	$after = 0;
 
-		if ($calls <= 0) {
+	for ($page = 0; $page < 5; $page++) {
 
-			return;
+		$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, approved, lines_json
+			FROM marketplace_order_map
+			WHERE (account_id = '" . e((int)$account['id']) . "')
+			  AND (status = 'imported')
+			  AND (order_id > 0)
+			  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
+			  AND (last_error = '')
+			  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
+			  AND (imported_timestamp >= '" . e($since) . "')
+			  AND (id > '" . e($after) . "')
+			  AND EXISTS (
+				SELECT 1
+				FROM ship_tos
+				INNER JOIN shipping_tracking_numbers ON shipping_tracking_numbers.ship_to_id = ship_tos.id
+				WHERE (ship_tos.order_id = marketplace_order_map.order_id)
+				  AND (shipping_tracking_numbers.source <> 'marketplace')
+				  AND (shipping_tracking_numbers.number <> '')" . $named . "
+			  )
+			ORDER BY id ASC
+			LIMIT 200");
 
-		}
+		foreach ($rows as $row) {
 
-		$link = null;
+			$after = (int) $row['id'];
 
-		foreach ((array) db_items("SELECT id, shipping_method_code FROM ship_tos
-			WHERE order_id = '" . e((int)$row['order_id']) . "' ORDER BY id ASC") as $ship_to) {
+			if ($calls <= 0) {
 
-			$link = mp_sync_shipment_link(pg_shipment_rows((int)$ship_to['id']), (string)$ship_to['shipping_method_code'], $default);
-
-			if ($link !== null) {
-
-				break;
+				return;
 
 			}
 
-		}
+			$link = null;
 
-		if ($link === null) {
+			foreach ((array) db_items("SELECT id, shipping_method_code FROM ship_tos
+				WHERE order_id = '" . e((int)$row['order_id']) . "' ORDER BY id ASC") as $ship_to) {
 
-			continue;
+				$link = mp_sync_shipment_link(pg_shipment_rows((int)$ship_to['id']), (string)$ship_to['shipping_method_code'], $default);
 
-		}
+				if ($link !== null) {
 
-		$map_id = (int) $row['id'];
+					break;
 
-		$package = mp_sync_package_from_row($row);
+				}
 
-		// A package the acceptance pass took already is Picking over there
-		// although the row still reads Created; Picking sent again would be
-		// refused, and the refusal would stop the shipment.
-		if (($package['remote_status'] === 'Created') && empty($row['approved'])) {
+			}
 
-			// Accepting and shipping are two calls; both fit in this pass or
-			// neither is made, and the package waits for the next one.
-			if ($calls < 2) {
+			if ($link === null) {
 
 				continue;
 
 			}
 
-			$line_ids = array();
+			$map_id = (int) $row['id'];
 
-			foreach ($package['lines'] as $line) {
+			$package = mp_sync_package_from_row($row);
 
-				if (isset($line['remote_line_id']) && (string)$line['remote_line_id'] !== '') {
+			// A package the acceptance pass took already is Picking over there
+			// although the row still reads Created; Picking sent again would be
+			// refused, and the refusal would stop the shipment.
+			if (($package['remote_status'] === 'Created') && empty($row['approved'])) {
 
-					$line_ids[] = (string)$line['remote_line_id'];
+				// Accepting and shipping are two calls; both fit in this pass or
+				// neither is made, and the package waits for the next one.
+				if ($calls < 2) {
+
+					continue;
 
 				}
+
+				$line_ids = array();
+
+				foreach ($package['lines'] as $line) {
+
+					if (isset($line['remote_line_id']) && (string)$line['remote_line_id'] !== '') {
+
+						$line_ids[] = (string)$line['remote_line_id'];
+
+					}
+
+				}
+
+				$calls--;
+
+				$accepted = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
+
+				if (!$accepted['ok']) {
+
+					if (empty($accepted['retry'])) {
+
+						db("UPDATE marketplace_order_map
+							SET last_error = '" . e(mb_substr((string)$accepted['error'], 0, 500)) . "',
+								updated_timestamp = UNIX_TIMESTAMP()
+							WHERE id = '" . e($map_id) . "'");
+
+					}
+
+					continue;
+
+				}
+
+				// Written at once: if the shipment below has to wait for the next
+				// pass, that pass must not send Picking for a package that is
+				// Picking already - they refuse it, and the refusal would stop
+				// the shipment.
+				db("UPDATE marketplace_order_map
+					SET remote_status = 'Picking', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($map_id) . "'");
+
+				$package['remote_status'] = 'Picking';
 
 			}
 
 			$calls--;
 
-			$accepted = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
+			$shipped = mp_call($account['provider'], 'ship_package', array($account, $package, $link['url']));
 
-			if (!$accepted['ok']) {
+			if ($shipped['ok']) {
 
-				if (empty($accepted['retry'])) {
+				// Shipped here at once, because the marketplace turns the package
+				// Shipped as it accepts the link; the next pull confirms it and
+				// brings the cargo number the marketplace gives it, which is
+				// recorded as a parcel of its own (source marketplace).
+				db("UPDATE marketplace_order_map
+					SET remote_status = 'Shipped', approved = 1, last_error = '', updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($map_id) . "'");
 
-					db("UPDATE marketplace_order_map
-						SET last_error = '" . e(mb_substr((string)$accepted['error'], 0, 500)) . "',
-							updated_timestamp = UNIX_TIMESTAMP()
-						WHERE id = '" . e($map_id) . "'");
-
-				}
+				log_activity(lang(array(
+					'string' => 'Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.',
+					'vars'   => array((string)$row['remote_order_id'], mp_provider_name($account['provider']), $link['url'])
+				)), 'system');
 
 				continue;
 
 			}
 
-			// Written at once: if the shipment below has to wait for the next
-			// pass, that pass must not send Picking for a package that is
-			// Picking already - they refuse it, and the refusal would stop
-			// the shipment.
-			db("UPDATE marketplace_order_map
-				SET remote_status = 'Picking', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . e($map_id) . "'");
+			if (empty($shipped['retry'])) {
 
-			$package['remote_status'] = 'Picking';
+				db("UPDATE marketplace_order_map
+					SET last_error = '" . e(mb_substr((string)$shipped['error'], 0, 500)) . "',
+						updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($map_id) . "'");
 
-		}
-
-		$calls--;
-
-		$shipped = mp_call($account['provider'], 'ship_package', array($account, $package, $link['url']));
-
-		if ($shipped['ok']) {
-
-			// Shipped here at once, because the marketplace turns the package
-			// Shipped as it accepts the link; the next pull confirms it and
-			// brings the cargo number the marketplace gives it, which is
-			// recorded as a parcel of its own (source marketplace).
-			db("UPDATE marketplace_order_map
-				SET remote_status = 'Shipped', approved = 1, last_error = '', updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . e($map_id) . "'");
-
-			log_activity(lang(array(
-				'string' => 'Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.',
-				'vars'   => array((string)$row['remote_order_id'], mp_provider_name($account['provider']), $link['url'])
-			)), 'system');
-
-			continue;
+			}
 
 		}
 
-		if (empty($shipped['retry'])) {
+		if (count($rows) < 200) {
 
-			db("UPDATE marketplace_order_map
-				SET last_error = '" . e(mb_substr((string)$shipped['error'], 0, 500)) . "',
-					updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . e($map_id) . "'");
+			return;
 
 		}
 
@@ -1066,13 +1093,15 @@ function mp_sync_ship_pending($account) {
 // The link is sent only when somebody named where it points: the row's own
 // tracking page, a carrier stored on the row, the carrier the method code
 // names, or the site's default carrier - never the number's shape alone,
-// which reads a plain Turkish number as UPS or FedEx. A carrier that only
-// repeats the marketplace's is not taken either: on an order imported before
-// the account shipped itself, the method code holds the carrier name the
-// marketplace gave (its own parcel on the address carries the same carrier),
-// and a parcel recorded later took that carrier and its page with the shop's
-// number. A shipment once reported cannot be taken back, so such a parcel
-// waits until a carrier that is the shop's is chosen on the order screen.
+// which reads a plain Turkish number as UPS or FedEx. A shipment once
+// reported cannot be taken back, so such a parcel waits until its carrier is
+// chosen on the order screen.
+//
+// The method code and a carrier the row took from it are the shop's: the job
+// reads only packages imported since the account began shipping itself, and
+// those imports leave the marketplace's carrier out of the method code
+// (mp_order_apply_tracking()); only the shop or its integration writes it
+// (POST /orders/{id}/shipment).
 //
 // Answers array(number, url).
 function mp_sync_shipment_link($rows, $method, $default) {
@@ -1085,23 +1114,7 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 	}
 
-	// The method code's carrier is the marketplace's only when their own
-	// parcel on the address was recorded with it; otherwise the shop or its
-	// integration named it (POST /orders/{id}/shipment writes it).
 	$by_method = pg_shipping_method_carrier((string)$method);
-
-	$theirs = '';
-
-	foreach ((array)$rows as $row) {
-
-		if (is_array($row) && isset($row['source'], $row['carrier']) && ((string)$row['source'] === 'marketplace')
-			&& ($by_method !== '') && (pg_shipping_carrier_text($row['carrier']) === $by_method)) {
-
-			$theirs = $by_method;
-
-		}
-
-	}
 
 	foreach ((array)$rows as $row) {
 
@@ -1121,17 +1134,11 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 		$own_page = isset($row['tracking_url']) && (pg_shipment_tracking_url_clean($row['tracking_url']) !== '');
 
-		if (!$own_page) {
+		// Without a carrier on the row, pg_shipment_view() took the method
+		// code's, else the default, else the number's shape.
+		if (!$own_page && !$view['named'] && ($by_method === '') && ($default === '')) {
 
-			// Without a carrier on the row, pg_shipment_view() took the method
-			// code's, else the default, else the number's shape.
-			$named = $view['named'] || ($by_method !== '') || ($default !== '');
-
-			if (!$named || ($view['carrier'] === $theirs)) {
-
-				continue;
-
-			}
+			continue;
 
 		}
 
