@@ -26709,5 +26709,8 @@
     "Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.": "Yalnızca formu gönderen kişiye giden e-postada doldurulur; sayfada ve diğer kopyalarda boş kalır.",
     "This page then shows its own copy, with the same layout and settings; the other places keep this widget.": "Bu sayfa bundan sonra aynı düzen ve ayarlarla kendi kopyasını gösterir; diğer yerler bu widget'ı göstermeye devam eder.",
     "A later change to one of them stays in that one.": "Sonradan birinde yapılan değişiklik yalnız onda kalır.",
-    "Its layout has unsaved changes. The copy takes them, and the other places get them too when you save.": "Düzeninde kaydedilmemiş değişiklikler var. Kopya bunları alır; kaydettiğinizde diğer yerlere de geçer."
+    "Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.": "Düzeninde kaydedilmemiş değişiklikler var ve kopya bunları alır. Diğer yerler widget'ı son kaydedilen hâliyle koruyabilir ya da kaydettiğinizde bu değişiklikleri onlar da alabilir.",
+    "Make a copy, keep the others as saved": "Kopya oluştur, diğerleri kaydedildiği gibi kalsın",
+    "Make a copy, change the others too": "Kopya oluştur, diğerleri de değişsin",
+    "A copy was made for {var:1}: <strong>{var:2}</strong>": "{var:1} için kopya oluşturuldu: <strong>{var:2}</strong>"
 }

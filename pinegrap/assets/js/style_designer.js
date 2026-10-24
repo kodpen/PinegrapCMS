@@ -8578,6 +8578,31 @@ const StyleDesigner = (function () {
         return t ? JSON.stringify(t, _pgBaselineTreeKey) : '{}';
     }
 
+    // Puts the cached tree of component `sid` back to what its row holds,
+    // dropping the edits not saved yet, so the next save sends it nothing:
+    // the snapshot when it has one (what the row held at the first draw, or
+    // what the last save sent), else the row read again (prefetchShared()
+    // replaces an entry that is neither dirty nor snapshotted). `cb` once
+    // the tree is back.
+    function _sdSharedRevert(sid, cb) {
+        var c = _sharedCache[sid];
+        if (!c) { if (cb) cb(); return; }
+        delete _sharedDirty[sid];
+        var t = null;
+        if (_sharedSnapshots[sid]) {
+            try { t = JSON.parse(_sharedSnapshots[sid]); } catch (e) { t = null; }
+        }
+        if (t && typeof t === 'object' && t.type) {
+            // A snapshot of a starter placeholder carries no node ids.
+            _backfillIds(t);
+            c.tree = t;
+            if (cb) cb();
+            return;
+        }
+        delete _sharedSnapshots[sid];
+        prefetchShared([sid], cb);
+    }
+
     // Marks the component holding `node` as changed. Called by the paths
     // that write a node without going through a selection (the in-place
     // text edits). Returns the component id, 0 for a page node or a
@@ -32060,7 +32085,9 @@ const StyleDesigner = (function () {
         // the same layout and settings, this page's placements re-pointed at
         // it, every other place left on the original. The row is created at
         // once; the page's changed reference makes the page dirty, so Save
-        // writes it (_pgPageUnchanged() reads the tree).
+        // writes it (_pgPageUnchanged() reads the tree). Layout edits not
+        // saved yet go into the copy; the operator picks whether the
+        // original keeps them too or goes back to its saved layout.
         var forkBtn = document.getElementById('sd-sw-fork-page');
         if (forkBtn) {
             forkBtn.addEventListener('click', function () {
@@ -32078,18 +32105,24 @@ const StyleDesigner = (function () {
                           '<p class="mb-0">' + esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) + ' ' +
                               esc(_sdT('A later change to one of them stays in that one.')) + '</p>' +
                           (offer.unsaved
-                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes. The copy takes them, and the other places get them too when you save.')) + '</p>'
+                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
                               : ''),
-                    choices: [
-                        { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
-                        { value: 'no',   label: _sdT('Cancel'),                    variant: 'outline-secondary' }
-                    ]
+                    choices: offer.unsaved
+                        ? [
+                            { value: 'keep', label: _sdT('Make a copy, keep the others as saved'), variant: 'primary', icon: 'bi-files' },
+                            { value: 'both', label: _sdT('Make a copy, change the others too'),    variant: 'outline-primary' },
+                            { value: 'no',   label: _sdT('Cancel'),                                variant: 'outline-secondary' }
+                        ]
+                        : [
+                            { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
+                            { value: 'no',   label: _sdT('Cancel'),                    variant: 'outline-secondary' }
+                        ]
                 }).then(function (choice) {
-                    if (choice !== 'fork') return;
+                    if (choice !== 'fork' && choice !== 'keep' && choice !== 'both') return;
                     // One copy per click: the button stays off until the
                     // panel is drawn again.
                     btn.disabled = true;
-                    _swForkForThisPage(offer.sid, {}, function () { renderProperties(); });
+                    _swForkForThisPage(offer.sid, { keepOriginal: choice === 'keep' }, function () { renderProperties(); });
                 });
             });
         }
@@ -47511,8 +47544,13 @@ const StyleDesigner = (function () {
     // Give THIS page its own copy of a widget other pages also place:
     // a new row with the same layout and settings (or the starter layout of
     // `opts.regionType` when the copy is made to change the kind), every
-    // placement on the active page re-pointed at it. The other pages keep
-    // the original untouched.
+    // placement in the page's tree re-pointed at it. The other pages keep
+    // the original. The page is the tab open at the call: the server may
+    // answer after another tab was opened, and the copy still goes to the
+    // page that asked (its parked tree; the undo step only on the open one).
+    // `opts.keepOriginal`: layout edits not saved yet stay in the copy alone
+    // and the original goes back to what its row holds (_sdSharedRevert());
+    // without it the next save also writes them to the original.
     function _swForkForThisPage(sid, opts, cb) {
         opts = opts || {};
         var cached = _sharedCache[sid];
@@ -47520,7 +47558,8 @@ const StyleDesigner = (function () {
         var cfg = {};
         try { cfg = JSON.parse(cached.system_region_config || '{}') || {}; } catch (e) { cfg = {}; }
         if (Array.isArray(cfg)) cfg = {};
-        var type = opts.regionType || cfg.regionType || '';
+        var page = _pgActivePage();
+        var key  = page ? page.key : _activeKey;
         var newTree;
         if (opts.regionType && opts.regionType !== cfg.regionType) {
             cfg = _swTypeDefaults(cfg, opts.regionType);
@@ -47528,16 +47567,20 @@ const StyleDesigner = (function () {
         } else {
             newTree = cloneTree(cached.tree || _swBlankTree());
             (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(newTree);
-            // Field row ids belong to the page the ORIGINAL sits on; the
-            // copy gets its own rows on the first save.
-            (function strip(nd) {
-                if (nd && nd.props && nd.props._cf) delete nd.props._cf.ids;
-                if (nd && Array.isArray(nd.children)) nd.children.forEach(strip);
-            })(newTree);
+            _swKeepPageFieldIds(newTree, page ? page.page_id : 0);
         }
-        var name = _swAutoName(type);
+        var name = _swAutoName(opts.regionType || _swNameKind(cfg), page);
         _swCreateRow(name, cfg, newTree, function (newId, newName) {
-            saveState();
+            var p    = _pgPageByKey(key);
+            var live = (key === _activeKey);
+            var t    = live ? tree : (p ? p.tree : null);
+            if (!t) {
+                // The page was closed meanwhile: the copy is listed, unplaced.
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                if (cb) cb(newId, newName);
+                return;
+            }
+            if (live) saveState();
             var moved = 0;
             (function walk(node) {
                 if (!node) return;
@@ -47550,14 +47593,50 @@ const StyleDesigner = (function () {
                     return;
                 }
                 if (node.children) node.children.forEach(walk);
-            })(tree);
-            render();
-            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
-            if (typeof _pgTabsRefreshDirty === 'function') _pgTabsRefreshDirty();
-            sdToast(_sdT('A copy was made for this page: <strong>{var}</strong>', esc(newName)) +
-                    (moved > 1 ? ' ' + esc(_sdT('({var} placements)', moved)) : ''), 'success', 4500);
+            })(t);
+            var redraw = function () {
+                render();
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                if (typeof _pgTabsRefreshDirty === 'function') _pgTabsRefreshDirty();
+            };
+            if (opts.keepOriginal) _sdSharedRevert(sid, redraw);
+            else redraw();
+            var made = live
+                ? _sdT('A copy was made for this page: <strong>{var}</strong>', esc(newName))
+                : _sdT('A copy was made for {var:1}: <strong>{var:2}</strong>', [esc(p.page_name || _sdT('New Page')), esc(newName)]);
+            sdToast(made + (moved > 1 ? ' ' + esc(_sdT('({var} placements)', moved)) : ''), 'success', 4500);
             if (cb) cb(newId, newName);
         });
+    }
+
+    // The kind a widget's name is made from, as the panel and the renderer
+    // read the row's settings: a row from before the kind was stored (no
+    // string `regionType`) and the old form-list aliases are form list
+    // views; '' is the empty widget.
+    function _swNameKind(cfg) {
+        var t = cfg ? cfg.regionType : undefined;
+        if (typeof t !== 'string' || t === 'submitted_forms_list' || t === 'form_list' || t === 'blog_list') return 'form_list_view';
+        return t;
+    }
+
+    // Form field row ids in a copied widget tree. They are kept per page
+    // (`_cf.ids[page_id]`) and the copy stands on one page only, so it keeps
+    // that page's id and drops the others: the page save matches a control
+    // by its row id before its name, so a field renamed since the last save
+    // keeps its row and the values submitted under it. A page never saved
+    // (page_id 0) has no rows yet.
+    function _swKeepPageFieldIds(t, pageId) {
+        var k = String(parseInt(pageId, 10) || 0);
+        (function walk(nd) {
+            if (!nd) return;
+            var cf = nd.props ? nd.props._cf : null;
+            if (cf && typeof cf === 'object' && cf.ids !== undefined) {
+                var id = (k !== '0' && cf.ids && typeof cf.ids === 'object') ? parseInt(cf.ids[k], 10) || 0 : 0;
+                if (id > 0) { cf.ids = {}; cf.ids[k] = id; }
+                else delete cf.ids;
+            }
+            if (Array.isArray(nd.children)) nd.children.forEach(walk);
+        })(t);
     }
 
     // Rename on the server, then everywhere the name is shown. `cb(name)`

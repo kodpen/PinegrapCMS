@@ -21,16 +21,15 @@ description: Designer system widget rules: SW_TYPES, auto names, empty widget, g
 - Legacy rows with `typeof regionType !== 'string'` are form lists, the renderer's default; that fallback exists only for them.
 
 ## What happens on a type change?
-- Gated by `_swOtherPlacements(sid)`. If non-empty (`_sharedRefUsageInDesign`: other tabs of this design, unsaved too; `_sharedUsage`: other designs) offer three choices: copy (`_swForkForThisPage`: new row, placements on the active page switch to it; `_cf.ids` stripped, the page save gives each control the page's row of the same name), change in all, cancel (`data-sw-current` restores the old value).
+- Gated by `_swOtherPlacements(sid)`. If non-empty (`_sharedRefUsageInDesign`: other tabs of this design, unsaved too; `_sharedUsage`: other designs) offer three choices: copy (`_swForkForThisPage(sid, { regionType })`: a new row with the kind's starter layout, this page's placements switch to it), change in all, cancel (`data-sw-current` restores the old value).
 - A three-button question is `sdChoose` (`pgConfirm` has two); never split it into two questions.
 
 ## When does the panel offer "Make a copy for this page"?
-- Under "Where it is used" (`propsSharedRef`) when `_swForkOffer(n)` returns an offer: a system widget with other placements, full access (no `create` below role 1), placed in the page tree itself (a header's placement stands on every page). The click re-checks, then `sdChoose` (copy / cancel) runs `_swForkForThisPage(sid, {})`, kind kept.
-- The row is created at once; the re-pointed `shared_ref` makes `_pgPageDirty()` true, so Save writes the page. The original's unsaved layout edits go into the copy and are still flushed to the original, as the dialog says (`offer.unsaved` compares the snapshot: a selection alone sets `_sharedDirty`). Tests: `tests/designer_widget_fork_test.php`.
+- Under "Where it is used" (`propsSharedRef`) when `_swForkOffer(n)` returns an offer; the copy keeps the kind, layout and settings, and Save writes the page with its new reference. Rules: `widget-copy-for-this-page.md`.
 
 ## How must code walk tabs?
 - Widget delete, rename and "where used" go through `_pgAllPageTrees()` (live `tree` for the active tab, parked `p.tree` for others); walking only `tree` leaves "Not found" placements in other tabs. After changing another tab call `_pgTabsRefreshDirty()`.
 - Use on saved pages comes from one place on the server: `pg_shared_component_usage()` (sub-actions `usage_all`, and `delete_many`, which keeps a used row without `force`). Every page counts, the recycle bin included (`binned`); a placement inside another component counts on every page placing that one.
 - `usage_all` rows carry `page_id, page_name, style_id, style_name, binned` (a leftover `page_id AS style_id` once broke `_pgDesignSharedIds`' `u.style_id === styleId`). Text via `_sharedUsageText`: the page, plus another design's name in parentheses.
 
-Related: docs/memory/designer/designer-page-pickers.md
+Related: docs/memory/designer/designer-page-pickers.md, docs/memory/designer/widget-copy-for-this-page.md
