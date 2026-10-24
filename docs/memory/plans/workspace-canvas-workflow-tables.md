@@ -1,39 +1,37 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, not started, answers open): personal-by-default workflow tables, board view, canvases holding them, automations on the scheduled-actions engine
+description: Plan (2026-10-23, not started, answers open): workflow tables, board view, Workspace canvas, automations; owns the scheduled-actions API
 ---
 
-## What is asked? (owner, 2026-10-23)
-- Canvases holding workflow tables that turn into workflows; a table may be purely personal, with no required link to a channel, task or record.
+## What is asked?
+- Workspace canvases of workflow tables that become workflows; also personal, unlinked.
 
-## What is there today?
-- No canvas or table record. Notes model "personal": owner plus shares (`ws_note_access()`), nothing for admins by rank, no webhook. A channel-less task is seen by board holders and leads (`ws_can_see_task()`).
-- Grids: GFM tables (`ws_table_cells()`, `ws_calc_grid()`, 200 x 26), `openTable()`, xlsx cells. Board tab: assets/js/workspace_board_channel.js (drag, keyboard, `window.PGWsKit`).
-- Engine (includes/workspace/scheduled.php): steps in `ws_scheduled_do()`, creator's current rights, `note_id` ties one to a note. Staff only (`ws_can_schedule()`), each sees all; no API for actions.
-
-## What is proposed? (not approved yet)
-- Table: typed columns (text, number, money in minor units, date, person (team only), status (done flag), checkbox, record link via `ws_refs_resolve()`, formula via `ws_calc_evaluate()`); cells JSON in MEDIUMTEXT, revision (`base`, 409 `changed_meanwhile`). Owner-only; shares to people or a channel card. Limits: 50 columns, 5000 rows (paged), 500 tables each.
-- Canvas: up to 300 items (table, note, task, text, arrow); pointer events, SVG arrows, an outline list for phones, screen readers; items show only what the reader may open.
-- Workflow: rules on the scheduled-actions engine, never a second one: row events kept by `ws_event()`, new steps `add_row`, `set_cell` in `ws_scheduled_do()`. Workflow mode: rows are steps with "depends on"; "Run as tasks" links them with `ws_task_links_set()` (cycle-safe), task ids kept in the rows.
-- API in each slice (`ws_openapi_objects()`, `dry_run` with a `*_check()`), MCP tools except own-words routes. `workspace.wtable.*` webhooks (with `channel_id`) only for tables on a public channel card.
+## What is proposed? (not approved)
+- Workflow table: columns text, number, money (minor units), date, person (team), status, checkbox, record link (`ws_refs_resolve()`), formula (`ws_calc_evaluate()`); JSON cells (MEDIUMTEXT), PHP filter/sort (no MySQL JSON functions: MariaDB, old MySQL); 409 `changed_meanwhile`. Owner-only like notes (`ws_note_access()`); shares to people or a channel card. 50 columns, 5000 rows, 500 tables each.
+- Workspace canvas: max 300 items (table, note, task, text, arrow), outline for phones, screen readers, each item only to its readers.
+- Table automation: a scheduled action with `wtable_id`; row events via `ws_event()`; new steps `add_row`, `set_cell` in `ws_scheduled_do()` (no new `kind` or engine). Workflow mode: rows become tasks linked by `ws_task_links_set()` (`blocked_by`, cycle-safe).
+- API per slice (`ws_openapi_objects()`, dry_run via `*_check()`), MCP tools bar own-words routes; `workspace.wtable.*` webhooks (`channel_id`) only on a public channel card.
+- Shares `ws_notify()`, unshares `ws_inbox_reach_lost()`/`_regained()` (channel-only); `ws_inbox` has no table/canvas column (kind-only line or schema). `ws_sync` key, `ws_palette_groups()` group; deletes: bin or versions (notes keep 30). Person/contact cells (JSON, no SQL re-point) must reach `pg_privacy_export_find()` and erasure (plans/privacy-data-pack-audit-log.md step 4).
+- CRM pipeline later = shared table with status, contact link columns (plans/workspace-crm-seams.md); tags in rows (`wtable_row`) wait for its step 9 `ws_refs.source_type` widening.
+- Candidates: `ws_templates` starters, xlsx export (includes/fn/office.php), "my tables" strip on /workspace/my-day.
 
 ## Slices
-1. S1 Scheduled actions API, read and stop (no schema): below.
-2. S2 Create, change, resume, run (no schema): new `ws_scheduled_save_check()` out of `ws_scheduled_save()`, rehearsal `ws_scheduled_preview()`; `ws_api_own_words_only()`, `'mcp' => false`: they act in the person's name (workspace/workspace-api-callers.md).
-3. T1 Tables (schema, ask first): new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php, `workspace_tables.php`, API, sync key.
-4. T2 Board view by a status column (no schema past T1).
-5. T3 Canvas (schema, ask first): new `ws_canvases`, `ws_canvas_items`, `workspace_canvas.php`.
-6. T4 Table automations (schema, ask first: new `ws_scheduled_actions.wtable_id`); who: question 2.
-7. T5 Workflow mode to tasks (no schema past T1).
-8. T6 CSV and note-table import, JSON starter tables: contact pipeline (CRM seam), checklist (no schema past T1).
-- Schema: `upgrade_2026_11_0_<topic>()` at the next free Workspace label, tables in `get_tables()`.
+1. S1 Scheduled actions API (staff-only `ws_can_schedule()`, all see all): list, get, pause, cancel, after #1352 (merged; changed includes/workspace/watch.php).
+2. S2 Create, edit, resume (question 2): new `ws_scheduled_save_check()` from `ws_scheduled_save()`, `ws_scheduled_preview()`; S2b change card after the MCP plan's slice 3 propose route.
+3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API.
+4. T2 Board view (the channel Board tab component) by a status column.
+5. T3 Workspace canvas: new `ws_canvases`, `ws_canvas_items`, workspace_canvas.php.
+6. T4 Table automations: new `ws_scheduled_actions.wtable_id`.
+7. T5 Workflow mode.
+8. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
+- Schema (ask first): T1, T3, T4; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
 
 ## Open questions (recommendation)
-1. T1 and T3 tables → T1 now, T3 once T1, T2 are in use.
-2. Role-3 team members' automations: (a) staff only, (b) own tables, steps in their reach → b.
-3. Canvas (none in assets/lib): (a) vanilla pointer events and SVG, (b) a vendored one → a.
-4. Task and row status: (a) task to row, (b) both ways, (c) copy once → a.
-5. Personal tables for administrators: (a) never, like notes, (b) board holders → a.
+1. T1, T3 → T1 now, T3 once T1, T2 are in use.
+2. Who may create scheduled actions and table automations (run as their creator): (a) staff on a team devices session only (`'mcp' => false`), (b) a + connected apps post a change card the person applies (S2b), (c) b + role-3 members on own tables, steps in their reach, (d) OAuth saves them paused → b now, c after T4.
+3. Which first: (a) table automations (T4), (b) workflow mode (T5), (c) both, b first → c; task status flows task to row.
+4. Admins on personal tables: (a) never, like notes, (b) board holders → a. Owner deleted or `ws_profiles.excluded`: automations pause, tables, canvases stay invisible.
+5. T3 library (assets/lib: none): (a) vanilla pointer events, SVG, (b) vendored → a.
 
 ## Where to start?
-- S1: new `GET /workspace/scheduled-actions` (and `/{id}`), `POST .../{id}/pause`, `/cancel` (keys and MCP too, like scheduled messages); kind action only (`ws_scheduled_action()`); new `ws_scheduled_set_status_check()`, `api_dry_run_stop()`, `ws_scheduled_set_status()`; channel names only where `ws_can_read_channel()`. Tests: tests/workspace_api_test.php. Each slice: a memory file in workspace/.
+- S1: new `GET /workspace/scheduled-actions` (+ `/{id}`), `POST .../{id}/pause`, `/cancel` (keys, MCP); action kind only (`ws_scheduled_action()`); new `ws_scheduled_set_status_check()` → `api_dry_run_stop()` → `ws_scheduled_set_status()`; channel names only where `ws_can_read_channel()`. Test: tests/workspace_api_test.php.

@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, not started, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 in PR #1457, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
