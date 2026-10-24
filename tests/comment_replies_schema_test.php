@@ -6,9 +6,12 @@
  * (upgrade_2026_11_0_comment_replies(), 11.0.31): it is called once under its
  * own label, adds comments.parent_id in place with the copy as the fallback,
  * adds the two indexes through the idempotent helper, never writes an ALTER of
- * its own, pauses only after it has run an ALTER in the pass, and the comments
- * table stays on the preflight list of heavy tables for the version. The step
- * itself needs a database and is run twice in a sandbox instead.
+ * its own, starts none of its three ALTERs once the pass has run a statement
+ * and spent its budget (install_pass_spent(), counted from the start of the
+ * pass), and the comments table stays on the preflight list of heavy tables
+ * for the version. The step itself needs a database and is run twice in a
+ * sandbox instead; the runner cannot be loaded without the upgrade's gate, so
+ * its helper is checked in its source.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -76,15 +79,46 @@ function test_comment_replies_schema_step_adds_both_indexes_through_the_helper()
 	pg_assert_true(preg_match("/install_note\\('[^']+'\\);\\s*\$/", $step) === 1, 'ends with a note for the operator');
 }
 
-function test_comment_replies_schema_step_pauses_only_after_an_alter_of_this_pass()
+// The column copy and both indexes ask the pass, not the step: the copies
+// 11.0.14 made of the same table earlier in the pass count too.
+function test_comment_replies_schema_step_pauses_before_each_copy_once_the_pass_is_spent()
 {
 	$step = comment_replies_schema_test_step();
 
-	pg_assert_contains("\$executed = (int) \$install_runner['executed'];", $step, 'counts from the start of the step');
-	pg_assert_contains("((int) \$install_runner['executed'] > \$executed)", $step, 'a pass that ran nothing never pauses, so every pass moves on');
-	pg_assert_contains('(install_pass_seconds() >= install_pause_budget())', $step, 'only once the pass budget is spent');
-	pg_assert_contains("!install_index_exists('comments', \$index)", $step, 'never for an index already there');
-	pg_assert_true(strpos($step, 'install_pause(lang(') < strpos($step, "install_add_index('comments'"), 'the pause comes before the next ALTER');
+	pg_assert_same(2, substr_count($step, 'if (install_pass_spent()'), 'one guard before the column copy, one before each index');
+	pg_assert_true(strpos($step, "\$install_runner['executed']") === false, 'no baseline of its own taken at the start of the step');
+	pg_assert_contains("if (install_pass_spent() && !install_index_exists('comments', \$index)) {", $step, 'never for an index already there');
+
+	$instant = strpos($step, "install_add_columns_instant('comments'");
+	$first_guard = strpos($step, 'if (install_pass_spent())');
+	$copy = strpos($step, "install_add_column('comments'");
+
+	pg_assert_true(($instant !== false) && ($first_guard !== false) && ($copy !== false), 'the column guard is found');
+	pg_assert_true(($instant < $first_guard) && ($first_guard < $copy), 'the in-place attempt runs first, the pause comes before the copy');
+
+	$index_guard = strpos($step, 'if (install_pass_spent() &&');
+	$index_add = strpos($step, "install_add_index('comments'");
+
+	pg_assert_true(($index_guard !== false) && ($index_add !== false) && ($index_guard < $index_add), 'the pause comes before the next index');
+	pg_assert_same(2, substr_count($step, "install_pause(lang(array('string' => 'comments: replies are being added; {var:1} follows in the next pass'"), 'the pause names what follows');
+}
+
+// The pass baseline is taken where the pass starts, and the helper needs work
+// done in this pass as well as the budget spent, so a pass that has run
+// nothing never pauses.
+function test_comment_replies_schema_runner_counts_the_pass_from_its_start()
+{
+	$runner = comment_replies_schema_test_source('includes/migrations/runner.php');
+
+	pg_assert_contains("\t'pass_executed' => 0,\n", $runner, 'a default in the runner state');
+	pg_assert_contains("\$install_runner['pass_started'] = microtime(true);\n\n\t\t\t\t\t\t\$install_runner['pass_executed'] = \$install_runner['executed'];\n", $runner, 'taken with the start of every pass');
+
+	pg_assert_true(preg_match('/^function install_pass_spent\(\) \{\n(.*?)\n\}\n/ms', $runner, $match) === 1, 'install_pass_spent() is found');
+
+	$body = isset($match[1]) ? $match[1] : '';
+
+	pg_assert_contains("((int) \$install_runner['executed'] > (int) \$install_runner['pass_executed'])", $body, 'only after a statement of this pass');
+	pg_assert_contains('&& (install_pass_seconds() >= install_pause_budget())', $body, 'and only once the budget is spent');
 }
 
 function test_comment_replies_schema_comments_stay_on_the_heavy_table_list()

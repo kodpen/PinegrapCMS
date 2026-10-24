@@ -106,6 +106,7 @@ $install_runner = array(
 	'guard' => false,
 	'started' => 0,
 	'pass_started' => 0,
+	'pass_executed' => 0,
 	'passes' => 0,
 );
 
@@ -817,6 +818,22 @@ function install_pause_budget() {
 
 }
 
+// True once this pass has run a statement and used up its budget: a step about to start
+// another ALTER that may copy a big table pauses (install_pause()) instead, so the copies
+// of one version spread over several passes. Counted from the start of the pass, so the
+// statements the earlier steps ran in it count too. A pass that has run nothing yet never
+// answers true: the earlier steps count only work they did (install_ran()), which a later
+// pass skips, so every pass gets at least one statement done and a version cannot pause
+// for ever.
+function install_pass_spent() {
+
+	global $install_runner;
+
+	return ((int) $install_runner['executed'] > (int) $install_runner['pass_executed'])
+		&& (install_pass_seconds() >= install_pause_budget());
+
+}
+
 // Ends this pass of the version: the note says where it got to, and the loop runs the
 // same version again, in a new request when the screen drives the upgrade one version at
 // a time. Never returns.
@@ -1497,6 +1514,8 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 						$paused = false;
 
 						$install_runner['pass_started'] = microtime(true);
+
+						$install_runner['pass_executed'] = $install_runner['executed'];
 
 						try {
 

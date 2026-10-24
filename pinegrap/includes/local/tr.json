@@ -26747,5 +26747,5 @@
     "CAPTCHA is on ({var:1})": "CAPTCHA açık ({var:1})",
     "This server has no cURL extension, so it cannot check a CAPTCHA with the provider and forms show the built-in question.": "Bu sunucuda cURL eklentisi yok; CAPTCHA sağlayıcıyla denetlenemiyor ve formlar yerleşik soruyu gösteriyor.",
     "{var:1} could not be reached from this server ({var:2}), so it was not switched on and forms show the built-in question. Its keys were saved; choose it again to retry.": "{var:1} bu sunucudan erişilemedi ({var:2}); bu yüzden açılmadı ve formlar yerleşik soruyu gösteriyor. Anahtarları kaydedildi; yeniden denemek için onu tekrar seçin.",
-    "comments: replies are being added; index {var:1} follows in the next pass": "comments: yanıtlar ekleniyor; {var:1} dizini bir sonraki geçişte eklenecek"
+    "comments: replies are being added; {var:1} follows in the next pass": "comments: yanıtlar ekleniyor; {var:1} bir sonraki geçişte eklenecek"
 }

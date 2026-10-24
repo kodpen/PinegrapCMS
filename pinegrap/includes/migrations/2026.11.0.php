@@ -1236,14 +1236,13 @@ function upgrade_2026_11_0_form_protection() {
 // The column is added in place where the server can, as 11.0.14 does for the
 // same table. An index added to an InnoDB table is built in place; on a
 // comments table left on MyISAM (2026.4.8 converts it unless it is over the
-// size limits, upgrade_2026_4_8_innodb_limits()) each of the three ALTERs
-// copies the table, so once one of them has run in this pass and the pass
-// budget is spent, the next one waits for the next pass.
+// size limits, upgrade_2026_4_8_innodb_limits()) the column and each index
+// copy the table whole, and on the first run 11.0.14 has already copied it up
+// to four times in the same pass. So none of the three is started once this
+// pass has run a statement and its budget is spent (install_pass_spent()); it
+// waits for the next pass, in the next request when the screen runs one
+// version at a time.
 function upgrade_2026_11_0_comment_replies() {
-
-	global $install_runner;
-
-	$executed = (int) $install_runner['executed'];
 
 	$columns = array(
 		'parent_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
@@ -1252,6 +1251,12 @@ function upgrade_2026_11_0_comment_replies() {
 	if (!install_add_columns_instant('comments', $columns)) {
 
 		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'comments: replies are being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
 
 			install_add_column('comments', $column, $definition);
 
@@ -1266,11 +1271,9 @@ function upgrade_2026_11_0_comment_replies() {
 
 	foreach ($indexes as $index => $definition) {
 
-		if (((int) $install_runner['executed'] > $executed)
-			&& (install_pass_seconds() >= install_pause_budget())
-			&& !install_index_exists('comments', $index)) {
+		if (install_pass_spent() && !install_index_exists('comments', $index)) {
 
-			install_pause(lang(array('string' => 'comments: replies are being added; index {var:1} follows in the next pass', 'vars' => $index)));
+			install_pause(lang(array('string' => 'comments: replies are being added; {var:1} follows in the next pass', 'vars' => $index)));
 
 		}
 
