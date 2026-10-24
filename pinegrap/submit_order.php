@@ -970,12 +970,14 @@ function submit_order($type) {
         $nonrecurring_transaction = TRUE;
 
         // If a credit card surcharge is enabled and the credit card payment method
-        // was selected, then calculate surcharge and add it to total.
+        // was selected, then calculate surcharge and add it to total: the
+        // exact product rounded half away from zero, the same figure on every
+        // PHP version (pg_percent_of()).
         if (
             (ECOMMERCE_SURCHARGE_PERCENTAGE > 0)
             && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
         ) {
-            $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total);
+            $surcharge = pg_percent_of($total, ECOMMERCE_SURCHARGE_PERCENTAGE);
 
             // Like the shipping, a minor unit lower where it would leave a
             // rate's total no amount reaches (pg_order_charges_reachable()).
@@ -2978,6 +2980,20 @@ function submit_order($type) {
                             $identitynumber = '11111111111';
                         }
                     
+                        // The bank's 3-D Secure return posts no card fields and
+                        // skips the card checks above, so there is no card number
+                        // or expiry. The instalment charge the bank took is the one
+                        // kept in iyzipay_3ds_state and the instalment count comes
+                        // with the bank's answer, so the instalment limit is still
+                        // checked but iyzico is not asked for a new quote.
+                        $iyzipay_threeds_return = (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return');
+
+                        if ($iyzipay_threeds_return) {
+                            $card_number = '';
+                            $expiration_month = '';
+                            $expiration_year = '';
+                        }
+
                         // Card BIN
                         $card_binNumber = substr($card_number, 0, 6);
                     
@@ -2994,7 +3010,7 @@ function submit_order($type) {
                                 $liveform->mark_error('payment_gateway', lang('Payment Installment cannot be bigger than accepted Installment!'));
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                                 exit();
-                            } else {
+                            } elseif (!$iyzipay_threeds_return) {
                                 $payment_installment = $get_buyer_payment_installment_selection;
                             
                                 // Retrieve installment info
@@ -3375,13 +3391,13 @@ function submit_order($type) {
                                 exit();
                             }
 
-                            $total = $base_total_cents;
+                            // The order records what the bank took: the state row's
+                            // total and instalment charge.
+                            $threeds_totals = pg_payment_threeds_state_totals($state);
+                            $total = $threeds_totals['total'];
+                            $installment_charge = $threeds_totals['installment_charge'];
+                            $total_witout_installment_charge = $threeds_totals['total_without_installment_charge'];
 
-                            if ($installment_charge_cents > 0) {
-                                $total_witout_installment_charge = $total;
-                                $total += $installment_charge_cents;
-                            }
-                            
                             $transaction_id = ($Payment_ID !== '') ? $Payment_ID : $paymentId;
                         
                             log_activity(lang(array(

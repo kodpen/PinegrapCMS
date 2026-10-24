@@ -6,7 +6,7 @@ use Iyzipay\JsonBuilder;
 use Iyzipay\Request;
 
 class SubscriptionDeleteCustomerRequest extends Request {
-    private string $customerReferenceCode;
+    private $customerReferenceCode;
 
     public function getCustomerReferenceCode(): string {
         return $this->customerReferenceCode;

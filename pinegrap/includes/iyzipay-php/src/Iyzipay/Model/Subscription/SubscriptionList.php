@@ -9,15 +9,15 @@ use Iyzipay\Model\Mapper\Subscription\SubscriptionListMapper;
 use Iyzipay\Request\Subscription\SubscriptionListRequest;
 
 class SubscriptionList extends IyzipayResource {
-    private string $subscriptionReferenceCode;
-    private string $subscriptionStatus;
-    private int $page;
-    private int $count;
-    private string $customerReferenceCode;
-    private string $parentReferenceCode;
-    private string $startDate;
-    private string $endDate;
-    private string $pricingPlanReferenceCode;
+    private $subscriptionReferenceCode;
+    private $subscriptionStatus;
+    private $page;
+    private $count;
+    private $customerReferenceCode;
+    private $parentReferenceCode;
+    private $startDate;
+    private $endDate;
+    private $pricingPlanReferenceCode;
 
     public static function create(SubscriptionListRequest $request, Options $options) {
         $uri = $options->getBaseUrl() . '/v2/subscription/subscriptions' . RequestStringBuilder::requestToStringQuery($request, 'searchSubscription');

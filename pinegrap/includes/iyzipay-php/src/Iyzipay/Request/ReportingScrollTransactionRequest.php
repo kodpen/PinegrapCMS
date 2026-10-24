@@ -6,9 +6,9 @@ use Iyzipay\JsonBuilder;
 use Iyzipay\Request;
 
 class ReportingScrollTransactionRequest extends Request {
-    private string $documentScrollVoSortingOrder;
-    private string $transactionDate;
-    private string $lastId;
+    private $documentScrollVoSortingOrder;
+    private $transactionDate;
+    private $lastId;
 
     public function getDocumentScrollVoSortingOrder(): string {
         return $this->documentScrollVoSortingOrder;

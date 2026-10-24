@@ -547,13 +547,28 @@ function pg_process_image_file($file_path, $options = array())
         return $report;
     }
 
-    // GD writes no colour profile, and pixels written without theirs are
-    // shown as sRGB: a Display P3 (phone) or Adobe RGB photo comes out
-    // washed out, and on Optimize for good. Imagick carries the profile
-    // over, so only the GD half leaves such a file as it is.
-    if (!$use_imagick && pg_image_has_foreign_color_profile($file_path)) {
-        $report['reason'] = 'color_profile';
-        return $report;
+    // Pixels written without their profile are shown as sRGB: a Display P3
+    // (phone) or Adobe RGB photo would come out washed out, and on Optimize
+    // for good. Imagick carries the profile over itself. GD decodes without
+    // converting colours, so the source's RGB profile is written back into
+    // its JPEG, PNG or WebP output below; a profile it cannot carry (into
+    // AVIF, GIF or BMP, a grey or CMYK one, an unreadable one) leaves the
+    // file as it is.
+    $icc = '';
+
+    if (!$use_imagick) {
+
+        $icc = pg_image_icc_profile($file_path);
+        $plan = pg_image_gd_icc_plan($icc, ($format !== '') ? $format : (string) image_type_to_extension($type, false));
+
+        if ($plan === 'refuse') {
+            $report['reason'] = 'color_profile';
+            return $report;
+        }
+
+        if ($plan === 'none') {
+            $icc = '';
+        }
     }
 
     $resize = (($max_dimension > 0) && (max($width, $height) > max(1, $resize_trigger)));
@@ -595,6 +610,19 @@ function pg_process_image_file($file_path, $options = array())
         $report['status'] = 'error';
         $report['reason'] = 'failed';
         return $report;
+    }
+
+    // Bytes from a libgd build that writes a structure the profile writer
+    // does not know are refused like a profile GD cannot carry: not a broken
+    // picture, so a derivative does not remember it as one.
+    if (is_string($icc) && ($icc !== '')) {
+
+        $data = pg_image_embed_icc($data, $icc);
+
+        if ($data === false) {
+            $report['reason'] = 'color_profile';
+            return $report;
+        }
     }
 
     $report['status']  = 'success';
@@ -2153,6 +2181,340 @@ function pg_image_has_foreign_color_profile($file_path)
     }
 
     return ($icc === false) || !pg_image_icc_is_srgb($icc);
+}
+
+
+/**
+ * What the GD half does with a picture's ICC profile when it writes $output.
+ *
+ * GD decodes without converting colours, so the pixels it writes are still in
+ * the source's colour space and the source's profile describes them again
+ * once it is written back into the result:
+ *   'none'   no profile, or sRGB (untagged pixels are shown as sRGB anyway);
+ *   'embed'  an RGB profile that the output can carry (JPEG, PNG, WebP);
+ *   'refuse' a profile that cannot be read, one that is not RGB (GD always
+ *            writes RGB, so a grey or CMYK profile would mislabel the
+ *            pixels), or an output that cannot carry it here (AVIF, GIF,
+ *            BMP, a PNG without zlib, a JPEG past 255 segments).
+ *
+ * @param string|false $icc    pg_image_icc_profile()
+ * @param string       $output jpeg (jpg), png, webp, avif, gif or bmp
+ * @param bool|null    $zlib   whether gzcompress() exists; null asks PHP
+ * @return string 'none', 'embed' or 'refuse'
+ */
+function pg_image_gd_icc_plan($icc, $output, $zlib = null)
+{
+    if ($icc === '') {
+        return 'none';
+    }
+
+    if (!is_string($icc)) {
+        return 'refuse';
+    }
+
+    if (pg_image_icc_is_srgb($icc)) {
+        return 'none';
+    }
+
+    if ((strlen($icc) < 132) || (substr($icc, 16, 4) !== 'RGB ') || (substr($icc, 36, 4) !== 'acsp')) {
+        return 'refuse';
+    }
+
+    $output = strtolower((string) $output);
+
+    if (($output === 'jpg') || ($output === 'jpe')) {
+        $output = 'jpeg';
+    }
+
+    if ($zlib === null) {
+        $zlib = function_exists('gzcompress');
+    }
+
+    if ($output === 'jpeg') {
+        return (strlen($icc) <= 255 * 65519) ? 'embed' : 'refuse';
+    }
+
+    if ($output === 'png') {
+        return $zlib ? 'embed' : 'refuse';
+    }
+
+    if ($output === 'webp') {
+        return 'embed';
+    }
+
+    return 'refuse';
+}
+
+
+/**
+ * Write an ICC profile into encoded image bytes (JPEG, PNG or WebP, told by
+ * their first bytes). False for any other format or a structure that is not
+ * the expected one.
+ *
+ * @param string $data
+ * @param string $icc
+ * @return string|false
+ */
+function pg_image_embed_icc($data, $icc)
+{
+    $data = (string) $data;
+
+    if (substr($data, 0, 2) === "\xFF\xD8") {
+        return pg_image_jpeg_embed_icc($data, $icc);
+    }
+
+    if (substr($data, 0, 8) === "\x89PNG\r\n\x1A\n") {
+        return pg_image_png_embed_icc($data, $icc);
+    }
+
+    if ((substr($data, 0, 4) === 'RIFF') && (substr($data, 8, 4) === 'WEBP')) {
+        return pg_image_webp_embed_icc($data, $icc);
+    }
+
+    return false;
+}
+
+
+/**
+ * A JPEG with $icc in APP2 "ICC_PROFILE" segments (65519 bytes of profile
+ * each, numbered from 1), placed after the leading APPn segments (JFIF, Exif)
+ * and before the tables. An ICC segment already there is dropped.
+ *
+ * @param string $jpeg
+ * @param string $icc
+ * @return string|false false when the bytes are not a JPEG whose leading
+ *                      segments can be walked, or the profile does not fit
+ */
+function pg_image_jpeg_embed_icc($jpeg, $icc)
+{
+    $jpeg = (string) $jpeg;
+    $icc = (string) $icc;
+    $length = strlen($jpeg);
+
+    if (($icc === '') || (substr($jpeg, 0, 2) !== "\xFF\xD8")) {
+        return false;
+    }
+
+    $chunks = str_split($icc, 65519);
+
+    if (count($chunks) > 255) {
+        return false;
+    }
+
+    $head = '';
+    $offset = 2;
+
+    while (true) {
+
+        if (($offset + 4 > $length) || ($jpeg[$offset] !== "\xFF")) {
+            return false;
+        }
+
+        $marker = ord($jpeg[$offset + 1]);
+
+        if (($marker < 0xE0) || ($marker > 0xEF)) {
+            break;
+        }
+
+        $size = unpack('n', substr($jpeg, $offset + 2, 2));
+        $size = $size[1];
+
+        if (($size < 2) || ($offset + 2 + $size > $length)) {
+            return false;
+        }
+
+        $segment = substr($jpeg, $offset, 2 + $size);
+
+        if (($marker !== 0xE2) || (substr($segment, 4, 12) !== "ICC_PROFILE\x00")) {
+            $head .= $segment;
+        }
+
+        $offset += 2 + $size;
+    }
+
+    $profile = '';
+
+    foreach ($chunks as $index => $chunk) {
+        $profile .= "\xFF\xE2" . pack('n', 2 + 14 + strlen($chunk)) . "ICC_PROFILE\x00" . chr($index + 1) . chr(count($chunks)) . $chunk;
+    }
+
+    return "\xFF\xD8" . $head . $profile . substr($jpeg, $offset);
+}
+
+
+/**
+ * A PNG with $icc in an iCCP chunk right after IHDR (it must come before
+ * PLTE and IDAT). An iCCP, sRGB, gAMA or cHRM chunk before the image data is
+ * dropped: a decoder that reads the profile would ignore them, one that does
+ * not would otherwise read a second, different answer.
+ *
+ * @param string $png
+ * @param string $icc
+ * @return string|false false when the bytes are not a PNG whose chunks up to
+ *                      IDAT can be walked, or zlib is missing
+ */
+function pg_image_png_embed_icc($png, $icc)
+{
+    $png = (string) $png;
+    $icc = (string) $icc;
+    $length = strlen($png);
+
+    if (($icc === '') || !function_exists('gzcompress')
+        || (substr($png, 0, 8) !== "\x89PNG\r\n\x1A\n") || (substr($png, 8, 8) !== "\x00\x00\x00\x0DIHDR") || ($length < 33)
+    ) {
+        return false;
+    }
+
+    $compressed = @gzcompress($icc, 9);
+
+    if (!is_string($compressed)) {
+        return false;
+    }
+
+    $data = "ICC profile\x00\x00" . $compressed;
+    $out = substr($png, 0, 33) . pack('N', strlen($data)) . 'iCCP' . $data . pack('N', crc32('iCCP' . $data));
+    $offset = 33;
+
+    while (true) {
+
+        if ($offset + 12 > $length) {
+            return false;
+        }
+
+        $size = unpack('N', substr($png, $offset, 4));
+        $size = $size[1];
+        $type = substr($png, $offset + 4, 4);
+
+        if (($type === 'IDAT') || ($type === 'IEND')) {
+            return $out . substr($png, $offset);
+        }
+
+        if (($size < 0) || ($size > $length - $offset - 12)) {
+            return false;
+        }
+
+        if (!in_array($type, array('iCCP', 'sRGB', 'gAMA', 'cHRM'), true)) {
+            $out .= substr($png, $offset, 12 + $size);
+        }
+
+        $offset += 12 + $size;
+    }
+}
+
+
+/**
+ * A WebP with $icc in an ICCP chunk, in the shapes libgd writes: a simple
+ * lossy ('VP8 ') or lossless ('VP8L') file gets a VP8X header in front, its
+ * canvas read from the bitstream and its alpha flag from the lossless
+ * header; an extended one (VP8X, ALPH, VP8) gets the ICC flag. The ICCP chunk
+ * follows VP8X, an older one is dropped, and the RIFF size is written again.
+ *
+ * @param string $webp
+ * @param string $icc
+ * @return string|false false for an animation or any structure that is not
+ *                      one of those
+ */
+function pg_image_webp_embed_icc($webp, $icc)
+{
+    $webp = (string) $webp;
+    $icc = (string) $icc;
+    $length = strlen($webp);
+
+    if (($icc === '') || ($length < 20) || (substr($webp, 0, 4) !== 'RIFF') || (substr($webp, 8, 4) !== 'WEBP')) {
+        return false;
+    }
+
+    // The chunks after the RIFF header, checked to lie inside the file.
+    $chunks = array();
+    $offset = 12;
+
+    while ($offset < $length) {
+
+        if ($offset + 8 > $length) {
+            return false;
+        }
+
+        $size = unpack('V', substr($webp, $offset + 4, 4));
+        $size = $size[1];
+
+        if (($size < 0) || ($size > $length - $offset - 8)) {
+            return false;
+        }
+
+        $chunks[] = array(substr($webp, $offset, 4), substr($webp, $offset + 8, $size));
+        $offset += 8 + $size + ($size % 2);
+    }
+
+    if (!$chunks) {
+        return false;
+    }
+
+    $first = $chunks[0][0];
+    $payload = $chunks[0][1];
+    $header = '';
+    $width = 0;
+    $height = 0;
+    $flags = 0x20;
+
+    if ($first === 'VP8X') {
+
+        if ((strlen($payload) !== 10) || (ord($payload[0]) & 0x02)) {
+            return false;
+        }
+
+        $header = chr(ord($payload[0]) | 0x20) . substr($payload, 1);
+        array_shift($chunks);
+
+    } elseif ($first === 'VP8 ') {
+
+        // A key frame: the frame tag's low bit is 0, then the start code
+        // 9d 01 2a and the 14-bit width and height.
+        if ((strlen($payload) < 10) || (ord($payload[0]) & 0x01) || (substr($payload, 3, 3) !== "\x9D\x01\x2A")) {
+            return false;
+        }
+
+        $width = unpack('v', substr($payload, 6, 2));
+        $height = unpack('v', substr($payload, 8, 2));
+        $width = $width[1] & 0x3FFF;
+        $height = $height[1] & 0x3FFF;
+
+    } elseif ($first === 'VP8L') {
+
+        // The 0x2f signature, then 14 bits of width - 1, 14 of height - 1 and
+        // the alpha bit.
+        if ((strlen($payload) < 5) || ($payload[0] !== "\x2F")) {
+            return false;
+        }
+
+        $bits = unpack('V', substr($payload, 1, 4));
+        $bits = $bits[1];
+        $width = ($bits & 0x3FFF) + 1;
+        $height = (($bits >> 14) & 0x3FFF) + 1;
+        $flags = 0x20 | ((($bits >> 28) & 0x01) ? 0x10 : 0);
+
+    } else {
+        return false;
+    }
+
+    if ($header === '') {
+
+        if (($width < 1) || ($height < 1)) {
+            return false;
+        }
+
+        $header = chr($flags) . "\x00\x00\x00" . substr(pack('V', $width - 1), 0, 3) . substr(pack('V', $height - 1), 0, 3);
+    }
+
+    $body = 'WEBP' . 'VP8X' . pack('V', 10) . $header
+        . 'ICCP' . pack('V', strlen($icc)) . $icc . ((strlen($icc) % 2) ? "\x00" : '');
+
+    foreach ($chunks as $chunk) {
+        if ($chunk[0] !== 'ICCP') {
+            $body .= $chunk[0] . pack('V', strlen($chunk[1])) . $chunk[1] . ((strlen($chunk[1]) % 2) ? "\x00" : '');
+        }
+    }
+
+    return 'RIFF' . pack('V', strlen($body)) . $body;
 }
 
 

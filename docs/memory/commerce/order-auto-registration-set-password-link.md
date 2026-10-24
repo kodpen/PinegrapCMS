@@ -20,4 +20,4 @@ description: An account an order's auto-registration opens has no password and g
 
 ## What does not show the account yet?
 - Receipt pages and e-mails built in the visual editor draw the order with the order view widget (`includes/fn/widgets.php`), which has no new-account block or token. The shipped design templates set `order_receipt_email_page_id` to such a page, so on those sites the link is issued but never shown; the customer reaches the account through "Forgot password". Not a regression: no password was shown there before.
-- Closing it is a separate change: `__new_account_email` / `__new_account_link` tokens and a `has_new_account` flag on the order view widget, gated by `pg_order_new_account_drawn_for_customer()`, with designer labels and `check_bindings`.
+- Closing it is a separate change: `__new_account_email` / `__new_account_set_password_url` tokens and `has_new_account` / `has_set_password_link` flags (the form item view's names, `designer/token-dictionary.md`) on the order view widget, gated by `pg_order_new_account_drawn_for_customer()`, with designer labels and `check_bindings`.

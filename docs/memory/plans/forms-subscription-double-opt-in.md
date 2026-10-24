@@ -1,31 +1,31 @@
 ---
 name: forms-subscription-double-opt-in
-description: Proposal (2026-10-21; step b done, PR #1385): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
+description: Plan (approved 2026-10-23; b done, PR #1385; a, c, d open): forms that add to a contact group get throttling, signed link variables, per-form double opt-in and an optional Turnstile/hCaptcha provider
 ---
 
 ## Where does this come from?
-- kodpen.com since 2026-10-13: most entries of the subscription form are strangers' real addresses (subscription bombing). The maths CAPTCHA does not stop it.
+- kodpen.com since 2026-10-13: most subscription form entries are strangers' real addresses (subscription bombing); the maths CAPTCHA does not stop it.
 
 ## What does the code do now?
-- `custom_form.php` adds the contact to `contact_group_id` on submission (~1113-1150), no confirmation; an anonymous submission always inserts a new contact (~141, ~1069). The submitter e-mail (~1294-1412) goes to the typed address every time: the victim gets each one.
-- CAPTCHA (`includes/fn/auth.php`): "a + b" in plain text (bots parse it), answer in the session with its issue time (`pg_form_captcha_issue()` ~3000), honeypot textarea `body`; skipped for any signed-in session (~3063, ~3118, ~3152). An auto-registration form signs the visitor in (`custom_form.php` ~927). StopForumSpam over plain http (~3173).
-- WAF: `custom_form.php` is a sensitive script (`waf.php` ~1819, 30/min per address), skipped for `IS_BOT` (item 4 of `security-findings-2026-10-waf.md`) and any signed-in session (`waf_user_is_authenticated()` ~3350, ~4206).
-- Signed links only in campaigns: `pg_email_preferences_signature()` (`includes/fn/mail.php` ~243), footer ~967, `List-Unsubscribe` (`mail_queue.php` ~422). Form mails resolve `^^...^^` in `get_variable_submitted_form_data_for_content()` (`content.php` ~3064) and `key_code` by `replace_variables()`.
-- `consent_log` (11.0.16) has no form writer; its statuses and sources are code lists (`privacy.php` ~117, ~127), so `pending`/`form` need no schema.
+- `custom_form.php` adds the contact to `contact_group_id` on submission (~1113-1150) and mails the typed address every time (~1294-1412).
+- CAPTCHA (`includes/fn/auth.php` ~3000-3173): plain "a + b", honeypot `body`, skipped for any signed-in session; StopForumSpam over http. WAF sensitive limit for `custom_form.php` (`waf.php` ~1819) is skipped for any signed-in session.
+- Signed links exist only in campaigns (`pg_email_preferences_signature()`, `includes/fn/mail.php` ~243). `consent_log` (11.0.16) has no form writer; statuses and sources are code lists (`privacy.php` ~117, ~127).
 
-## Steps (one small PR each)
-a. No schema: `waf_rate` buckets in `custom_form.php`: per recipient (one submitter mail and one sign-up per address per 24 h), per address for group forms, per domain; minimum fill time from `issued` (signed time field when CAPTCHA is off); StopForumSpam over https.
-b. `^^email_preferences_url^^` (signed, `pg_email_preferences_query()`) and `^^confirm_subscription_url^^` in submitter subject, body and e-mail page, beside `key_code`. Done, PR #1385 (`ui/form-mail-link-variables.md`).
-c. Double opt-in: the submission keeps the contact, not the group. Link: HMAC with ENCRYPTION_KEY (own prefix) over contact, group, time; 7 days; no stored state. GET shows a button, POST confirms (mail scanners open links). Confirm joins the group and logs `granted` (ip, UA); submission logs `pending`. A per-form switch needs `custom_form_pages.double_opt_in`: one 2026.11.0 step, label from the owner; the designer form settings get it too.
-d. Turnstile/hCaptcha: keys in `connect_apps` `captcha_<provider>` like `sms_<key>` (no schema); `get_captcha_fields()`/`get_captcha_info()` print the widget, so the designer `captcha` section binding stays; server-side verify; host into `waf_csp_policy()`.
+## What was decided?
+- Route: a global open-source product with no dependence on Cloudflare; every protection works on any server.
+- Captcha: a provider layer; the built-in maths question stays the default; Turnstile and hCaptcha optional, keys in settings; server-side verification. Provider unreachable or wrong keys: the submission is refused with a "try again" message and a rate-limited log line (fail closed).
+- Only staff (panel access) skip the captcha and the WAF sensitive rate limit; signed-in members do not.
+- Double opt-in: per-form switch `custom_form_pages.double_opt_in` (schema, default 0). When on, submission does not add to the group; a signed stateless link is mailed; GET shows a confirm button, POST confirms and adds to the group. `consent_log`: `pending` on submission, `granted` on confirmation, with IP and user agent, `purpose` = group id.
+- Throttling: per recipient address 3/day, per IP 10/hour, per sender domain 30/hour; config columns with these defaults (one schema step), editable on the Security settings screen. Minimum fill time via a signed timestamp field. StopForumSpam over https, switch default off.
+- Variables: `^^email_preferences_url^^` (signed; only in the submitter's own mail, never in admin/watcher copies or on the confirmation page) and `^^confirm_subscription_url^^` (empty when double opt-in is off).
+- kodpen.com unconfirmed members since 2026-10-13: site operation for the owner, no re-confirmation mail.
+- Schema labels: a = 11.0.28 (config `form_limit_ip_hour` 10, `form_limit_recipient_day` 3, `form_limit_domain_hour` 30, `form_spam_blacklist` 0); c = 11.0.27 (`custom_form_pages.double_opt_in`).
 
-## What must the owner decide?
-1. Per-form switch (schema) or automatic for groups with `email_subscription` on (no schema, behaviour change)?
-2. Turnstile, hCaptcha or both; on a failed verify call refuse or accept?
-3. Skip CAPTCHA for signed-in members, or only staff?
-4. İYS proof: group in `purpose`, keep IP and UA? (`sms-and-iys.md` step 4)
-5. kodpen.com group members since 2026-10-13 never confirmed: remove (recommended) or keep; never send them a reconfirm mail.
-6. Bucket numbers.
+## Steps?
+- a — throttling per address/IP/domain (settings, 11.0.28), signed minimum fill time, StopForumSpam https, staff-only captcha and WAF exemption (claim #1375, open)
+- b — `^^email_preferences_url^^` and `^^confirm_subscription_url^^` in form mails: done, PR #1385 (`ui/form-mail-link-variables.md`); the confirmation link stays empty until step c fills it
+- c — double opt-in switch (11.0.27), signed confirmation link and page, `consent_log` pending/granted (claim #1377, open)
+- d — captcha provider layer: built-in default, Turnstile and hCaptcha, fail closed, CSP; after a (claim #1378, open)
 
 ## Where to start?
-- Step a; read `waf/waf-login-captcha.md`, `designer/custom-form-options-and-rules.md`.
+- Read `waf/waf-login-captcha.md`, `designer/custom-form-options-and-rules.md`, `sms-and-iys.md` step 4.

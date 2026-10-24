@@ -37,17 +37,22 @@ function test_order_submit_affiliate_commission_starts_at_zero()
 		pg_assert_false((bool) preg_match('/\$commission = /', substr($source, $reset + 1, $add - $reset - 1)), 'no assignment in between');
 	}
 
-	// PHP itself: the old default throws, the new one adds up.
-	$threw = false;
+	// PHP itself: the old default is refused, the new one adds up.
+	$refused = false;
 
 	try {
 		$commission = '';
 		$commission += 1.5;
 	} catch (TypeError $e) {
-		$threw = true;
+		// PHP 8.0 and later.
+		$refused = true;
+	} catch (ErrorException $e) {
+		// PHP 7.1 to 7.4 warn "A non-numeric value encountered"; the runner
+		// throws the warning as this exception.
+		$refused = true;
 	}
 
-	pg_assert_true($threw || (PHP_MAJOR_VERSION < 8), "'' + float throws on PHP 8");
+	pg_assert_true($refused, "'' + float is refused");
 
 	$commission = 0;
 	$commission += 448.5;

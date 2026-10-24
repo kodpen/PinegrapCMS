@@ -867,3 +867,47 @@ function mp_listing_pending_groups($account_id) {
 		  AND (marketplace_category_map.remote_category_id != '')");
 
 }
+
+// An article's waiting create lines, split into the ones to send and the ones
+// whose product is no longer for sale.
+//
+// A line is queued while its product is live, and the product can go to the
+// Recycle Bin (or be deleted) before the job runs. mp_listing_items() leaves
+// such a product out, so its line would ride along with the batch, find no SKU
+// in the marketplace's answer and close as done with nothing listed. The
+// dispatcher closes it as failed with the reason instead: it shows among the
+// failures, and "Try again" after a restore lists it.
+//
+// $rows carry id (the queue line), found_id (the products row, null when it is
+// gone), live_id (the product when it is out of the bin, else null or 0) and
+// product_name.
+//
+// Returns array('send' => queue ids, 'binned' => array(queue id => product
+// name), 'missing' => queue ids).
+function mp_listing_split_live($rows) {
+
+	$split = array('send' => array(), 'binned' => array(), 'missing' => array());
+
+	foreach ((array)$rows as $row) {
+
+		$id = (int) $row['id'];
+
+		if ((int)$row['live_id'] > 0) {
+
+			$split['send'][] = $id;
+
+		} elseif ((int)$row['found_id'] > 0) {
+
+			$split['binned'][$id] = (string) $row['product_name'];
+
+		} else {
+
+			$split['missing'][] = $id;
+
+		}
+
+	}
+
+	return $split;
+
+}

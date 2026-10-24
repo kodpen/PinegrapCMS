@@ -294,6 +294,49 @@ function test_backup_restore_archive_read()
 	rmdir($dir);
 }
 
+// Copies one file of an archive with pg_restore_archive_copy() in a PHP
+// process of its own. Returns what the copy returned (error) and how far that
+// process's peak memory rose above what it had in use before the copy (peak,
+// in bytes; null when the process failed, error then holding what it said).
+// Its own process, because the peak of this one cannot be cleared before
+// PHP 8.2 (memory_reset_peak_usage()): it still holds the dump the test
+// wrote, twice over with ZipArchive::addFromString()'s copy of it, and
+// whatever earlier tests used. Null when PHP cannot be started again.
+function backup_restore_test_copy_alone($archive, $index, $path)
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgrestore');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "\$zip = new ZipArchive();\n"
+		. '$zip->open(' . var_export($archive, true) . ");\n"
+		. "\$before = memory_get_usage();\n"
+		. '$error = pg_restore_archive_copy($zip, ' . (int) $index . ', ' . var_export($path, true) . ");\n"
+		. "echo json_encode(array('error' => \$error, 'peak' => memory_get_peak_usage() - \$before));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+
+	if (($code !== 0) || !is_array($result) || !isset($result['error'], $result['peak'])) {
+		return array('error' => implode("\n", $out), 'peak' => null);
+	}
+
+	return $result;
+}
+
 // The installation screen's upload extracts a file a megabyte at a time, so a
 // dump larger than the memory limit still comes out, whole and checked; a file
 // that does not match its checksum is not left behind.
@@ -316,19 +359,17 @@ function test_backup_restore_archive_copy()
 	$zip->close();
 	unset($dump);
 
-	$zip = new ZipArchive();
-	$zip->open($dir . '/big.zip');
+	$copied = backup_restore_test_copy_alone($dir . '/big.zip', 0, $dir . '/sql.sql');
 
-	if (function_exists('memory_reset_peak_usage')) {
-		memory_reset_peak_usage();
+	if ($copied !== null) {
+		pg_assert_same('', $copied['error'], 'copied');
+		pg_assert_true(($copied['peak'] !== null) && ($copied['peak'] < 8 * 1048576), 'a ' . round($size / 1048576) . ' MB dump is copied within a few megabytes: ' . round((float) $copied['peak'] / 1048576, 1) . ' MB');
+		pg_assert_same($size, filesize($dir . '/sql.sql'));
+		pg_assert_same($crc, hash_file('crc32b', $dir . '/sql.sql'));
 	}
 
-	$before = memory_get_usage();
-	pg_assert_same('', pg_restore_archive_copy($zip, 0, $dir . '/sql.sql'), 'copied');
-	pg_assert_true((memory_get_peak_usage() - $before) < 8 * 1048576, 'a ' . round($size / 1048576) . ' MB dump is copied within a few megabytes: ' . round((memory_get_peak_usage() - $before) / 1048576, 1) . ' MB');
-	pg_assert_same($size, filesize($dir . '/sql.sql'));
-	pg_assert_same($crc, hash_file('crc32b', $dir . '/sql.sql'));
-
+	$zip = new ZipArchive();
+	$zip->open($dir . '/big.zip');
 	pg_assert_true(pg_restore_archive_copy($zip, 5, $dir . '/none.sql') !== '', 'no such file in the archive');
 	pg_assert_false(file_exists($dir . '/none.sql'));
 	$zip->close();

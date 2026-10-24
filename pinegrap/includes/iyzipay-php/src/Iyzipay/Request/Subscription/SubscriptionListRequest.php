@@ -6,15 +6,15 @@ use Iyzipay\JsonBuilder;
 use Iyzipay\Request;
 
 class SubscriptionListRequest extends Request {
-    private string $subscriptionReferenceCode;
-    private string $subscriptionStatus;
-    private int $page;
-    private int $count;
-    private string $customerReferenceCode;
-    private string $parentReferenceCode;
-    private string $startDate;
-    private string $endDate;
-    private string $pricingPlanReferenceCode;
+    private $subscriptionReferenceCode;
+    private $subscriptionStatus;
+    private $page;
+    private $count;
+    private $customerReferenceCode;
+    private $parentReferenceCode;
+    private $startDate;
+    private $endDate;
+    private $pricingPlanReferenceCode;
 
     public function getSubscriptionReferenceCode(): ?string {
         return $this->subscriptionReferenceCode ?? null;
