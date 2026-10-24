@@ -5,8 +5,10 @@
  * Tests for the MCP client (includes/mcp/client.php): reading answers sent
  * as JSON or as an event stream, the handshake with a server of either
  * generation, a forgotten session, paged tool lists, what a tool's result
- * becomes as text, and a task followed to its result (the tasks extension). The servers are stand-ins passed as the connection's
- * transport; nothing goes over the network.
+ * becomes as text, a task followed to its result (the tasks extension), and
+ * what a refusal says: a sign-in asked for, a moved address, an old /sse
+ * address, a JSON-RPC error, a timeout. The servers are stand-ins passed as
+ * the connection's transport; nothing goes over the network.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -243,6 +245,162 @@ function test_mcp_client_does_not_fall_back_on_refused_credentials()
 	pg_assert_same(401, $open['status']);
 	pg_assert_same(1, count($log), 'initialize is not tried with the same refused credential');
 	pg_assert_same('', $conn['protocol']);
+	pg_assert_same('The MCP server refused the credentials. Check the token or the header.', $open['error'], 'a challenge that names no sign-in');
+	pg_assert_false($open['oauth_challenge'] ?? null, 'no OAuth sign-in offered');
+}
+
+// A stand-in server that answers every request the same way and writes each
+// address it was sent to $log.
+function mcp_client_test_fixed_server($status, $headers, $body, &$log, $error = '', $errno = 0)
+{
+	return function ($url) use ($status, $headers, $body, &$log, $error, $errno) {
+		$log[] = $url;
+
+		return array('status' => $status, 'headers' => $headers, 'body' => $body, 'error' => $error, 'errno' => $errno);
+	};
+}
+
+function test_mcp_client_names_oauth_when_no_credential_was_sent()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp');
+	$conn['transport'] = mcp_client_test_fixed_server(401, array('www-authenticate' => 'Bearer realm="OAuth", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp", scope="read write"'), '{"error":"invalid_token"}', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(401, $open['status']);
+	pg_assert_true($open['oauth_challenge'] ?? null, 'the server offers an OAuth sign-in');
+	pg_assert_same('This MCP server asks for a sign-in: under How the site signs in, choose Sign in to the service (OAuth), or Access token (Bearer) if the service gives one.', $open['error']);
+	pg_assert_same(1, count($log), 'initialize is not tried');
+}
+
+function test_mcp_client_a_refused_token_also_names_oauth()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp', array('Authorization: Bearer wrong'));
+	$conn['transport'] = mcp_client_test_fixed_server(401, array('www-authenticate' => 'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"'), '', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_true($open['oauth_challenge'] ?? null);
+	pg_assert_same('The MCP server refused the credentials. Check the token or the header, or choose Sign in to the service (OAuth) under How the site signs in.', $open['error']);
+	pg_assert_same(1, count($log));
+
+	// Discovery reads the same refusal for where to sign in.
+	$send = pg_mcp_client_send($conn, 'tools/list', array(), '2025-06-18');
+
+	pg_assert_same(401, $send['status'], 'the status stays for the caller');
+	pg_assert_true($send['oauth']);
+	pg_assert_contains('resource_metadata', $send['headers']['www-authenticate'] ?? '', 'the challenge stays for the caller');
+}
+
+function test_mcp_client_a_moved_server_is_named_not_followed()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp/');
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => '/mcp'), '', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(307, $open['status']);
+	pg_assert_same('The MCP server moved to https://mcp.example.com/mcp. Enter that address instead.', $open['error'], 'a relative Location against the address');
+	pg_assert_same(array('https://mcp.example.com/mcp/', 'https://mcp.example.com/mcp/'), $log, 'the new address is never called');
+
+	$log = array();
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => 'http://MCP.example.com/mcp'), '', $log);
+
+	pg_assert_same('The MCP server moved to https://mcp.example.com/mcp. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'http on the same host is named as https');
+
+	$conn['transport'] = mcp_client_test_fixed_server(308, array('location' => 'http://other.example.com/mcp'), '', $log);
+
+	pg_assert_same('The MCP server moved to http://other.example.com/mcp. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'another host is named as it is');
+
+	$conn['transport'] = mcp_client_test_fixed_server(301, array('location' => 'https://mcp.example.com/v2/mcp?api_key=secret'), '', $log);
+
+	pg_assert_same('The MCP server moved to https://mcp.example.com/v2/mcp?…. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'a query is not repeated');
+
+	$conn['transport'] = mcp_client_test_fixed_server(302, array('location' => 'javascript:alert(1)'), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 302).', pg_mcp_client_negotiate($conn)['error'], 'a Location that is no web address');
+
+	$conn['transport'] = mcp_client_test_fixed_server(307, array(), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 307).', pg_mcp_client_negotiate($conn)['error'], 'no Location');
+
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => 'https://mcp.example.com/mcp/'), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 307).', pg_mcp_client_negotiate($conn)['error'], 'a Location that is the same address');
+}
+
+function test_mcp_client_an_old_sse_address_names_the_mcp_one()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/sse');
+	$conn['transport'] = mcp_client_test_fixed_server(405, array('content-type' => 'text/plain'), 'Method Not Allowed', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(405, $open['status']);
+	pg_assert_same('This is an old SSE address. The address that works here usually ends in /mcp: https://mcp.example.com/mcp', $open['error']);
+
+	$conn = pg_mcp_client_connection('https://docs.example.com/v1/sse/?team=7');
+	$conn['transport'] = mcp_client_test_fixed_server(410, array('content-type' => 'application/problem+json'), '{"type":"about:blank","title":"This MCP URL has moved to /mcp","status":410}', $log);
+
+	pg_assert_same('This is an old SSE address. The address that works here usually ends in /mcp: https://docs.example.com/v1/mcp?…', pg_mcp_client_negotiate($conn)['error'], 'a trailing slash, a query not repeated');
+
+	$conn['transport'] = mcp_client_test_fixed_server(404, array(), '', $log);
+
+	pg_assert_contains('/mcp', pg_mcp_client_negotiate($conn)['error'], '404 too');
+
+	$conn = pg_mcp_client_connection('https://mcp.example.com/messages');
+	$conn['transport'] = mcp_client_test_fixed_server(405, array(), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 405).', pg_mcp_client_negotiate($conn)['error'], 'another path');
+
+	$conn = pg_mcp_client_connection('https://mcp.example.com/sse');
+	$conn['transport'] = mcp_client_test_fixed_server(500, array(), '', $log);
+
+	pg_assert_same('The MCP server had an error (500).', pg_mcp_client_negotiate($conn)['error'], 'another status');
+}
+
+function test_mcp_client_reads_a_json_rpc_error_with_any_id_on_a_failed_status()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp', array(), '2025-06-18');
+	$conn['transport'] = mcp_client_test_fixed_server(400, array('content-type' => 'application/json'), '{"jsonrpc":"2.0","id":"server-error","error":{"code":-32600,"message":"Bad Request: Unsupported protocol version"}}', $log);
+
+	$list = pg_mcp_client_request($conn, 'tools/list', array());
+
+	pg_assert_false($list['ok']);
+	pg_assert_same(400, $list['status']);
+	pg_assert_same(-32600, $list['code']);
+	pg_assert_same('Bad Request: Unsupported protocol version', $list['error'], 'the server\'s reason');
+
+	$ok = pg_mcp_client_read(array('status' => 200, 'headers' => array(), 'body' => '{"jsonrpc":"2.0","id":"other","error":{"code":-32600,"message":"x"}}'), 3);
+
+	pg_assert_same(null, $ok['message'], 'with a 200 another request\'s error is not this one\'s');
+}
+
+function test_mcp_client_a_timeout_is_said_plainly()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://slow.example.com/mcp');
+	$conn['transport'] = mcp_client_test_fixed_server(0, array(), '', $log, 'Operation timed out after 5001 milliseconds with 184 bytes received', 28);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(0, $open['status']);
+	pg_assert_same('The MCP server took too long to answer.', $open['error']);
+
+	pg_assert_same('The MCP server could not be reached.', pg_mcp_client_transport_text('Failed to connect to slow.example.com port 443', 7));
+	pg_assert_same('The address of the MCP server does not resolve.', pg_mcp_client_transport_text('Could not resolve host: slow.example.com', 6));
+	pg_assert_same('SSL connect error', pg_mcp_client_transport_text('SSL connect error', 35), 'any other error in curl\'s words');
+	pg_assert_same('The address of the MCP server is inside this network and is not called.', pg_mcp_client_transport_text('That address is inside this network and is not called.'), 'a refusal before curl');
 }
 
 function test_mcp_client_refuses_a_version_it_does_not_speak()
