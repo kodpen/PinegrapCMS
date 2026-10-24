@@ -538,11 +538,11 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * The listing's card drawn once for each rating state. has_rating and
  * no_rating describe the product of a card, so only the card is marked: an
  * element outside it, or one carrying a flag no catalog evaluates, is drawn
- * as before. Each product row takes the template of its state; a group row
- * has no rating and takes the one without.
+ * as before. Each product row takes the template of its state. A group row
+ * has no rating state of its own, so its card draws neither flag's elements.
  *
  * @param array $nodes the loop_area's children, or the whole tree when it has none
- * @return array 'rated' and 'unrated' card HTML
+ * @return array 'rated', 'unrated' and 'group' card HTML
  */
 function _pg_catalog_card_templates($nodes)
 {
@@ -559,6 +559,8 @@ function _pg_catalog_card_templates($nodes)
     return array(
         'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
         'unrated' => trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true))),
+        // No flag is set, so every marked span is cut.
+        'group'   => trim(_pg_sw_resolve_visibility($html, array())),
     );
 }
 
@@ -853,7 +855,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $split = _split_widget_tree($tree_decoded);
 
     // The card comes in two states, with and without a rating (has_rating /
-    // no_rating). $loop_template is the one without: a group row takes it too.
+    // no_rating); $loop_template is the one without. A group row has no
+    // rating state and takes $loop_template_group, which draws neither.
     if ($split['loop_children'] === null) {
         $_pg_cards     = _pg_catalog_card_templates(array($tree_decoded));
         $static_html   = '';
@@ -863,6 +866,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
     $loop_template       = $_pg_cards['unrated'];
     $loop_template_rated = $_pg_cards['rated'];
+    $loop_template_group = $_pg_cards['group'];
 
     // ── Resolve order_by → SQL clause (whitelist!) ────────────────────────
     // Catalog's sort_order lives on products_groups_xref (per-group), so a
@@ -1934,6 +1938,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // image, short_description, address, url); product-only tokens
     // (price, inventory, mpn, gallery, …) collapse to empty via the final
     // ^^…^^ strip below — the designer template stays usable for both.
+    // Elements shown only with or only without a rating (has_rating /
+    // no_rating) are left out of a group card ($loop_template_group).
     //
     // ^^__row_type^^ ('group' / 'product') lets the designer add type-aware
     // CSS / wrapper markup if they want a visual distinction.
@@ -1943,7 +1949,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // first, then files). True interleaved sort across both is a future step.
     $child_groups_html = '';
     $has_children = 0;
-    if ($group_navigation !== 'none' && $loop_template !== '') {
+    if ($group_navigation !== 'none' && $loop_template_group !== '') {
         // At ROOT (no active group) → show TOP-LEVEL groups (parent_id = 0).
         // When DRILLED INTO a parent → show that parent's direct children.
         // Both cases use the same loop_template so the designer's card
@@ -2148,7 +2154,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
                 $g_values = pg_sw_escape_token_values($g_values);
 
-                $g_rendered = $loop_template;
+                $g_rendered = $loop_template_group;
                 // Longest keys first so '__short_description' is replaced before '__description'.
                 $g_keys = array_keys($g_values);
                 usort($g_keys, function ($a, $b) { return strlen($b) - strlen($a); });

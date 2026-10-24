@@ -10,7 +10,7 @@ description: Product rating in the catalog widgets: __rating_avg / __rating_coun
 
 ## How does a wrapper (stars, "(12)") hide without a rating?
 - "Show only when" `has_rating` / `no_rating` (`SW_VISIBILITY_FLAGS`, both catalog kinds). They read the same count as the tokens. `pg-hide-if-empty` does nothing in catalog widgets.
-- Listing: the card is drawn before the products are read, once for each state (`_pg_catalog_card_templates()`: `_pg_sw_mark_visibility()` with only these two flags, then `_pg_sw_resolve_visibility()` on the card alone); a row takes the card of its state. Only the card (loop area) is marked: an element outside it, or another widget's flag, is drawn as before. Group rows have no rating and take the card without one.
+- Listing: the card is drawn before the products are read, once for each state (`_pg_catalog_card_templates()`: `_pg_sw_mark_visibility()` with only these two flags, then `_pg_sw_resolve_visibility()` on the card alone); a row takes the card of its state. Only the card (loop area) is marked: an element outside it, or another widget's flag, is drawn as before. Group rows (categories, select groups) have no rating state: their card (`'group'`, resolved with no flag set) draws neither has_rating nor no_rating elements, and the child-group block needs that card to be non-empty.
 - Product page: the tree is marked before the split and resolved once the product is read, on the card and the surround, before the variant picker looks for its anchors and before values go in.
 - The no-products check counts both cards: a card drawn only with a rating is still a card.
 

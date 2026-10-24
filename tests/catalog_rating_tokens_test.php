@@ -81,7 +81,8 @@ function test_catalog_rating_columns()
 
 // The listing's card is drawn once for each rating state: an element shown
 // only with a rating is in the rated card alone, one shown only without it in
-// the other, and a flag no catalog evaluates leaves its element drawn.
+// the other, a group row (no rating state of its own) draws neither, and a
+// flag no catalog evaluates leaves its element drawn.
 function test_catalog_rating_card_templates()
 {
 	$paragraph = function ($text, $flag) {
@@ -102,6 +103,10 @@ function test_catalog_rating_card_templates()
 	pg_assert_false(strpos($templates['rated'], 'No reviews yet') !== false, 'the rated card has no "no reviews" text');
 	pg_assert_contains('<p>No reviews yet</p>', $templates['unrated']);
 	pg_assert_false(strpos($templates['unrated'], 'Stars') !== false, 'the card without a rating has no stars');
+	pg_assert_true(isset($templates['group']), 'a card for group rows');
+	$group = isset($templates['group']) ? $templates['group'] : '';
+	pg_assert_false(strpos($group, 'Stars') !== false, 'a group card has no stars');
+	pg_assert_false(strpos($group, 'No reviews yet') !== false, 'a group card has no "no reviews" text');
 
 	foreach ($templates as $state => $html) {
 		pg_assert_contains('<p>Always</p>', $html, $state . ': an element without a flag');
@@ -114,10 +119,12 @@ function test_catalog_rating_card_templates()
 
 	pg_assert_same('<p>Stars</p>', $templates['rated']);
 	pg_assert_same('', $templates['unrated']);
+	pg_assert_same('', isset($templates['group']) ? $templates['group'] : null, 'nor for a group');
 }
 
 // The listing reads the columns behind the readiness check, fills both tokens
-// from the helper, and gives each row the card of its state.
+// from the helper, gives each product row the card of its state and each
+// group row the card with neither state.
 function test_catalog_rating_listing_source()
 {
 	$listing = _catalog_rating_function_source('includes/fn/widgets_catalog.php', '_render_system_widget_catalog_listing');
@@ -134,6 +141,10 @@ function test_catalog_rating_listing_source()
 	pg_assert_contains("'__rating_count'        => \$rating['__rating_count'],", $listing);
 	pg_assert_contains('$rendered = ($rating[\'__rating_count\'] !== \'\') ? $loop_template_rated : $loop_template;', $listing);
 	pg_assert_contains("if (\$loop_template === '' && \$loop_template_rated === '') {", $listing, 'a card shown only with a rating is still a card');
+	pg_assert_contains("\$loop_template_group = \$_pg_cards['group'];", $listing);
+	pg_assert_contains("if (\$group_navigation !== 'none' && \$loop_template_group !== '') {", $listing, 'child groups need a group card');
+	pg_assert_contains('$g_rendered = $loop_template_group;', $listing, 'a group row draws neither rating state');
+	pg_assert_false(strpos($listing, '$g_rendered = $loop_template;') !== false, 'no group row takes the card without a rating');
 	pg_assert_same(2, substr_count($listing, '_pg_catalog_card_templates('), 'with and without a loop area');
 }
 
@@ -176,6 +187,8 @@ function test_catalog_rating_item_view_source()
 
 	pg_assert_true($mark !== false && $split !== false && $mark < $split, 'marked before the split');
 	pg_assert_true($resolve !== false && $resolve > strpos($view, '$_civ_var_rating_cols'), 'resolved after the product and its variants are read');
+	pg_assert_contains("'has_rating' => \$_civ_rating['__rating_count'] !== '',", $view, 'a product with reviews has a rating');
+	pg_assert_contains("'no_rating'  => \$_civ_rating['__rating_count'] === '',", $view, 'a product without reviews has none');
 	pg_assert_contains('$static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);', $view);
 }
 
