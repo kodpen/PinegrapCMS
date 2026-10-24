@@ -1750,18 +1750,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                     }
                 }
                 if ($viewer_filter_watcher) {
-                    // Watcher check needs the configured detail page (a form_item_view
-                    // page with comments + watcher email enabled). Without one, the
-                    // watcher contribution collapses to FALSE — same as legacy logic.
-                    $detail_pid_for_watch = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-                    $watcher_page_id = $detail_pid_for_watch > 0 ? db_value(
-                        "SELECT page_id FROM page
-                         WHERE page_id = '" . (int)$detail_pid_for_watch . "'
-                           AND page_type = 'form item view'
-                           AND comments = '1'
-                           AND comments_watcher_email_page_id != '0'"
-                    ) : 0;
-                    if ($watcher_page_id) {
+                    // Watchers of the configured detail page: a classic form
+                    // item view page, or a designed page whose record view
+                    // shows this form, with comments and watching on
+                    // (pg_sw_list_watcher_page_id()). Without one, the watcher
+                    // contribution collapses to FALSE — same as legacy logic.
+                    $watcher_page_id = pg_sw_list_watcher_page_id(isset($cfg['detail_page_id']) ? $cfg['detail_page_id'] : 0, $custom_form_page_id);
+                    if ($watcher_page_id > 0) {
                         $clauses[] = "(EXISTS (SELECT 1 FROM watchers
                                               WHERE watchers.page_id = '" . (int)$watcher_page_id . "'
                                                 AND watchers.item_id = forms.id
@@ -2363,8 +2358,7 @@ function pg_sw_record_comment_context($page_id, $form_id = 0, $email = false)
     $widget = pg_sw_page_widget($page_id, 'form_item_view');
     if (!$widget) return null;
     $cfg = $widget['cfg'];
-    $custom_form_page_id = (int)(!empty($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id']
-                               : (!empty($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+    $custom_form_page_id = pg_sw_record_view_form_page_id($cfg);
     $access = (isset($cfg['access_control']) && in_array($cfg['access_control'], array('public', 'submitter_only', 'logged_in'), true))
         ? $cfg['access_control'] : 'public';
 
@@ -2394,6 +2388,78 @@ function pg_sw_record_comment_context($page_id, $form_id = 0, $email = false)
         'visible'             => ($form !== null) && pg_sw_submitted_form_visible($form, $access, $page_id)
                                  && ($email || pg_sw_record_passes_filters($custom_form_page_id, pg_sw_record_view_filters($cfg), $form['id'], $page_id)),
     );
+}
+
+// The custom form a record view's comments and watchers belong to:
+// custom_form_page_id, else the older form_page_id; 0 when it names neither.
+// The source_page name is not looked up (pg_sw_form_widget_form_page_id()
+// does), so the comment context above and the list's watcher page below
+// read the same form. Pure.
+function pg_sw_record_view_form_page_id($cfg)
+{
+    if (!is_array($cfg)) return 0;
+    foreach (array('custom_form_page_id', 'form_page_id') as $key) {
+        if (!empty($cfg[$key])) return is_scalar($cfg[$key]) ? (int)$cfg[$key] : 0;
+    }
+    return 0;
+}
+
+// The page whose watchers a viewer filtered form list counts as the
+// viewer's records (viewer_filter_watcher), or 0 when none counts. Pure:
+// $page is the detail page's row (page_id, page_type, comments,
+// comments_watcher_email_page_id), $view_form_page_id the form of the
+// page's first record view widget (pg_sw_record_view_form_page_id(), 0
+// without one).
+//
+// - Comments and watching must be on: add_or_remove_watcher.php stores no
+//   watcher on a page without them.
+// - A classic form item view page counts by its page type, as it always did.
+// - Any other page counts when its record view shows the list's own form:
+//   add_or_remove_watcher.php and add_comment.php take that widget's record
+//   as the page's thread (pg_sw_record_comment_context(),
+//   pg_comment_thread_verify()). A page without one, or whose record view
+//   shows another form, counts no watcher.
+function pg_sw_list_watcher_page_decision($page, $list_form_page_id, $view_form_page_id)
+{
+    if (!is_array($page)) return 0;
+    $page_id = (isset($page['page_id']) && is_scalar($page['page_id'])) ? (int)$page['page_id'] : 0;
+    if ($page_id <= 0) return 0;
+    $comments = (isset($page['comments']) && is_scalar($page['comments'])) ? (int)$page['comments'] : 0;
+    $watching = (isset($page['comments_watcher_email_page_id']) && is_scalar($page['comments_watcher_email_page_id']))
+        ? (int)$page['comments_watcher_email_page_id'] : 0;
+    if ($comments !== 1 || $watching === 0) return 0;
+    $page_type = (isset($page['page_type']) && is_scalar($page['page_type'])) ? (string)$page['page_type'] : '';
+    if ($page_type === 'form item view') return $page_id;
+    $list_form = is_scalar($list_form_page_id) ? (int)$list_form_page_id : 0;
+    $view_form = is_scalar($view_form_page_id) ? (int)$view_form_page_id : 0;
+    return ($list_form > 0 && $view_form === $list_form) ? $page_id : 0;
+}
+
+// The page whose watchers a viewer filtered list of $custom_form_page_id
+// counts: pg_sw_list_watcher_page_decision() over the list's detail page
+// and, on a page other than a classic form item view, its first record view
+// widget, the one pg_sw_record_comment_context() asks. One page query; the
+// widget lookup is kept per request (pg_sw_page_widgets()), and the list's
+// record links read the same page. 0 when no watcher counts.
+function pg_sw_list_watcher_page_id($detail_page_id, $custom_form_page_id)
+{
+    $detail_page_id      = is_scalar($detail_page_id) ? (int)$detail_page_id : 0;
+    $custom_form_page_id = is_scalar($custom_form_page_id) ? (int)$custom_form_page_id : 0;
+    if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return 0;
+    $page = db_item(
+        "SELECT page_id, page_type, comments, comments_watcher_email_page_id
+         FROM page
+         WHERE page_id = '" . $detail_page_id . "'
+           AND comments = '1'
+           AND comments_watcher_email_page_id != '0'
+         LIMIT 1");
+    if (!is_array($page)) return 0;
+    $view_form = 0;
+    if ((string)$page['page_type'] !== 'form item view') {
+        $widget = pg_sw_page_widget($detail_page_id, 'form_item_view');
+        if ($widget) $view_form = pg_sw_record_view_form_page_id($widget['cfg']);
+    }
+    return pg_sw_list_watcher_page_decision($page, $custom_form_page_id, $view_form);
 }
 
 // ============================================================================
