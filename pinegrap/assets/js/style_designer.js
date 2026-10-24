@@ -3661,10 +3661,16 @@ const StyleDesigner = (function () {
         return false;
     }
 
-    // Where a pasted block goes. Into the selection when it is something that
-    // holds children — "I selected this area and pasted into it" — and beside
-    // it when it is not, because a paragraph cannot contain a section.
-    function _sdPasteTarget(aimed) {
+    // Where a block pasted through the paste event goes, as { parent, index }.
+    // `aimed` is the node the paste landed on; without one, the selection.
+    // Into it when it is something that holds children — "I selected this
+    // area and pasted into it" — and beside it when it is not, because a
+    // paragraph cannot contain a section. Beside means in the tree the node
+    // lives in: the page's, or the shared component's or system widget's own
+    // tree (_sdAnyParent()). The in-memory paste (context menu,
+    // Ctrl+V without the system clipboard) has its own spot,
+    // _sdPasteTarget(): always beside the selection, with no index.
+    function _sdPasteSpot(aimed) {
         var sel = aimed || selectedNode;
         if (!sel || sel === tree) return { parent: tree, index: (tree.children || []).length };
         var holds = (sel.type === 'root' || sel.type === 'container' || sel.type === 'row' ||
@@ -3679,7 +3685,8 @@ const StyleDesigner = (function () {
             if (!Array.isArray(sel.children)) sel.children = [];
             return { parent: sel, index: sel.children.length };
         }
-        var par = findParent(sel, tree) || tree;
+        var found = _sdAnyParent(sel);
+        var par = (found && found.parent) || tree;
         if (!Array.isArray(par.children)) par.children = [];
         var at = par.children.indexOf(sel);
         return { parent: par, index: at === -1 ? par.children.length : at + 1 };
@@ -3688,7 +3695,7 @@ const StyleDesigner = (function () {
     function _sdPasteNodes(nodes, aimed) {
         if (!nodes || !nodes.length) return;
         saveState();
-        var spot = _sdPasteTarget(aimed);
+        var spot = _sdPasteSpot(aimed);
         var last = null;
         nodes.forEach(function (n, i) {
             var clone = cloneTree(n);
@@ -3808,7 +3815,7 @@ const StyleDesigner = (function () {
         // canvas is not aiming at a paragraph, however recently one was
         // selected; falling back to the selection here is what turned pasted
         // markup into escaped text. Placement still falls back to the
-        // selection (see _sdPasteTarget) - that part is a position, not a
+        // selection (see _sdPasteSpot) - that part is a position, not a
         // statement about what the markup is.
         var aimed = _sdNodeFromEventTarget(t);
         if (aimed && _sdIsTextSink(aimed)) {
@@ -39032,7 +39039,9 @@ const StyleDesigner = (function () {
 
     // Where a clipboard paste lands: beside the selected node — in the page
     // tree or in the shared widget that owns it — or at the root when nothing
-    // (or the root itself) is selected. Returns { parent, sid }.
+    // (or the root itself) is selected. Returns { parent, sid }. Used by the
+    // in-memory paste (context menu, Ctrl+V); the paste event places its
+    // block with _sdPasteSpot().
     function _sdPasteTarget() {
         if (selectedNode && selectedNode !== tree) {
             var owner = _sdAnyParent(selectedNode);
