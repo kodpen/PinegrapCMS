@@ -12,7 +12,8 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 - plans/workspace-mcp-capabilities.md: the site's MCP server: dead tools, one proposal route, resources, prompts, API gaps.
 - plans/workspace-quotes.md: sales quote (`erp_quote`) and cart quote (`cart_quote`).
 - plans/workspace-catalog-create.md: products and product groups from the Workspace, bulk drafts, variant sets.
-- plans/workspace-canvas-workflow-tables.md: workflow tables, Workspace canvas, table automations, workflow mode, scheduled-actions API.
+- plans/workspace-canvas-workflow-tables.md: workflow tables, board view, scheduled-actions API.
+- plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).
 - plans/workspace-composer-tools.md, plans/workspace-slash-commands.md, plans/workspace-voice-messages.md, plans/workspace-channel-icons.md, plans/workspace-mcp-connectors.md, plans/workspace-assistant-key-setup.md.
 - Shared names and single owners: plans/workspace-growth-terms.md. Neighbours: plans/workspace-agent-handles.md, ai-agent-prompts.md, workspace-phase3-leftovers.md, privacy-data-pack-audit-log.md, workspace-friendly-ui.md.
 
@@ -20,7 +21,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 1. Fixes, no schema, no decision: `/task` Enter and Turkish names (slash 1, #1440); dead MCP tools (MCP 1) and missing `dry_run` (MCP 8); voice record, send, play (voice V1, #1457); MCP connector error texts (1, 3-6) and card fixes (9); Discussions caret (#1433); API colour on channels (icons 1); composer shared toolbar (composer 1); catalogue 1a.
 2. Foundations, no schema: record-kind drift test (CRM 1), then the `erp_quote` tag (quotes 1); command registry and argument popup (slash 2-3); resources and consent presets (MCP 4-5); scheduled-actions read tools after PR #1352 (canvas S1); assistant key setup slice 1 if it needs no schema.
 3. After owner answers, no schema: no MCP approve/apply (MCP 2), then the propose route (MCP 3); quotes 2-3; catalogue 2-4; CRM 2-5; canvas S2.
-4. Schema, ask first, one 2026.11.0 sub-step each (labels from the call list on `origin/development` and open PRs): `ws_refs.source_type` (CRM), workflow tables (canvas T1, then T4, T3), `cart_quotes` (quotes), `erp_quote_templates` (ERP label), `ws_voice` (voice V3), `ws_channels.icon`, saved replies.
+4. Schema, ask first, one 2026.11.0 sub-step each (labels from the call list on `origin/development` and open PRs): `ws_refs.source_type` (CRM), flows (F1), workflow tables (canvas T1), flow shares (F7), `cart_quotes` (quotes), `erp_quote_templates` (ERP label), `ws_voice` (voice V3), `ws_channels.icon`, saved replies.
 
 ## Which rules bind every slice?
 - One slice, one PR, a `sahiplenildi` claim first (CLAUDE.md); a PR marks its step done in its plan.
