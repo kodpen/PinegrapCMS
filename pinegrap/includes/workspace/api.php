@@ -42,6 +42,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -182,6 +183,7 @@ function ws_openapi_objects()
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
+        'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
     );
 }
 
@@ -241,7 +243,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_channels_list',
             'returns'     => array('list' => 'WorkspaceChannel'),
             'summary'     => 'List workspace channels',
-            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
+            'description' => 'The channels the owner of the application may read: every public channel, and the private ones the owner is in. unread counts what the owner has not read. notify says how the channel tells the owner about what is written in it (POST /workspace/channels/{id}/notify). They come in the owner\'s own order, as their sidebar shows them: the pinned ones first, then by order, then by name; pinned and order on each channel say where it stands (POST /workspace/channels/{id}/prefs). color is the channel\'s colour from the palette, null for none; icon is the Bootstrap Icons class it is drawn with: the one chosen for it when icon_chosen is true (a private, guest or customer channel then shows its mark in the corner), else the one its kind gives. active_since keeps the ones written in since a moment, which is how an app that already holds the list refreshes it.',
             'params'      => array(
                 array('name' => 'archived', 'in' => 'query', 'type' => 'bool', 'description' => 'The archived channels instead.'),
                 array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the channels tied to this customer.'),
@@ -266,6 +268,8 @@ function ws_api_routes()
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
                 array('name' => 'members', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'User ids of the colleagues to bring in besides the owner.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours, as color on a channel group shows it; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty keeps the icon the kind gives (a hash, or a lock for a private channel).'),
             ),
         ),
 
@@ -285,6 +289,8 @@ function ws_api_routes()
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 80),
                 array('name' => 'topic', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Empty clears it.'),
                 array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
+                array('name' => 'color', 'in' => 'body', 'type' => 'enum', 'values' => ws_palette_hexes(), 'nullable' => true, 'description' => 'One of the palette\'s colours; null or empty for none.'),
+                array('name' => 'icon', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_channel_icon_choices()), 'nullable' => true, 'description' => 'A Bootstrap Icons class from the channel form\'s list; null or empty brings back the icon the kind gives.'),
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
             ),
         ),
@@ -1833,6 +1839,19 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.mcp_servers.catalogue',
+            'method'      => 'GET',
+            'path'        => '/workspace/mcp-servers/catalogue',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mcp_catalogue',
+            'mcp'         => false,
+            'returns'     => array('list' => 'WorkspaceMcpConnector'),
+            'summary'     => 'Ready-made MCP connectors',
+            'description' => 'The other services\' MCP servers the Workspace Settings add with one click, for an application whose owner is an administrator (403 for anybody else). auth says how the site signs in: none (the server answers without an account), oauth (the service registers the site on its own and an administrator signs in once) or bearer (a token made on token_url). alias is the one offered when it is free; tools read_only means the first read of the tools turns on the ones the server marks as reading only. added says whether the site already has a server at url, under server_alias. The list is bundled with the site, not fetched. Adding a server, its credential and its sign-in are done in the Workspace Settings only; no MCP tool lists this.',
+            'params'      => array(),
         ),
 
     );

@@ -265,7 +265,8 @@ function ws_money_out($minor)
  *
  * @param array $viewer
  * @param array $tokens ws_tokens() rows, from any number of texts
- * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon
+ * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon;
+ *               a channel also badge (ws_channel_icon_badge())
  */
 function ws_refs_resolve($viewer, $tokens)
 {
@@ -694,8 +695,14 @@ function ws_refs_resolve($viewer, $tokens)
     if (!empty($ids['channel'])) {
         foreach ((array) db_items("SELECT * FROM ws_channels WHERE id IN (" . $in('channel') . ")") as $row) {
             if (ws_can_read_channel($viewer, $row)) {
+                // The icon the channel was given, with the mark of its kind in
+                // the corner (channel_icons.php); else a lock or a hash.
+                $chosen = ws_channel_icon_chosen($row);
+
                 $put('channel', $row['id'], '#' . $row['name'], $base . 'workspace.php?channel=' . (int) $row['id'], $row['topic'], '', true,
-                    ($row['kind'] === 'private') ? 'bi-lock' : 'bi-hash');
+                    ($chosen !== '') ? $chosen : (($row['kind'] === 'private') ? 'bi-lock' : 'bi-hash'));
+
+                $out['channel:' . (int) $row['id']]['badge'] = ws_channel_icon_badge($row);
             } else {
                 $put('channel', $row['id'], lang('Private channel'), '', '', '', false, 'bi-lock');
             }
@@ -941,6 +948,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             'label' => $ref['label'],
             'meta'  => trim($ref['meta'] . (($ref['status'] !== '') ? ' · ' . $ref['status'] : ''), ' ·'),
             'icon'  => $ref['icon'],
+            'badge' => (string) ($ref['badge'] ?? ''),
         );
 
         if (count($out) >= $limit) {
