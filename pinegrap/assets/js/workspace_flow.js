@@ -144,7 +144,9 @@
         stash: null,        // what the run view put aside: the draft, selection, view, edit
         starting: false,    // a start is being asked or sent
         startToken: null,   // { flow, value } kept until a start is answered
-        poll: { timer: 0, delay: POLL_FIRST, busy: false },
+        opening: {},        // run ids whose ws_flow_run_get from the list is on its way
+        openSeq: 0,         // the run asked for last; an older answer is not shown
+        poll: { timer: 0, delay: POLL_FIRST, busy: 0 }, // busy: the id of the run a look is on its way for
         tickAt: 0
     };
 
@@ -659,6 +661,7 @@
 
         window.clearTimeout(state.saveTimer);
         endRun();
+        state.openSeq++;
 
         // The runs panel stays open while the same flow is shown again
         // (after Publish or Pause); another flow starts without it.
@@ -761,6 +764,24 @@
         ui.bar.appendChild(run);
     }
 
+    // The runs, or one of them, shown in the side panel. A box or an arrow
+    // selected meanwhile takes the panel over (the outline aside) while
+    // state.panel stays 'runs', so the list is back once nothing is selected.
+    function runsShown() {
+        return !!(state.run || ((state.panel === 'runs') && (!state.selected || state.outline)));
+    }
+
+    // "Flow runs" says by being pressed what the side panel shows; drawn
+    // again with the side panel, which a selection redraws alone.
+    function markRunsButton() {
+        var runs = ui.bar ? ui.bar.querySelector('[data-refocus="runs"]') : null;
+
+        if (runs) {
+            runs.classList.toggle('active', runsShown());
+            runs.setAttribute('aria-pressed', runsShown() ? 'true' : 'false');
+        }
+    }
+
     // "Flow runs": the runs in the side panel, pressed while they or one of
     // them is shown. A flow never published has none.
     function runsButton() {
@@ -768,7 +789,7 @@
             return;
         }
 
-        var shown = !!(state.run || (state.panel === 'runs'));
+        var shown = runsShown();
         var runs = K.button('btn btn-sm btn-ghost' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
 
         runs.setAttribute('aria-pressed', shown ? 'true' : 'false');
@@ -1324,6 +1345,7 @@
             ui.side.appendChild(flowForm());
         }
 
+        markRunsButton();
         refocus();
     }
 
@@ -1728,10 +1750,14 @@
             head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
             item.appendChild(head);
 
-            // A run shown: how each box went, in words, in place of its settings.
+            // A run shown: how each box went, in words, in place of its
+            // settings. The heading takes the focus when a control of the
+            // box goes with a redraw (keepFocus()), as a canvas box does.
             if (state.run) {
                 var step = stepOf(node.id);
 
+                head.tabIndex = -1;
+                head.setAttribute('data-refocus', 'outline-box-' + node.id);
                 item.classList.add('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none'));
                 item.appendChild(outlineRun(node, step));
             } else {
@@ -2319,8 +2345,11 @@
 
     // Draws part of the screen again while the person may be at work in it:
     // a control that went with the drawing hands the focus to the one drawn
-    // in its place (its data-refocus name), or to its box; a focus the caller
-    // asked for (state.refocus) comes first.
+    // in its place (its data-refocus name), or to its box (on the canvas or
+    // in the outline); in a run's side panel or outline, to the box shown or
+    // the run's title, so a control the run no longer has (Cancel once it
+    // ended, a task link once the box moved on) never drops the focus to the
+    // page. A focus the caller asked for (state.refocus) comes first.
     function keepFocus(draw) {
         var active = document.activeElement;
         var wanted = state.refocus;
@@ -2328,6 +2357,7 @@
 
         if (active && (active !== document.body) && ui.root.contains(active)) {
             var box = active.closest('.wsf-node[data-node]');
+            var item = active.closest('.wsf-outline-item[data-node]');
 
             if (active.getAttribute('data-refocus')) {
                 keys.push(active.getAttribute('data-refocus'));
@@ -2335,6 +2365,18 @@
 
             if (box) {
                 keys.push('box-' + box.getAttribute('data-node'));
+            }
+
+            if (state.run && item) {
+                keys.push('outline-box-' + item.getAttribute('data-node'));
+            }
+
+            if (state.run && (ui.side.contains(active) || ui.outlineBox.contains(active))) {
+                if (active.closest('.wsf-run-step')) {
+                    keys.push('step');
+                }
+
+                keys.push('run-title');
             }
         }
 
@@ -2348,15 +2390,18 @@
     }
 
     // "Flow runs" pressed: the list in the side panel, or back from it (and
-    // from a run shown) to the flow.
+    // from a run shown) to the flow. The list hidden by a selection is
+    // shown again: one press always does what the button's state says.
     function toggleRuns() {
+        state.openSeq++;
+
         if (state.run) {
             state.refocus = 'runs';
             closeRun('');
             return;
         }
 
-        state.panel = (state.panel === 'runs') ? '' : 'runs';
+        state.panel = runsShown() ? '' : 'runs';
 
         if (state.panel) {
             state.selected = null;
@@ -2459,6 +2504,7 @@
             var top = el('span', 'wsf-run-item-top');
 
             item.type = 'button';
+            item.disabled = !!state.opening[run.id];
             item.setAttribute('data-refocus', 'run-' + run.id);
             top.appendChild(runBadge(RUN_STATES, run.status));
             top.appendChild(el('span', 'fw-semibold', t('fl_run_name', run.id)));
@@ -2488,12 +2534,46 @@
         }
     }
 
-    // A run from the list, read with its boxes, then shown.
+    // A run from the list, read with its boxes, then shown: only while it is
+    // still the one asked for last and the list is still open. Its button
+    // is disabled while the request runs, drawn so again if the list is
+    // redrawn meanwhile (runsSide()).
     function openRun(id) {
+        var seq = ++state.openSeq;
+        var busy = function (on) {
+            var item = ui.side.querySelector('.wsf-run-item[data-refocus="run-' + id + '"]');
+
+            if (on) {
+                state.opening[id] = true;
+            } else {
+                delete state.opening[id];
+            }
+
+            if (item) {
+                item.disabled = on;
+            }
+        };
+
+        busy(true);
+
         return K.api('ws_flow_run_get', { run_id: id }).then(function (data) {
+            busy(false);
+
+            if ((seq !== state.openSeq) || state.run || !runsShown()) {
+                return;
+            }
+
             state.refocus = 'run-title';
             showRun(data.run, !!data.due);
-        }).catch(K.fail);
+        }).catch(function (error) {
+            busy(false);
+
+            if (seq === state.openSeq) {
+                state.refocus = 'run-' + id;
+                refocus();
+                K.fail(error);
+            }
+        });
     }
 
     // The run on the canvas: the graph of its version, read-only, with how
@@ -2503,6 +2583,8 @@
         if (!run || !state.flow || (run.flow_id !== state.flow.id)) {
             return;
         }
+
+        state.openSeq++;
 
         if (!state.stash) {
             state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
@@ -2548,6 +2630,7 @@
     function closeRun(panel) {
         var stash = state.stash;
 
+        state.openSeq++;
         endRun();
 
         // The list asked for shows in the side panel only with nothing
@@ -2803,21 +2886,26 @@
         state.poll.timer = window.setTimeout(pollRun, (delay === undefined) ? state.poll.delay : delay);
     }
 
+    // A look at another run still on its way (the run shown was changed
+    // meanwhile) holds nothing up: busy names the run its look is for, and
+    // only a look at the same run waits for that one's answer, which
+    // schedules the next.
     function pollRun() {
         var run = state.run;
 
         state.poll.timer = 0;
 
-        if (!runOpen(run) || state.poll.busy || (document.visibilityState === 'hidden')) {
+        if (!runOpen(run) || (state.poll.busy === run.id) || (document.visibilityState === 'hidden')) {
             return;
         }
 
-        state.poll.busy = true;
+        state.poll.busy = run.id;
 
         K.api('ws_flow_run_get', { run_id: run.id }).then(function (data) {
-            state.poll.busy = false;
+            pollDone(run);
 
             if (!state.run || (state.run.id !== run.id)) {
+                pollResume();
                 return;
             }
 
@@ -2829,7 +2917,12 @@
 
             schedulePoll();
         }).catch(function (error) {
-            state.poll.busy = false;
+            pollDone(run);
+
+            if (!state.run || (state.run.id !== run.id)) {
+                pollResume();
+                return;
+            }
 
             // A refusal (the run is gone or out of reach) is final; a look
             // that got no answer is tried again, later each time.
@@ -2837,11 +2930,25 @@
                 return;
             }
 
-            if (state.run && (state.run.id === run.id)) {
-                state.poll.delay = Math.min(POLL_FAIL_MAX, state.poll.delay * 2);
-                schedulePoll();
-            }
+            state.poll.delay = Math.min(POLL_FAIL_MAX, state.poll.delay * 2);
+            schedulePoll();
         });
+    }
+
+    // A look at run has come back: busy is cleared only while it still names
+    // that run, so a look at another run sent meanwhile keeps its mark.
+    function pollDone(run) {
+        if (state.poll.busy === run.id) {
+            state.poll.busy = 0;
+        }
+    }
+
+    // A look answered for a run no longer shown: the run shown now keeps
+    // being read, should its own next look have been passed over.
+    function pollResume() {
+        if (!state.poll.timer && (state.poll.busy !== (state.run && state.run.id))) {
+            schedulePoll();
+        }
     }
 
     // The screen's tick carries the runs on (ws_scheduled_run()); the run
@@ -2910,7 +3017,9 @@
                 ui.runButton.disabled = true;
             }
 
-            return K.api('ws_flow_run_start', { flow_id: flow.id, token: state.startToken.value }).then(function (data) {
+            // start_token, not token: K.api() sends the CSRF token as token,
+            // and a data key of that name would replace it.
+            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value }).then(function (data) {
                 state.startToken = null;
                 state.starting = false;
                 K.toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');

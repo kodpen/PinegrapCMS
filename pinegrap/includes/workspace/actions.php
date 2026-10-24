@@ -186,16 +186,17 @@ function ws_action_flow_refused($result)
 /**
  * Only what a start of a run may carry: the client's token, which makes a
  * start sent twice (a double click, a request sent again after its answer
- * was lost) one run. Passed on as it came, so ws_flow_run_start_check()
- * refuses a token of the wrong shape instead of a new run starting without
- * one.
+ * was lost) one run. It comes as start_token: `token` of a panel request is
+ * the CSRF token api.php checks, and is never a run's. Passed on as it came,
+ * so ws_flow_run_start_check() refuses a token of the wrong shape instead of
+ * a new run starting without one.
  *
  * @param array $request
  * @return array token, when one was sent
  */
 function ws_action_flow_run_fields($request)
 {
-    return array_key_exists('token', $request) ? array('token' => $request['token']) : array();
+    return array_key_exists('start_token', $request) ? array('token' => $request['start_token']) : array();
 }
 
 /**

@@ -24,18 +24,18 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Unsaveable changes are dropped on a switch only after `ask()`. A 409 shows "Load it again".
 
 ## Focus and keys?
-- `state.refocus` names `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws and hands the focus to the control drawn in place, or its box (`box-<id>`).
+- `state.refocus` names `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control drawn in place, else its box (`box-<id>`), outline heading or the run's title.
 - Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc.
 
 ## What is the outline view?
 - A toggle, default under 768 px: boxes in arrow order with settings and "Connect to…"; the hidden canvas is drawn when shown.
 
 ## What does the run view do?
-- Run (live, version > 0, edit or run access) asks, then starts once: `state.starting` stops a second click; its token is kept until the server answers, so a start sent again gets the run the first one started. Primary only where "New flow" is not shown.
-- "Flow runs" lists runs in the side panel while nothing is selected. A run opened shows its version's graph read-only (`state.edit` false); draft, selection, view are in `state.stash`, and saves keep sending the draft (`draftOf()`), never the run's graph. Closing brings them back.
-- Each box: `wsf-run-<state>` tone, mark and word (ready, running, waiting, done, failed, skipped; none = not reached), its result, a waiting task's link (`?task=`, opens `K.openTask()`, a change there sends `ws_tick`). Taken arrows marked; the outline says states in words.
-- Poll: 2 s, ×1.5 up to 30 s while unchanged; stops when the run ends or the tab hides; `due` sends `ws_tick` (once in 20 s). Changes go to the polite live region. Cancel (`can_cancel`) asks.
+- Run (live, version > 0, edit or run access) asks, then starts once (`state.starting`). Its token goes as `start_token`: `token` is the CSRF token, which `api()` lets a data key replace (every start was refused). Kept until answered, so a start sent again gets the first one's run. Primary only without "New flow".
+- "Flow runs" lists runs while nothing is selected; pressed only while the list or a run shows (`runsShown()`). A run picked: its button disabled meanwhile, only the last pick shown (`openSeq`). Its version's graph read-only; draft, selection, view wait in `state.stash`, saves keep sending the draft (`draftOf()`).
+- Each box: `wsf-run-<state>` tone, mark and word (none = not reached), result, a waiting task's link (`?task=`, `K.openTask()`, then `ws_tick`). Taken arrows marked; outline in words.
+- Poll: 2 s, ×1.5 to 30 s unchanged; stops when ended or hidden. `poll.busy` is a run id: a slow look at the run before froze the next. `due` sends `ws_tick`. Polite live region. Cancel (`can_cancel`) asks.
 
 ## What is left?
 - Notes on the canvas, undo/redo, auto-layout, templates, multi-select, Help link; retry or skip a box (F5).
-- Tests `tests/workspace_flows_canvas_test.php`. The headless harness is not in the repo.
+- Tests `tests/workspace_flows_canvas_test.php`; the headless harness is not in the repo.

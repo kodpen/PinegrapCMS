@@ -242,18 +242,39 @@ function test_workspace_flows_canvas_run_actions_use_the_runner()
 	pg_assert_contains('ws_flow_run_for(', ws_flows_canvas_test_function_source('includes/workspace/actions.php', 'ws_action_flow_run_answer'), 'a run is read again through its access');
 }
 
-// A start passes on only the client's token, and as it came: a token of the
-// wrong shape meets ws_flow_run_start_check()'s refusal rather than being
-// dropped, which would start a run without one.
+// A start passes on only the client's token, sent as start_token, and as it
+// came: a token of the wrong shape meets ws_flow_run_start_check()'s refusal
+// rather than being dropped, which would start a run without one. The
+// request's `token` is the CSRF token api.php checks and never becomes the
+// run's (64 hex characters, over the runner's 56, or one start key for every
+// start of a session).
 function test_workspace_flows_canvas_run_start_fields_carry_only_the_token()
 {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
 
+	$csrf = str_repeat('ab', 32);
+
 	pg_assert_same(array(), ws_action_flow_run_fields(array('flow_id' => 5, 'action' => 'ws_flow_run_start')), 'no token sent');
-	pg_assert_same(array('token' => 'canvas.0a1b'), ws_action_flow_run_fields(array('flow_id' => 5, 'token' => 'canvas.0a1b', 'status' => 'done')), 'the token alone');
-	pg_assert_same(array('token' => array('x')), ws_action_flow_run_fields(array('token' => array('x'))), 'a wrong shape passed on as it came');
-	pg_assert_false(ws_flow_start_token_valid(ws_action_flow_run_fields(array('token' => array('x')))['token']), 'which the runner refuses');
+	pg_assert_same(array(), ws_action_flow_run_fields(array('flow_id' => 5, 'action' => 'ws_flow_run_start', 'token' => $csrf)), 'the CSRF token is not a run token');
+	pg_assert_same(array('token' => 'canvas.0a1b'), ws_action_flow_run_fields(array('flow_id' => 5, 'token' => $csrf, 'start_token' => 'canvas.0a1b', 'status' => 'done')), 'the start token alone');
+	pg_assert_same(array('token' => array('x')), ws_action_flow_run_fields(array('start_token' => array('x'))), 'a wrong shape passed on as it came');
+	pg_assert_false(ws_flow_start_token_valid(ws_action_flow_run_fields(array('start_token' => array('x')))['token']), 'which the runner refuses');
 	pg_assert_true(ws_flow_start_token_valid('canvas.' . str_repeat('0f', 12)), 'the canvas token shape is valid');
+	pg_assert_false(ws_flow_start_token_valid($csrf), 'a CSRF token is not one');
+}
+
+// The canvas sends its start token under its own name, never as `token`,
+// which workspace.js's api() fills with the CSRF token and a data key of the
+// same name would overwrite.
+function test_workspace_flows_canvas_run_start_sends_start_token()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$start = strpos($script, "K.api('ws_flow_run_start', {");
+	$call = ($start !== false) ? substr($script, $start, (int) strpos($script, '}', $start) - $start) : '';
+
+	pg_assert_true($call !== '', 'the start request found');
+	pg_assert_contains('start_token:', $call, 'the start token under its own name');
+	pg_assert_false((bool) preg_match('/[{,]\s*token\s*:/', $call), 'no data key named token');
 }
 
 // The times of a run as the API writes them (api_time()), from a function the
