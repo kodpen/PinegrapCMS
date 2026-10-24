@@ -65,6 +65,7 @@ function test_ws_channel_icon_choices_are_font_classes_listed_once()
 		pg_assert_contains('.' . $name . '::before', $css, $name . ' is drawn by the font');
 		pg_assert_true(trim($row[1]) !== '', $name . ' has Turkish words');
 		pg_assert_true(trim($row[2]) !== '', $name . ' has English words');
+		pg_assert_true(isset($row[3]) && trim((string) $row[3]) !== '', $name . ' has a name for the picker');
 
 		$names[] = $name;
 	}
@@ -236,4 +237,20 @@ function test_ws_channel_icon_api_routes_take_color_and_icon()
 		pg_assert_true(!empty($params['icon']['nullable']), $id . ' icon clears');
 		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' can be rehearsed');
 	}
+}
+
+// The picker's names go through lang(), one literal English key per icon that
+// tr.json translates; the list is no longer read in one language or the other.
+function test_ws_channel_icon_names_are_translated()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_icons.php');
+	$translations = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+
+	pg_assert_same(count(ws_channel_icon_list()), preg_match_all("/array\\('bi-[a-z0-9-]+', '[^']*', '[^']*', lang\\('([^']+)'\\)\\),/", $source, $found));
+
+	foreach ($found[1] as $english) {
+		pg_assert_true(isset($translations[$english]), $english . ' is in tr.json');
+	}
+
+	pg_assert_true(strpos($source, "lang(array('info' => true))") === false, 'no language test in the picker list');
 }

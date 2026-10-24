@@ -8,7 +8,7 @@ description: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the cur
 - Column `ws_channels.icon` VARCHAR(40) NOT NULL DEFAULT '' (2026.11.0, step `upgrade_2026_11_0_workspace_channel_icon()`, label 11.0.81). Probe `ws_channel_icons_ready()` (`pg_schema_has()`). Without the column a sent icon is checked but not written, and the picker is not offered.
 
 ## Where is the code?
-- `includes/workspace/channel_icons.php`: `ws_channel_icon_list()` (80 rows: class, Turkish words, English words; the first phrase of each is the icon's name), `ws_channel_icon_choices()`, `ws_channel_icon_clean()`, `ws_channel_icon_check()` (empty clears, anything else outside the list is refused: "Choose the icon from the list."), `ws_channel_icon_chosen()`, `ws_channel_icon_badge()`, `ws_icon_badged_html()`, the picker's list and words.
+- `includes/workspace/channel_icons.php`: `ws_channel_icon_list()` (80 rows: class, Turkish words, English words for the search, and the picker's name through `lang()`, its key in tr.json), `ws_channel_icon_choices()`, `ws_channel_icon_clean()`, `ws_channel_icon_check()` (empty clears, anything else outside the list is refused: "Choose the icon from the list."), `ws_channel_icon_chosen()`, `ws_channel_icon_badge()`, `ws_icon_badged_html()`, the picker's list and words.
 - `ws_channel_icon()` (customer.php) = chosen, else `ws_channel_kind_icon()` (lock, door, person-badge, building, person-vcard, hash). An unknown or retired stored value is ignored, never drawn.
 - Kind marks (hash, lock, door-open, person, person-badge, person-vcard) are not in the list: a lock chosen for a public channel would say "private". `bi-building` is in the list and is also the derived icon of a current-account channel.
 

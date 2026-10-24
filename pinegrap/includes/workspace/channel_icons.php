@@ -30,108 +30,111 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * channel's kind (hash, lock, door, person) are left out on purpose: a lock
  * chosen for a public channel would say it is private.
  *
- * @return array[] array(class, Turkish words, English words)
+ * The fourth column is the icon's name for the picker, in the interface
+ * language.
+ *
+ * @return array[] array(class, Turkish words, English words, name)
  */
 function ws_channel_icon_list()
 {
     return array(
         // Talking and telling
-        array('bi-megaphone', 'Duyuru, ilan, kampanya, pazarlama', 'Announcement, megaphone, campaign, marketing'),
-        array('bi-chat-dots', 'Sohbet, konuşma, mesaj', 'Chat, talk, message, conversation'),
-        array('bi-envelope', 'E-posta, zarf, posta, mektup', 'Email, envelope, mail, letter'),
-        array('bi-send', 'Gönderim, gönder, giden', 'Send, outgoing, dispatch'),
-        array('bi-telephone', 'Telefon, arama, çağrı', 'Telephone, phone, call'),
-        array('bi-headset', 'Destek, kulaklık, çağrı merkezi, müşteri hizmetleri', 'Support, headset, call centre, call center, customer service, helpdesk'),
-        array('bi-inbox', 'Gelen kutusu, talep, başvuru', 'Inbox, requests, incoming'),
-        array('bi-bell', 'Bildirim, zil, hatırlatma, uyarı', 'Notification, bell, reminder, alert'),
+        array('bi-megaphone', 'Duyuru, ilan, kampanya, pazarlama', 'Announcement, megaphone, campaign, marketing', lang('Announcement')),
+        array('bi-chat-dots', 'Sohbet, konuşma, mesaj', 'Chat, talk, message, conversation', lang('Chat')),
+        array('bi-envelope', 'E-posta, zarf, posta, mektup', 'Email, envelope, mail, letter', lang('Email')),
+        array('bi-send', 'Gönderim, gönder, giden', 'Send, outgoing, dispatch', lang('Send')),
+        array('bi-telephone', 'Telefon, arama, çağrı', 'Telephone, phone, call', lang('Telephone')),
+        array('bi-headset', 'Destek, kulaklık, çağrı merkezi, müşteri hizmetleri', 'Support, headset, call centre, call center, customer service, helpdesk', lang('Support')),
+        array('bi-inbox', 'Gelen kutusu, talep, başvuru', 'Inbox, requests, incoming', lang('Inbox')),
+        array('bi-bell', 'Bildirim, zil, hatırlatma, uyarı', 'Notification, bell, reminder, alert', lang('Notification')),
         // People and work
-        array('bi-people', 'Ekip, takım, insanlar, kişiler', 'Team, people, group, staff'),
-        array('bi-person-workspace', 'Çalışan, personel, insan kaynakları, ik', 'Employee, staff, human resources, hr, desk'),
-        array('bi-briefcase', 'İş, çanta, proje, danışmanlık', 'Work, briefcase, business, project, consulting'),
-        array('bi-building', 'Şirket, bina, ofis, kurum', 'Company, building, office, corporate'),
-        array('bi-house', 'Genel, ev, ana sayfa, merkez', 'General, house, home, main'),
-        array('bi-diagram-3', 'Organizasyon, şema, yapı, hiyerarşi', 'Organisation, organization, diagram, structure, hierarchy'),
-        array('bi-kanban', 'Pano, kanban, iş akışı, süreç', 'Board, kanban, workflow, process'),
-        array('bi-clipboard-check', 'Kontrol listesi, denetim, onay, kalite', 'Checklist, clipboard, audit, approval, quality'),
+        array('bi-people', 'Ekip, takım, insanlar, kişiler', 'Team, people, group, staff', lang('Team')),
+        array('bi-person-workspace', 'Çalışan, personel, insan kaynakları, ik', 'Employee, staff, human resources, hr, desk', lang('Employee')),
+        array('bi-briefcase', 'İş, çanta, proje, danışmanlık', 'Work, briefcase, business, project, consulting', lang('Work')),
+        array('bi-building', 'Şirket, bina, ofis, kurum', 'Company, building, office, corporate', lang('Company')),
+        array('bi-house', 'Genel, ev, ana sayfa, merkez', 'General, house, home, main', lang('General')),
+        array('bi-diagram-3', 'Organizasyon, şema, yapı, hiyerarşi', 'Organisation, organization, diagram, structure, hierarchy', lang('Organisation')),
+        array('bi-kanban', 'Pano, kanban, iş akışı, süreç', 'Board, kanban, workflow, process', lang('Board')),
+        array('bi-clipboard-check', 'Kontrol listesi, denetim, onay, kalite', 'Checklist, clipboard, audit, approval, quality', lang('Checklist')),
         // Time and goals
-        array('bi-calendar-event', 'Takvim, etkinlik, toplantı, randevu', 'Calendar, event, meeting, appointment'),
-        array('bi-clock', 'Saat, zaman, mesai, vardiya', 'Clock, time, hours, shift'),
-        array('bi-flag', 'Hedef, bayrak, kilometre taşı', 'Goal, flag, milestone'),
-        array('bi-trophy', 'Kupa, başarı, yarışma, kazanç', 'Trophy, success, competition, win'),
-        array('bi-award', 'Ödül, rozet, kalite, sertifika', 'Award, badge, quality, certificate'),
-        array('bi-star', 'Yıldız, favori, önemli, öne çıkan', 'Star, favourite, favorite, important, featured'),
-        array('bi-lightning', 'Hızlı, şimşek, acil, enerji', 'Fast, lightning, urgent, energy'),
-        array('bi-bookmark', 'Yer imi, kayıtlı, işaret', 'Bookmark, saved, marked'),
+        array('bi-calendar-event', 'Takvim, etkinlik, toplantı, randevu', 'Calendar, event, meeting, appointment', lang('Calendar')),
+        array('bi-clock', 'Saat, zaman, mesai, vardiya', 'Clock, time, hours, shift', lang('Clock')),
+        array('bi-flag', 'Hedef, bayrak, kilometre taşı', 'Goal, flag, milestone', lang('Goal')),
+        array('bi-trophy', 'Kupa, başarı, yarışma, kazanç', 'Trophy, success, competition, win', lang('Trophy')),
+        array('bi-award', 'Ödül, rozet, kalite, sertifika', 'Award, badge, quality, certificate', lang('Award')),
+        array('bi-star', 'Yıldız, favori, önemli, öne çıkan', 'Star, favourite, favorite, important, featured', lang('Star')),
+        array('bi-lightning', 'Hızlı, şimşek, acil, enerji', 'Fast, lightning, urgent, energy', lang('Fast')),
+        array('bi-bookmark', 'Yer imi, kayıtlı, işaret', 'Bookmark, saved, marked', lang('Bookmark')),
         // Selling
-        array('bi-cart', 'Sepet, alışveriş, sipariş, e-ticaret', 'Cart, shopping, order, ecommerce'),
-        array('bi-bag', 'Çanta, alışveriş, mağaza, perakende', 'Bag, shopping, store, retail'),
-        array('bi-shop', 'Mağaza, dükkan, şube, satış noktası', 'Shop, store, branch, point of sale'),
-        array('bi-tag', 'Etiket, fiyat, ürün', 'Tag, price, product, label'),
-        array('bi-percent', 'İndirim, yüzde, kampanya, vergi', 'Discount, percent, sale, tax'),
-        array('bi-gift', 'Hediye, promosyon, kupon', 'Gift, present, promotion, coupon'),
-        array('bi-ticket-perforated', 'Bilet, destek kaydı, talep, etkinlik', 'Ticket, support case, event'),
-        array('bi-box-seam', 'Paket, kutu, stok, depo', 'Package, box, parcel, stock, warehouse'),
+        array('bi-cart', 'Sepet, alışveriş, sipariş, e-ticaret', 'Cart, shopping, order, ecommerce', lang('Cart')),
+        array('bi-bag', 'Çanta, alışveriş, mağaza, perakende', 'Bag, shopping, store, retail', lang('Bag')),
+        array('bi-shop', 'Mağaza, dükkan, şube, satış noktası', 'Shop, store, branch, point of sale', lang('Shop')),
+        array('bi-tag', 'Etiket, fiyat, ürün', 'Tag, price, product, label', lang('Tag')),
+        array('bi-percent', 'İndirim, yüzde, kampanya, vergi', 'Discount, percent, sale, tax', lang('Discount')),
+        array('bi-gift', 'Hediye, promosyon, kupon', 'Gift, present, promotion, coupon', lang('Gift')),
+        array('bi-ticket-perforated', 'Bilet, destek kaydı, talep, etkinlik', 'Ticket, support case, event', lang('Ticket')),
+        array('bi-box-seam', 'Paket, kutu, stok, depo', 'Package, box, parcel, stock, warehouse', lang('Package')),
         // Shipping and places
-        array('bi-truck', 'Kargo, kamyon, sevkiyat, teslimat, lojistik', 'Shipping, truck, cargo, delivery, logistics'),
-        array('bi-airplane', 'Seyahat, uçak, ihracat', 'Travel, airplane, plane, export'),
-        array('bi-geo-alt', 'Konum, pin, yer, adres, harita', 'Location, pin, place, address, map'),
-        array('bi-globe', 'Dünya, web sitesi, uluslararası', 'World, globe, website, international'),
+        array('bi-truck', 'Kargo, kamyon, sevkiyat, teslimat, lojistik', 'Shipping, truck, cargo, delivery, logistics', lang('Shipping')),
+        array('bi-airplane', 'Seyahat, uçak, ihracat', 'Travel, airplane, plane, export', lang('Travel')),
+        array('bi-geo-alt', 'Konum, pin, yer, adres, harita', 'Location, pin, place, address, map', lang('Location')),
+        array('bi-globe', 'Dünya, web sitesi, uluslararası', 'World, globe, website, international', lang('World')),
         // Money
-        array('bi-receipt', 'Fatura, fiş, makbuz', 'Invoice, receipt, bill'),
-        array('bi-cash-coin', 'Nakit, para, tahsilat, ödeme', 'Cash, money, coin, collection, payment'),
-        array('bi-credit-card', 'Kredi kartı, ödeme, pos', 'Credit card, payment, pos'),
-        array('bi-wallet2', 'Cüzdan, bütçe, harcama', 'Wallet, budget, spending'),
-        array('bi-bank', 'Banka, finans, hazine', 'Bank, finance, treasury'),
-        array('bi-calculator', 'Muhasebe, hesap makinesi, hesap', 'Accounting, calculator'),
-        array('bi-graph-up-arrow', 'Büyüme, grafik, satış, artış', 'Growth, graph, sales, increase'),
-        array('bi-bar-chart', 'Rapor, çubuk grafik, istatistik, analiz', 'Report, bar chart, statistics, analytics'),
+        array('bi-receipt', 'Fatura, fiş, makbuz', 'Invoice, receipt, bill', lang('Invoice')),
+        array('bi-cash-coin', 'Nakit, para, tahsilat, ödeme', 'Cash, money, coin, collection, payment', lang('Cash')),
+        array('bi-credit-card', 'Kredi kartı, ödeme, pos', 'Credit card, payment, pos', lang('Credit card')),
+        array('bi-wallet2', 'Cüzdan, bütçe, harcama', 'Wallet, budget, spending', lang('Wallet')),
+        array('bi-bank', 'Banka, finans, hazine', 'Bank, finance, treasury', lang('Bank')),
+        array('bi-calculator', 'Muhasebe, hesap makinesi, hesap', 'Accounting, calculator', lang('Accounting')),
+        array('bi-graph-up-arrow', 'Büyüme, grafik, satış, artış', 'Growth, graph, sales, increase', lang('Growth')),
+        array('bi-bar-chart', 'Rapor, çubuk grafik, istatistik, analiz', 'Report, bar chart, statistics, analytics', lang('Report')),
         // Papers
-        array('bi-file-earmark-text', 'Belge, doküman, sözleşme, dosya', 'Document, file, contract'),
-        array('bi-folder', 'Klasör, dosyalar, arşiv', 'Folder, files, archive'),
-        array('bi-journal-text', 'Defter, günlük, not, tutanak', 'Journal, notebook, notes, minutes'),
-        array('bi-book', 'Kılavuz, kitap, eğitim, bilgi', 'Guide, book, manual, knowledge'),
-        array('bi-newspaper', 'Haber, gazete, basın, blog', 'News, newspaper, press, blog'),
-        array('bi-printer', 'Baskı, yazıcı, matbaa', 'Printing, printer, print'),
+        array('bi-file-earmark-text', 'Belge, doküman, sözleşme, dosya', 'Document, file, contract', lang('Document')),
+        array('bi-folder', 'Klasör, dosyalar, arşiv', 'Folder, files, archive', lang('Folder')),
+        array('bi-journal-text', 'Defter, günlük, not, tutanak', 'Journal, notebook, notes, minutes', lang('Journal')),
+        array('bi-book', 'Kılavuz, kitap, eğitim, bilgi', 'Guide, book, manual, knowledge', lang('Guide')),
+        array('bi-newspaper', 'Haber, gazete, basın, blog', 'News, newspaper, press, blog', lang('News')),
+        array('bi-printer', 'Baskı, yazıcı, matbaa', 'Printing, printer, print', lang('Printing')),
         // Technology
-        array('bi-gear', 'Ayarlar, çark, ayar, sistem', 'Settings, gear, system'),
-        array('bi-tools', 'Bakım, araçlar, onarım', 'Maintenance, tools, repair'),
-        array('bi-wrench', 'Servis, anahtar, tamir, teknik', 'Service, wrench, repair, technical'),
-        array('bi-code-slash', 'Yazılım, kod, geliştirme', 'Software, code, development'),
-        array('bi-bug', 'Hata, böcek, sorun', 'Bug, defect, issue'),
-        array('bi-database', 'Veritabanı, veri', 'Database, data'),
-        array('bi-cloud', 'Bulut, sunucu, barındırma', 'Cloud, server, hosting'),
-        array('bi-laptop', 'Bilgisayar, dizüstü, bilişim', 'Computer, laptop, it'),
-        array('bi-phone', 'Mobil, cep telefonu, uygulama', 'Mobile, phone, smartphone, app'),
-        array('bi-puzzle', 'Entegrasyon, yapboz, eklenti', 'Integration, puzzle, plugin'),
-        array('bi-robot', 'Otomasyon, robot, yapay zeka', 'Automation, robot, ai, artificial intelligence'),
-        array('bi-shield-check', 'Güvenlik, kalkan, koruma', 'Security, shield, protection'),
-        array('bi-key', 'Erişim, anahtar, şifre', 'Access, key, password'),
+        array('bi-gear', 'Ayarlar, çark, ayar, sistem', 'Settings, gear, system', lang('Settings')),
+        array('bi-tools', 'Bakım, araçlar, onarım', 'Maintenance, tools, repair', lang('Maintenance')),
+        array('bi-wrench', 'Servis, anahtar, tamir, teknik', 'Service, wrench, repair, technical', lang('Service')),
+        array('bi-code-slash', 'Yazılım, kod, geliştirme', 'Software, code, development', lang('Software')),
+        array('bi-bug', 'Hata, böcek, sorun', 'Bug, defect, issue', lang('Bug')),
+        array('bi-database', 'Veritabanı, veri', 'Database, data', lang('Database')),
+        array('bi-cloud', 'Bulut, sunucu, barındırma', 'Cloud, server, hosting', lang('Cloud')),
+        array('bi-laptop', 'Bilgisayar, dizüstü, bilişim', 'Computer, laptop, it', lang('Computer')),
+        array('bi-phone', 'Mobil, cep telefonu, uygulama', 'Mobile, phone, smartphone, app', lang('Mobile')),
+        array('bi-puzzle', 'Entegrasyon, yapboz, eklenti', 'Integration, puzzle, plugin', lang('Integration')),
+        array('bi-robot', 'Otomasyon, robot, yapay zeka', 'Automation, robot, ai, artificial intelligence', lang('Automation')),
+        array('bi-shield-check', 'Güvenlik, kalkan, koruma', 'Security, shield, protection', lang('Security')),
+        array('bi-key', 'Erişim, anahtar, şifre', 'Access, key, password', lang('Access')),
         // Making things
-        array('bi-palette', 'Tasarım, palet, renk, sanat', 'Design, palette, colour, color, art'),
-        array('bi-brush', 'Grafik, fırça, boya', 'Graphics, brush, paint'),
-        array('bi-pencil', 'İçerik, kalem, yazı, düzenleme', 'Content, pencil, writing, editing'),
-        array('bi-camera', 'Fotoğraf, kamera, çekim', 'Photo, camera, shoot'),
-        array('bi-film', 'Video, film, sinema', 'Video, film, cinema'),
-        array('bi-music-note-beamed', 'Müzik, ses, nota', 'Music, sound, note'),
+        array('bi-palette', 'Tasarım, palet, renk, sanat', 'Design, palette, colour, color, art', lang('Design')),
+        array('bi-brush', 'Grafik, fırça, boya', 'Graphics, brush, paint', lang('Graphics')),
+        array('bi-pencil', 'İçerik, kalem, yazı, düzenleme', 'Content, pencil, writing, editing', lang('Content')),
+        array('bi-camera', 'Fotoğraf, kamera, çekim', 'Photo, camera, shoot', lang('Photo')),
+        array('bi-film', 'Video, film, sinema', 'Video, film, cinema', lang('Video')),
+        array('bi-music-note-beamed', 'Müzik, ses, nota', 'Music, sound, note', lang('Music')),
         // Everything else
-        array('bi-lightbulb', 'Fikir, ampul, öneri, ar-ge', 'Idea, lightbulb, suggestion, research'),
-        array('bi-rocket-takeoff', 'Lansman, roket, başlangıç, girişim', 'Launch, rocket, start, startup'),
-        array('bi-compass', 'Strateji, pusula, yön', 'Strategy, compass, direction'),
-        array('bi-mortarboard', 'Eğitim, kep, okul, akademi', 'Training, mortarboard, education, school, academy'),
-        array('bi-translate', 'Çeviri, dil, tercüme', 'Translation, translate, language'),
-        array('bi-heart', 'Sağlık, kalp, sevgi, gönüllü', 'Health, heart, love, volunteer'),
-        array('bi-emoji-smile', 'Sosyal, gülümseme, mutluluk, eğlence', 'Social, smile, happy, fun'),
-        array('bi-cup-hot', 'Mola, fincan, kahve, çay', 'Break, cup, coffee, tea'),
-        array('bi-tree', 'Doğa, ağaç, çevre, bahçe', 'Nature, tree, environment, garden'),
-        array('bi-umbrella', 'Sigorta, şemsiye, güvence', 'Insurance, umbrella, cover'),
-        array('bi-gem', 'Premium, mücevher, değerli, vip', 'Premium, gem, jewel, vip'),
+        array('bi-lightbulb', 'Fikir, ampul, öneri, ar-ge', 'Idea, lightbulb, suggestion, research', lang('Idea')),
+        array('bi-rocket-takeoff', 'Lansman, roket, başlangıç, girişim', 'Launch, rocket, start, startup', lang('Launch')),
+        array('bi-compass', 'Strateji, pusula, yön', 'Strategy, compass, direction', lang('Strategy')),
+        array('bi-mortarboard', 'Eğitim, kep, okul, akademi', 'Training, mortarboard, education, school, academy', lang('Training')),
+        array('bi-translate', 'Çeviri, dil, tercüme', 'Translation, translate, language', lang('Translation')),
+        array('bi-heart', 'Sağlık, kalp, sevgi, gönüllü', 'Health, heart, love, volunteer', lang('Health')),
+        array('bi-emoji-smile', 'Sosyal, gülümseme, mutluluk, eğlence', 'Social, smile, happy, fun', lang('Social')),
+        array('bi-cup-hot', 'Mola, fincan, kahve, çay', 'Break, cup, coffee, tea', lang('Break')),
+        array('bi-tree', 'Doğa, ağaç, çevre, bahçe', 'Nature, tree, environment, garden', lang('Nature')),
+        array('bi-umbrella', 'Sigorta, şemsiye, güvence', 'Insurance, umbrella, cover', lang('Insurance')),
+        array('bi-gem', 'Premium, mücevher, değerli, vip', 'Premium, gem, jewel, vip', lang('Premium')),
     );
 }
 
 /**
  * The icons a channel may be given, by class.
  *
- * @return array[] class => array('tr' => words, 'en' => words)
+ * @return array[] class => array('tr' => words, 'en' => words, 'label' => name)
  */
 function ws_channel_icon_choices()
 {
@@ -141,7 +144,7 @@ function ws_channel_icon_choices()
         $choices = array();
 
         foreach (ws_channel_icon_list() as $row) {
-            $choices[$row[0]] = array('tr' => $row[1], 'en' => $row[2]);
+            $choices[$row[0]] = array('tr' => $row[1], 'en' => $row[2], 'label' => $row[3]);
         }
     }
 
@@ -270,21 +273,19 @@ function ws_icon_badged_html($icon, $badge, $class = '')
 
 /**
  * The choices for the picker in the channel form: the icon, its name in the
- * interface language (Turkish or English) and every word it is found by.
+ * interface language (lang()) and every word it is found by, in both
+ * languages.
  *
  * @return array[] icon, label, words
  */
 function ws_channel_icon_choices_js()
 {
-    $turkish = (strtolower(substr((string) lang(array('info' => true)), 0, 2)) === 'tr');
     $out = array();
 
     foreach (ws_channel_icon_choices() as $icon => $words) {
-        $label = explode(',', $turkish ? $words['tr'] : $words['en']);
-
         $out[] = array(
             'icon'  => $icon,
-            'label' => trim($label[0]),
+            'label' => $words['label'],
             'words' => $words['tr'] . ', ' . $words['en'],
         );
     }
