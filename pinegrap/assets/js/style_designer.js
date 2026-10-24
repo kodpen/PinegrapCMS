@@ -9430,7 +9430,8 @@ const StyleDesigner = (function () {
     }
 
     // Runs after each render, once there is a layout to measure, and again
-    // when the canvas is resized or a stylesheet or picture arrives.
+    // when the canvas is resized or zoomed or a stylesheet or picture
+    // arrives.
     function _sdCanvasFidelityPass() {
         if (!canvasDoc || !canvasDoc.body) return;
         var win = canvasDoc.defaultView;
@@ -10440,7 +10441,8 @@ const StyleDesigner = (function () {
     }
 
     // Layout-dependent canvas work after something moved without a render
-    // (the canvas resized, a stylesheet or picture arrived). Once per frame.
+    // (the canvas resized or zoomed, a stylesheet or picture arrived). Once
+    // per frame.
     // Scheduled on the designer window: the canvas window's frames can be
     // held during a drag (_sdMotionShimFn()) and go away with a replaced
     // canvas document.
@@ -52839,6 +52841,10 @@ const StyleDesigner = (function () {
                     root.style.zoom = canvasZoom;
                 }
             }
+            // The zoom lays the page out again at another width in CSS px
+            // (lines wrap differently) without resizing the canvas window,
+            // so no resize event runs the measuring pass.
+            _sdFxSoon();
         }
         var lbl = document.getElementById('sd-vb-zoom-label');
         if (lbl) lbl.textContent = Math.round(canvasZoom * 100) + '%';

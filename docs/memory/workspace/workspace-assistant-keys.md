@@ -1,32 +1,39 @@
 ---
 name: workspace-assistant-keys
-description: "Create Claude's key" and "Reset secret" on the Claude card: the key made, its scopes (five reads left out), the config link, who sees it, no-grace reset, one-time window
+description: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 ---
 
 ## What does "Create Claude's key" make?
-- `ws_claude_key_post()` (`includes/workspace/claude.php`) calls `api_app_create()` (`includes/api/keys.php`): an `api_apps` row named Claude, kind `server` (never `device` or `oauth`, which let people sign in), status active, rate 120 a minute, owner and creator = the administrator who pressed it, a secret stored only as `api_secret_hash()` with its 4-character hint. Audit line `create` (api_* fields masked by name), Site Log "API application (Claude) was created."
-- The id goes into `config.ws_claude_app_id`, with `ws_claude_error` and `ws_claude_hold_until` cleared. No schema change.
-- Offered only while `ws_claude_app()` finds no row: no key chosen, or the linked one deleted in Application Access (nothing sets `revoked`). A key linked by hand is kept; only its secret can be reset.
+- `ws_claude_key_post()` (`includes/workspace/claude.php`) calls `api_app_create()` (`includes/api/keys.php`): an `api_apps` row named Claude, kind `server`, active, 120/min, owner and creator = the presser, the secret kept only as `api_secret_hash()` and a 4-character hint. Audit `create` (api_* masked), Site Log "API application (Claude) was created."
+- Linked in `config.ws_claude_app_id` (error and hold cleared). No schema change.
+
+## What does "Create Pinegrap AI's key" make?
+- `ws_ai_key_post()` (`includes/workspace/ai.php`, action `ai_key_create`): the same row named Pinegrap AI without a secret (hash and hint empty), linked in `config.ws_ai_app_id`; same audit and log lines. No window, no reset (owner answer 3a).
+- Only an identity (`<@app:N>`), a read filter (`ws_ai_readable_types()`) and a poster (`ws_ai_owner()`).
+- No door: key + secret need a stored hash (`api_secret_hash_accepts()` refuses an empty one); bearer tokens (devices, OAuth, MCP) live only under `device`/`oauth` rows. `api_app_can_sign_in()` draws the card's line (tests/api_app_sign_in_test.php).
+- Never given a secret: Application Access (roles 0-2) and Claude's Reset refuse it (`api_app_secret_can_rotate()`; both UPDATEs add `api_secret_hash <> ''`), the drawer hides the button. Else a Manager could sign in with it, capped by the admin owner. Re-scoping it only changes what Pinegrap AI reads (asker-capped).
+- Claude's channel hint counts only `server` rows with a secret (`ws_claude_suitable_apps()`).
+
+## When is Create offered?
+- Only while `ws_claude_app()` / `ws_ai_app()` finds no row: none chosen, or the linked one deleted in Application Access. A key linked by hand is kept.
 
 ## Which scopes does the key get?
-- `api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out())` (`includes/api/scopes.php`, pure, tests/api_assistant_scopes_test.php): one choice per group, the read of every group, but `workspace:write` and `tasks:write` for those two. No other write, never `webhooks:manage`.
-- Cut to `api_owner_scopes($user)` of the person pressing it; refused when the two Workspace writes are not left. Every call is capped again by `api_effective_scopes()`, so a demoted owner narrows the key at once.
-- Left out (owner decision 2026-10-24): `account:read`, `key_codes:read`, `gift_cards:read`, `site_log:read`, `system:read`. Claude reads records with the owner's rights, so any asker in a channel could get them.
-- Not added (owner decision 2026-10-24): `design:write` (page proposals, the Visual Page Editor's assistant) and `translations:write` (the job queue): both also write live. An administrator adds them in Application Access.
+- `ws_assistant_key_scopes($user)` for both: `api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out())` (pure, tests/api_assistant_scopes_test.php): each group's read, writes only `workspace:write`, `tasks:write`; `api_assistant_scopes_handed_on()` cuts it to the presser's `api_owner_scopes()`, empty (refused) without both writes. `api_effective_scopes()` caps every call again.
+- Left out (owner, 2026-10-24): `account:read`, `key_codes:read`, `gift_cards:read`, `site_log:read`, `system:read`: Claude reads as the owner, so any channel asker would get them.
+- Not added (owner, 2026-10-24): `design:write`, `translations:write` (live writes); Application Access adds them.
 
 ## Who may press the buttons, and who sees the key?
-- Role 0 only, for both actions (POST, `validate_token_field()` in workspace_settings.php). Role-3 holders of the settings right see the card but no key, no prompt block, no buttons.
-- The administrator sees the key, `Secret: ••••` plus the hint, and the prompt, all copyable. The secret is never printed again.
+- Role 0 only (POST, `validate_token_field()` in workspace_settings.php). Role-3 settings holders see the cards without key, prompt or buttons.
+- Claude: key, `Secret: ••••` + hint and prompt, copyable. Pinegrap AI: name, id and whether it can sign in.
 
 ## What does "Reset secret" do?
-- `api_app_rotate_secret($id, 0, $username)`: the id comes only from `ws_claude_app()` (the config link), never from the post; kind other than `server` is refused. Audit line `rotate`, Site Log line.
-- Grace 0: the old secret, and a previous one still inside an Application Access rotation's 24 h, stop at once (`api_secret_matches()`). The confirm warns that anything else using a hand-linked key stops too. Application Access keeps its 24 h rotation.
+- Claude only: `api_app_rotate_secret($id, 0, $username)`, id from `ws_claude_app()`, never the post; non-`server` refused. Audit `rotate`, Site Log line.
+- Grace 0: the old secret and one still in an Application Access rotation's 24 h stop at once; the confirm warns other users of a hand-linked key.
 
-## How is the secret shown only once?
-- Handed to the next request in `$_SESSION['software']['ws_assistant_credentials']` (agent, name, key, secret, rotated), never the address or a form field. workspace_settings.php reads it once, unsets it at once, sends `Cache-Control: no-store` and passes it to the card.
-- The card draws a static `modal fade show` window (no Bootstrap modal JS, as api_settings.php): key, secret, domain, prompt, where they go on claude.ai. "I have copied it…" unlocks Close, which removes the window from the DOM. Field ids `ws-claude-sheet-*`, `ws-claude-key`, `ws-claude-key-prompt`; the guide keeps `ws-claude-prompt` and `ws-claude-host`.
-- If that GET never comes, it stays in the session until the session ends (as api_settings.php).
+## How is Claude's secret shown only once?
+- `$_SESSION['software']['ws_assistant_credentials']` (agent, name, key, secret, rotated) to the next request, never the address or a field; workspace_settings.php reads and unsets it, sends `Cache-Control: no-store`.
+- A static `modal fade show` window (no Bootstrap modal JS): key, secret, domain, prompt; "I have copied it…" unlocks Close, which removes it. Unfetched, it lasts until the session ends.
 
 ## What must stay so, and what was never tried?
-- The application select stays inside the Save form ("Use another application"): outside it, a Save posts 0 and unlinks the key.
-- Never tried on a live routine: signing in with a new key, the old secret failing right after a reset.
+- Both selects stay inside the Save form ("Use another application"): outside it, a Save posts 0 and unlinks the key.
+- Never tried live: signing in with a new key, the old secret failing after a reset, Pinegrap AI answering through a key made here.

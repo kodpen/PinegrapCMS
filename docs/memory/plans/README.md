@@ -17,7 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
-- design-template-forum.md: Plan (2026-10-23; 1a done #1473, 2 in #1474): Community Forum & Docs template from general features only; list, link and form steps, then the template on the existing comments block
+- design-template-forum-leftovers.md: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501 done, 5 the template built on feature/forum-5-template): step 4, the comments widget move and the watcher fix left
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
 - designable-comments.md: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
@@ -55,7 +55,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
+- workspace-assistant-key-setup.md: Plan (2026-10-23; step 1 in PR #1462, step 2 in PR #1523; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a helper in #1512, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, steps 1-2 in #1510, answers given): a channel icon its manager picks from a curated Bootstrap Icons list; kind marks stay visible; colour and icon in the API

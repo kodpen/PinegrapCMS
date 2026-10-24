@@ -2130,11 +2130,12 @@ function api_schema() {
 			'handler' => 'api_comments_list',
 			'returns' => array('list' => 'Comment'),
 			'summary' => 'Comments',
-			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. Cursor paged.',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. Cursor paged.',
 			'params'  => array(
 				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
 				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
 				array('name' => 'item_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
+				array('name' => 'parent_id',     'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => '0: comments that answer no other comment. An id: the replies to that comment.'),
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
 				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),

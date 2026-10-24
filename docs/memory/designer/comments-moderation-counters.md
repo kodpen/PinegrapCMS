@@ -28,8 +28,8 @@ description: Comment moderation on designed record pages: the stored row decides
 - Watchers as before (watcher e-mail page set). The API dry run's `emails` flag uses the same rule.
 - Changed on classic pages: approving the submitter's own held comment no longer mails them; a comment with item type '' writes no counter row.
 
-## What is the known limit?
-- Released sites keep counters that went wrong on designed record pages; each (record, page) pair is right again after its next comment write or moderation. A one-time recount is a separate data step.
+## Who fixes the counters that went wrong before?
+- Upgrade step 11.0.33 counts every record pair of a designed page again once ([[comment-counters-recount]]).
 
 ## What is left?
 - `includes/api/schema.php` comments.update text: add "unless they wrote it".
