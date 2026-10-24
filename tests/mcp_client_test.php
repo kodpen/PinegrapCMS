@@ -3,10 +3,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the MCP client (includes/mcp/client.php): reading answers sent
- * as JSON or as an event stream, the handshake with a server of either
- * generation, a forgotten session, paged tool lists, what a tool's result
- * becomes as text, and a task followed to its result (the tasks extension). The servers are stand-ins passed as the connection's
- * transport; nothing goes over the network.
+ * as JSON or as an event stream, a stream stopped at the event that answers
+ * (and api_http_request()'s complete option), the handshake with a server of
+ * either generation, a forgotten session, paged tool lists, what a tool's
+ * result becomes as text, a task followed to its result (the tasks
+ * extension), and what a refusal says: a sign-in asked for, a moved address,
+ * an old /sse address, a JSON-RPC error, a timeout. The servers are
+ * stand-ins passed as the connection's transport; nothing goes over the
+ * network.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,7 +22,14 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The outbound HTTP file sits behind init.php's gate, so the gate is answered
+// here for the stop of a streamed answer.
+if (!defined('PG_INIT_LOADED')) {
+	define('PG_INIT_LOADED', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/client.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
 // A header's value in a list of "Name: value" lines, '' when it is missing.
 function mcp_client_test_header($headers, $name)
@@ -159,6 +170,155 @@ function test_mcp_client_reads_the_answer_with_the_right_id()
 	pg_assert_same(-32700, $parse['message']['error']['code'] ?? 0, 'an error without the id still says what went wrong');
 }
 
+function test_mcp_client_a_stream_is_complete_at_the_event_that_answers()
+{
+	$answer = "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"tools\":[]}}\n\n";
+
+	pg_assert_true(pg_mcp_client_sse_complete($answer, 4), 'a finished event with the id');
+	pg_assert_true(pg_mcp_client_sse_complete(": keep-alive\n\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{}}\n\n" . $answer . "data: {\"jsonrpc\"", 4), 'after a comment and a notification, before an unfinished event');
+	pg_assert_false(pg_mcp_client_sse_complete(rtrim($answer, "\n"), 4), 'the event is not finished yet');
+	pg_assert_false(pg_mcp_client_sse_complete(rtrim($answer, "\n") . "\n", 4), 'one line end does not finish an event');
+	pg_assert_false(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{\"progress\":1}}\n\n", 4), 'a notification alone');
+	pg_assert_false(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"sampling/createMessage\",\"params\":{}}\n\n", 4), 'a request from the server with the same number');
+	pg_assert_false(pg_mcp_client_sse_complete($answer, 5), 'another request\'s answer');
+	pg_assert_false(pg_mcp_client_sse_complete($answer, '4'), 'the id compared as the reader compares it');
+	pg_assert_true(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\"id\":\"a-1\",\"result\":{}}\n\n", 'a-1'), 'a string id');
+	pg_assert_true(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\"id\":4,\"error\":{\"code\":-32602,\"message\":\"Unknown tool\"}}\n\n", 4), 'an error is an answer too');
+	pg_assert_false(pg_mcp_client_sse_complete('', 4), 'nothing yet');
+}
+
+function test_mcp_client_a_stream_is_complete_with_any_line_ends_and_shapes()
+{
+	pg_assert_true(pg_mcp_client_sse_complete("event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{}}\r\n\r\n", 4), 'CRLF line ends');
+	pg_assert_false(pg_mcp_client_sse_complete("event: message\r\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{}}\r\n", 4), 'one CRLF does not finish an event');
+	pg_assert_true(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{}}\r\r", 4), 'CR line ends');
+	pg_assert_true(pg_mcp_client_sse_complete("id: 9\ndata: {\"jsonrpc\":\"2.0\",\ndata: \"id\":4,\ndata: \"result\":{\"a\":1}}\n\n", 4), 'data lines joined');
+	pg_assert_false(pg_mcp_client_sse_complete("data: {\"jsonrpc\":\"2.0\",\ndata: \"id\":4,\n", 4), 'half the data lines');
+	pg_assert_true(pg_mcp_client_sse_complete("data: [{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{}},{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{}}]\n\n", 4), 'a batch holding the answer');
+	pg_assert_false(pg_mcp_client_sse_complete("data: [{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}]\n\n", 4), 'a batch without it');
+}
+
+function test_mcp_client_event_end()
+{
+	pg_assert_same(9, pg_mcp_client_sse_event_end("data: a\n\ndata: b", 0), 'just past the blank line');
+	pg_assert_same(18, pg_mcp_client_sse_event_end("data: a\n\ndata: b\n\n", 0), 'the last blank line');
+	pg_assert_same(11, pg_mcp_client_sse_event_end("data: a\r\n\r\ndata: b", 0), 'CRLF');
+	pg_assert_same(9, pg_mcp_client_sse_event_end("data: a\r\rdata: b", 0), 'CR');
+	pg_assert_same(-1, pg_mcp_client_sse_event_end("data: a\ndata: b\r\n", 0), 'no blank line');
+	pg_assert_same(-1, pg_mcp_client_sse_event_end("data: a\n\ndata: b", 9), 'none at or after the start');
+	pg_assert_same(-1, pg_mcp_client_sse_event_end("data: a\n\n", 40), 'a start past the end');
+}
+
+function test_mcp_client_stream_stop_reads_each_event_once()
+{
+	$stop = pg_mcp_client_sse_stop(4);
+	$received = '';
+	$said = array();
+
+	foreach (array(": keep-alive\n", "\n", "data: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{}}\r\n\r", "\n", "data: {\"jsonrpc\":\"2.0\",\"id\":4,", "\"result\":{}}\n", "\n") as $chunk) {
+		$received .= $chunk;
+		$said[] = $stop($received);
+	}
+
+	pg_assert_same(array(false, false, false, false, false, false, true), $said, 'true once the blank line after the answer arrives, split or not');
+
+	$other = pg_mcp_client_sse_stop(4);
+
+	pg_assert_false($other("data: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\n"), 'another answer');
+	pg_assert_true($other("data: {\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{}}\n\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{}}\n\n"), 'then this one');
+}
+
+function test_mcp_client_http_complete_option_stops_with_a_short_count()
+{
+	$buffer = '';
+	$stopped = false;
+	$complete = function ($received) {
+		return strpos($received, 'END') !== false;
+	};
+
+	pg_assert_same(3, api_http_take_chunk($buffer, $stopped, 'abc', $complete), 'a piece taken whole');
+	pg_assert_same(0, api_http_take_chunk($buffer, $stopped, '', $complete), 'an empty piece');
+	pg_assert_false($stopped);
+	pg_assert_same(0, api_http_take_chunk($buffer, $stopped, 'dEND', $complete), 'a short count ends the transfer');
+	pg_assert_true($stopped);
+	pg_assert_same('abcdEND', $buffer, 'the stopping piece is kept');
+
+	pg_assert_true(api_http_stop_is_success(true, 23), 'curl\'s write error after the stop');
+	pg_assert_false(api_http_stop_is_success(false, 23), 'a write error with no stop');
+	pg_assert_false(api_http_stop_is_success(true, 28), 'a timeout');
+}
+
+// A stand-in server of the earlier generation that holds its stream open
+// after the answer: the parts after the one that answers are sent only when
+// the client has not stopped, as curl hands a stream over piece by piece.
+function mcp_client_test_held_stream(&$log)
+{
+	return function ($url, $body, $headers, $timeout, $max_body, $complete = null) use (&$log) {
+		$message = json_decode($body, true);
+		$id = $message['id'] ?? null;
+		$entry = array('method' => $message['method'], 'complete' => $complete, 'read' => '');
+
+		if ($id === null) {
+			$log[] = $entry;
+
+			return array('status' => 202, 'headers' => array(), 'body' => '', 'error' => '');
+		}
+
+		$parts = array(
+			": keep-alive\n\n",
+			"event: message\ndata: {\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"level\":\"info\"}}\n\n",
+			"event: message\ndata: " . json_encode(array('jsonrpc' => '2.0', 'id' => $id, 'result' => array('tools' => array()))),
+			"\n\n",
+			": held open\n\n",
+		);
+
+		foreach ($parts as $part) {
+			$entry['read'] .= $part;
+
+			if (is_callable($complete) && call_user_func($complete, $entry['read'])) {
+				break;
+			}
+		}
+
+		$log[] = $entry;
+
+		return array('status' => 200, 'headers' => array('content-type' => 'text/event-stream'), 'body' => $entry['read'], 'error' => '');
+	};
+}
+
+function test_mcp_client_a_request_stops_its_stream_at_the_answer()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://docs.example.com/mcp', array(), '2025-06-18', 'sess-1');
+	$conn['transport'] = mcp_client_test_held_stream($log);
+
+	$list = pg_mcp_client_send($conn, 'tools/list', array(), '2025-06-18');
+
+	pg_assert_true($list['ok'], 'the answer read from the stream');
+	pg_assert_same(array(), $list['result']['tools'] ?? null);
+	pg_assert_true(is_callable($log[0]['complete']), 'a request gives a stop test');
+	pg_assert_false(strpos($log[0]['read'], 'held open') !== false, 'nothing after the answer was waited for');
+
+	pg_mcp_client_post($conn, pg_mcp_client_message(null, 'notifications/initialized', array(), '2025-06-18'), 'notifications/initialized', '2025-06-18');
+
+	pg_assert_same(null, $log[1]['complete'], 'a notification waits for no answer, so it gives none');
+}
+
+function test_mcp_client_the_sign_in_probe_stops_at_its_answer_too()
+{
+	$given = array();
+	$fetch = function ($method, $url, $body, $headers, $complete = null) use (&$given) {
+		$given[] = $method . ' ' . (is_callable($complete) ? 'stop' : 'none');
+
+		return array('status' => ($method === 'POST') ? 200 : 404, 'headers' => array('content-type' => 'text/event-stream'), 'body' => '', 'error' => '');
+	};
+
+	pg_mcp_client_discover_auth('https://mcp.example.com/mcp', $fetch);
+
+	pg_assert_same('POST stop', $given[0] ?? '', 'the probe of the server gives its stop test to the fetcher');
+	pg_assert_same('GET none', $given[1] ?? '', 'a metadata read is read to its end');
+}
+
 function test_mcp_client_modern_handshake_and_tools()
 {
 	$log = array();
@@ -243,6 +403,162 @@ function test_mcp_client_does_not_fall_back_on_refused_credentials()
 	pg_assert_same(401, $open['status']);
 	pg_assert_same(1, count($log), 'initialize is not tried with the same refused credential');
 	pg_assert_same('', $conn['protocol']);
+	pg_assert_same('The MCP server refused the credentials. Check the token or the header.', $open['error'], 'a challenge that names no sign-in');
+	pg_assert_false($open['oauth_challenge'] ?? null, 'no OAuth sign-in offered');
+}
+
+// A stand-in server that answers every request the same way and writes each
+// address it was sent to $log.
+function mcp_client_test_fixed_server($status, $headers, $body, &$log, $error = '', $errno = 0)
+{
+	return function ($url) use ($status, $headers, $body, &$log, $error, $errno) {
+		$log[] = $url;
+
+		return array('status' => $status, 'headers' => $headers, 'body' => $body, 'error' => $error, 'errno' => $errno);
+	};
+}
+
+function test_mcp_client_names_oauth_when_no_credential_was_sent()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp');
+	$conn['transport'] = mcp_client_test_fixed_server(401, array('www-authenticate' => 'Bearer realm="OAuth", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp", scope="read write"'), '{"error":"invalid_token"}', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(401, $open['status']);
+	pg_assert_true($open['oauth_challenge'] ?? null, 'the server offers an OAuth sign-in');
+	pg_assert_same('This MCP server asks for a sign-in: under How the site signs in, choose Sign in to the service (OAuth), or Access token (Bearer) if the service gives one.', $open['error']);
+	pg_assert_same(1, count($log), 'initialize is not tried');
+}
+
+function test_mcp_client_a_refused_token_also_names_oauth()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp', array('Authorization: Bearer wrong'));
+	$conn['transport'] = mcp_client_test_fixed_server(401, array('www-authenticate' => 'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"'), '', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_true($open['oauth_challenge'] ?? null);
+	pg_assert_same('The MCP server refused the credentials. Check the token or the header, or choose Sign in to the service (OAuth) under How the site signs in.', $open['error']);
+	pg_assert_same(1, count($log));
+
+	// Discovery reads the same refusal for where to sign in.
+	$send = pg_mcp_client_send($conn, 'tools/list', array(), '2025-06-18');
+
+	pg_assert_same(401, $send['status'], 'the status stays for the caller');
+	pg_assert_true($send['oauth']);
+	pg_assert_contains('resource_metadata', $send['headers']['www-authenticate'] ?? '', 'the challenge stays for the caller');
+}
+
+function test_mcp_client_a_moved_server_is_named_not_followed()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp/');
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => '/mcp'), '', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(307, $open['status']);
+	pg_assert_same('The MCP server moved to https://mcp.example.com/mcp. Enter that address instead.', $open['error'], 'a relative Location against the address');
+	pg_assert_same(array('https://mcp.example.com/mcp/', 'https://mcp.example.com/mcp/'), $log, 'the new address is never called');
+
+	$log = array();
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => 'http://MCP.example.com/mcp'), '', $log);
+
+	pg_assert_same('The MCP server moved to https://mcp.example.com/mcp. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'http on the same host is named as https');
+
+	$conn['transport'] = mcp_client_test_fixed_server(308, array('location' => 'http://other.example.com/mcp'), '', $log);
+
+	pg_assert_same('The MCP server moved to http://other.example.com/mcp. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'another host is named as it is');
+
+	$conn['transport'] = mcp_client_test_fixed_server(301, array('location' => 'https://mcp.example.com/v2/mcp?api_key=secret'), '', $log);
+
+	pg_assert_same('The MCP server moved to https://mcp.example.com/v2/mcp?…. Enter that address instead.', pg_mcp_client_negotiate($conn)['error'], 'a query is not repeated');
+
+	$conn['transport'] = mcp_client_test_fixed_server(302, array('location' => 'javascript:alert(1)'), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 302).', pg_mcp_client_negotiate($conn)['error'], 'a Location that is no web address');
+
+	$conn['transport'] = mcp_client_test_fixed_server(307, array(), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 307).', pg_mcp_client_negotiate($conn)['error'], 'no Location');
+
+	$conn['transport'] = mcp_client_test_fixed_server(307, array('location' => 'https://mcp.example.com/mcp/'), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 307).', pg_mcp_client_negotiate($conn)['error'], 'a Location that is the same address');
+}
+
+function test_mcp_client_an_old_sse_address_names_the_mcp_one()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/sse');
+	$conn['transport'] = mcp_client_test_fixed_server(405, array('content-type' => 'text/plain'), 'Method Not Allowed', $log);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(405, $open['status']);
+	pg_assert_same('This is an old SSE address. The address that works here usually ends in /mcp: https://mcp.example.com/mcp', $open['error']);
+
+	$conn = pg_mcp_client_connection('https://docs.example.com/v1/sse/?team=7');
+	$conn['transport'] = mcp_client_test_fixed_server(410, array('content-type' => 'application/problem+json'), '{"type":"about:blank","title":"This MCP URL has moved to /mcp","status":410}', $log);
+
+	pg_assert_same('This is an old SSE address. The address that works here usually ends in /mcp: https://docs.example.com/v1/mcp?…', pg_mcp_client_negotiate($conn)['error'], 'a trailing slash, a query not repeated');
+
+	$conn['transport'] = mcp_client_test_fixed_server(404, array(), '', $log);
+
+	pg_assert_contains('/mcp', pg_mcp_client_negotiate($conn)['error'], '404 too');
+
+	$conn = pg_mcp_client_connection('https://mcp.example.com/messages');
+	$conn['transport'] = mcp_client_test_fixed_server(405, array(), '', $log);
+
+	pg_assert_same('The MCP server gave an answer that could not be read (HTTP 405).', pg_mcp_client_negotiate($conn)['error'], 'another path');
+
+	$conn = pg_mcp_client_connection('https://mcp.example.com/sse');
+	$conn['transport'] = mcp_client_test_fixed_server(500, array(), '', $log);
+
+	pg_assert_same('The MCP server had an error (500).', pg_mcp_client_negotiate($conn)['error'], 'another status');
+}
+
+function test_mcp_client_reads_a_json_rpc_error_with_any_id_on_a_failed_status()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://mcp.example.com/mcp', array(), '2025-06-18');
+	$conn['transport'] = mcp_client_test_fixed_server(400, array('content-type' => 'application/json'), '{"jsonrpc":"2.0","id":"server-error","error":{"code":-32600,"message":"Bad Request: Unsupported protocol version"}}', $log);
+
+	$list = pg_mcp_client_request($conn, 'tools/list', array());
+
+	pg_assert_false($list['ok']);
+	pg_assert_same(400, $list['status']);
+	pg_assert_same(-32600, $list['code']);
+	pg_assert_same('Bad Request: Unsupported protocol version', $list['error'], 'the server\'s reason');
+
+	$ok = pg_mcp_client_read(array('status' => 200, 'headers' => array(), 'body' => '{"jsonrpc":"2.0","id":"other","error":{"code":-32600,"message":"x"}}'), 3);
+
+	pg_assert_same(null, $ok['message'], 'with a 200 another request\'s error is not this one\'s');
+}
+
+function test_mcp_client_a_timeout_is_said_plainly()
+{
+	$log = array();
+	$conn = pg_mcp_client_connection('https://slow.example.com/mcp');
+	$conn['transport'] = mcp_client_test_fixed_server(0, array(), '', $log, 'Operation timed out after 5001 milliseconds with 184 bytes received', 28);
+
+	$open = pg_mcp_client_negotiate($conn);
+
+	pg_assert_false($open['ok']);
+	pg_assert_same(0, $open['status']);
+	pg_assert_same('The MCP server took too long to answer.', $open['error']);
+
+	pg_assert_same('The MCP server could not be reached.', pg_mcp_client_transport_text('Failed to connect to slow.example.com port 443', 7));
+	pg_assert_same('The address of the MCP server does not resolve.', pg_mcp_client_transport_text('Could not resolve host: slow.example.com', 6));
+	pg_assert_same('SSL connect error', pg_mcp_client_transport_text('SSL connect error', 35), 'any other error in curl\'s words');
+	pg_assert_same('The address of the MCP server is inside this network and is not called.', pg_mcp_client_transport_text('That address is inside this network and is not called.'), 'a refusal before curl');
 }
 
 function test_mcp_client_refuses_a_version_it_does_not_speak()

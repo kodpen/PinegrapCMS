@@ -97,7 +97,7 @@ function test_marketplace_trendyol_is_a_provider_with_its_fields()
 
 	pg_assert_true(isset($providers['trendyol']), 'trendyol is listed');
 	pg_assert_same('Trendyol', mp_provider_name('trendyol'));
-	pg_assert_same(array('seller_id', 'api_key', 'api_secret', 'environment'), array_keys($providers['trendyol']['fields']));
+	pg_assert_same(array('seller_id', 'api_key', 'api_secret', 'environment', 'delivery'), array_keys($providers['trendyol']['fields']));
 	pg_assert_true(!empty($providers['trendyol']['fields']['api_secret']['secret']), 'the secret is a password field');
 	pg_assert_true(mp_provider_field_is_select($providers['trendyol']['fields']['environment']));
 	pg_assert_false(mp_provider_field_is_select($providers['trendyol']['fields']['seller_id']));
@@ -111,9 +111,12 @@ function test_marketplace_trendyol_connector_offers_only_what_it_does()
 	pg_assert_true(mp_can('trendyol', 'create_listings'));
 	pg_assert_true(mp_can('trendyol', 'read_task'));
 	pg_assert_true(mp_can('trendyol', 'push_stock_price'));
+	pg_assert_true(mp_can('trendyol', 'pull_orders'));
+	pg_assert_true(mp_can('trendyol', 'order_stage'));
+	pg_assert_true(mp_can('trendyol', 'approve_lines'));
 
-	// Nothing queues work it cannot do yet.
-	pg_assert_false(mp_can('trendyol', 'pull_orders'));
+	// Nothing queues work it cannot do: n11's courier request is not theirs.
+	pg_assert_false(mp_can('trendyol', 'request_collection'));
 }
 
 function test_marketplace_trendyol_is_keyed_on_barcodes_and_n11_is_not()
@@ -138,7 +141,7 @@ function test_marketplace_provider_credentials_whitelist_the_select()
 		'unrelated'   => 'dropped',
 	));
 
-	pg_assert_same(array('seller_id' => '123456', 'api_key' => 'k', 'api_secret' => 's', 'environment' => 'stage'), $values);
+	pg_assert_same(array('seller_id' => '123456', 'api_key' => 'k', 'api_secret' => 's', 'environment' => 'stage', 'delivery' => 'trendyol'), $values);
 
 	$values = mp_provider_credentials('trendyol', array('environment' => 'https://evil.example'));
 

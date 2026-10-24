@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932) done; 2b or 4 next
+description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453), 4c (#1493) done; 2b or 5 next
 ---
 
 ## Why?
@@ -19,8 +19,10 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 1. ~~Driver, credentials, connection test, categories + attributes.~~ Done #880.
 2. ~~Listing create, barcode and VAT checks, batch result.~~ Done #906.
 2b. Listing update (V2 update needs `contentId`), approval/rejection status from the product filter services onto the map row (an approved listing sets an `error` map back to `active`: a stock line refused while awaiting approval stops the product), commission shown read-only (S–M).
-3. ~~Stock/price queue.~~ Done #932. Its webhook receiver moved to step 4: Trendyol webhooks carry only order statuses.
-4. Order import (V2 orders or the cursor stream), webhook receiver `marketplace_webhook.php` (Basic or `x-api-key` check; Trendyol signs nothing), status push, carrier/tracking push, cancel sync (M).
+3. ~~Stock/price queue.~~ Done #932. Its webhook receiver moved to step 4b: Trendyol webhooks carry only order statuses.
+4a. ~~Order import (V2), Picking push, cancel sync, barcode/sku matching.~~ Done #1452.
+4b. ~~Webhook receiver `marketplace_webhook.php`, registration on the account screen, job accepting webhook-imported packages.~~ Done #1453.
+4c. ~~Own-carrier shipment push (alternative delivery).~~ Done #1493.
 5. Invoice link push, returns, Q&A (M).
 6. API fields: `/products/{id}/marketplaces`, webhook events `marketplace.order.*` (S).
 7. Memory: each step adds what it verified to the `trendyol-*.md` files.
@@ -28,11 +30,10 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 ## Open questions?
 - Hepsiburada developer portal renders as a JS shell; API facts must be collected from the owner's account documentation before slice 1.
 - Trendyol "Luxe" channel listings: in scope only if the owner sells there.
-
 - Owner: first live call with credentials; whether Kodpen registers as a Trendyol integrator (User-Agent `SelfIntegration` until then).
 
 ## Where are the finished steps' decisions?
-- `docs/memory/commerce/trendyol-api-facts.md` (hosts, auth, environments, categories), `trendyol-listings.md` (barcode key, brand, refusals, batch result), `trendyol-stock-price.md` (inventory batch, 15-minute rule, webhooks). The `[NEW]` changelog line came with #932.
+- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`, `trendyol-own-carrier-shipping.md`. The `[NEW]` changelog line came with #932.
 
 ## Where to start?
-- Step 4 (orders; webhook facts in `trendyol-stock-price.md`) or 2b, after `trendyol-api-facts.md`, `trendyol-listings.md` and `marketplace-order-import.md`. Every live call waits for the owner's test or live credentials.
+- Step 2b or 5, after `trendyol-api-facts.md` and `trendyol-orders.md`. Live calls wait for the owner's test or live credentials.

@@ -7510,7 +7510,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 	if ($folder_name == '') {
 
-		$folder_name = pathinfo($upload['name'], PATHINFO_FILENAME);
+		$folder_name = pg_file_name_stem($upload['name']);
 
 	}
 
@@ -9120,6 +9120,10 @@ function get_tables() {
 		'ws_calendar_feeds',
 		'ws_mcp_servers',
 		'ws_mcp_calls',
+		'ws_flows',
+		'ws_flow_versions',
+		'ws_flow_runs',
+		'ws_flow_run_steps',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',

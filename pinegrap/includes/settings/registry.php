@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The one list of settings screens: the eight the site settings are split into,
- * and the neighbouring screens that live under the Settings menu.
+ * The one list of settings screens: the categories the site settings are split
+ * into, and the neighbouring screens that live beside them.
  *
- * Read by three places -- the dialog's sidebar and the link helper
- * (includes/fn/output.php), the category screens (includes/settings/screen.php)
- * and the command palette (api.php). One list, because they all name the same
+ * Read by four places -- the dialog's sidebar and the link helper
+ * (includes/fn/output.php), the main menu's Site Settings row
+ * (pg_menu_settings_entries(), same file), the category screens
+ * (includes/settings/screen.php) and the command palette (api.php). One list, because they all name the same
  * screens with the same gates, and copies of that answer drift: a screen added
  * to one is missing from the others and nothing says so.
  *
@@ -115,15 +116,17 @@ function pg_settings_categories()
 
         'appearance' => array(
             'label' => lang('Appearance'),
-            'icon'  => 'bi-palette',
-            'description' => lang('The panel theme and the rich-text editor.'),
+            'icon'  => 'bi-brush',
+            'description' => lang('The panel theme, the dashboard and the rich-text editor.'),
             'sections' => array(
-                'pgset-theme'  => lang('Theme'),
-                'pgset-editor' => lang('Rich-text Editor'),
+                'pgset-theme'     => lang('Theme'),
+                'pgset-dashboard' => lang('Dashboard'),
+                'pgset-editor'    => lang('Rich-text Editor'),
             ),
             'keywords' => array(
-                'pgset-theme'  => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
-                'pgset-editor' => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
+                'pgset-theme'     => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
+                'pgset-dashboard' => pg_settings_keywords(lang('dashboard, widget, card style, backdrop, refresh, reset widgets, welcome')),
+                'pgset-editor'    => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
             ),
         ),
 
@@ -149,7 +152,7 @@ function pg_settings_categories()
 
         'seo' => array(
             'label' => 'SEO',
-            'icon'  => 'bi-graph-up-arrow',
+            'icon'  => 'bi-search',
             'description' => lang('Search engines, structured data and visitor tracking.'),
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
@@ -172,7 +175,7 @@ function pg_settings_categories()
 
         'languages' => array(
             'label' => lang('Languages and Translation'),
-            'icon'  => 'bi-translate',
+            'icon'  => 'bi-globe',
             'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
             'sections' => array(
                 'pgset-languages' => lang('Site Languages'),
@@ -233,7 +236,7 @@ function pg_settings_categories()
 
         'firewall' => array(
             'label' => lang('Firewall'),
-            'icon'  => 'bi-shield-exclamation',
+            'icon'  => 'bi-bricks',
             'description' => lang('The request filter, bot policy and address lists.'),
             'sections' => array(
                 'pgset-waf'     => lang('Firewall'),
@@ -282,7 +285,7 @@ function pg_settings_categories()
 
         'api' => array(
             'label' => lang('API'),
-            'icon'  => 'bi-plug',
+            'icon'  => 'bi-braces',
             'description' => lang('The application API: the master switch, HTTPS, the public description, log retention and the upload folder.'),
             'sections' => array(
                 'pgset-api'         => lang('Application API'),
@@ -302,6 +305,14 @@ function pg_settings_categories()
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
         unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
         $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+    }
+
+    // The Dashboard card is drawn for designers and administrators only
+    // (pg_dashboard_appearance_allowed()); for anyone else, a manager opening
+    // Appearance included, no chip or search result points at it.
+    if (!pg_dashboard_appearance_allowed(defined('USER_ROLE') ? USER_ROLE : null)) {
+        unset($categories['appearance']['sections']['pgset-dashboard'], $categories['appearance']['keywords']['pgset-dashboard']);
+        $categories['appearance']['description'] = lang('The panel theme and the rich-text editor.');
     }
 
     return $categories;
@@ -416,6 +427,41 @@ function pg_settings_legacy_anchors()
 
 
 /**
+ * Screens that belong with a category without being one of its sections.
+ *
+ * The main menu lists them in the category's panel, under its sections
+ * (pg_menu_settings_markup()), so a screen that no other menu path reaches
+ * for some of the people its own gate admits has a home beside the settings
+ * it goes with. Same rule as the groups below: each item under the gate of
+ * the screen itself, and the gate decides visibility only.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array category key => array of array(label, icon, url)
+ */
+function pg_settings_category_screens($user)
+{
+    $role = isset($user['role']) ? (int) $user['role'] : 3;
+
+    $screens = array();
+
+    // The translations of the pages and texts: validate_area_access($user,
+    // 'manager'). Its other entry, in the Visual Page Editor panel, is drawn
+    // for role < 2 only, so a manager had no way to it.
+    if ($role <= 2) {
+        $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
+    }
+
+    // The panel's own logo, stylesheet and footer links:
+    // validate_area_access($user, 'administrator'). No other link led to it.
+    if ($role === 0) {
+        $screens['appearance'][] = array('label' => lang('Private Label Branding'), 'icon' => 'bi-badge-tm', 'url' => 'private_label.php');
+    }
+
+    return $screens;
+}
+
+
+/**
  * The neighbouring screens, grouped the way the Settings menu groups them.
  *
  * The groups are the point: what the operator is looking for is either a screen
@@ -439,8 +485,8 @@ function pg_settings_tool_groups($user)
         'label' => lang('Monitoring'),
         'icon'  => 'bi-activity',
         'items' => array(
-            array('label' => lang('Site Log'), 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
-            array('label' => lang('Sessions'), 'icon' => 'bi-shield-lock',  'url' => 'view_sessions.php'),
+            array('label' => lang('Site Log'), 'icon' => 'bi-card-list', 'url' => 'view_log.php'),
+            array('label' => lang('Sessions'), 'icon' => 'bi-laptop',    'url' => 'view_sessions.php'),
         ),
     );
 
@@ -448,11 +494,11 @@ function pg_settings_tool_groups($user)
     $connections = array(
         array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
-        array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg',  'url' => 'connections.php'),
+        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
     );
 
     if ($ecommerce) {
-        $connections[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-shop', 'url' => 'marketplace_settings.php');
+        $connections[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php');
     }
 
     $groups[] = array('label' => lang('Connections'), 'icon' => 'bi-plug', 'items' => $connections);
@@ -461,12 +507,14 @@ function pg_settings_tool_groups($user)
     // (role < 3, or a role-3 user carrying the flag); the menu has always
     // applied it together with the feature switch.
     if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE && $ecommerce) {
+        // Named apart from the Ecommerce category: the menu lists both as
+        // entries of one panel.
         $groups[] = array(
-            'label' => lang('Ecommerce'),
-            'icon'  => 'bi-shop',
+            'label' => lang('Store Lists'),
+            'icon'  => 'bi-bag',
             'items' => array(
                 array('label' => lang('All Referral Sources'), 'icon' => 'bi-signpost-2',        'url' => 'view_referral_sources.php'),
-                array('label' => lang('All Currencies'),       'icon' => 'bi-currency-exchange', 'url' => 'view_currencies.php'),
+                array('label' => lang('All Currencies'),       'icon' => 'bi-coin',              'url' => 'view_currencies.php'),
             ),
         );
     }
@@ -474,13 +522,17 @@ function pg_settings_tool_groups($user)
     // Jobs. The ones that change or remove something sit here together, and
     // they wear the same colour as every other row: severity is carried by the
     // icon and by the confirmation, not by a tint.
-    $tools = array(
-        array('label' => lang('Check for Updates'),   'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php'),
-    );
+    // On a hosted site the hosting platform updates and repairs the software,
+    // and both screens refuse (pg_hosted()).
+    $tools = array();
+
+    if (!pg_hosted()) {
+        $tools[] = array('label' => lang('Check for Updates'), 'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php');
+    }
 
     // Writing the release package over the software is an administrator's
     // job, like the screen's own door.
-    if ($role === 0) {
+    if (($role === 0) && !pg_hosted()) {
         $tools[] = array('label' => lang('Repair Software'), 'icon' => 'bi-bandaid', 'url' => 'software_repair.php');
     }
 
@@ -503,7 +555,7 @@ function pg_settings_tool_groups($user)
         'confirm' => lang('All server-side caches will be cleared.'),
     );
 
-    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope', 'url' => 'mail_queue.php');
+    $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope-arrow-up', 'url' => 'mail_queue.php');
 
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.

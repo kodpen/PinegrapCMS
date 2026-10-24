@@ -28,7 +28,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility.
 - waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, expired rows kept for ladder memory.
 - waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, who writes it, staleness asymmetry, allow-list lines, shield_pending.log and drain.
-- waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed), why, where the return sits, and why api.php is not one of them.
+- waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
 - waf-country-restriction.md: Firewall country restriction (waf_handle_country(), 2026.4.10 step 10.2): place in waf_run(), allow/block, unknown country, exemptions, not an offence, save guard, sign-in screens kept to the panel.

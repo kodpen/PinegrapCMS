@@ -4,16 +4,17 @@
  *
  * Workspace - commands typed into a channel.
  *
- *   /task Logo revision @ayse friday ~2h !urgent #contact   (also /gorev)
+ *   /task Logo revision @ayse friday ~2h !urgent #contact   (also /görev, /gorev)
  *   /assign T-42 @mehmet                                     (also /ata)
  *   /done T-42                                               (also /bitti, /tamam)
  *   /postpone T-42 +2d                                       (also /ertele)
  *   /decision The packaging will be kraft                    (also /karar)
  *   /note Accounts contact: Selin, ext. 204                  (also /not)
  *   /plan @ayse                                              the next working week
+ *   /poll Which day? | Tuesday | Wednesday                   (also /oylama, /anket, /sor)
  *   /price #product 149,90                                   (also /fiyat)
  *   /stock #product 12, +5 or -3                             (also /stok)
- *   /help                                                    (also /yardim)
+ *   /help                                                    (also /yardım, /yardim)
  *
  * A command is a shortcut, never the only way: each has a button somewhere on
  * the screen. Creating a task is always shown back first - "this is the task I
@@ -22,8 +23,16 @@
  * or a stock is shown back the same way, old value beside the new one.
  *
  * The date words are a short fixed list (today, tomorrow, weekday names,
- * 26.09, 26.09.2026, +3d, +2w, next week) in Turkish and English. Anything
- * else stays in the title, where the author will see it in the preview.
+ * 26.09, 26.09.2026, +3d, +2w, haftaya or nextweek written as one word) in
+ * Turkish and English. Anything else stays in the title, where the author
+ * will see it in the preview.
+ *
+ * One registry (ws_commands()) describes every command: its names, what it
+ * does, its usage line and the arguments it takes in order, each typed, so
+ * the composer's / picker, the argument popup after "/name ", /help and the
+ * command palette read the same list. A slash and a word that is no command
+ * ("/gorevx") is not posted: the writer is told the closest names. Two
+ * slashes ("//gorevx") post the text with one slash taken off.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,16 +67,72 @@ function ws_command_names()
 }
 
 /**
+ * The names one command answers to, in the order ws_command_names() lists
+ * them.
+ *
+ * @param string $command the command's own name (ws_command_names() value)
+ * @return string[] names without the leading slash
+ */
+function ws_command_aliases($command)
+{
+    return array_keys(ws_command_names(), (string) $command, true);
+}
+
+/**
+ * The words after a slash that ask an assistant rather than run a command.
+ * Once the assistant is set up ws_claude_command_body() and
+ * ws_ai_command_body() turn them into its tag before the commands are read;
+ * before that the text is posted and the assistant's line says how to set it
+ * up, so they are never refused as unknown commands.
+ *
+ * @return string[]
+ */
+function ws_command_assistant_words()
+{
+    return array('claude', 'ai');
+}
+
+/**
+ * Whether "/claude" or "/ai" asks its assistant on this site: the test
+ * ws_claude_command_body() and ws_ai_command_body() make before they turn
+ * the command into the assistant's tag.
+ *
+ * @param string $command claude | ai
+ * @return bool
+ */
+function ws_command_assistant_ready($command)
+{
+    if ($command === 'claude') {
+        return function_exists('ws_claude_schema_ready') && function_exists('ws_claude_config')
+            && ws_claude_schema_ready() && ((int) ws_claude_config()['app_id'] > 0);
+    }
+
+    if ($command === 'ai') {
+        return function_exists('ws_ai_schema_ready') && function_exists('ws_ai_config')
+            && ws_ai_schema_ready() && ((int) ws_ai_config()['app_id'] > 0);
+    }
+
+    return false;
+}
+
+/**
  * May this person use a command? /price and /stock write a product, so they
- * are offered only to whoever may change products; the others are anybody's.
- * Without a person every command is listed.
+ * are offered only to whoever may change products; /claude and /ai only once
+ * their assistant is set up on the site; the others are anybody's. Without a
+ * person every command the parser answers to is listed, and the assistants
+ * are left out: that list is read without asking the database anything.
  *
  * @param array|null $viewer
- * @param string     $command the command's own name (ws_command_names() value)
+ * @param string     $command the command's own name (ws_command_names()
+ *                            value, or claude | ai)
  * @return bool
  */
 function ws_command_offered($viewer, $command)
 {
+    if (in_array($command, ws_command_assistant_words(), true)) {
+        return is_array($viewer) && ws_command_assistant_ready($command);
+    }
+
     if (!in_array($command, array('price', 'stock'), true) || !is_array($viewer)) {
         return true;
     }
@@ -76,33 +141,268 @@ function ws_command_offered($viewer, $command)
 }
 
 /**
- * The help text the /help command and the composer's hint show.
+ * The kinds of argument a command takes, as the registry types them. The
+ * composer suggests values for some of them (ws_commands(), suggest).
+ *
+ * @return string[]
+ */
+function ws_command_argument_kinds()
+{
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'estimate', 'priority', 'amount', 'quantity', 'text', 'options');
+}
+
+/**
+ * Whether the commands are shown with their Turkish names and words. The
+ * parser reads both languages either way; a screen in any other language is
+ * shown the English ones.
+ *
+ * @param string|null $language a language code, or null for the active one
+ * @return bool
+ */
+function ws_command_turkish($language = null)
+{
+    if ($language === null) {
+        $language = (string) lang(array('info' => true));
+    }
+
+    return strtolower((string) $language) === 'tr';
+}
+
+/**
+ * Every command the person may use, in the order the picker and /help list
+ * them. Each entry:
+ *   key          the command's own name (ws_command_names() value, or claude | ai)
+ *   names        every name it answers to, each with its slash, in
+ *                ws_command_names() order
+ *   name         the name shown first: the Turkish one on a Turkish screen
+ *   label        both names, as /help heads the entry ("/task · /görev")
+ *   description  what it does
+ *   usage        the name and its arguments: <required> [optional]
+ *   example      a line as it would be typed
+ *   args         in the order they are typed: name, kind
+ *                (ws_command_argument_kinds()), label, optional, suggest
+ *                (where the composer finds values for it: people,
+ *                people_departments, tasks, records, products, dates,
+ *                estimates, priorities, or '' for none), multiple (takes more
+ *                than one), anywhere (read wherever it is written, as /task
+ *                reads its people, day, estimate and priority)
  *
  * @param array|null $viewer leaves out the commands this person may not use
- * @return array[] command, example, description
+ * @return array[]
+ */
+function ws_commands($viewer = null)
+{
+    $turkish = ws_command_turkish();
+
+    $arg = function ($name, $kind, $label, $optional, $suggest = '', $more = array()) {
+        return array_merge(array(
+            'name'     => $name,
+            'kind'     => $kind,
+            'label'    => $label,
+            'optional' => (bool) $optional,
+            'suggest'  => $suggest,
+            'multiple' => false,
+            'anywhere' => false,
+        ), $more);
+    };
+
+    $task = $arg('task', 'task', lang('task'), false, 'tasks');
+    $product = $arg('product', 'record', lang('#product'), false, 'products');
+    $question = $arg('question', 'text', lang('question'), false);
+
+    $list = array(
+        array(
+            'key' => 'task', 'tr' => 'görev', 'en' => 'task', 'label' => '/task · /görev',
+            'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.'),
+            'example'     => lang('/task Logo revision @ayse friday ~2h !urgent'),
+            'args'        => array(
+                $arg('title', 'text', lang('title'), false),
+                $arg('people', 'people', lang('@people'), true, 'people_departments', array('multiple' => true, 'anywhere' => true)),
+                $arg('due', 'date', lang('day'), true, 'dates', array('anywhere' => true)),
+                $arg('estimate', 'estimate', lang('~estimate'), true, 'estimates', array('anywhere' => true)),
+                $arg('priority', 'priority', lang('!priority'), true, 'priorities', array('anywhere' => true)),
+                $arg('records', 'record', lang('#record'), true, 'records', array('multiple' => true, 'anywhere' => true)),
+            ),
+        ),
+        array(
+            'key' => 'assign', 'tr' => 'ata', 'en' => 'assign', 'label' => '/assign · /ata',
+            'description' => lang('Adds people to a task.'),
+            'example'     => lang('/assign T-42 @mehmet'),
+            'args'        => array($task, $arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true))),
+        ),
+        array(
+            'key' => 'done', 'tr' => 'bitti', 'en' => 'done', 'label' => '/done · /bitti',
+            'description' => lang('Marks a task as done.'),
+            'example'     => lang('/done T-42'),
+            'args'        => array($task),
+        ),
+        array(
+            'key' => 'postpone', 'tr' => 'ertele', 'en' => 'postpone', 'label' => '/postpone · /ertele',
+            'description' => lang('Moves a task\'s due date.'),
+            'example'     => lang('/postpone T-42 +2d'),
+            'args'        => array($task, $arg('due', 'date', lang('day'), false, 'dates')),
+        ),
+        array(
+            'key' => 'decision', 'tr' => 'karar', 'en' => 'decision', 'label' => '/decision · /karar',
+            'description' => lang('Writes a decision; it is kept on the Decisions tab.'),
+            'example'     => lang('/decision The packaging will be kraft'),
+            'args'        => array($arg('text', 'text', lang('text'), false)),
+        ),
+        array(
+            'key' => 'note', 'tr' => 'not', 'en' => 'note', 'label' => '/note · /not',
+            'description' => lang('Writes a note; it is kept on the Decisions tab.'),
+            'example'     => lang('/note Accounts contact: Selin, ext. 204'),
+            'args'        => array($arg('text', 'text', lang('text'), false)),
+        ),
+        array(
+            'key' => 'plan', 'tr' => 'plan', 'en' => 'plan', 'label' => '/plan',
+            'description' => lang('Shows the next working week of a person, only to you.'),
+            'example'     => lang('/plan @ayse'),
+            'args'        => array($arg('person', 'person', lang('@person'), true, 'people')),
+        ),
+        array(
+            'key' => 'poll', 'tr' => 'oylama', 'en' => 'poll', 'label' => '/poll · /oylama',
+            'description' => lang('Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.'),
+            'example'     => lang('/poll Which day for the launch? | Tuesday | Wednesday'),
+            'args'        => array($question, $arg('options', 'options', lang('| options'), true, '', array('multiple' => true))),
+        ),
+        array(
+            'key' => 'price', 'tr' => 'fiyat', 'en' => 'price', 'label' => '/price · /fiyat',
+            'description' => lang('Changes the price of a product. Shown to you, old and new, before it is written.'),
+            'example'     => lang('/price #mug 149,90'),
+            'args'        => array($product, $arg('amount', 'amount', lang('new price'), false)),
+        ),
+        array(
+            'key' => 'stock', 'tr' => 'stok', 'en' => 'stock', 'label' => '/stock · /stok',
+            'description' => lang('Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.'),
+            'example'     => lang('/stock #mug 12'),
+            'args'        => array($product, $arg('quantity', 'quantity', lang('quantity'), false)),
+        ),
+        array(
+            'key' => 'claude', 'tr' => 'claude', 'en' => 'claude', 'label' => '/claude',
+            'description' => lang('Asks Claude, the same as writing @Claude.'),
+            'example'     => lang('/claude summarise this week'),
+            'args'        => array($question),
+        ),
+        array(
+            'key' => 'ai', 'tr' => 'ai', 'en' => 'ai', 'label' => '/ai',
+            'description' => lang('Asks Pinegrap AI, the same as writing @ai.'),
+            'example'     => lang('/ai summarise this week'),
+            'args'        => array($question),
+        ),
+        array(
+            'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
+            'description' => lang('Lists the commands and what they do.'),
+            'example'     => lang('/help'),
+            'args'        => array(),
+        ),
+    );
+
+    $out = array();
+
+    foreach ($list as $entry) {
+        if (!ws_command_offered($viewer, $entry['key'])) {
+            continue;
+        }
+
+        $aliases = in_array($entry['key'], ws_command_assistant_words(), true) ? array($entry['key']) : ws_command_aliases($entry['key']);
+        $name = '/' . ($turkish ? $entry['tr'] : $entry['en']);
+        $usage = $name;
+
+        foreach ($entry['args'] as $item) {
+            $usage .= ' ' . ($item['optional'] ? '[' . $item['label'] . ']' : '<' . $item['label'] . '>');
+        }
+
+        $out[] = array(
+            'key'         => $entry['key'],
+            'names'       => array_map(function ($alias) {
+                return '/' . $alias;
+            }, $aliases),
+            'name'        => $name,
+            'label'       => $entry['label'],
+            'description' => $entry['description'],
+            'usage'       => $usage,
+            'example'     => $entry['example'],
+            'args'        => $entry['args'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The help text the /help command, the composer's / picker and the command
+ * palette show: the registry (ws_commands()) in the shape they read.
+ *
+ * @param array|null $viewer leaves out the commands this person may not use
+ * @return array[] command (the label), names (every name it answers to, each
+ *                 with its slash, for the composer's / picker), example,
+ *                 description; and from the registry key, name, usage, args
+ *                 for the composer's argument popup
  */
 function ws_command_help($viewer = null)
 {
-    $help = array(
-        array('command' => '/task · /gorev', 'example' => lang('/task Logo revision @ayse friday ~2h !urgent'), 'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.')),
-        array('command' => '/assign · /ata', 'example' => lang('/assign T-42 @mehmet'), 'description' => lang('Adds people to a task.')),
-        array('command' => '/done · /bitti', 'example' => lang('/done T-42'), 'description' => lang('Marks a task as done.')),
-        array('command' => '/postpone · /ertele', 'example' => lang('/postpone T-42 +2d'), 'description' => lang('Moves a task\'s due date.')),
-        array('command' => '/decision · /karar', 'example' => lang('/decision The packaging will be kraft'), 'description' => lang('Writes a decision; it is kept on the Decisions tab.')),
-        array('command' => '/note · /not', 'example' => lang('/note Accounts contact: Selin, ext. 204'), 'description' => lang('Writes a note; it is kept on the Decisions tab.')),
-        array('command' => '/plan', 'example' => lang('/plan @ayse'), 'description' => lang('Shows the next working week of a person, only to you.')),
-        array('command' => '/poll · /oylama', 'example' => lang('/poll Which day for the launch? | Tuesday | Wednesday'), 'description' => lang('Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.')),
-    );
+    $help = array();
 
-    if (ws_command_offered($viewer, 'price')) {
-        $help[] = array('command' => '/price · /fiyat', 'example' => lang('/price #mug 149,90'), 'description' => lang('Changes the price of a product. Shown to you, old and new, before it is written.'));
-    }
-
-    if (ws_command_offered($viewer, 'stock')) {
-        $help[] = array('command' => '/stock · /stok', 'example' => lang('/stock #mug 12'), 'description' => lang('Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.'));
+    foreach (ws_commands($viewer) as $entry) {
+        $help[] = array(
+            'command'     => $entry['label'],
+            'names'       => $entry['names'],
+            'example'     => $entry['example'],
+            'description' => $entry['description'],
+            'key'         => $entry['key'],
+            'name'        => $entry['name'],
+            'usage'       => $entry['usage'],
+            'args'        => $entry['args'],
+        );
     }
 
     return $help;
+}
+
+/**
+ * The fixed values the composer's argument popup offers after a command:
+ * days, estimates and priorities, each written as the parser reads it
+ * (ws_parse_date_word(), ws_parse_estimate(), ws_parse_priority()), in the
+ * screen's language. The first days are "top": the ones shown before
+ * anything is typed; the others are found as they are typed.
+ *
+ * @param string|null $language a language code, or null for the active one
+ * @return array dates, estimates, priorities: each a list of value, meta, top
+ */
+function ws_command_suggestions($language = null)
+{
+    $turkish = ws_command_turkish($language);
+    $today = date('Y-m-d');
+
+    $days = $turkish
+        ? array('bugün', 'yarın', 'cuma', '+2g', 'haftaya', 'pazartesi', 'salı', 'çarşamba', 'perşembe', 'cumartesi', 'pazar', '+1g', '+3g', '+1hafta')
+        : array('today', 'tomorrow', 'friday', '+2d', 'nextweek', 'monday', 'tuesday', 'wednesday', 'thursday', 'saturday', 'sunday', '+1d', '+3d', '+1w');
+
+    $estimates = $turkish ? array('~30dk', '~1sa', '~2sa', '~4sa') : array('~30m', '~1h', '~2h', '~4h');
+
+    $priorities = $turkish
+        ? array('urgent' => '!acil', 'high' => '!yüksek', 'normal' => '!normal', 'low' => '!düşük')
+        : array('urgent' => '!urgent', 'high' => '!high', 'normal' => '!normal', 'low' => '!low');
+
+    $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
+    $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array());
+
+    foreach ($days as $index => $word) {
+        $date = ws_parse_date_word($word, $today);
+
+        $out['dates'][] = array('value' => $word, 'meta' => function_exists('ws_day_label') ? ws_day_label($date) : $date, 'top' => ($index < 5));
+    }
+
+    foreach ($estimates as $word) {
+        $out['estimates'][] = array('value' => $word, 'meta' => '', 'top' => true);
+    }
+
+    foreach ($priorities as $key => $word) {
+        $out['priorities'][] = array('value' => $word, 'meta' => (string) ($labels[$key] ?? ''), 'top' => true);
+    }
+
+    return $out;
 }
 
 /**
@@ -142,6 +442,177 @@ function ws_command_split($body)
     }
 
     return array('command' => $names[$name], 'rest' => trim($match[2]));
+}
+
+/**
+ * Lower case with the Turkish letters folded to plain ones (ç → c, ğ → g,
+ * ı → i, ö → o, ş → s, ü → u), so a name typed without them, or in
+ * capitals, still meets it.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_command_fold($text)
+{
+    return strtr(ws_lower($text), array('ç' => 'c', 'ğ' => 'g', 'ı' => 'i', 'ö' => 'o', 'ş' => 's', 'ü' => 'u', 'â' => 'a', 'î' => 'i', 'û' => 'u'));
+}
+
+/**
+ * The word a text tries to run as a command: a slash and letters only at its
+ * very start, then a space or its end ("/todo", "/gorevx yarın"). A path
+ * ("/var/www"), an address, two slashes, digits or a slash and a space are
+ * text, not an attempt.
+ *
+ * @param string $body
+ * @return string the word without its slash, as typed; '' when there is none
+ */
+function ws_command_attempt($body)
+{
+    if (!preg_match('/^\/(\p{L}{1,20})(?=\s|$)/u', ltrim((string) $body), $match)) {
+        return '';
+    }
+
+    return $match[1];
+}
+
+/**
+ * Is the word one of the assistants' ("/claude", "/ai")? Matched the way
+ * their own patterns match it, ASCII case-insensitive, and in Turkish lower
+ * case as well.
+ *
+ * @param string $word without its slash
+ * @return bool
+ */
+function ws_command_assistant_word($word)
+{
+    return in_array(strtolower((string) $word), ws_command_assistant_words(), true)
+        || in_array(ws_lower($word), ws_command_assistant_words(), true);
+}
+
+/**
+ * A command that does not exist: the text starts like one
+ * (ws_command_attempt()) but no command answers to the word, and it is not an
+ * assistant's word.
+ *
+ * @param string $body
+ * @return string the word as typed, without its slash; '' when the text is a
+ *                command or no attempt at one
+ */
+function ws_command_unknown($body)
+{
+    $word = ws_command_attempt($body);
+
+    if (($word === '') || ws_command_assistant_word($word) || (ws_command_split($body) !== null)) {
+        return '';
+    }
+
+    return $word;
+}
+
+/**
+ * The command names nearest to a word that is no command, for the hint that
+ * answers it: names the word starts, names that start the word, and names
+ * one or two letters away (one for a word of up to three letters), Turkish
+ * letters folded. One name per command, the closest first; of two names
+ * equally near, the one with its Turkish letters, as the help writes it.
+ * The one-letter shortcuts (/g, /t) are never suggested.
+ *
+ * @param string     $word   without its slash
+ * @param array|null $viewer only the commands this person may use
+ * @param int        $limit
+ * @return string[] names with their slash
+ */
+function ws_command_closest($word, $viewer = null, $limit = 3)
+{
+    $typed = ws_command_fold($word);
+    $length = strlen($typed);
+    $best = array();
+
+    if ($typed === '') {
+        return array();
+    }
+
+    foreach (ws_commands($viewer) as $order => $entry) {
+        foreach ($entry['names'] as $name) {
+            $plain = ltrim($name, '/');
+            $folded = ws_command_fold($plain);
+
+            if (mb_strlen($plain, 'UTF-8') < 2) {
+                continue;
+            }
+
+            $distance = levenshtein($typed, $folded);
+            $prefix = (($length >= 2) && (strpos($folded, $typed) === 0)) || ((strlen($folded) >= 3) && (strpos($typed, $folded) === 0));
+
+            if (!$prefix && ($distance > (($length <= 3) ? 1 : 2))) {
+                continue;
+            }
+
+            $score = array($prefix ? 0 : 1, $distance, ($plain !== $folded) ? 0 : 1, $order);
+
+            if (!isset($best[$entry['key']]) || ($score < $best[$entry['key']]['score'])) {
+                $best[$entry['key']] = array('score' => $score, 'name' => $name);
+            }
+        }
+    }
+
+    usort($best, function ($a, $b) {
+        return ($a['score'] < $b['score']) ? -1 : (($a['score'] > $b['score']) ? 1 : 0);
+    });
+
+    return array_slice(array_map(function ($item) {
+        return $item['name'];
+    }, $best), 0, max(1, (int) $limit));
+}
+
+/**
+ * The answer to a command that does not exist: shown to the writer only,
+ * nothing posted, the text left in the box to be put right. It names the
+ * closest commands and says how to post the line as a message.
+ *
+ * @param array|null $viewer
+ * @param string     $word as typed, without its slash
+ * @return array type ephemeral, keep (the box keeps the text), html, unknown,
+ *               closest
+ */
+function ws_command_unknown_answer($viewer, $word)
+{
+    $closest = ws_command_closest($word, $viewer);
+    $html = '<div class="ws-ephemeral-title">' . h(lang(array('string' => '{var:1} is not a command.', 'vars' => '/' . $word))) . '</div>';
+
+    if (!empty($closest)) {
+        $html .= '<div>' . h(lang('Did you mean:')) . ' ' . implode(' ', array_map(function ($name) {
+            return '<code>' . h($name) . '</code>';
+        }, $closest)) . '</div>';
+    }
+
+    $html .= '<div class="text-body-secondary">' . h(lang(array(
+        'string' => 'Nothing was sent. To post it as a message, start it with two slashes: {var:1}. {var:2} lists every command.',
+        'vars'   => array('//' . $word, lang('/help')),
+    ))) . '</div>';
+
+    return array('type' => 'ephemeral', 'keep' => true, 'html' => $html, 'unknown' => '/' . $word, 'closest' => $closest);
+}
+
+/**
+ * Two slashes before a word ("//gorevx", "//not bir komut") post the text as
+ * a message, one slash taken off. Only where one slash would read as a
+ * command (ws_command_attempt()): "// TODO" or "///x" stay as they are, and
+ * so does "//claude", which would otherwise ask the assistant once posted.
+ *
+ * @param string $body
+ * @return string
+ */
+function ws_command_unescape($body)
+{
+    $body = (string) $body;
+    $trimmed = ltrim($body);
+
+    if ((strpos($trimmed, '//') !== 0) || !preg_match('/^\/\/(\p{L}{1,20})(?=\s|$)/u', $trimmed, $match) || ws_command_assistant_word($match[1])) {
+        return $body;
+    }
+
+    return substr($trimmed, 1);
 }
 
 /**
@@ -420,15 +891,19 @@ function ws_command_task_ref($text)
  *                        the parsed ones - the "give it to somebody lighter" button),
  *                        from (the value a /price or /stock preview showed),
  *                        decision (bool, keep that change in the channel)
- * @return array|null null when the text is not a command; otherwise type =
- *                    preview | done | ephemeral | error and what goes with it
+ * @return array|null null when the text is not a command nor an attempt at
+ *                    one; otherwise type = preview | done | ephemeral | error
+ *                    and what goes with it (a slash and a word that is no
+ *                    command: ws_command_unknown_answer())
  */
 function ws_command_run($viewer, $channel, $body, $options = array())
 {
     $split = ws_command_split($body);
 
     if ($split === null) {
-        return null;
+        $unknown = ws_command_unknown($body);
+
+        return ($unknown !== '') ? ws_command_unknown_answer($viewer, $unknown) : null;
     }
 
     $rest = $split['rest'];
@@ -585,7 +1060,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
 
             foreach (ws_command_help($viewer) as $item) {
-                $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description']) . '<br><span class="text-body-secondary">' . h($item['example']) . '</span></dd>';
+                $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
+                    . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
+                    . '<br><span class="text-body-secondary">' . h($item['example']) . '</span></dd>';
             }
 
             return array('type' => 'ephemeral', 'html' => $html . '</dl>');

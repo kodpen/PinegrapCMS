@@ -87,13 +87,21 @@ $comments_administrator_email_conditional_administrators = $row['comments_admini
 $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 
-// A page built in the visual editor shows a submitted form through its
-// form_item_view widget rather than a page type. For the checks below it is
-// a form item view page, and the widget's access setting is its submitter
-// security (see pg_sw_record_comment_context()).
+// The thread the comment may join, worked out again from the page rather than
+// taken from the hidden fields (includes/fn/comments.php). A page built in the
+// visual editor shows a submitted form through its form_item_view widget
+// rather than a page type, and its comments are that record's: for the checks
+// below it is a form item view page, and the widget's access setting is its
+// submitter security (see pg_sw_record_comment_context()). A classic catalog,
+// catalog detail or calendar event view page takes only a product, product
+// group or calendar event it shows (pg_comment_classic_item_shown()). A
+// refusal is answered further down, after the page's own gates.
+$comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);
 $comment_record = null;
-if (($page_type != 'form item view') && ($item_type == 'submitted_form') && function_exists('pg_sw_record_comment_context')) {
-    $comment_record = pg_sw_record_comment_context($page_id, $item_id);
+if ($comment_thread['accept']) {
+    $item_type = $comment_thread['item_type'];
+    $item_id = $comment_thread['item_id'];
+    $comment_record = $comment_thread['record'];
     if ($comment_record !== null) {
         $page_type = 'form item view';
     }
@@ -233,14 +241,74 @@ if ($user['role'] == 3) {
     $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
 }
 
-// If the page type or item type is not valid for a form item view/submitted form,
-// then log activity and output error.
-if (
-    (($page_type == 'form item view') && ($item_type != 'submitted_form'))
-    || (($page_type != 'form item view') && ($item_type == 'submitted_form'))
-) {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername']);
+// The thread check (pg_comment_thread_verify() above) is answered only here,
+// after the page's own gates (comments on, new comments allowed, login, view
+// access): a visitor who may not comment on the page gets the same answer
+// whatever thread or record id the post named.
+
+// A page with a form_item_view widget takes comments on the record it shows
+// and on nothing else. A post naming the page itself or a product goes back
+// to the form with what was typed, never onto a thread the page does not
+// show. The posted thread is dropped from the form state: a hidden field
+// prints the session value first, so the form drawn again would carry the
+// refused thread rather than the record the page shows.
+if ($comment_thread['refusal'] === 'item_type') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)));
+    $liveform->set_field('item_type', array());
+    $liveform->set_field('item_id', array());
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    exit();
+}
+
+// A record the widget does not show to this visitor (its access setting or
+// record filters hide it, it was deleted, or it belongs to another form) is
+// refused on an error page: such a record's page draws no comment form that
+// could show a form error. The form state is dropped first, so the typed text
+// does not turn up later on the form of another record of this page, where it
+// would post to that record's thread. Every case gets the same sentence; only
+// the log line differs.
+if ($comment_thread['refusal'] === 'record') {
+    $refused_record = (
+        is_array($comment_thread['record'])
+        && is_array($comment_thread['record']['form'])
+        && is_scalar($item_id)
+        && ((int) $item_id > 0)
+        && ((int) $comment_thread['record']['form']['id'] === (int) $item_id)
+    ) ? $comment_thread['record']['form'] : null;
+
+    if ($refused_record !== null) {
+        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$refused_record['reference_code'] ))), $_SESSION['sessionusername'] ?? '');
+    } else {
+        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    }
+
+    $liveform->remove_form();
+    output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// If the item type is not valid for the page type (a legacy form item view
+// page takes only a submitted form, a page without a form_item_view widget
+// never one, and a page takes a product, product group or calendar event only
+// when its page type shows that kind of item), then log activity and output
+// error.
+if ($comment_thread['refusal'] === 'page_type') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// A product, product group or calendar event this classic page does not show
+// (it was deleted, the event is not published or not in this view's
+// calendars, or the id names nothing) is refused on an error page, as a
+// record the page does not show is: the page answers that item's address with
+// an error of its own, so there is no form to go back to. The form state is
+// dropped first: a hidden field prints the session value first, so the next
+// comment form of this page, about another item, would carry the refused item
+// and the typed text and post them again.
+if ($comment_thread['refusal'] === 'item') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->remove_form();
+    output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // If the item type is submitted form then prepare for that type of comment.
@@ -267,13 +335,10 @@ if ($item_type == 'submitted_form') {
     }
 
     // Get submitter security for form item view. A designed page answers
-    // through its widget, by the same rule: the record has to be one the
-    // widget shows, to a visitor its access setting lets in.
+    // through its widget, whose access setting and record filters
+    // pg_comment_thread_verify() already applied: a record the widget does
+    // not show to this visitor was refused above, so none is asked here.
     if ($comment_record !== null) {
-        if ($comment_record['visible'] == false) {
-            log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername']);
-            output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
         $form_item_view = array('submitter_security' => 0);
     } else {
         $form_item_view = db_item(
@@ -388,62 +453,19 @@ if (
 ) {
     $name = $name;
 
-// else if user is allowed to select name, then set the name that the user selected
-} elseif ($comments_allow_user_to_select_name == 1) {
-    // if a certain type of name was selected, then get name for user, because we will need it below.
-    if (
-        ($name_type == 'first_name')
-        || ($name_type == 'first_name_last_initial')
-        || ($name_type == 'first_initial_last_name')
-        || ($name_type == 'first_initial_last_initial')
-        || ($name_type == 'full_name')
-    ) {
-        // get name for the user because we might need it below
-        $query =
-            "SELECT
-                contacts.first_name,
-                contacts.last_name
-            FROM user
-            LEFT JOIN contacts ON user_contact = contacts.id
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        $contact = mysqli_fetch_assoc($result);
-    }
-    
-    // prepare the name differently based on the type of name that was selected
-    switch ($name_type) {
-        case 'username':
-            $name = $_SESSION['sessionusername'];
-            break;
-            
-        case 'first_name':
-            $name = $contact['first_name'];
-            break;
-            
-        case 'first_name_last_initial':
-            $name = $contact['first_name'] . ' ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'first_initial_last_name':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . $contact['last_name'];
-            break;
-            
-        case 'first_initial_last_initial':
-            $name = mb_substr($contact['first_name'], 0, 1) . '. ' . mb_substr($contact['last_name'], 0, 1) . '.';
-            break;
-            
-        case 'full_name':
-            $name = $contact['first_name'] . ' ' . $contact['last_name'];
-            break;
-            
-        case 'anonymous':
-            $name = 'Anonymous';
-            break;
-    }
-
-// else save the user's username
+// A signed-in member who may not type a name gets the name
+// pg_comment_member_name() decides: on a page of a visual design the
+// contact's display name, elsewhere the login username. The posted name
+// field is never read for them, and with the page's name select on, a
+// name_type the form does not offer this member counts as no choice.
 } else {
-    $name = $_SESSION['sessionusername'];
+    $name = pg_comment_member_name(
+        (string) ($_SESSION['sessionusername'] ?? ''),
+        pg_comment_member_contact($user_id),
+        pg_sw_page_is_visual($page_id),
+        ($comments_allow_user_to_select_name == 1),
+        $name_type
+    );
 }
 
 // if there is not a name to save, then save anonymous

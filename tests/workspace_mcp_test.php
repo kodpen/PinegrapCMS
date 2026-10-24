@@ -11,7 +11,13 @@
  * messages of a server that is an agent itself, what it is sent for a
  * workspace task, how often its tasks are asked about, who may stop a
  * request to it, the conversation it keeps and its answer without the head
- * line (mcp_agent.php).
+ * line (mcp_agent.php). Also the tools turned on by a server's first read and
+ * by declaring the unsaid ones as reading only, the fields the settings form
+ * keeps after a failed check, and when a request to an alias that could not
+ * reach Pinegrap AI posts the form-run link (ai.php). Also the ready-made
+ * connectors, the alias an address suggests, which catalogue entry a server
+ * already is, and how the probe of an address decides the sign-in
+ * (mcp_catalogue.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,10 +30,12 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_catalogue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 
 // A tool as the client keeps it.
 function workspace_mcp_test_tool($name, $annotations = array())
@@ -699,4 +707,319 @@ function test_workspace_mcp_agent_request_is_stopped_by_who_asked_or_an_administ
 	pg_assert_false(ws_mcp_agent_can_cancel(null, $row), 'nobody');
 	pg_assert_true(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'queued')), 'while it waits');
 	pg_assert_false(ws_mcp_agent_can_cancel(array('id' => 7, 'role' => 3), array('requested_by' => 7, 'status' => 'answered')), 'not once it ended');
+}
+
+function test_workspace_mcp_first_read_turns_on_the_tools_that_read()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+		workspace_mcp_test_tool('deletes', array('destructiveHint' => true)),
+	);
+
+	pg_assert_true(ws_mcp_first_read(workspace_mcp_test_server(array(), array())), 'no tool known and no rule: a first read');
+	pg_assert_false(ws_mcp_first_read(workspace_mcp_test_server($tools, array())), 'tools read before, all of them off: the setup is the administrator\'s');
+	pg_assert_false(ws_mcp_first_read(workspace_mcp_test_server(array(), array('reads' => 'auto'))), 'a rule is kept');
+
+	pg_assert_same(array('reads' => 'auto'), ws_mcp_rules_after_read(array(), $tools, true), 'on the first read only the tool the server marks as reading only is on');
+	pg_assert_same(array(), ws_mcp_rules_after_read(array(), $tools, false), 'a server read before is left as it is');
+	pg_assert_same(array('unsaid' => 'auto_declared'), ws_mcp_rules_after_read(array('unsaid' => 'auto_declared', 'gone' => 'auto'), $tools, false), 'the rules of the tools it still lists stay; the others go');
+
+	// What a first read leaves on is what the screens offer.
+	$server = workspace_mcp_test_server($tools, ws_mcp_rules_after_read(array(), $tools, true), 'oauth');
+	pg_assert_same(array('reads'), array_keys(ws_mcp_tools_on($server)), 'a tool that writes stays off on a server people sign in to too');
+}
+
+function test_workspace_mcp_declare_all_turns_on_the_unsaid_tools()
+{
+	$tools = array(
+		workspace_mcp_test_tool('reads', array('readOnlyHint' => true)),
+		workspace_mcp_test_tool('unsaid'),
+		workspace_mcp_test_tool('other'),
+		workspace_mcp_test_tool('writes', array('readOnlyHint' => false)),
+	);
+	$shared = workspace_mcp_test_server($tools, array());
+	$oauth = workspace_mcp_test_server($tools, array(), 'oauth');
+
+	pg_assert_same(
+		array('reads' => 'auto', 'unsaid' => 'auto_declared', 'other' => 'auto_declared'),
+		ws_mcp_rules_declare_all($shared, ws_mcp_tools($shared), array('reads' => 'auto')),
+		'every tool the server says nothing about reads only; the one that writes stays off'
+	);
+	pg_assert_same(array(), ws_mcp_rules_declare_all($shared, array(), array()), 'no tool, nothing on');
+
+	$declared = ws_mcp_rules_declare_all($oauth, ws_mcp_tools($oauth), array('unsaid' => 'approve', 'writes' => 'approve'));
+	pg_assert_same('approve', $declared['unsaid'], 'a tool set to ask first keeps asking');
+	pg_assert_same('auto_declared', $declared['other'], 'an unsaid tool that was off reads only');
+	pg_assert_same('approve', $declared['writes'], 'a tool that writes keeps its rule');
+	pg_assert_false(isset($declared['reads']), 'a tool the server says reads only is left to its switch');
+}
+
+function test_workspace_mcp_settings_form_keeps_no_secret()
+{
+	$kept = ws_mcp_settings_keep_values(array(
+		'mcp_alias'         => ' @Docs ',
+		'mcp_name'          => array('x'),
+		'mcp_url'           => 'https://mcp.example.com/mcp',
+		'mcp_auth'          => 'header',
+		'mcp_token'         => 'token-secret',
+		'mcp_header_name'   => 'X-Api-Key',
+		'mcp_header_value'  => 'header-secret',
+		'mcp_user'          => 'robot',
+		'mcp_password'      => 'password-secret',
+		'mcp_client_id'     => 'client-1',
+		'mcp_client_secret' => 'client-secret',
+	));
+
+	pg_assert_same(array('mcp_alias', 'mcp_name', 'mcp_url', 'mcp_auth', 'mcp_header_name', 'mcp_user', 'mcp_client_id'), array_keys($kept));
+	pg_assert_same('@Docs', $kept['mcp_alias'], 'as typed, trimmed');
+	pg_assert_same('', $kept['mcp_name'], 'a list is not a value');
+	pg_assert_same('X-Api-Key', $kept['mcp_header_name']);
+
+	foreach (array('token-secret', 'header-secret', 'password-secret', 'client-secret') as $secret) {
+		pg_assert_false(in_array($secret, $kept, true), 'never kept: ' . $secret);
+	}
+
+	pg_assert_same(500, mb_strlen(ws_mcp_settings_keep_values(array('mcp_url' => str_repeat('é', 900)))['mcp_url']), 'a long value is cut');
+}
+
+function test_workspace_mcp_form_link_at_the_first_hold_only()
+{
+	$row = array('mcp_server_id' => 3, 'channel_id' => 5, 'note_id' => 0, 'task_id' => 0, 'ai_steps' => 0, 'ai_attempts' => 0);
+
+	pg_assert_true(ws_ai_form_hint_due($row, true), 'the first call of a request to an alias could not reach Pinegrap AI');
+	pg_assert_false(ws_ai_form_hint_due($row, false), 'Pinegrap AI answered, with a problem of another kind');
+	pg_assert_false(ws_ai_form_hint_due(array('ai_attempts' => 1) + $row, true), 'a retry says nothing again');
+	pg_assert_false(ws_ai_form_hint_due(array('ai_steps' => 2) + $row, true), 'a request that got on is not told');
+	pg_assert_false(ws_ai_form_hint_due(array('mcp_server_id' => 0) + $row, true), 'no alias was asked');
+	pg_assert_false(ws_ai_form_hint_due(array('note_id' => 4) + $row, true), 'asked in a note');
+	pg_assert_false(ws_ai_form_hint_due(array('task_id' => 2) + $row, true), 'a run on a task');
+	pg_assert_false(ws_ai_form_hint_due(array('channel_id' => 0) + $row, true), 'no channel to tell');
+}
+
+function test_workspace_mcp_catalogue_entries_are_valid()
+{
+	$catalogue = ws_mcp_catalogue();
+	$aliases = array();
+	$addresses = array();
+
+	pg_assert_true((count($catalogue) >= 10) && (count($catalogue) <= 14), 'about a dozen connectors: ' . count($catalogue));
+
+	foreach ($catalogue as $key => $entry) {
+		pg_assert_true((bool) preg_match('/^[a-z][a-z0-9_]{1,31}$/', (string) $key), $key . ': a key of letters, digits and _');
+		pg_assert_same(array('name', 'description', 'url', 'auth', 'token_url', 'icon', 'alias', 'tools'), array_keys($entry), $key . ': every field, in order');
+		pg_assert_true(trim($entry['name']) !== '', $key . ': a name');
+		pg_assert_true(trim($entry['description']) !== '', $key . ': a description');
+		pg_assert_true(pg_mcp_client_url_is_valid($entry['url']), $key . ': an https address');
+		pg_assert_true(in_array($entry['auth'], array('none', 'oauth', 'bearer'), true), $key . ': a sign-in one click can make');
+		pg_assert_true(isset(ws_mcp_auth_kinds()[$entry['auth']]), $key . ': a sign-in the form knows');
+		pg_assert_same('read_only', $entry['tools'], $key . ': the first read turns on the tools that read');
+
+		if ($entry['auth'] === 'bearer') {
+			pg_assert_true(pg_mcp_client_url_is_valid($entry['token_url']), $key . ': the page where a token is made');
+		} else {
+			pg_assert_same('', $entry['token_url'], $key . ': no token page without a token');
+		}
+
+		pg_assert_same('', ws_mcp_alias_shape_problem($entry['alias']), $key . ': an alias that may be taken');
+		pg_assert_false(in_array($entry['alias'], ws_mcp_reserved_aliases(), true), $key . ': not a reserved alias');
+		pg_assert_false(isset($aliases[$entry['alias']]), $key . ': its alias is its own');
+		pg_assert_false(isset($addresses[ws_mcp_url_key($entry['url'])]), $key . ': its address is its own');
+
+		$aliases[$entry['alias']] = true;
+		$addresses[ws_mcp_url_key($entry['url'])] = true;
+
+		pg_assert_same($entry, ws_mcp_catalogue_entry($key), $key . ': found by its key');
+	}
+
+	pg_assert_same(null, ws_mcp_catalogue_entry('nothing'), 'an unknown key is nothing');
+	pg_assert_same(null, ws_mcp_catalogue_entry(array('github')), 'a list is no key');
+}
+
+function test_workspace_mcp_catalogue_icons_are_bootstrap_icons()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.css');
+
+	foreach (ws_mcp_catalogue() as $key => $entry) {
+		pg_assert_true((bool) preg_match('/^bi-[a-z0-9-]+$/', $entry['icon']), $key . ': an icon class');
+		pg_assert_true(strpos($css, '.' . $entry['icon'] . '::before') !== false, $key . ': ' . $entry['icon'] . ' is in the icon font');
+	}
+}
+
+function test_workspace_mcp_alias_from_host()
+{
+	pg_assert_same('linear', ws_mcp_alias_from_host('mcp.linear.app'));
+	pg_assert_same('notion', ws_mcp_alias_from_host('MCP.Notion.com'), 'in lower case');
+	pg_assert_same('cloudflare', ws_mcp_alias_from_host('docs.mcp.cloudflare.com'));
+	pg_assert_same('microsoft', ws_mcp_alias_from_host('learn.microsoft.com'));
+	pg_assert_same('huggingface', ws_mcp_alias_from_host('huggingface.co'));
+	pg_assert_same('githubcopilot', ws_mcp_alias_from_host('api.githubcopilot.com'));
+	pg_assert_same('example', ws_mcp_alias_from_host('shop.example.com.tr'), 'a country\'s second level is skipped');
+	pg_assert_same('example', ws_mcp_alias_from_host('tools.example.co.uk'));
+	pg_assert_same('localhost', ws_mcp_alias_from_host('localhost'));
+	pg_assert_same('lives', ws_mcp_alias_from_host('9lives.dev'), 'an alias starts with a letter');
+	pg_assert_same('claude-mcp', ws_mcp_alias_from_host('claude.ai'), 'a reserved word is not suggested');
+	pg_assert_same('x-mcp', ws_mcp_alias_from_host('x.com'), 'too short alone');
+	pg_assert_same('a-very-long-name-of-a-service-th', ws_mcp_alias_from_host('a-very-long-name-of-a-service-that-goes-on.example'), 'at most 32 characters');
+	pg_assert_same('server', ws_mcp_alias_from_host('192.168.1.10'), 'an IP address has no name');
+	pg_assert_same('server', ws_mcp_alias_from_host(''), 'nothing');
+
+	foreach (array('mcp.linear.app', 'claude.ai', 'x.com', '9lives.dev', '192.168.1.10', '---.com') as $host) {
+		pg_assert_same('', ws_mcp_alias_shape_problem(ws_mcp_alias_from_host($host)), $host . ': the suggestion is a valid alias');
+	}
+}
+
+function test_workspace_mcp_catalogue_entry_already_added()
+{
+	pg_assert_same(ws_mcp_url_key('https://mcp.linear.app/mcp'), ws_mcp_url_key('https://MCP.Linear.app/mcp/'), 'case of the host and a trailing slash do not count');
+	pg_assert_same(ws_mcp_url_key('https://mcp.vercel.com'), ws_mcp_url_key('https://mcp.vercel.com:443/'), 'the default port does not count');
+	pg_assert_false(ws_mcp_url_key('https://mcp.linear.app/mcp') === ws_mcp_url_key('https://mcp.linear.app/sse'), 'another path is another server');
+	pg_assert_false(ws_mcp_url_key('https://example.com/mcp?x=1') === ws_mcp_url_key('https://example.com/mcp'), 'the query counts');
+
+	$servers = array(
+		array('id' => 4, 'alias' => 'issues', 'url' => 'https://mcp.linear.app/mcp/'),
+		array('id' => 9, 'alias' => 'gh', 'url' => 'https://api.githubcopilot.com/mcp'),
+		array('id' => 11, 'alias' => 'other', 'url' => 'https://mcp.example.com/mcp'),
+	);
+	$added = ws_mcp_catalogue_added($servers);
+
+	pg_assert_same(4, (int) $added['linear']['id'], 'Linear is added, under another alias');
+	pg_assert_same(9, (int) $added['github']['id'], 'GitHub is added, without its trailing slash');
+	pg_assert_false(isset($added['notion']), 'Notion is not');
+	pg_assert_same(2, count($added), 'a server outside the catalogue is no entry');
+	pg_assert_same(array(), ws_mcp_catalogue_added(array()), 'no server, no entry');
+}
+
+function test_workspace_mcp_probe_kind()
+{
+	$found = array('ok' => true, 'registration_url' => 'https://mcp.example.test/register', 'cimd' => false);
+	$cimd = array('ok' => true, 'registration_url' => '', 'cimd' => true);
+	$manual = array('ok' => true, 'registration_url' => '', 'cimd' => false);
+
+	pg_assert_same('none', ws_mcp_probe_kind(true, 200, null, true), 'it answered without a credential');
+	pg_assert_same('oauth', ws_mcp_probe_kind(false, 401, $found, false), 'a sign-in the site registers for itself');
+	pg_assert_same('oauth', ws_mcp_probe_kind(false, 401, $cimd, true), 'a client ID metadata document, on an https site');
+	pg_assert_same('bearer', ws_mcp_probe_kind(false, 401, $cimd, false), 'not on an http site');
+	pg_assert_same('bearer', ws_mcp_probe_kind(false, 401, $manual, true), 'a sign-in that needs an application of its own: a token first');
+	pg_assert_same('bearer', ws_mcp_probe_kind(false, 401, array('ok' => false, 'error' => 'x'), true), 'no sign-in found');
+	pg_assert_same('bearer', ws_mcp_probe_kind(false, 403, null, true), 'refused');
+	pg_assert_same('', ws_mcp_probe_kind(false, 404, null, true), 'no MCP server there');
+	pg_assert_same('', ws_mcp_probe_kind(false, 0, null, true), 'not reached');
+}
+
+// A stand-in for the network: answers each request by its address and its
+// JSON-RPC method, the way an open server, a server people sign in to, one
+// whose sign-in needs an application of its own, one that takes a token and
+// an address with no server answer.
+function workspace_mcp_test_fetch($kind)
+{
+	return function ($method, $url, $body, $headers) use ($kind) {
+		$request = ($body !== null) ? json_decode((string) $body, true) : null;
+		$rpc = is_array($request) ? (string) ($request['method'] ?? '') : '';
+		$id = (is_array($request) && array_key_exists('id', $request)) ? $request['id'] : null;
+		$json = function ($status, $data, $extra = array()) {
+			return array('status' => $status, 'body' => (string) json_encode($data), 'headers' => $extra + array('content-type' => 'application/json'), 'error' => '');
+		};
+		$metadata = 'https://mcp.example.test/.well-known/oauth-protected-resource/mcp';
+
+		if ($kind === 'open') {
+			if ($rpc === 'server/discover') {
+				return $json(400, array('jsonrpc' => '2.0', 'id' => 'server-error', 'error' => array('code' => -32600, 'message' => 'Unsupported protocol version')));
+			}
+
+			if ($rpc === 'initialize') {
+				return $json(200, array('jsonrpc' => '2.0', 'id' => $id, 'result' => array('protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(), 'serverInfo' => array('name' => 'docs', 'title' => 'Example Docs', 'version' => '1.0'))));
+			}
+
+			if ($rpc === 'notifications/initialized') {
+				return array('status' => 202, 'body' => '', 'headers' => array(), 'error' => '');
+			}
+
+			if ($rpc === 'tools/list') {
+				return $json(200, array('jsonrpc' => '2.0', 'id' => $id, 'result' => array('tools' => array(
+					array('name' => 'search', 'description' => 'Search', 'inputSchema' => array('type' => 'object'), 'annotations' => array('readOnlyHint' => true)),
+					array('name' => 'fetch', 'description' => 'Fetch', 'inputSchema' => array('type' => 'object')),
+				))));
+			}
+		}
+
+		if (in_array($kind, array('oauth', 'manual', 'token'), true)) {
+			if ($method === 'POST') {
+				return $json(401, array('error' => 'invalid_token'), array('www-authenticate' => 'Bearer resource_metadata="' . $metadata . '"'));
+			}
+
+			if (($kind !== 'token') && ($url === $metadata)) {
+				return $json(200, array('resource' => 'https://mcp.example.test/mcp', 'authorization_servers' => array('https://mcp.example.test')));
+			}
+
+			if (($kind !== 'token') && ($url === 'https://mcp.example.test/.well-known/oauth-authorization-server')) {
+				return $json(200, array(
+					'issuer'                           => 'https://mcp.example.test',
+					'authorization_endpoint'           => 'https://mcp.example.test/authorize',
+					'token_endpoint'                   => 'https://mcp.example.test/token',
+					'code_challenge_methods_supported' => array('S256'),
+				) + (($kind === 'oauth') ? array('registration_endpoint' => 'https://mcp.example.test/register') : array()));
+			}
+		}
+
+		return array('status' => 404, 'body' => 'Not found', 'headers' => array('content-type' => 'text/plain'), 'error' => '');
+	};
+}
+
+function test_workspace_mcp_probe_reads_a_server()
+{
+	$url = 'https://mcp.example.test/mcp';
+
+	$open = ws_mcp_probe($url, workspace_mcp_test_fetch('open'), true);
+	pg_assert_true($open['ok'], 'an open server is understood');
+	pg_assert_same('none', $open['kind'], 'no credential');
+	pg_assert_same(2, $open['tools'], 'its tools are counted');
+	pg_assert_same(1, $open['reads'], 'and the ones it marks as reading only');
+	pg_assert_same('Example Docs', $open['name'], 'the name it gives itself');
+	pg_assert_same('example', $open['alias'], 'an alias from its host');
+
+	$oauth = ws_mcp_probe($url, workspace_mcp_test_fetch('oauth'), true);
+	pg_assert_same('oauth', $oauth['kind'], 'a sign-in the site registers for itself');
+	pg_assert_false($oauth['oauth_manual'], 'no application of its own is needed');
+	pg_assert_same('Example', $oauth['name'], 'without an answer, the name its host suggests');
+
+	$manual = ws_mcp_probe($url, workspace_mcp_test_fetch('manual'), true);
+	pg_assert_same('bearer', $manual['kind'], 'a token first');
+	pg_assert_true($manual['oauth_manual'], 'a sign-in with an application of its own is under More settings');
+
+	$token = ws_mcp_probe($url, workspace_mcp_test_fetch('token'), true);
+	pg_assert_same('bearer', $token['kind'], 'no sign-in found: a token');
+	pg_assert_false($token['oauth_manual']);
+
+	$missing = ws_mcp_probe($url, workspace_mcp_test_fetch('missing'), true);
+	pg_assert_false($missing['ok'], 'no MCP server there');
+	pg_assert_same('', $missing['kind']);
+	pg_assert_same(lang('There is no MCP server at that address.'), $missing['error'], 'the client\'s own words');
+
+	$asked = 0;
+	$bad = ws_mcp_probe('http://mcp.example.test/mcp', function () use (&$asked) {
+		$asked++;
+		return array('status' => 200, 'body' => '', 'headers' => array(), 'error' => '');
+	}, true);
+	pg_assert_false($bad['ok'], 'an http address is refused');
+	pg_assert_same(0, $asked, 'before anything is sent');
+}
+
+function test_workspace_mcp_probe_text()
+{
+	$base = array('ok' => true, 'kind' => 'none', 'tools' => 3, 'reads' => 2, 'name' => 'Docs', 'alias' => 'docs', 'error' => '', 'oauth_manual' => false, 'host' => 'mcp.example.test');
+
+	pg_assert_contains('3', ws_mcp_probe_text($base), 'tools counted');
+	pg_assert_contains('mcp.example.test', ws_mcp_probe_text($base), 'the host named');
+	pg_assert_false(ws_mcp_probe_text(array('reads' => 0) + $base) === ws_mcp_probe_text($base), 'tools that say nothing get their own words');
+	pg_assert_false(ws_mcp_probe_text(array('tools' => 0, 'reads' => 0) + $base) === ws_mcp_probe_text(array('reads' => 0) + $base), 'no tools');
+	pg_assert_false(ws_mcp_probe_text(array('kind' => 'oauth') + $base) === ws_mcp_probe_text(array('kind' => 'bearer') + $base), 'a sign-in and a token differ');
+	pg_assert_false(ws_mcp_probe_text(array('kind' => 'bearer', 'oauth_manual' => true) + $base) === ws_mcp_probe_text(array('kind' => 'bearer') + $base), 'a sign-in under More settings is named');
+	pg_assert_contains('Not here', ws_mcp_probe_text(array('ok' => false, 'kind' => '', 'error' => 'Not here') + $base), 'the reason');
+
+	pg_assert_same('success', ws_mcp_probe_state(array('kind' => 'none') + $base));
+	pg_assert_same('info', ws_mcp_probe_state(array('kind' => 'oauth') + $base));
+	pg_assert_same('info', ws_mcp_probe_state(array('kind' => 'bearer') + $base));
+	pg_assert_same('danger', ws_mcp_probe_state(array('ok' => false, 'kind' => '') + $base));
 }

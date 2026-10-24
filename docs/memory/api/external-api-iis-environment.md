@@ -5,7 +5,7 @@ description: What IIS and the WAF impose on the external API: path-based API det
 
 ## How does waf_is_api_request() detect API requests?
 - It asks the running script first, then the request path (`waf_request_names_script()`). `web.config` routes every request that does not match a file on disk to `router.php`; IIS counts `/integration.php/meta` as a file but not `/integration.php/products/138`. So the most-used endpoint shape arrives with `SCRIPT_NAME` = `router.php` and is recognised by its path.
-- The FIRST `.php` segment in the path is taken: `/index.php/integration.php/x` answers `index.php` here too; the exemption cannot be forged. Scripts counted as API: `integration.php`, `api.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`.
+- The FIRST `.php` segment in the path is taken: `/index.php/integration.php/x` answers `index.php` here too; the exemption cannot be forged. Scripts counted as API: `integration.php`, `api.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`, `marketplace_webhook.php`.
 
 ## Which rate limits apply?
 - These are outside the WAF's sensitive counter (`waf_handle_rate_sensitive()`): its per-IP 30/min plus auto-ban made the API unusable for an integration doing what it was allowed to.

@@ -625,7 +625,10 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 	// Twenty full pages that all sit inside the five-minute overlap would hand
 	// the next pass the same start, and it would read the same twenty pages for
 	// ever. Only then does the pull read on past the cap, up to this ceiling,
-	// until the last package read is newer than where it started.
+	// until the last package read is newer than where it started. The ceiling is
+	// a hundred pages' worth of entries new to this pass: a window started again
+	// reads the entries of its last moment a second time, so the new entries are
+	// counted, not the requests, which are held to three times as many.
 	$ceiling = 100;
 
 	// The modification time of the last package read that carried one.
@@ -633,7 +636,16 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 	$more = false;
 
-	for ($page = 0; $page < $ceiling; $page++) {
+	// After a full page the window starts again just before the last moment read
+	// (mp_feed_next_page()), so the page asked for is mostly 0.
+	$page = 0;
+
+	$seen = array();
+
+	// Entries new to this pass, which the ceiling counts.
+	$fresh = 0;
+
+	for ($request = 0; ($request < 3 * $ceiling) && ($page < $ceiling) && ($fresh < $ceiling * 100); $request++) {
 
 		$path = '/rest/delivery/v1/shipmentPackages'
 			. '?startDate=' . $start
@@ -656,19 +668,46 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 		$content = mp_n11_order_content($result['data']);
 
-		foreach ($content as $entry) {
+		$first = 0;
+
+		$last = 0;
+
+		foreach (array_values($content) as $index => $entry) {
+
+			$moment = (is_array($entry) && isset($entry['lastModifiedDate']))
+				? mp_feed_moment($entry['lastModifiedDate']) : 0;
+
+			if ($index === 0) {
+
+				$first = $moment;
+
+			}
+
+			$last = $moment;
 
 			$package = mp_n11_package($entry);
+
+			if (($package !== null) && ($package['placed_at'] > 0)) {
+
+				$reached = (int) $package['placed_at'];
+
+			}
+
+			// An entry read again at the same moment is not new, whether or not
+			// it is one to import.
+			$id = (is_array($entry) && isset($entry['id'])) ? (string) $entry['id'] : '';
+
+			if (($id !== '') && !mp_feed_first_time($seen, $id, $moment)) {
+
+				continue;
+
+			}
+
+			$fresh++;
 
 			if ($package !== null) {
 
 				$packages[] = $package;
-
-				if ($package['placed_at'] > 0) {
-
-					$reached = (int) $package['placed_at'];
-
-				}
 
 			}
 
@@ -682,11 +721,13 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 		}
 
-		if (($page + 1 >= $pages) && ($reached > $since)) {
+		if (($request + 1 >= $pages) && ($reached > $since)) {
 
 			break;
 
 		}
+
+		list($start, $page) = mp_feed_next_page($start, $page, $first, $last);
 
 	}
 
@@ -1004,8 +1045,9 @@ function mp_n11_request_collection($account, $requests) {
 // The only status change their update service performs today, and it is a
 // commitment - it tells n11 the seller is preparing the goods, and their
 // dispatch clock is running from it. So the caller decides whether to do it;
-// this only carries it out.
-function mp_n11_approve_lines($account, $line_ids) {
+// this only carries it out. The line ids are all n11 needs; $package is the
+// contract's, for a marketplace that names the package too.
+function mp_n11_approve_lines($account, $line_ids, $package = array()) {
 
 	$lines = array();
 

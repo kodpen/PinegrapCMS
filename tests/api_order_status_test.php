@@ -63,6 +63,17 @@ function test_api_order_status_move_refuses_the_cart()
 	pg_assert_same('none', api_orders_status_move('incomplete', 'incomplete'), 'a cart left as it is');
 }
 
+// The API decides by the store's one rule (pg_order_status_move()), which
+// the Workspace's order writer follows too.
+function test_api_order_status_move_is_the_store_rule()
+{
+	foreach (array('incomplete', 'complete', 'exported', 'cancelled', '', 'canceled') as $from) {
+		foreach (array('incomplete', 'complete', 'exported', 'cancelled') as $to) {
+			pg_assert_same(pg_order_status_move($from, $to), api_orders_status_move($from, $to), var_export($from, true) . ' to ' . $to);
+		}
+	}
+}
+
 function test_api_order_status_update_route_drops_incomplete()
 {
 	$values = array();

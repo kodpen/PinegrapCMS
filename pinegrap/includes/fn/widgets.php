@@ -147,7 +147,7 @@ function pg_sw_standard_fields()
     // classic pages, wrong for a public byline, where it publishes half of a
     // credential (a member's username defaults to the local part of their
     // e-mail address). This one is the contact's name, the same rule as the
-    // BlogPosting author (pg_submitted_form_author_name()).
+    // BlogPosting author, pg_contact_display_name() (includes/fn/contacts.php).
     $fields['submitter_name'] = array(
         'label' => lang('Author Name'),
         'sql'   => pg_sw_submitter_name_sql('submitter_contact'),
@@ -161,7 +161,7 @@ function pg_sw_standard_fields()
 // The SQL for a submission's author name, read from the contact joined as
 // $alias (forms.contact_id): the first and last name, else the nickname, ''
 // when the record has no contact or the contact no name. The login username
-// is never read. Mirrors pg_submitted_form_author_name() (includes/fn/seo.php):
+// is never read. Mirrors pg_contact_display_name() (includes/fn/contacts.php):
 // CONCAT_WS skips the NULL halves, so a name with one part has no stray space.
 function pg_sw_submitter_name_sql($alias)
 {
@@ -898,13 +898,14 @@ function _pg_sw_current_page_id()
     return $page_id;
 }
 
-// The record counters a form_list_view can order by, beside the built-ins and
-// the form's own fields. They win over a form field of the same name, as a
+// The record statistics a form_list_view can order by, beside the built-ins
+// and the form's own fields: the detail page's counters and the record's
+// newest activity. They win over a form field of the same name, as a
 // standard field does in pg_sw_apply_tokens(). style_designer.js keeps the
 // same list in _SW_FORM_ORDER_COUNTERS.
 function pg_sw_form_order_counters()
 {
-    return array('number_of_views', 'number_of_comments', 'recent_views');
+    return array('number_of_views', 'number_of_comments', 'recent_views', 'newest_activity_date_and_time');
 }
 
 // The window of the recent_views order, in days: today and the days before
@@ -921,15 +922,18 @@ function pg_sw_recent_views_days($value)
 
 // The ORDER BY term of a counter order (pg_sw_form_order_counters()), or null
 // when $field is not one of them and '' when it is but the list names no
-// detail page: the counters are kept per detail page, so without one there is
-// nothing to order by and the list keeps its date order.
+// detail page: the counters and the newest comment are kept per detail page,
+// so without one there is nothing to order by and the list keeps its date
+// order.
 //
 // Correlated scalar subqueries rather than joins: submitted_form_info has no
 // unique key, and a joined duplicate row would print a record twice. MAX()
 // picks one row; the daily rows are summed over the window, counted in
 // MySQL's clock (CURDATE(), as the writer stamps them). Without the daily
-// table, recent_views reads the all-time counter. Every value that reaches
-// the SQL is whitelisted or cast to int.
+// table, recent_views reads the all-time counter. Newest activity is the later
+// of the record's submitted time and the time of the comment the detail
+// page's row names as its newest. Every value that reaches the SQL is
+// whitelisted or cast to int.
 function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_days, $stats_ready)
 {
     $field = (string)$field;
@@ -939,6 +943,18 @@ function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_da
     if ($page <= 0) return '';
 
     $dir = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+
+    // The same source as the ^^newest_activity_date_and_time^^ token and the
+    // classic list's order: submitted_form_info.newest_comment_id. MAX()
+    // because the row has no unique key. Compared as integers, with 0 (never
+    // '') when there is no row or the comment is gone, so the submitted time
+    // stands.
+    if ($field === 'newest_activity_date_and_time') {
+        return "GREATEST(forms.submitted_timestamp, IFNULL((SELECT MAX(pg_ord_c.created_timestamp)"
+             . " FROM submitted_form_info pg_ord_i"
+             . " INNER JOIN comments pg_ord_c ON pg_ord_c.id = pg_ord_i.newest_comment_id"
+             . " WHERE pg_ord_i.submitted_form_id = forms.id AND pg_ord_i.page_id = '$page'), 0)) $dir";
+    }
 
     if ($field === 'recent_views' && $stats_ready) {
         $back = pg_sw_recent_views_days($recent_days) - 1;
@@ -997,6 +1013,7 @@ function pg_sw_should_count_record_view($seen, $method, $automated)
 // widgets read the rest (page_number, query, r, ...). The names starting
 // with utm_ or pg_ are refused in pg_sw_url_param_name(). The editor keeps
 // a copy (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
+// A designed form control's _cf.url_param obeys the same names.
 function pg_sw_url_param_reserved()
 {
     return array(
@@ -1444,14 +1461,18 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //
 // Config (`system_region_config`) keys used here:
 //   items_per_page      int (default 10, max 500)
+//   max_results         int (default 0 = no cap, max 100000): the records a
+//                       visitor can page through
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
-//   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
+//   empty_message       string         shown when no records match (default: the
+//                                      translated "No records found.")
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
-//                               recent_views | form_fields.name (the three
-//                               counters need detail_page_id, whose counters
-//                               they read: pg_sw_counter_order_sql())
+//                               recent_views | newest_activity_date_and_time |
+//                               form_fields.name (the record statistics need
+//                               detail_page_id, whose counters and newest
+//                               comment they read: pg_sw_counter_order_sql())
 //   order_by_direction  ASC | DESC (default DESC)
 //   order_by_2_field, order_by_2_direction — the second order, same values
 //   order_recent_days   int 1-180 (default 7): the recent_views window,
@@ -1469,6 +1490,14 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // records match; the visibility flags has_filter_value (that case) and
 // no_filter_value (no value applied) tell the states apart; the page's
 // head follows them through pg_sw_url_filter_state().
+//
+// ^^__result_count^^ prints, in the surround and in every row, how many
+// complete records the list matched (its filters, the visitor's search and
+// the viewer filter), capped at max_results like the classic list's "Found
+// N results", grouped with the site's separators. The flags has_records and
+// no_records follow that number. A list whose loop area is empty but whose
+// surround is not (a "1,284 topics" strip) runs only the count and returns
+// the surround, without rows or pagination.
 //
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
@@ -1555,8 +1584,15 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Only the flags a list evaluates are marked: a flag from another widget
     // type (a pasted record block's record_found) leaves its element drawn,
     // as lists did before they had flags of their own.
-    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));
     pg_sw_record_href_bindings($tree_decoded);
+    // Links to another page with the record's values: a token each, and
+    // their pages read once, before the surround and the rows are drawn.
+    // Outside the rows (the surround, an empty list) such a link opens the
+    // bare page, never the current address.
+    $page_links = pg_sw_page_link_bindings($tree_decoded);
+    pg_sw_page_link_resolve($page_links);
+    $page_link_bare = pg_sw_page_link_values($page_links, array(), array(), array());
     $split = _split_widget_tree($tree_decoded, true);
 
     // Render the loop template (per-record). If no loop_area was found, fall back to
@@ -1588,9 +1624,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($field === 'submitted_date_and_time') {
             return array('sql' => "forms.submitted_timestamp $direction", 'join' => '');
         }
-        // A record counter, read for the list's detail page. It wins over a
-        // form field of the same name; without a detail page it gives no
-        // order (the date order then applies) and no form field is tried.
+        // A record statistic (counter or newest activity), read for the
+        // list's detail page. It wins over a form field of the same name;
+        // without a detail page it gives no order (the date order then
+        // applies) and no form field is tried.
         $counter = pg_sw_counter_order_sql(
             $field,
             $direction,
@@ -1760,6 +1797,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $filter_join  = ($filter_where !== '' && $filter_sql['tokens'])
         ? pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'))
         : array('select' => '', 'join' => '');
+    // ^^__result_count^^ and its flags, set once the records are counted.
+    $result_count      = 0;
+    $result_count_html = '0';
 
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
@@ -1814,10 +1854,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // (the rows come from a template resolved the same way), so the pattern
     // never spans record HTML: a long span would exceed PCRE's backtrack
     // limit and empty the list, and a record's own text could close a span.
-    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags) {
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, $page_link_bare) {
         if ($static_html === '') return $search_html . $rows . $pagination;
         $html = _pg_sw_resolve_visibility(
-            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array('__filter_value' => pg_sw_filter_value_html($filter_value)))),
+            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array(
+                '__filter_value' => pg_sw_filter_value_html($filter_value),
+                '__result_count' => $result_count_html,
+            ) + $page_link_bare)),
             $flags
         );
         if (strpos($html, '<!--pg-loop-before-->') !== false) {
@@ -1830,13 +1873,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         return str_replace('<!--pg-loop-slot-->', $search_html . $rows . $pagination, $html);
     };
 
-    // If the loop template is empty, we still want to honor empty/search/pagination
-    // on the static surround. But absent a per-record visual there's nothing to repeat,
-    // so just return the static HTML with search/empty injected at the slot.
-    if ($loop_template === '') {
-        if ($static_html === '') return '';
-        return $stitch($empty_html, '');
-    }
+    // An empty loop area has no record to repeat, but its surround may still
+    // print the count, the flags and the search box (a "1,284 topics" strip):
+    // such a list runs only the count below and returns before the rows.
+    // Taken before "Show only when" is resolved on the template, so a loop
+    // area that only a flag empties stays a list with rows and pages.
+    // With neither loop nor surround there is nothing to print.
+    $loop_empty = ($loop_template === '');
+    if ($loop_empty && $static_html === '') return '';
 
     // ── Count total matching rows (for pagination) ────────────────────────
     $total_records = (int)db_value(
@@ -1848,6 +1892,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $search_where
            $sql_viewer_filter"
     );
+    // The number a visitor can page through, as the classic list's "Found
+    // N results" and the search results widget count it: max_results caps it.
+    $result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;
+    $result_count_html = h(pg_format_number($result_count, 0));
 
     // What the address applied, for this list's tokens and flags and for
     // the page's head (canonical, title, robots, feed link).
@@ -1870,7 +1918,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['inexact'] = true;
     }
     $filter_value = pg_sw_url_filter_value($filter_sql, $total_records);
-    $flags = array('has_filter_value' => $filter_value !== '', 'no_filter_value' => empty($filter_sql['params']));
+    $flags = array(
+        'has_filter_value' => $filter_value !== '',
+        'no_filter_value'  => empty($filter_sql['params']),
+        'has_records'      => $result_count > 0,
+        'no_records'       => $result_count === 0,
+    );
     // The flags are final: the per-record template is resolved once, before
     // any record is drawn into it.
     $loop_template = _pg_sw_resolve_visibility($loop_template, $flags);
@@ -1886,6 +1939,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     }
 
     if ($total_records === 0) return $stitch($empty_html, '');
+    // A count strip: the head state above is registered, no row is read.
+    if ($loop_empty) return $stitch('', '');
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
     // pages through the first $max_results rows. Final page's LIMIT may be
@@ -1936,8 +1991,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
     // Which standard fields this design actually prints decides what the
     // listing query reads: a template that never mentions a commenter never
-    // joins the comments table.
-    $template_tokens = pg_sw_template_tokens($loop_template);
+    // joins the comments table. A link's values are read from the record
+    // too.
+    $template_tokens = pg_sw_template_tokens($loop_template) + pg_sw_page_link_tokens($page_links);
     // A filter on a standard field needs that field's table joined too.
     // A standard name the form has its own field for is not selected, so the
     // token prints that field or nothing (pg_sw_yielded_standard_names()).
@@ -1996,6 +2052,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Index the form's own fields under every identifier a designer might
     // write for them. Values stay raw — escaping happens once, at replace time.
     $by_form = pg_sw_index_form_data($data_rows);
+    // The values as stored, for the links to another page: the list there
+    // compares them with what it stores, not with a translation.
+    $by_form_source = $by_form;
 
     // A widget that includes its records in the translation prints their
     // texts in the language the page is served in (includes/fn/translate.php).
@@ -2031,6 +2090,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // form list printed an empty address.
         $extra['__detail_url'] = $extra['form_item_view'];
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
+        $extra['__result_count'] = $result_count_html;
+        // Links to another page, valued from this record.
+        $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
+            'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',
+            'submitted_form_id' => $extra['submitted_form_id'],
+            'submitter_user_id' => $extra['submitter_user_id'],
+        ));
 
         $rendered = pg_sw_apply_tokens(
             $loop_template,
@@ -2362,6 +2428,248 @@ function pg_sw_record_href_bindings(&$node)
     }
 }
 
+// ============================================================================
+// Links to another page with the record's values in the address.
+//
+// A link in a form list row or on a form detail page may open another page
+// of the site with query parameters valued from the record: a board badge
+// opens /board?board=<board>, a byline /members?member=<author name>. The
+// link node stores the sentinel binding and, beside it, the page and the
+// values:
+//   props._bindings.href   = '__page_link'
+//   props._bindParams.href = array('page_id' => 12,
+//                                  'params'  => array(array('name' => 'board', 'token' => 'board'), ...))
+// The renderer gives each such link a token of its own (__page_link_<n>, the
+// way the catalog expands __link_label), reads the pages once and fills the
+// token per record with the finished, escaped address. Names and values
+// follow the rules of the list filters that read them on the other page
+// (pg_sw_url_param_name(), pg_sw_url_param_value()), so whatever a link
+// sends is a value that filter can read. The editor's twins are
+// _swPageLinkSpec() and _SW_PAGE_LINK_MAX in style_designer.js.
+
+// The most values one link carries.
+function pg_sw_page_link_max()
+{
+    return 8;
+}
+
+// A stored link spec in the shape the renderer reads: page_id a positive id
+// or 0 (a tab not published yet, 'tab:<key>', is 0 here), params a list of
+// name/token pairs. A name the URL filters refuse, an empty token or a name
+// given twice is dropped (the first one stays); at most
+// pg_sw_page_link_max() pairs. Tokens keep the characters _apply_bindings()
+// keeps, lowercased as the token map is keyed.
+function pg_sw_page_link_spec($spec)
+{
+    $out = array('page_id' => 0, 'params' => array());
+    if (!is_array($spec)) return $out;
+
+    $page_id = isset($spec['page_id']) ? $spec['page_id'] : 0;
+    if (is_int($page_id) && $page_id > 0) {
+        $out['page_id'] = $page_id;
+    } elseif (is_string($page_id) && $page_id !== '' && ctype_digit($page_id) && (int)$page_id > 0) {
+        $out['page_id'] = (int)$page_id;
+    }
+
+    $params = (isset($spec['params']) && is_array($spec['params'])) ? $spec['params'] : array();
+    $seen   = array();
+    foreach ($params as $param) {
+        if (count($out['params']) >= pg_sw_page_link_max()) break;
+        if (!is_array($param)) continue;
+        $name  = pg_sw_url_param_name(isset($param['name']) ? $param['name'] : '');
+        $token = (isset($param['token']) && is_string($param['token']))
+            ? strtolower(preg_replace('/[^a-z0-9_\-]/i', '', $param['token'])) : '';
+        if ($name === '' || $token === '' || isset($seen[$name])) continue;
+        $seen[$name] = true;
+        $out['params'][] = array('name' => $name, 'token' => $token);
+    }
+    return $out;
+}
+
+// The pre-pass over a widget tree: every link bound to '__page_link' gets a
+// token of its own (__page_link_0, __page_link_1, ... in walk order) and its
+// spec is collected under that token, with an empty 'base' that
+// pg_sw_page_link_resolve() fills. A node with a spec under another binding
+// is left alone: the spec is kept for the editor and does nothing here.
+function pg_sw_page_link_bindings(&$tree)
+{
+    $links = array();
+    _pg_sw_page_link_walk($tree, $links);
+    return $links;
+}
+
+function _pg_sw_page_link_walk(&$node, &$links, $depth = 0)
+{
+    if (!is_array($node) || $depth > 80) return;
+    if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === '__page_link') {
+        $token = '__page_link_' . count($links);
+        $node['props']['_bindings']['href'] = $token;
+        $spec = pg_sw_page_link_spec(isset($node['props']['_bindParams']['href']) ? $node['props']['_bindParams']['href'] : null);
+        $links[$token] = array('page_id' => $spec['page_id'], 'params' => $spec['params'], 'base' => '');
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) _pg_sw_page_link_walk($child, $links, $depth + 1);
+        unset($child);
+    }
+}
+
+// The tokens the links read their values from, as a lookup set, so the
+// record query selects the standard fields they name.
+function pg_sw_page_link_tokens($links)
+{
+    $tokens = array();
+    foreach ((array)$links as $link) {
+        if (empty($link['params']) || !is_array($link['params'])) continue;
+        foreach ($link['params'] as $param) {
+            $token = isset($param['token']) ? strtolower((string)$param['token']) : '';
+            if ($token !== '') $tokens[$token] = true;
+        }
+    }
+    return $tokens;
+}
+
+// The address of the page a link opens, from its page row (page_name,
+// page_folder) and the folder ids of the Recycle Bin: $base (PATH when null)
+// plus the page name, the base a record's own address uses
+// (pg_sw_record_url()). '' for a page that is gone or in the bin; the link
+// then prints '#'.
+function pg_sw_page_link_base($row, $bin_folder_ids, $base = null)
+{
+    if (!is_array($row) || !isset($row['page_name']) || trim((string)$row['page_name']) === '') return '';
+    $folder = isset($row['page_folder']) ? (int)$row['page_folder'] : 0;
+    if ($folder > 0 && in_array($folder, array_map('intval', (array)$bin_folder_ids), true)) return '';
+    if ($base === null) $base = defined('PATH') ? PATH : '/';
+    return $base . encode_url_path((string)$row['page_name']);
+}
+
+// Fill each link's 'base' with the address of its page. The pages are read
+// in one query per request; a renderer with no link to a page asks nothing.
+function pg_sw_page_link_resolve(&$links)
+{
+    static $pages = array();
+    if (!is_array($links) || !$links) return;
+
+    $wanted = array();
+    foreach ($links as $link) {
+        $page_id = isset($link['page_id']) ? (int)$link['page_id'] : 0;
+        if ($page_id > 0 && !array_key_exists($page_id, $pages)) $wanted[$page_id] = true;
+    }
+    if ($wanted) {
+        foreach (array_keys($wanted) as $page_id) $pages[$page_id] = null;
+        $rows = db_items(
+            "SELECT page_id, page_name, page_folder
+             FROM page
+             WHERE page_id IN (" . implode(',', array_map('intval', array_keys($wanted))) . ")"
+        );
+        foreach ((is_array($rows) ? $rows : array()) as $row) $pages[(int)$row['page_id']] = $row;
+    }
+
+    $bin = null;
+    foreach ($links as $token => $link) {
+        $page_id = isset($link['page_id']) ? (int)$link['page_id'] : 0;
+        if ($page_id <= 0 || empty($pages[$page_id])) {
+            $links[$token]['base'] = '';
+            continue;
+        }
+        if ($bin === null) $bin = pg_recycle_bin_folder_ids();
+        $links[$token]['base'] = pg_sw_page_link_base($pages[$page_id], $bin);
+    }
+}
+
+// The raw value of token $name for one record, in the order
+// pg_sw_apply_tokens() resolves it: a value the renderer worked out
+// ($extra_raw: the record's address, its id, its submitter's id), then a
+// standard field the record query selected (unless the form's own field of
+// that name wins, pg_sw_form_field_wins()), then the form's own field as
+// stored: unescaped, no date format, a file upload as its address, several
+// values joined with ', '. Columns the query reads for itself (id, user_id)
+// are no standard field and give nothing; so does a name nobody answers.
+function pg_sw_raw_token_value($name, $row, $custom, $extra_raw)
+{
+    $name = mb_strtolower(trim((string)$name), 'UTF-8');
+    if ($name === '') return '';
+    if (is_array($extra_raw) && array_key_exists($name, $extra_raw)) return (string)$extra_raw[$name];
+
+    $custom    = is_array($custom) ? $custom : array();
+    $standard  = pg_sw_standard_fields();
+    $form_wins = isset($custom[$name]) && pg_sw_form_field_wins($name);
+    if (!$form_wins && isset($standard[$name]) && is_array($row) && array_key_exists($name, $row)) {
+        return (string)$row[$name];
+    }
+    if (isset($custom[$name]) && is_array($custom[$name])) {
+        return isset($custom[$name]['data']) ? (string)$custom[$name]['data'] : '';
+    }
+    return '';
+}
+
+// The address a link opens, not yet escaped: $base followed by the
+// name => value pairs in their order, each name and value encoded once
+// (RFC 3986). A value is sent only as the URL filter on the other page
+// would read it (pg_sw_url_param_value(): trimmed, without control or
+// format characters, at most 100 characters); an empty or unreadable one is
+// left out, and with none left the bare page opens, which lists everything,
+// as a URL filter with no value does. '#' when there is no page.
+function pg_sw_page_link_url($base, $pairs)
+{
+    $base = (string)$base;
+    if ($base === '') return '#';
+    $query = array();
+    foreach ((array)$pairs as $name => $raw) {
+        $name = pg_sw_url_param_name($name);
+        if ($name === '' || !is_scalar($raw)) continue;
+        $value = trim((string)$raw);
+        if ($value === '' || pg_sw_url_param_value(array('v' => $value), 'v') !== $value) continue;
+        $query[] = rawurlencode($name) . '=' . rawurlencode($value);
+    }
+    return $query ? $base . '?' . implode('&', $query) : $base;
+}
+
+// The finished token values of one record: token => the escaped address.
+// pg_sw_apply_tokens() prints the values of its $extra map as they are, so
+// the address is escaped here, once: '&' between the values becomes '&amp;'
+// and a value's own '&' is %26 before that.
+function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
+{
+    $values = array();
+    foreach ((array)$links as $token => $link) {
+        $base  = isset($link['base']) ? (string)$link['base'] : '';
+        $pairs = array();
+        if ($base !== '' && !empty($link['params']) && is_array($link['params'])) {
+            foreach ($link['params'] as $param) {
+                $pairs[$param['name']] = pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+            }
+        }
+        $values[$token] = h(pg_sw_page_link_url($base, $pairs));
+    }
+    return $values;
+}
+
+// A widget tree with the links' unpublished pages ('tab:<key>' in
+// props._bindParams.*.page_id) as the ids the tabs got on Publish ($tab_ids,
+// key => id); a key with no id (a tab closed meanwhile) gives 0. Nothing
+// else is read: a text or an attribute that reads 'tab:...' stays as it
+// is, and a tree with nothing to resolve comes back unchanged.
+function pg_sw_page_link_resolve_tabs($node, $tab_ids, $depth = 0)
+{
+    if (!is_array($node) || $depth > 80) return $node;
+    if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+        foreach ($node['props']['_bindParams'] as $prop => $spec) {
+            if (!is_array($spec) || !isset($spec['page_id']) || !is_string($spec['page_id'])
+                || strncmp($spec['page_id'], 'tab:', 4) !== 0) {
+                continue;
+            }
+            $key = substr($spec['page_id'], 4);
+            $node['props']['_bindParams'][$prop]['page_id'] = isset($tab_ids[$key]) ? (int)$tab_ids[$key] : 0;
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            $node['children'][$i] = pg_sw_page_link_resolve_tabs($child, $tab_ids, $depth + 1);
+        }
+    }
+    return $node;
+}
+
 // The list widget types: form_list_view under its older names.
 function pg_sw_form_list_types()
 {
@@ -2632,6 +2940,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // saved through send_to leaves its notice there).
     _pg_inject_messages_node($tree_decoded, 'form_item_view');
     pg_sw_record_href_bindings($tree_decoded);
+    // Links to another page with the record's values: a token each, and
+    // their pages read once (pg_sw_page_link_bindings()). Before the copy
+    // below, so the no-record layout carries the same tokens.
+    $page_links = pg_sw_page_link_bindings($tree_decoded);
+    pg_sw_page_link_resolve($page_links);
     // The tree as designed, for the no-record layout below.
     $tree_designed = $tree_decoded;
     // The record template (loop_area) and the surround, drawn from a tree.
@@ -2659,7 +2972,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // Which standard fields this design prints decides what the record query
     // reads — the same rule the listing follows. `?r=` identifies the record,
     // and the detail page whose view counters apply is this page itself.
-    $template_tokens = pg_sw_template_tokens($loop_template . $static_html);
+    $template_tokens = pg_sw_template_tokens($loop_template . $static_html) + pg_sw_page_link_tokens($page_links);
     // As on the list: a standard name the form has its own field for is not
     // selected (pg_sw_yielded_standard_names()).
     $standard_skip   = array_merge(array('reference_code', 'address_name'), pg_sw_form_yields($template_tokens, $custom_form_page_id));
@@ -2783,6 +3096,9 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
     // ── Build the token map ──────────────────────────────────────────────
     $custom = array();
+    // The record's values as stored, for the links to another page (the
+    // list there compares stored values, not a translation).
+    $custom_source = array();
     if (!$found_and_allowed) {
         // No record, or one this visitor may not see. Only the widget's own
         // state answers; every field identifier is left unanswered and swept,
@@ -2823,6 +3139,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
+        $custom_source = $custom;
 
         // The record's texts in the page's language, when the widget includes
         // its records in the translation (includes/fn/translate.php).
@@ -2875,6 +3192,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     $ai_page_url = ($found_and_allowed && $access_control === 'public' && empty($sw_ctx['email']) && $self_url !== '')
         ? pg_sw_ai_page_url($self_url) : '';
     $extra = array_merge($extra, pg_sw_ai_tokens($ai_page_url, $cfg));
+    // Links to another page, valued from the record, in the record template
+    // and the surround alike. With no record to show every value is empty
+    // and such a link opens the bare page.
+    $extra += pg_sw_page_link_values($page_links, $form_row, $custom_source, array(
+        'form_item_view'    => ($extra['form_item_view'] !== '#') ? (string)$extra['form_item_view'] : '',
+        'submitted_form_id' => (string)$extra['submitted_form_id'],
+        'submitter_user_id' => (string)$extra['submitter_user_id'],
+    ));
 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
     $rendered = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(pg_sw_apply_tokens($loop_template, $form_row, $custom, $extra)));
@@ -7075,7 +7400,16 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // half of "not saved yet".
     if ($form_page_id > 0 && function_exists('pg_cf_field_map')) {
         $cf_field_map = pg_cf_field_map($form_page_id);
-        pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff);
+        // A control set to start from a named address parameter
+        // (_cf.url_param) is read here, while the controls still carry the
+        // names they were drawn with; the bindings rename them to row ids.
+        // pg_sw_filter_request() is empty in an e-mail, the SEO pass, the
+        // editor's preview and the search indexer, so nothing is filled
+        // there. A form without the setting costs one strpos().
+        $cf_url_values = (strpos((string)$tree_json, '"url_param"') !== false)
+            ? pg_cf_url_prefill_values(_pg_cf_controls($tree_decoded, $form_page_id), $cf_field_map, pg_sw_filter_request())
+            : array();
+        pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
     }
     // Ids are final now, including the ones invented above, so a label that
     // names nothing can be pointed at the control beside it.

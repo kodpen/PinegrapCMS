@@ -11,10 +11,10 @@ description: Single record of submitted-form system fields (get_standard_fields_
 - **my_account**'s submission loop carries the same names, so a row design moves across three widgets.
 
 ## Which field is the author's name on a public page?
-- `submitter_name` ("Author Name"): the record's contact (`forms.contact_id`) first + last name, else nickname, '' without; never `user_username`. SQL `pg_sw_submitter_name_sql()` (join `contacts AS submitter_contact`), the rule of `pg_submitted_form_author_name()` (BlogPosting).
+- `submitter_name` ("Author Name"): the record's contact (`forms.contact_id`) first + last name, else nickname, '' without; never `user_username`. Rule `pg_contact_display_name()` (`includes/fn/contacts.php`), SQL twin `pg_sw_submitter_name_sql()` (join `contacts AS submitter_contact`); also the BlogPosting author and comment names.
 - A form with its own `submitter_name` field (name or label slug) keeps it, decided per form (`pg_sw_form_yields()`, JS `_swStandardYields`): no contact column, filter or option; a record with no value prints ''.
 - `submitter` / `last_modifier` are login usernames (a member's defaults to the e-mail's local part): staff pages only. No public or member page of a built-in template binds them (`tests/designer_submitter_name_test.php`); their post bylines bind `submitter_name` inside `pg-hide-if-empty`, so a sample signed by the setup account shows no author.
-- Still printing a username: designs opened from a template before 2026.11.0 (stored trees are not rewritten; rebind by hand), comment names of a member who may not choose one (`add_comment.php` saves the username), the default sites (data/backups, frozen).
+- Still printing a username: designs opened from a template before 2026.11.0 (stored trees are not rewritten; rebind by hand), comment names of a member who may not choose one on legacy pages (designed pages: [[designed-page-comment-names]]), the default sites (data/backups, frozen).
 
 ## Which helpers exist (`includes/fn/widgets.php`)?
 | Function | Job |
@@ -33,6 +33,6 @@ description: Single record of submitted-form system fields (get_standard_fields_
 
 ## What does the sort setting use?
 - `order_by_field` uses the same names: `submitted_date_and_time` | `submitted_form_id` | a form field name.
-- Plus the counters `number_of_views` | `number_of_comments` | `recent_views` (with `order_recent_days`, 1-180, default 7), in both sort fields. They win over a same-named form field and need the list's detail page; without one the date order applies. See `record-view-counts.md`.
+- Plus the record statistics of `pg_sw_form_order_counters()` (views, comments, recent views with `order_recent_days`, newest activity), in both sort fields. They win over a same-named form field and need the list's detail page; without one the date order applies: `record-view-counts.md`.
 
 Related: docs/memory/designer/submitted-form-token-pitfalls.md

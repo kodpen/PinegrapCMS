@@ -1013,7 +1013,15 @@ $mimetype = array(
     'svg' => 'image/svg+xml',
     'svgz' => 'image/svg+xml',
     'webp' => 'image/webp',
-    'avif' => 'image/avif'
+    'avif' => 'image/avif',
+    // Sounds and videos a browser plays in place, voice messages among them
+    // (.weba is WebM audio; a .webm is drawn as a video).
+    'weba' => 'audio/webm',
+    'webm' => 'video/webm',
+    'ogg' => 'audio/ogg',
+    'oga' => 'audio/ogg',
+    'opus' => 'audio/ogg',
+    'aac' => 'audio/aac'
 );
 
 // Everything this request needs from the session and the database has now

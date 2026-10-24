@@ -1347,10 +1347,10 @@ function _sanitize_dynamic_placeholders(&$node)
  * usual victim: its props start empty.
  *
  * The keys that hold objects are known, so the empty ones are re-typed
- * before encoding: `props`, `props._bindings`, `props._cf`,
- * `props._cf.ids`. Real lists (`children`, `_attrs`, `_styles`) are left
- * as they are. Walks shared_ref children too — a widget tree passes
- * through here as well.
+ * before encoding: `props`, `props._bindings`, `props._bindParams` (a
+ * link's page and values), `props._cf`, `props._cf.ids`. Real lists
+ * (`children`, `_attrs`, `_styles`) are left as they are. Walks shared_ref
+ * children too — a widget tree passes through here as well.
  */
 function pg_designer_tree_objects(&$node)
 {
@@ -1360,7 +1360,7 @@ function pg_designer_tree_objects(&$node)
             if (empty($node['props'])) {
                 $node['props'] = new stdClass();
             } else {
-                foreach (array('_bindings', '_cf') as $k) {
+                foreach (array('_bindings', '_bindParams', '_cf') as $k) {
                     if (isset($node['props'][$k]) && is_array($node['props'][$k]) && empty($node['props'][$k])) {
                         $node['props'][$k] = new stdClass();
                     }
@@ -5149,6 +5149,14 @@ function _render_component_html($props, $pad, $kids = '')
 // group, finds every bound element, and live-updates the bound prop with
 // the new product's value (no full page reload). Rendering still substitutes
 // the ^^token^^ on the SSR pass so the page works without JS.
+//
+// An href bound to '__page_link' (a link to another page with a record's
+// values) is a sentinel the form list and form detail renderers expand per
+// link before drawing (pg_sw_page_link_bindings()). One still standing here
+// was drawn by a path that does not expand it (another widget kind, a shared
+// component nested inside the widget), so it prints '#' like the canvas and
+// is no token: an unanswered token would be swept to href="", which opens
+// the current address.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5166,6 +5174,10 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
+        if ($prop_name === 'href' && $safe === '__page_link') {
+            $props['href'] = '#';
+            continue;
+        }
 
         // A date field may carry the format the classic screens read:
         // ^^submitted_date_and_time^^%%d.m.Y%%. Only the characters date()
@@ -7066,6 +7078,9 @@ function _pg_tpl_unique_page_name($base, $taken)
 // address on a catalog page, {{product_group_image:<key>}} its picture,
 // {{contact_group:<key>}} the id of a contact group the template made,
 // {{site_name}}, {{year}}.
+// {{tab:<key>}} may also be the page a link to another page opens
+// (props._bindParams.href.page_id in a widget tree); Publish resolves it
+// there too (pg_sw_page_link_resolve_tabs()).
 // Walks props, _attrs and children.
 function _pg_tpl_fill($node, $vars)
 {
@@ -8205,11 +8220,13 @@ function pg_design_template_install($template_id, $user, $opts = array())
 
 // The flags a template widget shows a part for, as a first-time visitor sees
 // the page: signed out, looking at a record that exists, at a list page
-// whose address names no value. Every other flag (signed in, has orders,
-// just submitted...) is off in a preview.
+// whose address names no value, at a listing that found records (the
+// preview repeats a listing's card three times). Every other flag (signed
+// in, has orders, just submitted, a list that found nothing...) is off in a
+// preview.
 function _pg_tpl_preview_flag_on($flag)
 {
-    return in_array((string)$flag, array('is_signed_out', 'record_found', 'no_filter_value'), true);
+    return in_array((string)$flag, array('is_signed_out', 'record_found', 'no_filter_value', 'has_records'), true);
 }
 
 // A template tree made drawable without a site: every shared component the

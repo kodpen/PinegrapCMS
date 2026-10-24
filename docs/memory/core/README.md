@@ -39,16 +39,18 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
 - content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
+- csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
-- file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, and the PHP 7.1 base rule when embedding a third-party library.
+- file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
 - file-integrity-check.md: The hourly file-integrity check: which reference counts (dev machine's own or the GitHub tag), scope and ignored names, line-ending-proof digests, state file, what cleanup keeps, result codes.
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.
 - file-placement-rules.md: Where new PHP files go (root only for URL-called files, else includes/), the gate constant each include starts with, root files that stay, file-integrity scope.
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
+- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, mail_queue, backup, consent, privacy, audit, privacy_export, reviews, comments) and where each is described.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - form-double-opt-in.md: Double opt-in for custom forms that add to a contact group (11.0.27): the switch, the signed stateless link, confirm_subscription.php, consent_log pending/granted, the global opt-out
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
@@ -83,7 +85,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
-- translation-rules.md: Every visible string goes through lang() (designer JS: _sdT()), English source as tr.json key; tr.json upkeep: exact keys, placeholders, append only, atomic writes, misleading keys, check_lang.php.
+- translation-rules.md: Every visible string uses lang() (designer JS: _sdT()), English source as tr.json key; tr.json: exact keys, placeholders, append only, duplicates, atomic writes, misleading keys, check_lang.php
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
 - two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

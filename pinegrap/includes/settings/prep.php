@@ -2156,6 +2156,76 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $advanced_visual_effects_checked = '';
     }
 
+    // The Dashboard card (Appearance): the card style and panel backdrop kept
+    // on the dashboard row, and this sign-in's widget refresh time. Designers
+    // and administrators only, the reach api.php's update_dashboard_appearance
+    // has too; for anyone else nothing is read and the card is not drawn.
+    $dashboard_card_shown = pg_dashboard_appearance_allowed($user['role']);
+    $dashboard_appearance_ready = false;
+    $dashboard_appearance = pg_dashboard_appearance(null);
+    $dashboard_refresh = 60;
+    $dashboard_reset_done = false;
+    $output_dashboard_theme_options = '';
+    $output_dashboard_backdrop_options = '';
+
+    if ($dashboard_card_shown) {
+
+        $dashboard_row = db_item("SELECT * FROM dashboard");
+
+        // Both columns arrive with 2026.4.4. Until the upgrade has run the
+        // two selects are not drawn and the save writes neither column.
+        $dashboard_appearance_ready = (
+            is_array($dashboard_row)
+            && array_key_exists('widget_theme', $dashboard_row)
+            && array_key_exists('panel_backdrop', $dashboard_row));
+
+        $dashboard_appearance = pg_dashboard_appearance($dashboard_row);
+
+        $dashboard_choice_labels = array(
+            'widget_theme' => array(
+                'flat'   => lang('Flat Tint'),
+                'neon'   => lang('Neon Outline'),
+                'glass'  => lang('Glass'),
+                'aurora' => lang('Aurora')),
+            'panel_backdrop' => array(
+                'auto'  => lang('Match Card Style'),
+                'none'  => lang('None'),
+                'mesh'  => lang('Mesh'),
+                'dusk'  => lang('Dusk'),
+                'ember' => lang('Ember')));
+
+        foreach (pg_dashboard_appearance_choices() as $dashboard_column => $dashboard_values) {
+
+            $dashboard_options = '';
+
+            foreach ($dashboard_values as $dashboard_value) {
+
+                $dashboard_options .=
+                    '<option value="' . h($dashboard_value) . '"'
+                    . (($dashboard_appearance[$dashboard_column] === $dashboard_value) ? ' selected="selected"' : '')
+                    . '>' . h($dashboard_choice_labels[$dashboard_column][$dashboard_value]) . '</option>';
+            }
+
+            if ($dashboard_column === 'widget_theme') {
+                $output_dashboard_theme_options = $dashboard_options;
+            } else {
+                $output_dashboard_backdrop_options = $dashboard_options;
+            }
+        }
+
+        // Per sign-in, as it has always been: welcome.php?refresh=N and the
+        // Appearance save both keep it in the session, never in a column.
+        $dashboard_refresh = pg_dashboard_refresh_seconds($_SESSION['software']['welcome']['widget']['refresh'] ?? '', 60);
+
+        // Left by the save that pressed Reset Widgets, for the first pane
+        // drawn after it: the card tells a dashboard behind the dialog that
+        // its cards have moved (the script in includes/settings/appearance.php).
+        if (!empty($_SESSION['software']['welcome']['widget']['reset'])) {
+            $dashboard_reset_done = true;
+            unset($_SESSION['software']['welcome']['widget']['reset']);
+        }
+    }
+
     // PHP_OS_FAMILY only exists as of PHP 7.2, so derive the same value when it is missing.
     if (defined('PHP_OS_FAMILY')) {
         $php_os_family = PHP_OS_FAMILY;

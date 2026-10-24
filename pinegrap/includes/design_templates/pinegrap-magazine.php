@@ -1017,10 +1017,10 @@ $contents_row = function ($s) use ($el, $para, $bind, $attr, $card_kicker, $card
 // A story in a desk list: its title and Status on top, then its section,
 // the byline ($with_writer: the editors' lists), its issue, when it was
 // sent, its publication time once an editor set one, when anything last
-// happened to it (a message, a change) and the messages under it. A list
-// cannot be ordered by the last activity, so each row shows it: a story
-// that has gone quiet stands out. The row opens the list's detail page:
-// the submission page on the desks, the public story in "Live now".
+// happened to it (a message, a change) and the messages under it. Each row
+// shows the last activity, so a story that has gone quiet stands out. The
+// row opens the list's detail page: the submission page on the desks, the
+// public story in "Live now".
 $desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $head, $statuses) {
     $s = $head(3);
     $detail = function ($icon_name, $name, $children, $class = 'd-inline-flex align-items-center gap-1') use ($el, $icon) {
@@ -2425,7 +2425,7 @@ $desk_section = function ($id, $title, $text, $widget_key, $lg = '6') use ($el, 
 $staff_notes = array(
     lang('Authors: open the account under Users, then under Private Content Access tick the contributors folder.'),
     lang('Editors: under Content and Forms, tick the private folder and switch on Reach the data submitted through forms. Administrators, designers and managers need neither.'),
-    lang('Contact messages and readers\' letters belong to the public folder, because visitors send them: to open them in the control panel, answer messages in the inbox, or correct a letter\'s name and publish it under Comments, an editor also needs the public folder ticked, which lets them change the public pages too. A reply in the inbox goes out signed with the editor\'s user name, so give editors user names readers may see.'),
+    lang('Contact messages and readers\' letters belong to the public folder, because visitors send them: to open them in the control panel, answer messages in the inbox, or correct a letter\'s name and publish it under Comments, an editor also needs the public folder ticked, which lets them change the public pages too. A reply in the inbox is signed with the first and last name on the editor\'s account, or with Member when the account has no name, so every editor should fill in their name under My Profile.'),
     lang('To publish: open the story, press Change Status, choose "Live on the site", a publication time, a placement and an issue, save, then write a message under the story. That message is the e-mail the author gets.'),
     lang('The home page shows the newest Cover story, the newest Editor\'s letter and the six newest Standard stories; Editors\' picks have their own shelf. Give each issue exactly one Cover story and one Editor\'s letter: the letter is the issue\'s card on Every issue. To launch an issue, give its stories one publication time, the Cover story one minute later and the Editor\'s letter one minute after that: an issue\'s contents put the latest time first, so they open with the letter and then the cover.'),
     lang('A new issue is added by an administrator or designer, because the visual editor opens to editors and managers for content only: add its name to the "Part of the issue" field of the Submit a Story page with Add an option, not with the bulk edit box, check that Online only is still the default, and publish the design. Use letters, digits, spaces and hyphens only: no & # ? + % = or quotes, because the name becomes part of a link.'),
@@ -2433,7 +2433,7 @@ $staff_notes = array(
     lang('A story\'s structured data and the RSS feeds name the time it reached the editors, not its publication time, and the feeds order stories by that time; the structured data also names the account that sent it, not the name on the story. For a pen name, ask the writer to put the same name on their account.'),
     lang('Never rename or remove the fields named status, publish_date, placement or issue: a list whose filter names a missing field shows nothing, so every story would leave the site. Keep "Hide from the visitor (staff only)" switched on for the six office fields, or an author could set a story live. Statuses, placements and issues are words the lists filter on: only an administrator or designer can change one, in the visual editor; then publish, and set the new word on the stories that had the old one. A new list or story view of this form on another page needs the same "live" filters.'),
     lang('A photo uploaded with a story opens only for the editors while the story is not live. Before you set a story live, check the name on the story, which decides the contributor page and feed the story joins; then remove pictures that load from other sites and check every link in its text: pictures and links are printed as written, for every reader, and the pictures already load when you open the story.'),
-    lang('A reader\'s letter is signed with their user name. Before you publish a letter, open it under Comments in the control panel and change the name to the one the reader signed with, or to Anonymous.'),
+    lang('A reader\'s letter is signed with the first and last name on the reader\'s account, or with Member when the account has no name. Before you publish a letter, open it under Comments in the control panel, check the name and change it if needed, for example to Anonymous.'),
 );
 // The notes in two columns from lg: the first half, then the rest.
 $staff_note_cols = array();
@@ -3885,7 +3885,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Long-Read Magazine'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 80,
     'icon'        => 'bi-journal-richtext',

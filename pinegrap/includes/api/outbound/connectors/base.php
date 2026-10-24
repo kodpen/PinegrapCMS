@@ -23,6 +23,20 @@
 //   push_stock_price($account, $rows)     one batch out, answers a task handle
 //   read_task($account, $task_id)         the result of an earlier batch
 //   pull_orders($account, $since)         their orders, ours to import
+//   order_stage($remote_status)           their status as open, shipped,
+//                                         delivered or cancelled
+//   approve_lines($account, $line_ids, $package)
+//                                         accept a package's lines (Picking);
+//                                         $package is the imported package
+//   webhook_packages($account, $decoded)  the packages of one delivery their
+//                                         webhook posted, already parsed
+//   register_webhook($account, $url, $key)
+//                                         ask them to post orders to $url with
+//                                         $key; answers data['webhook_id']
+//   remove_webhook($account)              remove the one in the credentials
+//   ship_package($account, $package, $tracking_url)
+//                                         tell them the seller shipped it with
+//                                         their own carrier
 //   update_order($account, $lines, $to)   move their order along
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values
@@ -82,6 +96,9 @@ function mp_providers() {
 			'name'   => 'Trendyol',
 			'file'   => 'trendyol.php',
 			'key'    => 'barcode',
+			// A registered webhook belongs to the seller and the environment
+			// these fields name (mp_webhook_owner_changed()).
+			'webhook_owner_fields' => array('seller_id', 'environment'),
 			'help'   => 'All three are in your Trendyol seller panel, under Account Information › Integration Information. The test environment has credentials of its own and only answers servers whose IP address Trendyol has authorised.',
 			'fields' => array(
 				'seller_id'   => array('label' => 'Seller ID',  'secret' => false),
@@ -92,6 +109,18 @@ function mp_providers() {
 					'type'    => 'select',
 					'options' => array('production' => 'Live', 'stage' => 'Test environment'),
 					'default' => 'production'
+				),
+				// Who carries the parcels: Trendyol's contracted carrier, whose
+				// number arrives with the package, or the shop's own, whose
+				// tracking link is sent to Trendyol (mp_account_ships_itself()).
+				'delivery' => array(
+					'label'   => 'Shipping carrier',
+					'type'    => 'select',
+					'options' => array(
+						'trendyol' => 'Trendyol\'s contracted carrier (tracking number comes from Trendyol)',
+						'own'      => 'My own carrier (the tracking link recorded here is sent to Trendyol)'
+					),
+					'default' => 'trendyol'
 				)
 			)
 		)
@@ -152,6 +181,46 @@ function mp_provider_keys_by_barcode($provider) {
 	$providers = mp_providers();
 
 	return isset($providers[$provider]['key']) && $providers[$provider]['key'] === 'barcode';
+
+}
+
+// Does this account ship with a carrier of its own, rather than the one the
+// marketplace contracts? Read from the account's 'delivery' choice; an account
+// saved before the choice existed, or one that never made it, does not.
+function mp_account_ships_itself($account) {
+
+	return isset($account['credentials']['delivery']) && $account['credentials']['delivery'] === 'own';
+
+}
+
+// The credentials as saved, with the moment the account began shipping itself.
+//
+// $before are the stored credentials (an empty array for a new account),
+// $after the ones about to be written. The moment is kept while the account
+// ships itself, set to $now when it starts to, and dropped when it stops.
+// Only packages imported from then on are reported with the shop's link
+// (mp_sync_ship_pending()): an older import carries the marketplace's carrier
+// in its address's method code, and a parcel recorded on it later would take
+// that carrier and its tracking page with the shop's number.
+function mp_account_delivery_stamp($before, $after, $now) {
+
+	$before = (array) $before;
+	$after = (array) $after;
+
+	if (!mp_account_ships_itself(array('credentials' => $after))) {
+
+		unset($after['delivery_since']);
+
+		return $after;
+
+	}
+
+	$since = (mp_account_ships_itself(array('credentials' => $before)) && isset($before['delivery_since']))
+		? (int) $before['delivery_since'] : 0;
+
+	$after['delivery_since'] = ($since > 0) ? $since : (int) $now;
+
+	return $after;
 
 }
 
@@ -383,6 +452,78 @@ function mp_ok($data = array()) {
 function mp_error($message, $retry = false, $data = array()) {
 
 	return array('ok' => false, 'error' => (string)$message, 'retry' => (bool)$retry, 'data' => $data);
+
+}
+
+/* ---------------------------------------------------------------- order feeds */
+
+// A moment of an order feed as the feed counts it, in whole milliseconds, or 0
+// for an entry without one. A number far too large to be seconds is already
+// milliseconds; a date string is read as seconds. Always rounded down: the next
+// request starts at this moment, and a start rounded up would pass over an
+// entry modified later in the same millisecond or second.
+function mp_feed_moment($value) {
+
+	if (is_numeric($value)) {
+
+		$value = (float) $value;
+
+		return (int) (($value > 100000000000) ? floor($value) : floor($value) * 1000);
+
+	}
+
+	$parsed = is_string($value) ? strtotime($value) : false;
+
+	return ($parsed === false) ? 0 : ((int) $parsed) * 1000;
+
+}
+
+// Where an order feed is asked next after a full page, as array(start, page).
+//
+// The feeds are asked inside a fixed window in ascending order of modification
+// time, a page of entries at a time. Asking for page 1, 2, ... of the same
+// window loses a package whenever one that was already read changes while the
+// pages are walked: it leaves its place, every later entry moves up one, and
+// the entry that moves onto the page already read is never read at all. So the
+// window starts again just before the moment of the last entry read, from page
+// 0. One millisecond before, so that the entries of that moment come back
+// whether the feed reads startDate as inclusive or exclusive; the caller skips
+// the ones it has (mp_feed_first_time()).
+//
+// Only a page whose entries all share one moment cannot move the start, and
+// is followed by the next page of the same window. $first and $last are the
+// moments of the page's first and last entries (mp_feed_moment()).
+function mp_feed_next_page($start, $page, $first, $last) {
+
+	$from = $last - 1;
+
+	if (($last > $first) && ($from > $start)) {
+
+		return array($from, 0);
+
+	}
+
+	return array($start, $page + 1);
+
+}
+
+// Whether an entry is new to this pass: not read already with the same
+// modification moment. A package that changed while the pages were walked comes
+// back with a later moment and is handed over again; the pass keeps its newest
+// copy (mp_order_cancellations_first()).
+function mp_feed_first_time(&$seen, $package_id, $moment) {
+
+	$key = $package_id . '|' . (int) $moment;
+
+	if (isset($seen[$key])) {
+
+		return false;
+
+	}
+
+	$seen[$key] = true;
+
+	return true;
 
 }
 

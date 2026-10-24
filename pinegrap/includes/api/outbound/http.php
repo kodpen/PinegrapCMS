@@ -100,7 +100,7 @@ function api_http_check_url($url, $allow_http = false) {
 
 }
 
-// One POST. Answers array('ok', 'status', 'body', 'error', 'duration_ms').
+// One POST. Answers like api_http_request().
 //
 // Kept as its own name because the webhook dispatcher reads that way, and
 // because a webhook is always a POST with a signed body.
@@ -134,6 +134,19 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             case name (the last one of a repeated name wins). An MCP server
 //             says in them which kind of body it sent and which session the
 //             client is in.
+//   complete  a callable given the body received so far, after each piece
+//             curl hands over; true ends the transfer there. For a server
+//             that keeps a stream open after it has sent what was asked (an
+//             MCP server's event stream): the answer is then a success with
+//             the body read so far and the status and headers already
+//             received, not a wait until the server closes or the timeout.
+//             curl reports the stop as error 23 (a write refused), which is
+//             not passed on. Without it the body is read as before.
+//
+// Answers array('ok', 'status', 'body', 'error', 'errno', 'duration_ms'), and
+// 'headers' with response_headers. errno is curl's error number when the
+// request failed in curl (28 is a timeout), 0 otherwise - also for an address
+// refused before curl ran, whose reason is in error alone.
 //
 // Everything the webhook client refuses, this refuses: an address inside the
 // network, a redirect to an address nothing checked, an unverified certificate.
@@ -141,7 +154,7 @@ function api_http_request($method, $url, $options = array()) {
 
 	$started = microtime(true);
 
-	$result = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'duration_ms' => 0);
+	$result = array('ok' => false, 'status' => 0, 'body' => '', 'error' => '', 'errno' => 0, 'duration_ms' => 0);
 
 	if (!empty($options['response_headers'])) {
 
@@ -241,15 +254,44 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
+	// The complete option reads the body through a write function instead of
+	// curl's own buffer: set after CURLOPT_RETURNTRANSFER, it takes the body
+	// over, and curl_exec() then answers true rather than the body.
+	$complete = (isset($options['complete']) && is_callable($options['complete'])) ? $options['complete'] : null;
+
+	$streamed = '';
+
+	$stopped = false;
+
+	if ($complete !== null) {
+
+		curl_setopt($handle, CURLOPT_WRITEFUNCTION, function ($curl, $chunk) use (&$streamed, &$stopped, $complete) {
+
+			return api_http_take_chunk($streamed, $stopped, $chunk, $complete);
+
+		});
+
+	}
+
 	$response = curl_exec($handle);
+
+	// Read to the end, or stopped on purpose: either way the body is what the
+	// write function kept, and the status is the one already received.
+	if (($complete !== null) && (($response !== false) || api_http_stop_is_success($stopped, curl_errno($handle)))) {
+
+		$response = $streamed;
+
+	}
 
 	if ($response === false) {
 
 		// "unable to get local issuer certificate" on its own sends the operator
 		// looking at the receiver. The hint names the cause that is actually on
 		// this server.
+		$result['errno'] = (int)curl_errno($handle);
+
 		$result['error'] = curl_error($handle)
-			. (function_exists('pg_curl_tls_hint') ? pg_curl_tls_hint(curl_errno($handle)) : '');
+			. (function_exists('pg_curl_tls_hint') ? pg_curl_tls_hint($result['errno']) : '');
 
 	} else {
 
@@ -272,6 +314,38 @@ function api_http_request($method, $url, $options = array()) {
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
 	return $result;
+
+}
+
+// One piece of a body read with the complete option: kept in $buffer, then
+// the count curl is told was taken. The piece's length goes on; 0, once
+// $complete says the body is complete, is a short count, on which curl ends
+// the transfer with error 23 and $stopped is set. An empty piece (an empty
+// body) asks nothing.
+function api_http_take_chunk(&$buffer, &$stopped, $chunk, $complete) {
+
+	$chunk = (string)$chunk;
+
+	$buffer .= $chunk;
+
+	if (($chunk === '') || !call_user_func($complete, $buffer)) {
+
+		return strlen($chunk);
+
+	}
+
+	$stopped = true;
+
+	return 0;
+
+}
+
+// Whether a transfer curl failed is the stop the complete option asked for:
+// error 23 (CURLE_WRITE_ERROR) after the write function refused a piece. Any
+// other error, or a write error with no stop, stays a failure.
+function api_http_stop_is_success($stopped, $errno) {
+
+	return ($stopped === true) && ((int)$errno === 23);
 
 }
 

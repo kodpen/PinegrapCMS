@@ -799,7 +799,7 @@ function pg_contact_photo_store($user_id, $data)
     // Drawn again where the server can: square, small, and nothing but the
     // pixels.
     if (function_exists('imagecreatefromstring') && function_exists('imagejpeg')) {
-        $source = @imagecreatefromstring($binary);
+        $source = pg_image_from_string($binary);
 
         if ($source !== false) {
             $width = imagesx($source);
@@ -936,4 +936,35 @@ function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $o
         WHERE id = '" . $contact_id . "' AND tax_number = ''");
 
     return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * The name a contact is shown under on public pages: the first and last
+ * name, else the nickname, '' when the contact has neither. Pure; NULL (a
+ * LEFT JOIN without a contact) and any value that is not a scalar read as ''.
+ *
+ * The login username is never used: it is half of a credential, and a
+ * member's defaults to the local part of their e-mail address.
+ *
+ * The SQL twin is pg_sw_submitter_name_sql() (includes/fn/widgets.php).
+ * Callers: pg_submitted_form_author_name() (the BlogPosting author) and the
+ * name a member's comment gets, pg_comment_member_name()
+ * (includes/fn/comments.php).
+ *
+ * @param mixed $first_name
+ * @param mixed $last_name
+ * @param mixed $nickname
+ * @return string
+ */
+function pg_contact_display_name($first_name, $last_name, $nickname = '')
+{
+    $first = is_scalar($first_name) ? trim((string) $first_name) : '';
+    $last = is_scalar($last_name) ? trim((string) $last_name) : '';
+    $name = trim($first . ' ' . $last);
+
+    if ($name === '') {
+        $name = is_scalar($nickname) ? trim((string) $nickname) : '';
+    }
+
+    return $name;
 }
