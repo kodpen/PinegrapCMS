@@ -10,7 +10,7 @@ description: The order.return.* webhooks (requested, approved, received, refunde
 ## Where is each one announced?
 - `order.return.requested`: `pg_return_create()` after COMMIT and RELEASE_LOCK, never on a repeat. Any source announces (My Account, the API, later a panel form).
 - `order.return.approved` / `.received`: `pg_return_move()` after its conditional UPDATE took the row, so the losing side of two moves announces nothing; one screen and each request of a bulk approval announce.
-- `order.return.refunded`: `pg_return_refund()` after its lock, with `amount`, `refund_method` (driver, manual) and `unclear`. Not from `pg_return_move()`: the refund moves to refunded before the service is asked and reverts on a refusal. An unclear answer announces with `unclear: true` (the return stays refunded, commerce/payment-unclear-answers.md); a refusal announces nothing.
+- `order.return.refunded`: `pg_return_refund()` after its lock, with `amount`, `refund_method` (driver, manual) and `unclear`, the values the return keeps too (order-returns-refund-columns.md). Not from `pg_return_move()`: the refund moves to refunded before the service is asked and reverts on a refusal. An unclear answer announces with `unclear: true` (the return stays refunded, commerce/payment-unclear-answers.md); a refusal announces nothing.
 - Rejected, shipped, closed and a withdrawal are not announced; the catalogue lines (`api_webhook_events()`) say so.
 
 ## What does the Workspace get?

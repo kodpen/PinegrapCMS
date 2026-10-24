@@ -79,6 +79,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-returns-customer.md: Customer side of returns in My Account's order view: the switch, __returns / __return_form and flags, order_return.php, messages, mail, bell, the block for older layouts, the hourly limit
 - order-returns-events.md: The order.return.* webhooks (requested, approved, received, refunded): payload, where each is announced and why refunded is not from the move, what is not announced, the Workspace trigger
 - order-returns-panel.md: Panel side of returns (PR #808): list and bulk approve, one return's moves, pg_return_staff_move() (audit, log, mail), decision mails, suggested return carrier and code
+- order-returns-refund-columns.md: The refund kept on a return (order_returns.refund_*, step 11.0.34, owner 2026-10-24): columns, the one writer, the backfill from audit trail and order_refunds, OrderReturn.refund, panel
 - order-returns-refund.md: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock, revert on refusal, what is written, the ERP return invoice hand-off, the refund mail
 - order-returns-reminders.md: Daily refund reminder of customer returns (return_reminder_job.php): the two stages, the once-only stamps on order_returns (step 11.0.25), how the job is scheduled
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
