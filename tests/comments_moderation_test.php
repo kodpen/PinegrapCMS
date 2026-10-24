@@ -136,5 +136,13 @@ function test_comments_moderation_paths()
 	$from = ($select !== false) ? strpos($job, 'FROM comments', $select) : false;
 
 	pg_assert_true(($select !== false) && ($from !== false) && (strpos(substr($job, $select, $from - $select), 'item_type') !== false), 'the scheduled publish reads the item type');
-	pg_assert_false(strpos($job, 'page_type') !== false, 'and never the page type');
+
+	// Only the scheduled-comment block, from its SELECT to its watcher e-mail:
+	// the rest of the job (designer pages, campaigns, calendar events) may
+	// read a page's type for its own work.
+	$watchers = ($select !== false) ? strpos($job, 'send_comment_email_to_watchers(', $select) : false;
+	$loop = ($watchers !== false) ? substr($job, $select, $watchers - $select) : '';
+
+	pg_assert_true(strpos($loop, "\$comment['item_type'] == 'submitted_form'") !== false, 'the scheduled-comment block is found');
+	pg_assert_false(strpos($loop, 'page_type') !== false, 'and never the page type');
 }

@@ -18,7 +18,7 @@ description: Comment moderation on designed record pages: the stored row decides
 ## Which paths call it, and when?
 - `edit_comment.php`: after the delete, and on every save (publish, hold, schedule, edit) right after the UPDATE.
 - API `POST /comments/{id}`: after an update that sends `published` (not `featured` alone); `POST /comments/{id}/delete`: after the delete.
-- `add_comment.php`, `job.php` (scheduled publish) and `submit_order.php` keep their own copies of the rebuild: the first two key on the row's item type already, `submit_order.php` maps classic page types only.
+- `add_comment.php`, `job.php` (scheduled publish) and `submit_order.php` keep their own copies of the rebuild. `job.php` keys on the row's item type; `add_comment.php` keys on page type, after it sets 'form item view' for a designed record page (`pg_comment_thread_verify()` returned a record); `submit_order.php` maps classic page types only.
 
 ## Why before the e-mails?
 - The subjects of the submitter and watcher e-mails (`^^number_of_comments^^`, `^^newest_comment^^`) read that row (`get_variable_submitted_form_data_for_content()`), so they show the count after the change, as on `add_comment.php`.
