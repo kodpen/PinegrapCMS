@@ -828,7 +828,10 @@ function test_forum_private_views()
 		// A list of followed topics reads the followers of its detail page:
 		// the topic page, whose record view shows the topics' form
 		// (pg_sw_list_watcher_page_id()). Any other page has none of them.
-		if (_test_forum_form_of($cfg) === 'topic_form' && !empty($cfg['viewer_filter']) && !empty($cfg['viewer_filter_watcher'])) {
+		// The watcher audience is on unless the config switches it off, as
+		// the renderer reads it.
+		if (_test_forum_form_of($cfg) === 'topic_form' && !empty($cfg['viewer_filter'])
+			&& (!isset($cfg['viewer_filter_watcher']) || !empty($cfg['viewer_filter_watcher']))) {
 			pg_assert_same('{{tab:topic}}', $cfg['detail_page_id'], $key . ': followers of the topic page');
 		}
 	}
@@ -1534,6 +1537,9 @@ function test_forum_archives()
 	}
 	pg_assert_same(false, $pages['member']['sitemap'], 'member pages come from the lists, not the sitemap');
 	pg_assert_contains(json_encode(lang('The name on a topic comes from the profile of the member who started it.')), json_encode($pages['member']['tree']), 'the member page says where names come from');
+	// A member's reply is signed with the profile's name when it is written
+	// (pg_comment_member_name()), so the FAQ names replies beside topics.
+	pg_assert_contains(json_encode(lang('The name on your topics and replies comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name, and your next replies are signed with it.')), json_encode($pages['faq']['tree']), 'the FAQ says replies carry the profile name');
 
 	// A section's guides in reading order.
 	$cfg = $tpl['widgets']['section_guides']['config'];
@@ -2401,9 +2407,14 @@ function test_forum_moderation()
 	}
 	pg_assert_true(strlen($note) > 2000, 'the note is found');
 	foreach (array('private', 'registration', 'public', 'Content and Forms', 'Reach the data submitted through forms', 'Users',
-		'Hidden', 'Solved', 'Pinned', 'Announcement', 'Comments', 'doc_order', 'two digits', 'Update Search Index', 'user name', 'profile',
-		'Hide from the visitor (staff only)') as $words) {
+		'Hidden', 'Solved', 'Pinned', 'Announcement', 'Comments', 'doc_order', 'two digits', 'Update Search Index', 'profile',
+		'first and last name', 'Member', 'name box', 'My Profile', 'Hide from the visitor (staff only)') as $words) {
 		pg_assert_contains($words, $note, 'the note says ' . $words);
+	}
+	// A member's reply is signed with the profile's name, never the login
+	// user name (pg_comment_member_name()); the note says no other.
+	foreach (array('user name', 'username') as $words) {
+		pg_assert_false(stripos($note, $words) !== false, 'the note does not say ' . $words);
 	}
 	// Every field the note says never to rename is a field of a form.
 	pg_assert_same(1, preg_match('/fields named ([a-z_, ]+) or ([a-z_]+), nor/', $note, $m), 'the note names the fields');
@@ -2419,7 +2430,7 @@ function test_forum_moderation()
 			$turkish .= ' ' . $tr[$n['props']['text']];
 		}
 	}
-	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users') as $label) {
+	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users', 'My Profile') as $label) {
 		pg_assert_true(isset($tr[$label]) && mb_stripos($turkish, $tr[$label], 0, 'UTF-8') !== false, 'the Turkish note says ' . (isset($tr[$label]) ? $tr[$label] : $label));
 	}
 }

@@ -1,11 +1,11 @@
 ---
 name: design-template-forum
-description: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the comments block, Turkish words, platform limits.
+description: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the comments block and their names, Turkish words.
 ---
 
 ## What does it ship?
 - 55 pages: home, forum, board, topic, tag, member, unanswered, docs, docs_section, doc, search, guidelines, FAQ, about, contact, legal, error, sign-in; members' new_topic, doc_new, report, my_topics, my_docs, doc_submission, account, inbox; moderators' pages ([[design-template-forum-moderation]]); 11 e-mails.
-- Version 1.0.1 (1.0.0 had no followed topics). Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
+- Version 1.0.1 (1.0.0: no followed topics, user names in the staff note). Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
 
 ## What do the forms hold?
 - Forum Topics (`new_topic`): board (category role), kind (Question or Discussion), title, body (rich), tags, attachment (`public` folder), guidelines box. Office: status Open/Solved/Closed/Hidden, pinned, announcement (No/Yes), staff_note.
@@ -28,11 +28,9 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 - On the existing comments block: page `comments` arrays and a `comments_block` region right under the record view. Labels: `reply` (topic; published at once; no staff e-mail), Feedback (doc; rating; held), Message (doc_submission, conversation), Note (staff_report). All need sign-in.
 - `reply` is a lower-case key of its own (`yanıt`): the shared `Reply` is the workspace's verb (`Yanıtla`) and printed "Yanıtla ekle".
 - The topic page: `topic_view` (with `title_field`), the replies, `topic_aside`.
-- A topic's author gets every reply by e-mail, others when they tick the box. Moves to the comments widget later ([[designable-comments]]).
-
-## What can the platform not do yet?
-- A reply is signed with the user name until #1490 lands; then update the staff note and the FAQ.
-- My replies and replies awaiting approval wait for the comments widget.
+- A topic's author gets every reply by e-mail, others when they tick the box.
+- Signed with the profile's name, else Member; staff type theirs, prefilled ([[designed-page-comment-names]]); the staff note and FAQ say so.
+- Moves to the comments widget later ([[designable-comments]]); My replies and replies awaiting approval wait for it.
 
 ## Which Turkish words does it keep apart?
 - A report is a `şikâyet`; `bildirim` is the panel's notification, `geri bildirim` feedback.

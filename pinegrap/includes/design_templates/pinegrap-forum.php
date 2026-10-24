@@ -2751,7 +2751,7 @@ $pages[] = array(
             $heading('h2', lang('Account and e-mails'), 'h4 fw-bold mb-3'),
             $el('div', 'accordion', lang('FAQ'), array(
                 $faq(7, lang('How do I change the name others see on my topics?'), array(
-                    lang('The name on your topics comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name.'),
+                    lang('The name on your topics and replies comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name, and your next replies are signed with it.'),
                 ), lang('display name, profile, rename, username')),
                 $faq(8, lang('I forgot my password. What now?'), array(
                     lang('Choose Forgot Password on the sign-in page and enter your e-mail address. We send you a link to set a new password.'),
@@ -3236,7 +3236,7 @@ $staff_notes = array(
     lang('To take a topic off the site, open it with the pencil on its row or Moderate on its page, set its Status to Hidden and save: it leaves every list and its page at once, and Open brings it back. A hidden topic opens only in the control panel.'),
     lang('Mark a topic Solved, pin it or make it an announcement the same way, in its Status, Pinned and Announcement fields. Closed is only a word on the topic: to stop new replies, use the moderators\' button under its replies.'),
     lang('Replies are published at once; feedback on a guide waits until a moderator publishes it. Edit, publish or delete them under Comments in the control panel, or with the pencil on each one on its page.'),
-    lang('A topic shows the name in its author\'s profile. A reply, a message and a note are signed with the writer\'s user name, and so are yours: give moderators user names members may see.'),
+    lang('A topic shows the first and last name in its author\'s profile, and a member\'s reply or message is signed with that name, or with Member when the profile has none. Your replies, messages and notes are signed with the name in the form\'s name box, filled in from your own profile: fill in your first and last name under My Profile.'),
     lang('A guide arrives as Awaiting review. Open it on the docs desk, write to its author under it and set its Status: In review while you read it, Changes requested once you wrote what to change, Live on the site to put it in the docs, Withdrawn to take it out, Not accepted to decline it. A Status alone sends no e-mail: say what you did in a message under the guide.'),
     lang('Before you publish a guide, check its links and remove pictures that load from other sites: both are printed as written, for every reader. Readers can open its attachment once it is published.'),
     lang('Give each guide an order of two digits in its section, such as 10, 20 and 30: the order is compared as text, so 100 would come before 20, and a guide without one comes first. Featured shows a published guide on the home page and in the docs.'),
