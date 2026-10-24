@@ -8,10 +8,10 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - A row with no entries, or one that is its own screen, stays a plain link: Dashboard (its Site Log is under Site Settings › Monitoring, its widget settings a card of Site Settings › Appearance).
 - An entry can open a panel of its own (Site Settings, `main-menu-settings-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
 - The pinned My Notes row has My Notes and Add Note (`?new=1`). Its panel (`menu_panel_24`) is drawn whenever the notes are open to the person, pinned or not, so `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it.
-- The row keeps its `href`: a middle click, Ctrl/Cmd click or "open in new tab" still opens its screen. The right mouse button gets the browser's own menu.
+- The row keeps its `href`: middle click, Ctrl/Cmd click or "open in new tab" opens its screen; the right button gets the browser's menu.
 
 ## Where do the entries and their permissions come from?
-- The panel body is the row's `data-bs-content` string, built in `output_menu()` under each entry's own gate (role, `USER_MANAGE_*`, ERP, workspace rights, module switches), drawn as it is. No gate is repeated or moved: a new entry goes into that string under its check, as before.
+- The panel body is the row's `data-bs-content` string, built in `output_menu()` under each entry's own gate (role, `USER_MANAGE_*`, ERP, workspace rights, module switches), drawn as it is. A new entry goes into that string under the gate of its screen (`main-menu-entry-gates.md`).
 - When this replaced the right-click menu, old and new were compared for ten users with different rights on five screens: the same rows, links, texts, icons, targets and controls.
 
 ## What happens on the collapsed rail?

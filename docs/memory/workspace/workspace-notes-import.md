@@ -18,7 +18,9 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 - A new note keeps the file's dates (else the zip entry's time, else now).
 
 ## Anything fixed alongside?
-- The export wrote people as `@@name` (labels already carry `@`); fixed with this PR (issue #549). Tests: tests/workspace_notes_io_test.php.
+- The export wrote people as `@@name` (labels carry `@`); fixed (issue #549). Tests: tests/workspace_notes_io_test.php.
 
 ## Why did every upload say "The file could not be saved." (Dosya kaydedilemedi.) on dev?
-- Likely cause, not reproduced on Windows: site in a OneDrive folder; the upload writes stage.json twice within a second and a program holding the file just written (sync client, virus scanner) refuses the second rename(). `ws_note_import_replace()` tries rename, then writing in place, again for ~3 s on Windows (PR #708). Every failed file step logs "Notes import: <step> failed: <PHP message>", so a recurrence names its step. Test: tests/workspace_notes_import_test.php.
+- `ws_note_import_temp_dir()` asked `is_writable()` of data/temp (Windows: read-only attribute, ACL); now only `is_dir()` (PR #1497, issue #1469). Not seen on site: platform/windows-folder-is-writable.md.
+- A failed step logs PHP's message, e.g. `Notes import: creating the stage folder failed: mkdir(): Permission denied`. A missing data/temp logs nothing: php_errors.log is in it.
+- stage.json: `ws_note_import_replace()` renames, else writes in place, retried ~3 s on Windows (PR #708).

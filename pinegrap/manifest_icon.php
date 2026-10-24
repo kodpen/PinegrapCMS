@@ -192,6 +192,13 @@ function pg_app_icon_render($source, $target, $size, $maskable)
 		return false;
 	}
 
+	// Before PHP 8.2 a WebP GD cannot decode (animated, cut short) is a fatal
+	// error, and no icon would be cached: every launcher's request would end
+	// in one.
+	if (($type === IMAGETYPE_WEBP) && (PHP_VERSION_ID < 80200) && !pg_image_webp_gd_readable((string) @file_get_contents($source))) {
+		return false;
+	}
+
 	$loader = $loaders[$type];
 	$image = @$loader($source);
 
