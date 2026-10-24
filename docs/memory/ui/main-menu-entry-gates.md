@@ -4,7 +4,7 @@ description: Main menu entries follow the gate of the screen they open: the scre
 ---
 
 ## What is the rule for a menu entry?
-- An entry is drawn for exactly the people its screen admits: no entry that leads to "Access denied", and no screen that admits someone without a way to it from the menu (Ctrl+K and links inside other screens do not count). A new screen gets its entry under its own gate (`main-menu-panels.md`).
+- An entry is drawn for exactly the people its screen admits: no entry that leads to "Access denied", and no screen that admits someone without a way to it from the menu (Ctrl+K and links inside other screens do not count). A new screen gets its entry under its own gate (`main-menu-panels.md`). Set up so in #1516.
 
 ## Which screens got a menu path?
 - `view_system_styles.php` (Visual Page Editor home): it admits managers and role 3 users at content level (`pg_designer_access()`), but row 21 is for role < 2. The Pages panel has it for role >= 2; the active row is 2 for them, 21 below.
