@@ -5,6 +5,8 @@ description: custom_form.php protections other than the limits - order of the ch
 
 ## Why do they exist?
 - Subscription bombing (kodpen.com, Oct 2026): scripts typed strangers' real addresses into a subscription form; the maths CAPTCHA did not stop them. PR #1386. The limits: `waf/form-submission-limits.md`.
+- The addresses that went into kodpen.com's contact group since 2026-10-13 without a confirmation are cleaned up by the owner as a site operation; Pinegrap sends them no re-confirmation mail.
+- Every check works on any server, with no Cloudflare or other CDN in front: Pinegrap is an open-source product, so Turnstile and hCaptcha stay optional providers (`waf/form-captcha-providers.md`), never a requirement.
 
 ## What does custom_form.php check, in order?
 - Only for `action == 'submit'` by a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet: fill time, CAPTCHA, StopForumSpam, the limits; then the hook code.

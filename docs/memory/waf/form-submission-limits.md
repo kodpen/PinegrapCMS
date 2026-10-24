@@ -20,6 +20,7 @@ description: custom_form.php per visitor address, per e-mail and per domain limi
 
 ## Why is the domain limit off by default?
 - `cfd` is one site-wide counter per domain: anyone can send a few submissions naming gmail.com addresses and refuse every Gmail user on every form for the hour (a denial of service), and a busy site's real traffic can reach it alone. The per-address day limit and the per-visitor hour limit already stop one inbox from being flooded, so the default is 0 (PR #1386). An operator can switch it on in the Security settings; the help text there gives the reason.
+- The approved design first said 30 per hour; the owner kept it off for this reason (2026-10-24).
 
 ## What are the known weak spots?
 - Fixed windows: `cfr` starts at UTC midnight, so "3 per day" allows 3 at 23:59 and 3 more at 00:00.

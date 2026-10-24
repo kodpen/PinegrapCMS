@@ -29,4 +29,4 @@ description: Double opt-in for custom forms that add to a contact group (11.0.27
 - `pg_fs_pending_url($form_id)` holds the link for `^^confirm_subscription_url^^` (#1385). The submitter mail goes to `$submitter_email_address`, which may be the signed-in user's address or an e-mail field not bound to the contact, so `pg_cf_confirm_subscription_url()` fills the variable only when that address, normalised, equals `pg_fs_contact_email()` (`pg_cf_confirm_subscription_url_for()`); otherwise someone else would get the link.
 - "Alternative confirmation page if contact group" checks membership right after submission, so a held group does not match.
 
-Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/forms-subscription-double-opt-in.md
+Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/waf/form-submission-checks.md, docs/memory/ui/form-mail-link-variables.md
