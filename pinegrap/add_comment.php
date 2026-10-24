@@ -92,8 +92,10 @@ $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 // visual editor shows a submitted form through its form_item_view widget
 // rather than a page type, and its comments are that record's: for the checks
 // below it is a form item view page, and the widget's access setting is its
-// submitter security (see pg_sw_record_comment_context()). A refusal is
-// answered further down, after the page's own gates.
+// submitter security (see pg_sw_record_comment_context()). A classic catalog,
+// catalog detail or calendar event view page takes only a product, product
+// group or calendar event it shows (pg_comment_classic_item_shown()). A
+// refusal is answered further down, after the page's own gates.
 $comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);
 $comment_record = null;
 if ($comment_thread['accept']) {
@@ -285,12 +287,28 @@ if ($comment_thread['refusal'] === 'record') {
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
-// If the page type or item type is not valid for a form item view/submitted form
-// (a legacy form item view page takes only a submitted form, a page without a
-// form_item_view widget never one), then log activity and output error.
+// If the item type is not valid for the page type (a legacy form item view
+// page takes only a submitted form, a page without a form_item_view widget
+// never one, and a page takes a product, product group or calendar event only
+// when its page type shows that kind of item), then log activity and output
+// error.
 if ($comment_thread['refusal'] === 'page_type') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// A product, product group or calendar event this classic page does not show
+// (it was deleted, the event is not published or not in this view's
+// calendars, or the id names nothing) is refused on an error page, as a
+// record the page does not show is: the page answers that item's address with
+// an error of its own, so there is no form to go back to. The form state is
+// dropped first: a hidden field prints the session value first, so the next
+// comment form of this page, about another item, would carry the refused item
+// and the typed text and post them again.
+if ($comment_thread['refusal'] === 'item') {
+    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->remove_form();
+    output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // If the item type is submitted form then prepare for that type of comment.
