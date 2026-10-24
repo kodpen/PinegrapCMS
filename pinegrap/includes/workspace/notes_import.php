@@ -100,17 +100,25 @@ function ws_note_import_files_max()
    --------------------------------------------------------------------------- */
 
 /**
- * @return string data/temp, made when missing; '' when it cannot be written
+ * @param string|null $directory null: data/temp
+ * @return string the folder, made when missing; '' when it is not there and
+ *                cannot be made
  */
-function ws_note_import_temp_dir()
+function ws_note_import_temp_dir($directory = null)
 {
-    $directory = PG_FUNCTIONS_DIR . '/data/temp';
+    if ($directory === null) {
+        $directory = PG_FUNCTIONS_DIR . '/data/temp';
+    }
 
     if (!is_dir($directory)) {
         @mkdir($directory, 0755, true);
     }
 
-    return (is_dir($directory) && is_writable($directory)) ? $directory : '';
+    // is_writable() is not asked: on Windows it reads the folder's read-only
+    // attribute, which Explorer and OneDrive set freely and which says
+    // nothing about whether PHP may write in it. The writes that follow are
+    // the answer, and each one that fails is logged with what PHP said.
+    return is_dir($directory) ? $directory : '';
 }
 
 /**
@@ -255,7 +263,13 @@ function ws_note_import_save($stage)
 
     $json = json_encode($stage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-    if (($dir === '') || !is_string($json)) {
+    if ($dir === '') {
+        return false;
+    }
+
+    if (!is_string($json)) {
+        ws_note_import_log_failure('encoding stage.json', json_last_error_msg());
+
         return false;
     }
 
@@ -446,7 +460,15 @@ function ws_note_import_stage($viewer, $files)
     $token = bin2hex(random_bytes(16));
     $dir = ws_note_import_stage_dir($token);
 
-    if (($dir === '') || !@mkdir($dir, 0755)) {
+    // data/temp is not there and mkdir() was refused: what it said is the
+    // last error.
+    if ($dir === '') {
+        ws_note_import_log_failure('creating the temp folder data/temp');
+
+        return $fail(lang('The file could not be saved.'));
+    }
+
+    if (!@mkdir($dir, 0755)) {
         ws_note_import_log_failure('creating the stage folder');
 
         return $fail(lang('The file could not be saved.'));

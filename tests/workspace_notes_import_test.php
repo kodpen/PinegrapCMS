@@ -3,6 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the stage of a notes import (includes/workspace/notes_import.php):
+ * the stage goes under data/temp whatever is_writable() says of it,
  * stage.json is put in its place by rename(), written into the file itself
  * when renaming is refused, and a failure says what PHP said about both.
  *
@@ -122,4 +123,54 @@ function test_workspace_notes_import_save_writes_the_stage()
 	pg_assert_false(ws_note_import_save(array('dir' => '', 'user' => 7, 'entries' => array())), 'no folder, no write');
 
 	pg_test_notes_import_clean($dir);
+}
+
+// A stream wrapper whose every path is a folder with no write bit, owned by
+// another user: is_dir() says yes and is_writable() says no, whoever runs the
+// tests. A folder made read-only with chmod() would not stop root.
+class pg_notes_import_test_closed_folder
+{
+	public $context;
+
+	public function url_stat($path, $flags)
+	{
+		return array('mode' => 040555, 'uid' => 65534, 'gid' => 65534, 'nlink' => 2);
+	}
+}
+
+// A folder that is_writable() calls closed is still where the stage goes: on
+// Windows is_writable() reads the folder's read-only attribute, which
+// Explorer and OneDrive set freely and which stops nothing. The writes that
+// follow are the answer, so only a folder that is not there (and cannot be
+// made) is ''.
+function test_workspace_notes_import_temp_dir_ignores_is_writable()
+{
+	stream_wrapper_register('pgnotesclosed', 'pg_notes_import_test_closed_folder');
+	pg_assert_true(is_dir('pgnotesclosed://temp'), 'the stand-in is a folder');
+	pg_assert_false(is_writable('pgnotesclosed://temp'), 'that is_writable() calls closed');
+	pg_assert_same('pgnotesclosed://temp', ws_note_import_temp_dir('pgnotesclosed://temp'), 'the stage goes there all the same');
+	stream_wrapper_unregister('pgnotesclosed');
+
+	$dir = pg_test_notes_import_dir();
+	pg_assert_same($dir, ws_note_import_temp_dir($dir), 'a folder that is there');
+	pg_assert_same($dir . '/temp', ws_note_import_temp_dir($dir . '/temp'), 'one that is not is made');
+	pg_assert_true(is_dir($dir . '/temp'));
+
+	// A file stands where the folder's parent should be: mkdir() is refused
+	// whoever runs the tests, and what PHP said stays for the log.
+	file_put_contents($dir . '/plain', 'x');
+	error_clear_last();
+	pg_assert_same('', ws_note_import_temp_dir($dir . '/plain/temp'), 'cannot be made');
+	$last = error_get_last();
+	pg_assert_contains('mkdir', is_array($last) ? (string) $last['message'] : '', 'what mkdir() said');
+
+	pg_test_notes_import_clean($dir);
+}
+
+// A token that is not of our shape never reaches a path.
+function test_workspace_notes_import_stage_dir_refuses_other_tokens()
+{
+	foreach (array('', 'abc', '../../config', str_repeat('A', 32), str_repeat('a', 31), str_repeat('a', 32) . '/') as $token) {
+		pg_assert_same('', ws_note_import_stage_dir($token), var_export($token, true));
+	}
 }

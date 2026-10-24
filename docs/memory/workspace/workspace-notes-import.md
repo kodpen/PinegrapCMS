@@ -21,4 +21,5 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 - The export wrote people as `@@name` (labels already carry `@`); fixed with this PR (issue #549). Tests: tests/workspace_notes_io_test.php.
 
 ## Why did every upload say "The file could not be saved." (Dosya kaydedilemedi.) on dev?
-- Likely cause, not reproduced on Windows: site in a OneDrive folder; the upload writes stage.json twice within a second and a program holding the file just written (sync client, virus scanner) refuses the second rename(). `ws_note_import_replace()` tries rename, then writing in place, again for ~3 s on Windows (PR #708). Every failed file step logs "Notes import: <step> failed: <PHP message>", so a recurrence names its step. Test: tests/workspace_notes_import_test.php.
+- data/temp had Windows' read-only folder attribute (OneDrive, Explorer set it; it stops nothing), which PHP's `is_writable()` reads; `ws_note_import_temp_dir()` asked it, so every upload failed at once. It asks `is_dir()` only now (issue #1469, platform/windows-folder-is-writable.md).
+- A failed step logs "Notes import: <step> failed: <PHP message>", e.g. `creating the temp folder data/temp`. PR #708's stage.json retries stay. Test: tests/workspace_notes_import_test.php.
