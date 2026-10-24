@@ -54,6 +54,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_templates_custom.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_themes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_theme_vars.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_finish.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');

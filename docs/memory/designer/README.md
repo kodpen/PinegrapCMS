@@ -21,6 +21,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Mark the component a node lives in when a path writes the node without selecting it (`_sdSharedMarkEdited(node)`); never take a snapshot after a change, or Save skips it as unchanged (`shared-component-editor-cache.md`).
 - Add a new page-save dependency beyond the page's tree and settings to `_pgPageUnchanged()`, or Save skips the page as unchanged (`multi-page-designer-editor.md`).
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
+- A widget condition is `_bindings.show_if` + `_bindParams.show_if`, resolved by the finish pass; never a class (`widget-conditions.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -191,7 +192,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
-- system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if), action binding list, href-bound UI rule, HTML token canvas previews.
+- system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if), action binding list, href-bound UI rule, HTML token canvas previews.
 - system-widget-change-checklist.md: Checklist when changing system widgets (legacy comparison, subgroup test, PHP/JS twins, three places for defaults, node --check, logged-out live check) plus the escape-$ rule in heredocs.
 - system-widget-form-records.md: Form list and form detail widgets: one record address (pg_sw_record_url), how get_page.php answers it, layout_type is not the editor marker, list filters, the no-record layout, the record title.
 - system-widget-functional-classes.md: Which pg-eo-* / pg-qty-stepper classes and data-* attributes in system widget trees are functional (keep) versus decorative (deletable).
@@ -201,5 +202,6 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
+- widget-conditions.md: Value conditions on system widget nodes (show_if): operators, number and text comparison, carriers, refused tokens, fail closed, the nonce and the finish pass stages (#NNNN).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

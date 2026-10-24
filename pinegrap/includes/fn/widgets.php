@@ -606,8 +606,11 @@ function pg_sw_field_value($inner)
 // Does this markup show anything: words (spaces and &nbsp; are not), a
 // picture with an address (a file field left empty comes out as
 // <img src="">), a video, a frame, a drawing, a link or a form control?
+// The value a condition reads (its carrier, widgets_finish.php) is not shown
+// and does not count.
 function pg_sw_has_content($html)
 {
+    $html = pg_sw_finish_strip_carriers((string)$html);
     $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     if (trim($text) !== '') return true;
     if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
