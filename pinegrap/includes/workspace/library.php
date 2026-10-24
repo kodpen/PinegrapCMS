@@ -520,7 +520,7 @@ function ws_library_send($viewer, $channel, $file_id, $body = '')
  * person may write in, as the sidebar orders them.
  *
  * @param array $viewer
- * @return array[] id, name, icon, hex
+ * @return array[] id, name, icon, badge (ws_channel_icon_badge()), hex
  */
 function ws_library_channels($viewer)
 {
@@ -528,7 +528,7 @@ function ws_library_channels($viewer)
 
     foreach (ws_channels_for($viewer) as $brief) {
         if (ws_can_post_channel($viewer, ws_channel($brief['id']))) {
-            $channels[] = array('id' => $brief['id'], 'name' => $brief['name'], 'icon' => $brief['icon'], 'hex' => $brief['hex']);
+            $channels[] = array('id' => $brief['id'], 'name' => $brief['name'], 'icon' => $brief['icon'], 'badge' => $brief['icon_badge'], 'hex' => $brief['hex']);
         }
     }
 
