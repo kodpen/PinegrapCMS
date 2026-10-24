@@ -2402,6 +2402,51 @@ function parasut_check_einvoice_address($vkn)
 }
 
 /**
+ * The query of a list read of the e-invoice inbox (purchase_bills,
+ * sales_invoices): one page, newest first, the related contact included,
+ * and the filters given.
+ *
+ * Paraşüt's range operators are eq, lt, gt, gteq, lteq and not_eq, so the
+ * date range goes as filter[issue_date][gteq] and [lteq]; gte and lte are
+ * answered 400 "'gte' is not a valid operator". A date that is not a
+ * calendar day written Y-m-d is left out, as Paraşüt answers 400
+ * "'issue_date' is not a date" for anything else.
+ *
+ * @param array  $filters         start_date, end_date (Y-m-d), contact_id, item_type
+ * @param int    $page
+ * @param int    $per_page
+ * @param string $include         The related record listed with each item ('supplier', 'contact')
+ * @param string $contact_filter  The filter that names the contact ('supplier_id', 'contact_id')
+ * @return array  Query parameters for http_build_query()
+ */
+function parasut_list_params($filters, $page, $per_page, $include, $contact_filter)
+{
+    $params = [
+        'page[number]' => $page,
+        'page[size]' => $per_page,
+        'sort' => '-issue_date',
+        'include' => $include,
+    ];
+
+    foreach (['start_date' => 'gteq', 'end_date' => 'lteq'] as $key => $operator) {
+        $date = is_string($filters[$key] ?? null) ? trim($filters[$key]) : '';
+
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
+            $params['filter[issue_date][' . $operator . ']'] = $date;
+        }
+    }
+
+    if (!empty($filters['contact_id'])) {
+        $params['filter[' . $contact_filter . ']'] = $filters['contact_id'];
+    }
+    if (!empty($filters['item_type'])) {
+        $params['filter[item_type]'] = $filters['item_type'];
+    }
+
+    return $params;
+}
+
+/**
  * List purchase bills (incoming invoices) from Parasut.
  *
  * @param array $filters  Optional: ['start_date' => 'Y-m-d', 'end_date' => 'Y-m-d', 'contact_id' => '...', 'item_type' => '...']
@@ -2417,24 +2462,7 @@ function parasut_list_purchase_bills($filters = [], $page = 1, $per_page = 25)
     }
     $token = $token_result['token'];
 
-    $params = [
-        'page[number]' => $page,
-        'page[size]' => $per_page,
-        'sort' => '-issue_date',
-        'include' => 'supplier',
-    ];
-    if (!empty($filters['start_date'])) {
-        $params['filter[issue_date][gte]'] = $filters['start_date'];
-    }
-    if (!empty($filters['end_date'])) {
-        $params['filter[issue_date][lte]'] = $filters['end_date'];
-    }
-    if (!empty($filters['contact_id'])) {
-        $params['filter[supplier_id]'] = $filters['contact_id'];
-    }
-    if (!empty($filters['item_type'])) {
-        $params['filter[item_type]'] = $filters['item_type'];
-    }
+    $params = parasut_list_params($filters, $page, $per_page, 'supplier', 'supplier_id');
 
     $url = _parasut_prefix() . '/purchase_bills?' . http_build_query($params);
     $result = _parasut_request('GET', $url, null, $token);
@@ -2476,24 +2504,7 @@ function parasut_list_sales_invoices($filters = [], $page = 1, $per_page = 25)
     }
     $token = $token_result['token'];
 
-    $params = [
-        'page[number]' => $page,
-        'page[size]' => $per_page,
-        'sort' => '-issue_date',
-        'include' => 'contact',
-    ];
-    if (!empty($filters['start_date'])) {
-        $params['filter[issue_date][gte]'] = $filters['start_date'];
-    }
-    if (!empty($filters['end_date'])) {
-        $params['filter[issue_date][lte]'] = $filters['end_date'];
-    }
-    if (!empty($filters['contact_id'])) {
-        $params['filter[contact_id]'] = $filters['contact_id'];
-    }
-    if (!empty($filters['item_type'])) {
-        $params['filter[item_type]'] = $filters['item_type'];
-    }
+    $params = parasut_list_params($filters, $page, $per_page, 'contact', 'contact_id');
 
     $url = _parasut_prefix() . '/sales_invoices?' . http_build_query($params);
     $result = _parasut_request('GET', $url, null, $token);
