@@ -11227,12 +11227,13 @@ const StyleDesigner = (function () {
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
     // here, with the reason. The canvas reads the comments switch, the star
-    // rating and the watcher e-mail of the page being edited (its comment
-    // settings, kept in the pg_comments* fields) and the site's CAPTCHA
-    // setting. A page with comments off prints no widget, so the whole
-    // widget fades. The attachment box and the choose-a-name select have no
-    // page field in the designer yet; they join this twin with those fields.
-    // The watch form, its buttons and the watcher list follow the watcher
+    // rating, the attachments, the members' choice of name, the date and the
+    // watcher e-mail of the page being edited (its comment settings, kept in
+    // the pg_comments* fields) and the site's CAPTCHA setting. A page with
+    // comments off prints no widget, so the whole widget fades. The
+    // attachment box follows the attachments, the choose-a-name select the
+    // name choice, a comment's date the date setting (the site prints it
+    // empty). The watch form, its buttons and the watcher list follow the watcher
     // e-mail page; a reply control fades while the page takes no new
     // comments; a control only a button (or only a link or a button) works
     // as fades elsewhere, and so does the pagination while the widget shows
@@ -11254,6 +11255,15 @@ const StyleDesigner = (function () {
         if (b.section === 'comment_captcha') return (flags && flags.captcha === false) ? SITE : '';
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
             return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
+        }
+        if (b.value === 'comment_file' || b.eo_visible_if === 'files_on') {
+            return (_getCmtVal('pg_comments_attachments') !== '1') ? PAGE : '';
+        }
+        if (b.value === 'comment_name_type') {
+            return (_getCmtVal('pg_comments_select_name') !== '1') ? PAGE : '';
+        }
+        if (b.text === '__comment_date' || b.text === '__comment_datetime') {
+            return (_getCmtVal('pg_comments_show_date') !== '1') ? PAGE : '';
         }
         var isButton = tag === 'button' || (node.type === 'component' && node.props && node.props.componentType === 'btn');
         var isLink = tag === 'a' || (node.type === 'content' && node.props && node.props.contentType === 'link');
@@ -30268,6 +30278,29 @@ const StyleDesigner = (function () {
             ) +
             row(_sdT('Signed-in visitors only'),
                 _cmtSwitch('pg_comments_login', _cmtLogin)
+            ) +
+            row(_sdT('File attachments'),
+                _cmtSwitch('pg_comments_attachments', _getCmtVal('pg_comments_attachments') === '1') +
+                _cmtHint(_sdT('Visitors may attach a file to their comment.'))
+            ) +
+            row(_sdT('Members choose their name'),
+                _cmtSwitch('pg_comments_select_name', _getCmtVal('pg_comments_select_name') === '1') +
+                _cmtHint(_sdT('A signed-in member picks the name their comment shows.'))
+            ) +
+            row(_sdT('Intro message'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_message" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_message')) + '" maxlength="255">' +
+                _cmtHint(_sdT('Shown with the form.'))
+            ) +
+            row(_sdT('Closed message'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_closed_message" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_closed_message')) + '" maxlength="255" placeholder="' +
+                    esc(_sdT('We\'re sorry. New comments are no longer being accepted.')) + '">' +
+                _cmtHint(_sdT('Shown while new comments are off.'))
+            ) +
+            row(_sdT('Sender manages watchers'),
+                _cmtSwitch('pg_comments_watchers_managed', _getCmtVal('pg_comments_watchers_managed') === '1') +
+                _cmtHint(_sdT('On a page with a Form Item View widget, the record\'s sender may add and remove who is notified.'))
             ) +
             // E-mails. The page is sent when a comment is published: to
             // whoever sent the record (on a Form Item View page) and to
@@ -56059,13 +56092,26 @@ const StyleDesigner = (function () {
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
+        'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
+        'pg_comments_closed_message', 'pg_comments_watchers_managed',
         'page_meta_tags', 'page_custom_jsonld',
         'page_canonical_url', 'page_noarchive', 'page_max_snippet'
+    ];
+    // The page's comment settings: the hidden pg_comments* inputs of the
+    // editor screen, which the comments panel writes. The keys and their
+    // order are pg_comment_editor_keys()'s (includes/fn/comments.php).
+    var _PG_CMT_FIELDS = [
+        'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
+        'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
+        'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
+        'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
+        'pg_comments_closed_message', 'pg_comments_watchers_managed'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1, page_noarchive: 1,
         pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1,
-        pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1
+        pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1,
+        pg_comments_attachments: 1, pg_comments_select_name: 1, pg_comments_watchers_managed: 1
     };
     var _pgNewTabSeq = 0;
 
@@ -56162,9 +56208,7 @@ const StyleDesigner = (function () {
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
-         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
-         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
+        _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             p[k] = _PG_BOOL_FIELDS[k] ? ((el.value === '1') ? 1 : 0) : el.value;
@@ -56195,9 +56239,7 @@ const StyleDesigner = (function () {
                 if (document.body.contains(el)) tagin(el);
             }
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
-         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
-         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
+        _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
@@ -56718,6 +56760,7 @@ const StyleDesigner = (function () {
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+            pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
             tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: null, treeLoadWarning: false,
             formSettings: {}
@@ -56766,6 +56809,9 @@ const StyleDesigner = (function () {
             pg_comments_login: src.pg_comments_login ? 1 : 0,
             pg_comments_email_page: src.pg_comments_email_page || 0, pg_comments_email_subject: src.pg_comments_email_subject || '',
             pg_comments_notify_email: src.pg_comments_notify_email || '',
+            pg_comments_attachments: src.pg_comments_attachments ? 1 : 0, pg_comments_select_name: src.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: src.pg_comments_message || '', pg_comments_closed_message: src.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: src.pg_comments_watchers_managed ? 1 : 0,
             tree: cloneTree(_pgTreeOf(src) || createDefaultTree()),
             undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
             // The form settings come along. The fields do not need to: they
@@ -56861,6 +56907,9 @@ const StyleDesigner = (function () {
             pg_comments_login: sp.pg_comments_login ? 1 : 0,
             pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
             pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
             tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree), baseline: null, treeLoadWarning: false,
             // The form settings come along; the fields are made under the
             // copy's own id by the first save, as for a duplicate.
@@ -58576,6 +58625,9 @@ const StyleDesigner = (function () {
             pg_comments_login: sp.pg_comments_login ? 1 : 0,
             pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
             pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
             tree: sp.tree || createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: '__attached__',   // never equal → stays dirty until saved
             treeLoadWarning: false,
@@ -58964,6 +59016,7 @@ const StyleDesigner = (function () {
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+                    pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
                     tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree),
                     baseline: null, treeLoadWarning: false
                 };
@@ -59230,6 +59283,9 @@ const StyleDesigner = (function () {
                 pg_comments_login: sp.pg_comments_login ? 1 : 0,
                 pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
                 pg_comments_notify_email: sp.pg_comments_notify_email || '',
+                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
                 tree: pt, undoStack: [], redoStack: [], nodeIdCounter: reindex(pt),
                 baseline: null, treeLoadWarning: false,
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
@@ -59853,6 +59909,9 @@ const StyleDesigner = (function () {
                 pg_comments_login: sp.pg_comments_login ? 1 : 0,
                 pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
                 pg_comments_notify_email: sp.pg_comments_notify_email || '',
+                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
@@ -59874,6 +59933,7 @@ const StyleDesigner = (function () {
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+                pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
                 tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
                 formSettings: {}
             });

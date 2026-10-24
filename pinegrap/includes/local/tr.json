@@ -28220,5 +28220,15 @@
     "Comments per page": "Sayfa başına yorum",
     "All on one page": "Tümü tek sayfada",
     "Counted by top-level comments; each keeps its replies.": "Üst düzey yorumlar sayılır; her biri yanıtlarıyla kalır.",
-    "Comment settings": "Yorum ayarları"
+    "Comment settings": "Yorum ayarları",
+    "File attachments": "Dosya ekleri",
+    "Visitors may attach a file to their comment.": "Ziyaretçiler yorumlarına dosya ekleyebilir.",
+    "Members choose their name": "Üyeler adını seçer",
+    "A signed-in member picks the name their comment shows.": "Oturum açmış üye, yorumunda görünecek adı seçer.",
+    "Intro message": "Giriş mesajı",
+    "Shown with the form.": "Formla birlikte gösterilir.",
+    "Closed message": "Kapalı mesajı",
+    "Shown while new comments are off.": "Yeni yorumlar kapalıyken gösterilir.",
+    "Sender manages watchers": "Gönderen izleyicileri yönetir",
+    "On a page with a Form Item View widget, the record's sender may add and remove who is notified.": "Form Öğesi Görünümü widget'ı olan sayfada kaydı gönderen, kimlerin bildirim alacağını ekleyip çıkarabilir."
 }

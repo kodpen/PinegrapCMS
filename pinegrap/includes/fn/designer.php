@@ -2652,6 +2652,9 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.comments, page.comments_label, page.comments_allow_new_comments, page.comments_rating,
              page.comments_automatic_publish, page.comments_show_submitted_date_and_time,
              page.comments_require_login_to_comment,
+             page.comments_message, page.comments_disallow_new_comment_message,
+             page.comments_allow_file_attachments, page.comments_allow_user_to_select_name,
+             page.comments_watchers_managed_by_submitter,
              page.comments_watcher_email_page_id, page.comments_watcher_email_subject,
              page.comments_administrator_email_to_email_address,
              page.page_timestamp,
@@ -2719,6 +2722,14 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'pg_comments_email_page'    => (int)$r['comments_watcher_email_page_id'],
             'pg_comments_email_subject' => (string)$r['comments_watcher_email_subject'],
             'pg_comments_notify_email'  => (string)$r['comments_administrator_email_to_email_address'],
+            // Attachments, the member's choice of name, the message above the
+            // form, the one shown while new comments are off, and whether the
+            // record's sender manages who is told of new comments.
+            'pg_comments_attachments'      => !empty($r['comments_allow_file_attachments']) ? 1 : 0,
+            'pg_comments_select_name'      => !empty($r['comments_allow_user_to_select_name']) ? 1 : 0,
+            'pg_comments_message'          => (string)$r['comments_message'],
+            'pg_comments_closed_message'   => (string)$r['comments_disallow_new_comment_message'],
+            'pg_comments_watchers_managed' => !empty($r['comments_watchers_managed_by_submitter']) ? 1 : 0,
             'page_timestamp'        => (int)$r['page_timestamp'],
             // The page's own meta tags, as the column stores them ('' for
             // none): the editor posts the string back unchanged when they
@@ -3030,6 +3041,24 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
 }
 
 /**
+ * The columns, as SQL values, a new page's INSERT names because the page
+ * table gives them no default, unless the save writes them itself ($c_extra,
+ * column => value): the message shown while new comments are off is a text
+ * column, and a column named twice makes MySQL refuse the INSERT. Pure.
+ *
+ * @param array $c_extra the columns the save writes
+ * @return array column => SQL value
+ */
+function pg_designer_page_insert_defaults($c_extra)
+{
+    $out = array();
+    if (!is_array($c_extra) || !array_key_exists('comments_disallow_new_comment_message', $c_extra)) {
+        $out['comments_disallow_new_comment_message'] = "''";
+    }
+    return $out;
+}
+
+/**
  * Validate and persist ONE page of a visual design.
  *
  * Everything that used to be inline in edit_system_style.php's POST branch —
@@ -3042,7 +3071,12 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
  *   page_id (0 = create), page_name, tree_json, page_folder, page_title,
  *   page_meta_description, page_search, page_search_keywords, page_sitemap,
  *   page_home, page_noindex, page_nofollow, pg_comments, pg_comments_label,
- *   pg_comments_allow_new, pg_comments_rating, page_draft (1 = keep the page
+ *   pg_comments_allow_new, pg_comments_rating, the comment settings the
+ *   panel added later (pg_comments_auto_publish, pg_comments_show_date,
+ *   pg_comments_login, pg_comments_email_page, pg_comments_email_subject,
+ *   pg_comments_notify_email, pg_comments_attachments,
+ *   pg_comments_select_name, pg_comments_message, pg_comments_closed_message,
+ *   pg_comments_watchers_managed: written when sent), page_draft (1 = keep the page
  *   off the site in the drafts folder; page_folder is then the folder it is
  *   published to), page_publish_at and page_unpublish_at (when the page goes
  *   on the site and comes off it, pg_page_schedule_parse(); '' for none),
@@ -3319,6 +3353,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if (array_key_exists('pg_comments_notify_email', $page)) {
         $c_extra['comments_administrator_email_to_email_address'] = e(mb_substr(trim((string)$page['pg_comments_notify_email']), 0, 100));
     }
+    // Attachments, the member's choice of name, the message above the form,
+    // the one shown while new comments are off, and the record's sender
+    // managing who is told of new comments (pg_comment_editor_keys()).
+    $c_more = array_intersect_key($page, array_flip(array('pg_comments_attachments', 'pg_comments_select_name',
+        'pg_comments_message', 'pg_comments_closed_message', 'pg_comments_watchers_managed')));
+    foreach (pg_comment_editor_columns($c_more) as $c_col => $c_val) {
+        $c_extra[$c_col] = is_int($c_val) ? $c_val : e($c_val);
+    }
     // The page's own meta tags (includes/fn/meta_tags.php) go the same way:
     // written when the editor sends them, left as stored when it does not.
     // They are content like the title, so a content-level operator writes
@@ -3348,6 +3390,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($c_extra as $c_col => $c_val) {
         $c_sql = ($c_val === null) ? 'NULL' : "'$c_val'";
         $sql_c_extra_set  .= "$c_col = $c_sql,\n";
+        $sql_c_extra_cols .= "$c_col, ";
+        $sql_c_extra_vals .= "$c_sql, ";
+    }
+    // A new page's columns that have no default and that this save did not
+    // write: named once, or MySQL refuses the INSERT.
+    foreach (pg_designer_page_insert_defaults($c_extra) as $c_col => $c_sql) {
         $sql_c_extra_cols .= "$c_col, ";
         $sql_c_extra_vals .= "$c_sql, ";
     }
@@ -3468,7 +3516,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         db("INSERT INTO page (
                 page_name, page_folder, page_type, layout_type, page_home, page_search,
                 page_search_keywords, page_timestamp, page_user, page_style, page_title,
-                page_meta_description, comments_disallow_new_comment_message, sitemap,
+                page_meta_description, sitemap,
                 $sql_noindex_cols
                 $sql_schedule_cols
                 $sql_tree_cols
@@ -3477,7 +3525,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             VALUES (
                 '" . e($name) . "', '$folder', 'standard', 'system', '" . e($home_str) . "', '$search',
                 '" . e($keywords) . "', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "', '$style_id', '" . e($title) . "',
-                '" . e($meta_desc) . "', '', '$sitemap',
+                '" . e($meta_desc) . "', '$sitemap',
                 $sql_noindex_vals
                 $sql_schedule_vals
                 $sql_tree_vals
@@ -7830,21 +7878,9 @@ function pg_design_template_prepare($template_id, $user)
             'page_search'           => isset($p['search']) ? (int)(bool)$p['search'] : 1,
             'page_sitemap'          => isset($p['sitemap']) ? (int)(bool)$p['sitemap'] : 1,
             'page_noindex'          => !empty($p['noindex']) ? 1 : 0,
-            'pg_comments'              => !empty($c) ? 1 : 0,
-            'pg_comments_label'        => isset($c['label']) ? (string)$c['label'] : '',
-            'pg_comments_allow_new'    => isset($c['allow_new']) ? (int)(bool)$c['allow_new'] : 1,
-            'pg_comments_rating'       => !empty($c['rating']) ? 1 : 0,
-            'pg_comments_auto_publish' => !empty($c['auto_publish']) ? 1 : 0,
-            'pg_comments_show_date'    => !empty($c['show_date']) ? 1 : 0,
-            'pg_comments_login'        => !empty($c['login']) ? 1 : 0,
-            // The comment e-mails: a page of the template ({{tab:<key>}}),
-            // its subject, the staff address ({{site_email}}).
-            'pg_comments_email_page'    => isset($c['email_page']) ? _pg_tpl_fill((string)$c['email_page'], $vars) : 0,
-            'pg_comments_email_subject' => isset($c['email_subject']) ? (string)$c['email_subject'] : '',
-            'pg_comments_notify_email'  => isset($c['notify_email']) ? _pg_tpl_fill((string)$c['notify_email'], $vars) : '',
             'formSettings'          => (isset($p['form']) && is_array($p['form'])) ? _pg_tpl_fill($p['form'], $vars) : null,
             'tree'                  => $tree,
-        );
+        ) + pg_design_template_page_comments($c, $vars);
     }
 
     // The folders, for the page settings' folder list.
@@ -7894,6 +7930,50 @@ function pg_design_template_prepare($template_id, $user)
         'shared'     => $shared_out,
         'folders'    => $folders,
         'assets'     => $assets,
+    );
+}
+
+/**
+ * A template page's comment settings, as the editor's page fields
+ * (pg_comment_editor_keys()), from the page's 'comments' array. Pure.
+ *
+ * A page without the array has comments off; with it, on. Keys: label,
+ * allow_new (on unless given), rating, auto_publish, show_date, login,
+ * email_page (a page of the template, '{{tab:<key>}}'), email_subject,
+ * notify_email ('{{site_email}}' for the site's address), attachments,
+ * select_name, message (shown with the form) and closed_message (shown while
+ * new comments are off). Whether the record's sender manages the watchers
+ * is not a template key: it stays off.
+ *
+ * @param mixed $c    the page's 'comments' array
+ * @param array $vars the placeholders _pg_tpl_fill() fills
+ * @return array
+ */
+function pg_design_template_page_comments($c, $vars)
+{
+    $c = is_array($c) ? $c : array();
+    $vars = is_array($vars) ? $vars : array();
+    $text = function ($key) use ($c) {
+        return (isset($c[$key]) && is_scalar($c[$key])) ? (string)$c[$key] : '';
+    };
+
+    return array(
+        'pg_comments'              => !empty($c) ? 1 : 0,
+        'pg_comments_label'        => $text('label'),
+        'pg_comments_allow_new'    => isset($c['allow_new']) ? (int)(bool)$c['allow_new'] : 1,
+        'pg_comments_rating'       => !empty($c['rating']) ? 1 : 0,
+        'pg_comments_auto_publish' => !empty($c['auto_publish']) ? 1 : 0,
+        'pg_comments_show_date'    => !empty($c['show_date']) ? 1 : 0,
+        'pg_comments_login'        => !empty($c['login']) ? 1 : 0,
+        // The comment e-mails: a page of the template ({{tab:<key>}}), its
+        // subject, the staff address ({{site_email}}).
+        'pg_comments_email_page'    => isset($c['email_page']) ? _pg_tpl_fill((string)$c['email_page'], $vars) : 0,
+        'pg_comments_email_subject' => $text('email_subject'),
+        'pg_comments_notify_email'  => isset($c['notify_email']) ? _pg_tpl_fill((string)$c['notify_email'], $vars) : '',
+        'pg_comments_attachments'    => !empty($c['attachments']) ? 1 : 0,
+        'pg_comments_select_name'    => !empty($c['select_name']) ? 1 : 0,
+        'pg_comments_message'        => $text('message'),
+        'pg_comments_closed_message' => $text('closed_message'),
     );
 }
 
@@ -8100,6 +8180,10 @@ function pg_design_template_install($template_id, $user, $opts = array())
             'pg_comments_email_page'    => isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0,
             'pg_comments_email_subject' => isset($p['pg_comments_email_subject']) ? (string)$p['pg_comments_email_subject'] : '',
             'pg_comments_notify_email'  => isset($p['pg_comments_notify_email']) ? (string)$p['pg_comments_notify_email'] : '',
+            'pg_comments_attachments'    => isset($p['pg_comments_attachments']) ? (int)$p['pg_comments_attachments'] : 0,
+            'pg_comments_select_name'    => isset($p['pg_comments_select_name']) ? (int)$p['pg_comments_select_name'] : 0,
+            'pg_comments_message'        => isset($p['pg_comments_message']) ? (string)$p['pg_comments_message'] : '',
+            'pg_comments_closed_message' => isset($p['pg_comments_closed_message']) ? (string)$p['pg_comments_closed_message'] : '',
             'form_settings'            => is_array($p['formSettings']) ? $p['formSettings'] : array(),
             'tree_json'                => pg_designer_tree_encode($tree),
         );
