@@ -79,6 +79,11 @@ require_once(dirname(__DIR__) . '/pinegrap/functions.php');
 
 $duplicates = pg_json_duplicate_keys($language_json);
 
+if (!is_array($duplicates)) {
+	fwrite(STDERR, 'Could not scan ' . $language_file . " for duplicate keys.\n");
+	exit(1);
+}
+
 // -- helpers -----------------------------------------------------------------
 
 // A single-quoted PHP/JS literal, with escapes, as written in the source.

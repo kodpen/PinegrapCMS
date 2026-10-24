@@ -2286,10 +2286,10 @@ function decode_json($content)
 // Each duplicate comes back once, in the order its first copy appears:
 // array('key' => decoded key, 'lines' => line of every copy,
 // 'values_differ' => whether any copy's value differs from the first once
-// decoded). Keys of different objects never clash; "ç" and "ç" are one
+// decoded). Keys of different objects never clash; "\u00e7" and "ç" are one
 // key, as json_decode() reads them. The text is expected to be valid JSON
-// (check json_decode() first): reading stops at a fault, and only the objects
-// closed before it are reported.
+// (check json_decode() first); a string or bracket that does not close returns
+// null, so a scan that stopped early is never taken for a clean file.
 function pg_json_duplicate_keys($json)
 {
     $json = (string) $json;
@@ -2303,6 +2303,7 @@ function pg_json_duplicate_keys($json)
     // the key whose value comes next, and whether the next string is a key.
     $frames = array();
     $found = array();
+    $complete = true;
 
     while ($position < $length) {
 
@@ -2322,19 +2323,36 @@ function pg_json_duplicate_keys($json)
 
         if ($character === '"') {
 
-            // Possessive quantifiers: a long string full of escapes cannot
-            // run PCRE out of backtracking room.
-            if (!preg_match('/"[^"\\\\]*+(?:\\\\.[^"\\\\]*+)*+"/As', $json, $match, 0, $position)) {
+            // The string ends at the first quote that is not escaped. A plain
+            // loop rather than a regular expression: PCRE gives up on a string
+            // holding a million escapes and would end the scan early.
+            $end = $position + 1;
+
+            while (true) {
+                $end += strcspn($json, '"\\', $end);
+
+                if (($end >= $length) || ($json[$end] === '"')) {
+                    break;
+                }
+
+                // A backslash and the character it escapes.
+                $end += 2;
+            }
+
+            if ($end >= $length) {
+                $complete = false;
                 break;
             }
 
-            $position += strlen($match[0]);
+            $position = $end + 1;
+            $string = substr($json, $start, $position - $start);
 
             if (($top >= 0) && $frames[$top]['object'] && $frames[$top]['expect_key']) {
 
-                $key = (strpos($match[0], '\\') === false) ? (string) substr($match[0], 1, -1) : json_decode($match[0]);
+                $key = (strpos($string, '\\') === false) ? (string) substr($string, 1, -1) : json_decode($string);
 
                 if (!is_string($key)) {
+                    $complete = false;
                     break;
                 }
 
@@ -2361,7 +2379,8 @@ function pg_json_duplicate_keys($json)
 
         } elseif (($character === '}') || ($character === ']')) {
 
-            if ($top < 0) {
+            if (($top < 0) || ($frames[$top]['object'] !== ($character === '}'))) {
+                $complete = false;
                 break;
             }
 
@@ -2429,6 +2448,10 @@ function pg_json_duplicate_keys($json)
             $frames[$top]['keys'][$key][$last][3] = $position;
             $frames[$top]['pending'] = null;
         }
+    }
+
+    if (!$complete || (count($frames) > 0)) {
+        return null;
     }
 
     ksort($found);

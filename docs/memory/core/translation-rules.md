@@ -24,6 +24,6 @@ description: Every visible string uses lang() (designer JS: _sdT()), English sou
 
 ## How is it checked?
 - `php tools/check_lang.php` (CI): every `lang('...')` and `_sdT('...')` key exists in tr.json, and `_sdT()` is called with a single-quoted literal only. It does not compare the placeholders of a value with its key.
-- It also fails when tr.json holds a key more than once (`DUPE` with the key and every line it is on, and a note when the copies' values differ). `json_decode()` keeps the last copy without a word, so a second copy with another value would hide a translation from every other check. The reader is `pg_json_duplicate_keys()` in `includes/fn/core.php` (`tests/lang_file_duplicates_test.php`).
+- It also fails when tr.json holds a key more than once (`DUPE` with the key and every line it is on, and a note when the copies' values differ). `json_decode()` keeps the last copy without a word, so a second copy with another value would hide a translation from every other check. The reader is `pg_json_duplicate_keys()` in `includes/fn/core.php` (`tests/lang_file_duplicates_test.php`); it returns null when a string or bracket does not close, and the check then fails instead of reporting a clean file.
 
 Related: docs/memory/core/lang-function-syntax.md

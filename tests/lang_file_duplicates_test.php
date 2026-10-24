@@ -76,7 +76,7 @@ function test_lang_file_duplicates_ordered_by_first_copy()
 	pg_assert_same(array(3, 4), isset($found[1]['lines']) ? $found[1]['lines'] : null);
 }
 
-// json_decode() reads "ç" and "ç" as the same key, so they clash; values
+// json_decode() reads "\u00e7" and "ç" as the same key, so they clash; values
 // that only differ in how a character is escaped are the same value.
 function test_lang_file_duplicates_escaped_key_is_the_same_key()
 {
@@ -84,6 +84,31 @@ function test_lang_file_duplicates_escaped_key_is_the_same_key()
 
 	pg_assert_same(
 		array(array('key' => 'Seç', 'lines' => array(2, 3), 'values_differ' => false)),
+		pg_json_duplicate_keys($json));
+}
+
+// An outer key whose first copy comes before a nested object's duplicate is
+// reported first, although the nested object closes before the outer one.
+function test_lang_file_duplicates_nested_ordered_by_first_copy()
+{
+	$found = pg_json_duplicate_keys('{"a":1,"o":{"x":1,"x":2},"a":2}');
+
+	pg_assert_same(
+		array(
+			array('key' => 'a', 'lines' => array(1, 1), 'values_differ' => true),
+			array('key' => 'x', 'lines' => array(1, 1), 'values_differ' => true),
+		),
+		$found);
+}
+
+// A string of a million escapes is read to its end, so the duplicate after
+// it is still found.
+function test_lang_file_duplicates_long_escaped_string()
+{
+	$json = "{\n\"A\": \"" . str_repeat('\\"', 1000000) . "\",\n\"A\": \"x\"\n}";
+
+	pg_assert_same(
+		array(array('key' => 'A', 'lines' => array(2, 3), 'values_differ' => true)),
 		pg_json_duplicate_keys($json));
 }
 
@@ -167,4 +192,14 @@ function test_lang_file_duplicates_non_object_input()
 	pg_assert_same(array(), pg_json_duplicate_keys('{}'));
 	pg_assert_same(array(), pg_json_duplicate_keys('["a", "a"]'));
 	pg_assert_same(array(), pg_json_duplicate_keys('"a"'));
+}
+
+// Text that is not valid JSON cannot be read to its end: null, not a clean
+// result that would let a broken file pass.
+function test_lang_file_duplicates_invalid_json_is_null()
+{
+	pg_assert_same(null, pg_json_duplicate_keys('{"a": "1", "a": "2"'));
+	pg_assert_same(null, pg_json_duplicate_keys('{"a": "unterminated}'));
+	pg_assert_same(null, pg_json_duplicate_keys('{"a": 1}}'));
+	pg_assert_same(null, pg_json_duplicate_keys('{"a": [1, 2}'));
 }
