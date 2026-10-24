@@ -387,6 +387,8 @@ if ($_POST) {
         case 'mcp_tools':
         case 'mcp_connect':
         case 'mcp_disconnect':
+        case 'mcp_catalogue_add':
+        case 'mcp_probe':
         case 'mcp_connect_me':
         case 'mcp_disconnect_me':
             $anchor = ws_mcp_settings_post($viewer, $action, $liveform);

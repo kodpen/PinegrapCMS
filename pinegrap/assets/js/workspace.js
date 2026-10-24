@@ -82,6 +82,28 @@
         return node;
     }
 
+    // An icon with a small mark in its corner (ws_icon_badged_html() in
+    // includes/workspace/channel_icons.php); the plain icon without one.
+    function badgedIcon(name, badge, extra) {
+        if (!badge) {
+            return icon(name, extra);
+        }
+
+        var node = el('span', 'ws-icon-badged' + (extra ? ' ' + extra : ''));
+        node.setAttribute('aria-hidden', 'true');
+        node.appendChild(el('i', 'bi ' + name));
+        node.appendChild(el('i', 'bi ' + badge + ' ws-icon-badge'));
+        return node;
+    }
+
+    // A channel's icon: the one it was given, with the mark of its kind in
+    // the corner (a lock, a door, a person), or the one its kind gives.
+    function channelIcon(channel, extra) {
+        var name = channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash'));
+
+        return badgedIcon(name, channel.icon_badge || '', extra);
+    }
+
     function button(className, label, iconName, title) {
         var node = el('button', className);
         node.type = 'button';
@@ -2811,7 +2833,7 @@
                 data.items.forEach(function (item) {
                     var row = el('button', 'ws-picker-item');
                     row.type = 'button';
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                     row.appendChild(el('span', 'ws-picker-label', item.label));
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));
                     row.addEventListener('click', function () {
@@ -2861,7 +2883,7 @@
             chip.href = ref.url;
         }
 
-        chip.appendChild(icon(ref.icon || 'bi-dot'));
+        chip.appendChild(badgedIcon(ref.icon || 'bi-dot', ref.badge || ''));
         chip.appendChild(el('span', '', ref.label));
 
         if (onRemove) {
@@ -3202,7 +3224,7 @@
             f.refs = el('div', 'ws-refs-field mb-2');
             refsWrap.appendChild(f.refs);
             refsWrap.appendChild(refSearchField(BOOT.ref_types, function (item) {
-                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, url: '' });
+                self.refs.push({ token: item.token, type: item.type, id: item.id, label: item.label, icon: item.icon, badge: item.badge || '', url: '' });
                 self.drawRefs();
             }));
             body.appendChild(refsWrap);
@@ -3906,6 +3928,176 @@
         return box;
     }
 
+    // An icon of the channel's own from the curated list
+    // (includes/workspace/channel_icons.php), or none: then the icon its
+    // kind gives, which the first cell shows. A radiogroup: Tab reaches the
+    // chosen icon, the arrow keys, Home and End move through the ones the
+    // search leaves, and Enter in the search takes the first of them.
+    function iconPicker(value, kindIcon) {
+        var box = el('div', 'ws-icon-picker');
+        var search = el('input', 'form-control form-control-sm ws-icon-search');
+        var grid = el('div', 'ws-icon-grid');
+        var empty = el('div', 'ws-icon-empty d-none', t('icon_nothing'));
+        var current = value || '';
+        var cells = [];
+
+        search.type = 'search';
+        search.placeholder = t('icon_search');
+        search.setAttribute('aria-label', t('icon_search'));
+        search.autocomplete = 'off';
+        search.spellcheck = false;
+
+        grid.setAttribute('role', 'radiogroup');
+        grid.setAttribute('aria-label', t('icon'));
+
+        [{ icon: '', label: t('icon_none'), words: '' }].concat(CFG.channel_icons || []).forEach(function (choice) {
+            var cell = el('button', 'ws-icon-choice' + (choice.icon ? '' : ' ws-icon-choice-none'));
+
+            cell.type = 'button';
+            cell.title = choice.label;
+            cell.setAttribute('role', 'radio');
+            cell.setAttribute('aria-label', choice.label);
+            cell.appendChild(icon(choice.icon || kindIcon || 'bi-hash'));
+            cell.addEventListener('click', function () {
+                choose(choice.icon, false);
+            });
+
+            cells.push({ node: cell, icon: choice.icon, words: ' ' + foldText(choice.label + ' ' + choice.words).replace(/[\s,]+/g, ' ') });
+            grid.appendChild(cell);
+        });
+
+        function shown() {
+            return cells.filter(function (cell) {
+                return !cell.node.classList.contains('d-none');
+            });
+        }
+
+        // Only one cell is in the Tab order: the chosen one, or the first
+        // shown when the search hides it.
+        function mark() {
+            var visible = shown();
+            var reachable = null;
+
+            cells.forEach(function (cell) {
+                var on = (cell.icon === current);
+
+                cell.node.classList.toggle('active', on);
+                cell.node.setAttribute('aria-checked', on ? 'true' : 'false');
+
+                if (on && !cell.node.classList.contains('d-none')) {
+                    reachable = cell;
+                }
+            });
+
+            reachable = reachable || visible[0] || null;
+
+            cells.forEach(function (cell) {
+                cell.node.tabIndex = (cell === reachable) ? 0 : -1;
+            });
+        }
+
+        function choose(name, focus) {
+            current = name || '';
+            mark();
+
+            if (focus) {
+                cells.forEach(function (cell) {
+                    if (cell.icon === current) {
+                        cell.node.focus();
+                    }
+                });
+            }
+        }
+
+        // Every word typed must start a word of the icon, in either language.
+        search.addEventListener('input', function () {
+            var words = foldText(search.value).split(/[\s,]+/).filter(Boolean);
+            var found = 0;
+
+            cells.forEach(function (cell) {
+                var keep = !cell.icon || words.every(function (word) {
+                    return cell.words.indexOf(' ' + word) !== -1;
+                });
+
+                cell.node.classList.toggle('d-none', !keep);
+                found += (keep && cell.icon) ? 1 : 0;
+            });
+
+            empty.classList.toggle('d-none', found > 0);
+            mark();
+        });
+
+        search.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            var first = shown().filter(function (cell) { return cell.icon; })[0];
+
+            if (search.value.trim() && first) {
+                choose(first.icon, true);
+            }
+        });
+
+        grid.addEventListener('keydown', function (event) {
+            var visible = shown();
+            var at = -1;
+
+            visible.forEach(function (cell, index) {
+                if (cell.node === document.activeElement) {
+                    at = index;
+                }
+            });
+
+            if ((at === -1) || !visible.length) {
+                return;
+            }
+
+            // As many cells as share the first one's line make a row.
+            var columns = visible.filter(function (cell) {
+                return cell.node.offsetTop === visible[0].node.offsetTop;
+            }).length || 1;
+            var moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+            var next;
+
+            if (event.key === 'Home') {
+                next = 0;
+            } else if (event.key === 'End') {
+                next = visible.length - 1;
+            } else if (moves[event.key]) {
+                next = Math.max(0, Math.min(visible.length - 1, at + moves[event.key]));
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+            choose(visible[next].icon, true);
+        });
+
+        box.appendChild(search);
+        box.appendChild(grid);
+        box.appendChild(empty);
+        mark();
+
+        box.value = function () {
+            return current;
+        };
+
+        // The icon the kind gives, drawn on "none": a new channel's changes
+        // with the kind chosen above it.
+        box.setKindIcon = function (name) {
+            var none = cells[0].node;
+
+            clear(none);
+            none.appendChild(icon(name || 'bi-hash'));
+        };
+
+        return box;
+    }
+
     // The versions of a channel's conversation (includes/workspace/eras.php):
     // the current one, the earlier ones to read, and clearing it for staff.
     function eraSection(channel, node) {
@@ -4184,6 +4376,25 @@
             body.appendChild(formRow(t('color'), colors, t('color_help')));
         }
 
+        // Its own icon beside the colour, the same for everybody; whoever may
+        // rename the channel may choose it.
+        var icons = null;
+
+        if ((CFG.channel_icons || []).length) {
+            icons = iconPicker(channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
+                channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
+            body.appendChild(formRow(t('icon'), icons, t('icon_help')));
+
+            // A new channel's "none" follows the kind picked above.
+            if (kind) {
+                kind.addEventListener('change', function () {
+                    var picked = kind.querySelector('input:checked');
+
+                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
+                });
+            }
+        }
+
         var members = null;
 
         if (!channel) {
@@ -4246,6 +4457,10 @@
 
             if (colors) {
                 data.color = colors.value();
+            }
+
+            if (icons) {
+                data.icon = icons.value();
             }
 
             if (watch) {
@@ -4672,8 +4887,8 @@
     }
 
     // What the feature files draw with (workspace_approvals.js,
-    // workspace_acks.js): the screen's own helpers, so their parts look like
-    // the rest of it.
+    // workspace_acks.js, workspace_voice.js): the screen's own helpers, so
+    // their parts look like the rest of it.
     function featureHelpers() {
         return {
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
@@ -5030,7 +5245,7 @@
                     self.makeDraggable(link, channel);
                 }
 
-                link.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash')), 'ws-ch-icon'));
+                link.appendChild(channelIcon(channel, 'ws-ch-icon'));
                 link.appendChild(el('span', 'ws-channel-name', channel.name));
 
                 if (channel.notify === 'none') {
@@ -7415,7 +7630,7 @@
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(icon(channel.icon || (channel.kind === 'private' ? 'bi-lock' : 'bi-hash'), 'me-1 text-body-secondary'));
+            h.appendChild(channelIcon(channel, 'me-1 text-body-secondary'));
             h.appendChild(document.createTextNode(channel.name));
             title.appendChild(h);
 
@@ -8110,7 +8325,7 @@
                 quote.type = 'button';
                 quote.title = t('reply_go_to');
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.plain(parent.html)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message')));
 
                 // The message answered: brought into view and lit up for a
                 // moment, so which one it was is plain. One deleted since is
@@ -8319,6 +8534,19 @@
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
             return (text.length > 90) ? text.slice(0, 89) + '…' : text;
+        },
+
+        // What a quote of a message says: its words, or for a file alone its
+        // name - "Voice message" for a recording (workspace_voice.js).
+        quoteText: function (message) {
+            var text = this.plain(message.html);
+            var file = message.file;
+
+            if (text || !file) {
+                return text;
+            }
+
+            return ((file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name)) ? t('voice_message') : (file.name || '');
         },
 
         findMessage: function (id) {
@@ -8758,6 +8986,16 @@
                 });
 
                 return link;
+            }
+
+            // A sound, a voice message among them: play and pause, the time
+            // and the speed (assets/js/workspace_voice.js); the browser's own
+            // player below without it. Any sound may be answered with a
+            // recording from its own microphone (voiceReply()).
+            if ((kind === 'audio') && window.PGWsVoice) {
+                return window.PGWsVoice.player(file, featureHelpers(), {
+                    reply: self.voiceReplyOffered(message) ? function () { self.voiceReply(message); } : null
+                });
             }
 
             if (kind === 'video' || kind === 'audio') {
@@ -10994,8 +11232,25 @@
                 tools.appendChild(send);
             }
 
+            // A voice message (assets/js/workspace_voice.js): the microphone
+            // stands where Send (with its second half) is while the box is
+            // empty; voiceSwap() trades them.
+            self.sendNode = sendGroup || send;
+            self.voiceMic = null;
+            self.voiceBox = null;
+
+            if (window.PGWsVoice && window.PGWsVoice.supported() && !self.era) {
+                var mic = button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-mic', '', 'bi-mic', t('voice_record'));
+
+                mic.addEventListener('click', function () { self.voiceRecord(); });
+                tools.appendChild(mic);
+                self.voiceMic = mic;
+                self.voiceBox = box;
+            }
+
             box.appendChild(tools);
             wrap.appendChild(box);
+            self.voiceSwap();
 
             input.addEventListener('input', function () {
                 self.autosize();
@@ -11162,6 +11417,7 @@
                 input.style.height = Math.min(input.scrollHeight, 192) + 'px';
             }
 
+            this.voiceSwap();
             this.fit();
         },
 
@@ -11172,6 +11428,108 @@
 
         inputEmpty: function () {
             return this.rich ? this.rich.isEmpty() : (this.input.value === '');
+        },
+
+        // The microphone in place of Send while the box is empty. Not while a
+        // message is changed; beside a reply bar it answers that message
+        // (voiceSend()), but not several at once, nor an assistant the reply
+        // would ask (voiceAnswers()).
+        voiceSwap: function () {
+            var mic = this.voiceMic;
+
+            if (!mic || !this.sendNode || !this.input) {
+                return;
+            }
+
+            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.era
+                && !!this.channel && !!this.channel.can_post
+                && (!this.reply || (!(this.replyMore && this.replyMore.length) && this.voiceAnswers(this.reply)));
+
+            mic.classList.toggle('d-none', !show);
+            this.sendNode.classList.toggle('d-none', show);
+        },
+
+        // Whether a recording may answer this message. An answer to Claude,
+        // Pinegrap AI or an MCP agent asks it, as the reply bar says; a
+        // recording asks nobody, so it does not stand in for one.
+        voiceAnswers: function (message) {
+            var sender = (message && message.sender) || {};
+            var channel = this.channel || {};
+
+            return !((sender.claude && channel.claude && channel.claude.available)
+                || (sender.ai && channel.ai && channel.ai.available) || sender.mcp);
+        },
+
+        // Whether a sound in the conversation gets the microphone that
+        // answers it: where the writing box records, in the conversation
+        // itself (not the Decisions or Files list).
+        voiceReplyOffered: function (message) {
+            return !!(window.PGWsVoice && window.PGWsVoice.supported()) && (this.tab === 'messages') && !this.era
+                && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
+        },
+
+        // Records into the writing box (the microphone in place of Send, or
+        // a sound's own); Stop sends it with voiceSend().
+        voiceRecord: function () {
+            var self = this;
+            var box = self.voiceBox;
+
+            if (!window.PGWsVoice || !box || !box.isConnected) {
+                return;
+            }
+
+            window.PGWsVoice.start({
+                box: box,
+                send: function (file) { self.voiceSend(file); },
+                done: function () {
+                    self.voiceSwap();
+
+                    if (!touchScreen() && self.input && self.input.isConnected) {
+                        self.input.focus();
+                    }
+                }
+            }, featureHelpers());
+        },
+
+        // The microphone on a sound: the sound becomes the message the box
+        // answers, as Reply makes it, and the recording starts at once. A
+        // tap on it while messages are being chosen chooses the message.
+        voiceReply: function (message) {
+            var self = this;
+
+            if (self.selecting || !window.PGWsVoice || window.PGWsVoice.busy() || !self.voiceBox || !self.voiceBox.isConnected) {
+                return;
+            }
+
+            if (self.editing || self.editingScheduled) {
+                toast(t('voice_busy'), 'warning');
+                return;
+            }
+
+            self.reply = self.findMessage(message.id) || message;
+            self.replyMore = null;
+            self.drawReplyBar();
+            self.voiceRecord();
+        },
+
+        // A recording leaves as a file of its own: the words in the box stay
+        // there, and it answers the message the reply bar shows when it is
+        // sent. The bar closes once it is posted.
+        voiceSend: function (file) {
+            var self = this;
+            var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
+
+            self.uploadFiles([file], {
+                body: '',
+                parent_id: parent ? parent.id : 0,
+                sent: function () {
+                    if (parent && (self.reply === parent)) {
+                        self.reply = null;
+                        self.replyMore = null;
+                        self.drawReplyBar();
+                    }
+                }
+            });
         },
 
         clearInput: function () {
@@ -11288,6 +11646,8 @@
             var self = this;
             var bar = clear(self.replyBar);
 
+            self.voiceSwap();
+
             if (!self.reply && !self.editing && !self.editingScheduled) {
                 return;
             }
@@ -11307,7 +11667,7 @@
             var row = el('div', 'ws-reply-bar');
             row.appendChild(icon(self.editing ? 'bi-pencil' : 'bi-reply'));
             row.appendChild(el('span', '', self.editing ? t('editing_message')
-                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.plain(self.reply.html)))));
+                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.quoteText(self.reply)))));
 
             // An answer to Claude goes to Claude.
             if (!self.editing && self.reply.sender && self.reply.sender.claude && self.channel.claude && self.channel.claude.available) {
@@ -11749,13 +12109,17 @@
         // Files picked, dropped or pasted: one after the other, the text in
         // the composer going with the first. What the file manager refuses
         // (PHP, .htaccess, web.config, shell scripts, programs) the server
-        // refuses here too, and says so.
-        uploadFiles: function (files) {
+        // refuses here too, and says so. options (a recording, voiceSend()):
+        // body sent instead of the box's text, which then stays in the box;
+        // parent_id, the message the files answer; sent(), once any is posted.
+        uploadFiles: function (files, options) {
             var self = this;
+            var settings = options || {};
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
-            var body = self.input ? self.tokens(self.inputText()) : '';
+            var ownBody = (typeof settings.body === 'string');
+            var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
             if (!total || !self.channel || !self.channel.can_post) {
                 return;
@@ -11766,6 +12130,10 @@
 
                 if (!file) {
                     if (done > 0) {
+                        if (settings.sent) {
+                            settings.sent();
+                        }
+
                         self.sync(true);
                     }
 
@@ -11787,13 +12155,17 @@
                         channel_id: self.channel.id,
                         name: file.name || ('image-' + Date.now() + '.png'),
                         data: reader.result,
-                        body: body
+                        body: body,
+                        parent_id: settings.parent_id || 0
                     }).then(function () {
                         done++;
 
                         if (body !== '') {
                             body = '';
-                            self.clearInput();
+
+                            if (!ownBody) {
+                                self.clearInput();
+                            }
                         }
 
                         next();
@@ -12210,7 +12582,7 @@
                     }
 
                     var records = results[0].items.map(function (item) {
-                        return { label: item.label, meta: item.meta, icon: item.icon, token: item.token, shown: shownLabel('#', item.label) };
+                        return { label: item.label, meta: item.meta, icon: item.icon, badge: item.badge || '', token: item.token, shown: shownLabel('#', item.label) };
                     });
                     var titled = (results[1].items || []).slice(0, 5).map(function (item) {
                         return { label: item.title, meta: t('pull_kind_' + item.kind) + ' · ' + item.where + ' · ' + item.author, icon: blockIcon(item.kind), block: item.id };
@@ -12282,7 +12654,7 @@
                     img.alt = '';
                     row.appendChild(img);
                 } else {
-                    row.appendChild(icon(item.icon || 'bi-dot'));
+                    row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
 
                 // A second, muted line under the label (a command's example).
@@ -13079,6 +13451,9 @@
             composerWrap: null,
             input: null,
             rich: null,
+            sendNode: null,
+            voiceMic: null,
+            voiceBox: null,
             picker: null,
             pickerMode: null,
             pickerItems: null,

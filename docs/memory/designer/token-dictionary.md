@@ -12,6 +12,7 @@ The boundary is a rule, not an accident.
 - The same value has the same name in every widget. Cart, express order and order view show the same cart, so they share one vocabulary: `__cart_subtotal`, `__item_price`, `__item_total`, `__item_url`, `__item_description`.
 - The set password link of an account a form or order just opened is `__new_account_set_password_url` in every widget: an address for an href, never text. `__new_account_password` is the older note token (a sentence with that link), kept only for saved trees.
 - Two empty states are two names, and the setting key equals the token name: `empty_message` / `^^__empty_message^^` (list empty), `not_found_message` / `^^__not_found_message^^` (requested record missing; catalog and calendar widgets).
+- `__result_count` is the number of results a visitor can page through, in search_results and form_list_view (a list caps it at max results, as the classic list does; `form-list-result-count.md`).
 
 ## Where may a token name appear?
 - Never in panel texts: name the option of the binding list, not `^^token^^`. Never typed into page content either: a value arrives through a binding.

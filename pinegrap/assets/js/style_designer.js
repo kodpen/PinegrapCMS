@@ -1551,6 +1551,10 @@ const StyleDesigner = (function () {
      *                       left out of translation (icon names, codes,
      *                       JSON); absent, the field row keeps its own flag
      *                       (form_fields.translate_values, new fields on)
+     *   url_param           the page-address parameter the field starts with
+     *                       (?topic=…), on the field's first control
+     *                       (_cfFieldLeadOf); read when the page is drawn
+     *                       (pg_cf_url_prefill_values), never stored in a row
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1889,6 +1893,7 @@ const StyleDesigner = (function () {
                     required: _cfHasAttr(c.node, 'required'),
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
+                    url_param: String(rec.url_param || ''),
                     office_use_only: !!rec.office_use_only,
                     rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
@@ -1977,6 +1982,38 @@ const StyleDesigner = (function () {
             if (list[j].fieldset === me.fieldset && list[j].itype === me.itype) return list[j].node;
         }
         return node;
+    }
+
+    // The control the server reads a field's `_cf` from: the first control
+    // with the field's name in document order (_pg_cf_controls() keeps the
+    // first). Unlike _cfLeadOf(), a same-named group outside a <fieldset>
+    // gives its first box, not the clicked one.
+    function _cfFieldLeadOf(node, root) {
+        var key = String(_cfControlName(node) || '').toLowerCase();
+        if (!key) return node;
+        var list = _cfControls(root);
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].name && list[i].name.toLowerCase() === key) return list[i].node;
+        }
+        return node;
+    }
+
+    // Whether a field can start from the page address. Twin of the skips in
+    // pg_cf_url_prefill_values(): never a file upload or a password, and
+    // never a lone check box (fewer than two distinct values among its boxes,
+    // counted as _pg_cf_controls() counts options).
+    function _cfUrlParamApplies(lead, members) {
+        var type = _cfControlType(lead);
+        if (type === 'file upload' || _cfInputType(lead) === 'password') return false;
+        if (type === 'check box') {
+            var values = [];
+            (members || [lead]).forEach(function (n) {
+                var v = _cfNodeAttr(n, 'value');
+                if (v !== null && v !== '' && values.indexOf(v) === -1) values.push(v);
+            });
+            return values.length >= 2;
+        }
+        return true;
     }
 
     // Every control that shares a name with `node` (a group), or just the node.
@@ -2329,6 +2366,38 @@ const StyleDesigner = (function () {
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
 
+        // A field can start from a named parameter of the page address
+        // (?topic=…), read when the page is drawn (pg_cf_url_prefill_values()).
+        // The setting sits on the field's first control, the one the server
+        // reads, whichever box of a group is selected.
+        var urlLead = _cfFieldLeadOf(node, w.tree);
+        if (_cfUrlParamApplies(urlLead, _cfGroupOf(urlLead, w.tree))) {
+            var urlRec = (urlLead.props && urlLead.props._cf && typeof urlLead.props._cf === 'object' && !Array.isArray(urlLead.props._cf))
+                ? urlLead.props._cf : {};
+            var urlParam  = String(urlRec.url_param || '');
+            var urlOffice = !!urlRec.office_use_only;
+            var urlHints;
+            if (urlOffice) {
+                urlHints = _cfHint(esc(_sdT('A field hidden from the visitor is never filled from the page address.')));
+            } else {
+                urlHints = _cfHint(esc(_sdT('Starts with the value of ?{var}=… in the page address unless the visitor has already typed one. Leave empty to turn it off.', _swUrlParamName(urlParam) || 'topic')));
+                if (_cfIsCheck(urlLead) || _cfTagOf(urlLead) === 'select') {
+                    urlHints += _cfHint(esc(_sdT('Only a value that matches one of the options is used (upper and lower case alike).')));
+                }
+                if (_cfInputType(urlLead) === 'hidden') {
+                    urlHints += _cfHint(esc(_sdT('The visitor can change this value: treat it as something they typed.')));
+                }
+                if (urlParam !== '' && _swUrlParamName(urlParam) === '') {
+                    urlHints += '<div style="font-size:.66rem;color:#b45309;margin-top:2px;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                        esc(_sdT('This name cannot be used: the software reads it from page addresses itself, or it is not a plain name. Pick another, such as topic or post.')) + '</div>';
+                }
+            }
+            html += row(esc(_sdT('Fill from the address')),
+                '<input type="text" class="form-control form-control-sm sd-cf-urlparam" maxlength="32" spellcheck="false" placeholder="topic"' +
+                    ' aria-label="' + esc(_sdT('Parameter name')) + '" value="' + esc(urlParam) + '"' + (urlOffice ? ' disabled' : '') + '>' +
+                urlHints);
+        }
+
         html += row(_sdT('RSS / list role'),
             _cfSel('sd-cf-rss', rec.rss_field || '', rss, null) +
             _cfHint(_sdT('<strong>Title</strong> is the submission\'s name, address and RSS title; <strong>Description</strong> is the meta description; <strong>Media</strong> is the image (og:image). Each role belongs to one field in the form.')));
@@ -2531,6 +2600,21 @@ const StyleDesigner = (function () {
         on('sd-cf-contact', 'change', function (el) {
             _cfRec(lead).contact_field = el.value;
             commit(false);
+        });
+        on('sd-cf-urlparam', 'change', function (el) {
+            // Written on the control the server reads (the field's first),
+            // cleaned as a list filter's parameter name is.
+            var fl  = _cfFieldLeadOf(node, w.tree);
+            var v   = String(el.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+            var rec = _cfRec(fl);
+            if (v) {
+                rec.url_param = v;
+            } else {
+                delete rec.url_param;
+                // An empty `_cf` turns into an array on the server's round trip.
+                if (!Object.keys(rec).length) delete fl.props._cf;
+            }
+            commit(true);
         });
         on('sd-cf-rss', 'change', function (el) {
             var role = el.value;
@@ -5397,6 +5481,35 @@ const StyleDesigner = (function () {
         '.fixed-top', '.fixed-bottom', '.stretched-link', '.sticky-top', '.sticky-bottom']
         .concat(['sm', 'md', 'lg', 'xl', 'xxl'].map(function (b) { return '.sticky-' + b + '-top, .sticky-' + b + '-bottom'; }))
         .join(', ') + ')';
+    // Bootstrap's breakpoints, smallest first: the infix of a responsive
+    // class and the width its media query starts at.
+    var _SD_BS_BREAKPOINTS = [['', 0], ['-sm', 576], ['-md', 768], ['-lg', 992], ['-xl', 1200], ['-xxl', 1400]];
+    // The rules fn(infix) returns for every breakpoint: a wider one in its
+    // min-width media query and after the narrower ones, as in Bootstrap, so
+    // the widest that applies wins.
+    function _sdBreakpointCss(fn) {
+        return _SD_BS_BREAKPOINTS.map(function (b) {
+            var css = fn(b[0]);
+            return b[1] ? '@media (min-width:' + b[1] + 'px){' + css + '}' : css;
+        }).join('\n');
+    }
+    // Bootstrap's row-cols-* sizes a row's direct children
+    // (`.row-cols-2 > * { flex:0 0 auto; width:50% }`). On the canvas that
+    // child is the wrapper, drawn see-through, so the real column kept .col's
+    // equal share of the line: six logos side by side at 375px where the
+    // page shows two per line, the picture grids a third of their height.
+    // The size goes on the element; one with a col-* class of its own is
+    // left to that class, which comes later in Bootstrap and wins on the page
+    // (this selector is more specific than it).
+    function _sdRowColsCss() {
+        var sizes = [['auto', 'auto'], ['1', '100%'], ['2', '50%'], ['3', '33.33333333%'], ['4', '25%'], ['5', '20%'], ['6', '16.66666667%']];
+        return _sdBreakpointCss(function (bp) {
+            return sizes.map(function (s) {
+                return '.row-cols' + bp + '-' + s[0] + ' > .sd-wrap:not([data-sd-type="col"]) > :not([class*="col-"])' + _SD_FX_EL +
+                    ' { flex:0 0 auto; width:' + s[1] + '; }';
+            }).join(' ');
+        });
+    }
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -5409,7 +5522,11 @@ const StyleDesigner = (function () {
         '@layer sd-canvas-base { body { margin:0; padding:0; min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; } }',
         // The editor hides its own wrappers with d-none (a single-screen
         // widget's loop area); a custom design has no Bootstrap to honour it.
-        '.sd-wrap.d-none, .sd-loop-tr.d-none { display:none !important; }',
+        // A column's wrapper is the column itself and carries the column's
+        // classes: its display classes are the design's, left to the
+        // framework (a "d-none d-lg-block" picture column never showed on the
+        // canvas, at any width).
+        '.sd-wrap.d-none:not([data-sd-type="col"]), .sd-loop-tr.d-none { display:none !important; }',
         // A login region element that belongs to the session state the
         // canvas is not drawing (switched on the widget's band).
         '.sd-wrap.sd-state-off { display:none !important; }',
@@ -5587,8 +5704,11 @@ const StyleDesigner = (function () {
         // Horizontal insertion indicators (inline siblings inside a/button/.nav-link/.btn): left/right bars
         '.sd-insert-before-x.sd-insert-before-x { box-shadow:-2px 0 0 0 #0d6efd !important; }',
         '.sd-insert-after-x.sd-insert-after-x  { box-shadow: 2px 0 0 0 #0d6efd !important; }',
-        // Let the icon behave inline like a span, rather than taking the full width
-        '.sd-wrap[data-content-type="icon"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; }',
+        // Let the icon behave inline like a span, rather than taking the full
+        // width: on the baseline and with no vertical margin, as the icon
+        // sits on the page's text line (middle-aligned with the content
+        // wrapper's 3px margins, a line of star icons stood 2-8px taller).
+        '.sd-wrap[data-content-type="icon"] { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; margin:0; }',
         '.sd-wrap[data-content-type="icon"] > .sd-lbl { display:none; }',
         // Image: the wrapper follows the image's own size instead of spanning the block width (img-fluid still works — max-width:100%)
         _SD_BX + '.sd-wrap[data-content-type="image"] { display:inline-block; vertical-align:top; width:auto; min-height:unset; max-width:100%; }',
@@ -5603,9 +5723,12 @@ const StyleDesigner = (function () {
         '.sd-img-placeholder .bi-image { font-size:2.5rem; color:rgba(0,0,0,.25); }',
         '.sd-img-ph-hint { font-size:.72rem; color:rgba(0,0,0,.35); }',
         '.sd-wrap[data-content-type="image"] > .sd-img-placeholder { display:flex; }',
-        // Inline components (btn, badge) must not fill the block
-        _SD_BX + '.sd-wrap[data-component-type="btn"], .sd-wrap[data-component-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
-        _SD_BX + '.sd-wrap[data-content-type="button"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        // Inline components (btn, badge) must not fill the block. They sit on
+        // the text line as on the page: no vertical margin (the content and
+        // component wrappers' 3px made each line 6px taller), a button
+        // middle-aligned like Bootstrap's .btn, a link or badge on the baseline.
+        _SD_BX + '.sd-wrap[data-component-type="btn"], .sd-wrap[data-content-type="button"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        _SD_BX + '.sd-wrap[data-component-type="badge"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; max-width:100%; margin:0; }',
         // Span / text content is inline on the page; its block wrapper pushed
         // the label of an "icon + text" list item onto its own line. Inline,
         // no margin, baseline-aligned like the <span> it stands for.
@@ -5615,8 +5738,16 @@ const StyleDesigner = (function () {
         // No margin, like the span/text wrapper above: the 3px of a content
         // wrapper grew the line box (and a block-drawn d-block wrapper) by
         // 6px, so a caption under a strong title stood 12px taller than on
-        // the page.
-        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        // the page. On the baseline: middle-aligned, the wrapper's box stood
+        // above and below the text and grew the line 2px (a footer list of
+        // links 8px taller).
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        // An inline element told to fill its line (a .btn.w-100 sign-in
+        // button) took the percentage of its shrink-wrapped wrapper and came
+        // out as narrow as its label; the wrapper takes the line, so the
+        // percentage applies to the parent as on the page.
+        _SD_BX + '.sd-wrap.sd-wrap-inline:has(> .w-100), .sd-wrap[data-component-type="btn"]:has(> .w-100), ' +
+            '.sd-wrap[data-content-type="button"]:has(> .w-100), .sd-wrap[data-content-type="link"]:has(> .w-100) { display:block; width:auto; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.
@@ -5779,6 +5910,13 @@ const StyleDesigner = (function () {
         // children should be .col without explicit numbers).
         _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"])                       { display:contents !important; }',
         _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"]) > *                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        // The size of `.row > *` (flex-shrink:0; width:100%; max-width:100%),
+        // which every child of a row has before its col-* class: across the
+        // wrapper the element took its content's width (a col-md-6 field under
+        // 768px drew at three quarters of the row). With zero specificity
+        // (:where()) the element's own col-* class still wins, as on the page.
+        _SD_BX + ':where(.row > .sd-wrap:not([data-sd-type="col"]) > ' + _SD_FX_EL + ') { flex-shrink:0; width:100%; max-width:100%; }',
+        _SD_BX + _sdRowColsCss(),
         // sd-wrap has no box when display:contents, so its toolbar would render in free space and
         // its selection outline would disappear. Hide the toolbar, and transfer outlines to the
         // direct Bootstrap child instead so users still get visual feedback on hover/selection.
@@ -5868,7 +6006,11 @@ const StyleDesigner = (function () {
             '.modal-content', '.modal-header', '.modal-body', '.modal-footer', '.offcanvas-header', '.offcanvas-body',
             '.toast-header', '.toast-body', '.alert', '.breadcrumb', '.pagination', '.dropdown-menu',
             '.navbar', '.navbar-nav', '.nav-item', '.form-floating', '.form-check', '.figure'].map(function (c) {
-            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+            // A floating label lies over its control (position:absolute,
+            // rebuilt below): lifted, it dropped under the control on the
+            // first click of a double-click and its text could not be edited
+            // in place.
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT + (c === '.form-floating' ? ':not(label)' : '');
         }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.card-body > .sd-wrap:hover:not(.sd-selected) > *, .card-header > .sd-wrap:hover:not(.sd-selected) > *, .card-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
@@ -5881,6 +6023,58 @@ const StyleDesigner = (function () {
             '.navbar > .sd-wrap:hover:not(.sd-selected) > *, .navbar-nav > .sd-wrap:hover:not(.sd-selected) > *, .nav-item > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.form-floating > .sd-wrap:hover:not(.sd-selected) > *, .form-check > .sd-wrap:hover:not(.sd-selected) > * ' +
             '{ outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        // Rules of the see-through containers above that match a child by its
+        // place (`+`, `> x`, `:last-child`): each child sits in a wrapper of its
+        // own on the canvas, so no item followed another and none was a direct
+        // child. Re-created across the wrapper, sides in logical terms so a
+        // right-to-left design gets them mirrored as Bootstrap's RTL sheet does.
+        // A breadcrumb item after another draws the divider and its space: the
+        // canvas trail had neither and fitted one line at 375px where the page
+        // wraps it.
+        _SD_BX + '.breadcrumb > .sd-wrap + .sd-wrap > .breadcrumb-item { padding-inline-start:var(--bs-breadcrumb-item-padding-x); }',
+        _SD_BX + '.breadcrumb > .sd-wrap + .sd-wrap > .breadcrumb-item::before { float:inline-start; padding-inline-end:var(--bs-breadcrumb-item-padding-x); color:var(--bs-breadcrumb-divider-color); content:var(--bs-breadcrumb-divider, "/"); }',
+        // A list group item after another drops its top border (a horizontal
+        // list its start border), a flush list draws only the bottom one and
+        // none under the last item: every canvas item drew all four, a doubled
+        // seam per item and side borders on a flush list.
+        _SD_BX + '.list-group > .sd-wrap + .sd-wrap > .list-group-item { border-top-width:0; }',
+        _SD_BX + '.list-group > .sd-wrap + .sd-wrap > .list-group-item.active { margin-top:calc(-1 * var(--bs-list-group-border-width)); border-top-width:var(--bs-list-group-border-width); }',
+        _SD_BX + _sdBreakpointCss(function (bp) {
+            var x = '.list-group-horizontal' + bp + ' > .sd-wrap + .sd-wrap > .list-group-item';
+            return x + ' { border-top-width:var(--bs-list-group-border-width); border-inline-start-width:0; } ' +
+                x + '.active { margin-top:0; margin-inline-start:calc(-1 * var(--bs-list-group-border-width)); border-inline-start-width:var(--bs-list-group-border-width); }';
+        }),
+        _SD_BX + '.list-group-flush > .sd-wrap > .list-group-item { border-width:0 0 var(--bs-list-group-border-width); }',
+        _SD_BX + '.list-group-flush > .sd-wrap:last-child > .list-group-item { border-bottom-width:0; }',
+        // An accordion item that is not the first of its type drops its top
+        // border, the first and last round their outer corners: inside its
+        // wrapper an item comes after the toolbar (a div), so on the canvas
+        // the first item lost its top border too and every item had the
+        // last one's corners. A flush accordion draws no side borders and no
+        // top and bottom line.
+        _SD_BX + '.accordion > .sd-wrap:first-child > .accordion-item { border-top:var(--bs-accordion-border-width) solid var(--bs-accordion-border-color); border-top-left-radius:var(--bs-accordion-border-radius); border-top-right-radius:var(--bs-accordion-border-radius); }',
+        _SD_BX + '.accordion > .sd-wrap:not(:last-child) > .accordion-item { border-bottom-right-radius:0; border-bottom-left-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap > .accordion-item { border-right:0; border-left:0; border-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap:first-child > .accordion-item { border-top:0; border-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap:last-child > .accordion-item { border-bottom:0; }',
+        // Floating labels: the control's height and padding and the label laid
+        // over it come from `.form-floating > .form-control` / `> label`; the
+        // canvas drew a short field with its label under it. The label keeps
+        // its pointer events here (the page lets clicks through to the field):
+        // on the canvas it is the only place to pick and edit its text, and
+        // it covers only its own width of the field.
+        _SD_BX + '.form-floating > .sd-wrap > .form-control, .form-floating > .sd-wrap > .form-control-plaintext, .form-floating > .sd-wrap > .form-select { height:calc(3.5rem + calc(var(--bs-border-width) * 2)); min-height:calc(3.5rem + calc(var(--bs-border-width) * 2)); line-height:1.25; }',
+        _SD_BX + '.form-floating > .sd-wrap > label { position:absolute; top:0; inset-inline-start:0; z-index:2; max-width:100%; height:100%; padding:1rem .75rem; overflow:hidden; color:rgba(var(--bs-body-color-rgb),.65); text-align:start; text-overflow:ellipsis; white-space:nowrap; border:var(--bs-border-width) solid transparent; transform-origin:0 0; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control, .form-floating > .sd-wrap > .form-control-plaintext { padding:1rem .75rem; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control::placeholder, .form-floating > .sd-wrap > .form-control-plaintext::placeholder { color:transparent; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control:focus, .form-floating > .sd-wrap > .form-control:not(:placeholder-shown), ' +
+            '.form-floating > .sd-wrap > .form-control-plaintext:focus, .form-floating > .sd-wrap > .form-control-plaintext:not(:placeholder-shown) { padding-top:1.625rem; padding-bottom:.625rem; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-select { padding-top:1.625rem; padding-bottom:.625rem; padding-inline-start:.75rem; }',
+        // The label moves up over a control that shows a value. Not on focus,
+        // as the page does: a click on the label focuses its control, and the
+        // text moved away from under the second click of a double-click.
+        _SD_BX + '.form-floating > .sd-wrap:has(> .form-control-plaintext) ~ .sd-wrap > label, ' +
+            '.form-floating > .sd-wrap:has(> .form-control:not(:placeholder-shown)) ~ .sd-wrap > label, .form-floating > .sd-wrap:has(> .form-select) ~ .sd-wrap > label { transform:scale(.85) translateY(-.5rem) translateX(.15rem); }',
         // ─── Virtual Button Text (canvas-only) ───
         // Rendered by buildNodeEl for button/a targets ONLY when props.text is non-empty, so
         // icon-only FABs (text:'') show no placeholder. Double-click → contenteditable; drag
@@ -6216,6 +6410,13 @@ const StyleDesigner = (function () {
         // height on the page; the empty-wrapper minimum pushed the frame's
         // bottom edge, and every bottom-0 card, below the picture).
         '.sd-wrap.sd-fx-unpos { position:static !important; min-height:0; }',
+        // A wrapper around a shorter element that has a bottom margin (a 27px
+        // li.mb-2 of a price list): the empty-wrapper minimum made it taller
+        // than its element, and Chromium then drops the margin the element
+        // passes through the wrapper's bottom, so the items stood closer than
+        // on the page and the card came out shorter. No minimum there; an
+        // empty or thin element keeps it as its handle (_sdFxFits()).
+        '.sd-wrap.sd-fx-fit { min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
         // carries an id, style or attribute keeps its box and fills the column.
@@ -9203,6 +9404,31 @@ const StyleDesigner = (function () {
         'div.sd-wrap[data-content-type="badge"], div.sd-wrap[data-content-type="span"], div.sd-wrap[data-content-type="text"], ' +
         'div.sd-wrap[data-component-type="btn"], div.sd-wrap[data-component-type="badge"]';
 
+    // Below this height (CSS px) an element is no handle of its own: its
+    // wrapper keeps the empty-wrapper minimum (a divider's 1px line).
+    var _SD_FX_FIT_MIN_GRAB = 12;
+
+    // Whether a boxed wrapper should drop its empty-wrapper minimum height
+    // (sd-fx-fit): its element is in the flow, has a bottom margin and is
+    // shown but shorter than that minimum, yet tall enough to hover and
+    // click. The wrapper has no bottom padding or border, so the margin
+    // passes through its bottom, and under a min-height Chromium drops it.
+    // `had`: the wrapper has the class (its minimum is then 0; the one it
+    // had is kept on the wrapper). The minimum is in CSS pixels and the
+    // canvas zoom (CSS zoom on the canvas root) scales what
+    // getBoundingClientRect() reports, so the zoom is divided out.
+    function _sdFxFits(w, el, cs, win, had) {
+        if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed' || cs.cssFloat !== 'none') return false;
+        if (!(parseFloat(cs.marginBottom) > 0)) return false;
+        var wcs = win.getComputedStyle(w);
+        if (wcs.display !== 'block' || parseFloat(wcs.paddingBottom) || parseFloat(wcs.borderBottomWidth)) return false;
+        var min = had ? (w._sdFitMin || 0) : (parseFloat(wcs.minHeight) || 0);
+        var z = w.currentCSSZoom;
+        var h = el.getBoundingClientRect().height / ((typeof z === 'number' && z > 0) ? z : 1);
+        if (min > 0 && h >= _SD_FX_FIT_MIN_GRAB && h < min) { w._sdFitMin = min; return true; }
+        return false;
+    }
+
     // Runs after each render, once there is a layout to measure, and again
     // when the canvas is resized or a stylesheet or picture arrives.
     function _sdCanvasFidelityPass() {
@@ -9280,13 +9506,17 @@ const StyleDesigner = (function () {
         // its classes. An element clipped to nothing (visually hidden text,
         // the input of a .btn-check toggle) shows nowhere either way and keeps
         // its wrapper box, the only place to pick it on the canvas.
-        var absWraps = [], unposWraps = [];
+        var absWraps = [], unposWraps = [], addFit = [], dropFit = [];
         if (!_sdFxFlatOn()) {
             canvasDoc.querySelectorAll('div.sd-wrap:not([data-sd-self])').forEach(function (w) {
                 if (w.style.display) return;
                 var el = _sdWrapEl(w);
                 if (!el) return;
                 var cs = win.getComputedStyle(el);
+                // A short element's bottom margin, kept (sd-fx-fit).
+                var fitHad = w.classList.contains('sd-fx-fit');
+                if (_sdFxFits(w, el, cs, win, fitHad)) { if (!fitHad) addFit.push(w); }
+                else if (fitHad) dropFit.push(w);
                 if (cs.position !== 'absolute' || cs.display === 'none' || cs.clip === 'rect(0px, 0px, 0px, 0px)') return;
                 absWraps.push(w);
                 for (var p = w.parentElement; p && p !== canvasDoc.body; p = p.parentElement) {
@@ -9307,6 +9537,8 @@ const StyleDesigner = (function () {
                 }
             });
         }
+        addFit.forEach(function (w) { w.classList.add('sd-fx-fit'); });
+        dropFit.forEach(function (w) { w.classList.remove('sd-fx-fit'); });
         addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
         dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
         addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
@@ -31709,6 +31941,9 @@ const StyleDesigner = (function () {
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
                             if (f.rich)            flags.push(_sdT('rich text'));
+                            // Only what the server honours (pg_cf_url_prefill_values()).
+                            var fUrl = _swUrlParamName(f.url_param);
+                            if (fUrl && !f.office_use_only && _cfUrlParamApplies(f.lead, f.members)) flags.push('?' + fUrl + '=');
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -34243,9 +34478,12 @@ const StyleDesigner = (function () {
 
     // The list view offers the shared set plus its own state: the value a
     // URL-parameter filter took from the page address (?author=Jane),
-    // filled only when "is equal to" finds records for it.
+    // filled only when "is equal to" finds records for it, and how many
+    // records the list matched (capped at max results, as search results
+    // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
-        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
+        ['__result_count', _sdT('Number of results')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -35777,7 +36015,9 @@ const StyleDesigner = (function () {
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
-            ['no_filter_value',  _sdT('No value from the page address is applied')]
+            ['no_filter_value',  _sdT('No value from the page address is applied')],
+            ['has_records',      _sdT('The list found records')],
+            ['no_records',       _sdT('The list found nothing')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -48155,6 +48395,7 @@ const StyleDesigner = (function () {
     // Query parameter names the software reads itself, so a filter may not
     // take its value from them; twin of pg_sw_url_param_reserved() in
     // includes/fn/widgets.php (a test compares the two lists).
+    // A designed form control's _cf.url_param obeys the same names.
     var _SW_URL_PARAM_RESERVED = [
         'page', 'page_number', 'query', 'r', 'rss', 'pdf', 'icalendar', 'email',
         'edit', 'edit_theme', 'edit_submitted_form', 'theme_id', 'from', 'logged_out',

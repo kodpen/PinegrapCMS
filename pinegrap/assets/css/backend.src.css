@@ -10568,6 +10568,80 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="settings"] > .bi { color: 
   background: var(--bs-tertiary-bg);
   color: var(--bs-secondary-color);
 }
+/* A channel's own icon (includes/workspace/channel_icons.php): the picker
+   beside the colours, a search over a grid of radio buttons; "none" is
+   dashed and shows the icon the channel's kind gives. */
+.ws-icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+}
+.ws-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.1rem, 1fr));
+  gap: .35rem;
+  max-height: 11.5rem;
+  overflow-y: auto;
+  padding: .15rem;
+}
+.ws-icon-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.1rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--ws-radius-sm);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  font-size: 1.05rem;
+}
+.ws-icon-choice:hover {
+  background: rgba(var(--ws-accent-rgb), .1);
+}
+.ws-icon-choice.active {
+  border-color: var(--ws-accent);
+  background: rgba(var(--ws-accent-rgb), .14);
+  color: var(--ws-accent);
+}
+.ws-icon-choice-none {
+  border-style: dashed;
+  border-color: var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+.ws-icon-choice-none.active {
+  border-style: solid;
+  border-color: var(--ws-accent);
+}
+.ws-icon-empty {
+  font-size: .8rem;
+  color: var(--bs-secondary-color);
+}
+/* The mark of a private, guest or customer channel in the corner of an icon
+   chosen for it: a lock, a door, a person (ws_icon_badged_html()). */
+.ws-icon-badged {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+.ws-icon-badge {
+  position: absolute;
+  right: -.3em;
+  bottom: -.3em;
+  padding: .1em;
+  border-radius: 50%;
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  font-size: .6em;
+  line-height: 1;
+}
+.ws-rail-initial > .bi,
+.ws-rail-initial > .ws-icon-badged {
+  font-size: .9rem;
+}
+.ws-rail-channel[data-ws-colored] .ws-rail-initial .ws-icon-badge {
+  color: var(--ws-ch);
+}
 /* Scheduled actions: days, follow-ups, counts, the words filled in. */
 .ws-sa-days {
   display: flex;
@@ -13917,6 +13991,126 @@ a.ws-chip:hover {
   font-size: .78rem;
   color: var(--bs-secondary-color);
 }
+/* Voice messages (assets/js/workspace_voice.js): the player every sound file
+   is drawn with, and the recording row that stands in for the writing box
+   while the microphone is on. */
+.ws-voice {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  width: 22rem;
+  max-width: 100%;
+  padding: var(--ws-space-2) var(--ws-space-2) var(--ws-space-2) var(--ws-space-3);
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: var(--ws-radius);
+  background: var(--bs-tertiary-bg);
+}
+.ws-voice audio {
+  display: none;
+}
+.ws-voice-play {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ws-avatar);
+  height: var(--ws-avatar);
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+}
+.ws-voice-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-voice-name {
+  overflow: hidden;
+  font-size: .8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-voice-bar {
+  position: relative;
+  height: .3rem;
+  margin: .3rem 0 .2rem;
+  border-radius: 999px;
+  background: var(--bs-border-color);
+  cursor: pointer;
+}
+.ws-voice-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--ws-accent);
+}
+.ws-voice-time {
+  font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+.ws-voice .btn-sm {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ws-voice-speed {
+  min-width: 2.75rem;
+  padding-left: .35rem;
+  padding-right: .35rem;
+  font-size: .75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ws-voice-error .ws-voice-bar {
+  opacity: .4;
+}
+.ws-composer.ws-voice-recording > :not(.ws-voice-rec) {
+  display: none;
+}
+.ws-voice-rec {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-height: 2.6rem;
+  padding: 0 var(--ws-space-1);
+}
+.ws-voice-rec .ws-grow {
+  flex: 1 1 auto;
+}
+.ws-voice-rec-dot {
+  flex: 0 0 auto;
+  width: .7rem;
+  height: .7rem;
+  border-radius: 50%;
+  background: var(--bs-danger);
+}
+.ws-voice-rec-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ws-voice-rec-cap {
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+.ws-voice-rec-ending .ws-voice-rec-time {
+  color: var(--bs-danger);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-voice-rec-dot {
+    animation: ws-voice-rec-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes ws-voice-rec-pulse {
+  50% {
+    opacity: .3;
+  }
+}
 .ws-file-card {
   display: flex;
   align-items: center;
@@ -15055,6 +15249,21 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-composer-tools .btn {
     padding: .3rem .5rem;
+  }
+  /* A recording row as tall as the box it stands in for, with buttons a
+     finger hits; the player's small buttons the same. */
+  .ws-voice-rec {
+    min-height: 3.4rem;
+  }
+  .ws-voice-rec .btn,
+  .ws-voice .btn-sm {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+  /* Up to three of those beside the name (speed, reply, download): closer
+     together, so the name keeps room to be read. */
+  .ws-voice {
+    gap: var(--ws-space-1);
   }
   body.ws-keyboard .ws-center > .ws-brief {
     display: none;
