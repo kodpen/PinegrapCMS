@@ -386,6 +386,41 @@ function test_marketplace_webhook_account_delete_removes_the_webhook_first()
 	pg_assert_contains('h($removed[\'error\'])', $delete, 'the connector\'s message is escaped');
 }
 
+// An account whose credentials no longer work could never be deleted while its
+// webhook cannot be removed. A ticked box lets the delete go on, after one
+// activity-log line naming the webhook left behind; unticked, the refusal
+// stands and points at the box.
+function test_marketplace_webhook_account_delete_can_leave_the_webhook_behind_when_asked()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "if (\$action === 'delete' && \$account) {");
+	$end = strpos($source, "if (\$action === 'categories' && \$account) {");
+
+	$delete = substr($source, $start, $end - $start);
+
+	$refuse = strpos($delete, 'if (!$removed[\'ok\']) {');
+	$forced = strpos($delete, "if (!empty(\$_POST['webhook_force'])) {");
+	$logged = ($forced === false) ? false : strpos($delete, 'log_activity(', $forced);
+	$back = strpos($delete, "header('Location: ' . \$screen_url . '?account=' . \$account_id);");
+	$first_delete = strpos($delete, 'DELETE FROM');
+
+	pg_assert_true(($refuse !== false) && ($forced !== false) && ($refuse < $forced), 'the box is read only when the removal failed');
+	pg_assert_true(($logged !== false) && ($back !== false) && ($logged < $back), 'a forced delete logs the webhook left behind first');
+	pg_assert_contains("'vars'   => array(\$account['name'], \$webhook_id, mp_provider_name(\$account['provider']))", $delete,
+		'the log line names the webhook id');
+	pg_assert_true(($back !== false) && ($first_delete !== false) && ($back < $first_delete), 'unticked, it goes back without deleting');
+	pg_assert_contains('or tick the box below the button to remove the marketplace anyway', $delete);
+
+	// The box is drawn only for an account that has a webhook to leave behind.
+	$box = strpos($source, 'name="webhook_force"');
+	$gate = strrpos(substr($source, 0, (int)$box), "!empty(\$selected['credentials']['webhook_id'])");
+
+	pg_assert_true($box !== false, 'the box is drawn');
+	pg_assert_true(($gate !== false) && (($box - $gate) < 600), 'behind the webhook check');
+	pg_assert_contains("'string' => 'Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)'", $source);
+}
+
 /* ---------------------------------------------------- whose webhook */
 
 // A webhook belongs to one seller in one environment. A save that changed

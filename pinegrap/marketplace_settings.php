@@ -280,8 +280,13 @@ if ($_POST) {
 		// Trendyol mails the seller about the failures and counts it against
 		// their fifteen webhooks per seller. When the removal fails the account
 		// stays, so that it can be tried again; a webhook already removed in
-		// their panel answers 404, which the connector reads as removed.
+		// their panel answers 404, which the connector reads as removed. An
+		// account whose credentials no longer work (a closed store, a revoked
+		// key) can never remove it, so the operator may tick the box to delete
+		// the account anyway and remove the webhook in the seller panel.
 		$webhook_id = isset($account['credentials']['webhook_id']) ? (string)$account['credentials']['webhook_id'] : '';
+
+		$webhook_left = false;
 
 		if ($webhook_id !== '' && mp_can($account['provider'], 'remove_webhook')) {
 
@@ -289,14 +294,27 @@ if ($_POST) {
 
 			if (!$removed['ok']) {
 
-				$liveform->add_warning(lang(array(
-					'string' => 'The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, or remove the webhook in your {var:1} seller panel and then remove the marketplace here.',
-					'vars'   => array(h(mp_provider_name($account['provider'])), h($removed['error']))
-				)));
+				if (!empty($_POST['webhook_force'])) {
 
-				header('Location: ' . $screen_url . '?account=' . $account_id);
+					log_activity(lang(array(
+						'string' => 'Marketplace account {var:1} was removed with its webhook {var:2} still registered on {var:3}; remove it in the seller panel.',
+						'vars'   => array($account['name'], $webhook_id, mp_provider_name($account['provider']))
+					)), $user['username']);
 
-				exit();
+					$webhook_left = true;
+
+				} else {
+
+					$liveform->add_warning(lang(array(
+						'string' => 'The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, remove the webhook in your {var:1} seller panel first, or tick the box below the button to remove the marketplace anyway.',
+						'vars'   => array(h(mp_provider_name($account['provider'])), h($removed['error']))
+					)));
+
+					header('Location: ' . $screen_url . '?account=' . $account_id);
+
+					exit();
+
+				}
 
 			}
 
@@ -314,6 +332,15 @@ if ($_POST) {
 		)), $user['username']);
 
 		$liveform->add_notice(lang('Marketplace removed. The products themselves are untouched.'));
+
+		if ($webhook_left) {
+
+			$liveform->add_warning(h(lang(array(
+				'string' => 'Its webhook is still registered on {var:1}. Remove it in your {var:1} seller panel.',
+				'vars'   => array(mp_provider_name($account['provider']))
+			))));
+
+		}
 
 		header('Location: ' . $screen_url);
 
@@ -1917,7 +1944,15 @@ if ($selected) {
 					: lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.')) . '</p>
 			<button type="submit" class="btn btn-outline-danger btn-sm" name="mp_action" value="delete"
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
-				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>
+				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>'
+			. (!empty($selected['credentials']['webhook_id']) ? '
+			<div class="form-check small mt-2">
+				<input class="form-check-input" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">
+				<label class="form-check-label" for="edit_webhook_force">' . h(lang(array(
+					'string' => 'Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)',
+					'vars'   => array(mp_provider_name($selected['provider']))
+				))) . '</label>
+			</div>' : '') . '
 		</div>
 		<div class="offcanvas-footer border-top p-3 d-flex gap-2">
 			<button type="button" class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="offcanvas">' . lang('Cancel') . '</button>

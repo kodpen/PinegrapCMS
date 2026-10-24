@@ -13,6 +13,7 @@ description: How a marketplace order webhook is registered and removed from the 
 
 ## What happens on account delete?
 - A registered webhook is removed from the marketplace first (404 = already gone). If that fails the account is not deleted: the screen shows the reason and sends the operator back. Left behind, it would deliver to a 404 for ever, Trendyol would mail the seller, and it counts toward their 15.
+- An account whose credentials no longer work could then never be deleted, so the drawer has a box (`webhook_force`, drawn only while `webhook_id` is set): ticked, a failed removal writes one activity-log line naming the webhook id left behind, the account is deleted and the screen says to remove the webhook in the seller panel (PR #1453).
 
 ## What are Trendyol's webhook facts?
 - Create `POST /integration/webhook/sellers/{sellerId}/webhooks` `{url, authenticationType:"API_KEY", apiKey, subscribedStatuses:[]}` (empty = every status) → `{id}`; delete `DELETE …/webhooks/{id}`, 404 read as gone. Delivery: POST JSON, an order-package page, key in `x-api-key` (or Basic for `BASIC_AUTHENTICATION`), no signature, no stock or product events.
