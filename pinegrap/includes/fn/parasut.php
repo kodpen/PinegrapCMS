@@ -79,7 +79,8 @@ function parasut_throttle_wait($stamps, $now, $limit = PARASUT_RATE_LIMIT, $wind
 /**
  * Holds the request back until the rate limit allows it, then counts it.
  * Per PHP request: a cron run and a page writing at the same moment are not
- * counted together, which the 429 retry in the e-document driver covers.
+ * counted together, which the 429 retry in _parasut_request() (and in the
+ * e-document driver's request) covers.
  *
  * @return void
  */
