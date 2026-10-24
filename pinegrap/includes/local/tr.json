@@ -26793,5 +26793,10 @@
     "order review request": "sipariş değerlendirme isteği",
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
-    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok."
+    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
+    "This MCP server asks for a sign-in: under How the site signs in, choose Sign in to the service (OAuth), or Access token (Bearer) if the service gives one.": "Bu MCP sunucusu giriş istiyor: Sitenin giriş yöntemi altında Hizmete giriş yaparak (OAuth) seçeneğini ya da hizmet veriyorsa Erişim jetonu (Bearer) seçeneğini seçin.",
+    "The MCP server refused the credentials. Check the token or the header, or choose Sign in to the service (OAuth) under How the site signs in.": "MCP sunucusu kimlik bilgilerini kabul etmedi. Jetonu ya da başlığı kontrol edin ya da Sitenin giriş yöntemi altında Hizmete giriş yaparak (OAuth) seçeneğini seçin.",
+    "The MCP server moved to {var:1}. Enter that address instead.": "MCP sunucusu {var:1} adresine taşındı. Bunun yerine o adresi girin.",
+    "This is an old SSE address. The address that works here usually ends in /mcp: {var:1}": "Bu eski bir SSE adresi. Burada çalışan adres genellikle /mcp ile biter: {var:1}",
+    "The MCP server took too long to answer.": "MCP sunucusunun yanıtı çok uzun sürdü."
 }

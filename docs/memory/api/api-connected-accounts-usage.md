@@ -13,6 +13,7 @@ description: Connected accounts at work: mail through Gmail or Microsoft 365, cl
 
 ## How is a response header read?
 - An outgoing call that needs one (a resumable upload's `Location`, an MCP server's session) passes `'response_headers' => true` to `api_http_request()`; the answer then carries `headers` (lower-case name => value, the last of a repeated name wins).
+- Every answer also carries `errno`: curl's error number when curl failed (28 a timeout), else 0, also for an address refused before curl ran. `error` stays curl's words plus the TLS hint; the MCP client turns 28, 7 and 6 into sentences (`api-mcp-client.md`).
 
 ## What does api_http_request() refuse? (`includes/api/outbound/http.php`)
 - Addresses inside the network (private, loopback, reserved, the cloud metadata address), redirects (a second address no check has seen), unverified certificates and plain http (webhooks may allow it with `API_WEBHOOK_ALLOW_HTTP`). The host is resolved once and curl is pinned to that address. Webhooks, marketplace connectors, connected accounts and the OAuth server's CIMD reads all go through it.
