@@ -150,6 +150,9 @@ function ws_api_channel_present($brief)
         'customer_id'   => ((int) ($brief['customer_id'] ?? 0) > 0) ? (int) $brief['customer_id'] : null,
         'department_id' => ((int) $brief['department_id'] > 0) ? (int) $brief['department_id'] : null,
         'group_id'      => ((int) ($brief['group_id'] ?? 0) > 0) ? (int) $brief['group_id'] : null,
+        'color'         => ((string) ($brief['hex'] ?? '') !== '') ? (string) $brief['hex'] : null,
+        'icon'          => (string) ($brief['icon'] ?? ws_channel_kind_icon($brief)),
+        'icon_chosen'   => !empty($brief['icon_chosen']),
         'archived'      => (bool) $brief['archived'],
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
@@ -173,6 +176,9 @@ function ws_api_channel_schema()
         'customer_id'     => 'integer?',
         'department_id'   => 'integer?',
         'group_id'        => 'integer?',
+        'color'           => 'string?',
+        'icon'            => 'string',
+        'icon_chosen'     => 'boolean',
         'archived'        => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
@@ -305,15 +311,27 @@ function ws_api_channels_create($params)
     $members = ws_api_user_ids($params['members'] ?? array(), 'members');
     $kind = ((string) ($params['kind'] ?? 'public') === 'private') ? 'private' : 'public';
 
-    api_dry_run_stop('created', 'workspace_channel', array('name' => $name, 'kind' => $kind, 'members' => count($members)));
+    // The router has held both to their lists; empty is none.
+    $color = ws_palette_place_of($params['color'] ?? '');
+    $icon = ws_channel_icon_clean($params['icon'] ?? '');
 
-    $result = ws_api_as_owner(function () use ($viewer, $params, $kind, $department_id, $members) {
+    api_dry_run_stop('created', 'workspace_channel', array(
+        'name'    => $name,
+        'kind'    => $kind,
+        'members' => count($members),
+        'color'   => ($color > 0) ? ws_palette_hex($color) : null,
+        'icon'    => ($icon !== '') ? $icon : null,
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $params, $kind, $department_id, $members, $color, $icon) {
         return ws_channel_create($viewer, array(
             'name'          => (string) $params['name'],
             'kind'          => $kind,
             'topic'         => (string) ($params['topic'] ?? ''),
             'department_id' => $department_id,
             'members'       => $members,
+            'color'         => $color,
+            'icon'          => $icon,
         ));
     });
 
@@ -339,6 +357,16 @@ function ws_api_channels_update($params)
         if (array_key_exists($field, $params)) {
             $data[$field] = $params[$field];
         }
+    }
+
+    // A palette code becomes its place; an icon was held to the list by the
+    // router. Empty clears either.
+    if (array_key_exists('color', $params)) {
+        $data['color'] = ws_palette_place_of($params['color']);
+    }
+
+    if (array_key_exists('icon', $params)) {
+        $data['icon'] = ws_channel_icon_clean($params['icon']);
     }
 
     $archive = array_key_exists('archived', $params) ? !empty($params['archived']) : null;

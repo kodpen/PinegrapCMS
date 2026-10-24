@@ -55,6 +55,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
+	upgrade_2026_11_0_workspace_channel_icon(); // 11.0.81
 
 }
 
@@ -1248,5 +1249,18 @@ function upgrade_2026_11_0_page_cache_generation() {
 	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
+
+}
+
+// A Workspace channel's own icon (2026.11.0, 11.0.81;
+// includes/workspace/channel_icons.php). The column holds a Bootstrap Icons
+// class from the curated list ws_channel_icon_choices(), empty for none; a
+// channel without one keeps the icon its kind gives, so every existing
+// channel looks the same after the upgrade.
+function upgrade_2026_11_0_workspace_channel_icon() {
+
+	install_add_column('ws_channels', 'icon', "VARCHAR(40) NOT NULL DEFAULT ''");
+
+	install_note('Workspace: a channel can be given an icon of its own, chosen in the channel form. Existing channels keep their icons.');
 
 }

@@ -28,6 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/people.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channels.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/groups.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_icons.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');

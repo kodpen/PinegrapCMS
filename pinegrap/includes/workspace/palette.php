@@ -295,6 +295,7 @@ function ws_palette_channels($viewer, $query, $limit)
             'sub'        => ws_palette_snippet((string) $channel['topic'], $query, 90),
             'date'       => ($channel['last_message_at'] > 0) ? ws_time_label($channel['last_message_at']) : '',
             'icon'       => (string) $channel['icon'],
+            'badge'      => (string) $channel['icon_badge'],
             'url'        => $base . 'workspace.php?channel=' . (int) $channel['id'],
             'channel_id' => (int) $channel['id'],
             'joined'     => (bool) $channel['joined'],
