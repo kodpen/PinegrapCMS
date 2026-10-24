@@ -2541,26 +2541,98 @@ function parasut_create_shipment($order_id)
 /**
  * Check if a VKN/TCKN is registered for e-invoice in the GİB system.
  *
- * @param string $vkn  Tax/identity number to look up
- * @return array ['success' => bool, 'data' => array|null, 'error' => string]
+ * The number is read as the ERP's lookup reads it (erp_edoc_taxpayer_lookup()):
+ * its digits only, ten of them (VKN) or eleven (TCKN), passing the tax
+ * authority's check digits. Paraşüt answers a filter on any other value with
+ * 200 and an empty list, the same answer a valid number that is not
+ * registered gets, so a mistyped number would read as "not registered, issue
+ * an e-archive". Such a number is refused before any request ('refused').
+ *
+ * @param string        $vkn      Tax/identity number to look up, as typed
+ * @param callable|null $request  Asks Paraşüt for a path under the company
+ *                                prefix and returns the _parasut_request()
+ *                                answer; null sends the request (tests pass one)
+ * @return array ['success' => bool, 'data' => array|null, 'error' => string,
+ *                'refused' => bool the number was not asked, 'number' => string the digits asked]
  */
-function parasut_check_einvoice_address($vkn)
+function parasut_check_einvoice_address($vkn, $request = null)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'data' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
+    $number = preg_replace('/\D/', '', (string) $vkn);
+    $out = ['success' => false, 'data' => null, 'error' => '', 'refused' => false, 'number' => $number];
 
-    $url = _parasut_prefix() . '/e_invoice_inboxes?filter[vkn]=' . urlencode($vkn);
-    $result = _parasut_request('GET', $url, null, $token);
-
-    if ($result['http_code'] !== 200) {
-        return ['success' => false, 'data' => null, 'error' => _parasut_extract_error($result)];
+    if ((strlen($number) !== 10) && (strlen($number) !== 11)) {
+        $out['refused'] = true;
+        $out['error'] = lang('A VKN has 10 digits and a TCKN 11.');
+        return $out;
     }
 
-    $items = $result['body']['data'] ?? [];
-    return ['success' => true, 'data' => $items, 'error' => ''];
+    // The check digits are the ERP's arithmetic; this screen does not load
+    // the module, so it is loaded the way the order's invoice loads it.
+    if (!function_exists('erp_edoc_tax_number_valid')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    }
+
+    // The final consumer's eleven ones are asked, as the ERP's lookup asks them.
+    if (!erp_edoc_tax_number_valid($number, true)) {
+        $out['refused'] = true;
+        $out['error'] = lang('The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.');
+        return $out;
+    }
+
+    $path = '/e_invoice_inboxes?filter[vkn]=' . $number;
+
+    if ($request !== null) {
+        $result = call_user_func($request, $path);
+    } else {
+        $token_result = parasut_get_token();
+        if (!$token_result['success']) {
+            $out['error'] = $token_result['error'];
+            return $out;
+        }
+
+        $result = _parasut_request('GET', _parasut_prefix() . $path, null, $token_result['token']);
+    }
+
+    if ((int) ($result['http_code'] ?? 0) !== 200) {
+        $out['error'] = _parasut_extract_error($result);
+        return $out;
+    }
+
+    $out['success'] = true;
+    $out['data'] = $result['body']['data'] ?? [];
+    return $out;
+}
+
+/**
+ * The totals of a Paraşüt sales invoice or purchase bill as the e-invoice
+ * inbox shows them. net_total is what Paraşüt calls "Genel Toplam": VAT
+ * included, after the VAT withheld. gross_total is the subtotal before the
+ * line and invoice discounts; before_taxes_total is what the discounts leave
+ * before VAT, and a record that carries no before_taxes_total gets it from
+ * the subtotal less both discounts.
+ *
+ * @param array $attributes  data.attributes of the record
+ * @return array ['before_vat' => float, 'vat' => float, 'withheld' => float, 'total' => float]
+ */
+function parasut_inbox_totals($attributes)
+{
+    $attributes = (array) $attributes;
+    $amount = function ($key) use ($attributes) {
+        return (isset($attributes[$key]) && is_numeric($attributes[$key])) ? (float) $attributes[$key] : 0.0;
+    };
+
+    if (isset($attributes['before_taxes_total']) && is_numeric($attributes['before_taxes_total'])) {
+        $before_vat = $amount('before_taxes_total');
+    } else {
+        $before_vat = $amount('gross_total') - $amount('total_discount') - $amount('total_invoice_discount');
+    }
+
+    return [
+        'before_vat' => round($before_vat, 2),
+        'vat' => round($amount('total_vat'), 2),
+        'withheld' => round($amount('total_vat_withholding'), 2),
+        'total' => round($amount('net_total'), 2),
+    ];
 }
 
 /**
