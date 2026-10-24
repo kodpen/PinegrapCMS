@@ -3,13 +3,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the view counters of records shown on pages built in the visual
- * editor and for ordering form lists by them: the ORDER BY term of a counter
- * order (pg_sw_counter_order_sql()), the recent-views window
- * (pg_sw_recent_views_days()), which registered views count
- * (pg_sw_should_count_record_view(), pg_sw_record_view_seen()), the shared
- * automated-client rule (pg_request_is_automated()), the editor's copy of the
- * counter list, and where get_page.php and the record widget register and
- * count a view.
+ * editor and for ordering form lists by them and by newest activity: the
+ * ORDER BY term of a counter or activity order (pg_sw_counter_order_sql()),
+ * the recent-views window (pg_sw_recent_views_days()), which registered views
+ * count (pg_sw_should_count_record_view(), pg_sw_record_view_seen()), the
+ * shared automated-client rule (pg_request_is_automated()), the editor's copy
+ * of the list and its Statistics options, and where get_page.php and the
+ * record widget register and count a view.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -109,6 +109,33 @@ function test_record_view_counts_order_sql_hostile_input()
 	pg_assert_false(strpos($days, 'OR (1') !== false);
 }
 
+// Newest activity: the later of the submitted time and the newest comment the
+// detail page's row names, compared as integers with a 0 fallback.
+function test_record_view_counts_order_sql_newest_activity()
+{
+	$s = pg_sw_counter_order_sql('newest_activity_date_and_time', 'DESC', 12, null, true);
+	pg_assert_true(is_string($s) && $s !== '', 'an order term');
+	pg_assert_contains('GREATEST(forms.submitted_timestamp, IFNULL((SELECT MAX(pg_ord_c.created_timestamp) FROM submitted_form_info pg_ord_i INNER JOIN comments pg_ord_c ON pg_ord_c.id = pg_ord_i.newest_comment_id', (string) $s);
+	pg_assert_contains("pg_ord_i.page_id = '12'", (string) $s);
+	pg_assert_contains('pg_ord_i.submitted_form_id = forms.id', (string) $s);
+	pg_assert_true(_record_view_counts_ends_with((string) $s, '), 0)) DESC'));
+
+	pg_assert_true(_record_view_counts_ends_with((string) pg_sw_counter_order_sql('newest_activity_date_and_time', 'ASC', 12, null, true), ' ASC'));
+
+	// The daily table does not matter here.
+	pg_assert_same($s, pg_sw_counter_order_sql('newest_activity_date_and_time', 'DESC', 12, null, false));
+
+	// Integers only: no '' fallback, no date string, no outer join.
+	pg_assert_false(strpos((string) $s, "''") !== false);
+	pg_assert_false(strpos((string) $s, 'FROM_UNIXTIME') !== false);
+	pg_assert_false(stripos((string) $s, 'LEFT JOIN') !== false);
+
+	pg_assert_true(_record_view_counts_ends_with((string) pg_sw_counter_order_sql('newest_activity_date_and_time', 'ASC; DROP', 12, null, true), ' DESC'));
+	$page = (string) pg_sw_counter_order_sql('newest_activity_date_and_time', 'DESC', '12 OR 1=1', null, true);
+	pg_assert_contains("pg_ord_i.page_id = '12')", $page);
+	pg_assert_false(strpos($page, 'OR 1=1') !== false);
+}
+
 function test_record_view_counts_recent_days()
 {
 	foreach (array(null, '', 'abc', 0, -3, '7) OR (1', array()) as $value) {
@@ -205,6 +232,17 @@ function test_record_view_counts_editor_lockstep()
 		$list[] = trim($value, " '\"");
 	}
 	pg_assert_same(pg_sw_form_order_counters(), $list);
+
+	// Every record statistic is offered in the Statistics group of the Sort
+	// selects.
+	$start = strpos($js, 'function _buildOrderOpts(');
+	$end = ($start === false) ? false : strpos($js, "html += '</optgroup>';", $start);
+	$opts = ($start === false || $end === false) ? '' : substr($js, $start, $end - $start);
+	pg_assert_contains("esc(_sdT('Statistics'))", $opts);
+	foreach (pg_sw_form_order_counters() as $counter) {
+		pg_assert_contains('<option value="' . $counter . '"', $opts, $counter);
+	}
+	pg_assert_contains("esc(_sdT('Newest Activity Date & Time'))", $opts);
 
 	pg_assert_true((bool) preg_match('/id="sd-sw-orderby-days"[^>]*max="180"/', $js));
 	$start = strpos($js, 'function _swTypeDefaults(');
