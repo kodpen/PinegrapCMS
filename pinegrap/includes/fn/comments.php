@@ -614,8 +614,9 @@ function pg_comment_member_contact($user_id)
 // session, or any for staff and the record's form editor. Anything else is
 // refused, never stored as 0, so a reply cannot quietly become a comment of
 // its own. Deleting a comment leaves its replies; they then read as comments
-// of their own. The classic comments block does not read the column, so a
-// reply shows there as a later comment.
+// of their own. Copying a page gives each copied reply the copy of the
+// comment it answers (pg_comment_copy_parent_id()). The classic comments
+// block does not read the column, so a reply shows there as a later comment.
 
 /**
  * Whether comments.parent_id is there (2026.11.0, 11.0.31). False before the
@@ -840,4 +841,27 @@ function pg_comment_parent_mail_line($parent)
     $name = str_replace(array("\r", "\n"), ' ', $name);
 
     return lang('In reply to') . ': ' . $name . ' (#' . (int) $parent['id'] . ')' . "\n\n";
+}
+
+/**
+ * The parent_id a reply gets when its page is copied: the new id of the copy
+ * of the comment it answers, or 0 when it answers none or that comment was
+ * not copied (deleted, so the reply already reads as a comment of its own).
+ * Pure. duplicate_page_f.php copies a page's comments oldest first and keeps
+ * old id => new id in $copied; a reply always has a higher id than the
+ * comment it answers, which existed when the reply was stored.
+ *
+ * @param mixed $parent_id the original reply's parent_id
+ * @param mixed $copied    array(original comment id => id of its copy)
+ * @return int
+ */
+function pg_comment_copy_parent_id($parent_id, $copied)
+{
+    $id = (is_scalar($parent_id) && !is_bool($parent_id)) ? (int) $parent_id : 0;
+
+    if (($id <= 0) || !is_array($copied) || !isset($copied[$id]) || !is_scalar($copied[$id])) {
+        return 0;
+    }
+
+    return max(0, (int) $copied[$id]);
 }

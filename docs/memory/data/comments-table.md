@@ -23,9 +23,9 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 - `comments` is on the 2026.11.0 row of `install_heavy_tables()` for the preflight warning (`release/migration-long-steps.md`).
 
 ## Which code copies or exports whole rows?
-- `duplicate_page_f.php` copies a page's comments with a column list: `parent_id` is not remapped, so a copied reply reads as top-level.
+- `duplicate_page_f.php` copies a page's comments oldest first with a column list; `parent_id` points at the copy of the comment answered ([[comment-replies]]).
 - The privacy export reads `SELECT *` (`includes/fn/privacy_export.php`): the column appears there as a number. Backups dump every column.
-- `submit_order.php` (the comment a product adds when it is ordered) and the copy above insert without it, so their rows get 0; `add_comment.php` names it once the column is there.
+- `submit_order.php` (the comment a product adds when it is ordered) inserts without it, so its rows get 0; `add_comment.php` and the copy above name it once the column is there.
 - The starter dumps under `data/backups/` stay as they are (`workflow/decisions-made-data.md`); the installer's upgrade adds the column.
 
 ## How is the step checked?

@@ -1780,10 +1780,23 @@ function upgrade_2026_11_0_comment_record_counts_one($page_id, $item_id) {
 // lives in memory; across requests in the file below, written before every
 // pause and at the end. The file is read only while it is under ten minutes
 // old: an older one belongs to a run that was given up on, and the counters
-// may have been restored from a backup since.
+// may have been restored from a backup since. Sites that share one software
+// directory (a custom CONFIG_FILE_PATH) share its data/temp, so the file is
+// named after the database, as the upgrade lock is (install_lock_name()):
+// one site's place or done marker is never read by another's upgrade.
 function upgrade_2026_11_0_comment_record_counts_progress_file() {
 
-	return PG_FUNCTIONS_DIR . '/data/temp/upgrade_comment_record_counts.json';
+	static $file = null;
+
+	if ($file === null) {
+
+		$database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+		$file = PG_FUNCTIONS_DIR . '/data/temp/upgrade_comment_record_counts_' . md5($database) . '.json';
+
+	}
+
+	return $file;
 
 }
 

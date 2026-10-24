@@ -337,12 +337,19 @@ function get_email_campaign_status_name($status)
     }
 }
 // This function is currently used when a comment is added
-// by the product submit form feature.
+// by the product submit form feature, and by job.php when a
+// scheduled comment is published.
 // It is not currently used when a comment is added manually,
 // because that area of the code is a little different,
 // however it could be used for that also in the future.
 function send_comment_email_to_administrators($comment_id)
 {
+    // The comment a reply answers is named in the e-mail, as add_comment.php
+    // does; the column is read only once it exists (2026.11.0, 11.0.31).
+    $parent_column = pg_comment_replies_ready() ? ',
+
+            parent_id' : '';
+
     // Get comment info.
     $comment = db_item("SELECT
 
@@ -356,11 +363,15 @@ function send_comment_email_to_administrators($comment_id)
 
             name,
 
-            message
+            message$parent_column
 
         FROM comments
 
         WHERE id = '" . escape($comment_id) . "'");
+
+    // A comment that answers none, or whose comment is gone, gets no line.
+    $parent = (!empty($comment['parent_id'])) ? pg_comment_parent_row($comment['parent_id']) : null;
+
     // Get info for the page that the comment is connected to.
     $page = db_item("SELECT
 
@@ -458,7 +469,7 @@ function send_comment_email_to_administrators($comment_id)
         } else {
             $subject = lang(array('string' => 'A {var:1} has been added and published.', 'vars' => $comment_label_lowercase));
         }
-        $body = lang(array('string' => 'The following {var:1} has been added and published', 'vars' => $comment_label_lowercase)) . ':' . "\n" . "\n" . lang('Display Name') . ': ' . $comment['name'] . "\n" . "\n" . $comment_label . ': ' . $comment['message'] . "\n";
+        $body = lang(array('string' => 'The following {var:1} has been added and published', 'vars' => $comment_label_lowercase)) . ':' . "\n" . "\n" . lang('Display Name') . ': ' . $comment['name'] . "\n" . "\n" . pg_comment_parent_mail_line($parent) . $comment_label . ': ' . $comment['message'] . "\n";
         $query_string = get_query_string_for_page_url($page['type'], $comment['item_id'], $comment['item_type']);
         // If this is the first item that is being added to the query string, then add question mark.
         if (mb_strpos($query_string, '?') === false) {

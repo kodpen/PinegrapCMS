@@ -234,6 +234,69 @@ function test_comment_parent_add_comment_wiring()
 	pg_assert_same(2, substr_count($add, 'pg_comment_parent_mail_line($comment_parent)'), 'both staff e-mails name the parent');
 }
 
+// The staff e-mail sent when a scheduled comment is published (job.php)
+// names the parent as add_comment.php's own e-mails do. The column is read
+// only once it is there, and a comment that answers none gets '' (its body
+// stays as it was, the product comment of submit_order.php included).
+function test_comment_parent_published_mail_names_the_parent()
+{
+	$mail = comment_parent_test_source('includes/fn/mail.php');
+	$start = strpos($mail, 'function send_comment_email_to_administrators(');
+	$end = ($start !== false) ? strpos($mail, "\nfunction ", $start + 1) : false;
+
+	pg_assert_true(($start !== false) && ($end !== false), 'the function is found');
+
+	if (($start === false) || ($end === false)) {
+		return;
+	}
+
+	$function = substr($mail, $start, $end - $start);
+
+	comment_parent_test_has("\$parent_column = pg_comment_replies_ready() ? ',\n\n            parent_id' : '';", $function, 'the column is named only once it exists');
+	comment_parent_test_has('message$parent_column', $function, 'read with the comment');
+	comment_parent_test_has("\$parent = (!empty(\$comment['parent_id'])) ? pg_comment_parent_row(\$comment['parent_id']) : null;", $function, 'the parent is read only for a reply');
+
+	$display = strpos($function, "lang('Display Name') . ': ' . \$comment['name'] . \"\\n\" . \"\\n\" . pg_comment_parent_mail_line(\$parent) . \$comment_label . ': ' . \$comment['message']");
+
+	pg_assert_true($display !== false, 'the line sits between the display name and the comment, as in add_comment.php');
+}
+
+// A copied page keeps who answered whom: a reply on the copy names the copy
+// of the comment it answers. Pure.
+function test_comment_parent_copy_parent_id()
+{
+	$copied = array(9 => 31, 10 => 32);
+
+	pg_assert_same(31, pg_comment_copy_parent_id(9, $copied), 'the copy of the comment it answers');
+	pg_assert_same(32, pg_comment_copy_parent_id('10', $copied), 'an id as a string');
+	pg_assert_same(0, pg_comment_copy_parent_id(0, $copied), 'a comment that answers none');
+	pg_assert_same(0, pg_comment_copy_parent_id('', $copied), 'an empty value');
+	pg_assert_same(0, pg_comment_copy_parent_id(null, $copied), 'no value (before 11.0.31)');
+	pg_assert_same(0, pg_comment_copy_parent_id(7, $copied), 'a deleted comment, or one not on the page: answers none');
+	pg_assert_same(0, pg_comment_copy_parent_id(array(9), $copied), 'not a value');
+	pg_assert_same(0, pg_comment_copy_parent_id(9, null), 'no copies yet');
+	pg_assert_same(0, pg_comment_copy_parent_id(9, array(9 => 0)), 'a copy that was not stored');
+}
+
+// duplicate_page_f.php copies the comments oldest first, keeps the new id of
+// each and writes the copied parent, naming the column only once it exists.
+function test_comment_parent_page_copy_wiring()
+{
+	$copy = comment_parent_test_source('duplicate_page_f.php');
+
+	comment_parent_test_has("\$query = \"SELECT * FROM comments WHERE page_id = '\" . e(\$page_id) . \"' ORDER BY id\";", $copy, 'oldest first, so a comment is copied before its replies');
+	comment_parent_test_has('$comment_replies = pg_comment_replies_ready();', $copy, 'the column is asked for once');
+	comment_parent_test_has("pg_comment_copy_parent_id(isset(\$comment['parent_id']) ? \$comment['parent_id'] : 0, \$comment_copies)", $copy, 'the parent is mapped to its copy');
+	comment_parent_test_has("\$comment_copies[(int) \$comment['id']] = (int) mysqli_insert_id(db::\$con);", $copy, 'the new id of each copy is kept');
+	comment_parent_test_has('last_modified_timestamp$sql_parent_column)', $copy, 'the column after the last one');
+	comment_parent_test_has("escape(\$comment['last_modified_timestamp']) . \"'\$sql_parent_value)\";", $copy, 'the value after the last one');
+
+	$insert = strpos($copy, 'INSERT INTO comments');
+	$columns = ($insert !== false) ? substr($copy, $insert, (int) strpos($copy, 'VALUES', $insert) - $insert) : '';
+
+	pg_assert_false(strpos($columns, 'parent_id') !== false, 'no literal parent_id in the column list');
+}
+
 // Deleting a comment leaves its replies; they read as comments of their own.
 function test_comment_parent_deletes_keep_replies()
 {

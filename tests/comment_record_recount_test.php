@@ -8,9 +8,10 @@
  * schema, rebuilds each pair through pg_comment_refresh_record_info() in two
  * walks (pairs with record comments, and counter rows whose comments are
  * gone), pauses by time with its place saved first, keeps its place and a
- * done marker in a data/temp file read only while it is fresh, and ends with
- * a note. The step needs a database and is run twice in a sandbox; here it is
- * checked in its source.
+ * done marker in a data/temp file of its own database, read only while it is
+ * fresh, and ends with a note. The step needs a database and is run twice in
+ * a sandbox; here it is checked in its source, and the file name in a PHP
+ * process of its own.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -117,9 +118,65 @@ function test_comment_record_recount_keeps_its_place_in_a_fresh_file()
 	$main = isset($functions['upgrade_2026_11_0_comment_record_counts']) ? $functions['upgrade_2026_11_0_comment_record_counts'] : '';
 	$progress = isset($functions['upgrade_2026_11_0_comment_record_counts_progress']) ? $functions['upgrade_2026_11_0_comment_record_counts_progress'] : '';
 
-	pg_assert_contains("/data/temp/upgrade_comment_record_counts.json'", $all, 'the place is kept in data/temp');
+	pg_assert_contains("/data/temp/upgrade_comment_record_counts_' . md5(", $all, 'the place is kept in data/temp, one file per database');
 	pg_assert_contains('< 600', $progress, 'a file older than ten minutes is not read');
 	pg_assert_contains("'done' => false", $progress, 'a done marker');
 	pg_assert_contains("if (empty(\$progress['done'])) {", $main, 'a finished recount is not run again');
 	pg_assert_true(preg_match("/install_note\\([^;]+\\);\\s*\$/", $main) === 1, 'ends with a note for the operator');
+}
+
+// The progress file of the site whose database is $database on $host, from
+// a PHP process of its own: the step file is loaded under the upgrade's gate
+// constant, and DB_DATABASE and DB_HOST are a site's configuration, which
+// the tests after this one must not find defined. Null when PHP cannot be
+// started again.
+function comment_record_recount_test_file_of($database, $host)
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgrecount');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('INSTALL_OR_UPDATE', true);\n"
+		. 'define(\'DB_DATABASE\', ' . var_export($database, true) . ");\n"
+		. 'define(\'DB_HOST\', ' . var_export($host, true) . ");\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php', true) . ";\n"
+		. "echo upgrade_2026_11_0_comment_record_counts_progress_file();\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	return ($code === 0) ? implode("\n", $out) : 'error: ' . implode("\n", $out);
+}
+
+// Sites that share one software directory (a custom CONFIG_FILE_PATH) share
+// its data/temp, so the place and the done marker of one site's recount must
+// never be read by another's upgrade: the file is named after the database,
+// as the upgrade lock is (install_lock_name()).
+function test_comment_record_recount_file_belongs_to_one_database()
+{
+	$a = comment_record_recount_test_file_of('site_a', 'localhost');
+
+	if ($a === null) {
+		return;
+	}
+
+	$a_again = comment_record_recount_test_file_of('site_a', 'localhost');
+	$b = comment_record_recount_test_file_of('site_b', 'localhost');
+	$a_elsewhere = comment_record_recount_test_file_of('site_a', 'db.example.com');
+
+	pg_assert_same(PG_FUNCTIONS_DIR . '/data/temp/upgrade_comment_record_counts_' . md5('site_a@localhost') . '.json', $a, 'named after the database and its host');
+	pg_assert_same($a, $a_again, 'the same site finds its own file again');
+	pg_assert_true($a !== $b, 'another database on the server has a file of its own');
+	pg_assert_true($a !== $a_elsewhere, 'a database of the same name on another server has a file of its own');
 }
