@@ -459,6 +459,36 @@ function test_erp_edoc_parasut_detail_ids()
 	pg_assert_same(array(), erp_edoc_parasut_detail_ids(array('data' => array())));
 }
 
+// The sales invoice has a line for each ERP line, then the rounding lines of
+// erp_edoc_parasut_vat_shift(). The hand-over checks Paraşüt's line ids
+// against that count, so a withheld invoice with a rounding line still goes.
+function test_erp_edoc_parasut_detail_count()
+{
+	pg_assert_same(2, erp_edoc_parasut_detail_count(array(pg_test_parasut_vat_line(3995, 799), pg_test_parasut_vat_line(1250, 250))));
+	pg_assert_same(0, erp_edoc_parasut_detail_count(array()));
+
+	// A withheld line at 20% (601, 4/10) and two lines of 5 x 0.19 at 10%
+	// with their VAT taken line by line: 0.10 + 0.10 against 0.19 on 1.90,
+	// so the 10% rate needs a rounding line.
+	$lines = array(
+		pg_test_parasut_vat_line(10000, 2000, array('withholding_rate' => '40.000', 'withholding_code' => '601')),
+		pg_test_parasut_vat_line(95, 10, array('quantity' => '5.0000', 'unit_price' => 19, 'tax_rate' => '10.000')),
+		pg_test_parasut_vat_line(95, 10, array('quantity' => '5.0000', 'unit_price' => 19, 'tax_rate' => '10.000')),
+	);
+	$details = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('invoice_type' => 'TEVKIFAT')), $lines, '555')['data']['relationships']['details']['data'];
+	pg_assert_same(4, count($details), 'the rounding line is written');
+	pg_assert_same(4, erp_edoc_parasut_detail_count($lines), 'and counted');
+
+	// The ERP lines keep the first ids; the rounding line's comes last.
+	$attributes = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(), $lines, 'einvoice', 'urn:mail:defaultpk@example.com', array('5002', '5003', '5004', '5005'));
+	pg_assert_same(array(array('detail_id' => 5002, 'vat_withholding_code' => '601')), $attributes['vat_withholding_params'] ?? null);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+	$from = (int) strpos($source, 'function erp_edoc_parasut_submit_invoice(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+	pg_assert_contains('count($detail_ids) !== erp_edoc_parasut_detail_count($lines)', $section, 'the hand-over counts the rounding lines');
+}
+
 // The e-document request: scenario and alias for e-Fatura; the internet
 // sale block for an e-Arşiv invoice; one exemption, and each withheld line's
 // code against Paraşüt's line id.
@@ -1129,4 +1159,45 @@ function test_erp_edoc_parasut_linked_contact_usable()
 	pg_assert_false(erp_edoc_parasut_linked_contact_usable(array('id' => '7001', 'attributes' => array('tax_number' => '1234567808', 'archived' => true)), '7001', '1234567808'));
 	pg_assert_false(erp_edoc_parasut_linked_contact_usable(null, '7001', '1234567808'));
 	pg_assert_false(erp_edoc_parasut_linked_contact_usable($contact, '7001', ''));
+}
+
+// Many consumers share the final consumer's number, and the e-Arşiv is
+// printed with the card's address and mailed to the card's e-mail: a card
+// of that number is the buyer's only when it holds the buyer's name,
+// address, district, city and e-mail. Another person of the same name gets
+// a card of their own.
+function test_erp_edoc_parasut_final_consumer_card_matches()
+{
+	$party = pg_test_parasut_party(array(
+		'title' => 'Ayşe Demir', 'is_person' => true, 'tax_number' => '', 'tax_office' => '', 'email' => 'ayse.k@example.com',
+		'address' => 'Kızılay Mah. 1. Sok. 3', 'district' => 'Çankaya', 'city' => 'Ankara', 'postcode' => '06420',
+	));
+	$card = erp_edoc_parasut_contact_attributes($party, '11111111111');
+
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches($card, $party, '11111111111'), 'the card opened for this buyer');
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('name' => ' ayşe demir ', 'email' => 'Ayse.K@Example.COM')), $party, '11111111111'), 'case and outer spaces');
+
+	// The same name at another address, district or city, or with another
+	// e-mail, is another buyer.
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('address' => 'Alsancak Mah. 1453 Sok. 9', 'district' => 'Konak', 'city' => 'İzmir')), $party, '11111111111'), 'another city');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('address' => 'Kızılay Mah. 2. Sok. 5')), $party, '11111111111'), 'another address');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('district' => 'Keçiören')), $party, '11111111111'), 'another district');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('email' => 'aysed@example.org')), $party, '11111111111'), 'another e-mail');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('name' => 'Ayşe Yılmaz')), $party, '11111111111'), 'another name');
+
+	// A card with an e-mail the buyer did not give would mail the document
+	// there; with none on either side the card is the buyer's.
+	$no_email = array_merge($party, array('email' => ''));
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches($card, $no_email, '11111111111'), 'an e-mail the buyer did not give');
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('email' => null)), $no_email, '11111111111'), 'no e-mail on either side');
+}
+
+// The search by number takes a final-consumer card only after that check.
+function test_erp_edoc_parasut_contact_for_checks_final_consumer_card()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+	$from = strpos($source, 'function erp_edoc_parasut_contact_for(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+
+	pg_assert_contains('if ($final_consumer && !erp_edoc_parasut_final_consumer_card_matches($attributes, $party, $tax_number)) {', $section);
 }

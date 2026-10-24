@@ -9,17 +9,17 @@ use Iyzipay\Request\CreateC2CSubMerchantRequest;
 use Iyzipay\Request\VerifyC2CSubMerchantRequest;
 
 class C2CSubMerchant extends IyzipayResource {
-    private string $name;
-    private string $surname;
-    private string $email;
-    private string $gsmNumber;
-    private string $tckNo;
-    private string $birthDate;
-    private string $address;
-    private string $externalId;
+    private $name;
+    private $surname;
+    private $email;
+    private $gsmNumber;
+    private $tckNo;
+    private $birthDate;
+    private $address;
+    private $externalId;
 
-    private string $txId;
-    private string $smsVerificationCode;
+    private $txId;
+    private $smsVerificationCode;
 
     private static function mappedResult(string $rawResult): C2CSubMerchant {
         return C2CSubMerchantMapper::create($rawResult)->jsonDecode()->mapC2CSubMerchant(new C2CSubMerchant());

@@ -955,7 +955,7 @@ function pg_di_attrs($node, $ctx, $skip)
 function pg_di_inner_html($node, $ctx)
 {
     $html = '';
-    foreach ($node->childNodes as $cn) $html .= $node->ownerDocument->saveHTML($cn);
+    foreach ($node->childNodes as $cn) $html .= pg_dom_html($cn);
     // An icon inside a heading or link text stays inline markup; the
     // placeholder gives way to the original <svg>.
     if (!empty($ctx->svg_raw) && strpos($html, '<pg-svg') !== false) {
@@ -968,7 +968,7 @@ function pg_di_inner_html($node, $ctx)
 
 function pg_di_outer_html($node)
 {
-    return $node->ownerDocument->saveHTML($node);
+    return pg_dom_html($node);
 }
 
 // ── Image sources ───────────────────────────────────────────────────────────

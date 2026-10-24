@@ -980,6 +980,12 @@ function get_form_item_view($properties) {
             // start the output off with just the layout
             $output = $layout;
 
+            // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+            // are filled in only while the e-mail to the person who sent the form is
+            // drawn (pg_cf_mail_links_context()); on the page and in every other copy
+            // they are empty, so no signed link or bare token is ever shown here.
+            $output = pg_cf_fill_mail_links($output, pg_cf_mail_link_values(), 'html');
+
             // get all Comparison Operators so they can be replaced with data
             preg_match_all('/\{if\s*(.*?\^\^(.*?)\^\^.*?)?(\s*(.*?)\s*)?(\'(.*?)\')?(\s*\}(.*?))?(\{\s*else\s*\}(.*?))?\{\s*endif\s*\}/si', $output, $operators, PREG_SET_ORDER);
             

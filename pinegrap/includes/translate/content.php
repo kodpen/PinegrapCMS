@@ -866,11 +866,11 @@ function pg_tr_html_text_segments($html)
     $skip = array('script' => 1, 'style' => 1, 'template' => 1, 'noscript' => 1, 'code' => 1, 'pre' => 1, 'textarea' => 1, 'svg' => 1, 'math' => 1, 'iframe' => 1, 'object' => 1);
     $block_set = array_flip($blocks);
 
-    $inner_html = function ($node) use ($document) {
+    $inner_html = function ($node) {
         $html = '';
 
         foreach ($node->childNodes as $child) {
-            $html .= $document->saveHTML($child);
+            $html .= pg_dom_html($child);
         }
 
         return $html;
@@ -886,7 +886,7 @@ function pg_tr_html_text_segments($html)
         return false;
     };
 
-    $walk = function ($node) use (&$walk, $push, $inner_html, $has_block, $skip, $block_set, $document) {
+    $walk = function ($node) use (&$walk, $push, $inner_html, $has_block, $skip, $block_set) {
         $run = '';
 
         $flush = function () use (&$run, $push) {
@@ -920,7 +920,7 @@ function pg_tr_html_text_segments($html)
             }
 
             if (($child->nodeType === XML_ELEMENT_NODE) || ($child->nodeType === XML_TEXT_NODE)) {
-                $run .= $document->saveHTML($child);
+                $run .= pg_dom_html($child);
             }
         }
 
