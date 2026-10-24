@@ -150,6 +150,40 @@ function ws_action_task_fields($request)
 }
 
 /**
+ * Only the fields a flow save may carry, in the shape ws_flow_save() reads.
+ * draft_rev is always passed, so a save that does not say which draft it
+ * was made on meets "changed meanwhile" rather than writing over it.
+ *
+ * @param array $request
+ * @return array
+ */
+function ws_action_flow_fields($request)
+{
+    $data = array('draft_rev' => (int) ($request['draft_rev'] ?? 0));
+
+    foreach (array('name', 'channel_id', 'graph') as $field) {
+        if (array_key_exists($field, $request)) {
+            $data[$field] = $request[$field];
+        }
+    }
+
+    return $data;
+}
+
+/**
+ * A refused flow write as the screen reads it: a draft saved meanwhile from
+ * another screen is told apart (field changed_meanwhile), so the editor
+ * offers to load it again instead of saving over it.
+ *
+ * @param array $result a ws_flow_*() result
+ * @return array
+ */
+function ws_action_flow_refused($result)
+{
+    return ws_action_error($result['error'], ((int) $result['status'] === 409) ? 'changed_meanwhile' : (string) $result['field']);
+}
+
+/**
  * The entry point api.php calls.
  *
  * @param string $action
@@ -512,6 +546,74 @@ function ws_handle_action($action, $request)
                 'html'  => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body)), null, false, empty($calc_scope) ? null : array('seed' => $calc_scope, 'all' => $calc_scope)),
                 'names' => array_values(array_unique($names)),
             ));
+
+        // Flows (includes/workspace/flows.php), drawn on workspace_flows.php:
+        // the owner's own and the live ones of the channels the person reads.
+        // Every write goes through the store's *_check(), the same the API's
+        // flow routes make.
+        case 'ws_flow_list':
+            if (!ws_flows_ready()) {
+                return ws_action_error(lang('The database has to be updated first.'));
+            }
+
+            $rows = ws_flows_list($viewer);
+            $numbers = ws_flow_version_numbers($rows);
+
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers) {
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0);
+            }, $rows)));
+
+        case 'ws_flow_get':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+
+            return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
+
+        case 'ws_flow_create':
+        case 'ws_flow_save':
+            $flow = null;
+
+            if ($action === 'ws_flow_save') {
+                $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+                if (!$flow) {
+                    return ws_action_error(lang('Only the owner of a flow can change it.'));
+                }
+            }
+
+            $result = ws_flow_save($viewer, ws_action_flow_fields($request), $flow);
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            if ($flow === null) {
+                return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit'))));
+            }
+
+            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems']));
+
+        case 'ws_flow_publish':
+        case 'ws_flow_pause':
+        case 'ws_flow_bin':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            if ($action === 'ws_flow_publish') {
+                $result = ws_flow_publish($viewer, $flow, array('draft_rev' => (int) ($request['draft_rev'] ?? 0)));
+            } elseif ($action === 'ws_flow_pause') {
+                $result = ws_flow_pause($viewer, $flow);
+            } else {
+                $result = ws_flow_bin($viewer, $flow);
+            }
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
 
         // Personal notes (includes/workspace/notes.php): the person's own and
         // the ones shared with them; nobody else's, whatever their role.

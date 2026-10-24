@@ -5,7 +5,7 @@ description: Workspace flows, first slice (store, graph check, API; no canvas, n
 
 ## What is there?
 - Tables (2026.11.0, 11.0.80; probe `ws_flows_ready()`): `ws_flows` (owner, home `channel_id`, name, status draft/live/paused/binned, `draft` JSON, `draft_rev`, live `version_id`), `ws_flow_versions` (flow_id, n, graph; never changed, UNIQUE (flow_id, n)), `ws_flow_runs`, `ws_flow_run_steps` (empty until the runner), `ws_scheduled_actions.flow_id` (the hidden trigger action later). VARCHAR statuses, no JSON in SQL.
-- Code: `includes/workspace/flows.php` (store), `api_flows.php` (handlers), routes in `ws_api_routes()`. Tests: `tests/workspace_flows_test.php`.
+- Code: `includes/workspace/flows.php` (store), `api_flows.php` (handlers), routes in `ws_api_routes()`. Tests: `tests/workspace_flows_test.php`. The screen and its panel actions: `workspace-flows-canvas.md`.
 
 ## What does a graph look like?
 - `{"v":1, "nodes":[{id, kind, label, x, y, config}], "edges":[{from, to, on}], "notes":[{id, text, x, y, w, h}]}`. Ids `^[a-z][a-z0-9_]{0,31}$`.
