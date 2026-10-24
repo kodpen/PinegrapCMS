@@ -11558,7 +11558,7 @@ const StyleDesigner = (function () {
                 // comment it answers; a threaded one under it.
                 flags: flags({ comment_is_root: !threaded, comment_is_reply: threaded, comment_has_quote: true }),
                 values: {
-                    __comment_name: _sdT('Alex Morgan'),
+                    __comment_name: _sdT('Daniel Reed'),
                     __comment_date: _sdT('1 hour ago'),
                     __comment_parent_name: _sdT('Jane Cooper'),
                     __comment_quote: _sdT('Has anyone tried this with the new version?'),
@@ -11570,7 +11570,7 @@ const StyleDesigner = (function () {
                 key: 'pending',
                 flags: flags({ comment_is_pending: true, comment_is_own_pending: !staff }),
                 values: {
-                    __comment_name: _sdT('Sam Lee'),
+                    __comment_name: _sdT('Emma Hughes'),
                     __comment_status: staff ? _sdT('Not Published') : _sdT('Your {var:1} is awaiting approval', label.toLowerCase()),
                     __comment_message_html: function () { return esc(_sdT('I will try this tonight.')); }
                 }
@@ -30620,7 +30620,7 @@ const StyleDesigner = (function () {
         var offWarn = '';
         if (opts.widget) {
             var _cmtPage = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
-            title = _sdT('Comment settings for {var}', esc((_cmtPage && _cmtPage.page_name) ? _cmtPage.page_name : _sdT('this page')));
+            title = esc(_sdT('Comment settings for {var}', (_cmtPage && _cmtPage.page_name) ? _cmtPage.page_name : _sdT('this page')));
             lead = '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
                 esc(_sdT('Saved with this page; other pages that show this widget keep their own.')) + '</div>';
             if (!_cmtEnabled) {
@@ -49111,6 +49111,8 @@ const StyleDesigner = (function () {
     function _sdCommentsMakeDesignable(regionNode) {
         if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
             regionNode.props.regionType !== 'comments_block' || !_sdCommentsSwapOffered(regionNode)) return;
+        // A page a colleague holds is read-only here, as for every change.
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         if (_sdCommentsPickWidget([{ tree: tree }], _cfCfgOf, _sdCommentsTreeOf, {}, 0)) {
             sdToast(esc(_sdT('This page already shows a Comments widget.')), 'warning');
             return;
@@ -49129,8 +49131,8 @@ const StyleDesigner = (function () {
             render();
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
             var cfg = _cfCfgOf(sid);
-            var msg = _sdT('The fixed block is now the Comments widget "{var}": the same comments, watchers and settings.', esc(name));
-            if (!created && (!cfg || cfg.featured !== 'filter')) msg += ' ' + _sdT('Its display options are shared with the other pages that show it.');
+            var msg = esc(_sdT('The fixed block is now the Comments widget "{var}": the same comments, watchers and settings.', name));
+            if (!created && (!cfg || cfg.featured !== 'filter')) msg += ' ' + esc(_sdT('Its display options are shared with the other pages that show it.'));
             sdToast(msg, 'success', 7000);
         };
         var sid = _sdCommentsDesignWidget();
@@ -49150,6 +49152,7 @@ const StyleDesigner = (function () {
     // again; the widget stays in the design.
     function _sdCommentsBackToBlock(refNode) {
         if (!refNode || refNode.type !== 'shared_ref' || !_sdCommentsSwapOffered(refNode)) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var parent = findParent(refNode, tree);
         var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(refNode) : -1;
         if (idx === -1) return;

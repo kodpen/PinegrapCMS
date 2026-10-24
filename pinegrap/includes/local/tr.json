@@ -28262,5 +28262,7 @@
     "The page \"{var:1}\" shows a Comments widget and the fixed comments block: only the widget draws the comments.": "\"{var:1}\" sayfası hem bir Yorumlar widget'ı hem de sabit yorum bloğu gösteriyor: yorumları yalnızca widget gösterir.",
     "The page \"{var:1}\" shows {var:2} Comments widgets: only the first draws the comments.": "\"{var:1}\" sayfası {var:2} Yorumlar widget'ı gösteriyor: yorumları yalnızca ilki gösterir.",
     "The page \"{var:1}\" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.": "\"{var:1}\" sayfası bir Form Öğesi Görünümü widget'ını başka bir bileşenin içine yerleştiriyor: Yorumlar widget'ı orada hiçbir şey göstermez. Form Öğesi Görünümü'nü doğrudan sayfaya yerleştirin.",
-    "Comments are off for the page \"{var:1}\": its Comments widget draws nothing. Turn them on in the widget's comment settings.": "\"{var:1}\" sayfasında yorumlar kapalı: Yorumlar widget'ı hiçbir şey göstermez. Widget'ın yorum ayarlarından açın."
+    "Comments are off for the page \"{var:1}\": its Comments widget draws nothing. Turn them on in the widget's comment settings.": "\"{var:1}\" sayfasında yorumlar kapalı: Yorumlar widget'ı hiçbir şey göstermez. Widget'ın yorum ayarlarından açın.",
+    "Daniel Reed": "Mehmet Demir",
+    "Emma Hughes": "Zeynep Kaya"
 }

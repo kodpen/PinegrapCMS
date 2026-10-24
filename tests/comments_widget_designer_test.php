@@ -138,6 +138,7 @@ function test_comments_widget_designer_panel_wiring()
 		"_sdT('Comment settings for {var}'", "_sdT('Saved with this page; other pages that show this widget keep their own.')") as $needle) {
 		pg_assert_contains($needle, $sect, 'the settings section has ' . $needle);
 	}
+	pg_assert_contains("esc(_sdT('Comment settings for {var}', ", $sect, 'the heading is escaped once, page name included');
 
 	$display = comments_widget_designer_test_js_function($js, '_sdCommentsDisplaySect');
 	pg_assert_true($display !== '', '_sdCommentsDisplaySect is found');
@@ -879,6 +880,34 @@ JS;
 	}
 }
 
+// The sample people are different people in Turkish too: a reply never
+// reads as an answer to its own author.
+function test_comments_widget_designer_sample_names_differ_in_turkish()
+{
+	$body = <<<'JS'
+var list = _sdCommentSamples({ regionType: 'comments' }, { is_staff: false });
+out.parent = list[0].values.__comment_parent_name;
+out.names = list.map(function (s) { return s.values.__comment_name; });
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentSamples'), comments_widget_designer_test_canvas_script($body));
+	if ($res === null) {
+		return;
+	}
+
+	$tr = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+	$names = array_merge(array($res['parent']), $res['names']);
+	$turkish = array();
+
+	foreach ($names as $name) {
+		pg_assert_true(isset($tr[$name]), $name . ' is translated');
+		$turkish[] = isset($tr[$name]) ? $tr[$name] : $name;
+	}
+
+	pg_assert_same(4, count(array_unique($names)), 'the one answered and three samples: four people');
+	pg_assert_same(4, count(array_unique($turkish)), 'four people in Turkish too: ' . implode(', ', $turkish));
+}
+
 
 // The login region's two chips are built as before.
 function test_comments_widget_designer_session_chips_unchanged()
@@ -1131,6 +1160,124 @@ JS;
 	pg_assert_same(array(), $res['block']['children']);
 }
 
+
+// Make designable and Back to the fixed block as the operator runs them:
+// each is one undo step on the page's own tree, a widget made for it shows
+// only the featured comments until Show all, a page held by a colleague is
+// refused with the read-only nudge, a content-level operator is not offered
+// either, and a toast's words are escaped once.
+function test_comments_widget_designer_conversion_runs()
+{
+	$script = <<<'JS'
+var _seq = 0;
+function gid() { return 'sd_' + (++_seq); }
+function _sdT(s, v) { return (v === undefined) ? s : String(s).replace(/\{var(?::1)?\}/g, v); }
+function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : ''; }
+function findParent(node, root) {
+    var hit = null;
+    (function walk(n) {
+        if (hit || !n || !Array.isArray(n.children)) return;
+        if (n.children.indexOf(node) !== -1) { hit = n; return; }
+        n.children.forEach(walk);
+    })(root);
+    return hit;
+}
+var log = [];
+var _collab = { mayEdit: true };
+var _access = 'full';
+function _sdIsContentLevel() { return _access === 'content'; }
+function _sdReadOnlyNudge() { log.push('nudge'); }
+function saveState() { log.push('undo'); }
+function render() { log.push('render'); }
+function sdToast(msg, type) { log.push('toast:' + type + ':' + msg); }
+function expandAncestorsAnywhere() {}
+function _refreshSystemTab() {}
+function prefetchShared(ids, cb) { log.push('fetch:' + ids.join(',')); }
+function _buildStarterTree(kind) { return { type: 'root', props: {}, children: [], starter: kind }; }
+function _swTypeDefaults(cfg, type) { cfg.regionType = type; cfg.featured = 'first'; return cfg; }
+function _swAutoName(type, page, where) { return (where && where.designWide) ? 'design-' + type + '-widget' : 'page-' + type + '-widget'; }
+var created = [];
+function _swCreateRow(name, cfg, starter, cb) { created.push({ name: name, cfg: cfg, starter: starter.starter }); cb(77, name); }
+var _sharedCache = {}, _sharedUsage = {}, _design = { styleId: 3 };
+function _cfCfgOf(sid) { return (sid === 5 || sid === 77) ? { regionType: 'comments', featured: _sharedCache[sid] ? _sharedCache[sid].featured : 'filter' } : null; }
+var tree, selectedNode = null, selectedNodes = [], otherPage = null;
+function _pgAllPageTrees() { return [{ tree: tree }].concat(otherPage ? [{ tree: otherPage }] : []); }
+function block() { return { _id: gid(), type: 'region', props: { regionType: 'comments_block', regionName: '' }, children: [] }; }
+function page(kids) { return { type: 'root', props: {}, children: [{ type: 'container', props: {}, children: kids }] }; }
+var out = {};
+var run = function (setup, act) {
+    log = []; created = []; _seq = 100; selectedNode = null; otherPage = null; _collab.mayEdit = true; _access = 'full';
+    _sharedCache = {};
+    var b = block();
+    tree = page([b]);
+    var ctx = { block: b };
+    setup(ctx);
+    act(ctx);
+    return { tree: JSON.stringify(tree), log: log, created: created, selected: selectedNode ? selectedNode.type : null };
+};
+out.read_only_make = run(function (c) { _collab.mayEdit = false; }, function (c) { _sdCommentsMakeDesignable(c.block); });
+out.content_make = run(function (c) { _access = 'content'; }, function (c) { _sdCommentsMakeDesignable(c.block); });
+out.made = run(function (c) {}, function (c) { _sdCommentsMakeDesignable(c.block); });
+out.reused = run(function (c) {
+    _sharedCache[5] = { name: 'Talk <b>', tree: { type: 'root', props: {}, children: [] }, featured: 'first' };
+    otherPage = page([{ type: 'shared_ref', props: { sharedId: 5, sharedName: 'Talk <b>' }, children: [] }]);
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
+out.already = run(function (c) {
+    tree.children[0].children.push({ type: 'shared_ref', props: { sharedId: 5, sharedName: 'x' }, children: [] });
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
+var ref = function () { return { _id: 'r1', type: 'shared_ref', props: { sharedId: 5, sharedName: 'w' }, children: [] }; };
+out.read_only_back = run(function (c) { c.ref = ref(); tree = page([c.ref]); _collab.mayEdit = false; }, function (c) { _sdCommentsBackToBlock(c.ref); });
+out.back = run(function (c) { c.ref = ref(); tree = page([c.ref]); }, function (c) { _sdCommentsBackToBlock(c.ref); });
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode',
+		'_sdCommentsBlockNode', '_sdCommentsSwapOffered', '_sdCommentsMakeDesignable', '_sdCommentsBackToBlock'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	$block_tree = '{"type":"root","props":{},"children":[{"type":"container","props":{},"children":[{"_id":"sd_101","type":"region","props":{"regionType":"comments_block","regionName":""},"children":[]}]}]}';
+
+	pg_assert_same($block_tree, $res['read_only_make']['tree'], 'a page held by a colleague keeps its block');
+	pg_assert_same(array('nudge'), $res['read_only_make']['log'], 'and the operator is told why');
+	pg_assert_same(array(), $res['read_only_make']['created'], 'no widget is made for it');
+	pg_assert_same($block_tree, $res['content_make']['tree'], 'a content-level operator is not offered the change');
+	pg_assert_same(array(), $res['content_make']['log']);
+
+	$made = $res['made'];
+	pg_assert_same(1, count($made['created']), 'with no widget in the design one is made');
+	pg_assert_same('design-comments-widget', $made['created'][0]['name'], 'named after the design');
+	pg_assert_same('filter', $made['created'][0]['cfg']['featured'], 'showing only the featured comments until Show all, as the block does');
+	pg_assert_same('comments', $made['created'][0]['starter'], 'from the starter layout');
+	pg_assert_contains('"type":"shared_ref","props":{"sharedId":77,"sharedName":"design-comments-widget"},"children":[]', $made['tree'], 'its placement takes the block\'s place');
+	pg_assert_false(strpos($made['tree'], 'comments_block') !== false, 'the block is gone');
+	pg_assert_same('shared_ref', $made['selected'], 'the placement is selected');
+	pg_assert_same(1, count(array_keys($made['log'], 'undo', true)), 'one undo step');
+
+	$reused = $res['reused'];
+	pg_assert_same(array(), $reused['created'], 'the design\'s widget is reused');
+	pg_assert_contains('"sharedId":5', $reused['tree'], 'its placement takes the block\'s place');
+	$toast = '';
+	foreach ($reused['log'] as $line) {
+		if (strpos($line, 'toast:success:') === 0) {
+			$toast = $line;
+		}
+	}
+	pg_assert_contains('&quot;Talk &lt;b&gt;&quot;', $toast, 'the toast names the widget, escaped once');
+	pg_assert_false(strpos($toast, '&amp;') !== false, 'and not twice');
+	pg_assert_contains('Its display options are shared with the other pages that show it.', $toast, 'a reused widget that does not filter says its options are shared');
+
+	pg_assert_contains('toast:warning:This page already shows a Comments widget.', implode("\n", $res['already']['log']), 'a page with a widget already is refused');
+	pg_assert_contains('comments_block', $res['already']['tree'], 'and keeps its block');
+
+	pg_assert_contains('"sharedId":5', $res['read_only_back']['tree'], 'a page held by a colleague keeps its widget');
+	pg_assert_same(array('nudge'), $res['read_only_back']['log'], 'and the operator is told why');
+	pg_assert_contains('"type":"region","props":{"regionType":"comments_block","regionName":""},"children":[]', $res['back']['tree'], 'back to the fixed block');
+	pg_assert_false(strpos($res['back']['tree'], 'shared_ref') !== false, 'the placement is gone');
+	pg_assert_same('region', $res['back']['selected'], 'the block is selected');
+	pg_assert_same(1, count(array_keys($res['back']['log'], 'undo', true)), 'one undo step');
+}
 
 // A template may ship a comments widget with the editor's starter layout.
 function test_comments_widget_designer_templates_ship_the_kind()

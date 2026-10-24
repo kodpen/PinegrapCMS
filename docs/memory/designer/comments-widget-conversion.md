@@ -6,7 +6,7 @@ description: Fixed comments block to the Comments widget and back (which widget 
 ## What do Make designable and Back to the fixed block do?
 - Make designable (region panel of a `comments_block`, `#sd-cmt-make-designable`): `_sdCommentsMakeDesignable()` puts a placement of the design's Comments widget where the region was (`_sdCommentsRefNode()`, children `[]`), selects it, one undo step (`saveState()` right before the splice). Comments, watchers and settings are keyed by the page, so the thread is the same.
 - Back to the fixed block (widget panel, `#sd-cmt-back-to-block`): `_sdCommentsBackToBlock()` puts `_sdCommentsBlockNode()` (`regionType comments_block`, `regionName ''`) in its place; the widget row stays.
-- Offered to a designer (`!_sdIsContentLevel()`) on the page's own tree only (`_sdCommentsSwapOffered()`): not inside a component or a widget (a product page's Reviews tab keeps its block). A page that already places a comments widget refuses Make designable with a toast.
+- Offered to a designer (`!_sdIsContentLevel()`) on the page's own tree only (`_sdCommentsSwapOffered()`): not inside a component or a widget (a product page's Reviews tab keeps its block). A page that already places a comments widget refuses Make designable with a toast; a page a colleague holds (`_collab.mayEdit` false) refuses both with the read-only nudge, before any row is made.
 
 ## Which widget is the design's?
 - `_sdCommentsPickWidget()` (pure; `_sdCommentsDesignWidget()` feeds it `_pgAllPageTrees()`, the cache's configs and trees, `_sharedUsage`, the style id): the first comments placement on a page of the design, also inside a component placed there; else one the usage list names for this design; else none.
@@ -26,4 +26,4 @@ description: Fixed comments block to the Comments widget and back (which widget 
 - Watchers managed by the submitter is not a template key: it is lost on a design -> template -> design round trip.
 
 ## How was it checked?
-- `tests/comments_widget_designer_test.php` (census, facts, codes, texts, pick, node shapes, wiring). No running instance.
+- `tests/comments_widget_designer_test.php` (census, facts, codes, texts, pick, node shapes, both conversions run under Node with stubs, wiring). No running instance.

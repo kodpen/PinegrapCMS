@@ -6,6 +6,7 @@ description: Canvas ghost records of listing widgets (designer/widget_ghosts); t
 ## What are ghost records?
 - A listing widget's card is designed on one sample record; the canvas follows it with real records the server draws from the same tree: `_sdAppendGhosts()` → `designer/widget_ghosts` → `pg_designer_widget_ghosts($page_id, $widget, $limit)`, a background render through `pg_designer_preview_widgets()` (`designer-live-preview.md`).
 - Ghosts are DOM only: no `data-sd-id`, `inert`, never selectable, never in the tree JSON. They are redrawn with every render and asked for again 600 ms after the widget's tree or settings change. A browser can switch them off (`localStorage` `pg_sd_ghosts` = `'0'`).
+- The same switch draws a comments widget's sample comments (built on the canvas): [[comments-widget-canvas]].
 - Kinds: the server's list in `pg_designer_widget_ghosts()` (`form_list_view` and its old names, `catalog_listing`) and JS `_SD_GHOST_TYPES`; a new listing kind goes into both.
 - The count follows what the page shows: the server draws the first page (`items_per_page`, capped by `max_results`), drops the first record (its place is the card's) and returns the rest, at most `_SD_GHOST_LIMIT` (10) after the card.
 - The card's bound image takes the natural size of the first ghost image bound to the same field (`data-sd-bind-src`, `_sdBindsSrc()`; the site's "no image" picture is skipped).
