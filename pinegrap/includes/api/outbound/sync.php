@@ -865,7 +865,8 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 //   (mp_listing_rejected_prefix()) the screen knows it by.
 //
 //   pending: nothing, unless a document is needed, which is noted without
-//   touching the status. A row written as rejected goes back to active: the
+//   touching the status, and taken off a row that still sends once it is no
+//   longer asked for. A row written as rejected goes back to active: the
 //   listing was fixed and is in their review again.
 //
 //   unknown, or no answer: nothing. The listing may still be on its way
@@ -953,6 +954,13 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 		$want['last_error'] = mp_sync_listing_document_note($provider_name);
 
 		$keep_refusal = true;
+
+	} elseif ($kind === 'pending' && (string)$row['status'] !== 'error'
+		&& (string)$row['last_error'] === mp_sync_listing_document_note($provider_name)) {
+
+		// The document is in. A stopped row keeps the note, so it is not left
+		// without a reason, until the approval read replaces it.
+		$want['last_error'] = '';
 
 	} else {
 

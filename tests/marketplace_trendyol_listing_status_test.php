@@ -425,6 +425,24 @@ function test_marketplace_trendyol_listing_status_rejected_listing_back_in_revie
 		$pending, 'Trendyol'), 'only a row in error is set back');
 }
 
+// Once the document is in, their answer stops asking for it, and the note goes
+// from a row that still sends. A stopped row keeps it rather than showing no
+// reason at all; the approval read replaces it.
+function test_marketplace_trendyol_listing_status_document_note_goes_when_no_longer_asked()
+{
+	$pending = array('state' => 'pending', 'reasons' => array(), 'doc_needed' => false);
+	$note    = 'Trendyol needs a document for this listing; upload it in the seller panel.';
+
+	pg_assert_same(array('last_error' => ''),
+		mp_sync_listing_row_update(listing_status_test_row(array('last_error' => $note)), $pending, 'Trendyol'));
+
+	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => $note)),
+		$pending, 'Trendyol'), 'a stopped row keeps its reason');
+
+	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('last_error' => 'Trendyol refuses a product without a price.')),
+		$pending, 'Trendyol'), 'a push refusal is not touched');
+}
+
 /* --------------------------------------------------------- the set */
 
 // The rows asked about are a hundred from a start picked at random each pass,
