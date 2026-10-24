@@ -1,9 +1,9 @@
 ---
 name: erp-parasut-shipped-order
-description: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#PR)
+description: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 ---
 
-## What went wrong? (#PR)
+## What went wrong? (#1530)
 - Paraşüt keeps a sales invoice with `shipment_included` true unless told otherwise, and such an invoice takes its goods out of stock itself. The driver's `POST sales_invoices` sent no `shipment_included`. An order whose outgoing `shipment_documents` the order screen's legacy E-Shipment had written (`orders.parasut_shipment_id`) and that was then invoiced through the ERP had its goods counted out twice. Such an order was shipped before the ERP and a provider were switched on: from then on the legacy buttons give way (erp-parasut-legacy-order-buttons.md).
 
 ## What does the driver send now?
