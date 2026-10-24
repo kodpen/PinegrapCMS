@@ -22,7 +22,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 - A product matched without a mapping is mapped at that moment under `code`, or its stock change never enters the queue. `INSERT IGNORE`: one already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key.
 
 ## How do packages arrive?
-- By the job's pull and by `marketplace_webhook.php` (`marketplace-webhook-receiver.md`), both through `mp_import_order()`. The receiver accepts nothing; `mp_sync_approve_pending()` does on the next pull, so turning auto-accept on also accepts the last day's still-`Created` packages, n11's too.
+- By the job's pull and by `marketplace_webhook.php` (`marketplace-webhook-receiver.md`), both through `mp_import_order()`. The receiver accepts nothing; `mp_sync_approve_pending()` does on the next pull, so turning auto-accept on also accepts the last day's still-`Created` packages, n11's too (PR #1453).
 
 ## How is a refused package tried again?
 - A `failed` row with `order_id` 0 (refused before any order was written) is re-claimed when the feed hands the package back: one `UPDATE ... SET status='importing' WHERE status='failed' AND order_id=0`; only the pass that changed the row writes (`mp_import_claimed()`).
