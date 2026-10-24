@@ -17,6 +17,7 @@ description: Plan (approved 2026-10-23, not started): comments as a general desi
 1. Refuse forged threads on designed record pages: `pg_comment_thread_verify()` in new `includes/fn/comments.php`, `add_comment.php`.
 2. Verify product and calendar_event ids on classic pages (same helper).
 3. 7t: edit_comment.php, job.php and the API refresh `submitted_form_info` and mail the submitter on designed record pages.
+3b. One-time data step (owner, 2026-10-23): recount `submitted_form_info` for every (page, record) on designed record pages, no schema; after 3 and after the open PRs holding the migration file.
 4. 7r: member display name (`pg_comment_member_name()`), add_comment.php and the prefill.
 5. Schema: `comments.parent_id` and the two indexes.
 6. add_comment.php accepts replies (`pg_comment_parent_ok()`, `?reply_to=`), API `parent_id`.
@@ -36,5 +37,6 @@ description: Plan (approved 2026-10-23, not started): comments as a general desi
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Slices 1, 3, 5 and 9 touch different files and can run in parallel; 2 after 1, 4 after 3, 6 after 1 and 5, 7 after 4 and 6; 10 after 7 and 8.
+- Built so far (branches, PRs pending): 1 `feature/comments-1-thread-verify`, 5 `feature/comments-5-parent-id-schema`, 9 `feature/widget-copy-for-this-page`; 3, 4 and 2 stack on 1 in that order (all add to `includes/fn/comments.php`).
+- 6 after 2 and 5, 7 after 4 and 6; 10 after 7 and 8.
 - Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).

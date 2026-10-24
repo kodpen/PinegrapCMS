@@ -10,7 +10,7 @@ description: Plan (approved 2026-10-23, not started): Community Forum & Docs des
 - Not built: votes or likes, public member profiles, accepted answers beyond a featured comment shown first.
 
 ## Which general steps come first? (one PR each)
-1. Form lists: sort by last activity (`newest_activity_date_and_time`), a token with the number of records the filters matched, and "number of comments is 0" also matching records with no counter row (unanswered lists).
+1. Form lists: 1a sort by last activity (`newest_activity_date_and_time`); 1b `^^__result_count^^` with `has_records` / `no_records` (capped at max_results like the classic list); 1c no code (owner, 2026-10-23): unanswered lists filter "number of comments is less than 1", since "is equal to 0" misses records without a counter row in the classic list too.
 2. Links with parameters (5b): an href to another page plus query parameters valued from row tokens (board badge to `?board=`, byline to `?member=`, Report to `?post=`).
 3. A designed form control filled from a named address parameter (Report form's post field).
 4. Recent comments mode of the comments widget: newest comments across the records a detail page shows, published for everyone, awaiting approval for staff, the viewer's own; record title and link tokens. After designable-comments 18.
@@ -25,4 +25,5 @@ description: Plan (approved 2026-10-23, not started): Community Forum & Docs des
 - Tests `tests/design_template_forum_test.php` on the news and magazine pattern (placeholders, live rules, private views, office fields, CSS, e-mails, CAPTCHA, landmarks); memory files `designer/design-template-forum*.md`; one `[NEW]` changelog line.
 
 ## Where to start?
-- Steps 1-3 can start now, in parallel with designable-comments 1-9. Step 4 and the template wait for designable-comments 18.
+- Built so far (branches, PRs pending): 1a `feature/forum-1a-activity-sort`, 2 `feature/forum-2-page-links`; 1b stacks on 1a.
+- Step 3 starts after #1347 merged (same `custom_form.php` and panel lines). Step 4 and the template wait for designable-comments 18.
