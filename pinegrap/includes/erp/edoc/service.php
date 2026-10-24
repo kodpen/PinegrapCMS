@@ -791,27 +791,10 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
         $changed[] = $field;
     }
 
-    // The carrier is checked as the pair it will be sent as: a TCKN makes it
-    // a person, and a person needs a first name and a surname. Said here in
-    // the operator's words rather than found out from the provider.
-    if (array_key_exists('carrier_title', (array) $values) || array_key_exists('carrier_vkn', (array) $values)) {
-        $carrier_title = trim((string) (($values['carrier_title'] ?? '') !== '' ? $values['carrier_title'] : ($invoice['carrier_title'] ?? '')));
-        $carrier_vkn = preg_replace('/\D/', '', (string) (($values['carrier_vkn'] ?? '') !== '' ? $values['carrier_vkn'] : ($invoice['carrier_vkn'] ?? '')));
+    $carrier_refusal = erp_edoc_fix_carrier_refusal($values, $invoice);
 
-        // The final-consumer number is not mistyped, so it gets its own
-        // sentence: it stands in for a buyer without an ID and names nobody
-        // who could have carried the goods.
-        if (($carrier_vkn !== '') && function_exists('erp_edoc_final_consumer_tckn') && ($carrier_vkn === erp_edoc_final_consumer_tckn())) {
-            return array('success' => false, 'message' => '', 'error' => lang(array('string' => '{var:1} stands in for a buyer without an ID and cannot be the carrier\'s number. Enter the cargo company\'s 10-digit VKN, or the courier\'s own TCKN.', 'vars' => $carrier_vkn)), 'field' => 'carrier_vkn');
-        }
-
-        if (($carrier_vkn !== '') && function_exists('erp_edoc_tax_number_valid') && !erp_edoc_tax_number_valid($carrier_vkn)) {
-            return array('success' => false, 'message' => '', 'error' => lang('The carrier\'s VKN / TCKN does not pass the check digits; it is probably mistyped.'), 'field' => 'carrier_vkn');
-        }
-
-        if ((strlen($carrier_vkn) === 11) && function_exists('erp_edoc_person_name') && (erp_edoc_person_name($carrier_title) === null)) {
-            return array('success' => false, 'message' => '', 'error' => lang('An 11-digit number is a TCKN, so the carrier is a person: write their first name and surname. For a cargo company, enter its 10-digit VKN instead.'), 'field' => 'carrier_title');
-        }
+    if ($carrier_refusal !== null) {
+        return $carrier_refusal;
     }
 
     if (empty($account_set) && empty($invoice_set)) {
@@ -864,6 +847,50 @@ function erp_edoc_invoice_party_fix($invoice_id, $values, $user_id = 0)
 }
 
 /**
+ * Why the repair form's carrier would be refused, or null.
+ *
+ * The carrier is checked as the pair it will be sent as: a TCKN makes it a
+ * person, and a person needs a first name and a surname. Said here in the
+ * operator's words rather than found out from the provider. A box left
+ * empty is completed from the value stored on the invoice.
+ *
+ * Checked only when a carrier box was filled in. The form posts both carrier
+ * keys, empty, when it does not draw the carrier boxes (the provider asks
+ * nothing about the carrier), so a buyer-only repair is not refused over a
+ * stored carrier the form does not show and the provider does not need.
+ *
+ * @param array $values   field name => value, from the repair form
+ * @param array $invoice  The erp_invoices row
+ * @return array|null  the refusal in erp_edoc_invoice_party_fix()'s shape
+ */
+function erp_edoc_fix_carrier_refusal($values, $invoice)
+{
+    $values = (array) $values;
+
+    if ((trim((string) ($values['carrier_title'] ?? '')) !== '') || (trim((string) ($values['carrier_vkn'] ?? '')) !== '')) {
+        $carrier_title = trim((string) (($values['carrier_title'] ?? '') !== '' ? $values['carrier_title'] : ($invoice['carrier_title'] ?? '')));
+        $carrier_vkn = preg_replace('/\D/', '', (string) (($values['carrier_vkn'] ?? '') !== '' ? $values['carrier_vkn'] : ($invoice['carrier_vkn'] ?? '')));
+
+        // The final-consumer number is not mistyped, so it gets its own
+        // sentence: it stands in for a buyer without an ID and names nobody
+        // who could have carried the goods.
+        if (($carrier_vkn !== '') && function_exists('erp_edoc_final_consumer_tckn') && ($carrier_vkn === erp_edoc_final_consumer_tckn())) {
+            return array('success' => false, 'message' => '', 'error' => lang(array('string' => '{var:1} stands in for a buyer without an ID and cannot be the carrier\'s number. Enter the cargo company\'s 10-digit VKN, or the courier\'s own TCKN.', 'vars' => $carrier_vkn)), 'field' => 'carrier_vkn');
+        }
+
+        if (($carrier_vkn !== '') && function_exists('erp_edoc_tax_number_valid') && !erp_edoc_tax_number_valid($carrier_vkn)) {
+            return array('success' => false, 'message' => '', 'error' => lang('The carrier\'s VKN / TCKN does not pass the check digits; it is probably mistyped.'), 'field' => 'carrier_vkn');
+        }
+
+        if ((strlen($carrier_vkn) === 11) && function_exists('erp_edoc_person_name') && (erp_edoc_person_name($carrier_title) === null)) {
+            return array('success' => false, 'message' => '', 'error' => lang('An 11-digit number is a TCKN, so the carrier is a person: write their first name and surname. For a cargo company, enter its 10-digit VKN instead.'), 'field' => 'carrier_title');
+        }
+    }
+
+    return null;
+}
+
+/**
  * May this invoice's copy of the buyer still be corrected? Only while no
  * provider has taken the document.
  *
@@ -911,6 +938,29 @@ function erp_edoc_invoice_held_refusal($invoice)
 }
 
 /**
+ * Whether a send stopped before the provider's answer was written: the row
+ * is still 'sending', carries no provider id, and was last written more than
+ * fifteen minutes ago, far longer than any send takes. The request ended
+ * inside the driver call (a time limit, a killed process, a fatal error), and
+ * nothing else ever moves the row on. Such a row may go again like an
+ * 'error' row without an id; the driver's own check for a record the stopped
+ * try may have written (Paraşüt's unsure mark) then runs. A fresh 'sending'
+ * row is a send still in flight.
+ *
+ * @param array    $invoice  An erp_invoices row
+ * @param int|null $now      The time to judge by; now when omitted
+ * @return bool
+ */
+function erp_edoc_invoice_send_stalled($invoice, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    return ((string) ($invoice['edoc_status'] ?? 'none') === 'sending')
+        && (trim((string) ($invoice['edoc_external_id'] ?? '')) === '')
+        && ((int) ($invoice['updated_at'] ?? 0) < ($now - 900));
+}
+
+/**
  * May this invoice be sent now, and if not, why not - in the operator's words.
  *
  * @param array $invoice  An erp_invoices row
@@ -955,7 +1005,9 @@ function erp_edoc_invoice_can_send($invoice)
         return array('ok' => false, 'provider' => $provider, 'reason' => $held);
     }
 
-    if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true)) {
+    // A send that stopped before the provider answered is not refused: no
+    // poll can answer a row without an id.
+    if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true) && !erp_edoc_invoice_send_stalled($invoice)) {
         return array('ok' => false, 'provider' => $provider, 'reason' => lang('The document has already gone; ask after its status instead of sending it twice.'));
     }
 

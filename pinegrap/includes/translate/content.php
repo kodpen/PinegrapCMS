@@ -866,11 +866,11 @@ function pg_tr_html_text_segments($html)
     $skip = array('script' => 1, 'style' => 1, 'template' => 1, 'noscript' => 1, 'code' => 1, 'pre' => 1, 'textarea' => 1, 'svg' => 1, 'math' => 1, 'iframe' => 1, 'object' => 1);
     $block_set = array_flip($blocks);
 
-    $inner_html = function ($node) use ($document) {
+    $inner_html = function ($node) {
         $html = '';
 
         foreach ($node->childNodes as $child) {
-            $html .= $document->saveHTML($child);
+            $html .= pg_dom_html($child);
         }
 
         return $html;
@@ -886,7 +886,7 @@ function pg_tr_html_text_segments($html)
         return false;
     };
 
-    $walk = function ($node) use (&$walk, $push, $inner_html, $has_block, $skip, $block_set, $document) {
+    $walk = function ($node) use (&$walk, $push, $inner_html, $has_block, $skip, $block_set) {
         $run = '';
 
         $flush = function () use (&$run, $push) {
@@ -920,7 +920,7 @@ function pg_tr_html_text_segments($html)
             }
 
             if (($child->nodeType === XML_ELEMENT_NODE) || ($child->nodeType === XML_TEXT_NODE)) {
-                $run .= $document->saveHTML($child);
+                $run .= pg_dom_html($child);
             }
         }
 
@@ -1358,13 +1358,18 @@ function pg_tr_extract_form_records($form_page_id)
     $segments = array();
     $position = 0;
 
+    // A field switched out of translation (icon names, codes, JSON) gives no
+    // texts; its earlier ones leave the store with this extraction.
+    $field_filter = pg_tr_has_column('form_fields', 'translate_values')
+        ? " AND form_fields.translate_values = '1'" : '';
+
     $rows = db_items("SELECT form_data.form_id, form_data.form_field_id, form_data.data, form_fields.type, form_fields.wysiwyg
                       FROM form_data
                       INNER JOIN forms ON forms.id = form_data.form_id
                       INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
                       WHERE forms.page_id = '$form_page_id'
                         AND forms.complete = '1'
-                        AND form_fields.type IN ('text box', 'text area')
+                        AND form_fields.type IN ('text box', 'text area')$field_filter
                       ORDER BY forms.id, form_fields.sort_order, form_data.id");
 
     foreach ((array) $rows as $row) {

@@ -8951,6 +8951,7 @@ function get_tables() {
 		'menus',
 		'messages',
 		'next_order_number',
+		'not_found_log',
 		'oauth_clients',
 		'oauth_codes',
 		'offer_actions',

@@ -7,8 +7,8 @@ use Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class IyziLinkSearchMerchantProductsRequest extends Request {
-    private int $page;
-    private int $count;
+    private $page;
+    private $count;
 
     public function getPage(): int {
         return $this->page;

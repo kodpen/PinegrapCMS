@@ -303,6 +303,14 @@ function pg_consent_catalogue($content)
         $catalogue['marketing'][] = array('software[affiliate_code]', true, lang('Remembers the partner who referred you, so the partner can be credited.'));
     }
 
+    // The CAPTCHA provider of the Security settings guards the site's forms
+    // and a form cannot be sent without it, so it is not held for consent.
+    $captcha_provider = (defined('CAPTCHA') && CAPTCHA && function_exists('pg_captcha_provider')) ? pg_captcha_provider() : '';
+
+    if ($captcha_provider !== '') {
+        $catalogue['necessary'][] = array(pg_captcha_provider_definition($captcha_provider)['label'], false, lang('Checks that a form is sent by a person; loaded only on pages with a form.'));
+    }
+
     foreach (pg_consent_page_services($content) as $category => $names) {
         foreach ($names as $name) {
             $catalogue[$category][] = array(($name !== '') ? $name : lang('Other services'), false, lang('A service added by this site. It starts only if you allow it.'));
@@ -501,6 +509,7 @@ function pg_consent_ui_keys()
         'Remembers the campaign (UTM) that brought you to the site.',
         'Google Analytics: tells visits apart to measure how the site is used.',
         'Remembers the partner who referred you, so the partner can be credited.',
+        'Checks that a form is sent by a person; loaded only on pages with a form.',
         'Other services',
         'A service added by this site. It starts only if you allow it.',
         'Necessary',

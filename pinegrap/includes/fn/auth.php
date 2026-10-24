@@ -617,7 +617,7 @@ function pg_member_activate($form, $opts = array())
 
     $form->validate_required_field('first_name', lang('First Name is required.'));
     $form->validate_required_field('last_name', lang('Last Name is required.'));
-    $form->validate_required_field('member_id', lang(array('string' => '{var:1} is required.', 'vars' => MEMBER_ID_LABEL)));
+    $form->validate_required_field('member_id', lang(array('string' => '{var:1} is required.', 'vars' => h(MEMBER_ID_LABEL))));
     if ($has_username) {
         $form->validate_required_field('username', lang('Username is required.'));
     }
@@ -653,7 +653,7 @@ function pg_member_activate($form, $opts = array())
         if ($contact_id <= 0) {
             $form->mark_error('member_id', lang(array(
                 'string' => 'The {var:1} and last name you entered do not match a membership that can be activated.',
-                'vars'   => MEMBER_ID_LABEL)));
+                'vars'   => h(MEMBER_ID_LABEL))));
             $form->mark_error('last_name');
         }
     }
@@ -1088,14 +1088,16 @@ function pg_account_security_section()
         $devices_html = '<p>' . h(lang('No remembered devices.')) . '</p>';
     }
 
-    // Two-step verification (includes/fn/mfa.php) comes last: it carries its
-    // own heading, so it does not read as part of the device list.
+    // Two-step verification (includes/fn/mfa.php) and passkeys
+    // (includes/fn/passkeys.php) come last: each carries its own heading, so
+    // they do not read as part of the device list.
     $mfa_html = pg_mfa_account_section($user_id, $algo, $action_url, $token);
+    $passkey_html = pg_passkey_account_section($user_id, $algo, $action_url, $token);
 
     return
         '<div class="pg-account-security" style="margin-top:2em;max-width:640px">'
         . '<div class="heading" style="margin-bottom:10px">' . h(lang('Sign-in and devices')) . '</div>'
-        . $identity_html . $devices_html . $mfa_html . '</div>';
+        . $identity_html . $devices_html . $mfa_html . $passkey_html . '</div>';
 }
 
 // The configured cap on concurrent "remember me" devices per account (Settings).
@@ -3086,6 +3088,20 @@ function pg_captcha_answer_id($number)
     return 'captcha_submitted_answer' . (($number > 1) ? '_' . $number : '');
 }
 
+/**
+ * Whether the signed-in person has work in the control panel. Staff skip the
+ * CAPTCHA, the firewall's sensitive limit and the form submission limits;
+ * a signed-in member answers and is counted like any visitor. The rule and
+ * its cache live in waf.php (waf_user_is_staff()), which init.php loads on
+ * every request; without it nobody counts as staff.
+ *
+ * @return bool
+ */
+function pg_user_has_panel_access()
+{
+    return function_exists('waf_user_is_staff') && waf_user_is_staff();
+}
+
 function get_captcha_fields($liveform)
 {
     // How many CAPTCHAs this request has printed (pg_captcha_answer_id()).
@@ -3095,8 +3111,27 @@ function get_captcha_fields($liveform)
         return '';
     }
     $output_captcha_fields = '';
-    // if the user is not logged in then show the captcha form
-    if (isset($_SESSION['sessionusername']) == false) {
+    // A provider chosen in the Security settings (includes/fn/captcha.php)
+    // replaces the question with its own widget; the honeypot stays.
+    $captcha_provider = (!pg_user_has_panel_access() && function_exists('pg_captcha_active')) ? pg_captcha_active() : null;
+
+    if (is_array($captcha_provider)) {
+        $output_captcha_fields = '<div class="captcha">
+
+                <div style="display: none">' . $liveform->output_field(array(
+                        'type' => 'textarea',
+                        'name' => 'body',
+                        'cols' => '30',
+                        'rows' => '4',
+                        'class' => 'software_textarea'
+                    )) . '</div>
+
+                <div class="software_captcha_label" style="font-weight: bold; margin-bottom: .5em">' . lang('To prevent spam, please confirm you are not a robot') . '</div>
+                ' . pg_captcha_widget($captcha_provider) . '
+
+            </div>';
+    // Everyone but staff answers the question (pg_user_has_panel_access()).
+    } else if (!pg_user_has_panel_access()) {
         // randomly generate the numbers to add and the question to be asked
         $first_number = rand(0, 9);
         $second_number = rand(0, 9);
@@ -3154,10 +3189,26 @@ function get_captcha_fields($liveform)
 // output the captcha heading or question, because the custom layout will contain that.
 function get_captcha_info($form)
 {
-    // If the CAPTCHA is disabled in the settings or the user is logged in,
-    // then don't show a CAPTCHA.
-    if (!CAPTCHA || USER_LOGGED_IN) {
+    // No CAPTCHA when it is switched off or for staff; a signed-in member
+    // answers it like any visitor.
+    if (!CAPTCHA || pg_user_has_panel_access()) {
         return false;
+    }
+    // With a provider there is no question, so the layout drops its answer
+    // box, and the widget is printed with the form's system fields.
+    $captcha_provider = function_exists('pg_captcha_active') ? pg_captcha_active() : null;
+
+    if (is_array($captcha_provider)) {
+        return array(
+            'question' => '',
+            'system' => '<div style="display: none">
+
+            <textarea name="body" cols="30" rows="4"></textarea>
+
+        </div>
+
+        ' . pg_captcha_widget($captcha_provider)
+        );
     }
     // randomly generate the numbers to add and the question to be asked
     $first_number = rand(0, 9);
@@ -3189,12 +3240,18 @@ function get_captcha_info($form)
 }
 function validate_captcha_answer($liveform)
 {
-    // If the visitor is not logged in then make sure that he/she answered the CAPTCHA correctly.
-    if (isset($_SESSION['sessionusername']) == false) {
+    // Everyone but staff must answer the question (pg_user_has_panel_access()).
+    if (!pg_user_has_panel_access()) {
         // If the honeypot field was filled out, then that means the submitter is a bot,
         // because the field is hidden with CSS, so add error.
         if ($liveform->get_field_value('body') != '') {
             $liveform->mark_error('captcha_submitted_answer', lang('Sorry, the answer that you entered for the question is not valid. Please try again.'));
+        // A provider's token is checked with the provider; the blacklist is
+        // asked only after it passed, as after a correct answer.
+        } else if (function_exists('pg_captcha_active') && is_array($captcha_provider = pg_captcha_active())) {
+            if (pg_captcha_check($liveform, $captcha_provider) === 'pass') {
+                pg_form_spam_check($liveform);
+            }
             // Else the honeypot field was not filled out, so determine if the answer is correct.
         } else {
             // check to see if there is a submitted answer
@@ -3206,30 +3263,111 @@ function validate_captcha_answer($liveform)
                 // when the form is shown again.
                 if (!pg_form_captcha_check($liveform->get_field_value('captcha_validation'), $liveform->get_field_value('captcha_submitted_answer'))) {
                     $liveform->mark_error('captcha_submitted_answer', lang('The answer you entered for the question was incorrect. Please try again.'));
-                    // Otherwise the answer is correct, so if a blacklist is enabled,
-                    // then determine if IP address is on a blacklist and should be rejected.
-                    // We do this check after verifying that the captcha answer is correct,
-                    // in order to minimize requests to stopforumspam.com.
-                } else if (defined('BLACKLIST') and BLACKLIST) {
-                    $response = decode_json(@file_get_contents('http://www.stopforumspam.com/api?ip=' . urlencode($_SERVER['REMOTE_ADDR']) . '&f=json'));
-                    // If there was a communication error with the blacklist service, then log that.
-                    if ((isset($response['success']) == false) || ($response['success'] == false)) {
-                        $error = '';
-                        // If blacklist service returned an error, then include that info in log message.
-                        if (!empty($response['error'])) {
-                            $error = ' (' . $response['error'] . ')';
-                        }
-                        // The visitor is not signed in here (see the outer check), so there is no username to log.
-                        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), lang('UNKNOWN'));
-                        // Otherwise there was not a communication error with the blacklist service,
-                        // so if the visitor is on the blacklist, then log activity and add error.
-                    } else if (!empty($response['ip']['appears'])) {
-                        log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round($response['ip']['confidence']), pg_format_number($response['ip']['frequency'], 0)))), lang('UNKNOWN'));
-                        $liveform->mark_error('', lang('Sorry, we were not able to accept your request.'));
-                    }
+                } else {
+                    // Only after a correct answer, to keep requests to the
+                    // blacklist service down.
+                    pg_form_spam_check($liveform);
                 }
             }
         }
+    }
+}
+
+/**
+ * Whether submissions are checked against StopForumSpam: the Security
+ * setting (config.form_spam_blacklist, off by default), or the BLACKLIST
+ * constant an older data/config.php may still define.
+ *
+ * @return bool
+ */
+function pg_form_spam_enabled()
+{
+    if (defined('BLACKLIST') && BLACKLIST) {
+        return true;
+    }
+
+    return function_exists('waf_setting') && ((int) waf_setting('form_spam_blacklist', 0) === 1);
+}
+
+/**
+ * Ask StopForumSpam whether an address is listed as a spam source.
+ *
+ * Over https with the software's certificate rules and user agent, four
+ * seconds at most. Fails open: a service that cannot be reached, or that
+ * answers with an error, lets the submission through and leaves a line in
+ * the activity log, as the check always has.
+ *
+ * @param string $ip The visitor's address (waf_client_ip())
+ * @return bool True only when the service answered and lists the address
+ */
+function pg_form_spam_ip_listed($ip)
+{
+    $ip = (string) $ip;
+
+    if (($ip === '') || !function_exists('curl_init')) {
+        return false;
+    }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.stopforumspam.org/api?ip=' . urlencode($ip) . '&json');
+    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
+    pg_curl_tls($ch);
+
+    $body = curl_exec($ch);
+
+    // A no-op since PHP 8.0 and deprecated in 8.5.
+    if (PHP_VERSION_ID < 80000) {
+        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
+    }
+
+    $response = is_string($body) ? json_decode($body, true) : null;
+
+    if (!is_array($response) || empty($response['success'])) {
+        $error = '';
+        // If the service returned an error, then include it in the log message.
+        if (is_array($response) && !empty($response['error']) && is_string($response['error'])) {
+            $error = ' (' . $response['error'] . ')';
+        }
+        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), lang('UNKNOWN'));
+        return false;
+    }
+
+    if (empty($response['ip']['appears'])) {
+        return false;
+    }
+
+    log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round((float) ($response['ip']['confidence'] ?? 0)), pg_format_number((int) ($response['ip']['frequency'] ?? 0), 0)))), lang('UNKNOWN'));
+
+    return true;
+}
+
+/**
+ * Refuse the submission when the switch is on and StopForumSpam lists the
+ * visitor's address. Asks once per request: the CAPTCHA check and the custom
+ * form's own protections both call it.
+ *
+ * @param object $liveform
+ * @return void
+ */
+function pg_form_spam_check($liveform)
+{
+    static $listed = null;
+
+    if (!pg_form_spam_enabled()) {
+        return;
+    }
+
+    if ($listed === null) {
+        $ip = function_exists('waf_client_ip') ? (string) waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $listed = pg_form_spam_ip_listed($ip);
+    }
+
+    if ($listed) {
+        $liveform->mark_error('', lang('Sorry, we were not able to accept your request.'));
     }
 }
 // create function to detect and set device type (i.e. desktop or mobile) in session and cookie if it has not already been done
@@ -3829,6 +3967,29 @@ function pg_login_throttle_subjects($identifier)
 }
 
 /**
+ * Whether this address or this account is locked out right now: the check
+ * of pg_login_throttle_guard() without its answer, for a caller that refuses
+ * in its own shape (passkey.php answers JSON). False while the throttle is
+ * off.
+ */
+function pg_login_throttle_locked($identifier)
+{
+    if (!pg_login_throttle_enabled()) {
+        return false;
+    }
+
+    $limits = pg_login_throttle_limits();
+
+    foreach (pg_login_throttle_subjects($identifier) as $scope => $subject) {
+        if (waf_rate_hits($subject, 'lock' . $scope, $limits['lockout']) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Stop the request when this address or this account is already locked out.
  *
  * Called before the password is checked, so a locked-out attempt costs one
@@ -3841,16 +4002,8 @@ function pg_login_throttle_subjects($identifier)
  */
 function pg_login_throttle_guard($identifier)
 {
-    if (!pg_login_throttle_enabled()) {
-        return;
-    }
-
-    $limits = pg_login_throttle_limits();
-
-    foreach (pg_login_throttle_subjects($identifier) as $scope => $subject) {
-        if (waf_rate_hits($subject, 'lock' . $scope, $limits['lockout']) > 0) {
-            pg_login_throttle_deny($limits);
-        }
+    if (pg_login_throttle_locked($identifier)) {
+        pg_login_throttle_deny(pg_login_throttle_limits());
     }
 }
 

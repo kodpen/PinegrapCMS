@@ -272,6 +272,7 @@ if (!$_POST) {
     $output_upload_folder_id_row = '';
     $output_contact_field_row = '';
     $output_office_use_only_row = '';
+    $output_translate_values_row = '';
     
     // if this is for a custom form
     if ($form_type == 'custom') {
@@ -327,6 +328,18 @@ if (!$_POST) {
                     <label class="form-check-label" for="office_use_only">' . lang('Hide This Field from Submitter') . '</label>
                 </div>
             </div>';
+
+        // Answers to a text field are translated where a widget includes the
+        // form's records; codes or icon names typed into one are left out.
+        if (pg_schema_has('form_fields', 'translate_values')) {
+            $output_translate_values_row =
+                '<div class="col-12 my-1 collapse" id="translate_values_row">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="translate_values" name="translate_values" value="1" checked="checked">
+                        <label class="form-check-label" for="translate_values">' . lang('Include in translation') . '</label>
+                    </div>
+                </div>';
+        }
     }
     
     // get field with largest sort order in this form, so we can prefill position field with an appropriate value
@@ -435,6 +448,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         ' . $output_office_use_only_row . '
+                                        ' . $output_translate_values_row . '
                                         <div class="col-12 my-1 collapse" id="wysiwyg_row">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="wysiwyg" name="wysiwyg" value="1">
@@ -636,9 +650,17 @@ if (!$_POST) {
 
     $sql_upload_folder_id_column = "";
     $sql_upload_folder_id_value = "";
+    $sql_translate_values_column = "";
+    $sql_translate_values_value = "";
     
     // if this is a custom form
     if ($form_type == 'custom') {
+        // Only a text box or text area can be left out of translation.
+        if (pg_schema_has('form_fields', 'translate_values')) {
+            $sql_translate_values_column = "translate_values,";
+            $sql_translate_values_value = "'" . pg_cf_translate_flag(!empty($_POST['translate_values']), $_POST['type'] ?? '') . "',";
+        }
+
         // If this is a file upload field, then check access to selected folder,
         // and prepare to add folder info to SQL.
         // A signature is written into that folder as well, so it answers to the
@@ -685,6 +707,7 @@ if (!$_POST) {
                 contact_field,
                 office_use_only,
                 $sql_upload_folder_id_column
+                $sql_translate_values_column
                 quiz_question,
                 quiz_answer,
                 user,
@@ -711,6 +734,7 @@ if (!$_POST) {
                 '" . escape($_POST['contact_field'] ?? '') . "',
                 '" . escape($_POST['office_use_only'] ?? '') . "',
                 $sql_upload_folder_id_value
+                $sql_translate_values_value
                 '" . escape($_POST['quiz_question'] ?? '') . "',
                 '" . escape(prepare_form_data_for_input($_POST['quiz_answer'] ?? '', $_POST['type'])) . "',
                 '" . $user['id'] . "',

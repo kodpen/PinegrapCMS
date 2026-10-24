@@ -220,3 +220,31 @@ function test_mfa_format_secret_groups_of_four()
 	pg_assert_same('', pg_mfa_format_secret(''));
 	pg_assert_same(mfa_test_rfc_secret(), pg_base32_decode(pg_mfa_format_secret(mfa_test_rfc_secret())));
 }
+
+// Each refusal of the shared proof check has its sentence; the password and
+// code sentences are the ones the sign-in and account screens already show.
+// The lockout minutes are given: read from the settings they need a database.
+function test_mfa_reauth_message()
+{
+	pg_assert_same('', pg_mfa_reauth_message('', 15));
+
+	$sentences = array();
+
+	foreach (array('attempts', 'locked', 'password', 'code') as $refusal) {
+		$sentences[$refusal] = pg_mfa_reauth_message($refusal, 15);
+		pg_assert_true($sentences[$refusal] !== '', $refusal);
+	}
+
+	pg_assert_same(count($sentences), count(array_unique($sentences)), 'each its own sentence');
+
+	pg_assert_same(
+		lang('The password you entered is incorrect. Please remember that passwords are case sensitive.'),
+		pg_mfa_reauth_message('password'));
+	pg_assert_same(
+		lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'),
+		pg_mfa_reauth_message('code'));
+	pg_assert_same(
+		lang('Too many attempts. Please wait a few minutes and try again.'),
+		pg_mfa_reauth_message('attempts'));
+	pg_assert_contains('15', pg_mfa_reauth_message('locked', 15), 'lockout minutes');
+}

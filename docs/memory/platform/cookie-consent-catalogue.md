@@ -10,6 +10,7 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
   - necessary, while the page cache is on (`pg_page_cache_ttl() > 0`): `pg_nc` (`PG_PAGE_CACHE_MARKER`, browser session, marks a cart, sign-in or notice for a cache in front, `page-cache-gate.md`);
   - analytics with `VISITOR_TRACKING`: `software[number_of_visits]`, `software[tracking_code]`, `lsid`; with Google Analytics `_ga, _ga_*`;
   - marketing with tracking and the affiliate program: `software[affiliate_code]`;
+  - necessary, while `CAPTCHA` is on with a provider: "Cloudflare Turnstile" or "hCaptcha" as a service (not held: a form cannot be sent without it, `waf/form-captcha-providers.md`);
   - every script the page holds with `data-pg-consent` (`pg_consent_page_services()`), as a service of the site.
 - Before PR #1090 (issue #768) `software[view_page_mode]` and `pg_language` were written but not listed.
 

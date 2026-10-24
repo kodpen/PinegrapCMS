@@ -106,25 +106,93 @@ function test_core_relative_time_without_a_signed_in_person()
 	pg_assert_false(pg_time_uses_user_zone(array()), 'nobody signed in');
 }
 
-// Every zone the pick lists offer is a current IANA name, so a PHP that reads
-// the system's time zone database without its legacy links (Debian and
-// Ubuntu's tzdata-legacy) knows each one. Etc/Greenwich is the one fixed GMT
-// zone and has no current name of its own in the list of identifiers.
+// Every zone the pick lists offer is one this PHP can use, by the current name
+// in its time zone database: a PHP that reads the system's database without
+// its legacy links (Debian and Ubuntu's tzdata-legacy) knows no old name, and
+// a database older than tzdata 2020a (the one every PHP 7.1 and 7.2 release
+// embeds) has America/Godthab, not America/Nuuk. Etc/Greenwich is the one
+// fixed GMT zone and has no current name of its own in the list of
+// identifiers.
 function test_core_timezone_list_offers_current_names()
 {
-	$known = timezone_identifiers_list();
+	$current = timezone_identifiers_list();
+	$offered = get_timezones();
 
-	foreach (get_timezones() as $label => $zone) {
-		if ($zone === 'Etc/Greenwich') {
-			continue;
+	foreach ($offered as $label => $zone) {
+		pg_assert_true(pg_timezone_known($zone), $label . ' (' . $zone . ') is a zone this PHP knows');
+
+		if ($zone !== 'Etc/Greenwich') {
+			pg_assert_true(in_array($zone, $current, true), $label . ' (' . $zone . ') is a current zone name');
 		}
+	}
 
-		pg_assert_true(in_array($zone, $known, true), $label . ' (' . $zone . ') is a current zone name');
+	// Each entry of the list is offered here by one of its names. The list
+	// leaves out an entry this PHP knows by neither name, so a misspelt name
+	// would otherwise drop out of the pick lists without a failing test.
+	$all = function ($zone) {
+		return true;
+	};
+
+	foreach (get_timezones($all) as $label => $zone) {
+		pg_assert_true(isset($offered[$label]), $label . ' (' . $zone . ') is offered');
 	}
 
 	foreach (pg_timezone_legacy_names() as $old => $new) {
-		pg_assert_true(in_array($new, $known, true), $old . ' becomes the current name ' . $new);
-		pg_assert_false(in_array($old, get_timezones(), true), $old . ' is no longer offered');
+		$name = pg_timezone_known($new) ? $new : $old;
+
+		pg_assert_same($name, pg_timezone_canonical($old), $old . ' is read as ' . $name);
+		pg_assert_true(in_array($name, $current, true), $old . ' becomes the current name ' . $name . ' of this database');
+
+		if ($name === $new) {
+			pg_assert_false(in_array($old, $offered, true), $old . ' is no longer offered');
+		}
+	}
+}
+
+// The pick lists on both kinds of database, whatever this PHP has: a zone is
+// offered, and a stored name selected, by the name the database knows, so a
+// save never writes back a name this PHP cannot use.
+function test_core_timezone_list_follows_the_database()
+{
+	// A database older than tzdata 2020a.
+	$old_database = function ($zone) {
+		return $zone !== 'America/Nuuk';
+	};
+
+	// A system database without the legacy links.
+	$no_links = function ($zone) {
+		return !array_key_exists($zone, pg_timezone_legacy_names());
+	};
+
+	$zones = get_timezones($old_database);
+	pg_assert_same('America/Godthab', $zones['(UTC-03:00) Greenland'], 'an old database: Greenland by the name it has');
+	pg_assert_false(in_array('America/Nuuk', $zones, true), 'and never by the name it lacks');
+	pg_assert_same('America/New_York', $zones['(UTC-05:00) Eastern Time (US & Canada)'], 'every other zone by its current name');
+
+	$zones = get_timezones($no_links);
+	pg_assert_same('America/Nuuk', $zones['(UTC-03:00) Greenland'], 'no legacy links: Greenland by its current name');
+	pg_assert_same(array(), array_values(array_intersect($zones, array_keys(pg_timezone_legacy_names()))), 'and no old name at all');
+
+	$neither = function ($zone) {
+		return ($zone !== 'America/Nuuk') && ($zone !== 'America/Godthab');
+	};
+
+	pg_assert_false(array_key_exists('(UTC-03:00) Greenland', get_timezones($neither)), 'a zone known by neither name is not offered');
+
+	pg_assert_same('America/Godthab', pg_timezone_list_value('America/Godthab', $old_database), 'an old database keeps a stored old name selected');
+	pg_assert_same('America/Godthab', pg_timezone_list_value('America/Nuuk', $old_database), 'and selects it for the current name');
+	pg_assert_same('America/Nuuk', pg_timezone_list_value('America/Godthab', $no_links), 'no legacy links: the current option');
+	pg_assert_same('Nowhere/Atlantis', pg_timezone_list_value(' Nowhere/Atlantis '), 'an unknown name stays as it is, a custom option');
+
+	$databases = array('this PHP' => null, 'an old database' => $old_database, 'no legacy links' => $no_links);
+
+	foreach ($databases as $database => $known) {
+		$offered = get_timezones($known);
+
+		foreach (pg_timezone_legacy_names() as $old => $new) {
+			pg_assert_true(in_array(pg_timezone_list_value($old, $known), $offered, true), $old . ' stays selected (' . $database . ')');
+			pg_assert_true(in_array(pg_timezone_list_value($new, $known), $offered, true), $new . ' stays selected (' . $database . ')');
+		}
 	}
 }
 

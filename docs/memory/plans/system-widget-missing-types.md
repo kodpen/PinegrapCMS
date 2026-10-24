@@ -24,7 +24,7 @@ Compared on 2026-10-19: the `page_type` cases of `get_page_content.php` against 
 ## Why does the classic multi-step checkout need widgets?
 - Owner (2026-10-19): almost every existing site checks out through it, so it cannot be left as a `system` node. "Frozen" in `feature-roadmap-2026-10.md` means its code stays and keeps working, not that it gets no widget.
 - Four widgets, one per step, post to the classic handlers (`shipping_address_and_arrival.php`, `shipping_method.php`, `billing_information.php`, `order_preview.php` -> `submit_order.php`) with their field names, as `express_order` does for `express_order.php`. The shopping cart widget already links into the flow (`next_page_id_with_shipping` / `_without_shipping`).
-- The order preview's totals are computed as `get_order_preview.php` computes them; that calculation is never changed (`workflow/decisions-made-product.md`), the widget only draws what it returns.
+- The order preview's totals are computed as `get_order_preview.php` computes them; only the checkout's rules change that calculation (`workflow/decisions-made-product.md`), the widget only draws what it returns.
 
 ## What does a converted page use until a widget exists?
 - A `region` node of type `system` (`<system></system>`) keeps the classic renderer running on the page, so the page works; only its inside is not designable. A custom layout (`layout_type = 'custom'`) keeps drawing through that node too; swapping it for a widget is Y5 of `legacy-layouts-in-designer.md`, opt-in per page. Retirement needs the owner's list of types that must be designable first.

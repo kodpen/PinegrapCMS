@@ -6195,7 +6195,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         //
         // files.name IS the address -- every reader resolves a file as
         // FILE_DIRECTORY_PATH . '/' . name -- so the name is what the content
-        // carries, and a LIKE over the places content lives finds it.
+        // carries, and a LIKE over the places content lives finds it. The
+        // Workspace ties a file to a message or a task by its id, and is asked
+        // by id.
         //
         // On demand only. This walks several text columns without an index
         // that could help, which is fine for a button somebody pressed and
@@ -6422,6 +6424,33 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             if (count($usage_setting_hits) > 0) {
                 $usage_total += count($usage_setting_hits);
                 $usage_groups[] = array('label' => lang('Settings'), 'items' => $usage_setting_hits);
+            }
+
+            // The Workspace messages that carry the file or tag it, and the
+            // tasks that tag it, read by id through idx_file and idx_ref
+            // rather than by name. Only channels and tasks the person may
+            // read are listed or counted (ws_file_usage()): staff see every
+            // channel's folder here, and that does not let them read a
+            // private channel's messages.
+            if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+                if (ws_enabled()) {
+                    $usage_viewer = ws_viewer($user);
+
+                    if ($usage_viewer['member']) {
+                        $usage_workspace = ws_file_usage($usage_viewer, (int) $usage_file['id'], $usage_cap);
+
+                        foreach (ws_file_usage_groups($usage_workspace) as $usage_group) {
+                            $usage_total += count($usage_group['items']);
+                            $usage_groups[] = $usage_group;
+                        }
+
+                        if ($usage_workspace['truncated']) {
+                            $usage_truncated = true;
+                        }
+                    }
+                }
             }
 
             respond(array(
