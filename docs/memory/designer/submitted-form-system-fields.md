@@ -33,6 +33,6 @@ description: Single record of submitted-form system fields (get_standard_fields_
 
 ## What does the sort setting use?
 - `order_by_field` uses the same names: `submitted_date_and_time` | `submitted_form_id` | a form field name.
-- Plus the counters `number_of_views` | `number_of_comments` | `recent_views` (with `order_recent_days`, 1-180, default 7), in both sort fields. They win over a same-named form field and need the list's detail page; without one the date order applies. See `record-view-counts.md`.
+- Plus the record statistics of `pg_sw_form_order_counters()` (views, comments, recent views with `order_recent_days`, newest activity), in both sort fields. They win over a same-named form field and need the list's detail page; without one the date order applies: `record-view-counts.md`.
 
 Related: docs/memory/designer/submitted-form-token-pitfalls.md

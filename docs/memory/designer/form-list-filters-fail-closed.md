@@ -1,6 +1,6 @@
 ---
 name: form-list-filters-fail-closed
-description: A designed form list whose filter names a missing field or an unknown operator shows no record (page, feeds, sitemap, search index); address filters unchanged; editor row warning
+description: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 ---
 
 ## What happens when a list filter cannot be applied?
@@ -24,6 +24,12 @@ description: A designed form list whose filter names a missing field or an unkno
 
 ## What is unchanged?
 - Classic list views (`get_form_list_view.php`); no schema change.
+
+## Which filter lists unanswered records?
+- "Number of Comments is less than 1". A numeric operand is not quoted (`prepare_sql_operation()`), so `IFNULL(x, '') < 1` compares numbers, '' reads as 0, and a record with no `submitted_form_info` row on the detail page (never viewed, never commented) is found. Read from the code; not yet run on a database.
+- "is equal to 0" misses that record: `IFNULL(x, '') = '0'` compares strings ('' is not '0'), and "is not equal to 0" lists it. The classic Form List View builds the same SQL.
+- Owner decision 2026-10-23: the classic layer stays the yardstick, so no widget-only `IFNULL(counter, 0)`; templates use "less than 1".
+- Without a detail page there is never a row, so a "less than 1" list shows every record.
 
 ## Where are the tests?
 - `tests/form_list_filter_closed_test.php` (decision, invalid operator, the 50-row cap, address rows, every path, editor) and `tests/record_view_filters_test.php`.

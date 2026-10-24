@@ -4,7 +4,7 @@ description: A settings card that runs a job beside saving: named type=submit bu
 ---
 
 ## How does a card perform a job in addition to saving?
-- Same way in dialog and page: a NAMED `type="submit"` button. The save module asks `post_value('<name>')`: settings are written first, then the job runs. The only card button, "Bot IP Listelerini Güncelle", works this way.
+- Same way in dialog and page: a NAMED `type="submit"` button. The save module asks `post_value('<name>')`: settings are written first, then the job runs. The card buttons work this way: the firewall's "Bot IP Listelerini Güncelle", the product feeds' "New address" and Appearance's "Reset Widgets" (`settings-dashboard-card.md`).
 - No serializer sends a submit button: a submit button is a successful control only when it submits the form, while `serialize()` looks at the form, not the click. In the dialog this was silent: the button saved the category, skipped the job and said "kaydedildi". The name is remembered at click time (`pressed`, `backend.src.js`) and put back into the body by the submit that follows: the submit handler hands it to `save(button)`.
 - A click whose default was cancelled (an inline `confirm()` answered Cancel) is not remembered. Before #748 it was, and the next Save or Ctrl+S carried it: a cancelled "New address" renewed the product feed address on the next save and the old `feed.php` address went 404.
 

@@ -1,0 +1,102 @@
+{
+    "totalElements": 2,
+    "totalPages": 1,
+    "page": 0,
+    "size": 200,
+    "content": [
+        {
+            "shipmentAddress": {
+                "firstName": "Ayşe",
+                "lastName": "Yılmaz",
+                "address1": "Moda Cad. No: 12 D: 4",
+                "city": "İstanbul",
+                "district": "Kadıköy",
+                "countryCode": "TR",
+                "phone": "5551112233",
+                "fullName": "Ayşe Yılmaz"
+            },
+            "orderNumber": "10654411111",
+            "packageGrossAmount": 689.87,
+            "packageSellerDiscount": 25.00,
+            "packageTyDiscount": 15.00,
+            "customerFirstName": "Ayşe",
+            "customerLastName": "Yılmaz",
+            "customerEmail": "pf+k3j9x2@trendyolmail.com",
+            "shipmentPackageId": 3330111111,
+            "lines": [
+                {
+                    "quantity": 3,
+                    "stockCode": "TSHIRT-RED-M",
+                    "productName": "Pamuklu Tişört - Kırmızı - M",
+                    "lineGrossAmount": 199.99,
+                    "lineSellerDiscount": 8.33,
+                    "lineTyDiscount": 5.00,
+                    "lineId": 4765111111,
+                    "barcode": "8680000000011",
+                    "orderLineItemStatusName": "Cancelled",
+                    "cancelledBy": "customer",
+                    "cancelReason": "Vazgeçtim",
+                    "cancelReasonCode": 501
+                },
+                {
+                    "quantity": 1,
+                    "stockCode": "MUG-01",
+                    "productName": "Seramik Kupa",
+                    "lineGrossAmount": 89.90,
+                    "lineSellerDiscount": 0.00,
+                    "lineTyDiscount": 0.00,
+                    "lineId": 4765111112,
+                    "barcode": "8680000000028",
+                    "orderLineItemStatusName": "Cancelled"
+                }
+            ],
+            "currencyCode": "TRY",
+            "shipmentPackageStatus": "Cancelled",
+            "status": "Cancelled",
+            "lastModifiedDate": 1792710000000,
+            "createdBy": "order-creation",
+            "originPackageIds": null
+        },
+        {
+            "shipmentAddress": {
+                "firstName": "Ayşe",
+                "lastName": "Yılmaz",
+                "address1": "Moda Cad. No: 12 D: 4",
+                "city": "İstanbul",
+                "district": "Kadıköy",
+                "countryCode": "TR",
+                "phone": "5551112233",
+                "fullName": "Ayşe Yılmaz"
+            },
+            "orderNumber": "10654411111",
+            "packageGrossAmount": 89.90,
+            "packageSellerDiscount": 0.00,
+            "packageTyDiscount": 0.00,
+            "customerFirstName": "Ayşe",
+            "customerLastName": "Yılmaz",
+            "customerEmail": "pf+k3j9x2@trendyolmail.com",
+            "shipmentPackageId": 3330111133,
+            "cargoTrackingNumber": 7280027504111133,
+            "cargoProviderName": "Trendyol Express",
+            "lines": [
+                {
+                    "quantity": 1,
+                    "stockCode": "MUG-01",
+                    "productName": "Seramik Kupa",
+                    "lineGrossAmount": 89.90,
+                    "lineSellerDiscount": 0.00,
+                    "lineTyDiscount": 0.00,
+                    "lineId": 4765111134,
+                    "barcode": "8680000000028",
+                    "orderLineItemStatusName": "Created"
+                }
+            ],
+            "currencyCode": "TRY",
+            "shipmentPackageStatus": "Created",
+            "status": "Created",
+            "lastModifiedDate": 1792710000500,
+            "createdBy": "cancel",
+            "originPackageIds": [3330111111]
+        }
+    ]
+}
