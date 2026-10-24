@@ -224,33 +224,63 @@ function test_marketplace_trendyol_shipping_link_follows_the_order_screen()
 		mp_sync_shipment_link(array($unnamed), 'Trendyol Express', 'aras')['url']);
 }
 
-// On an imported order the method code is the carrier the marketplace named.
-// A link built from it, or from a row carrier that only repeats it, would send
-// their carrier's page with the shop's number.
+// On an order imported before the account shipped itself, the method code is
+// the carrier name the marketplace gave, and their own parcel on the address
+// carries the same carrier. A link built from it, or from a row carrier that
+// only repeats it, would send their carrier's page with the shop's number.
 function test_marketplace_trendyol_shipping_link_never_takes_their_carrier()
 {
+	$theirs = trendyol_shipping_test_row(array('id' => 9, 'number' => '7280027504111111', 'source' => 'marketplace',
+		'carrier' => 'yurtici', 'tracking_url' => 'https://tracking.trendyol.com/?id=1'));
+
 	$by_method = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'api'));
 
-	pg_assert_same(null, mp_sync_shipment_link(array($by_method), 'Yurtiçi Kargo Marketplace', ''),
+	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $by_method), 'Yurtiçi Kargo Marketplace', ''),
 		'the method code names their carrier');
-	pg_assert_same(null, mp_sync_shipment_link(array($by_method), 'Yurtiçi Kargo Marketplace', 'aras'),
+	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $by_method), 'Yurtiçi Kargo Marketplace', 'aras'),
 		'the default does not override what the order screen shows');
 
 	$inherited = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici'));
 
-	pg_assert_same(null, mp_sync_shipment_link(array($inherited), 'Yurtiçi Kargo Marketplace', ''),
+	pg_assert_same(null, mp_sync_shipment_link(array($theirs, $inherited), 'Yurtiçi Kargo Marketplace', ''),
 		'the row carrier only repeats theirs');
 
 	$chosen = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'surat'));
 
-	pg_assert_true(mp_sync_shipment_link(array($chosen), 'Yurtiçi Kargo Marketplace', '') !== null,
+	pg_assert_true(mp_sync_shipment_link(array($theirs, $chosen), 'Yurtiçi Kargo Marketplace', '') !== null,
 		'a carrier chosen on the row that is not theirs');
 
 	$own_page = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'yurtici',
 		'tracking_url' => 'https://track.example-carrier.com/p/9988776655'));
 
 	pg_assert_same('https://track.example-carrier.com/p/9988776655',
-		mp_sync_shipment_link(array($own_page), 'Yurtiçi Kargo Marketplace', '')['url'], 'the row\'s own page');
+		mp_sync_shipment_link(array($theirs, $own_page), 'Yurtiçi Kargo Marketplace', '')['url'], 'the row\'s own page');
+}
+
+// On an order imported for an account that ships itself the method code stays
+// empty, so a carrier there, or on the row, is the one the shop named - also
+// when it is the same company the marketplace contracts.
+function test_marketplace_trendyol_shipping_link_takes_the_carrier_the_shop_named()
+{
+	// POST /orders/{id}/shipment with "carrier": "Aras Kargo" writes the method
+	// code, and the row stores the carrier it names.
+	$by_api = trendyol_shipping_test_row(array('number' => '9988776655', 'carrier' => 'aras', 'source' => 'api'));
+
+	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
+		mp_sync_shipment_link(array($by_api), 'Aras Kargo', '')['url']);
+
+	// A row recorded before the method code was written takes it from there.
+	$before = trendyol_shipping_test_row(array('number' => '9988776655', 'source' => 'panel'));
+
+	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
+		mp_sync_shipment_link(array($before), 'Aras Kargo', '')['url']);
+
+	// Their parcel says Aras too, but the method code is not theirs.
+	$theirs = trendyol_shipping_test_row(array('id' => 9, 'number' => '7280027504111111', 'source' => 'marketplace',
+		'carrier' => 'aras'));
+
+	pg_assert_same('https://kargotakip.araskargo.com.tr/mainpage.aspx?code=9988776655',
+		mp_sync_shipment_link(array($theirs, $by_api), '', '')['url']);
 }
 
 // The number's shape reads a plain Turkish number as UPS (11 digits) or FedEx
@@ -286,6 +316,8 @@ function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
 	pg_assert_contains("if ((\$package['remote_status'] === 'Created') && empty(\$row['approved'])) {", $step);
 	pg_assert_contains("if (\$calls < 2) {", $step);
 	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
+	pg_assert_contains("\$named = (\$default !== '') ? '' : \"", $step, 'without a default, a shape-only parcel is not read');
+	pg_assert_contains("OR (ship_tos.shipping_method_code <> ''))", $step);
 
 	$orders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
 

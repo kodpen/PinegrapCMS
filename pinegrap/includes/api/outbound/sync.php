@@ -899,6 +899,15 @@ function mp_sync_ship_pending($account) {
 
 	}
 
+	$default = pg_shipping_default_carrier();
+
+	// Without a site default, a parcel with no page, no carrier and no method
+	// code has only its number's shape to go by and is never sent
+	// (mp_sync_shipment_link()), so it is not read either.
+	$named = ($default !== '') ? '' : "
+			  AND ((shipping_tracking_numbers.tracking_url <> '') OR (shipping_tracking_numbers.carrier <> '')
+				OR (ship_tos.shipping_method_code <> ''))";
+
 	$rows = (array) db_items("SELECT id, order_id, remote_order_id, remote_package_id, remote_status, approved, lines_json
 		FROM marketplace_order_map
 		WHERE (account_id = '" . e((int)$account['id']) . "')
@@ -913,11 +922,10 @@ function mp_sync_ship_pending($account) {
 			INNER JOIN shipping_tracking_numbers ON shipping_tracking_numbers.ship_to_id = ship_tos.id
 			WHERE (ship_tos.order_id = marketplace_order_map.order_id)
 			  AND (shipping_tracking_numbers.source <> 'marketplace')
+			  AND (shipping_tracking_numbers.number <> '')" . $named . "
 		  )
 		ORDER BY id ASC
 		LIMIT 200");
-
-	$default = pg_shipping_default_carrier();
 
 	$calls = 50;
 
@@ -1056,24 +1064,42 @@ function mp_sync_ship_pending($account) {
 // would report their carrier as the shop's.
 //
 // The link is sent only when somebody named where it points: the row's own
-// tracking page, a carrier stored on the row, or the site's default carrier.
-// On an imported order the method code holds the marketplace's carrier, so a
-// link built from it, or a row carrier that only repeats it, points at their
-// carrier with the shop's number; and the number's shape alone reads a plain
-// Turkish number as UPS or FedEx. Either would be sent to the marketplace and
-// shown to the buyer, and a shipment once reported cannot be taken back, so
-// such a parcel waits until its carrier is chosen on the order screen.
+// tracking page, a carrier stored on the row, the carrier the method code
+// names, or the site's default carrier - never the number's shape alone,
+// which reads a plain Turkish number as UPS or FedEx. A carrier that only
+// repeats the marketplace's is not taken either: on an order imported before
+// the account shipped itself, the method code holds the carrier name the
+// marketplace gave (its own parcel on the address carries the same carrier),
+// and a parcel recorded later took that carrier and its page with the shop's
+// number. A shipment once reported cannot be taken back, so such a parcel
+// waits until a carrier that is the shop's is chosen on the order screen.
 //
 // Answers array(number, url).
 function mp_sync_shipment_link($rows, $method, $default) {
-
-	$theirs = pg_shipping_method_carrier((string)$method);
 
 	$default = pg_shipping_carrier_text($default);
 
 	if (!pg_shipping_carrier_exists($default)) {
 
 		$default = '';
+
+	}
+
+	// The method code's carrier is the marketplace's only when their own
+	// parcel on the address was recorded with it; otherwise the shop or its
+	// integration named it (POST /orders/{id}/shipment writes it).
+	$by_method = pg_shipping_method_carrier((string)$method);
+
+	$theirs = '';
+
+	foreach ((array)$rows as $row) {
+
+		if (is_array($row) && isset($row['source'], $row['carrier']) && ((string)$row['source'] === 'marketplace')
+			&& ($by_method !== '') && (pg_shipping_carrier_text($row['carrier']) === $by_method)) {
+
+			$theirs = $by_method;
+
+		}
 
 	}
 
@@ -1097,11 +1123,11 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 		if (!$own_page) {
 
-			$named = $view['named']
-				? ($view['carrier'] !== $theirs)
-				: (($theirs === '') && ($default !== '') && ($view['carrier'] === $default));
+			// Without a carrier on the row, pg_shipment_view() took the method
+			// code's, else the default, else the number's shape.
+			$named = $view['named'] || ($by_method !== '') || ($default !== '');
 
-			if (!$named) {
+			if (!$named || ($view['carrier'] === $theirs)) {
 
 				continue;
 
