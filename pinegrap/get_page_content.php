@@ -6517,5 +6517,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_img_strip_responsive($content);
     }
 
+    // The edit chips' stylesheet, once, on a finished page that shows a chip
+    // (pg_sw_edit_chip_css_inject()). Not in an e-mail.
+    if (!$email && function_exists('pg_sw_edit_chip_css_inject')) {
+        $content = pg_sw_edit_chip_css_inject($content);
+    }
+
     return $content;
 }
