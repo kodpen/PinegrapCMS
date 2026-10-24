@@ -14,7 +14,7 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: it
 - `parasut_order_invoice_unsure()`: the list shows "Check Paraşüt", not the emblem; the order screen's button and status row a warning (`parasut_order_invoice_status_badge()`), never "Sent"; the button stays on.
 - The next press searches as the ERP driver does (erp-parasut-send-failures.md): `parasut_order_invoice_find()` (contact, issue date, 20 pages), `_matches()` (the driver's match, issued records kept in). One draft: id kept, then total check and e-document; one issued: id kept, nothing sent; none: created; several or a failed search: refused, mark kept.
 
-## Which buyer card does it use? (#1408, #1518, #PR)
+## Which buyer card does it use? (#1408, #1518, #1543)
 - The card Paraşüt holds for the buyer's VKN/TCKN, else a new one carrying the order's identity and address: erp-parasut-legacy-buyer-card.md.
 
 ## What does its e-document carry? (#1278)

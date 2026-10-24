@@ -1,13 +1,13 @@
 ---
 name: erp-parasut-legacy-buyer-card
-description: The Paraşüt card the order screen's buttons put an order on: the one Paraşüt holds for the buyer's VKN/TCKN (#PR), else a new one with the order's identity (#1408) and address (#1518)
+description: The Paraşüt card the order screen's buttons put an order on: the one Paraşüt holds for the buyer's VKN/TCKN (#1543), else a new one with the order's identity (#1408) and address (#1518)
 ---
 
 ## Which card does an order go on?
 - `parasut_sync_contact()`, called by both buttons: the id the order holds (`orders.parasut_contact_id`); else `parasut_order_contact_for()`: the card Paraşüt holds for the buyer's VKN/TCKN, else a new card. Either id is stored on the order.
-- Before #PR every order opened a card of its own, so a repeat buyer collected one card per order.
+- Before #1543 every order opened a card of its own, so a repeat buyer collected one card per order.
 
-## When is a card looked up, and how? (#PR)
+## When is a card looked up, and how? (#1543)
 - Only for a number that passes GİB's check digits (`parasut_order_contact_search_number()`, `erp_edoc_tax_number_valid()`), as digits. Not for an empty field, the final consumer's `11111111111`, a mistyped number, or a placeholder that fails the check (`00000000000`, `2222222222`, `12345678901`).
 - A real VKN/TCKN always passes. A placeholder that passes too (`1234567890`, `4444444444`) is looked up and shared like a real number: buyers who typed it go on one card.
 - As the ERP's driver looks (erp-parasut-final-consumer-card.md): `GET contacts?filter[tax_number]=N&sort=-id`, 25 a page, until a card is taken, at most `ERP_EDOC_PARASUT_FIND_PAGES` (20). The first card not archived and carrying exactly the number (digits compared) is taken as it is: nothing is PUT, even when the order's name, address or e-mail differ.
