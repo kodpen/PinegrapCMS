@@ -2049,11 +2049,16 @@ function mp_trendyol_order_stage($remote_status) {
 //
 // Their answer to a successful update has no documented body, so any 2xx is
 // success here, whatever it carries.
+//
+// Ids are at most eighteen digits. A line id is sent as a JSON number, and
+// (int) of a longer string can pass PHP_INT_MAX (nineteen digits on a 64-bit
+// build), where it saturates and a different line id would be sent; the
+// package id is held to the same length, theirs being ten digits today.
 function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $transport = null) {
 
 	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
 
-	if (preg_match('/^[0-9]{1,20}$/', $package_id) !== 1) {
+	if (preg_match('/^[0-9]{1,18}$/', $package_id) !== 1) {
 
 		return mp_error(lang('That order has no package number to accept.'));
 
@@ -2073,7 +2078,7 @@ function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $tra
 
 		$line_id = isset($line['remote_line_id']) ? trim((string)$line['remote_line_id']) : '';
 
-		if (!isset($wanted[$line_id]) || preg_match('/^[0-9]{1,20}$/', $line_id) !== 1) {
+		if (!isset($wanted[$line_id]) || preg_match('/^[0-9]{1,18}$/', $line_id) !== 1) {
 
 			continue;
 

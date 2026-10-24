@@ -696,6 +696,47 @@ function test_marketplace_trendyol_orders_approve_refuses_before_any_call()
 	pg_assert_same(0, count($calls), 'nothing was sent');
 }
 
+// A line id goes out as a JSON number. Nineteen digits can pass PHP_INT_MAX,
+// where (int) saturates and would send another line's id, so ids are held to
+// eighteen digits; eighteen go out exactly.
+function test_marketplace_trendyol_orders_approve_holds_ids_to_eighteen_digits()
+{
+	$calls = array();
+	$transport = trendyol_orders_test_fixed_transport(200, '', $calls);
+
+	$package = array(
+		'remote_package_id' => '3330111111',
+		'lines'             => array(
+			array('remote_line_id' => '99999999999999999999', 'quantity' => 1),
+			array('remote_line_id' => '9999999999999999999', 'quantity' => 1),
+		),
+	);
+
+	$result = mp_trendyol_approve_lines(trendyol_orders_test_account(), array('99999999999999999999', '9999999999999999999'),
+		$package, $transport);
+
+	pg_assert_false($result['ok'], 'twenty and nineteen digits are refused');
+	pg_assert_contains('no lines to accept', $result['error']);
+
+	$long_package = array('remote_package_id' => '1234567890123456789', 'lines' => array(array('remote_line_id' => '1', 'quantity' => 1)));
+
+	$result = mp_trendyol_approve_lines(trendyol_orders_test_account(), array('1'), $long_package, $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('no package number', $result['error'], 'a nineteen-digit package id');
+
+	pg_assert_same(0, count($calls), 'nothing was sent');
+
+	$package = array('remote_package_id' => '123456789012345678',
+		'lines' => array(array('remote_line_id' => '999999999999999999', 'quantity' => 2)));
+
+	$result = mp_trendyol_approve_lines(trendyol_orders_test_account(), array('999999999999999999'), $package, $transport);
+
+	pg_assert_true($result['ok'], $result['error']);
+	pg_assert_same('https://apigw.trendyol.com/integration/order/sellers/123456/shipment-packages/123456789012345678', $calls[0]['url']);
+	pg_assert_same('{"lines":[{"lineId":999999999999999999,"quantity":2}],"params":{},"status":"Picking"}', $calls[0]['options']['body']);
+}
+
 function test_marketplace_trendyol_orders_approve_passes_their_refusal_on()
 {
 	$calls = array();
