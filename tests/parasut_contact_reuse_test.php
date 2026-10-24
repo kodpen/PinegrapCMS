@@ -81,8 +81,9 @@ function parasut_contact_reuse_test_calls_of($calls, $method)
 
 // Only a number that passes GİB's check digits is looked up, as digits: not
 // an empty field, not the final consumer's 11111111111 (many buyers carry
-// it), not a placeholder or a mistyped number, which several buyers could
-// share.
+// it), not a mistyped number or a placeholder that fails the check. A real
+// VKN/TCKN always passes; a placeholder that passes it is looked up like a
+// real number.
 function test_parasut_order_contact_search_number()
 {
 	pg_assert_same('10000000146', parasut_order_contact_search_number('10000000146'), 'TCKN');
@@ -92,6 +93,8 @@ function test_parasut_order_contact_search_number()
 	pg_assert_same('', parasut_order_contact_search_number(null), 'none');
 	pg_assert_same('', parasut_order_contact_search_number('11111111111'), 'final consumer');
 	pg_assert_same('', parasut_order_contact_search_number('00000000000'), 'zeros');
+	pg_assert_same('', parasut_order_contact_search_number('2222222222'), 'a placeholder that fails the check');
+	pg_assert_same('1234567890', parasut_order_contact_search_number('1234567890'), 'a placeholder that passes the check');
 	pg_assert_same('', parasut_order_contact_search_number('10000000147'), 'wrong check digit');
 	pg_assert_same('', parasut_order_contact_search_number('123456789'), 'nine digits');
 	pg_assert_same('', parasut_order_contact_search_number('abc'), 'no digits');

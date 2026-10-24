@@ -1599,9 +1599,11 @@ function parasut_order_contact_attributes($order, $id_number, $country = null)
  * opened: the order's VKN/TCKN (_parasut_order_identity()) as digits, when
  * it passes the tax authority's check digits (erp_edoc_tax_number_valid()).
  * '' for a buyer without one, for the final consumer's 11111111111, which
- * many buyers share, and for a number that fails the check, so that a
- * placeholder several buyers typed never puts them on one card. Needs the
- * ERP's e-document registry (_parasut_order_invoice_load()).
+ * many buyers share, and for a number that fails the check. A real VKN/TCKN
+ * always passes. Buyers who typed a placeholder that fails it (00000000000,
+ * 2222222222, 12345678901) each keep a card of their own; a placeholder that
+ * passes it (1234567890, 4444444444) is looked up and shared like a real
+ * number. Needs the ERP's e-document registry (_parasut_order_invoice_load()).
  *
  * @param string $identity  _parasut_order_identity()
  * @return string  Digits, or ''
