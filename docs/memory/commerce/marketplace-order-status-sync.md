@@ -19,7 +19,7 @@ description: Marketplace package status rules: first sight, fill-only dates, tra
 - Stock IS restored here. `process_order_cancellation()` never does this anywhere else, and for in-store cancellation that was deliberately left unchanged.
 - The return value is `'success'`, NOT `'ok'`.
 - No customer cancellation e-mail for a marketplace order (`orders.type` `marketplace`, `pg_order_cancellation_mails_customer()`): the marketplace tells its buyer, the address is its relay, and a Trendyol split cancels the old order while nothing was cancelled for the buyer (PR #1459). The same holds when the panel cancels one.
-- A pass applies its cancelled packages first, each package once in its newest copy (`mp_sync_cancellations_first()`), so a split's old package gives its stock back before the new one takes it (the take stops at zero). Whether Trendyol stamps the new package before the old one's change was not observed.
+- A pass applies its cancelled packages first, each package once in its newest copy (`mp_order_cancellations_first()`), so a split's old package gives its stock back before the new one takes it (the take stops at zero). Whether Trendyol stamps the new package before the old one's change was not observed.
 
 ## Can the tracking number be pushed to n11?
 - No. The n11 REST order integration has no such service. Shipping goes through n11's contracted carriers (`PUT /rest/delivery/v1/collectionRequest`, HLZ/CEVA/BL) and n11 assigns the number.

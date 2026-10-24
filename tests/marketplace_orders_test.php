@@ -141,12 +141,12 @@ function test_marketplace_orders_pass_applies_cancellations_first()
 
 	$ids = array();
 
-	foreach (mp_sync_cancellations_first($account, $packages) as $package) {
+	foreach (mp_order_cancellations_first($account, $packages) as $package) {
 		$ids[] = $package['remote_package_id'];
 	}
 
 	pg_assert_same(array('B', 'D', 'A', 'C', 'E'), $ids, 'cancelled first, the rest in the order read');
-	pg_assert_same(array(), mp_sync_cancellations_first($account, array()));
+	pg_assert_same(array(), mp_order_cancellations_first($account, array()));
 
 	// A package that changed while the pages were walked is in the pass twice:
 	// only its newest copy is kept, so the older one cannot write its status back.
@@ -160,14 +160,14 @@ function test_marketplace_orders_pass_applies_cancellations_first()
 
 	$kept = array();
 
-	foreach (mp_sync_cancellations_first($account, $twice) as $package) {
+	foreach (mp_order_cancellations_first($account, $twice) as $package) {
 		$kept[] = $package['remote_package_id'] . ':' . $package['remote_status'];
 	}
 
 	pg_assert_same(array('A:Cancelled', 'B:Created', 'C:Shipped'), $kept, 'each package once, in its newest copy');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/sync.php');
-	pg_assert_contains('foreach (mp_sync_cancellations_first($account, $packages) as $package)', $source,
+	pg_assert_contains('foreach (mp_order_cancellations_first($account, $packages) as $package)', $source,
 		'the pass imports in that order');
 }
 

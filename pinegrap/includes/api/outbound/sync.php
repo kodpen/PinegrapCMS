@@ -728,56 +728,6 @@ function mp_sync_orders($deadline, &$summary) {
 
 }
 
-// One pass's packages with the cancelled ones first, the rest in the order they
-// were read, each package once.
-//
-// A split or partly cancelled package comes back as the old package cancelled
-// and the goods under a new package id. The cancellation has to give the old
-// order's stock back before the new order takes it: the take stops at zero and
-// the return adds the whole quantity, so the other way round leaves the stock
-// higher than the shelf, and that number is pushed to every marketplace.
-//
-// A package that changed while the pages were walked is in the pass twice
-// (mp_feed_first_time()). Only its newest copy is kept, where it was read last:
-// moved ahead of the older one, the older copy would write its status back.
-function mp_sync_cancellations_first($account, $packages) {
-
-	$latest = array();
-
-	foreach (array_values($packages) as $index => $package) {
-
-		$id = isset($package['remote_package_id']) ? (string) $package['remote_package_id'] : '';
-
-		$key = ($id === '') ? '#' . $index : 'p' . $id;
-
-		unset($latest[$key]);
-
-		$latest[$key] = $package;
-
-	}
-
-	$cancelled = array();
-
-	$others = array();
-
-	foreach ($latest as $package) {
-
-		if (mp_order_stage($account, $package) === 'cancelled') {
-
-			$cancelled[] = $package;
-
-		} else {
-
-			$others[] = $package;
-
-		}
-
-	}
-
-	return array_merge($cancelled, $others);
-
-}
-
 function mp_sync_orders_account($account, &$summary) {
 
 	$account_id = (int) $account['id'];
@@ -792,7 +742,7 @@ function mp_sync_orders_account($account, &$summary) {
 
 	$complete = !empty($result['data']['complete']);
 
-	foreach (mp_sync_cancellations_first($account, $packages) as $package) {
+	foreach (mp_order_cancellations_first($account, $packages) as $package) {
 
 		$outcome = mp_import_order($account, $package);
 
