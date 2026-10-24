@@ -20,7 +20,7 @@ description: The refund kept on a return (order_returns.refund_*, step 11.0.34, 
 
 ## What do the API and the panel show?
 - `OrderReturn.refund` (`OrderReturnRefund?`): null until refunded or before the step, kept on a closed return; else `amount` and `method` (both null when unknown), `reference` (null when ''), `unclear`. No extra query: `SELECT *` already reads them.
-- `view_return.php` status card: amount, "Through the payment service" / "Recorded, made another way", the reference, a warning when unclear; a refund recorded as 0 says the money went back from the order screen; "not kept" for an unknown one.
+- `view_return.php` status card: amount, "Through the payment service" / "Recorded, made another way", the reference, when unclear "has not confirmed this refund" (true while it is asked too); a refund recorded as 0 says the money went back from the order screen; "not kept" for an unknown one.
 - The personal data export reads `order_returns` with `SELECT *`, so the four columns go into it, the reference too: it is the person's own refund data; for a refund that moved money the refunds section has the same id (`order_refunds.transaction_id`), a 0 refund's typed reference only this section.
 
 ## Tests and sandbox?
