@@ -1,6 +1,6 @@
 ---
 name: workspace-assistant-key-setup
-description: Plan (2026-10-23, step 1 in progress, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
+description: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
 ---
 
 ## What is asked? (owner, 2026-10-23)

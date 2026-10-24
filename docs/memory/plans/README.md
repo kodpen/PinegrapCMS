@@ -54,7 +54,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23, step 1 in progress, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
+- workspace-assistant-key-setup.md: Plan (2026-10-23, step 1 in PR #1462, answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key, shows key, secret and prompt once; a reset for that key
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, Workspace canvas, automations; owns the scheduled-actions API
 - workspace-catalog-create.md: Plan (2026-10-23, not started, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, not started, answers open): a channel gets an icon its manager picks from a curated Bootstrap Icons list; kind and customer marks stay visible; colour and icon over the API
