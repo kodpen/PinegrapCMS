@@ -225,16 +225,17 @@ if (in_array($image_editor_new_type, $image_editor_formats, true) == false) {
     $image_editor_new_type = 'png';
 }
 
-// An animated GIF is never written over: both image libraries read the first
-// frame and write a still one back, and nothing on the screen would say why the
-// animation stopped. The editor's footer already refuses to offer Replace on
-// one; this is the same rule on the side that does the writing.
+// An animated image (GIF, APNG or animated WebP) is never written over: both
+// image libraries read the first frame and write a still one back, and nothing
+// on the screen would say why the animation stopped. The file's own bytes
+// decide, not its name, so an APNG named .png or .jpg counts too. The editor's
+// footer hides Replace only for a .gif name; any other animated file is
+// refused here, on the side that does the writing.
 if (
     ($image_editor_mode === 'replace')
-    && ($image_editor_old_type === 'gif')
-    && pg_image_is_animated_gif(FILE_DIRECTORY_PATH . '/' . $image_editor_source_name)
+    && pg_image_is_animated(FILE_DIRECTORY_PATH . '/' . $image_editor_source_name)
 ) {
-    image_editor_refuse(lang('An animated GIF cannot be replaced. Save it as a new file instead.'));
+    image_editor_refuse(lang('An animated image cannot be replaced. Save it as a new file instead.'));
 }
 
 if ($image_editor_mode === 'replace') {

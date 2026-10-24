@@ -9,10 +9,10 @@ use Iyzipay\Options;
 use Iyzipay\RequestStringBuilder;
 
 class IyziLinkFastLink extends IyzipayResource {
-    private string $description;
+    private $description;
     private $price;
-    private string $currencyCode;
-    private string $sourceType;
+    private $currencyCode;
+    private $sourceType;
 
     public static function create(IyziLinkCreateFastLinkRequest $request, Options $options): IyziLinkFastLink {
         $uri = $options->getBaseUrl() . "/v2/iyzilink/fast-link/products" . RequestStringBuilder::requestToStringQuery($request, 'locale');

@@ -1069,7 +1069,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     $greeting_tips = array_map('h', array(
         lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
         lang('Did you know the widgets can be dragged around by their headers?'),
-        lang('Right click the Panel button in the menu and you will find the widget theme settings.'),
+        lang('Click the Panel button in the menu and you will find the widget theme settings in the list it opens.'),
         lang('If you prefer the light theme, it is in the user menu at the top right.'),
     ));
 

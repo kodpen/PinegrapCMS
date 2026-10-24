@@ -963,10 +963,10 @@ function pg_sanitize_rich_text($content)
     foreach ($body->childNodes as $node) {
         if ($wrapper && $node->isSameNode($wrapper)) {
             foreach ($wrapper->childNodes as $child) {
-                $output .= $document->saveHTML($child);
+                $output .= pg_dom_html($child);
             }
         } else {
-            $output .= $document->saveHTML($node);
+            $output .= pg_dom_html($node);
         }
     }
 

@@ -970,12 +970,14 @@ function submit_order($type) {
         $nonrecurring_transaction = TRUE;
 
         // If a credit card surcharge is enabled and the credit card payment method
-        // was selected, then calculate surcharge and add it to total.
+        // was selected, then calculate surcharge and add it to total: the
+        // exact product rounded half away from zero, the same figure on every
+        // PHP version (pg_percent_of()).
         if (
             (ECOMMERCE_SURCHARGE_PERCENTAGE > 0)
             && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
         ) {
-            $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total);
+            $surcharge = pg_percent_of($total, ECOMMERCE_SURCHARGE_PERCENTAGE);
 
             // Like the shipping, a minor unit lower where it would leave a
             // rate's total no amount reaches (pg_order_charges_reachable()).
@@ -2978,6 +2980,20 @@ function submit_order($type) {
                             $identitynumber = '11111111111';
                         }
                     
+                        // The bank's 3-D Secure return posts no card fields and
+                        // skips the card checks above, so there is no card number
+                        // or expiry. The instalment charge the bank took is the one
+                        // kept in iyzipay_3ds_state and the instalment count comes
+                        // with the bank's answer, so the instalment limit is still
+                        // checked but iyzico is not asked for a new quote.
+                        $iyzipay_threeds_return = (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return');
+
+                        if ($iyzipay_threeds_return) {
+                            $card_number = '';
+                            $expiration_month = '';
+                            $expiration_year = '';
+                        }
+
                         // Card BIN
                         $card_binNumber = substr($card_number, 0, 6);
                     
@@ -2994,7 +3010,7 @@ function submit_order($type) {
                                 $liveform->mark_error('payment_gateway', lang('Payment Installment cannot be bigger than accepted Installment!'));
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                                 exit();
-                            } else {
+                            } elseif (!$iyzipay_threeds_return) {
                                 $payment_installment = $get_buyer_payment_installment_selection;
                             
                                 // Retrieve installment info
@@ -3375,13 +3391,13 @@ function submit_order($type) {
                                 exit();
                             }
 
-                            $total = $base_total_cents;
+                            // The order records what the bank took: the state row's
+                            // total and instalment charge.
+                            $threeds_totals = pg_payment_threeds_state_totals($state);
+                            $total = $threeds_totals['total'];
+                            $installment_charge = $threeds_totals['installment_charge'];
+                            $total_witout_installment_charge = $threeds_totals['total_without_installment_charge'];
 
-                            if ($installment_charge_cents > 0) {
-                                $total_witout_installment_charge = $total;
-                                $total += $installment_charge_cents;
-                            }
-                            
                             $transaction_id = ($Payment_ID !== '') ? $Payment_ID : $paymentId;
                         
                             log_activity(lang(array(
@@ -7396,15 +7412,32 @@ function submit_order($type) {
                                     $from_email_address = EMAIL_ADDRESS;
                                 }
                                 
-                                // check the subject line for variable data and replace any variables with content from the submitted form
-                                $submitter_email_subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $submitter_email_subject, $prepare_for_html = FALSE);
+                                // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+                                // go into the billing address's own copy only; a watcher's copy gets them empty.
+                                // The order's form has no contact of its own, so there is no confirmation link.
+                                if ($to_email_address == $billing_email_address) {
+                                    pg_cf_mail_links_context(array(
+                                        'email_address' => $billing_email_address,
+                                        'contact_id' => 0,
+                                        'custom_form_page_id' => (int) $product['submit_form_custom_form_page_id'],
+                                        'form_id' => (int) $submitted_form_id));
+                                } else {
+                                    pg_cf_mail_links_context(false);
+                                }
+
+                                $mail_link_values = pg_cf_mail_link_values();
+
+                                // The link fields go into the template before the submitted values, so a
+                                // value holding "[[" or "]]" cannot open or close a block around other text.
+                                // $submitter_email_subject stays the template for the next recipient.
+                                $subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links($submitter_email_subject, $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
 
                                 // if the format of the e-mail should be plain text, then prepare that
                                 if ($submitter_email_format == 'plain_text') {
 
                                     // Check the body for variable data and replace any variables with content from the submitted form.
                                     // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
+                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
 
                                 // else the format of the e-mail should be HTML, so prepare that
                                 } else {
@@ -7412,16 +7445,23 @@ function submit_order($type) {
                                     require_once(dirname(__FILE__) . '/get_page_content.php');
 
                                     $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $submitted_form_id));
+
+                                    // Bare link fields only: the body already holds the submitted values.
+                                    $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
                                 }
                                 
                                 email(array(
                                     'to' => $to_email_address,
                                     'from_name' => ORGANIZATION_NAME,
                                     'from_email_address' => $from_email_address,
-                                    'subject' => $submitter_email_subject,
+                                    'subject' => $subject,
                                     'format' => $submitter_email_format,
                                     'body' => $body,
+                                    // A signed link stays out of the failure log and the delivery-failed notice.
+                                    'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
                                     'queue' => true));
+
+                                pg_cf_mail_links_context(false);
 
                             }
                         }
@@ -7434,6 +7474,10 @@ function submit_order($type) {
                                 $administrator_email_addresses[] = $administrator_email_to_email_address;
                             }
                             
+                            // The signed links belong to the buyer alone: empty in the administrator's
+                            // e-mail, filled into the template before the submitted values go in.
+                            $administrator_email_subject = pg_cf_fill_mail_links($administrator_email_subject, array(), 'plain_text');
+
                             // check the subject line for variable data and replace any variables with content from the submitted form
                             $administrator_email_subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $administrator_email_subject, $prepare_for_html = FALSE);
 
@@ -7442,7 +7486,7 @@ function submit_order($type) {
 
                                 // Check the body for variable data and replace any variables with content from the submitted form.
                                 // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), $prepare_for_html = FALSE);
+                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), array(), 'plain_text'), $prepare_for_html = FALSE);
 
                             // else the format of the e-mail should be HTML, so prepare that
                             } else {
@@ -7459,6 +7503,8 @@ function submit_order($type) {
                                 if (function_exists('pg_tr_suspend')) {
                                     pg_tr_suspend(false);
                                 }
+
+                                $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
 
                             }
 

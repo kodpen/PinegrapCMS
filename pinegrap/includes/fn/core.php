@@ -802,6 +802,69 @@ function pg_liveform_message_text($message)
     return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
+// The HTML of one DOM node as it stands in the tree, the same on every PHP
+// version: use it instead of $document->saveHTML($node).
+//
+// saveHTML($node) pretty-prints before PHP 7.3 whatever formatOutput says
+// (it calls libxml's htmlNodeDump()), and on later versions when formatOutput
+// is on: libxml then writes a line break after a block element whose next
+// sibling is not text, and after the start tag or before the end tag of a
+// block whose first or last child is not text ("<p>A</p>\n<p>B</p>",
+// "<ul>\n<li>a</li>\n</ul>"). It never writes one next to a text node, so in
+// those cases the node is copied (a copy has no next sibling), the copy gets
+// an empty text node (which writes nothing) in each such place inside it, and
+// the copy is saved; the caller's tree is left as it is.
+function pg_dom_html($node)
+{
+    $document = $node->ownerDocument;
+
+    if (($node->nodeType !== XML_ELEMENT_NODE) || ((PHP_VERSION_ID >= 70300) && !$document->formatOutput)) {
+        return $document->saveHTML($node);
+    }
+
+    $copy = $node->cloneNode(true);
+    $elements = array($copy);
+
+    while ($elements) {
+        $element = array_pop($elements);
+
+        if (!$element->firstChild) {
+            continue;
+        }
+
+        if ($element->firstChild->nodeType !== XML_TEXT_NODE) {
+            $element->insertBefore($document->createTextNode(''), $element->firstChild);
+        }
+
+        if ($element->lastChild->nodeType !== XML_TEXT_NODE) {
+            $element->appendChild($document->createTextNode(''));
+        }
+
+        // The live child list grows while text goes in, so a copy is walked.
+        // The last child is text now, so every element child has a next
+        // sibling.
+        $children = array();
+
+        foreach ($element->childNodes as $child) {
+            $children[] = $child;
+        }
+
+        foreach ($children as $child) {
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            if ($child->nextSibling->nodeType !== XML_TEXT_NODE) {
+                $element->insertBefore($document->createTextNode(''), $child->nextSibling);
+            }
+
+            $elements[] = $child;
+        }
+    }
+
+    return $document->saveHTML($copy);
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
@@ -1223,9 +1286,10 @@ function output_error($error_message, $response_code = 0)
 
     // A missing address may be one that a short link with a * in its name
     // stands for (includes/fn/short_link_redirects.php); then this does not
-    // return.
+    // return. Otherwise it goes into the 404 log (includes/fn/not_found_log.php).
     if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
 
     set_response_code($response_code);
@@ -1290,9 +1354,11 @@ function output_error($error_message, $response_code = 0)
 function error($content, $response_code = 0)
 {
     // The classic catalog reports an item it cannot find this way: the
-    // address may be one a short link with a * stands for.
+    // address may be one a short link with a * stands for, else it goes into
+    // the 404 log.
     if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
 
     set_response_code($response_code);
@@ -1531,17 +1597,21 @@ function pg_timezone_canonical($name, $known = null)
 
 /**
  * A stored time zone name as the pick lists (get_timezones()) offer it, so
- * that an old name stays selected as its current option.
+ * that it stays selected: the name this PHP knows (pg_timezone_canonical()).
+ * An old name is its current option, or itself where this PHP's database
+ * lacks the current one: selecting the current name there would store a name
+ * this PHP cannot use on the next save. A name this PHP does not know in
+ * either form stays as it is (the site settings show it as a custom option).
  *
- * @param string $name
+ * @param string        $name
+ * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
  * @return string
  */
-function pg_timezone_list_value($name)
+function pg_timezone_list_value($name, $known = null)
 {
-    $name = trim((string) $name);
-    $legacy = pg_timezone_legacy_names();
+    $zone = pg_timezone_canonical($name, $known);
 
-    return isset($legacy[$name]) ? $legacy[$name] : $name;
+    return ($zone !== '') ? $zone : trim((string) $name);
 }
 
 /**
@@ -2629,6 +2699,10 @@ function check_if_pretty_urls_are_enabled($custom_form_page_id)
 //     This is used when editing an item because we don't care if the item
 //     that we are editing already has this name.
 // ignore_item_type: The type of the item that was passed for ignore_item_id.
+// ignore_redirects_to_page: The optional id of a page being renamed. A short
+//     link that redirects to that page stood for one of its old addresses and
+//     does not hold the name; the rename deletes it
+//     (pg_short_link_page_renamed()).
 function check_name_availability($properties)
 {
     $name = '';
@@ -2682,6 +2756,9 @@ function check_name_availability($properties)
     // then prepare SQL to ignore that item.
     if (($ignore_item_id) && ($ignore_item_type == 'short_link')) {
         $sql_ignore = " AND (id != '" . escape($ignore_item_id) . "')";
+    }
+    if (!empty($properties['ignore_redirects_to_page'])) {
+        $sql_ignore .= pg_short_link_not_redirect_to_page_sql($properties['ignore_redirects_to_page']);
     }
     // If a short link exists for that name, then return false.
     if (db_value("SELECT COUNT(*) FROM short_links WHERE (name = '" . escape($name) . "')$sql_ignore") > 0) {
@@ -2868,11 +2945,21 @@ function output_gift_card_code($code)
 {
     return mb_substr($code, 0, 4) . '-' . mb_substr($code, 4, 4) . '-' . mb_substr($code, 8, 4) . '-' . mb_substr($code, 12, 4);
 }
-// Create a function that gets timezones which are used to populate
-// global timezone in site settings and user timezone in my account profile.
-function get_timezones()
+/**
+ * The time zones of the pick lists (site settings, my account profile) and
+ * the names a submitted profile may store, label => zone. Each zone is offered
+ * by the name this PHP knows (pg_timezone_canonical()): its current IANA name,
+ * or its old one where this PHP's time zone database predates the rename
+ * (America/Nuuk is tzdata 2020a; every PHP 7.1 and 7.2 release, 7.3 before
+ * 7.3.18 and 7.4 before 7.4.6 embed older databases). A zone this PHP knows
+ * by neither name is left out, so no list offers a zone that cannot be used.
+ *
+ * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
+ * @return array
+ */
+function get_timezones($known = null)
 {
-    return array(
+    $zones = array(
         '(UTC-11:00) Midway Island' => 'Pacific/Midway',
         '(UTC-11:00) Samoa' => 'Pacific/Pago_Pago',
         '(UTC-10:00) Hawaii' => 'Pacific/Honolulu',
@@ -2997,6 +3084,18 @@ function get_timezones()
         '(UTC+12:00) Magadan' => 'Asia/Magadan',
         '(UTC+13:00) Nuku\'alofa' => 'Pacific/Tongatapu'
     );
+
+    $offered = array();
+
+    foreach ($zones as $label => $zone) {
+        $zone = pg_timezone_canonical($zone, $known);
+
+        if ($zone !== '') {
+            $offered[$label] = $zone;
+        }
+    }
+
+    return $offered;
 }
 
 

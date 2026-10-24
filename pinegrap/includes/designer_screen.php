@@ -336,6 +336,9 @@ function pg_designer_screen_render($ctx)
             'contactGroups' => array_map(function ($g) {
                 return array('id' => (int)$g['id'], 'name' => (string)$g['name']);
             }, (array)db_items("SELECT id, name FROM contact_groups ORDER BY name")),
+            // The form's double opt-in switch exists once the 11.0.27 column
+            // is there; until then pg_cf_write_form_settings() drops it.
+            'doubleOptIn' => function_exists('pg_fs_ready') && pg_fs_ready(),
         ),
     ), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -2120,7 +2123,15 @@ function pg_designer_settings_modal($ctx)
             ' . pg_designer_setting(lang('Page Name'),
                 lang('The address of the page: it comes after the site address. Plain letters, digits and hyphens work everywhere (about-us rather than About Us). Can also be edited by double-clicking its tab.') . $fixed,
                 '<input type="text" id="sd-page-name" class="form-control form-control-sm sd-page-field" data-page-key="page_name" maxlength="100" placeholder="' . lang('Page name...') . '" autocomplete="off" spellcheck="false"' . ($full ? '' : ' readonly') . '>
-                <div class="sd-set-status" id="sd-page-address" aria-live="polite"></div>',
+                <div class="sd-set-status" id="sd-page-address" aria-live="polite"></div>'
+                // A saved page under a new name: its old address may send
+                // visitors on (pg_short_link_page_renamed()), shown by
+                // _sdSettingsAddress() while the name differs.
+                . (($full && pg_short_link_redirects_ready()) ? '
+                <div class="form-check mt-1 d-none" id="sd-page-redirect-row">
+                    <input class="form-check-input" type="checkbox" id="sd-page-name-redirect" value="1" checked>
+                    <label class="form-check-label small" for="sd-page-name-redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="text-body-secondary" id="sd-page-redirect-from"></span></label>
+                </div>' : ''),
                 array('for' => 'sd-page-name')) . '
             ' . pg_designer_setting(lang('Page Folder'),
                 lang('The folder decides who may open the page and where it is listed among the pages; administrators, designers and managers can always open it.') . $fixed,
@@ -2875,6 +2886,7 @@ function pg_designer_screen_post($ctx)
     // ── Write: pages ──────────────────────────────────────────────────────
     $id_map  = array();
     $written = array();   // ids of the pages this save wrote
+    $notes   = array();   // what a renamed page's short links became
     $cf_jobs = array();   // page_id => form settings, reconciled once every page has its id
     foreach ($pages as $p) {
         $key = isset($p['key']) ? (string)$p['key'] : '';
@@ -2901,6 +2913,12 @@ function pg_designer_screen_post($ctx)
             }
             $id_map[] = $id_entry;
             $written[] = (int)$r['page_id'];
+            // A renamed page's old address, sent on or not.
+            if (!empty($r['renamed'])) {
+                $renamed_said = pg_short_link_page_renamed_messages($r['renamed'], PATH);
+                foreach ($renamed_said['notes'] as $note) $notes[] = $note;
+                foreach ($renamed_said['warnings'] as $w) $warnings[] = $w;
+            }
             // The page's form. Its fields are the controls its custom_form
             // widget draws, read from the widget tree the editor flushed just
             // before this request; the editor sends only the form-level
@@ -3026,6 +3044,7 @@ function pg_designer_screen_post($ctx)
 
     $notice = lang('The style has been saved.');
     foreach ($warnings as $w) $liveform->add_notice($w);
+    foreach ($notes as $note) $liveform->add_notice($note);
 
     if ($is_ajax) {
         $liveform->remove_form();
@@ -3057,6 +3076,7 @@ function pg_designer_screen_post($ctx)
             'pages'      => $id_map,
             'forms'      => $forms_now,
             'warnings'   => $warnings,
+            'notes'      => $notes,
         );
         // Add mode: the page must move to the edit URL so the next save is
         // an UPDATE and the toolbar gains Duplicate / Delete.

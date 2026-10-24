@@ -520,6 +520,21 @@ if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_du
     }
 }
 
+// The 404 log (includes/fn/not_found_log.php): once a day the addresses not
+// asked for in 90 days go, then the row cap. A tick with nothing due reads
+// one small file.
+if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due()) {
+
+    $not_found_removed = pg_not_found_log_sweep();
+
+    if ($not_found_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} address(es) from the 404 log',
+            'vars'   => array(pg_format_number($not_found_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The price visitors are shown under the offers, into the product price
 // history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
 // tick until the pass is through. A tick with nothing due reads one small

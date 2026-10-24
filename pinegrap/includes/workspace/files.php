@@ -16,12 +16,13 @@
  * What may be uploaded is what the file manager takes (pg_upload_name_blocked:
  * no PHP, no .htaccess or web.config, no shell or Windows programs), less the
  * few documents a browser would run as a page of this site (SVG, HTML, XML,
- * JavaScript).
+ * JavaScript) and the Office files that carry macros.
  *
  * The files of personal notes live under the same Workspace folder, in a
  * "Notes" folder with one folder per note (includes/workspace/notes.php).
  * The file manager's flat Files and Pictures views leave the whole Workspace
- * folder out; staff open it folder by folder.
+ * folder out; staff open it folder by folder. Its "Where used" asks
+ * ws_file_usage() which messages and tasks a file is part of.
  *
  * Files posted before a channel had a folder (named "ws-<channel>-..." and
  * kept outside the folders) are moved into it when it is made.
@@ -38,17 +39,70 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Extensions a channel refuses on top of the file manager's list: documents
- * that a browser opening them from this site would run as its own page.
+ * that a browser opening them from this site would run as its own page, and
+ * the Office files that carry macros (ws_upload_macro_extensions()).
  *
  * @return string[]
  */
 function ws_upload_refused_extensions()
 {
-    return array('svg', 'svgz', 'html', 'htm', 'xhtml', 'xht', 'xml', 'js', 'mjs', 'swf');
+    return array_merge(
+        array('svg', 'svgz', 'html', 'htm', 'xhtml', 'xht', 'xml', 'js', 'mjs', 'swf'),
+        ws_upload_macro_extensions()
+    );
 }
 
 /**
- * Would a channel refuse this name?
+ * The Office forms that carry macros: Word, Excel and PowerPoint documents,
+ * templates, add-ins, shows and slides. Office runs their macros once the
+ * reader enables content, and a channel is a place many people open files
+ * from, so it does not pass them on. The legacy binary forms (.doc, .xls,
+ * .ppt) and the binary workbook (.xlsb) can carry macros too but are not
+ * listed: they are everyday files, and nothing in their name says whether
+ * they do.
+ *
+ * @return string[]
+ */
+function ws_upload_macro_extensions()
+{
+    return array('docm', 'dotm', 'xlsm', 'xltm', 'xlam', 'pptm', 'potm', 'ppsm', 'ppam', 'sldm');
+}
+
+/**
+ * The lower-cased parts after the first dot of a name, as it was sent and
+ * as prepare_file_name() stores it. A name is judged as it is stored, not
+ * only as sent (the rule dkim.key follows): the stored form turns other
+ * characters into underscores and trims them, transliterates, cuts to 100
+ * characters and drops trailing dots, so "q3.xlsm!" is kept as "q3.xlsm"
+ * and "q3.doçm" as "q3.docm".
+ *
+ * @param string $name
+ * @return string[]
+ */
+function ws_upload_name_parts($name)
+{
+    $base = basename(str_replace('\\', '/', (string) $name));
+    $names = array($base);
+
+    if (function_exists('prepare_file_name')) {
+        $names[] = prepare_file_name(trim($base));
+    }
+
+    $parts = array();
+
+    foreach ($names as $one) {
+        $one_parts = explode('.', mb_strtolower($one));
+        array_shift($one_parts);
+        $parts = array_merge($parts, $one_parts);
+    }
+
+    return array_values(array_unique($parts));
+}
+
+/**
+ * Would a channel refuse this name? The file manager's rule is asked of the
+ * name as sent only: a name written entirely in another script is stored
+ * with "file" in front of its extension and is not a hidden file.
  *
  * @param string $name
  * @return bool
@@ -61,10 +115,29 @@ function ws_upload_refused($name)
         return true;
     }
 
-    $parts = explode('.', mb_strtolower(basename(str_replace('\\', '/', $name))));
-    array_shift($parts);
+    return (bool) array_intersect(ws_upload_name_parts($name), ws_upload_refused_extensions());
+}
 
-    return (bool) array_intersect($parts, ws_upload_refused_extensions());
+/**
+ * What a channel says when it refuses a name: a file with macros is told why
+ * and what to send instead; any other name, and one the file manager refuses
+ * as well ("shell.php.docm" would be refused without its macros too), gets
+ * the sentence every door of the file manager says. The name is matched part
+ * by part, as sent and as stored, the way ws_upload_refused() matches it.
+ *
+ * @param string $name
+ * @return string
+ */
+function ws_upload_refused_message($name)
+{
+    $name = (string) $name;
+    $blocked = function_exists('pg_upload_name_blocked') && pg_upload_name_blocked($name);
+
+    if (!$blocked && array_intersect(ws_upload_name_parts($name), ws_upload_macro_extensions())) {
+        return lang(array('string' => 'Sorry, {var:1} was not accepted. Office files with macros cannot be added here; save it without macros (.docx, .xlsx or .pptx) and try again.', 'vars' => $name));
+    }
+
+    return function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($name) : lang('This file type is not allowed.');
 }
 
 /**
@@ -415,7 +488,7 @@ function ws_upload_inspect($original_name, $binary)
     $refused = lang('This file type is not allowed.');
 
     if (($original_name === '') || ws_upload_refused($original_name)) {
-        return array('ok' => false, 'error' => function_exists('pg_upload_blocked_message') ? pg_upload_blocked_message($original_name) : $refused);
+        return array('ok' => false, 'error' => ws_upload_refused_message($original_name));
     }
 
     if (($binary === false) || ((string) $binary === '')) {
@@ -756,4 +829,143 @@ function ws_file_preview_sweep($directory)
             @unlink($file);
         }
     }
+}
+
+/**
+ * The Workspace messages and tasks a file is part of, for the file manager's
+ * "Where used" (explorer_file_usage in view_folder_and_files_f.php): the
+ * messages that carry it (ws_messages.file_id, read through idx_file; a
+ * discussion's decision, note or task copied into its channel carries the
+ * same file) and the messages and tasks that tag it (<#file:ID>, read from
+ * ws_refs by ws_record_refs()), newest message first.
+ *
+ * Only what the reader may see is listed or counted: a message in a channel
+ * or a discussion they cannot read (ws_can_read_channel()) and a task they
+ * cannot see (ws_can_see_task()) are not admitted to exist; seeing a
+ * channel's folder in the file manager opens nothing here. Not counted
+ * either: notes, which are their owners' own and point at their files only
+ * by the address written in the text; an address or a name pasted into a
+ * message as plain text, which only a scan of every body would find; the
+ * earlier versions of an edited file, which only ws_file_edits remembers;
+ * forwards, which carry the name alone; deleted messages.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param int   $file_id
+ * @param int   $limit   the most messages, and the most tasks, listed
+ * @return array messages (id, channel_id, channel, sender, kind, excerpt,
+ *               file_name, url), tasks (ws_task_brief()), truncated
+ */
+function ws_file_usage($viewer, $file_id, $limit = 40)
+{
+    $file_id = (int) $file_id;
+    $limit = max(1, (int) $limit);
+    $out = array('messages' => array(), 'tasks' => array(), 'truncated' => false);
+
+    if (empty($viewer['member']) || ($file_id <= 0)) {
+        return $out;
+    }
+
+    $messages = array();
+    $channels = array();
+
+    $rows = (array) db_items("SELECT id, channel_id, sender_id, body, kind, file_name
+        FROM ws_messages
+        WHERE file_id = '" . $file_id . "' AND deleted_at = 0
+        ORDER BY id DESC
+        LIMIT 200");
+
+    foreach ($rows as $row) {
+        $channel_id = (int) $row['channel_id'];
+
+        if (!array_key_exists($channel_id, $channels)) {
+            $channels[$channel_id] = ws_channel($channel_id);
+        }
+
+        if (!ws_can_read_channel($viewer, $channels[$channel_id])) {
+            continue;
+        }
+
+        $messages[(int) $row['id']] = array(
+            'id'         => (int) $row['id'],
+            'channel_id' => $channel_id,
+            'channel'    => (string) $channels[$channel_id]['name'],
+            'sender'     => ws_person_name($row['sender_id']),
+            'kind'       => (string) $row['kind'],
+            'excerpt'    => ws_plain_excerpt($viewer, $row['body'], 140),
+            'file_name'  => (string) $row['file_name'],
+            'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . $channel_id . '&message=' . (int) $row['id'],
+        );
+    }
+
+    // The list keeps the newest messages of both kinds together, so the
+    // newest $limit + 1 tagging ones are all it can need; the one more tells
+    // that there are more than it shows.
+    $tagged = ws_record_refs($viewer, 'file', $file_id, $limit + 1);
+
+    // A message that carries the file and tags it too is listed once, as
+    // the one that carries it.
+    foreach ($tagged['messages'] as $message) {
+        if (!isset($messages[(int) $message['id']])) {
+            $messages[(int) $message['id']] = array(
+                'id'         => (int) $message['id'],
+                'channel_id' => (int) $message['channel_id'],
+                'channel'    => (string) $message['channel'],
+                'sender'     => (string) $message['sender'],
+                'kind'       => (string) $message['kind'],
+                'excerpt'    => (string) $message['excerpt'],
+                'file_name'  => '',
+                'url'        => (string) $message['url'],
+            );
+        }
+    }
+
+    krsort($messages);
+
+    $tasks = array_values($tagged['tasks']);
+
+    $out['truncated'] = (count($messages) > $limit) || (count($tasks) > $limit);
+    $out['messages'] = array_slice(array_values($messages), 0, $limit);
+    $out['tasks'] = array_slice($tasks, 0, $limit);
+
+    return $out;
+}
+
+/**
+ * ws_file_usage()'s answer as the groups "Where used" draws: the messages
+ * by their channel, with their words or else the name of the file they
+ * carry, and the tasks by their title and status; a group with nothing in
+ * it is left out. Plain text: the file manager escapes what it draws.
+ *
+ * @param array $usage messages, tasks
+ * @return array[] label, items (name, note, url)
+ */
+function ws_file_usage_groups($usage)
+{
+    $groups = array();
+    $messages = array();
+    $tasks = array();
+
+    foreach ((array) ($usage['messages'] ?? array()) as $message) {
+        $note = (string) ($message['excerpt'] ?? '');
+
+        if ($note === '') {
+            $note = (string) ($message['file_name'] ?? '');
+        }
+
+        $messages[] = array('name' => (string) ($message['channel'] ?? ''), 'note' => $note, 'url' => (string) ($message['url'] ?? ''));
+    }
+
+    foreach ((array) ($usage['tasks'] ?? array()) as $task) {
+        $tasks[] = array('name' => (string) ($task['title'] ?? ''), 'note' => (string) ($task['status_label'] ?? ''), 'url' => (string) ($task['url'] ?? ''));
+    }
+
+    if (!empty($messages)) {
+        $groups[] = array('label' => lang('Workspace messages'), 'items' => $messages);
+    }
+
+    if (!empty($tasks)) {
+        $groups[] = array('label' => lang('Workspace tasks'), 'items' => $tasks);
+    }
+
+    return $groups;
 }

@@ -103,7 +103,9 @@ function pg_assert_contains($needle, $haystack, $label = '')
 	if (is_array($haystack)) {
 		$found = in_array($needle, $haystack, true);
 	} else {
-		$found = (strpos((string) $haystack, (string) $needle) !== false);
+		// Every string contains the empty one, as str_contains() answers from
+		// PHP 8.0 on; strpos() before 8.0 warns "Empty needle" and returns false.
+		$found = ((string) $needle === '') || (strpos((string) $haystack, (string) $needle) !== false);
 	}
 
 	return pg_test_record(
