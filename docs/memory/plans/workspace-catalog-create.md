@@ -1,6 +1,6 @@
 ---
 name: workspace-catalog-create
-description: Plan (2026-10-23, not started, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
+description: Plan (2026-10-23, 1a helper in #1512, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -18,7 +18,7 @@ description: Plan (2026-10-23, not started, answers open): Workspace product and
 
 ## Slices
 None needs schema.
-1a. Each `ws_change_types()` limit set to its column (six above); new tests/workspace_change_limits_test.php (setup SQL, as tests/api_text_bounds_test.php) and a new shared helper reading `ws_change_types()` from source (it calls `*_ready()` DB probes), also for plans/workspace-crm-seams.md slice 1's drift test.
+1a. Each `ws_change_types()` limit set to its column (six above); new tests/workspace_change_limits_test.php (setup SQL, as tests/api_text_bounds_test.php) on a shared helper reading `ws_change_types()` from source (it calls `*_ready()` probes), also for CRM slice 1. Helper #1512; limits left.
 1b. New `pg_catalog_group_create()`, `pg_catalog_group_clouds()` in includes/fn/ecommerce.php wrapped by API and Workspace twins; Workspace product and all group creates score SEO; announcing per Q3.
 2. "New product / product group" in the drawer (`openRecord()` new mode, assets/js/workspace.js), the palette and `/product` (`/ürün`, /price-like preview; a proposed `ws_commands()` entry after plans/workspace-slash-commands.md slice 2, `ws_command_names()` unchanged); new `ws_quick_create_save()` (quick_edit.php) and panel action `ws_record_create`; decision tick. API: POST /products, /product-groups suffice (owner default for quick edit, 2026-10-19).
 3. One 'bulk' `ws_ai_changes` row (action create, `rows`), checked at proposal and write, run in small `ws_bulk_step()` slices (SEO rescored per row: `pg_seo_recalculate()`), done rows kept: no double on resume. From a pasted list, a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`), Pinegrap AI / @Claude from a description (Premium like Pinegrap AI? plans/workspace-agent-handles.md Q2). API: the answer routes' `bulk`; MCP: one 'bulk' create entry via `workspace.changes.propose` after plans/workspace-mcp-capabilities.md slice 3, no own route.
