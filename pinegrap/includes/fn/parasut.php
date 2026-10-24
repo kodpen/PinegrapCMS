@@ -1192,18 +1192,6 @@ function _parasut_order_buttons_on($enabled, $company_id, $client_id)
 }
 
 /**
- * Find or create a Parasut contact for the given order row.
- * Stores the Parasut contact ID back to orders.parasut_contact_id.
- *
-/**
- * Ensure a Pinegrap product exists in Parasut and return its Parasut ID.
- * Creates the product in Parasut on first call and persists the ID to the DB.
- *
- * @param int    $product_id  Pinegrap products.id
- * @param string $token       Valid Parasut OAuth token
- * @return array ['success' => bool, 'parasut_product_id' => string|null, 'error' => string]
- */
-/**
  * Return the company's first Parasut stock location ID.
  * Fetches from the API once and caches it in config.parasut_default_warehouse_id.
  *
@@ -1228,6 +1216,55 @@ function parasut_ensure_default_warehouse($token)
     return ['success' => true, 'warehouse_id' => $warehouse_id, 'error' => ''];
 }
 
+/**
+ * The attributes of the Paraşüt product card opened for a Pinegrap product.
+ *
+ * The price goes as list_price, the card's sales price: Paraşüt answers a
+ * create that names unit_price with 201 and keeps no price on the card. v4
+ * products have no product_type; inventory_tracking alone says whether the
+ * card keeps stock, and initial_stock_count gives a tracked card its opening
+ * stock in the create itself.
+ *
+ * @param array $product  A products row: name, short_description, price
+ *                        (minor units), inventory, inventory_quantity, tax_rate
+ * @return array
+ */
+function parasut_product_attributes($product)
+{
+    $track_stock = !empty($product['inventory']);
+
+    $attributes = [
+        'name' => $product['short_description'] ?: ($product['name'] ?: lang('No Product Name')),
+        'list_price' => round($product['price'] / 100, 2),
+        'currency' => 'TRL',
+        // Default rate on the Parasut product card. Invoice lines carry their own
+        // rate and override this, so it only matters for documents raised inside
+        // Parasut. A null products.tax_rate means "the zone decides", which has no
+        // equivalent on a product card - 0 is the safe default there.
+        'vat_rate' => ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'],
+        'inventory_tracking' => $track_stock,
+    ];
+
+    if ($track_stock) {
+        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']);
+    }
+
+    return $attributes;
+}
+
+/**
+ * Ensure a Pinegrap product exists in Parasut and return its Parasut ID.
+ * Creates the product in Parasut on first call and persists the ID to the DB.
+ *
+ * A tracked product's opening stock is set by the create's
+ * initial_stock_count. No /stock_updates request follows: Paraşüt answers it
+ * 422 "Güncellenen stok miktarı bulunamadı." for a card opened so, and it
+ * cannot seed stock from zero either (parasut_ensure_product_stock_tracking()).
+ *
+ * @param int    $product_id  Pinegrap products.id
+ * @param string $token       Valid Parasut OAuth token
+ * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string]
+ */
 function parasut_sync_product($product_id, $token)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
@@ -1244,30 +1281,10 @@ function parasut_sync_product($product_id, $token)
         return ['success' => true, 'parasut_product_id' => $product['parasut_product_id'], 'track_stock' => $track_stock, 'error' => ''];
     }
 
-    $product_name = $product['short_description'] ?: ($product['name'] ?: lang('No Product Name'));
-    $unit_price = round($product['price'] / 100, 2);
-
-    $attributes = [
-        'name' => $product_name,
-        'unit_price' => $unit_price,
-        'currency' => 'TRL',
-        // Default rate on the Parasut product card. Invoice lines carry their own
-        // rate and override this, so it only matters for documents raised inside
-        // Parasut. A null products.tax_rate means "the zone decides", which has no
-        // equivalent on a product card - 0 is the safe default there.
-        'vat_rate' => ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'],
-        'product_type' => $track_stock ? 'physical' : 'service',
-        'inventory_tracking' => $track_stock,
-    ];
-    if ($track_stock) {
-        // Set initial stock count so the product has an inventory level from the start.
-        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']);
-    }
-
     $body = [
         'data' => [
             'type' => 'products',
-            'attributes' => $attributes,
+            'attributes' => parasut_product_attributes($product),
         ],
     ];
 
@@ -1279,34 +1296,6 @@ function parasut_sync_product($product_id, $token)
 
     $parasut_product_id = (string) $api_result['body']['data']['id'];
     db("UPDATE products SET parasut_product_id = '" . escape($parasut_product_id) . "' WHERE id = '" . escape($product_id) . "'");
-
-    // For stock-tracked products, create an inventory level in the default warehouse
-    // so the product has a stock entry and can appear in shipment documents.
-    if ($track_stock) {
-        $wh = parasut_ensure_default_warehouse($token);
-        if ($wh['success']) {
-            $initial_qty = max(0, (int) $product['inventory_quantity']);
-            $inv_body = [
-                'data' => [
-                    'type' => 'stock_updates',
-                    'attributes' => [
-                        'quantity' => $initial_qty > 0 ? $initial_qty : 1,
-                    ],
-                    'relationships' => [
-                        'product' => ['data' => ['type' => 'products', 'id' => $parasut_product_id]],
-                        'warehouse' => ['data' => ['type' => 'warehouses', 'id' => $wh['warehouse_id']]],
-                    ],
-                ],
-            ];
-            $inv_result = _parasut_request('POST', _parasut_prefix() . '/stock_updates', $inv_body, $token);
-            // Opening stock is best effort - the product is usable without it. Log
-            // the failure without the response body: these payloads echo back the
-            // record and the log is not a place for customer data.
-            if (!in_array($inv_result['http_code'], [200, 201])) {
-                error_log('Parasut: opening stock level failed for product ' . $parasut_product_id . ' (HTTP ' . $inv_result['http_code'] . ')');
-            }
-        }
-    }
 
     return ['success' => true, 'parasut_product_id' => $parasut_product_id, 'track_stock' => $track_stock, 'error' => ''];
 }
@@ -1491,6 +1480,9 @@ function parasut_order_contact_attributes($order, $id_number)
 }
 
 /**
+ * Find or create a Parasut contact for the given order row.
+ * Stores the Parasut contact ID back to orders.parasut_contact_id.
+ *
  * @param array $order Full order row from DB (billing_* fields, contact_id, id)
  * @return array ['success' => bool, 'parasut_contact_id' => string|null, 'error' => string]
  */
