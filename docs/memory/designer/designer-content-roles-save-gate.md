@@ -19,7 +19,7 @@ Core `includes/designer_access.php`.
 - Page identity is not content: name / folder / home-page flag are written back from the saved row BEFORE the duplicate-name check, else a save is rejected over a name the operator did not choose. Title, description, keywords stay editable.
 
 ## What is always the content operator's, outside marked areas?
-- Text AND image. The merge copies only `props.text` and the image ADDRESS (`_pg_dm_take_image_src`); size, class, alt stay as saved. Background image is outside (it is formatting). Reason: an operator who can change a title but not the photo above it got half the job.
+- Text AND image. The merge copies only `props.text` and the image ADDRESS (`_pg_dm_take_image_src`); size, class, alt stay as saved. Background image is outside (it is formatting). Reason: an operator who can change a title but not the photo above it got half the job. Which nodes the editor offers as text: `designer-content-roles-text-nodes.md`.
 
 ## How are note authors and `_notes` handled?
 - `pg_designer_save_page()` re-stamps only notes whose TEXT changed; unchanged notes keep `_notes_by` / `_notes_at` (else the saver would take ownership of every note). Browser-sent `_notes_by` is never copied in the merge. The note edit window clears the old stamp on text change so the list does not show a wrong name until next load.

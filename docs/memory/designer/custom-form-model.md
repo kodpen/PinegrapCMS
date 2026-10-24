@@ -9,7 +9,7 @@ description: custom_form widget model: controls are the fields (no field list), 
 ## Where does each field column come from?
 | Column | Source |
 |---|---|
-| `name` | `name` attribute (panel "Alan adı") |
+| `name` | `name` attribute (panel "Field Name") |
 | `type` | tag + `type` (`_pg_cf_type_by_input()` / `CF_TYPE_BY_INPUT`; any `type` not in the list is a text box) |
 | `required` | `required` attribute |
 | `label` | `<label for>`; in a radio/checkbox group the enclosing `<fieldset>`'s `<legend>`; else `_cf.label`; else placeholder / aria-label; else name |
@@ -19,7 +19,7 @@ description: custom_form widget model: controls are the fields (no field list), 
 | `multiple` | `select[multiple]` or checkbox |
 
 - An office-use-only pick list needs a real selected option as its default: an option with value `''` is not stored (`_pg_cf_controls()`), and the panel's submitted-form edit screen (`edit_submitted_form.php`), which prints only stored options, then saves the first option ([[design-template-magazine-issues]]).
-- What markup cannot say lives in the node's **`props._cf`**: `ids` (`{page_id: form_fields.id}`), `label` (if the label element was deleted), `rss_field`, `contact_field`, `office_use_only`, `validation_message`, `upload_folder_id`, `quiz_question` / `quiz_answer`, `wysiwyg` (text area with the rich-text editor; absent = the row keeps its flag, `custom-form-rich-text.md`).
+- What markup cannot say lives in the node's **`props._cf`**: `ids` (`{page_id: form_fields.id}`), `label` (if the label element was deleted), `rss_field`, `contact_field`, `office_use_only`, `url_param` (address parameter the field starts with, never in a row, `custom-form-url-prefill.md`), `validation_message`, `upload_folder_id`, `quiz_question` / `quiz_answer`, `wysiwyg` (text area with the rich-text editor; absent = the row keeps its flag, `custom-form-rich-text.md`).
 
 ## What does `form_source` mean?
 - `page` (default): the form belongs to the page the widget **stands on**; controls are its fields. Template: one input + CAPTCHA + Submit (`_cfStarterTree`).

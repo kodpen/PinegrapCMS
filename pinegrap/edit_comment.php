@@ -46,13 +46,14 @@ $query =
         comments.publish_date_and_time,
         comments.publish_cancel,
         comments.featured,
-        page.page_type,
+        comments.created_user_id,
         page.page_folder,
         page.comments_submitter_email_page_id,
         page.comments_watcher_email_page_id,
         page.comments_rating as comments_rating,
         user.user_username as created_username,
         forms.reference_code as reference_code,
+        forms.user_id AS submitter_user_id,
         product_groups.address_name as product_group_address_name,
         products.address_name as product_address_name,
         " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
@@ -89,7 +90,8 @@ $published = $row['published'];
 $publish_date_and_time = $row['publish_date_and_time'];
 $publish_cancel = $row['publish_cancel'];
 $featured = $row['featured'];
-$page_type = $row['page_type'];
+$created_user_id = (int) $row['created_user_id'];
+$submitter_user_id = (int) $row['submitter_user_id'];
 $folder_id = $row['page_folder'];
 $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
@@ -458,6 +460,9 @@ if (!$_POST) {
         $query = "DELETE FROM notifications WHERE comment_id = '" . escape($liveform->get_field_value('id')) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+        // A form record's comment count and newest comment, read by the form
+        // lists (includes/fn/comments.php).
+        pg_comment_refresh_record_info($page_id, $item_type, $item_id);
 
         log_activity( lang(array('string'=>'comment on page ({var:1}) was deleted','vars'=>get_page_name($page_id) )), $_SESSION['sessionusername']);
         
@@ -568,13 +573,24 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity( lang(array('string'=>'comment on page ({var:1}) was modified','vars'=>get_page_name($page_id))), $_SESSION['sessionusername']);
+
+        // A form record's comment count and newest comment, read by the form
+        // lists (includes/fn/comments.php). Rebuilt before the e-mails below,
+        // whose subject reads the count and the newest comment from that row.
+        pg_comment_refresh_record_info($page_id, $item_type, $item_id);
         
         // if the comment was just published,
         // and if it was not published before,
-        // and if the page is a form item view,
-        // and if there is a page selected to send
+        // and if it is about a form record (on a form item view page or on a
+        // page built in the visual designer that shows the record),
+        // and if there is a page selected to send,
+        // and if someone other than the record's submitter wrote it,
         // then send e-mail to custom form submitter letting him/her know a comment has been added
-        if (($new_published == 1) && ($published == 0) && ($page_type == 'form item view') && ($comments_submitter_email_page_id != 0)) {
+        if (
+            ($new_published == 1)
+            && ($published == 0)
+            && pg_comment_submitter_mail_due($item_type, $item_id, $comments_submitter_email_page_id, $created_user_id, $submitter_user_id)
+        ) {
             send_comment_email_to_custom_form_submitter($liveform->get_field_value('id'));
         }
         
@@ -594,63 +610,6 @@ if (!$_POST) {
     // rating (includes/fn/reviews.php).
     pg_review_comment_changed($item_type, $item_id);
 
-    // if the page type is form item view, then update the submitted_form_info table so that form list views can show comment info
-    if ($page_type == 'form item view') {
-        // Get the number of views so we do not lose that data when we delete record below.
-        $number_of_views = db_value("SELECT number_of_views FROM submitted_form_info WHERE (submitted_form_id = '" . escape($item_id) . "') AND (page_id = '" . escape($page_id) . "')");
-
-        // get the number of published comments for the submitted form and page
-        $query =
-            "SELECT COUNT(*)
-            FROM comments
-            WHERE
-                (page_id = '" . escape($page_id) . "')
-                AND (item_id = '" . escape($item_id) . "')
-                AND (item_type = '" . escape($item_type) . "')
-                AND (published = '1')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $number_of_comments = $row[0];
-
-        $newest_comment_id = '';
-        
-        // if there is at least one comment, then get the newest comment id
-        if ($number_of_comments > 0) {
-            $query =
-                "SELECT id
-                FROM comments
-                WHERE
-                    (page_id = '" . escape($page_id) . "')
-                    AND (item_id = '" . escape($item_id) . "')
-                    AND (item_type = '" . escape($item_type) . "')
-                    AND (published = '1')
-                ORDER BY created_timestamp DESC
-                LIMIT 1";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            $newest_comment_id = $row['id'];
-        }
-        
-        // delete the current record if one exists
-        $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = '" . escape($item_id) . "') AND (page_id = '" . escape($page_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $query = 
-            "INSERT INTO submitted_form_info (
-                submitted_form_id,
-                page_id,
-                number_of_views,
-                number_of_comments,
-                newest_comment_id)
-             VALUES (
-                '" . escape($item_id) . "',
-                '" . escape($page_id) . "',
-                '$number_of_views',
-                '$number_of_comments',
-                '$newest_comment_id')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    }
-    
     // if there is a send to, then forward user to send to
     if ($liveform->get_field_value('send_to') != '') {
         header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . $bookmark);

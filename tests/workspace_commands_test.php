@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the /price and /stock commands (includes/workspace/commands.php):
- * how an amount and a quantity are read from what a person types, how the
- * product's tag is taken off the text, the names the commands answer to and
- * who is offered them when nobody is named.
+ * Tests for the channel commands (includes/workspace/commands.php): how
+ * /price and /stock read an amount and a quantity and take the product's tag
+ * off the text, how /task reads its people, department, estimate, priority
+ * and day words, the names the commands answer to, that the help lists every
+ * one of them, and who is offered them when nobody is named.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 
 // An amount comes back in minor units whichever way it is written: a comma
@@ -105,4 +107,60 @@ function test_workspace_command_offered_without_a_person()
 	pg_assert_true(ws_command_offered(null, 'stock'), 'stock, nobody named');
 	pg_assert_true(ws_command_offered(array('id' => 1, 'role' => 3), 'task'), 'task, anybody');
 	pg_assert_true(ws_command_offered(array('id' => 1, 'role' => 3), 'poll'), 'poll, anybody');
+}
+
+// Every name a command answers to is in its help entry, so the composer's /
+// picker finds the command under each of them, /help included.
+function test_workspace_command_every_name_is_in_the_help()
+{
+	$listed = array();
+
+	foreach (ws_command_help(null) as $entry) {
+		foreach ((array) ($entry['names'] ?? array()) as $name) {
+			$listed[$name] = true;
+		}
+	}
+
+	foreach (array_keys(ws_command_names()) as $name) {
+		pg_assert_true(isset($listed['/' . $name]), '/' . $name . ' in a help entry');
+	}
+}
+
+// /task takes the people and the department from their tags, the estimate
+// after ~ and the priority after !; what is left is the title.
+function test_workspace_command_parse_task_reads_its_parts()
+{
+	$task = ws_command_parse_task('Logo revizyonu <@user:5> ~2sa !acil');
+
+	pg_assert_same('Logo revizyonu', $task['title'], 'title');
+	pg_assert_same(array(5), $task['assignees'], 'the tagged person');
+	pg_assert_same(0, $task['department_id'], 'no department');
+	pg_assert_same('urgent', $task['priority'], '!acil');
+	pg_assert_same(120, $task['estimate_minutes'], '~2sa');
+	pg_assert_same(null, $task['due_date'], 'no day');
+
+	$task = ws_command_parse_task('Stand kurulumu <@dept:3>');
+
+	pg_assert_same('Stand kurulumu', $task['title'], 'title beside a department');
+	pg_assert_same(3, $task['department_id'], 'the tagged department');
+	pg_assert_same(array(), $task['assignees'], 'nobody named');
+}
+
+// A weekday is the next one from today, +2g two days on (2026-10-21 is a
+// Wednesday).
+function test_workspace_command_date_words()
+{
+	pg_assert_same('2026-10-23', ws_parse_date_word('cuma', '2026-10-21'), 'cuma');
+	pg_assert_same('2026-10-23', ws_parse_date_word('+2g', '2026-10-21'), '+2g');
+	pg_assert_same('2026-10-23', ws_parse_date_word('FRIDAY', '2026-10-21'), 'FRIDAY in capitals');
+}
+
+// The Turkish names are read in any case, with or without their letters.
+function test_workspace_command_turkish_names()
+{
+	pg_assert_same(array('command' => 'task', 'rest' => 'x'), ws_command_split('/Görev x'), '/Görev');
+	pg_assert_same(array('command' => 'task', 'rest' => 'x'), ws_command_split('/gorev x'), '/gorev');
+	pg_assert_same(array('command' => 'help', 'rest' => ''), ws_command_split('/YARDIM'), '/YARDIM');
+	pg_assert_same(array('command' => 'help', 'rest' => ''), ws_command_split('/help'), '/help');
+	pg_assert_same(array('gorev', 'görev', 'task', 'g', 't'), ws_command_aliases('task'), 'the names of /task in table order');
 }

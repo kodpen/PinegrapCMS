@@ -2561,8 +2561,12 @@ function pg_designer_resolve_tab_values($value, $tab_ids)
  * Resolve `tab:<key>` references in the system widgets these pages place.
  *
  * Only the widgets referenced by the saved trees are read; each config with
- * a key in it is rewritten once. The editor makes the same substitution in
- * its cache from the save reply, so the two sides agree without a reload.
+ * a key in it is rewritten once. A widget's tree may name a page by its key
+ * too: the page a link to another page opens (props._bindParams.*.page_id,
+ * pg_sw_page_link_resolve_tabs()); such a tree is written back through
+ * pg_designer_tree_encode() in the same update. The editor makes the same
+ * substitution in its cache from the save reply, so the two sides agree
+ * without a reload.
  *
  * A widget can sit inside a shared component the page places (the login
  * region in an account bar) rather than on the page itself, so the trees of
@@ -2582,7 +2586,10 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
             foreach ($mm[1] as $sid) { $sid = (int)$sid; if ($sid > 0) $into[$sid] = true; }
         }
     };
-    if (!(int)db_value("SELECT COUNT(*) FROM shared_components WHERE system_region_config LIKE '%\"tab:%'")) return;
+    // A '_' in the pattern matches any character, which only widens the
+    // match; the tree walker reads the key exactly.
+    $tree_like = "tree_json LIKE '%\"page_id\":\"tab:%'";
+    if (!(int)db_value("SELECT COUNT(*) FROM shared_components WHERE system_region_config LIKE '%\"tab:%' OR $tree_like")) return;
     $sids = array();
     foreach ((array)$pages as $p) {
         if (!is_array($p)) continue;
@@ -2607,16 +2614,29 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
         $frontier = array_diff_key($nested, $sids);
         $sids += $frontier;
     }
-    $rows = db_items("SELECT id, system_region_config FROM shared_components
+    $rows = db_items("SELECT id, system_region_config, tree_json FROM shared_components
                       WHERE id IN (" . implode(',', array_keys($sids)) . ")
-                        AND system_region_config LIKE '%tab:%'");
-    foreach ((array)$rows as $row) {
+                        AND (system_region_config LIKE '%tab:%' OR $tree_like)");
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $set = array();
         $cfg = json_decode((string)$row['system_region_config'], true);
-        if (!is_array($cfg)) continue;
-        $resolved = pg_designer_resolve_tab_values($cfg, $tab_ids);
-        if ($resolved === $cfg) continue;
+        if (is_array($cfg)) {
+            $resolved = pg_designer_resolve_tab_values($cfg, $tab_ids);
+            if ($resolved !== $cfg) {
+                $set[] = "system_region_config = '" . e(json_encode($resolved, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "'";
+            }
+        }
+        if (strpos((string)$row['tree_json'], 'tab:') !== false) {
+            $tree = json_decode((string)$row['tree_json'], true);
+            if (is_array($tree)) {
+                $resolved_tree = pg_sw_page_link_resolve_tabs($tree, $tab_ids);
+                $tree_json = ($resolved_tree !== $tree) ? pg_designer_tree_encode($resolved_tree) : '';
+                if ($tree_json !== '') $set[] = "tree_json = '" . e($tree_json) . "'";
+            }
+        }
+        if (!$set) continue;
         db("UPDATE shared_components
-            SET system_region_config = '" . e(json_encode($resolved, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "',
+            SET " . implode(', ', $set) . ",
                 updated_at = " . time() . "
             WHERE id = '" . (int)$row['id'] . "' LIMIT 1");
     }
