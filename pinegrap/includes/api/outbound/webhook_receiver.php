@@ -245,6 +245,46 @@ function mp_webhook_register_problem($account) {
 
 }
 
+// Would saving these credentials change who a registered webhook belongs to?
+//
+// A webhook is registered for one seller in one environment - the fields the
+// provider names in 'webhook_owner_fields' - and keeps delivering that
+// seller's packages, with a key the receiver accepts, whatever the account is
+// changed to. Switching a test account to live under it would import the test
+// environment's packages as real orders and take their stock. $stored and
+// $submitted are credential arrays; both are read the way a form is
+// (mp_provider_credentials()), so a select stored before it existed counts as
+// its default and spaces around a text value are no change.
+function mp_webhook_owner_changed($provider, $stored, $submitted) {
+
+	$providers = mp_providers();
+
+	$fields = isset($providers[$provider]['webhook_owner_fields']) ? (array)$providers[$provider]['webhook_owner_fields'] : array();
+
+	if (!$fields) {
+
+		return false;
+
+	}
+
+	$before = mp_provider_credentials($provider, (array)$stored);
+
+	$after = mp_provider_credentials($provider, (array)$submitted);
+
+	foreach ($fields as $field) {
+
+		if ((isset($before[$field]) ? $before[$field] : '') !== (isset($after[$field]) ? $after[$field] : '')) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
+
+}
+
 // A status code and a JSON body, and nothing the shared code printed on the
 // way here.
 function mp_webhook_answer($status, $body) {

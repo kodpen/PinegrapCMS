@@ -190,6 +190,20 @@ if ($_POST) {
 			// key nothing here knows any more.
 			$credentials = array_merge((array)$account['credentials'], $credentials);
 
+			// A registered webhook belongs to the seller and environment it was
+			// registered for, and keeps delivering their packages whatever the
+			// account is changed to. Nothing is saved until it is removed.
+			if (!empty($account['credentials']['webhook_id'])
+				&& mp_webhook_owner_changed($account['provider'], $account['credentials'], $credentials)) {
+
+				$liveform->add_warning(h(lang('Remove the webhook before changing the environment or the seller ID: the webhook was registered for the current ones and would keep delivering their packages.')));
+
+				header('Location: ' . $screen_url . '?account=' . $account_id);
+
+				exit();
+
+			}
+
 			$status = (isset($_POST['status']) && $_POST['status'] === 'active') ? 'active' : 'paused';
 
 			db("UPDATE marketplace_accounts SET

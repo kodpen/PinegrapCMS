@@ -27,6 +27,6 @@ description: Trendyol stock and price push: price-and-inventory batch by barcode
 - Whether a stock line for a listing still awaiting approval is refused. If it is, the line's refusal puts the mapping in `error` and it stops syncing until re-matched (n11 rule, `mp_sync_apply_results()`); step 2b's approval read is where it would be set active again.
 
 ## What do webhooks carry?
-- Order package changes only, no stock, price or product events, so they change nothing here. The receiver and Trendyol's webhook facts: `marketplace-webhook-receiver.md`.
+- Order package changes only, no stock, price or product events, so they change nothing here. The receiver: `marketplace-webhook-receiver.md`; Trendyol's webhook facts: `marketplace-webhook-registration.md`.
 
 Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md

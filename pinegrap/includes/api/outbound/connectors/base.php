@@ -93,6 +93,9 @@ function mp_providers() {
 			'name'   => 'Trendyol',
 			'file'   => 'trendyol.php',
 			'key'    => 'barcode',
+			// A registered webhook belongs to the seller and the environment
+			// these fields name (mp_webhook_owner_changed()).
+			'webhook_owner_fields' => array('seller_id', 'environment'),
 			'help'   => 'All three are in your Trendyol seller panel, under Account Information › Integration Information. The test environment has credentials of its own and only answers servers whose IP address Trendyol has authorised.',
 			'fields' => array(
 				'seller_id'   => array('label' => 'Seller ID',  'secret' => false),

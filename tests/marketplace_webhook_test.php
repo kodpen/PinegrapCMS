@@ -385,3 +385,52 @@ function test_marketplace_webhook_account_delete_removes_the_webhook_first()
 	pg_assert_contains("mp_can(\$account['provider'], 'remove_webhook')", $delete);
 	pg_assert_contains('h($removed[\'error\'])', $delete, 'the connector\'s message is escaped');
 }
+
+/* ---------------------------------------------------- whose webhook */
+
+// A webhook belongs to one seller in one environment. A save that changed
+// either under it would let the old one keep delivering - test packages
+// imported as real orders - so those changes are refused while it exists.
+function test_marketplace_webhook_owner_change_is_the_seller_or_the_environment()
+{
+	$stored = webhook_test_account()['credentials'];
+
+	pg_assert_true(mp_webhook_owner_changed('trendyol', $stored, array_merge($stored, array('environment' => 'stage'))), 'live to test');
+	pg_assert_true(mp_webhook_owner_changed('trendyol', $stored, array_merge($stored, array('seller_id' => '654321'))), 'another seller');
+
+	pg_assert_false(mp_webhook_owner_changed('trendyol', $stored, $stored), 'nothing changed');
+	pg_assert_false(mp_webhook_owner_changed('trendyol', $stored, array_merge($stored, array('api_key' => 'new', 'api_secret' => 'new'))),
+		'a new key and secret for the same seller');
+	pg_assert_false(mp_webhook_owner_changed('trendyol', $stored, array_merge($stored, array('seller_id' => ' 123456 '))), 'the same id, spaced');
+
+	$old = $stored;
+	unset($old['environment']);
+
+	pg_assert_false(mp_webhook_owner_changed('trendyol', $old, array_merge($stored, array('environment' => 'production'))),
+		'a row saved before the environment existed is live, like the default');
+	pg_assert_true(mp_webhook_owner_changed('trendyol', $old, array_merge($stored, array('environment' => 'stage'))));
+
+	pg_assert_false(mp_webhook_owner_changed('n11', array('app_key' => 'a'), array('app_key' => 'b')), 'a provider that names no owner fields');
+	pg_assert_same(array('seller_id', 'environment'), mp_providers()['trendyol']['webhook_owner_fields']);
+}
+
+// The screen asks before it writes anything, and goes back without writing.
+function test_marketplace_webhook_save_refuses_to_change_the_webhooks_owner()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "if (\$action === 'update' && \$account) {");
+	$end = strpos($source, "if (\$action === 'test' && \$account) {");
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end));
+
+	$update = substr($source, $start, $end - $start);
+
+	$check = strpos($update, "mp_webhook_owner_changed(\$account['provider'], \$account['credentials'], \$credentials)");
+	$back = ($check === false) ? false : strpos($update, "header('Location: ' . \$screen_url . '?account=' . \$account_id);", $check);
+	$write = strpos($update, 'UPDATE marketplace_accounts SET');
+
+	pg_assert_true($check !== false, 'the owner fields are compared');
+	pg_assert_true(($check !== false) && ($back !== false) && ($write !== false) && ($back < $write), 'and the save goes back before anything is written');
+	pg_assert_contains("lang('Remove the webhook before changing the environment or the seller ID: the webhook was registered for the current ones and would keep delivering their packages.')", $update);
+}
