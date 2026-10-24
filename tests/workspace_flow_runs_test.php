@@ -482,15 +482,22 @@ function test_workspace_flow_runs_channel_is_frozen()
 // Who may read a run and who may cancel it: the flow's editors; the people
 // who may run the flow, or who started the run, while they read the channel
 // the run was started in; and the starter of a run while they may run the
-// flow, whatever the channel (a person the flow is shared with to run, who
-// may not read its home, or a flow with no home at all). A view share reads
-// no runs but the ones its holder started.
+// flow, whatever the channel, when the channel does not decide their own run
+// (a person share lets them run it, who may not read its home, or the run
+// has no channel: a flow with no home). Running the flow through its home
+// alone does not: a run started in a channel they were taken out of since
+// stays out of their sight. A view share reads no runs but the ones its
+// holder started.
 function test_workspace_flow_runs_access()
 {
 	pg_assert_same('edit', ws_flow_run_access_from('edit', false, false));
 	pg_assert_same('read', ws_flow_run_access_from('run', false, true));
 	pg_assert_same('', ws_flow_run_access_from('run', false, false), 'a reader of the flow\'s home now who does not read the channel the run was started in');
-	pg_assert_same('read', ws_flow_run_access_from('run', true, false), 'the starter, while they may run the flow');
+	pg_assert_same('', ws_flow_run_access_from('run', true, false), 'the starter who runs the flow through its home, taken out of the run\'s channel since');
+	pg_assert_same('read', ws_flow_run_access_from('run', true, false, true), 'the starter, while a person share lets them run the flow or the run has no channel');
+	pg_assert_same('', ws_flow_run_access_from('run', false, false, true), 'somebody else\'s run');
+	pg_assert_same('', ws_flow_run_access_from('view', true, false, true), 'a view share runs nothing');
+	pg_assert_same('', ws_flow_run_access_from('', true, false, true), 'nor does a flow they no longer reach');
 	pg_assert_same('read', ws_flow_run_access_from('', true, true), 'the starter of a run of a paused flow');
 	pg_assert_same('', ws_flow_run_access_from('', true, false), 'a starter who no longer reads the run\'s channel');
 	pg_assert_same('', ws_flow_run_access_from('', false, true));
@@ -502,6 +509,15 @@ function test_workspace_flow_runs_access()
 	pg_assert_true(ws_flow_run_cancel_allowed('read', true), 'the run\'s starter');
 	pg_assert_false(ws_flow_run_cancel_allowed('read', false), 'another reader');
 	pg_assert_false(ws_flow_run_cancel_allowed('', true), 'nobody without access');
+
+	// The channel leaves a starter's own run alone only for a run with no
+	// channel or a person share that gives run; ws_flow_run_access() asks.
+	$own = ws_flow_runs_test_source('ws_flow_run_own_reach');
+
+	pg_assert_contains('ws_flow_run_channel_id($run) <= 0', $own, 'a run with no channel');
+	pg_assert_contains("ws_flow_share_reach(\$viewer, \$flow)['person']", $own, 'a share made to the person');
+	pg_assert_contains("ws_flow_access_rank('run')", $own, 'that lets them run the flow');
+	pg_assert_contains('ws_flow_run_own_reach($viewer, $flow, $run)', ws_flow_runs_test_source('ws_flow_run_access'));
 }
 
 // The statuses of runs and boxes, each within its VARCHAR(16) column.

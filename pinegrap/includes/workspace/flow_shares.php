@@ -15,11 +15,12 @@
  * gives a view only: running comes from the flow's home channel, as before.
  * Site members never reach a flow, shared or not.
  *
- * Only the owner manages the shares, as only the owner moves the flow to
- * another home channel or deletes it: a person shared at edit changes the
- * graph, publishes and pauses it, but does not hand it on. Being an
- * administrator gives nothing here, as for a note. Whoever starts a run, it
- * acts with the owner's rights at the time each box runs.
+ * Only the owner manages the shares, as only the owner publishes the flow,
+ * moves it to another home channel or deletes it: a person shared at edit
+ * changes the draft and may pause the flow, but neither publishes what it
+ * runs in the owner's name nor hands it on. Being an administrator gives
+ * nothing here, as for a note. Whoever starts a run, it acts with the
+ * owner's rights at the time each box runs.
  *
  * Sharing writes a Site Log line, and a person a flow is newly shared with is
  * told in their bell (flow_shared). The canvas draws the shares in its Share
@@ -176,8 +177,9 @@ function ws_flow_access_level($facts)
 }
 
 /**
- * May the person manage a flow's shares? Its owner, while the flow is theirs
- * to change; a person shared at edit is not, nor is an administrator.
+ * May the person manage a flow's shares, publish it and delete it? Its
+ * owner, while the flow is theirs to change; a person shared at edit is not,
+ * nor is an administrator.
  *
  * @param bool   $is_owner
  * @param string $access ws_flow_access()
@@ -334,7 +336,8 @@ function ws_flow_share_reach($viewer, $flow)
 }
 
 /**
- * May the person manage this flow's shares (ws_flow_share_manages())?
+ * May the person manage this flow's shares, publish it and delete it
+ * (ws_flow_share_manages())?
  *
  * @param array      $viewer
  * @param array|null $flow

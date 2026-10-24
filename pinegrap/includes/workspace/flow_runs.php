@@ -692,25 +692,26 @@ function ws_flow_run_channel_id($run)
  *   edit  the flow is theirs to change: they read and cancel its runs
  *   read  they read the run's channel, and may run the flow or started this
  *         run (a run of a flow paused since); or they started it and may
- *         still run the flow, whatever the channel (a person the flow is
- *         shared with to run, who may not read its home, or a flow with no
- *         home at all: its runs have no channel)
+ *         still run the flow while $own_run says the channel does not
+ *         count (a person share lets them run it, who may not read its
+ *         home, or the run has no channel: a flow with no home)
  *   ''    nothing: a run started in a channel they do not read stays out of
- *         their sight, even when the flow's home is now one they read; a
- *         view share reads the flow, not its runs
+ *         their sight, even when the flow's home is now one they read and
+ *         they started it; a view share reads the flow, not its runs
  *
  * @param string $flow_access      ws_flow_access()
  * @param bool   $is_starter       they started the run
  * @param bool   $channel_readable they read the channel the run was started in
+ * @param bool   $own_run          the run has no channel, or a person share gives them run (ws_flow_run_own_reach())
  * @return string edit | read | ''
  */
-function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable)
+function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable, $own_run = false)
 {
     if ($flow_access === 'edit') {
         return 'edit';
     }
 
-    if ($is_starter && ($flow_access === 'run')) {
+    if ($is_starter && $own_run && ($flow_access === 'run')) {
         return 'read';
     }
 
@@ -845,14 +846,38 @@ function ws_flow_run_access($viewer, $flow, $run)
 
     $flow_access = ws_flow_access($viewer, $flow);
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
+    $own_run = $starter && ($flow_access === 'run') && ws_flow_run_own_reach($viewer, $flow, $run);
 
-    // Decided without the run's channel: an editor, the starter who may
-    // still run the flow, and anybody else who may not run it.
-    if (($flow_access === 'edit') || ($starter && ($flow_access === 'run')) || (!$starter && ($flow_access !== 'run'))) {
-        return ws_flow_run_access_from($flow_access, $starter, false);
+    // Decided without the run's channel: an editor, the starter whose own
+    // run the channel does not decide, and anybody else who may not run it.
+    if (($flow_access === 'edit') || $own_run || (!$starter && ($flow_access !== 'run'))) {
+        return ws_flow_run_access_from($flow_access, $starter, false, $own_run);
     }
 
     return ws_flow_run_access_from($flow_access, $starter, ws_flow_run_channel_readable($viewer, $run));
+}
+
+/**
+ * Does the channel leave a starter's own run alone? When the run has none
+ * (its flow had no home), or when a share made to the person lets them run
+ * the flow: they may not read its home, and their run is theirs to follow.
+ * Running it through the home alone does not: a run started in a channel
+ * they were taken out of since stays out of their sight.
+ *
+ * @param array $viewer
+ * @param array $flow
+ * @param array $run
+ * @return bool
+ */
+function ws_flow_run_own_reach($viewer, $flow, $run)
+{
+    if (ws_flow_run_channel_id($run) <= 0) {
+        return true;
+    }
+
+    $person = (string) ws_flow_share_reach($viewer, $flow)['person'];
+
+    return ($person !== '') && (ws_flow_access_rank(ws_flow_share_gives('user', $person, ws_can_schedule($viewer))) >= ws_flow_access_rank('run'));
 }
 
 /**

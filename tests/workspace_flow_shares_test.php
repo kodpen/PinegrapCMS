@@ -169,6 +169,29 @@ function test_workspace_flow_shares_home_is_moved_by_the_owner()
 	pg_assert_true(strpos($check, "(int) \$flow['owner_id'] !== (int) \$viewer['id']") > strpos($check, "array_key_exists('channel_id', \$data)"), 'only when the home changes');
 }
 
+// A published flow opens its tasks in the owner's name with the owner's
+// rights (an assign rule resolved through them, the home channel they post
+// in), so the owner alone publishes: a colleague shared at edit saves the
+// draft and may pause the flow, which only stops new runs.
+function test_workspace_flow_shares_owner_publishes()
+{
+	$publish = ws_flow_shares_test_function('includes/workspace/flows.php', 'ws_flow_publish_check');
+
+	pg_assert_true($publish !== '', 'the publish check is found');
+	pg_assert_contains('ws_flow_share_manager($viewer, $flow)', $publish, 'publishing asks for the owner');
+	pg_assert_true(strpos($publish, "ws_flow_access(\$viewer, \$flow) !== 'edit'") === false, 'not for every editor');
+
+	foreach (array('ws_flow_save_check', 'ws_flow_pause_check') as $name) {
+		pg_assert_contains("ws_flow_access(\$viewer, \$flow) !== 'edit'", ws_flow_shares_test_function('includes/workspace/flows.php', $name), $name . ' stays open to a colleague shared at edit');
+	}
+
+	// The canvas draws Publish for the owner alone and tells the others why.
+	$script = ws_flow_shares_test_source('assets/js/workspace_flow.js');
+
+	pg_assert_contains("if (flow.manage) {\n            ui.publish = K.button(", $script, 'Publish for whoever manages the flow');
+	pg_assert_contains("t('fl_publish_owner')", $script);
+}
+
 // ws_flow_access() gathers the facts and the pure function decides; a view
 // share does not start a run.
 function test_workspace_flow_shares_access_reads_the_shares()
@@ -233,7 +256,6 @@ function test_workspace_flow_shares_step_is_called_once_after_the_flows_step()
 	preg_match_all('#// (11\.0\.\d+)\n#', $calls, $labels);
 
 	pg_assert_same(1, count(array_keys($labels[1], '11.0.83', true)), 'no other step carries 11.0.83');
-	pg_assert_same(0, count(array_keys($labels[1], '11.0.82', true)), '11.0.82 stays free');
 	pg_assert_same(count($labels[1]), count(array_unique($labels[1])), 'every label of the call list is used once');
 }
 

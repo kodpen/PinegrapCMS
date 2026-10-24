@@ -28143,7 +28143,7 @@
     "No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.": "Henüz akış yok. Okuduğunuz bir kanalın yayımlanmış akışı ya da sizinle paylaşılan bir akış burada görünür.",
     "Who it is shared with": "Kimlerle paylaşıldığı",
     "Share “{var:1}”": "“{var:1}” akışını paylaş",
-    "A colleague may look at the flow, run it once it is live, or change it with you; changing it needs staff in the team, and for anybody else it acts as running. The people who read a channel may look at it. A run always acts with your rights.": "Bir çalışma arkadaşı akışa bakabilir, yayında olduğunda çalıştırabilir ya da sizinle birlikte değiştirebilir; değiştirmek için ekipte personel olmak gerekir, başkaları için bu hak çalıştırma olarak geçer. Bir kanalı okuyanlar akışa bakabilir. Bir çalıştırma her zaman sizin yetkilerinizle yapılır.",
+    "A colleague may look at the flow, run it once it is live, or change its draft with you, which you publish; changing it needs staff in the team, and for anybody else it acts as running. The people who read a channel may look at it. A run always acts with your rights.": "Bir çalışma arkadaşı akışa bakabilir, yayında olduğunda çalıştırabilir ya da taslağını sizinle birlikte değiştirebilir, yayımlamak size kalır; değiştirmek için ekipte personel olmak gerekir, başkaları için bu hak çalıştırma olarak geçer. Bir kanalı okuyanlar akışa bakabilir. Bir çalıştırma her zaman sizin yetkilerinizle yapılır.",
     "Only the owner of the flow shares it.": "Akışı yalnız sahibi paylaşır.",
     "Shared with": "Paylaşılanlar",
     "Not shared with anybody yet.": "Henüz kimseyle paylaşılmadı.",
@@ -28152,5 +28152,7 @@
     "No longer in the team": "Artık ekipte değil",
     "Stop sharing with {var:1}": "{var:1} ile paylaşmayı bırak",
     "Shared with {var:1}.": "{var:1} ile paylaşıldı.",
-    "No longer shared with {var:1}.": "Artık {var:1} ile paylaşılmıyor."
+    "No longer shared with {var:1}.": "Artık {var:1} ile paylaşılmıyor.",
+    "Only the owner publishes this flow; your changes are kept in its draft.": "Bu akışı yalnız sahibi yayımlar; değişiklikleriniz taslağında kalır.",
+    "Only the person's own team devices session (POST /auth/login) can share a flow or take a share back; an application key or an OAuth connection cannot do it for them.": "Bir akışı yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) paylaşabilir ya da paylaşımı geri alabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz."
 }

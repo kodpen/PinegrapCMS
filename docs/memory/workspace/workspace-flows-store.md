@@ -12,10 +12,10 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 - Kinds (`ws_flow_kinds()`): `manual` (outcome next; config subject), `task` (done, cancelled; title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority), `end`.
 - `ws_flow_graph_normalize()` (pure): casts, drops unknown keys, cuts texts by characters, valid UTF-8 everywhere (a byte cut once broke `json_encode()`), a missing `on` is the box's first outcome.
 - `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable. Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
-- bad_id, bad_config added to the plan's list: an id becomes `run_steps.node_id`; a task box needs a title.
+- bad_id, bad_config beyond the plan: an id becomes `run_steps.node_id`; a task box needs a title.
 
 ## Who may do what?
-- `ws_flow_access()`: edit = owner on the staff (`ws_can_schedule()`), or a staff colleague shared at edit; run = reader of a live flow's home (public/private), or a run share; view = view or channel share. Binned, admins by rank (as `ws_note_access()`), site members: ''. Sharing, delete, home move: owner only (`workspace-flows-shares.md`).
+- `ws_flow_access()`: edit = owner on the staff (`ws_can_schedule()`), or a staff colleague shared at edit; run = reader of a live flow's home (public/private), or a run share; view = view or channel share. Binned, admins by rank (as `ws_note_access()`), site members: ''. Publish, share, delete, home move: owner only (`workspace-flows-shares.md`).
 - Limits: 100 boxes, 200 notes (problems: a draft may hold them), 256 KB JSON, 200 flows per owner (refused).
 
 ## How do the writes work?

@@ -600,7 +600,8 @@ function ws_flow_version($version_id)
  * What the person may do with a flow (ws_flow_access_level() decides from
  * what is gathered here):
  *   edit  its owner, staff in the team (ws_can_schedule()); a colleague on
- *         the staff it is shared with at edit; running it too
+ *         the staff it is shared with at edit, who changes the draft but
+ *         does not publish it (ws_flow_publish_check()); running it too
  *   run   a live flow whose home channel (public or private) they read; a
  *         person it is shared with at run, or at edit while not on the staff
  *   view  a person it is shared with at view; a channel share in a channel
@@ -906,11 +907,15 @@ function ws_flow_save($viewer, $data, $flow = null)
 }
 
 /**
- * Whether the person may publish the flow's draft: theirs to change (its
- * owner, or a colleague on the staff it is shared with at edit), no problem
- * left in it, and every task box with people on it giving work only
- * to people they may give it to (ws_task_create_check()). A box with a rule
- * is resolved when the run opens its task.
+ * Whether the person may publish the flow's draft: its owner, while it is
+ * theirs to change (ws_flow_share_manager()), no problem left in it, and
+ * every task box with people on it giving work only to people they may give
+ * it to (ws_task_create_check()). A box with a rule is resolved when the run
+ * opens its task. A colleague the flow is shared with at edit saves the
+ * draft but does not publish it: a published flow opens its tasks in the
+ * owner's name, with the owner's rights (an assign rule resolved through
+ * them, the home channel they post in), so what it runs is the owner's
+ * decision, as publishing is the person's own in the API.
  *
  * @param array $viewer
  * @param array $flow
@@ -923,7 +928,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (ws_flow_access($viewer, $flow) !== 'edit') {
+    if (!ws_flow_share_manager($viewer, $flow)) {
         return ws_flow_refusal(lang('Only the owner of a flow can publish it.'), 403);
     }
 
@@ -1011,7 +1016,9 @@ function ws_flow_publish($viewer, $flow, $data = array())
 }
 
 /**
- * Whether the person may pause the flow: theirs to change, and live.
+ * Whether the person may pause the flow: theirs to change, and live. A
+ * colleague shared at edit may pause it too: a pause only stops new runs,
+ * and the owner makes it live again by publishing.
  *
  * @param array $viewer
  * @param array $flow
@@ -1340,6 +1347,7 @@ function ws_flow_js_strings()
         'fl_publish_ask'      => ws_js_template('Publish this draft as version {var:1}? Whoever may run the flow runs this version from now on; runs already started keep theirs.', 1),
         'fl_publish_do'       => ws_js_template('Publish version {var:1}', 1),
         'fl_published'        => ws_js_template('Published as version {var:1}.', 1),
+        'fl_publish_owner'    => lang('Only the owner publishes this flow; your changes are kept in its draft.'),
         'fl_pause'            => lang('Pause'),
         'fl_paused'           => lang('The flow is paused. Publishing it again makes it live.'),
         'fl_more'             => lang('More actions'),
@@ -1463,7 +1471,7 @@ function ws_flow_js_strings()
         'fl_share'            => lang('Share'),
         'fl_shared_with'      => lang('Who it is shared with'),
         'fl_share_title'      => ws_js_template('Share “{var:1}”', 1),
-        'fl_share_help'       => lang('A colleague may look at the flow, run it once it is live, or change it with you; changing it needs staff in the team, and for anybody else it acts as running. The people who read a channel may look at it. A run always acts with your rights.'),
+        'fl_share_help'       => lang('A colleague may look at the flow, run it once it is live, or change its draft with you, which you publish; changing it needs staff in the team, and for anybody else it acts as running. The people who read a channel may look at it. A run always acts with your rights.'),
         'fl_share_read_help'  => lang('Only the owner of the flow shares it.'),
         'fl_share_list'       => lang('Shared with'),
         'fl_share_none'       => lang('Not shared with anybody yet.'),

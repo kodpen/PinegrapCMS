@@ -168,23 +168,100 @@ function ws_api_flows_ready()
 }
 
 /**
- * Whether the current application reaches a flow or a run the owner reaches
- * through a channel: always, except for the application Claude works
- * through and a channel where Claude may not be asked (as a note shared
- * through such a channel, ws_api_note_reachable()). What the owner of its
- * key owns (access edit) stays readable.
+ * Does the application Claude works through reach a flow the owner of its
+ * key reaches (pure)? Only along a way Claude may take: the flow is the key
+ * owner's own; it is shared with them in person, as a note shared with them
+ * is (ws_api_note_reachable()); it is shared in a channel they read where
+ * Claude may be asked; or it is live and its home is such a channel. A
+ * share in a channel where Claude may not be asked lets nothing through,
+ * whatever the flow's home is.
  *
- * @param string $access     edit, or run / read through the channel
- * @param int    $channel_id the flow's home, or the channel the run was started in
+ *   owner    bool  the flow is the key owner's
+ *   person   bool  it is shared with the key owner in person
+ *   channel  bool  it is shared in a channel they read where Claude may be asked
+ *   home     bool  it is live, and its home is a channel they read where Claude may be asked
+ *
+ * @param array $ways
  * @return bool
  */
-function ws_api_flow_reachable($access, $channel_id)
+function ws_api_flow_claude_reaches($ways)
 {
-    if (((string) $access === 'edit') || !ws_api_is_claude()) {
+    return !empty($ways['owner']) || !empty($ways['person']) || !empty($ways['channel']) || !empty($ways['home']);
+}
+
+/**
+ * Is this a public or private channel the owner of the key reads, where
+ * Claude may be asked?
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @return bool
+ */
+function ws_api_flow_claude_channel($viewer, $channel_id)
+{
+    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
+
+    return ws_flow_share_channel_readable($viewer, $channel) && ws_claude_channel_allowed($channel);
+}
+
+/**
+ * Whether the current application reaches a flow the owner of its key
+ * reaches: always, except for the application Claude works through, which
+ * reaches it only along a way it may take (ws_api_flow_claude_reaches()).
+ * Ownership decides, not the access: a colleague shared at edit has edit
+ * access to a flow that is not theirs.
+ *
+ * @param array $viewer
+ * @param array $flow ws_flows row
+ * @return bool
+ */
+function ws_api_flow_reachable($viewer, $flow)
+{
+    if (!ws_api_is_claude()) {
         return true;
     }
 
-    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
+    $ways = array('owner' => ((int) $flow['owner_id'] === (int) $viewer['id']), 'person' => false, 'channel' => false, 'home' => false);
+
+    if ($ways['owner']) {
+        return true;
+    }
+
+    foreach (ws_flow_share_rows($flow['id']) as $share) {
+        if (((string) $share['target_type'] === 'user') && ((int) $share['target_id'] === (int) $viewer['id'])) {
+            $ways['person'] = true;
+        } elseif (((string) $share['target_type'] === 'channel') && !$ways['channel']) {
+            $ways['channel'] = ws_api_flow_claude_channel($viewer, (int) $share['target_id']);
+        }
+    }
+
+    if (((string) $flow['status'] === 'live') && ((int) $flow['channel_id'] > 0)) {
+        $ways['home'] = ws_api_flow_claude_channel($viewer, (int) $flow['channel_id']);
+    }
+
+    return ws_api_flow_claude_reaches($ways);
+}
+
+/**
+ * Whether the current application reaches a run the owner of its key
+ * reaches: always, except for the application Claude works through, which
+ * reads every run of its key owner's own flows and, of anybody else's, the
+ * runs started in a channel where Claude may be asked: a run's boxes tell
+ * what was done in that channel, whatever share let the key owner in.
+ *
+ * @param array $viewer
+ * @param array $flow the run's flow
+ * @param array $run
+ * @return bool
+ */
+function ws_api_flow_run_reachable($viewer, $flow, $run)
+{
+    if (!ws_api_is_claude() || ((int) $flow['owner_id'] === (int) $viewer['id'])) {
+        return true;
+    }
+
+    $channel_id = ws_flow_run_channel_id($run);
+    $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
 
     return $channel && ws_claude_channel_allowed($channel);
 }
@@ -201,7 +278,7 @@ function ws_api_flow_or_404($viewer, $id)
 {
     $flow = ws_flow_for($viewer, (int) $id, 'view');
 
-    if (!$flow || !ws_api_flow_reachable($flow['access'], $flow['channel_id'])) {
+    if (!$flow || !ws_api_flow_reachable($viewer, $flow)) {
         api_fail_not_found(lang('Flow'));
     }
 
@@ -330,8 +407,8 @@ function ws_api_flows_list($params)
 
     ws_api_flows_ready();
 
-    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all')), function ($row) {
-        return ws_api_flow_reachable($row['access'], $row['channel_id']);
+    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all')), function ($row) use ($viewer) {
+        return ws_api_flow_reachable($viewer, $row);
     }));
     $version_ids = array();
 
@@ -676,7 +753,7 @@ function ws_api_flow_run_or_404($viewer, $id)
 {
     $run = ws_flow_run_for($viewer, (int) $id);
 
-    if (!$run || !ws_api_flow_reachable($run['access'], ws_flow_run_channel_id($run))) {
+    if (!$run || !ws_api_flow_run_reachable($viewer, $run['flow'], $run)) {
         api_fail_not_found(lang('Flow run'));
     }
 
@@ -735,8 +812,8 @@ function ws_api_flow_runs_list($params)
 
     // Each run with its own access: its flow's owner reads them all, anybody
     // else those started in a channel they read.
-    $page = ws_flow_runs_list($viewer, $flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit), function ($run) {
-        return ws_api_flow_reachable($run['access'], ws_flow_run_channel_id($run));
+    $page = ws_flow_runs_list($viewer, $flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit), function ($run) use ($viewer, $flow) {
+        return ws_api_flow_run_reachable($viewer, $flow, $run);
     });
     $version_ids = array();
 
@@ -925,6 +1002,35 @@ function ws_api_flow_share_refused($result)
 }
 
 /**
+ * The shares of a flow as the application may see them
+ * (ws_flow_shares_list()): to the application Claude works through, a share
+ * in a channel where Claude may not be asked is left out, as the channel
+ * listing leaves that channel out for it (GET /workspace/channels).
+ *
+ * @param array $viewer
+ * @param array $flow
+ * @return array[]
+ */
+function ws_api_flow_shares_seen($viewer, $flow)
+{
+    $rows = ws_flow_shares_list($viewer, $flow);
+
+    if (!ws_api_is_claude()) {
+        return $rows;
+    }
+
+    return array_values(array_filter($rows, function ($share) {
+        if ((string) $share['target_type'] !== 'channel') {
+            return true;
+        }
+
+        $channel = ws_channel((int) $share['target_id']);
+
+        return $channel && ws_claude_channel_allowed($channel);
+    }));
+}
+
+/**
  * One share of a flow as it is now, as the person reaches it.
  *
  * @param array $viewer
@@ -936,7 +1042,7 @@ function ws_api_flow_share_answer($viewer, $flow, $share_id)
 {
     $found = null;
 
-    foreach (ws_flow_shares_list($viewer, $flow) as $share) {
+    foreach (ws_api_flow_shares_seen($viewer, $flow) as $share) {
         if ((int) $share['id'] === (int) $share_id) {
             $found = $share;
         }
@@ -972,16 +1078,21 @@ function ws_api_flow_shares_list($params)
     ws_api_flow_shares_ready();
 
     $flow = ws_api_flow_or_404($viewer, $params['id']);
-    $rows = array_map('ws_api_flow_share_present', ws_flow_shares_list($viewer, $flow));
+    $rows = array_map('ws_api_flow_share_present', ws_api_flow_shares_seen($viewer, $flow));
 
     api_ok_list($rows, count($rows));
 }
 
-// Sharing widens who sees a flow and who may run it in its owner's name: an
-// AI app does not decide it, so this is no MCP tool, and the application an
-// assistant works through is refused as well (Claude's routine calls REST).
+// Sharing widens who sees a flow, who may run it in its owner's name and
+// who may change its draft, as moving a published flow's home decides who may
+// start it (ws_api_flow_home_move_gate()): the person's own decision, from
+// their team devices session, never an application key or an OAuth
+// connection. No MCP tool, and the application an assistant works through is
+// refused as well.
 function ws_api_flow_shares_set($params)
 {
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can share a flow or take a share back; an application key or an OAuth connection cannot do it for them.'));
+
     $viewer = ws_api_viewer();
 
     if (ws_api_is_assistant()) {
@@ -1021,10 +1132,13 @@ function ws_api_flow_shares_set($params)
     api_ok(ws_api_flow_share_answer($viewer, $flow, $result['share_id']), $result['created'] ? 201 : 200);
 }
 
-// Taking a share back is the owner's own decision as sharing is: no MCP
-// tool, and no call for an assistant's application.
+// Taking a share back is the owner's own decision as sharing is: from
+// their team devices session only, no MCP tool, and no call for an
+// assistant's application.
 function ws_api_flow_shares_delete($params)
 {
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can share a flow or take a share back; an application key or an OAuth connection cannot do it for them.'));
+
     $viewer = ws_api_viewer();
 
     if (ws_api_is_assistant()) {
@@ -1044,7 +1158,7 @@ function ws_api_flow_shares_delete($params)
     // The share as it was, before it goes.
     $before = null;
 
-    foreach (ws_flow_shares_list($viewer, $flow) as $share) {
+    foreach (ws_api_flow_shares_seen($viewer, $flow) as $share) {
         if ((int) $share['id'] === (int) $checked['share']['id']) {
             $before = ws_api_flow_share_present($share);
         }

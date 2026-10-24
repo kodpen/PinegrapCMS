@@ -921,9 +921,17 @@
         });
         ui.bar.appendChild(ui.problemButton);
 
-        ui.publish = K.button('btn btn-sm btn-outline-secondary', t('fl_publish'), 'bi-send');
-        ui.publish.addEventListener('click', publish);
-        ui.bar.appendChild(ui.publish);
+        // Only the owner publishes: a published flow runs with the owner's
+        // rights, so a colleague shared at edit changes the draft and the
+        // server refuses them a publish (ws_flow_publish_check()).
+        if (flow.manage) {
+            ui.publish = K.button('btn btn-sm btn-outline-secondary', t('fl_publish'), 'bi-send');
+            ui.publish.addEventListener('click', publish);
+            ui.bar.appendChild(ui.publish);
+        } else {
+            ui.publish = null;
+            ui.bar.appendChild(el('span', 'small text-body-secondary wsf-publish-owner', t('fl_publish_owner')));
+        }
 
         if (flow.status === 'live') {
             var pause = K.button('btn btn-sm btn-outline-secondary', t('fl_pause'), 'bi-pause-circle');
@@ -1001,6 +1009,10 @@
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : 'bi-check2-circle', 'me-1'));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : t('fl_no_problems')));
         ui.problemButton.disabled = !count;
+
+        if (!ui.publish) {
+            return;
+        }
 
         var allowed = !count && !state.conflict && ((state.flow.status !== 'live') || state.flow.changed || state.dirty);
 

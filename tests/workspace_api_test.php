@@ -167,7 +167,7 @@ function test_ws_api_own_words_routes_are_no_tools()
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
 		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create',
-		'workspace.flows.publish') as $id) {
+		'workspace.flows.publish', 'workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
 		pg_assert_contains($id, $gated);
 	}
 }
@@ -357,20 +357,50 @@ function test_ws_api_flow_home_of_a_published_flow_is_moved_by_the_person()
 	pg_assert_true(strpos($gate, 'OAuth connection') !== false);
 }
 
-// The application Claude works through reads the flows and the runs it
-// reaches only through a channel where Claude may be asked; what the owner
-// of its key owns stays readable, as their notes do.
+// The application Claude works through reaches somebody else's flow only
+// along a way it may take: shared with its key owner in person (as a note
+// is), shared in a channel they read where Claude may be asked, or live with
+// such a channel as its home; and somebody else's run only when it was
+// started in such a channel. What the owner of its key owns stays readable.
+// Ownership decides, not the access: a colleague shared at edit has edit
+// access to a flow that is not theirs.
 function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
 {
-	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list', 'ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
-		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable(') !== false, $handler . ' asks where Claude may be asked');
+	$none = array('owner' => false, 'person' => false, 'channel' => false, 'home' => false);
+
+	pg_assert_false(ws_api_flow_claude_reaches($none), 'no way at all');
+
+	foreach (array('owner', 'person', 'channel', 'home') as $way) {
+		pg_assert_true(ws_api_flow_claude_reaches(array($way => true) + $none), $way);
 	}
 
-	$reachable = ws_api_test_handler_source('ws_api_flow_reachable');
+	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable($viewer, ') !== false, $handler . ' asks where Claude may be asked');
+	}
 
-	pg_assert_true(strpos($reachable, 'ws_api_is_claude()') !== false);
-	pg_assert_true(strpos($reachable, "'edit'") !== false, 'the key owner\'s own flows');
-	pg_assert_true(strpos($reachable, 'ws_claude_channel_allowed(') !== false);
+	foreach (array('ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_run_reachable($viewer, ') !== false, $handler . ' asks where the run was started');
+	}
+
+	$strip = function ($source) {
+		return (string) preg_replace('~^\s*(//|\*|/\*).*$~m', '', $source);
+	};
+
+	foreach (array('ws_api_flow_reachable', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_is_claude()') !== false, $name . ' asks about Claude');
+		pg_assert_true(strpos($source, "(int) \$flow['owner_id'] === (int) \$viewer['id']") !== false, $name . ': the key owner\'s own flows');
+		pg_assert_true(strpos($source, "'edit'") === false, $name . ': not edit access, which a share gives too');
+	}
+
+	$reachable = $strip(ws_api_test_handler_source('ws_api_flow_reachable'));
+
+	pg_assert_true(strpos($reachable, 'ws_flow_share_rows(') !== false, 'the shares are read');
+	pg_assert_true(strpos($reachable, 'ws_api_flow_claude_channel($viewer, (int) $share[\'target_id\'])') !== false, 'a share channel counts only where Claude may be asked');
+	pg_assert_true(strpos($reachable, "(string) \$flow['status'] === 'live'") !== false, 'the home counts for a live flow');
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_channel')), 'ws_claude_channel_allowed(') !== false);
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_run_reachable')), 'ws_claude_channel_allowed(') !== false);
 }
 
 // A run opens tasks in the flow owner's name: starting and cancelling one
@@ -412,9 +442,9 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 }
 
 // Who sees a flow is widened only by the person: sharing and taking a share
-// back are REST writes that rehearse, offered to no MCP client as a tool and
-// refused to the application an assistant works through; reading the shares
-// stays a tool. A share answers 201 when it is new, 200 when its level
+// back are REST writes from their team devices session that rehearse,
+// offered to no MCP client as a tool and refused to the application an
+// assistant works through; reading the shares stays a tool. A share answers 201 when it is new, 200 when its level
 // changed; the removal addressed as a POST is the same handler.
 function test_ws_api_flow_shares_routes()
 {
@@ -459,7 +489,28 @@ function test_ws_api_flow_shares_routes()
 		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
 		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
 		pg_assert_true(strpos($source, 'ws_api_as_owner(') > strpos($source, 'api_dry_run_stop('), $id . ' writes in the owner\'s name after the rehearsal');
+
+		// An application key or an OAuth connection may not widen who
+		// starts the flow or changes its draft, as it may not move a
+		// published flow's home.
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') !== false, $id . ' asks for the team devices session');
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') < strpos($source, 'api_dry_run_stop('), $id . ' before the rehearsal');
+		pg_assert_true(strpos($source, 'team devices session (POST /auth/login)') !== false, $id . ': the refusal names it');
 	}
+
+	// The shares Claude's application is shown leave out the channels where
+	// Claude may not be asked, as the channel listing does.
+	foreach (array('ws_api_flow_shares_list', 'ws_api_flow_share_answer', 'ws_api_flow_shares_delete') as $name) {
+		$source = ws_api_test_handler_source($name);
+
+		pg_assert_true(strpos($source, 'ws_api_flow_shares_seen($viewer, $flow)') !== false, $name . ' lists the shares the application may see');
+		pg_assert_true(strpos($source, 'ws_flow_shares_list(') === false, $name . ' never the store\'s list as it is');
+	}
+
+	$seen = ws_api_test_handler_source('ws_api_flow_shares_seen');
+
+	pg_assert_true(strpos($seen, 'ws_api_is_claude()') !== false);
+	pg_assert_true(strpos($seen, 'ws_claude_channel_allowed(') !== false);
 
 	pg_assert_same(array(201, 200), $routes['workspace.flow_shares.set']['status']);
 	pg_assert_same($routes['workspace.flow_shares.delete']['handler'], $routes['workspace.flow_shares.delete_post']['handler']);
@@ -1877,8 +1928,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
-		'ws_api_flow_shares_set'      => array('ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
-		'ws_api_flow_shares_delete'   => array('ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
+		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
+		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
