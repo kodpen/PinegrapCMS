@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-invoice
-description: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#PR)
+description: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
 ---
 
 ## How does "Create Invoice" build the invoice? (#1268, #1274)
@@ -21,7 +21,7 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: it
 - The kind is asked of GİB before the buyer card is opened. `parasut_order_edoc_attributes()` gives the driver's `erp_edoc_parasut_edoc_attributes()` the order's `erp_order_sale_fields()` (erp-vuk-509-fields.md), dated by the sales invoice's day: a zero-rated line's exemption (`erp_vat_line_exemption_code()`), the commercial scenario and mailbox of an e-Invoice, an internet sale's `internet_sale` and `shipment` on e-Archive.
 - An internet-sale e-Archive without web address, carrier or a valid carrier VKN/TCKN (`erp_edoc_parasut_document_missing()`) is refused before any request, an order with no shipping method too (the carrier comes from it), as the ERP's driver refuses its invoice.
 
-## What if E-Shipment came first? (#PR)
+## What if E-Shipment came first? (#1506)
 - The invoice goes without shipment (`shipment_included` false), naming the shipment document (`parasut_order_invoice_with_shipment()`), so the goods are counted out once: erp-parasut-legacy-invoice-shipment.md.
 
 ## Tests

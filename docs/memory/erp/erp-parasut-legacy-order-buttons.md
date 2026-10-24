@@ -22,7 +22,7 @@ description: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): 
 - A product counts as tracked by `inventory_tracking` alone (`parasut_product_stock_tracked()`); v4 has no `product_type`, so the old check failed and every press PUT the product, once into a 429. Now only an untracked one gets PUT `{inventory_tracking: true}`.
 - `_parasut_request()` sends a 429 once more after a full rate window, as the ERP driver does.
 
-## And both on one order? (#PR)
+## And both on one order? (#1506)
 - erp-parasut-legacy-invoice-shipment.md: which press goes, the link, `shipment_included`.
 
 ## What is left?

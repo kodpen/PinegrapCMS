@@ -1,9 +1,9 @@
 ---
 name: erp-parasut-legacy-invoice-shipment
-description: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #PR
+description: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #1506
 ---
 
-## What went wrong when both buttons were pressed? (#PR)
+## What went wrong when both buttons were pressed? (#1506)
 - Paraşüt keeps a sales invoice with `shipment_included` true unless told otherwise, and such an invoice takes its products out of stock itself (live: 10 to 8). Create Invoice sent no `shipment_included`, so an order that also got E-Shipment had its goods counted out twice at Paraşüt, once by the invoice and once by the outgoing `shipment_documents`.
 
 ## What does Create Invoice send after E-Shipment?
