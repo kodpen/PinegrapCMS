@@ -1420,3 +1420,168 @@ function test_erp_edoc_parasut_cancel_invoice_reads_the_mark()
 	$plain = erp_edoc_parasut_cancel_invoice(array('id' => 42, 'edoc_external_id' => '', 'parasut_invoice_id' => ''));
 	pg_assert_same(array('success' => true, 'error' => '', 'message' => '', 'outcome' => 'deleted'), $plain, 'no mark: nothing there');
 }
+
+// A stand-in for erp_edoc_parasut_request() that answers GET contacts out of
+// $cards, a page of the size asked for at a time, and POST contacts with a
+// new card 7999. Every call is written into $calls as "METHOD path". Page
+// $fail_page, when given, answers 500; $pages, when given, is the page count
+// it claims in meta.
+function pg_test_parasut_contacts_request($cards, &$calls, $fail_page = 0, $pages = 0)
+{
+	return function ($method, $path, $body = null, $context = array()) use ($cards, &$calls, $fail_page, $pages) {
+		$calls[] = $method . ' ' . $path;
+		$answer = array('http_code' => 200, 'body' => null, 'raw' => '', 'error' => '', 'duration_ms' => 1, 'login_error' => '');
+
+		if ($method === 'POST') {
+			$answer['http_code'] = 201;
+			$answer['body'] = array('data' => array('id' => '7999', 'type' => 'contacts', 'attributes' => $body['data']['attributes']));
+		} else {
+			$query = array();
+			parse_str((string) parse_url($path, PHP_URL_QUERY), $query);
+			$page = (int) $query['page']['number'];
+			$size = (int) $query['page']['size'];
+
+			if ($page === $fail_page) {
+				$answer['http_code'] = 500;
+				$answer['body'] = array('errors' => array(array('title' => 'Sunucu hatası')));
+			} else {
+				$answer['body'] = array(
+					'data' => array_slice($cards, ($page - 1) * $size, $size),
+					'meta' => array('current_page' => $page, 'total_count' => count($cards),
+						'total_pages' => ($pages > 0) ? $pages : max(1, (int) ceil(count($cards) / $size))),
+				);
+			}
+		}
+
+		$answer['raw'] = json_encode($answer['body']);
+
+		return $answer;
+	};
+}
+
+// $count final-consumer cards of other buyers, newest (highest id) first, as
+// Paraşüt lists them with sort=-id.
+function pg_test_parasut_consumer_cards($count, $first_id)
+{
+	$cards = array();
+
+	for ($i = 0; $i < $count; $i++) {
+		$party = pg_test_parasut_party(array('title' => 'Tüketici ' . $i, 'is_person' => true, 'tax_number' => '', 'tax_office' => '', 'email' => 'tuketici' . $i . '@example.com'));
+		$cards[] = array('id' => (string) ($first_id - $i), 'type' => 'contacts', 'attributes' => erp_edoc_parasut_contact_attributes($party, '11111111111') + array('archived' => false));
+	}
+
+	return $cards;
+}
+
+function pg_test_parasut_consumer_party()
+{
+	return pg_test_parasut_party(array(
+		'title' => 'Ayşe Demir', 'is_person' => true, 'tax_number' => '', 'tax_office' => '', 'email' => 'ayse.k@example.com',
+		'address' => 'Kızılay Mah. 1. Sok. 3', 'district' => 'Çankaya', 'city' => 'Ankara', 'postcode' => '06420',
+	));
+}
+
+function pg_test_parasut_calls_of($calls, $method)
+{
+	return count(array_filter($calls, function ($call) use ($method) {
+		return strpos($call, $method . ' ') === 0;
+	}));
+}
+
+// With more final-consumer cards than one page holds, the buyer's own card
+// on a later page is found and no second card is opened; the reading stops
+// at the page that holds it.
+function test_erp_edoc_parasut_contact_for_reads_later_pages()
+{
+	$party = pg_test_parasut_consumer_party();
+	$cards = pg_test_parasut_consumer_cards(70, 9000);
+	array_splice($cards, 30, 0, array(array('id' => '5005', 'type' => 'contacts', 'attributes' => erp_edoc_parasut_contact_attributes($party, '11111111111') + array('archived' => false))));
+	$calls = array();
+
+	$contact = erp_edoc_parasut_contact_for($party, '11111111111', array(), pg_test_parasut_contacts_request($cards, $calls));
+
+	pg_assert_same(array('id' => '5005', 'error' => ''), $contact);
+	pg_assert_same(2, count($calls), 'pages 1 and 2, not 3');
+	pg_assert_same(0, pg_test_parasut_calls_of($calls, 'POST'), 'no card opened');
+	pg_assert_contains('filter[tax_number]=11111111111&sort=-id&page[number]=1&page[size]=25', $calls[0]);
+	pg_assert_contains('page[number]=2&page[size]=25', $calls[1]);
+}
+
+// No page holds the buyer's card: every page is read, then a card is opened.
+function test_erp_edoc_parasut_contact_for_opens_a_card_after_the_last_page()
+{
+	$calls = array();
+
+	$contact = erp_edoc_parasut_contact_for(pg_test_parasut_consumer_party(), '11111111111', array(), pg_test_parasut_contacts_request(pg_test_parasut_consumer_cards(60, 9000), $calls));
+
+	pg_assert_same(array('id' => '7999', 'error' => ''), $contact);
+	pg_assert_same(3, pg_test_parasut_calls_of($calls, 'GET'));
+	pg_assert_same(1, pg_test_parasut_calls_of($calls, 'POST'));
+}
+
+// The reading stops after ERP_EDOC_PARASUT_FIND_PAGES pages; the card is
+// then opened as for a buyer Paraşüt does not know.
+function test_erp_edoc_parasut_contact_for_stops_at_the_page_cap()
+{
+	$calls = array();
+
+	$contact = erp_edoc_parasut_contact_for(pg_test_parasut_consumer_party(), '11111111111', array(), pg_test_parasut_contacts_request(pg_test_parasut_consumer_cards(60, 9000), $calls, 0, (int) ERP_EDOC_PARASUT_FIND_PAGES + 5));
+
+	pg_assert_same('7999', $contact['id']);
+	pg_assert_same((int) ERP_EDOC_PARASUT_FIND_PAGES, pg_test_parasut_calls_of($calls, 'GET'));
+	pg_assert_same(1, pg_test_parasut_calls_of($calls, 'POST'));
+}
+
+// A page that cannot be read refuses the send, as the first page does: the
+// buyer's card may be on it, so no card is opened.
+function test_erp_edoc_parasut_contact_for_refuses_on_a_failed_page()
+{
+	$party = pg_test_parasut_consumer_party();
+	$cards = pg_test_parasut_consumer_cards(60, 9000);
+	$cards[55] = array('id' => '5005', 'type' => 'contacts', 'attributes' => erp_edoc_parasut_contact_attributes($party, '11111111111'));
+
+	foreach (array(1, 2) as $fail_page) {
+		$calls = array();
+		$contact = erp_edoc_parasut_contact_for($party, '11111111111', array(), pg_test_parasut_contacts_request($cards, $calls, $fail_page));
+
+		pg_assert_same('', $contact['id'], 'page ' . $fail_page);
+		pg_assert_contains('Paraşüt would not search its contacts: Sunucu hatası', $contact['error']);
+		pg_assert_same($fail_page, count($calls), 'nothing read or written after page ' . $fail_page);
+	}
+
+	// A sign-in that fails on a later page is said as it is.
+	$calls = array();
+	$base = pg_test_parasut_contacts_request($cards, $calls);
+	$login = function ($method, $path, $body = null, $context = array()) use ($base) {
+		$answer = $base($method, $path, $body, $context);
+
+		return (strpos($path, 'page[number]=2') !== false) ? array_merge($answer, array('http_code' => 0, 'login_error' => 'Oturum açılamadı')) : $answer;
+	};
+
+	pg_assert_same(array('id' => '', 'error' => 'Oturum açılamadı'), erp_edoc_parasut_contact_for($party, '11111111111', array(), $login));
+	pg_assert_same(0, pg_test_parasut_calls_of($calls, 'POST'));
+}
+
+// No card under the number (404) opens one; the card of a real tax number
+// is taken on the number alone, as before.
+function test_erp_edoc_parasut_contact_for_number_rules()
+{
+	$calls = array();
+	$none = function ($method, $path, $body = null, $context = array()) use (&$calls) {
+		$calls[] = $method . ' ' . $path;
+
+		return ($method === 'POST')
+			? array('http_code' => 201, 'body' => array('data' => array('id' => '7999')), 'raw' => '{}', 'error' => '', 'duration_ms' => 1, 'login_error' => '')
+			: array('http_code' => 404, 'body' => array('errors' => array()), 'raw' => '{}', 'error' => '', 'duration_ms' => 1, 'login_error' => '');
+	};
+
+	pg_assert_same(array('id' => '7999', 'error' => ''), erp_edoc_parasut_contact_for(pg_test_parasut_consumer_party(), '11111111111', array(), $none));
+	pg_assert_same(2, count($calls));
+
+	$company = array('id' => '6001', 'type' => 'contacts', 'attributes' => array('name' => 'Başka Unvan A.Ş.', 'tax_number' => '1234567808', 'archived' => false));
+	$archived = array('id' => '6002', 'type' => 'contacts', 'attributes' => array('name' => 'Deneme Ticaret A.Ş.', 'tax_number' => '1234567808', 'archived' => true));
+	$calls = array();
+
+	pg_assert_same(array('id' => '6001', 'error' => ''), erp_edoc_parasut_contact_for(pg_test_parasut_party(), '1234567808', array(), pg_test_parasut_contacts_request(array($archived, $company), $calls)));
+	pg_assert_same(1, count($calls));
+}

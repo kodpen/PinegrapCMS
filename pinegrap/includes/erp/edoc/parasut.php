@@ -67,7 +67,9 @@ if (!defined('ERP_EDOC_PARASUT_PAGE_SIZE')) {
 }
 
 // How many pages of the contact's sales invoices of a day the search for an
-// unanswered try reads (newest first) before it gives up without writing.
+// unanswered try reads (newest first) before it gives up without writing,
+// and how many pages of the cards under a buyer's number the search for the
+// buyer's card reads (newest first) before it opens a card.
 if (!defined('ERP_EDOC_PARASUT_FIND_PAGES')) {
     define('ERP_EDOC_PARASUT_FIND_PAGES', 20);
 }
@@ -629,17 +631,25 @@ function erp_edoc_parasut_contact_attributes($party, $tax_number)
  * address and e-mail (erp_edoc_parasut_final_consumer_card_matches()), so
  * one consumer's document is not written on another consumer's card.
  *
+ * The cards under the number are read page by page, newest first, until one
+ * is taken or ERP_EDOC_PARASUT_FIND_PAGES pages were read: a store holds
+ * many final-consumer cards, and the buyer's own may be past the first page.
+ * After that many pages without a match a card is opened, as for a buyer
+ * Paraşüt does not know.
+ *
  * @param array $party       erp_edoc_invoice_party() output (+ provider_code)
  * @param string $tax_number Digits
  * @param array $context     For the log
+ * @param callable $request  erp_edoc_parasut_request() or a stand-in with its
+ *                           arguments and answer (the tests)
  * @return array ['id' => string, 'error' => string]
  */
-function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
+function erp_edoc_parasut_contact_for($party, $tax_number, $context = array(), $request = 'erp_edoc_parasut_request')
 {
     $linked = trim((string) ($party['provider_code'] ?? ''));
 
     if ($linked !== '') {
-        $read = erp_edoc_parasut_request('GET', '/contacts/' . rawurlencode($linked), null, $context);
+        $read = call_user_func($request, 'GET', '/contacts/' . rawurlencode($linked), null, $context);
 
         if ((string) $read['login_error'] !== '') {
             return array('id' => '', 'error' => $read['login_error']);
@@ -651,14 +661,36 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
     }
 
     $final_consumer = ($tax_number === erp_edoc_final_consumer_tckn());
+    $page = 0;
 
-    $found = erp_edoc_parasut_request('GET', '/contacts?filter[tax_number]=' . rawurlencode($tax_number) . '&page[size]=25', null, $context);
+    while ($page < (int) ERP_EDOC_PARASUT_FIND_PAGES) {
+        $page++;
 
-    if ((string) $found['login_error'] !== '') {
-        return array('id' => '', 'error' => $found['login_error']);
-    }
+        // Paraşüt takes ten requests in any ten seconds, so a long list is
+        // mostly a wait, which PHP's time limit counts on Windows.
+        if ($page === 2) {
+            erp_edoc_parasut_allow_time();
+        }
 
-    if (erp_edoc_parasut_ok($found)) {
+        // Sorted by id: the list's own order is by balance, which an invoice
+        // written meanwhile moves, so a card could slip between two pages.
+        // Newest first, so the cards of recent buyers are read before the cap.
+        $found = call_user_func($request, 'GET', '/contacts?filter[tax_number]=' . rawurlencode($tax_number)
+            . '&sort=-id&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, null, $context);
+
+        if ((string) $found['login_error'] !== '') {
+            return array('id' => '', 'error' => $found['login_error']);
+        }
+
+        // 404: no card under the number.
+        if ((int) $found['http_code'] === 404) {
+            break;
+        }
+
+        if (!erp_edoc_parasut_ok($found)) {
+            return array('id' => '', 'error' => lang(array('string' => 'Paraşüt would not search its contacts: {var:1}', 'vars' => erp_edoc_parasut_error_text($found))));
+        }
+
         foreach ((array) ($found['body']['data'] ?? array()) as $item) {
             $id = trim((string) ($item['id'] ?? ''));
             $attributes = (array) ($item['attributes'] ?? array());
@@ -683,11 +715,13 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
 
             return array('id' => $id, 'error' => '');
         }
-    } elseif ((int) $found['http_code'] !== 404) {
-        return array('id' => '', 'error' => lang(array('string' => 'Paraşüt would not search its contacts: {var:1}', 'vars' => erp_edoc_parasut_error_text($found))));
+
+        if ($page >= max(1, (int) ($found['body']['meta']['total_pages'] ?? 1))) {
+            break;
+        }
     }
 
-    $created = erp_edoc_parasut_request('POST', '/contacts', array('data' => array(
+    $created = call_user_func($request, 'POST', '/contacts', array('data' => array(
         'type' => 'contacts',
         'attributes' => erp_edoc_parasut_contact_attributes($party, $tax_number),
     )), $context);

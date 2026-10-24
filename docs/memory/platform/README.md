@@ -96,5 +96,6 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; gateways and carriers use it, Stripe, iyzico and the package download do not.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
+- windows-folder-is-writable.md: Never gate a write on is_writable() of a folder: PHP on Windows reads the folder's read-only attribute (OneDrive, Explorer), which stops nothing; where it bit and which gates are left
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked
 - zip-entry-php-versions.md: Why pg_zip_entry_contents() watches the read's warning and compares the CRC itself: fread() and getFromIndex() answer a damaged entry differently by PHP version
