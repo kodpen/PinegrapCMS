@@ -682,8 +682,12 @@ function duplicate_page($request) {
         }
     }
 
-    // duplicate comments that are connected to this page
-    $query = "SELECT * FROM comments WHERE page_id = '" . e($page_id) . "'";
+    // Duplicate the comments that are connected to this page, oldest first.
+    // A reply always has a higher id than the comment it answers, so that
+    // comment is copied first and a copied reply names its copy
+    // (pg_comment_copy_parent_id()). The column is written only once it
+    // exists (2026.11.0, 11.0.31).
+    $query = "SELECT * FROM comments WHERE page_id = '" . e($page_id) . "' ORDER BY id";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     $comments = array();
@@ -692,7 +696,22 @@ function duplicate_page($request) {
         $comments[] = $row;
     }
 
+    $comment_replies = pg_comment_replies_ready();
+
+    // original comment id => id of its copy
+    $comment_copies = array();
+
     foreach ($comments as $comment) {
+        $sql_parent_column = '';
+        $sql_parent_value = '';
+
+        if ($comment_replies) {
+            $sql_parent_column = ",
+               parent_id";
+            $sql_parent_value = ",
+               '" . pg_comment_copy_parent_id(isset($comment['parent_id']) ? $comment['parent_id'] : 0, $comment_copies) . "'";
+        }
+
         // create comment
         $query =
             "INSERT INTO comments (
@@ -709,7 +728,7 @@ function duplicate_page($request) {
                created_user_id,
                created_timestamp,
                last_modified_user_id,
-               last_modified_timestamp)
+               last_modified_timestamp$sql_parent_column)
             VALUES (
                '" . e($new_page['id']) . "',
                '" . escape($comment['item_id']) . "',
@@ -724,8 +743,10 @@ function duplicate_page($request) {
                '" . escape($comment['created_user_id']) . "',
                '" . escape($comment['created_timestamp']) . "',
                '" . escape($comment['last_modified_user_id']) . "',
-               '" . escape($comment['last_modified_timestamp']) . "')";
+               '" . escape($comment['last_modified_timestamp']) . "'$sql_parent_value)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        $comment_copies[(int) $comment['id']] = (int) mysqli_insert_id(db::$con);
     }
 
     // Duplicate preview style records.

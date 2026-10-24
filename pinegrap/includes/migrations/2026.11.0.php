@@ -59,6 +59,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_comment_replies();        // 11.0.31
 	upgrade_2026_11_0_workspace_channel_icon(); // 11.0.81
 	upgrade_2026_11_0_workspace_flows();        // 11.0.80
+	upgrade_2026_11_0_comment_record_counts();  // 11.0.33
 
 }
 
@@ -1682,5 +1683,284 @@ function upgrade_2026_11_0_workspace_flows() {
 	install_add_index('ws_scheduled_actions', 'idx_flow', "INDEX idx_flow (flow_id)");
 
 	install_note('Workspace: the tables that will keep the flows drawn on the Workspace canvas, their published versions and their runs are added. Nothing changes in the Workspace with this update.');
+
+}
+
+// The comment counts of form records shown on pages built in the visual
+// designer (2026.11.0, 11.0.33; data only, no table changes;
+// includes/fn/comments.php).
+//
+// submitted_form_info keeps, per form record and page, how many published
+// comments the record has there and which one is the newest; the form lists
+// sort and print by it. A page built in the visual designer that shows
+// records through a form_item_view widget has page type 'standard', and until
+// moderation rebuilt that row from the comment's own item
+// (pg_comment_refresh_record_info()), the comments screen and the API keyed
+// the rebuild on page type 'form item view'. Approving, holding, scheduling
+// or deleting a comment on such a page left the count at 0 or too high and
+// the newest comment stale. This step rebuilds every such pair once, in two
+// walks:
+//   - every (page, record) pair with record comments on a page that is not a
+//     classic form item view page;
+//   - every counter row of such a page that still counts comments the record
+//     no longer has there (its last comment there was deleted), which the
+//     first walk never meets.
+// Each rebuild reads the comments again, so the step can run any number of
+// times. Once the pass has used its time budget it pauses and goes on where
+// it stopped: in the same request from memory, in a new one from a file in
+// data/temp written before every pause. The file also keeps a done marker,
+// so when a later step of this version pauses and the version runs again,
+// the recount is not started over. A file older than ten minutes belongs to
+// a run that was given up on and is not read.
+function upgrade_2026_11_0_comment_record_counts() {
+
+	if (!function_exists('pg_comment_refresh_record_info')) {
+
+		install_skipped('Comments: the comment counts of form records were not counted again, because includes/fn/comments.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$progress = &upgrade_2026_11_0_comment_record_counts_progress();
+
+	if (empty($progress['done'])) {
+
+		if ($progress['phase'] === 'comments') {
+
+			upgrade_2026_11_0_comment_record_counts_commented();
+
+			$progress['phase'] = 'stale';
+			$progress['page_id'] = 0;
+			$progress['item_id'] = 0;
+
+		}
+
+		upgrade_2026_11_0_comment_record_counts_stale();
+
+		$progress['done'] = true;
+
+		if ($progress['failed'] > 0) {
+
+			install_log('2026.11.0 comment record counts: ' . $progress['failed'] . ' (page, record) pair(s) could not be counted again');
+
+		}
+
+	}
+
+	// Kept, not deleted: a later step of the version that pauses runs the
+	// version again from its first step, and the marker skips this one.
+	upgrade_2026_11_0_comment_record_counts_progress_save();
+
+	if (($progress['rebuilt'] + $progress['failed']) === 0) {
+
+		install_note('Comments: no form record shown on a page built in the visual designer has comments to count again.');
+
+		return;
+
+	}
+
+	install_note('Comments: the comments of ' . $progress['rebuilt'] . ' form record(s) shown on pages built in the visual designer were counted again for the form lists'
+		. (($progress['failed'] > 0) ? ' (' . $progress['failed'] . ' could not be, and each is counted again with its next comment or moderation)' : '') . '.');
+
+}
+
+// Walk 1: the pairs with record comments on a page that is not a classic
+// form item view page, page by page and record by record, from where the
+// last pass stopped. The records of one page are read in batches through
+// idx_thread's (page_id, item_type, item_id) prefix, so a big comments table
+// is not read whole again for every batch.
+function upgrade_2026_11_0_comment_record_counts_commented() {
+
+	$progress = &upgrade_2026_11_0_comment_record_counts_progress();
+
+	$pages = db_values(
+		"SELECT DISTINCT comments.page_id
+		FROM comments
+		INNER JOIN page ON page.page_id = comments.page_id
+		WHERE
+			(comments.item_type = 'submitted_form')
+			AND (comments.item_id > 0)
+			AND (page.page_type <> 'form item view')
+			AND (comments.page_id >= '" . (int) $progress['page_id'] . "')
+		ORDER BY comments.page_id");
+
+	foreach ($pages as $page) {
+
+		$page = (int) $page;
+
+		$after = ($page === (int) $progress['page_id']) ? (int) $progress['item_id'] : 0;
+
+		do {
+
+			$items = db_values(
+				"SELECT DISTINCT item_id
+				FROM comments
+				WHERE
+					(page_id = '" . $page . "')
+					AND (item_type = 'submitted_form')
+					AND (item_id > '" . $after . "')
+				ORDER BY item_id
+				LIMIT 500");
+
+			foreach ($items as $item) {
+
+				$after = (int) $item;
+
+				upgrade_2026_11_0_comment_record_counts_one($page, $after);
+
+			}
+
+		} while (count($items) === 500);
+
+	}
+
+}
+
+// Walk 2: the counter rows of such pages that still count comments the record
+// no longer has there. Its last comment there was deleted, so walk 1 never
+// meets the pair. In batches, each after the last pair the walk reached.
+function upgrade_2026_11_0_comment_record_counts_stale() {
+
+	$progress = &upgrade_2026_11_0_comment_record_counts_progress();
+
+	do {
+
+		$page = (int) $progress['page_id'];
+		$item = (int) $progress['item_id'];
+
+		$rows = db_items(
+			"SELECT DISTINCT
+				submitted_form_info.page_id,
+				submitted_form_info.submitted_form_id AS item_id
+			FROM submitted_form_info
+			INNER JOIN page ON page.page_id = submitted_form_info.page_id
+			WHERE
+				((submitted_form_info.number_of_comments > 0) OR (submitted_form_info.newest_comment_id > 0))
+				AND (submitted_form_info.submitted_form_id > 0)
+				AND (page.page_type <> 'form item view')
+				AND NOT EXISTS (
+					SELECT 1
+					FROM comments
+					WHERE
+						(comments.page_id = submitted_form_info.page_id)
+						AND (comments.item_type = 'submitted_form')
+						AND (comments.item_id = submitted_form_info.submitted_form_id)
+				)
+				AND (
+					(submitted_form_info.page_id > '" . $page . "')
+					OR ((submitted_form_info.page_id = '" . $page . "') AND (submitted_form_info.submitted_form_id > '" . $item . "'))
+				)
+			ORDER BY submitted_form_info.page_id, submitted_form_info.submitted_form_id
+			LIMIT 500");
+
+		foreach ($rows as $row) {
+
+			upgrade_2026_11_0_comment_record_counts_one((int) $row['page_id'], (int) $row['item_id']);
+
+		}
+
+	} while (count($rows) === 500);
+
+}
+
+// Rebuilds one pair and moves the place on to it. The time is asked after
+// the work, so every pass rebuilds at least one pair. The rebuild's queries
+// do not raise the runner's statement count, so the clock is asked rather
+// than install_pass_spent().
+function upgrade_2026_11_0_comment_record_counts_one($page_id, $item_id) {
+
+	$progress = &upgrade_2026_11_0_comment_record_counts_progress();
+
+	if (pg_comment_refresh_record_info($page_id, 'submitted_form', $item_id)) {
+
+		$progress['rebuilt']++;
+
+	} else {
+
+		$progress['failed']++;
+
+	}
+
+	$progress['page_id'] = (int) $page_id;
+	$progress['item_id'] = (int) $item_id;
+
+	if (install_pass_seconds() >= install_pause_budget()) {
+
+		upgrade_2026_11_0_comment_record_counts_progress_save();
+
+		install_pause('Comments: counting the comments of form records on designed pages again, up to page ' . (int) $page_id . ', record ' . (int) $item_id . '.');
+
+	}
+
+}
+
+// Where the recount got to: the walk (phase), the last pair it reached, the
+// counts of the final note and whether it is done. In the same request it
+// lives in memory; across requests in the file below, written before every
+// pause and at the end. The file is read only while it is under ten minutes
+// old: an older one belongs to a run that was given up on, and the counters
+// may have been restored from a backup since. Sites that share one software
+// directory (a custom CONFIG_FILE_PATH) share its data/temp, so the file is
+// named after the database, as the upgrade lock is (install_lock_name()):
+// one site's place or done marker is never read by another's upgrade.
+function upgrade_2026_11_0_comment_record_counts_progress_file() {
+
+	static $file = null;
+
+	if ($file === null) {
+
+		$database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+		$file = PG_FUNCTIONS_DIR . '/data/temp/upgrade_comment_record_counts_' . md5($database) . '.json';
+
+	}
+
+	return $file;
+
+}
+
+function &upgrade_2026_11_0_comment_record_counts_progress() {
+
+	static $progress = null;
+
+	if ($progress === null) {
+
+		$progress = array('done' => false, 'phase' => 'comments', 'page_id' => 0, 'item_id' => 0, 'rebuilt' => 0, 'failed' => 0);
+
+		$saved = @json_decode((string) @file_get_contents(upgrade_2026_11_0_comment_record_counts_progress_file()), true);
+
+		if (is_array($saved) && isset($saved['time'], $saved['progress']) && is_array($saved['progress']) && ((time() - (int) $saved['time']) < 600)) {
+
+			$stored = $saved['progress'];
+
+			$progress['done'] = !empty($stored['done']);
+			$progress['phase'] = (isset($stored['phase']) && ($stored['phase'] === 'stale')) ? 'stale' : 'comments';
+
+			foreach (array('page_id', 'item_id', 'rebuilt', 'failed') as $key) {
+
+				$progress[$key] = (isset($stored[$key]) && is_scalar($stored[$key])) ? max(0, (int) $stored[$key]) : 0;
+
+			}
+
+		}
+
+	}
+
+	return $progress;
+
+}
+
+function upgrade_2026_11_0_comment_record_counts_progress_save() {
+
+	$file = upgrade_2026_11_0_comment_record_counts_progress_file();
+
+	if (!is_dir(dirname($file))) {
+
+		@mkdir(dirname($file), 0755, true);
+
+	}
+
+	@file_put_contents($file, json_encode(array('time' => time(), 'progress' => upgrade_2026_11_0_comment_record_counts_progress())), LOCK_EX);
 
 }

@@ -219,10 +219,18 @@ if ($_POST) {
 
 	} elseif ($action === 'rotate' && $app_id > 0) {
 
-		$existing = db_item("SELECT id, name, api_key, api_secret_hash FROM api_apps
+		$existing = db_item("SELECT id, name, api_key, api_secret_hash, kind FROM api_apps
 			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
 
-		if ($existing) {
+		// A key made without a secret (Pinegrap AI's, made in the Workspace
+		// settings) is never given one: this screen is open to roles 0-2, and
+		// a secret would let whoever issued it call the API with the rights of
+		// the key's owner (api_app_secret_can_rotate()).
+		if ($existing && !api_app_secret_can_rotate($existing)) {
+
+			$liveform->add_error(lang('This application was made without a secret and is never given one, so it cannot sign in.'));
+
+		} elseif ($existing) {
 
 			$secret = api_generate_secret();
 
@@ -237,7 +245,7 @@ if ($_POST) {
 					api_secret_hash = '" . escape(api_secret_hash($secret)) . "',
 					api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
 					updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . $app_id . "'");
+				WHERE id = '" . $app_id . "' AND kind = 'server' AND api_secret_hash <> ''");
 
 			pg_audit_record('rotate', 'api_apps', $app_id, $audit_before);
 
@@ -1719,6 +1727,10 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
+				<div class="mb-3 d-none" id="d_nosecret_block">
+					<label class="form-label small">' . lang('Secret') . '</label>
+					<div class="form-text mt-0">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
+				</div>
 				<div class="mb-3" id="d_device_block">
 					<label class="form-label small">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
@@ -2195,8 +2207,12 @@ echo '
 		var device = (app.kind === "device");
 		var oauth = (app.kind === "oauth");
 		var keyless = device || oauth;
-		document.getElementById("d_secret_block").classList.toggle("d-none", keyless);
-		document.getElementById("d_auth_block").classList.toggle("d-none", keyless);
+		// A server key made without a secret (Pinegrap AI\'s) is never given
+		// one, so it gets neither the rotate button nor the curl line.
+		var noSecret = !keyless && !app.has_secret;
+		document.getElementById("d_secret_block").classList.toggle("d-none", keyless || noSecret);
+		document.getElementById("d_auth_block").classList.toggle("d-none", keyless || noSecret);
+		document.getElementById("d_nosecret_block").classList.toggle("d-none", !noSecret);
 		document.getElementById("d_device_block").classList.toggle("d-none", !device);
 		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
 		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);

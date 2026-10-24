@@ -201,8 +201,9 @@ function ws_claude_scopes_of($stored)
 }
 
 /**
- * The active applications Claude could work through: the ones holding every
- * scope the routine needs.
+ * The active applications Claude could work through: 'server' keys with a
+ * secret, since the routine signs in with key and secret, holding every
+ * scope it needs. A key made without a secret (Pinegrap AI's) is never one.
  *
  * @return array[] id, name
  */
@@ -210,7 +211,7 @@ function ws_claude_suitable_apps()
 {
     $out = array();
 
-    foreach ((array) db_items("SELECT id, name, scopes FROM api_apps WHERE status = 'active' ORDER BY name LIMIT 200") as $row) {
+    foreach ((array) db_items("SELECT id, name, scopes FROM api_apps WHERE status = 'active' AND kind = 'server' AND api_secret_hash <> '' ORDER BY name LIMIT 200") as $row) {
         if (empty(array_diff(ws_claude_required_scopes(), ws_claude_scopes_of($row['scopes'])))) {
             $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
         }
@@ -1601,6 +1602,25 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user)
 }
 
 /**
+ * The scopes of the key an assistant's card makes (Claude's here, Pinegrap
+ * AI's in ai.php): every read but the five left out, and writing in the
+ * Workspace and the Tasks, cut to what the administrator pressing the button
+ * may hand on; every call is capped again by the owner's rights then.
+ *
+ * @param array $user validate_user() of the person pressing the button
+ * @return string[] empty when that person cannot hand on both writes
+ */
+function ws_assistant_key_scopes($user)
+{
+    require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
+
+    return api_assistant_scopes_handed_on(
+        api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()),
+        api_owner_scopes($user)
+    );
+}
+
+/**
  * The card's two key buttons, for an administrator (ws_claude_settings_post()
  * checked the role). Create makes the application key Claude works through
  * and links it; Reset secret gives the linked key a new secret, and the old
@@ -1633,15 +1653,9 @@ function ws_claude_key_post($action, $liveform, $user, $username)
             return;
         }
 
-        // Every read but the five left out, and writing in the Workspace and
-        // the Tasks, cut to what the administrator pressing the button may
-        // hand on; every call is capped again by the owner's rights then.
-        $scopes = array_values(array_intersect(
-            api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()),
-            api_owner_scopes($user)
-        ));
+        $scopes = ws_assistant_key_scopes($user);
 
-        if (!in_array('workspace:write', $scopes, true) || !in_array('tasks:write', $scopes, true)) {
+        if (empty($scopes)) {
             $liveform->add_error(lang('Claude\'s key needs writing in the Workspace and the Tasks, which your account cannot hand on.'));
             return;
         }
@@ -1676,6 +1690,13 @@ function ws_claude_key_post($action, $liveform, $user, $username)
 
     if ((string) $app['kind'] !== 'server') {
         $liveform->add_error(lang('This application has no secret to reset: it signs people in from devices or through OAuth.'));
+        return;
+    }
+
+    // A key made without a secret (Pinegrap AI's, chosen here by hand) is
+    // never given one; api_app_rotate_secret() refuses it too.
+    if (!api_app_secret_can_rotate((array) db_item("SELECT kind, api_secret_hash FROM api_apps WHERE id = '" . (int) $app['id'] . "'"))) {
+        $liveform->add_error(lang('This application was made without a secret and is never given one, so it cannot sign in.'));
         return;
     }
 
