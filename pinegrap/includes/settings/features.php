@@ -398,6 +398,43 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
                         </div>';
 }
 
+// ── Page Cache ──
+//
+// The lifetime is PAGE_CACHE_TTL in data/config.php rather than a config
+// column, so it is known before any query (includes/fn/page_cache.php).
+if (function_exists('pg_page_cache_ttl')) {
+
+    $page_cache_ttl = pg_page_cache_ttl();
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-page-cache" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('Page Cache') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . (($page_cache_ttl > 0) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="page_cache" name="page_cache"/>
+                                                <label class="form-check-label" for="page_cache">' . lang('Enable Page Cache') . '</label>
+                                                <div class="form-text">' . lang('A page that looks the same for every visitor who is not signed in is sent with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on.') . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="page_cache_ttl" class="form-label">' . lang('Page Lifetime') . '</label>
+                                            <div class="input-group">
+                                                <input type="text" name="page_cache_ttl" id="page_cache_ttl" maxlength="4" inputmode="numeric" class="form-control text-end" value="' . h(($page_cache_ttl > 0) ? $page_cache_ttl : PG_PAGE_CACHE_TTL_DEFAULT) . '" />
+                                                <label class="input-group-text" for="page_cache_ttl">' . lang('seconds') . '</label>
+                                            </div>
+                                            <div class="form-text">' . lang(array('string' => 'A change to a page reaches visitors within this time. {var:1} to {var:2}.', 'vars' => array(PG_PAGE_CACHE_TTL_MIN, PG_PAGE_CACHE_TTL_MAX))) . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // ── Signature Time Stamp ──
 //
 // The address is a setting and not a line in data/config.php because it is an

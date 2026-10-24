@@ -26775,5 +26775,15 @@
     "Waiting for confirmation": "Onay bekleniyor",
     "No confirmation e-mail was sent for contact group {var:1}: the request could not be recorded in the consent log, which limits these e-mails to one a day.": "{var:1} numaralı kişi grubu için onay e-postası gönderilmedi: istek, bu e-postaları günde bire sınırlayan izin kaydına yazılamadı.",
     "All e-mails from this site are turned off for this address. Turn them back on in your e-mail preferences to receive this list.": "Bu adres için bu sitedeki tüm e-postalar kapalı. Bu listeyi almak için e-posta tercihlerinizden e-postaları yeniden açın.",
-    "Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.": "Gönderimden sonraki mesajda bir onay e-postasının yolda olduğunu söyleyin: form bunu kendisi söylemez."
+    "Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.": "Gönderimden sonraki mesajda bir onay e-postasının yolda olduğunu söyleyin: form bunu kendisi söylemez.",
+    "Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.": "Ziyaretinizde sepet, oturum açma ya da bir ileti varken sitenin önündeki önbelleğe isteklerinizi doğrudan siteye iletmesini söyler.",
+    "Page Cache": "Sayfa Önbelleği",
+    "Enable Page Cache": "Sayfa Önbelleğini Etkinleştir",
+    "A page that looks the same for every visitor who is not signed in is sent with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on.": "Oturum açmamış her ziyaretçiye aynı görünen sayfa standart önbellek başlıklarıyla gönderilir; böylece sitenin önündeki bir CDN ya da ters vekil sunucu (Cloudflare, Varnish, nginx) onu saklayabilir. Form, sepet ya da üye içeriği olan sayfalar, özel sayfalar, PHP çalıştıran sayfalar, sepeti, oturumu ya da çerez tercihi olan ziyaretçiye giden sayfalar ve hata sayfaları hiçbir zaman saklanmaz. Mobil görünümü açık sitede çalışmaz.",
+    "Page Lifetime": "Sayfa Ömrü",
+    "A change to a page reaches visitors within this time. {var:1} to {var:2}.": "Sayfadaki bir değişiklik ziyaretçilere bu süre içinde ulaşır. {var:1} ile {var:2} arası.",
+    "the page cache was turned off": "sayfa önbelleği kapatıldı",
+    "The page cache setting was not saved, because the config.php file could not be written. The other settings were saved.": "config.php dosyası yazılamadığı için sayfa önbelleği ayarı kaydedilmedi. Diğer ayarlar kaydedildi.",
+    "the page cache was turned on with a lifetime of {var:1} seconds": "sayfa önbelleği {var:1} saniyelik ömürle açıldı",
+    "cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control": "önbellek, sayfa önbelleği, cdn, vekil, proxy, varnish, nginx, cloudflare, hız, performans, s-maxage, cache-control"
 }

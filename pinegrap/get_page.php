@@ -3252,6 +3252,17 @@ if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
 }
 
+// While the page cache is on: a page drawn the same for every anonymous
+// visitor goes out with shared-cache headers, no cookie and no session token;
+// any other answer says why it was not (includes/fn/page_cache.php).
+if (function_exists('pg_page_cache_apply')) {
+	$content = pg_page_cache_apply($content, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'access_control_type' => $access_control_type,
+	));
+}
+
 echo $content;
 // A record a designed record page showed (form_item_view) counts one view on
 // that page, as the legacy form item view counts - but not for crawlers,
