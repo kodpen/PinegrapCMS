@@ -4,16 +4,17 @@
  *
  * Workspace - commands typed into a channel.
  *
- *   /task Logo revision @ayse friday ~2h !urgent #contact   (also /gorev)
+ *   /task Logo revision @ayse friday ~2h !urgent #contact   (also /görev, /gorev)
  *   /assign T-42 @mehmet                                     (also /ata)
  *   /done T-42                                               (also /bitti, /tamam)
  *   /postpone T-42 +2d                                       (also /ertele)
  *   /decision The packaging will be kraft                    (also /karar)
  *   /note Accounts contact: Selin, ext. 204                  (also /not)
  *   /plan @ayse                                              the next working week
+ *   /poll Which day? | Tuesday | Wednesday                   (also /oylama, /anket, /sor)
  *   /price #product 149,90                                   (also /fiyat)
  *   /stock #product 12, +5 or -3                             (also /stok)
- *   /help                                                    (also /yardim)
+ *   /help                                                    (also /yardım, /yardim)
  *
  * A command is a shortcut, never the only way: each has a button somewhere on
  * the screen. Creating a task is always shown back first - "this is the task I
@@ -22,8 +23,9 @@
  * or a stock is shown back the same way, old value beside the new one.
  *
  * The date words are a short fixed list (today, tomorrow, weekday names,
- * 26.09, 26.09.2026, +3d, +2w, next week) in Turkish and English. Anything
- * else stays in the title, where the author will see it in the preview.
+ * 26.09, 26.09.2026, +3d, +2w, haftaya or nextweek written as one word) in
+ * Turkish and English. Anything else stays in the title, where the author
+ * will see it in the preview.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,6 +60,18 @@ function ws_command_names()
 }
 
 /**
+ * The names one command answers to, in the order ws_command_names() lists
+ * them.
+ *
+ * @param string $command the command's own name (ws_command_names() value)
+ * @return string[] names without the leading slash
+ */
+function ws_command_aliases($command)
+{
+    return array_keys(ws_command_names(), (string) $command, true);
+}
+
+/**
  * May this person use a command? /price and /stock write a product, so they
  * are offered only to whoever may change products; the others are anybody's.
  * Without a person every command is listed.
@@ -79,28 +93,38 @@ function ws_command_offered($viewer, $command)
  * The help text the /help command and the composer's hint show.
  *
  * @param array|null $viewer leaves out the commands this person may not use
- * @return array[] command, example, description
+ * @return array[] command (the label), names (every name it answers to, each
+ *                 with its slash, for the composer's / picker), example,
+ *                 description
  */
 function ws_command_help($viewer = null)
 {
+    $names = function ($command) {
+        return array_map(function ($name) {
+            return '/' . $name;
+        }, ws_command_aliases($command));
+    };
+
     $help = array(
-        array('command' => '/task · /gorev', 'example' => lang('/task Logo revision @ayse friday ~2h !urgent'), 'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.')),
-        array('command' => '/assign · /ata', 'example' => lang('/assign T-42 @mehmet'), 'description' => lang('Adds people to a task.')),
-        array('command' => '/done · /bitti', 'example' => lang('/done T-42'), 'description' => lang('Marks a task as done.')),
-        array('command' => '/postpone · /ertele', 'example' => lang('/postpone T-42 +2d'), 'description' => lang('Moves a task\'s due date.')),
-        array('command' => '/decision · /karar', 'example' => lang('/decision The packaging will be kraft'), 'description' => lang('Writes a decision; it is kept on the Decisions tab.')),
-        array('command' => '/note · /not', 'example' => lang('/note Accounts contact: Selin, ext. 204'), 'description' => lang('Writes a note; it is kept on the Decisions tab.')),
-        array('command' => '/plan', 'example' => lang('/plan @ayse'), 'description' => lang('Shows the next working week of a person, only to you.')),
-        array('command' => '/poll · /oylama', 'example' => lang('/poll Which day for the launch? | Tuesday | Wednesday'), 'description' => lang('Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.')),
+        array('command' => '/task · /görev', 'names' => $names('task'), 'example' => lang('/task Logo revision @ayse friday ~2h !urgent'), 'description' => lang('Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.')),
+        array('command' => '/assign · /ata', 'names' => $names('assign'), 'example' => lang('/assign T-42 @mehmet'), 'description' => lang('Adds people to a task.')),
+        array('command' => '/done · /bitti', 'names' => $names('done'), 'example' => lang('/done T-42'), 'description' => lang('Marks a task as done.')),
+        array('command' => '/postpone · /ertele', 'names' => $names('postpone'), 'example' => lang('/postpone T-42 +2d'), 'description' => lang('Moves a task\'s due date.')),
+        array('command' => '/decision · /karar', 'names' => $names('decision'), 'example' => lang('/decision The packaging will be kraft'), 'description' => lang('Writes a decision; it is kept on the Decisions tab.')),
+        array('command' => '/note · /not', 'names' => $names('note'), 'example' => lang('/note Accounts contact: Selin, ext. 204'), 'description' => lang('Writes a note; it is kept on the Decisions tab.')),
+        array('command' => '/plan', 'names' => $names('plan'), 'example' => lang('/plan @ayse'), 'description' => lang('Shows the next working week of a person, only to you.')),
+        array('command' => '/poll · /oylama', 'names' => $names('poll'), 'example' => lang('/poll Which day for the launch? | Tuesday | Wednesday'), 'description' => lang('Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.')),
     );
 
     if (ws_command_offered($viewer, 'price')) {
-        $help[] = array('command' => '/price · /fiyat', 'example' => lang('/price #mug 149,90'), 'description' => lang('Changes the price of a product. Shown to you, old and new, before it is written.'));
+        $help[] = array('command' => '/price · /fiyat', 'names' => $names('price'), 'example' => lang('/price #mug 149,90'), 'description' => lang('Changes the price of a product. Shown to you, old and new, before it is written.'));
     }
 
     if (ws_command_offered($viewer, 'stock')) {
-        $help[] = array('command' => '/stock · /stok', 'example' => lang('/stock #mug 12'), 'description' => lang('Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.'));
+        $help[] = array('command' => '/stock · /stok', 'names' => $names('stock'), 'example' => lang('/stock #mug 12'), 'description' => lang('Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.'));
     }
+
+    $help[] = array('command' => '/help · /yardım', 'names' => $names('help'), 'example' => lang('/help'), 'description' => lang('Lists the commands and what they do.'));
 
     return $help;
 }
