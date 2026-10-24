@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Appearance cards: the panel theme and the rich-text editor.
+ * Site Settings - the Appearance cards: the panel theme, the dashboard and the
+ * rich-text editor.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -45,6 +46,116 @@ $pg_settings_cards[] = '
                                 </div>
                             </div>
                         </div>';
+
+// ── Dashboard ──
+//
+// Designers and administrators only ($dashboard_card_shown, prep.php); the
+// save checks the same gate, so a manager's save of this category leaves the
+// dashboard alone. Card style, backdrop and widget order are on the dashboard
+// row and apply to everyone's dashboard; the refresh time is this sign-in's.
+// Reset Widgets is a named submit button: the save writes the settings first,
+// then puts the widgets back in their default order.
+if ($dashboard_card_shown) {
+
+    $output_dashboard_appearance = '
+                                        <div class="col-12 ">
+                                            <div class="alert alert-secondary mb-0 py-2 small">' . lang('Run the upgrade to use this setting.') . '</div>
+                                        </div>';
+
+    if ($dashboard_appearance_ready) {
+
+        $output_dashboard_appearance = '
+                                        <div class="pg-f-md">
+                                            <label for="dashboard_widget_theme" class="form-label">' . lang('Card Style') . '</label>
+                                            <select name="dashboard_widget_theme" id="dashboard_widget_theme" class="form-select">' . $output_dashboard_theme_options . '</select>
+                                            <div class="form-text">' . lang('How the cards on the dashboard are drawn, for everyone who uses the panel.') . '</div>
+                                        </div>
+                                        <div class="pg-f-md">
+                                            <label for="dashboard_panel_backdrop" class="form-label">' . lang('Panel Backdrop') . '</label>
+                                            <select name="dashboard_panel_backdrop" id="dashboard_panel_backdrop" class="form-select">' . $output_dashboard_backdrop_options . '</select>
+                                            <div class="form-text">' . lang('What sits behind the dashboard cards. Match Card Style picks the one that suits the chosen style.') . '</div>
+                                        </div>';
+    }
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-dashboard" class="pg-set-card"'
+                            . ($dashboard_appearance_ready
+                                ? ' data-pg-dashboard-theme="' . h($dashboard_appearance['widget_theme']) . '"'
+                                  . ' data-pg-dashboard-backdrop="' . h($dashboard_appearance['backdrop']) . '"'
+                                : '')
+                            . ' data-pg-dashboard-refresh="' . (int) $dashboard_refresh . '"'
+                            . ' data-pg-dashboard-reset="' . ($dashboard_reset_done ? '1' : '0') . '">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('Dashboard') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">' . $output_dashboard_appearance . '
+                                        <div class="pg-f-xs">
+                                            <label for="dashboard_refresh" class="form-label">' . lang('Refresh Time') . '</label>
+                                            <div class="input-group">
+                                                <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-control" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric" style="text-align: right;"/>
+                                                <span class="input-group-text">' . lang('seconds') . '</span>
+                                            </div>
+                                            <div class="form-text">' . lang('How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.') . '</div>
+                                        </div>
+                                        <div class="col-12 ">
+                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
+                                            <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+    // Over the dashboard, a save shows on it: the pane is read again after
+    // every save, so the card carries what is stored now. Card style and
+    // backdrop are attributes the stylesheet reads and change in place. A new
+    // refresh time or a reset order needs the page drawn again (its timer is
+    // set on load, the server places the cards), so the dashboard is loaded
+    // again once the dialog closes, after the confirmation has been read --
+    // without welcome.php?refresh=N, which would set the old time again, and
+    // without the #settings hash, which would open the dialog again. On any
+    // other screen, and on the settings page, there is no #content carrying
+    // data-widget-theme and nothing happens.
+    $pg_settings_scripts[] = '
+<script>
+    (function () {
+        var board = document.querySelector("main#content[data-widget-theme]");
+        var card = document.getElementById("pgset-dashboard");
+        var dialog = document.getElementById("pg_settings_modal");
+
+        if (!board || !card) {
+            return;
+        }
+
+        var theme = card.getAttribute("data-pg-dashboard-theme");
+        var backdrop = card.getAttribute("data-pg-dashboard-backdrop");
+
+        if (theme) {
+            board.setAttribute("data-widget-theme", theme);
+        }
+
+        if (backdrop) {
+            board.setAttribute("data-panel-backdrop", backdrop);
+        }
+
+        var refresh = (parseInt(card.getAttribute("data-pg-dashboard-refresh"), 10) || 0) * 1000;
+        var stale = (card.getAttribute("data-pg-dashboard-reset") === "1")
+            || (refresh > 0 && window.pg_widgets && (window.pg_widgets.interval !== refresh));
+
+        if (!stale || !dialog || window.pgDashboardReloadArmed) {
+            return;
+        }
+
+        window.pgDashboardReloadArmed = true;
+
+        dialog.addEventListener("hidden.bs.modal", function () {
+            window.location.href = window.location.pathname;
+        }, { once: true });
+    })();
+</script>';
+}
 
 // ── Rich-text Editor ──
 $pg_settings_cards[] = '
