@@ -232,6 +232,73 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 }
 
+// An order the order screen's E-Shipment shipped (orders.parasut_shipment_id,
+// carried as order_shipment_id) holds a real Paraşüt record id: digits.
+// Anything else, and a typed invoice, names no shipment document.
+function test_erp_edoc_parasut_order_shipment_id()
+{
+	pg_assert_same('1094785', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '1094785'))));
+	pg_assert_same('1094785', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => ' 1094785 '))), 'trimmed');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => ''))), 'not shipped');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443))), 'column not read');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '?'))), 'a mark');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '0'))), 'zero');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => 'irsaliye'))), 'not an id');
+	pg_assert_same('', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 0, 'order_shipment_id' => '1094785'))), 'typed invoice');
+
+	// Paraşüt ids outgrow a 32-bit integer; the id is kept as written.
+	pg_assert_same('98765432101', erp_edoc_parasut_order_shipment_id(pg_test_parasut_invoice(array('order_id' => 443, 'order_shipment_id' => '98765432101'))));
+}
+
+// The sales invoice of an order shipped by E-Shipment goes without shipment
+// and names the shipment document, so Paraşüt counts the goods out once;
+// every other invoice's body is the one sent before.
+function test_erp_edoc_parasut_invoice_payload_legacy_shipment()
+{
+	$lines = array(
+		array('product_id' => 0, 'description' => 'Hizmet', 'quantity' => '2.0000', 'unit_price' => 50000, 'discount_rate' => '10.000', 'discount_amount' => 10000, 'tax_rate' => '20.000', 'withholding_rate' => '0.000'),
+	);
+	$order = array('order_id' => 443, 'order_number' => '1180', 'order_date' => '2026-10-18');
+
+	$shipped = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array_merge($order, array('order_shipment_id' => '1094785'))), $lines, '555');
+	pg_assert_false(isset($shipped['error']));
+	pg_assert_same(false, $shipped['data']['attributes']['shipment_included'], 'without shipment');
+	pg_assert_same(array('data' => array(array('type' => 'shipment_documents', 'id' => '1094785'))), $shipped['data']['relationships']['shipment_documents']);
+	pg_assert_same('555', $shipped['data']['relationships']['contact']['data']['id']);
+	pg_assert_same(1, count($shipped['data']['relationships']['details']['data']));
+	pg_assert_same('1180', $shipped['data']['attributes']['order_no']);
+
+	// Apart from the shipment, the body is the one an unshipped order gets.
+	$plain = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array_merge($order, array('order_shipment_id' => ''))), $lines, '555');
+	$without = $shipped;
+	unset($without['data']['attributes']['shipment_included'], $without['data']['relationships']['shipment_documents']);
+	pg_assert_same($plain, $without);
+
+	// Not shipped, a mark, a typed invoice: the body sent before, with
+	// Paraşüt's own default for the shipment.
+	foreach (array(array_merge($order, array('order_shipment_id' => '')), $order, array_merge($order, array('order_shipment_id' => '?'))) as $label => $overrides) {
+		$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice($overrides), $lines, '555');
+		pg_assert_false(array_key_exists('shipment_included', $payload['data']['attributes']), 'no shipment_included ' . $label);
+		pg_assert_same(array('contact', 'details'), array_keys($payload['data']['relationships']), 'relationships ' . $label);
+	}
+
+	$typed = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_shipment_id' => '1094785')), $lines, '555');
+	pg_assert_false(array_key_exists('shipment_included', $typed['data']['attributes']), 'typed invoice');
+	pg_assert_false(isset($typed['data']['relationships']['shipment_documents']), 'typed invoice');
+}
+
+// send_invoice reads the order's shipment document with its number and date,
+// so the payload gets it from the order row and not from the caller.
+function test_erp_edoc_parasut_send_invoice_reads_the_order_shipment()
+{
+	$function = new ReflectionFunction('erp_edoc_parasut_send_invoice');
+	$source = implode('', array_slice(file($function->getFileName()), $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_true((bool) preg_match('/SELECT [^"]*parasut_shipment_id[^"]* FROM orders WHERE id/', $source), 'the order read takes parasut_shipment_id');
+	pg_assert_contains("\$invoice['order_shipment_id']", $source);
+	pg_assert_contains("!isset(\$invoice['order_shipment_id'])", $source);
+}
+
 function pg_test_parasut_vat_line($base, $vat, $overrides = array())
 {
 	return array_merge(array('product_id' => 0, 'description' => 'Satır', 'quantity' => '1.0000', 'unit_price' => $base, 'line_total' => $base, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => $vat, 'tax2_amount' => 0, 'withholding_rate' => '0.000'), $overrides);
