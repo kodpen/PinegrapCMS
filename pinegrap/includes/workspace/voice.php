@@ -3,13 +3,15 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - voice messages: the microphone of the writing box records a
- * message that is posted as a sound file, and every sound file in a
- * conversation plays in place (assets/js/workspace_voice.js).
+ * message that is posted as a sound file, every sound file in a conversation
+ * plays in place, and its own microphone answers it with a recording
+ * (assets/js/workspace_voice.js).
  *
  * A recording travels like any other file: the panel's upload (ws_attach,
  * ws_message_send_file()) checks and keeps it, so who may post it and who
- * may hear it are the channel's own rules. Nothing here is stored; this file
- * holds the texts the script shows.
+ * may hear it are the channel's own rules; an answer carries parent_id
+ * (ws_message_parent_check()). Nothing here is stored; this file holds the
+ * texts the script shows.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,5 +41,7 @@ function ws_voice_js_strings()
         'voice_play'        => lang('Play'),
         'voice_pause'       => lang('Pause'),
         'voice_speed'       => lang('Speed'),
+        'voice_reply'       => lang('Reply with voice'),
+        'voice_busy'        => lang('Sorry, please save or cancel your changes first.'),
     );
 }

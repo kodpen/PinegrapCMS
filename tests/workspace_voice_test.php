@@ -19,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
 
 function ws_voice_test_source($path)
 {
@@ -113,4 +114,34 @@ function test_ws_voice_texts_are_given_and_translated()
 	foreach ($sources[1] as $source) {
 		pg_assert_true(isset($tr[stripslashes($source)]), $source . ' is in tr.json');
 	}
+}
+
+// A voice reply answers a message only of its own channel or discussion, not
+// deleted, and of the conversation as it is now; anything else gets the
+// refusal the API answers 422 on parent_id with. No parent asks nothing.
+function test_ws_voice_reply_parent_refusal()
+{
+	$parent = array('id' => 50, 'channel_id' => 7, 'deleted_at' => 0);
+	$missing = lang('That message could not be found.');
+
+	pg_assert_same('', ws_message_parent_refusal($parent, 7, 0), 'a message of the channel');
+	pg_assert_same('', ws_message_parent_refusal($parent, 7, 49), 'a message just after a clear');
+	pg_assert_same($missing, ws_message_parent_refusal(null, 7, 0), 'no such message');
+	pg_assert_same($missing, ws_message_parent_refusal($parent, 8, 0), 'a message of another channel');
+	pg_assert_same($missing, ws_message_parent_refusal(array('deleted_at' => 1790000000) + $parent, 7, 0), 'a deleted message');
+	pg_assert_same(lang('This message is in an earlier version of the conversation, which is kept as it was.'),
+		ws_message_parent_refusal($parent, 7, 50), 'a message cleared away');
+	pg_assert_same('', ws_message_parent_check(array('id' => 7), 0), 'no parent');
+}
+
+// The panel's upload sends the parent a recording answers, and the player
+// offers its own microphone only when the screen gives it an answer to make.
+function test_ws_voice_reply_reaches_the_upload()
+{
+	$screen = ws_voice_test_source('assets/js/workspace.js');
+	$voice = ws_voice_test_source('assets/js/workspace_voice.js');
+
+	pg_assert_true((bool) preg_match("/api\\('ws_attach', \\{[^}]*parent_id: settings\\.parent_id/s", $screen), 'ws_attach carries parent_id');
+	pg_assert_contains('parent_id: parent ? parent.id : 0', $screen, 'a recording answers the reply bar\'s message');
+	pg_assert_contains('if (options && options.reply)', ws_voice_test_function($voice, 'player'), 'the reply microphone needs an answer to make');
 }
