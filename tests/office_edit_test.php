@@ -1017,6 +1017,8 @@ function test_office_edit_docx_hyphens_drawn()
 	$read = pg_office_read($path, 'x.docx', true);
 
 	pg_assert_contains('<p data-p="0">Ali&#8209;Veli bilgi&shy;sayar</p>', $read['html'], 'the hyphens drawn as their own characters');
-	pg_assert_same("Ali\u{2011}Veli bilgi\u{00AD}sayar", $read['edit']['paragraphs']->{'0'}, 'and in the text the same');
+	// Read as an array: before PHP 7.2 an object cast from an array keeps
+	// integer keys, which ->{'0'} cannot reach.
+	pg_assert_same(array('0' => "Ali\u{2011}Veli bilgi\u{00AD}sayar"), (array) $read['edit']['paragraphs'], 'and in the text the same');
 	unlink($path);
 }

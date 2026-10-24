@@ -740,7 +740,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
-            $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel);
+            // A macro file posted before channels refused them opens read only: its edit would be refused.
+            $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
             $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name'], $editing);
 
             if (!$office['ok']) {

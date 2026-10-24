@@ -464,6 +464,22 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// The page cache (includes/fn/page_cache.php): the folders of old
+// generations and of a purge, and copies past twice their lifetime; at most
+// every ten minutes, ten seconds a tick. With nothing to do it reads one small
+// file.
+if (function_exists('pg_page_cache_sweep_run')) {
+
+    $page_cache_sweep = pg_page_cache_sweep_run(10);
+
+    if ($page_cache_sweep['files'] > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page cache file(s)',
+            'vars'   => array(pg_format_number($page_cache_sweep['files'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Scheduled pages (includes/fn/page_schedule.php): a draft whose publish time
 // has come goes on the site, a page whose time to come off has come goes back
 // to the drafts, and the time is cleared. Every tick, so a page goes live

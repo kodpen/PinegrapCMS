@@ -14,7 +14,7 @@ description: A file of the file manager posted into a Workspace channel as a cop
 - Channels offered: `ws_channels_for()` kept to `ws_can_post_channel()`; the send checks again.
 
 ## What does the picker list?
-- `ws_library_browse()`: a folder's subfolders (file manager order) and its first 200 files by name; a search (name contains, newest first, 50); at the start the top folder (staff) or each grant's top side by side (`several`), plus the 12 files changed last. A file a channel would refuse stays listed, greyed, with the reason. Pictures show their own address as a lazy thumbnail.
+- `ws_library_browse()`: a folder's subfolders (file manager order) and its first 200 files by name; a search (name contains, newest first, 50); at the start the top folder (staff) or each grant's top side by side (`several`), plus the 12 files changed last. A file a channel would refuse (`workspace-upload-refusals.md`) stays listed, greyed, with the reason. Pictures show their own address as a lazy thumbnail.
 - Pure helpers, tested in `tests/workspace_library_test.php`: `ws_library_branch()`, `ws_library_open_set()`, `ws_library_tops()`, `ws_library_trail()`.
 
 ## What is not there?

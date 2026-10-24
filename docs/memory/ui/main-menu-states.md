@@ -5,6 +5,7 @@ description: Main menu on wide screens: expanded / mini / hidden chosen at its f
 
 ## What are the states?
 - lg and up (992px): `expanded` (icons and labels, `--pg-rail-w-expanded`), `collapsed` (the icon rail, the default) and `hidden` (no column, the content takes the width). Below lg the menu is the off-canvas drawer, open or shut; the drawer never writes the wide-screen state.
+- A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`).
 
 ## Which control does what?
 - The foot of the menu (`pg_menu_mode_switch()`, `includes/fn/output.php`): one button that opens a small menu of the three states (`role="menuitemradio"`, `data-pg-menu-mode`, `aria-checked`). Its picture is the current state; on the expanded menu it also carries "Menü görünümü". Not shown below lg. It replaced the caret (`#menu_toggle`) that only flipped expanded and collapsed and had no name.

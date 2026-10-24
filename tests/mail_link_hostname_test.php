@@ -37,7 +37,8 @@ function pg_test_mail_link_request_host_lines($file)
 }
 
 // Screens and helpers that e-mail a link to the site: account and password
-// mails, the affiliate approval request and the comment notifications.
+// mails, the affiliate approval request, the comment notifications and the
+// double opt-in confirmation link.
 function test_mail_link_hostname_mail_screens_use_hostname_setting()
 {
 	$files = array(
@@ -48,6 +49,7 @@ function test_mail_link_hostname_mail_screens_use_hostname_setting()
 		'affiliate_sign_up_form.php',
 		'add_comment.php',
 		'email_a_friend.php',
+		'includes/fn/form_subscription.php',
 		'includes/fn/mail.php',
 		'includes/fn/widgets_account.php',
 	);

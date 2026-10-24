@@ -858,7 +858,7 @@ function pg_zip_entry_size($archive, $entry)
 /**
  * One entry of an open zip archive, whole, as a string. Null when the archive
  * has no such entry, when the entry declares more than $limit bytes, or when
- * it does not unpack to exactly the size it declares.
+ * it does not unpack to exactly the size and checksum it declares.
  *
  * The declared size is what the archive's directory says, and what the
  * ceilings in front of a read add up (pg_office_open(),
@@ -867,9 +867,11 @@ function pg_zip_entry_size($archive, $entry)
  * the extra byte and is refused, so an entry that declares a kilobyte and
  * inflates to gigabytes costs a kilobyte and one byte. An entry that holds
  * less than it declares comes back short and is refused as well, and so is
- * one that declares nothing over data that inflates to something. A size
- * past PHP_INT_MAX (negative on a 32-bit build) is too large. The checksum
- * is not compared here.
+ * one that declares nothing over data that inflates to something, or over a
+ * stream that cannot be inflated. A size past PHP_INT_MAX (negative on a
+ * 32-bit build) is too large. The checksum is compared here, so a damaged
+ * entry is refused the same way on every PHP version (getFromIndex()
+ * compares it itself only in recent releases).
  *
  * @param ZipArchive $zip
  * @param string|int $entry the entry's name, or its index
@@ -883,7 +885,7 @@ function pg_zip_entry_contents($zip, $entry, $limit, &$error)
     $error = '';
     $stat = is_int($entry) ? $zip->statIndex($entry) : $zip->statName((string) $entry);
 
-    if (($stat === false) || !isset($stat['size'], $stat['index'])) {
+    if (($stat === false) || !isset($stat['size'], $stat['index'], $stat['crc'])) {
         $error = 'missing';
 
         return null;
@@ -896,16 +898,15 @@ function pg_zip_entry_contents($zip, $entry, $limit, &$error)
     }
 
     $size = (int) $stat['size'];
+    $data = '';
 
-    // getFromIndex() answers an entry that declares nothing with '' without
-    // reading it, so the entry itself is asked for one byte: an empty file
-    // gives none, whatever its compressed stream looks like (zlib writes 2
-    // bytes, Go's archive/zip 5, a sync-flushing writer 7, bzip2 14), and an
-    // entry that hides data behind a size of nothing gives some.
-    if ($size === 0) {
-        if (!isset($stat['comp_size']) || ((int) $stat['comp_size'] === 0)) {
-            return '';
-        }
+    // An entry that declares nothing is asked for one byte through its
+    // stream, as getFromIndex() answers it with '' without reading it up to
+    // PHP 8.3 and in older 8.4 and 8.5 releases. An empty file gives none,
+    // whatever its compressed stream looks like (zlib writes 2 bytes, Go's
+    // archive/zip 5, a sync-flushing writer 7, bzip2 14), and an entry that
+    // hides data behind a size of nothing gives some.
+    if (($size === 0) && isset($stat['comp_size']) && ((int) $stat['comp_size'] !== 0)) {
 
         $stream = method_exists($zip, 'getStreamIndex')
             ? $zip->getStreamIndex((int) $stat['index'])
@@ -917,23 +918,44 @@ function pg_zip_entry_contents($zip, $entry, $limit, &$error)
             return null;
         }
 
-        // A stream that cannot be inflated warns; the entry is reported as
-        // damaged instead.
-        $byte = @fread($stream, 1);
+        // A stream that cannot be inflated, or that ends on another checksum
+        // than the one declared, warns. fread() returns false for it from
+        // PHP 7.4 on but '' before, as it does at the end of an empty file,
+        // so the warning is what tells the two apart.
+        $failed = false;
+
+        set_error_handler(function () use (&$failed) {
+            $failed = true;
+
+            return true;
+        });
+
+        $byte = fread($stream, 1);
+        restore_error_handler();
         fclose($stream);
 
-        if ($byte !== '') {
+        if ($failed || ($byte !== '')) {
             $error = 'damaged';
 
             return null;
         }
 
-        return '';
+    } elseif ($size > 0) {
+
+        // Recent releases (PHP 8.4.26, 8.5.12) read past the entry's last
+        // byte so that libzip compares its checksum, and warn and return
+        // false when it does not match; older ones return the data. The
+        // checksum is compared below on every version, without the warning.
+        $data = @$zip->getFromIndex((int) $stat['index'], $size + 1);
+
+        if (!is_string($data) || (strlen($data) !== $size)) {
+            $error = 'damaged';
+
+            return null;
+        }
     }
 
-    $data = $zip->getFromIndex((int) $stat['index'], $size + 1);
-
-    if (!is_string($data) || (strlen($data) !== $size)) {
+    if (hash('crc32b', $data) !== sprintf('%08x', $stat['crc'] & 0xFFFFFFFF)) {
         $error = 'damaged';
 
         return null;

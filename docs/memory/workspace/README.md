@@ -10,7 +10,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Decide access only with `ws_can_read_channel()` and its siblings; no `ws_` screen, endpoint, push, search hit or file may reach a site member (`workspace-module-decisions.md`).
 - Put a new API scope in the owner ceiling `ws_owner_scopes()` too, or the endpoint answers 403 (`workspace-module-decisions.md`).
 - Add a new right column to all five role-3 ladder files (`core/permission-columns.md`) and `pg_user_has_ws_columns()`, or users holding only that right lose access (`workspace-module-decisions.md`).
-- Write site records only through `includes/workspace/changes.php` (`ws_change_check()`, `ws_change_write_<kind>()`): it refuses binned products and bounds money (`workspace-record-changes.md`).
+- Write site records only through `includes/workspace/changes.php` (`ws_change_check()`, then `ws_change_write()`, never a `ws_change_write_<kind>()` by name): it refuses binned products, bounds money and writes the audit line (`workspace-record-changes.md`).
 - Gate the person's own answers with `ws_api_person_only()` and changes to their words with `ws_api_own_words_only()`; an own-words route carries `'mcp' => false` (`workspace-api-callers.md`).
 - Give every write route `'dry_run' => true`, a `*_check()` shared with the panel, then `api_dry_run_stop()` before the write (`workspace-api-dry-run.md`).
 - Delete inbox lines only with `ws_inbox_delete()` and call `ws_inbox_reach_lost()` / `_regained()` when access changes, or `changed_since` misses it (`workspace-api-sync-inbox.md`).
@@ -43,4 +43,5 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, the tokens they use, the colour picker vs the plan board legend class names, Turkish initials in the rail, and the known cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
+- workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does

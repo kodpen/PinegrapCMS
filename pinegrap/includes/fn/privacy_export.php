@@ -40,6 +40,7 @@ function pg_privacy_export_sections()
         'sessions'           => lang('Sign-in sessions'),
         'two_step'           => lang('Two-step verification'),
         'identities'         => lang('Connected sign-in accounts'),
+        'passkeys'           => lang('Passkeys'),
         'push_subscriptions' => lang('Device notifications'),
         'contact'            => lang('Contact'),
         'contact_groups'     => lang('Contact groups'),
@@ -567,7 +568,7 @@ function pg_privacy_export_summary_html(array $document)
 
         foreach ($consents as $key => $row) {
             $html .= '<tr><td>' . h((string) $key) . '</td>'
-                . '<td>' . h((($row['status'] ?? '') === 'granted') ? lang('Given') : lang('Refused')) . '</td>'
+                . '<td>' . h(_pg_privacy_export_consent_answer((string) ($row['status'] ?? ''))) . '</td>'
                 . '<td>' . h(_pg_privacy_export_time((int) ($row['created_at'] ?? 0))) . '</td>'
                 . '<td>' . h((string) ($row['source'] ?? '')) . '</td></tr>';
         }
@@ -759,6 +760,13 @@ function pg_privacy_export_collect(array $found)
 
     if (pg_schema_has('user_identities', 'user_id')) {
         $sections['identities'] = _pg_privacy_export_select("SELECT * FROM user_identities WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
+    }
+
+    // What the person named each passkey and when it was used; the credential
+    // itself (its id, public key, user handle, counter) is the site's key
+    // material, not the person's data, and is not read.
+    if (pg_schema_has('user_passkeys', 'user_id')) {
+        $sections['passkeys'] = _pg_privacy_export_select("SELECT id, user_id, name, aaguid, transports, backup_eligible, backup_state, created_at, last_used_at FROM user_passkeys WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
     }
 
     if (pg_schema_has('push_subscriptions', 'user_id')) {
@@ -1226,6 +1234,22 @@ function _pg_privacy_export_select($sql, array $needs, array $mask = array(), ar
 function _pg_privacy_export_time($time)
 {
     return ((int) $time > 0) ? date('Y-m-d H:i', (int) $time) : '';
+}
+
+/**
+ * The answer of a consent row in words. A pending row (a double opt-in mail
+ * not answered yet) is neither given nor refused.
+ *
+ * @param string $status
+ * @return string
+ */
+function _pg_privacy_export_consent_answer($status)
+{
+    if ($status === 'granted') {
+        return lang('Given');
+    }
+
+    return ($status === 'pending') ? lang('Waiting for confirmation') : lang('Refused');
 }
 
 /**

@@ -40,9 +40,19 @@ if ($_POST) {
     // not given: (int) read an array line, account, invoice or category as
     // record 1 and recorded the line there, an array column as column 1.
     pg_request_single_values(array('erp_action', 'header', 'date_order', 'col_date', 'col_description', 'col_amount', 'col_debit', 'col_credit',
-        'line_id', 'account_id', 'invoice_id', 'category_id'));
+        'separator', 'line_id', 'account_id', 'invoice_id', 'category_id'));
 
     $action = (string) ($_POST['erp_action'] ?? '');
+
+    // A CSV's lines are split again on the separator chosen; the columns are
+    // then chosen on the new split.
+    if ($action === 'separator') {
+        if (!erp_bank_statement_set_separator($statement_id, (string) ($_POST['separator'] ?? 'auto'))) {
+            $liveform->mark_error('_error', h(lang('The statement could not be found.')));
+        }
+
+        go($self);
+    }
 
     if ($action === 'map') {
         $built = erp_bank_statement_build($statement_id, array(
@@ -53,6 +63,8 @@ if ($_POST) {
             'amount' => (int) ($_POST['col_amount'] ?? -1),
             'debit' => (int) ($_POST['col_debit'] ?? -1),
             'credit' => (int) ($_POST['col_credit'] ?? -1),
+            // The split shown on the screen, not one posted with the columns.
+            'separator' => erp_bank_statement_mapping($statement)['separator'] ?? 'auto',
         ));
 
         if (!$built['success']) {
@@ -128,16 +140,36 @@ $output_body = '';
 
 if ((string) $statement['status'] === 'mapping') {
     // Choosing the columns: the first lines of the file as they are, with a
-    // number over each column.
-    $rows = json_decode((string) $statement['raw_rows'], true);
-    $rows = is_array($rows) ? $rows : array();
+    // number over each column. A CSV is split on the separator chosen.
+    $mapping = erp_bank_statement_mapping($statement);
+    $separator_key = erp_bank_csv_separator_key($mapping['separator'] ?? 'auto');
+    $rows = erp_bank_statement_rows($statement['raw_rows'], $separator_key);
     $width = 0;
     foreach (array_slice($rows, 0, 12) as $cells) {
         $width = max($width, count((array) $cells));
     }
 
-    $mapping = json_decode((string) $statement['mapping'], true);
-    $mapping = is_array($mapping) ? $mapping : array('header' => true, 'date' => -1, 'description' => -1, 'amount' => -1, 'debit' => -1, 'credit' => -1, 'date_order' => 'dmy');
+    // Only a CSV statement taken in with its lines kept can be split again;
+    // a workbook, or a CSV taken in before, holds its cells already.
+    $separator_form = '';
+    if (!$readonly && erp_bank_statement_is_csv($statement['raw_rows'])) {
+        $separator_labels = array(
+            'auto' => lang('Automatic'),
+            'semicolon' => lang('Semicolon (;)'),
+            'comma' => lang('Comma (,)'),
+            'tab' => lang('Tab character'),
+            'pipe' => lang('Vertical bar (|)'),
+        );
+        $separator_options = '';
+        foreach (array_keys(erp_bank_csv_separators()) as $key) {
+            $separator_options .= '<option value="' . h($key) . '"' . (($key === $separator_key) ? ' selected' : '') . '>' . h($separator_labels[$key]) . '</option>';
+        }
+
+        $separator_form = '<div class="card-body border-bottom">'
+            . $post_form('<input type="hidden" name="erp_action" value="separator" /><label class="small" for="separator">' . lang('Separator') . '</label>'
+                . '<select class="form-select form-select-sm w-auto" id="separator" name="separator">' . $separator_options . '</select>', lang('Split again'), 'btn-outline-secondary')
+            . '<div class="form-text">' . lang('If the columns come out wrong, choose the separator and split the lines again.') . '</div></div>';
+    }
 
     $select = function ($name, $key, $label, $optional) use ($width, $mapping) {
         $options = $optional ? '<option value="-1">—</option>' : '<option value="-1">' . lang('Choose') . '</option>';
@@ -166,6 +198,7 @@ if ((string) $statement['status'] === 'mapping') {
     $output_body = '
             <div class="card my-4">
                 <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('The first lines of the file') . '</div>
+                ' . $separator_form . '
                 <div class="card-body p-0 table-responsive"><table class="table table-sm table-bordered mb-0"><thead>' . $head . '</thead><tbody>' . $body . '</tbody></table></div>
             </div>
             ' . (!$readonly ? '<form method="post" action="erp_bank_statement.php" class="card my-4">

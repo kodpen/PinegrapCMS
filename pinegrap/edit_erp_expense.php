@@ -44,7 +44,7 @@ if ($_POST) {
     // not given: (int) read an array till as till 1 and paid from it,
     // (string) wrote "Array" into the reason with a notice.
     pg_request_single_values(array('erp_action', 'paid_date', 'cash_account_id', 'payment_method', 'reason', 'repeat_end', 'repeat_every', 'repeat_due_days',
-        'repeat_pay'));
+        'repeat_pay', 'repeat_till', 'repeat_method'));
 
     $action = (string) ($_POST['erp_action'] ?? '');
 
@@ -127,6 +127,29 @@ if ($_POST) {
             $liveform->add_notice(lang('The expense no longer repeats. The expenses it wrote stay.'));
         }
 
+        go($self);
+    }
+
+    // The next ones of a repeat written as paid come out of another till: the
+    // way on when the till it named was taken off.
+    if (($action === 'repeat_till') && !$readonly) {
+        if (!$can_cash) {
+            $liveform->mark_error('_error', lang('Paying from a till needs the right to the tills.'));
+            go($self);
+        }
+
+        $recurrence = erp_expense_recurrence_of($expense);
+        $result = is_array($recurrence)
+            ? erp_expense_recurrence_set_till((int) $recurrence['id'], (int) ($_POST['repeat_till'] ?? 0), (string) ($_POST['repeat_method'] ?? ''))
+            : array('success' => false, 'error' => lang('The repeat could not be found.'));
+
+        if (!$result['success']) {
+            $liveform->mark_error('_error', h($result['error']));
+            go($self);
+        }
+
+        log_activity(lang('erp expense repeat till was changed'), $_SESSION['sessionusername']);
+        $liveform->add_notice(lang('The next ones are paid from the chosen till. A date still waiting is written on the next run.'));
         go($self);
     }
 
@@ -214,6 +237,37 @@ $output_figures = '
         </tbody>
     </table>';
 
+// The active tills that can pay in the expense's currency, for the pay form
+// and for the till of a repeat written as paid.
+$till_options = function ($selected = 0) use ($currency) {
+    $options = '<option value="">' . lang('Choose a till or bank account') . '</option>';
+    $count = 0;
+
+    foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
+        $till_currency = strtoupper(trim((string) $till['currency']));
+
+        if (erp_fx_enabled() && ($till_currency !== '') && ($till_currency !== $currency)) {
+            continue;
+        }
+
+        $count++;
+        $options .= '<option value="' . (int) $till['id'] . '"' . (((int) $till['id'] === (int) $selected) ? ' selected' : '') . '>'
+            . h($till['name'] . (erp_fx_enabled() ? (' (' . $till_currency . ')') : '')) . '</option>';
+    }
+
+    return array($options, $count);
+};
+
+$method_options = function ($selected = '') use ($method_words) {
+    $options = '';
+
+    foreach ($method_words as $key => $label) {
+        $options .= '<option value="' . h($key) . '"' . (((string) $key === (string) $selected) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    return $options;
+};
+
 // The payment: how it went, or the form to make it.
 if ($status === 'paid') {
     $output_payment = '
@@ -225,23 +279,7 @@ if ($status === 'paid') {
         </dl>';
 } elseif ($can_pay) {
     // Only the tills kept in the expense's currency can pay it.
-    $till_options = '<option value="">' . lang('Choose a till or bank account') . '</option>';
-    $till_count = 0;
-    foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
-        $till_currency = strtoupper(trim((string) $till['currency']));
-
-        if (erp_fx_enabled() && ($till_currency !== '') && ($till_currency !== $currency)) {
-            continue;
-        }
-
-        $till_count++;
-        $till_options .= '<option value="' . (int) $till['id'] . '">' . h($till['name'] . (erp_fx_enabled() ? (' (' . $till_currency . ')') : '')) . '</option>';
-    }
-
-    $method_options = '';
-    foreach ($method_words as $key => $label) {
-        $method_options .= '<option value="' . h($key) . '">' . h($label) . '</option>';
-    }
+    list($pay_till_options, $till_count) = $till_options();
 
     $output_payment = '
         <p class="mb-2">' . (((string) $expense['due_date'] > '0000-00-00') ? h(lang(array('string' => 'To pay by {var:1}.', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) : lang('Not paid yet.')) . '</p>
@@ -252,11 +290,11 @@ if ($status === 'paid') {
             <input type="hidden" name="erp_action" value="pay" />
             <div class="col-12 col-md-5">
                 <label class="form-label small mb-1" for="cash_account_id">' . lang('Paid from') . '</label>
-                <select class="form-select form-select-sm" id="cash_account_id" name="cash_account_id" required>' . $till_options . '</select>
+                <select class="form-select form-select-sm" id="cash_account_id" name="cash_account_id" required>' . $pay_till_options . '</select>
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small mb-1" for="payment_method">' . lang('Payment Method') . '</label>
-                <select class="form-select form-select-sm" id="payment_method" name="payment_method">' . $method_options . '</select>
+                <select class="form-select form-select-sm" id="payment_method" name="payment_method">' . $method_options('cash') . '</select>
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
@@ -362,6 +400,40 @@ if (erp_expense_recurring_ready()) {
         $can_restart = !$active && !$readonly && $open;
         $is_source = ((int) $recurrence['source_expense_id'] === $id);
 
+        // A repeat written as paid can be moved to another till; opened at
+        // once while the till it names is taken off, since nothing is
+        // written until it moves.
+        $output_repeat_till = '';
+
+        if ($active && !$readonly && $can_cash && ((string) $recurrence['pay_mode'] === 'paid')) {
+            $not_active = lang('That till or bank account is not active.');
+            $till_off = ((int) db_value("SELECT is_active FROM erp_cash_accounts WHERE id = '" . (int) $recurrence['cash_account_id'] . "' LIMIT 1") !== 1);
+            list($repeat_till_options) = $till_options((int) $recurrence['cash_account_id']);
+
+            $output_repeat_till = '
+                <details class="mb-2"' . ($till_off ? ' open' : '') . '>
+                    <summary class="small">' . lang('Change the till') . '</summary>
+                    ' . (($till_off && ((string) $recurrence['last_error'] !== $not_active)) ? '<div class="alert alert-warning small py-2 mt-2 mb-0">' . h($not_active) . '</div>' : '') . '
+                    <form method="post" action="edit_erp_expense.php" class="row g-2 align-items-end mt-0">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . $id . '" />
+                        <input type="hidden" name="erp_action" value="repeat_till" />
+                        <div class="col-12 col-md-5">
+                            <label class="form-label small mb-1" for="repeat_till">' . lang('Paid from') . '</label>
+                            <select class="form-select form-select-sm" id="repeat_till" name="repeat_till" required>' . $repeat_till_options . '</select>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label small mb-1" for="repeat_method">' . lang('Payment Method') . '</label>
+                            <select class="form-select form-select-sm" id="repeat_method" name="repeat_method">' . $method_options((string) $recurrence['payment_method']) . '</select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Change') . '</button>
+                        </div>
+                        <div class="col-12 form-text mt-0">' . lang('Only the next ones change; the expenses it wrote keep their till.') . '</div>
+                    </form>
+                </details>';
+        }
+
         $output_repeat = '
             <p class="mb-2">' . h($periods[(int) $recurrence['every_months']] ?? '') . ' · '
                 . ($active
@@ -374,6 +446,7 @@ if (erp_expense_recurring_ready()) {
                 . ((((string) $recurrence['end_date'] !== '0000-00-00')) ? ' ' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $recurrence['end_date'], 'date', false)))) : '') . '</p>
             ' . (((string) $recurrence['last_error'] !== '') ? '<div class="alert alert-warning small py-2">' . h((string) $recurrence['last_error']) . '</div>' : '') . '
             ' . (!$is_source ? '<p class="small mb-2"><a href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . lang('The expense it started from') . '</a></p>' : '') . '
+            ' . $output_repeat_till . '
             ' . (($active && !$readonly) ? '<form method="post" action="edit_erp_expense.php">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
