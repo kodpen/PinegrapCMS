@@ -43,6 +43,7 @@
 [NEW] Added the News Portal design template: a front page, section pages and writers, author submissions that editors review and schedule, most read, a breaking strip, and the account, newsroom and e-mail pages.
 [NEW] Added the Long-Read Magazine design template: a long-read layout with a cover story, issues, sections and contributor pages, author submissions that editors review and schedule, and the account, editors' desk and e-mail pages.
 [NEW] Added passkeys: with two-step verification on, a person adds a passkey (fingerprint, face or screen lock, or a security key) on their account page and uses it in place of the authenticator code when signing in.
+[NEW] Added Cloudflare Turnstile and hCaptcha as optional CAPTCHA providers beside the built-in question: the answer is checked with the provider when a form is sent, and a form is refused while the provider cannot check it.
 [NEW] Added double opt-in for forms that add to a contact group: a per-form switch mails a signed confirmation link, the sender joins the group only after pressing the button behind it, and the request and the confirmation are kept in the consent log.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.

@@ -2388,6 +2388,14 @@ function waf_csp_policy()
             $policy,
             (string) waf_setting('ecommerce_payment_gateway', ''),
             ((int) waf_setting('ecommerce', 0) === 1) && ((int) waf_setting('ecommerce_credit_debit_card', 0) === 1));
+
+        // The CAPTCHA provider of the Security settings (Turnstile, hCaptcha)
+        // is loaded by the software itself on every form, so its hosts are
+        // listed like the payment service's. config.captcha rather than the
+        // CAPTCHA constant: this header is sent before init.php defines it.
+        if (((int) waf_setting('captcha', 0) === 1) && function_exists('pg_captcha_provider') && function_exists('pg_captcha_csp_sources')) {
+            $policy = waf_csp_add_sources($policy, pg_captcha_csp_sources(pg_captcha_provider()));
+        }
     }
 
     if (stripos($policy, 'report-uri') === false
@@ -2416,8 +2424,21 @@ function waf_csp_policy()
  */
 function waf_csp_add_payment_sources($policy, $gateway, $card_on)
 {
-    $sources = function_exists('pg_payment_csp_sources') ? pg_payment_csp_sources($gateway, $card_on) : array();
+    return waf_csp_add_sources($policy, function_exists('pg_payment_csp_sources') ? pg_payment_csp_sources($gateway, $card_on) : array());
+}
 
+/**
+ * The policy with more sources: each one is added to the end of its
+ * directive, and a directive the policy lacks is added after it. A new
+ * frame-src starts with what default-src already allows frames from, so
+ * adding a frame host does not shut out the site's own frames.
+ *
+ * @param string $policy
+ * @param array  $sources directive => list of sources
+ * @return string
+ */
+function waf_csp_add_sources($policy, $sources)
+{
     foreach ($sources as $directive => $hosts) {
         $hosts = implode(' ', $hosts);
 

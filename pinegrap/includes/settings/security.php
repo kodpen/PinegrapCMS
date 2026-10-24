@@ -76,12 +76,6 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-check form-switch">
-                                                <input value="1"' . $captcha_checked . ' class="form-check-input" type="checkbox" id="captcha" name="captcha"/>
-                                                <label class="form-check-label" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-check form-switch">
                                                 <input value="1"' . $strong_password_checked . ' class="form-check-input" type="checkbox" id="strong_password" name="strong_password"/>
                                                 <label class="form-check-label" for="strong_password">' . lang('Require Strong Password') . '</label>
                                             </div>
@@ -105,6 +99,30 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
 ' . $output_login_throttle . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
+// ── Spam Protection ──
+// The CAPTCHA switch keeps its config column and post name (captcha); the
+// provider and its keys are connect_apps rows (includes/fn/captcha.php),
+// written after the config row by security.save.php.
+$pg_settings_cards[] = '
+    <div id="pgset-captcha" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Spam Protection') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-3">
+                                        <div class="col-12 ">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . $captcha_checked . ' class="form-check-input" type="checkbox" id="captcha" name="captcha"/>
+                                                <label class="form-check-label" for="captcha">' . lang('Enable CAPTCHA') . ' (' . lang('spam protection') . ')</label>
+                                            </div>
+                                        </div>
+' . (function_exists('pg_captcha_settings_fields') ? pg_captcha_settings_fields() : '') . '
 ' . $output_form_limits . '
                 </div>
             </div>

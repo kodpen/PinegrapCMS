@@ -105,6 +105,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_feeds.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_prompts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/short_link_redirects.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/not_found_log.php');

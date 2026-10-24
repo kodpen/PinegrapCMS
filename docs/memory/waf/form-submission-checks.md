@@ -9,7 +9,8 @@ description: custom_form.php protections other than the limits - order of the ch
 - Every check works on any server, with no Cloudflare or other CDN in front: Pinegrap is an open-source product, so Turnstile and hCaptcha stay optional providers (`waf/form-captcha-providers.md`), never a requirement.
 
 ## What does custom_form.php check, in order?
-- Only for `action == 'submit'` by a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet: fill time, CAPTCHA, StopForumSpam, the limits; then the hook code.
+- Only for `action == 'submit'` by a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet: fill time, StopForumSpam, the limits; then the hook code.
+- The CAPTCHA (`validate_captcha_answer()`) runs between fill time and StopForumSpam whenever `CAPTCHA` is on, errors or not; a provider (Turnstile/hCaptcha) is asked only while the form has no error yet.
 - Every refusal is a liveform error, so the form comes back with what was typed.
 
 ## How does the fill time work?
