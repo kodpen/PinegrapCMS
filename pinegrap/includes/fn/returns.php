@@ -1460,14 +1460,14 @@ function pg_return_move($return_id, $to, $options = array())
 
     $after = pg_return_load($return['id']);
 
-    // Approved and received are announced here, whoever made the move: one
-    // return's screen or a bulk approval (one event per request it
-    // approves); pg_return_staff_move() asks for no announce and announces
-    // itself once it has let go of the order's lock. Refunded is not:
-    // pg_return_refund() moves the return there before the payment service
-    // is asked and puts it back on a refusal, so it announces the refund
-    // itself once the outcome stands. A rejection, the parcel sent back and a
-    // closing are not announced.
+    // Approved and received are announced here only for a caller that does
+    // not announce them itself. pg_return_staff_move(), behind one return's
+    // screen and a bulk approval (one event per request it approves), passes
+    // announce => false and announces once it has let go of the order's
+    // lock. Refunded is not: pg_return_refund() moves the return there
+    // before the payment service is asked and puts it back on a refusal, so
+    // it announces the refund itself once the outcome stands. A rejection,
+    // the parcel sent back and a closing are not announced.
     if (in_array($to, array('approved', 'received'), true) && (!isset($options['announce']) || ($options['announce'] !== false))) {
         pg_return_announce('order.return.' . $to, $after);
     }
