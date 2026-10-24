@@ -1711,7 +1711,8 @@ var software = {
 
             var submitted = false;
             var label = form.attr('data-pg-comment-label') || '';
-            var message = form.find('textarea[name="message"]');
+            // A textarea or a one-line input: the server wires either.
+            var message = form.find('[name="message"]');
 
             // The browser checks the required message before the submit
             // event, so an empty post never locks the button.

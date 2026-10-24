@@ -11168,24 +11168,35 @@ const StyleDesigner = (function () {
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
-    // here, with the reason. The canvas reads the star rating and the
-    // watcher e-mail of the page being edited and the site's CAPTCHA
-    // setting. The attachment box and the choose-a-name select have no page
-    // field in the designer yet; they join this twin with those fields.
+    // here, with the reason. The canvas reads the comments switch, the star
+    // rating and the watcher e-mail of the page being edited (its comment
+    // settings, kept in the pg_comments* fields) and the site's CAPTCHA
+    // setting. A page with comments off prints no widget, so the whole
+    // widget fades. The attachment box and the choose-a-name select have no
+    // page field in the designer yet; they join this twin with those fields.
     function _sdCommentsBindingOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return '';
         var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
         var SITE  = _sdT('Off — site setting');
-        var PANEL = _sdT('Off — turn it on in the settings panel');
+        var PAGE  = _sdT('Off — this page\'s comment settings');
         var b = (node.props && node.props._bindings) || {};
         var tag = (node.type === 'semantic' && node.props && node.props.tag) ? String(node.props.tag).toLowerCase() : '';
 
+        if (node.type === 'root' && node === _sysWidgetRenderTreeRoot && _getCmtVal('pg_comments') !== '1') {
+            return _sdT('Off — comments are off in this page\'s comment settings');
+        }
         if (b.section === 'comment_captcha') return (flags && flags.captcha === false) ? SITE : '';
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
-            return (_getCmtVal('pg_comments_rating') !== '1') ? PANEL : '';
+            return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
         }
         if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on') {
-            return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PANEL : '';
+            return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PAGE : '';
+        }
+        // Only a button sends the comment; the site leaves anything else
+        // bound to the send action out.
+        if (b.action === 'comment_submit' && tag !== 'button' &&
+            !(node.type === 'component' && node.props && node.props.componentType === 'btn')) {
+            return _sdT('Off — only a button sends the comment');
         }
 
         // A label follows its control.
@@ -36300,6 +36311,9 @@ const StyleDesigner = (function () {
         var isBtnLike = (node.type === 'component' && node.props.componentType === 'btn')
                      || (isSem && (tag === 'button' || tag === 'a'))
                      || (node.type === 'content' && node.props.contentType === 'link');
+        // A real button: an action that submits a form needs one.
+        var isRealButton = (node.type === 'component' && node.props.componentType === 'btn')
+                        || (isSem && tag === 'button');
         var isForm     = (isSem && tag === 'form');
         var isFormCtrl = (isSem && ['input', 'select', 'textarea'].indexOf(tag) !== -1);
         var cur = node.props._bindings || {};
@@ -36349,7 +36363,10 @@ const StyleDesigner = (function () {
             if (region === 'form_item_view') {
                 aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
             }
-            if (region === 'comments') {
+            // A link sends nothing, so only a button is offered the send
+            // action; a link that already carries it still lists it, so it
+            // can be seen and cleared.
+            if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {
                 aOpts.push(['comment_submit',      _sdT('Send the comment')]);
             }
             if (region === 'account_security') {

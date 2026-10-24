@@ -521,6 +521,30 @@ function pg_comments_row_root_id($html, $comment_id)
 }
 
 /**
+ * Point the links of one comment's markup at comment anchors again:
+ * pg_sw_uniquify_row_ids() gave every href="#..." the row's suffix, but a
+ * comment's anchor (id="c-<id>", pg_comments_row_root_id()) never carries
+ * one, so href="#c-<number><this row's suffix>" loses the suffix. Links to
+ * the design's own ids keep theirs. Markup that is not a string comes back
+ * as it was.
+ *
+ * @param mixed $html
+ * @param mixed $widget_id
+ * @param mixed $row_id
+ * @return mixed
+ */
+function pg_comments_row_anchor_links($html, $widget_id, $row_id)
+{
+    if (!is_string($html) || ($html === '')) {
+        return $html;
+    }
+
+    $suffix = '_pgw' . (int) $widget_id . 'r' . (int) $row_id;
+
+    return preg_replace('/href="#(c-[0-9]+)' . preg_quote($suffix, '/') . '"/', 'href="#$1"', $html);
+}
+
+/**
  * Escape a comments token map once: pg_sw_escape_token_values() (h() for
  * plain text, pg_defuse_php_tags() for the raw keys), then every caret as
  * &#94;, so a visitor's text cannot form a ^^token^^ that a later fill or the
@@ -547,6 +571,34 @@ function pg_comments_widget_escape($values)
 // ============================================================================
 // Which thread a page shows
 // ============================================================================
+
+/**
+ * Whether a page keeps its classic comments block, so a comments widget on
+ * it neither draws nor claims the thread. Pure.
+ *
+ * A legacy form item view page shows the record its own settings pick (?r=
+ * or the search index's form id), and add_comment.php takes any record
+ * there; a catalog, catalog detail or calendar event view page shows the
+ * thread of the product, product group or event in the address. The widget
+ * does not draw per-item threads, so those pages keep the classic block,
+ * which picks the item. A catalog, catalog detail or calendar event view
+ * page with a top-level form_item_view widget is the exception: the classic
+ * block, like the widget, then reads that record's thread.
+ *
+ * @param mixed $page_type         the page row's page_type
+ * @param bool  $has_record_widget pg_sw_record_comment_context() found one
+ * @return bool
+ */
+function pg_comments_widget_classic_thread($page_type, $has_record_widget)
+{
+    $page_type = is_string($page_type) ? $page_type : '';
+
+    if ($page_type === 'form item view') {
+        return true;
+    }
+
+    return !$has_record_widget && (pg_comment_classic_item_types($page_type) !== array());
+}
 
 /**
  * Whether a page carries a form_item_view widget below its top level: inside
@@ -928,21 +980,91 @@ function _pg_comments_wire_control(&$node, $value, $field, $ctx)
 }
 
 /**
+ * Whether a node, or any node below it, carries the action binding $action.
+ *
+ * @param mixed  $node
+ * @param string $action
+ * @return bool
+ */
+function _pg_comments_holds_action($node, $action)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    if (isset($node['props']['_bindings']['action']) && ($node['props']['_bindings']['action'] === $action)) {
+        return true;
+    }
+
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (_pg_comments_holds_action($child, $action)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether a tree has a loop_area anywhere.
+ *
+ * @param mixed $node
+ * @return bool
+ */
+function _pg_comments_tree_has_loop($node)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    if (isset($node['type']) && ($node['type'] === 'loop_area')) {
+        return true;
+    }
+
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (_pg_comments_tree_has_loop($child)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The sections the add-comment form fills on the server. Outside the wired
+ * form they would print fields nobody posts.
+ *
+ * @return array section => true
+ */
+function _pg_comments_form_sections()
+{
+    return array('comment_captcha' => true, 'comment_rating_input' => true, 'comment_publish' => true);
+}
+
+/**
  * The walk of pg_comments_apply_form_bindings() over one node's children.
+ *
+ * $found collects the form sections met inside the wired form that the
+ * visitor gets: not below a node whose thread flag ($ctx['flags']) is false,
+ * and not in the loop_area, which is drawn once per comment.
  *
  * @param array $node
  * @param array $ctx
  * @param bool  $in_form whether $node is inside the wired form
  * @param int   $wired   the forms wired so far
+ * @param array $found   section => true
+ * @param bool  $shown   whether the visitor gets $node
  * @return void
  */
-function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
+function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired, &$found, $shown = true)
 {
     if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) {
         return;
     }
 
     $fields = _pg_comments_form_fields();
+    $sections = _pg_comments_form_sections();
+    $flags = (isset($ctx['flags']) && is_array($ctx['flags'])) ? $ctx['flags'] : null;
     $kept = array();
 
     foreach ($node['children'] as $child) {
@@ -956,6 +1078,9 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
         $tag = isset($child['props']['tag']) ? strtolower((string) $child['props']['tag']) : '';
         $action = (isset($bindings['action']) && is_string($bindings['action'])) ? $bindings['action'] : '';
         $value = (isset($bindings['value']) && is_string($bindings['value'])) ? $bindings['value'] : '';
+        $section = (isset($bindings['section']) && is_string($bindings['section'])) ? $bindings['section'] : '';
+        $flag = (isset($bindings['eo_visible_if']) && is_string($bindings['eo_visible_if'])) ? $bindings['eo_visible_if'] : '';
+        $child_shown = $shown && ($type !== 'loop_area') && (($flag === '') || ($flags === null) || !empty($flags[$flag]));
 
         // The form: one per widget, and none for a visitor who cannot comment.
         if (($type === 'semantic') && ($tag === 'form') && ($action === 'comment_form')) {
@@ -983,11 +1108,53 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
                 $child['children'] = array();
             }
 
+            $form_found = array();
+            _pg_comments_form_walk($child, $ctx, true, $wired, $form_found, $child_shown);
+
+            // What add_comment.php needs when the design left a section out
+            // (or the visitor does not get it): a staff comment follows the
+            // page's publish setting, as the classic form's default does;
+            // a CAPTCHA goes in before the box that holds the send button.
+            $hidden = isset($ctx['hidden_html']) ? (string) $ctx['hidden_html'] : '';
+            $publish = (isset($ctx['publish_default']) && in_array($ctx['publish_default'], array('now', 'manual'), true)) ? $ctx['publish_default'] : '';
+
+            if (($publish !== '') && empty($form_found['comment_publish'])) {
+                $hidden .= '<input type="hidden" name="publish" value="' . $publish . '">';
+            }
+
+            if (!empty($ctx['state']['captcha_on']) && empty($form_found['comment_captcha'])) {
+                $at = count($child['children']);
+
+                foreach ($child['children'] as $i => $form_child) {
+                    if (_pg_comments_holds_action($form_child, 'comment_submit')) {
+                        $at = $i;
+                        break;
+                    }
+                }
+
+                array_splice($child['children'], $at, 0, array(array('type' => 'semantic',
+                    'props' => array('tag' => 'div', 'cssClass' => 'mb-3', '_bindings' => array('section' => 'comment_captcha')),
+                    'children' => array())));
+            }
+
             array_unshift($child['children'], array('type' => 'content',
-                'props' => array('contentType' => 'custom_html', 'html' => isset($ctx['hidden_html']) ? (string) $ctx['hidden_html'] : ''),
+                'props' => array('contentType' => 'custom_html', 'html' => $hidden),
                 'children' => array()));
 
-            _pg_comments_form_walk($child, $ctx, true, $wired);
+            $kept[] = $child;
+            continue;
+        }
+
+        // A section the form fills: inside the wired form, or left out.
+        if (isset($sections[$section])) {
+            if (!$in_form) {
+                continue;
+            }
+
+            if ($child_shown) {
+                $found[$section] = true;
+            }
+
             $kept[] = $child;
             continue;
         }
@@ -1013,14 +1180,19 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
             continue;
         }
 
-        // The submit button.
+        // The submit button. Anything else bound to it (a link, a span) would
+        // send nothing, so it is left out.
         if ($action === 'comment_submit') {
             $is_button = (($type === 'semantic') && ($tag === 'button'))
                 || (($type === 'component') && isset($child['props']['componentType']) && ($child['props']['componentType'] === 'btn'));
 
-            if ($is_button && !$in_form) {
+            if (!$is_button) {
+                continue;
+            }
+
+            if (!$in_form) {
                 $child['props']['_pg_comment_drop'] = true;
-            } elseif ($is_button) {
+            } else {
                 if ($type === 'component') {
                     $child['props']['btnElement'] = 'button';
                     $child['props']['btnType'] = 'submit';
@@ -1034,7 +1206,7 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
             continue;
         }
 
-        _pg_comments_form_walk($child, $ctx, $in_form, $wired);
+        _pg_comments_form_walk($child, $ctx, $in_form, $wired, $found, $child_shown);
         $kept[] = $child;
     }
 
@@ -1058,10 +1230,20 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired)
  *   (_pg_comments_binding_disabled()) is dropped with its label and any
  *   wrapper it leaves empty.
  * - A button bound to comment_submit submits the form (locked on submit by
- *   frontend.js); outside the form it is dropped.
+ *   frontend.js); outside the form it is dropped, and so is anything else
+ *   bound to it, a link included, which would send nothing.
+ * - The sections comment_captcha, comment_rating_input and comment_publish
+ *   stay only inside the wired form. When the visitor does not get a
+ *   comment_publish section there (left out, or below a false thread flag),
+ *   a staff comment still posts publish = $ctx['publish_default'] ('now' or
+ *   'manual'; '' for a visitor who may not publish) as a hidden field. When
+ *   the CAPTCHA is on and no comment_captcha section is there, one is put in
+ *   before the box holding the send button.
  *
  * $ctx: can_comment, action_url, hidden_html, multipart, label_slot,
- * watcher_checked, state (as _pg_comments_binding_disabled() reads it).
+ * watcher_checked, publish_default, flags (the thread flags; none: every
+ * node counts as shown), state (as _pg_comments_binding_disabled() reads
+ * it).
  *
  * @param array $tree
  * @param mixed $ctx
@@ -1075,7 +1257,8 @@ function pg_comments_apply_form_bindings(&$tree, $ctx)
 
     $ctx = is_array($ctx) ? $ctx : array();
     $wired = 0;
-    _pg_comments_form_walk($tree, $ctx, false, $wired);
+    $found = array();
+    _pg_comments_form_walk($tree, $ctx, false, $wired, $found);
     _pg_member_drop_controls($tree, function ($tag, $attrs, $node) {
         return !empty($node['props']['_pg_comment_drop']);
     });
@@ -1280,8 +1463,10 @@ function pg_comments_default_tree()
  * Each value is escaped once (pg_comments_widget_escape()) and filled in one
  * strtr() pass, so a visitor's text never forms a token. A stored layout
  * without a loop_area (or with an empty one) draws the comments in the
- * default layout's. The output starts with the #software_comments anchor the
- * featured links aim at.
+ * default layout's; a list the visitor does not get (below a false thread
+ * flag, in a form that is not drawn) draws none. A link to a comment's
+ * anchor keeps reaching it (pg_comments_row_anchor_links()). The output
+ * starts with the #software_comments anchor the featured links aim at.
  *
  * @param mixed $tree
  * @param mixed $data
@@ -1308,7 +1493,16 @@ function pg_comments_widget_draw($tree, $data)
         return (isset($thread_values[$key]) && is_scalar($thread_values[$key])) ? (string) $thread_values[$key] : '';
     };
 
-    pg_comments_apply_form_bindings($tree, $list('form'));
+    // Whether the design placed the list: asked before the form and the
+    // sections can take a loop_area away with them.
+    $designed_loop = _pg_comments_tree_has_loop($tree);
+    $form = $list('form');
+
+    if (!isset($form['flags'])) {
+        $form['flags'] = $comments_thread_flags;
+    }
+
+    pg_comments_apply_form_bindings($tree, $form);
     pg_cf_link_labels($tree);
     pg_cf_apply_section_bindings($tree, $sections);
     _pg_member_drop_empty_links($tree, array(
@@ -1321,6 +1515,8 @@ function pg_comments_widget_draw($tree, $data)
     $split = _split_widget_tree($tree);
     $loop_children = $split['loop_children'];
     $fallback = !is_array($loop_children) || !$loop_children;
+    // The list went with the form or a section that holds it: no comments.
+    $rows = ($designed_loop && !is_array($loop_children)) ? array() : $list('rows');
 
     if ($fallback) {
         $default = _split_widget_tree(pg_comments_default_tree());
@@ -1336,7 +1532,7 @@ function pg_comments_widget_draw($tree, $data)
     $edit_token = (strpos($loop_tpl, '^^__comment_edit_url^^') !== false);
     $rows_html = '';
 
-    foreach ($list('rows') as $row) {
+    foreach ($rows as $row) {
         if (!is_array($row)) {
             continue;
         }
@@ -1358,6 +1554,7 @@ function pg_comments_widget_draw($tree, $data)
         $html = pg_sw_hide_empty_fields($html);
         $html = pg_sw_uniquify_row_ids($html, $widget_id, $id);
         $html = pg_comments_row_root_id($html, $id);
+        $html = pg_comments_row_anchor_links($html, $widget_id, $id);
 
         $edit_url = (isset($values['__comment_edit_url']) && is_scalar($values['__comment_edit_url'])) ? (string) $values['__comment_edit_url'] : '';
 
@@ -1376,10 +1573,16 @@ function pg_comments_widget_draw($tree, $data)
         $rows_html = '<div class="pg-comments-list">' . $rows_html . '</div>';
     }
 
+    // The rows go where the loop_area was. A layout without one gets them in
+    // front of the rest; when the design's list was left out (a box the
+    // visitor does not get, a form that is not drawn) they go with it, as in
+    // every other widget.
     if (strpos($static, '<!--pg-loop-slot-->') !== false) {
         $html = str_replace('<!--pg-loop-slot-->', $rows_html, $static);
-    } else {
+    } elseif (!$designed_loop) {
         $html = $rows_html . $static;
+    } else {
+        $html = $static;
     }
 
     // After the rows are in: a box the design marked pg-hide-if-empty around
@@ -1564,9 +1767,13 @@ function pg_comments_widget_row_values($row, $flags, $env)
  * page's comment settings decide everything else, as on the classic block.
  * It prints nothing in an e-mail, without a page, for a second comments
  * widget on the same page, with comments off, for a record the visitor may
- * not see, on a 'form item view' page, and on a page with a record widget
- * below its top level. The page is claimed first, so the classic block never
- * draws a second copy of the thread, even when the widget prints nothing.
+ * not see, and on a page with a record widget below its top level. The page
+ * is claimed before those refusals, so the classic block never draws a
+ * second copy of the thread, even when the widget prints nothing. A page
+ * that keeps its classic block (pg_comments_widget_classic_thread(): a
+ * 'form item view' page, a catalog, catalog detail or calendar event view
+ * page without a record widget) is left to it, unclaimed: the widget does
+ * not draw per-item threads.
  *
  * Thread tokens: ^^__comments_title^^, ^^__comments_count^^,
  * ^^__comments_label^^, ^^__comments_label_plural^^, ^^__comments_intro^^,
@@ -1607,9 +1814,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
 
     $page_id = isset($ctx['page_id']) ? (int) $ctx['page_id'] : 0;
 
-    // Claimed before anything else is asked: the widget owns the page's
-    // thread even when it then prints nothing.
-    if (!pg_comments_widget_claim($page_id)) {
+    if ($page_id <= 0) {
         return '';
     }
 
@@ -1643,16 +1848,30 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
+    // The thread: the record the page's form_item_view widget shows, else
+    // the page's own. The read thread of a page that shows no record is
+    // every comment on the page, as the classic block reads it.
+    $record = function_exists('pg_sw_record_comment_context') ? pg_sw_record_comment_context($page_id) : null;
+
+    // A classic page that shows one item at a time keeps its classic block,
+    // which picks the item: the page is not claimed, so the block still
+    // draws that item's thread.
+    if (pg_comments_widget_classic_thread($page['page_type'], ($record !== null))) {
+        return '';
+    }
+
+    // Claimed before any other refusal: the widget owns the page's thread
+    // even when it then prints nothing (comments off, a record the visitor
+    // may not see, a record widget below the top level).
+    if (!pg_comments_widget_claim($page_id)) {
+        return '';
+    }
+
     $settings = pg_comments_settings($page);
 
     if (!$settings['enabled']) {
         return '';
     }
-
-    // The thread: the record the page's form_item_view widget shows, else
-    // the page's own. The read thread of a page that shows no record is
-    // every comment on the page, as the classic block reads it.
-    $record = function_exists('pg_sw_record_comment_context') ? pg_sw_record_comment_context($page_id) : null;
 
     if ($record !== null) {
         if (empty($record['visible']) || !is_array($record['form'])) {
@@ -1663,7 +1882,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $post_id = (int) $record['form']['id'];
         $read_thread = array('item_type' => 'submitted_form', 'item_id' => $post_id);
     } else {
-        if (((string) $page['page_type'] === 'form item view') || pg_comments_page_nested_record($page_id)) {
+        if (pg_comments_page_nested_record($page_id)) {
             return '';
         }
 
@@ -1861,6 +2080,9 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'multipart' => $settings['attachments'],
         'label_slot' => 'pg_comment_form_label',
         'watcher_checked' => !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
+        // A staff comment from a form without the publish options follows
+        // the page's setting, as the classic form's default does.
+        'publish_default' => $can_publish ? ($settings['auto_publish'] ? 'now' : 'manual') : '',
         'state' => array(
             'files_on' => $settings['attachments'],
             'watcher_box' => $watcher_box,

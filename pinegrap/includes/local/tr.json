@@ -28135,5 +28135,8 @@
     "User name (staff only)": "Kullanıcı adı (yalnızca personel)",
     "You can bind it to the page's comment thread, and inside the loop_area to each comment.": "Sayfanın yorum dizisine, loop_area içinde de her bir yoruma bağlayabilirsiniz.",
     "comments": "yorumlar",
-    "{var:1} out of 5": "5 üzerinden {var:1}"
+    "{var:1} out of 5": "5 üzerinden {var:1}",
+    "Off — this page's comment settings": "Kapalı — bu sayfanın yorum ayarları",
+    "Off — comments are off in this page's comment settings": "Kapalı — bu sayfanın yorum ayarlarında yorumlar kapalı",
+    "Off — only a button sends the comment": "Kapalı — yorumu yalnızca bir düğme gönderir"
 }

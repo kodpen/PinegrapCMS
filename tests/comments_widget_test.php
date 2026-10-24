@@ -25,7 +25,7 @@ function comments_widget_test_source($path)
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 }
 
-// -- slice 8: the hand-off ----------------------------------------------------
+// -- the hand-off with the classic block ---------------------------------------
 
 // A page is claimed once per pass; a second widget on it gets false. The
 // record a pass kept comes back when the outer pass restores its own.
@@ -93,7 +93,58 @@ function test_comments_widget_page_hand_off_wiring()
 	pg_assert_contains("str_replace('<!--pg-comments-block-->', \$comments_block_html", $page, 'a leftover marker is still emptied');
 }
 
-// -- slice 10: display options, order, links, flags ---------------------------
+// A classic page that shows one item at a time keeps its classic block: a
+// legacy form item view page always, a catalog, catalog detail or calendar
+// event view page unless a record widget on it decides the thread (the
+// classic block then reads that record's thread too).
+function test_comments_widget_classic_thread_table()
+{
+	$rows = array(
+		array('form item view', false, true),
+		array('form item view', true, true),
+		array('catalog', false, true),
+		array('catalog detail', false, true),
+		array('calendar event view', false, true),
+		array('catalog', true, false),
+		array('catalog detail', true, false),
+		array('calendar event view', true, false),
+		array('standard', false, false),
+		array('standard', true, false),
+		array('', false, false),
+		array('folder view', false, false),
+		array('Catalog Detail', false, false),
+		array(null, false, false),
+		array(array('catalog'), false, false),
+	);
+
+	foreach ($rows as $row) {
+		pg_assert_same($row[2], pg_comments_widget_classic_thread($row[0], $row[1]), var_export($row[0], true) . ($row[1] ? ' with' : ' without') . ' a record widget');
+	}
+}
+
+// The renderer asks before it claims: a page left to the classic block is
+// never claimed, so the block still draws its item's thread there. Every
+// other refusal comes after the claim.
+function test_comments_widget_renderer_claims_after_classic_check()
+{
+	$module = comments_widget_test_source('includes/fn/widgets_comments.php');
+	$start = strpos($module, 'function _render_system_widget_comments(');
+	pg_assert_true($start !== false, 'the renderer');
+	if ($start === false) {
+		return;
+	}
+
+	$body = substr($module, $start);
+	$classic = strpos($body, 'pg_comments_widget_classic_thread($page[\'page_type\'], ($record !== null))');
+	$claim = strpos($body, 'pg_comments_widget_claim($page_id)');
+	$enabled = strpos($body, "if (!\$settings['enabled'])");
+	$nested = strpos($body, 'pg_comments_page_nested_record($page_id)');
+	pg_assert_true(($classic !== false) && ($claim !== false) && ($classic < $claim), 'the classic check comes before the claim');
+	pg_assert_true(($enabled !== false) && ($claim < $enabled), 'comments off: claimed, nothing drawn');
+	pg_assert_true(($nested !== false) && ($claim < $nested), 'a nested record widget: claimed, nothing drawn');
+}
+
+// -- display options, order, links, flags --------------------------------------
 
 function comments_widget_test_ids($entries)
 {
@@ -323,6 +374,21 @@ function test_comments_widget_stars_html()
 	}
 }
 
+// A link to a comment's anchor keeps pointing at the anchor the row's root
+// carries, after pg_sw_uniquify_row_ids() suffixed every id and #link.
+function test_comments_widget_row_anchor_links()
+{
+	$suffixed = pg_sw_uniquify_row_ids('<article id="card"><a href="#c-7">Here</a> <a href="#c-3">Parent</a> <a href="#card">Card</a> <a href="#c-x">X</a></article>', 5, 7);
+	$html = pg_comments_row_anchor_links($suffixed, 5, 7);
+	pg_assert_contains('<a href="#c-7">Here</a>', $html, 'the comment\'s own anchor');
+	pg_assert_contains('<a href="#c-3">Parent</a>', $html, 'another comment\'s anchor');
+	pg_assert_contains('id="card_pgw5r7"', $html, 'an id of the design stays suffixed');
+	pg_assert_contains('<a href="#card_pgw5r7">Card</a>', $html, 'and so does the link to it');
+	pg_assert_contains('<a href="#c-x_pgw5r7">X</a>', $html, 'c- without a number is no comment anchor');
+	pg_assert_contains('href="#c-7_pgw5r8"', pg_comments_row_anchor_links('<a href="#c-7_pgw5r8">', 5, 7), 'another row\'s suffix is left alone');
+	pg_assert_same(array(1), pg_comments_row_anchor_links(array(1), 5, 7), 'not markup');
+}
+
 function test_comments_widget_row_root_id()
 {
 	pg_assert_same('<div id="c-7" class="card"><span id="x"></span></div>', pg_comments_row_root_id('<div id="card_pgw5r7" class="card"><span id="x"></span></div>', 7), 'replaces the suffixed id');
@@ -393,7 +459,7 @@ function test_comments_widget_name_mode_table()
 	pg_assert_same('fixed', pg_comments_widget_name_mode(true, '', false, false, false), 'no role');
 }
 
-// -- slice 11: the add-comment form ------------------------------------------
+// -- the add-comment form ------------------------------------------------------
 
 function comments_widget_test_form_state($over = array())
 {
@@ -518,7 +584,10 @@ function test_comments_widget_form_bindings()
 	pg_assert_same(1, substr_count($html, 'data-pg-comment-submit'), 'a submit outside the form is dropped');
 	pg_assert_false(strpos($html, 'stray'), 'a message box outside the form is dropped');
 	pg_assert_false(strpos($html, '<div class="form-control"'), 'a value binding on an element that is no control is dropped');
-	pg_assert_same(3, substr_count($html, '<div class="mb-3">') + substr_count($html, '<div class="form-check">'), 'the emptied wrappers went with their controls');
+	// The design has no CAPTCHA box, so the form gets one (empty here: the
+	// sections are filled later in the draw).
+	pg_assert_same(1, count(array_keys(comments_widget_test_sections_of($tree['children'][0]), 'comment_captcha', true)), 'the form got a CAPTCHA box');
+	pg_assert_same(3 + 1, substr_count($html, '<div class="mb-3">') + substr_count($html, '<div class="form-check">'), 'the emptied wrappers went with their controls; the CAPTCHA box came in');
 
 	$multi = comments_widget_test_form_tree();
 	pg_comments_apply_form_bindings($multi, comments_widget_test_form_ctx(array('multipart' => true, 'watcher_checked' => false, 'state' => comments_widget_test_form_state(array('name_mode' => 'chosen')))));
@@ -534,6 +603,114 @@ function test_comments_widget_form_bindings()
 	$closed_html = _render_tree_node($closed, 0, 0);
 	pg_assert_false(strpos($closed_html, '<form'), 'no form when the visitor cannot comment');
 	pg_assert_false(strpos($closed_html, 'name="message"'), 'and no stray control');
+}
+
+// A form whose design left out the publish options or the CAPTCHA still
+// posts what add_comment.php needs: a staff comment follows the page's
+// publish setting, a signed-out visitor gets the CAPTCHA before the button.
+function comments_widget_test_bare_form($inside = array(), $outside = array())
+{
+	$button = array('type' => 'semantic', 'props' => array('tag' => 'button', 'text' => 'Add', '_bindings' => array('action' => 'comment_submit')), 'children' => array());
+	$form = array('type' => 'semantic', 'props' => array('tag' => 'form', '_bindings' => array('action' => 'comment_form')), 'children' => array_merge(
+		array(comments_widget_test_control('textarea', 'comment_message')),
+		$inside,
+		array(comments_widget_test_div(array($button), 'actions'))
+	));
+
+	return array('type' => 'root', 'props' => array(), 'children' => array_merge($outside, array($form)));
+}
+
+function comments_widget_test_sections_of($node)
+{
+	$out = array();
+	foreach ($node['children'] as $child) {
+		$out[] = isset($child['props']['_bindings']['section']) ? $child['props']['_bindings']['section'] : '';
+	}
+	return $out;
+}
+
+function test_comments_widget_form_fallbacks()
+{
+	$staff = comments_widget_test_form_ctx(array('publish_default' => 'now', 'state' => comments_widget_test_form_state(array('captcha_on' => true, 'can_publish' => true))));
+
+	$tree = comments_widget_test_bare_form();
+	pg_comments_apply_form_bindings($tree, $staff);
+	$form = $tree['children'][0];
+	pg_assert_contains('<input type="hidden" name="page_id" value="5"><input type="hidden" name="publish" value="now">', $form['children'][0]['props']['html'], 'the page\'s publish default as a hidden field');
+	pg_assert_same(array('', '', 'comment_captcha', ''), comments_widget_test_sections_of($form), 'a CAPTCHA box before the button\'s box');
+
+	pg_cf_apply_section_bindings($tree, array('comment_captcha' => '<div class="captcha">What is 1 + 2 ?</div>', 'comment_rating_input' => '', 'comment_publish' => ''));
+	$html = _render_tree_node($tree, 0, 0);
+	$question = strpos($html, 'What is 1 + 2 ?');
+	pg_assert_true(($question !== false) && ($question < strpos($html, '<button')) && ($question < strpos($html, '</form>')), 'the CAPTCHA in the form, before the button');
+
+	$manual = comments_widget_test_bare_form();
+	pg_comments_apply_form_bindings($manual, comments_widget_test_form_ctx(array('publish_default' => 'manual')));
+	pg_assert_contains('name="publish" value="manual"', $manual['children'][0]['children'][0]['props']['html'], 'held for approval when the page does not publish at once');
+
+	$visitor = comments_widget_test_bare_form();
+	pg_comments_apply_form_bindings($visitor, comments_widget_test_form_ctx(array('state' => comments_widget_test_form_state(array('captcha_on' => false, 'can_publish' => false)))));
+	pg_assert_false(strpos($visitor['children'][0]['children'][0]['props']['html'], 'name="publish"'), 'no publish field for a visitor');
+	pg_assert_same(array('', '', ''), comments_widget_test_sections_of($visitor['children'][0]), 'no CAPTCHA box when there is no CAPTCHA');
+
+	// The design's own sections are used; none is added twice.
+	$designed = comments_widget_test_bare_form(array(
+		comments_widget_test_bound('section', 'comment_publish'),
+		comments_widget_test_div(array(comments_widget_test_bound('section', 'comment_captcha'))),
+	));
+	pg_comments_apply_form_bindings($designed, $staff);
+	pg_assert_false(strpos($designed['children'][0]['children'][0]['props']['html'], 'name="publish"'), 'the publish options of the design');
+	pg_assert_same(array('', '', 'comment_publish', '', ''), comments_widget_test_sections_of($designed['children'][0]), 'the CAPTCHA box of the design');
+
+	// A section in a box the visitor does not get counts as missing.
+	$hidden_box = array('type' => 'semantic', 'props' => array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'is_signed_out')), 'children' => array(
+		comments_widget_test_bound('section', 'comment_captcha'),
+		comments_widget_test_bound('section', 'comment_publish'),
+	));
+	$hidden = comments_widget_test_bare_form(array($hidden_box));
+	pg_comments_apply_form_bindings($hidden, $staff + array('flags' => array('is_signed_out' => false, 'is_signed_in' => true)));
+	pg_assert_contains('name="publish" value="now"', $hidden['children'][0]['children'][0]['props']['html'], 'publish options the visitor does not get');
+	pg_assert_same(array('', '', '', 'comment_captcha', ''), comments_widget_test_sections_of($hidden['children'][0]), 'a CAPTCHA the visitor does not get');
+
+	$shown = comments_widget_test_bare_form(array($hidden_box));
+	pg_comments_apply_form_bindings($shown, $staff + array('flags' => array('is_signed_out' => true)));
+	pg_assert_false(strpos($shown['children'][0]['children'][0]['props']['html'], 'name="publish"'), 'a box the visitor gets counts');
+
+	// Outside the form a section would print fields nobody posts.
+	$outside = comments_widget_test_bare_form(array(), array(
+		comments_widget_test_bound('section', 'comment_captcha'),
+		comments_widget_test_div(array(comments_widget_test_bound('section', 'comment_publish'), comments_widget_test_bound('section', 'comment_rating_input'))),
+	));
+	pg_comments_apply_form_bindings($outside, $staff);
+	pg_assert_same(2, count($outside['children']), 'the sections outside the form are dropped');
+	pg_assert_same(array(), $outside['children'][0]['children'], 'with what they held');
+	pg_assert_same(array('', '', 'comment_captcha', ''), comments_widget_test_sections_of($outside['children'][1]), 'the form gets its own CAPTCHA');
+}
+
+// Only a button sends the comment: a link bound to comment_submit would
+// jump to # and post nothing, so it is left out.
+function test_comments_widget_submit_only_on_buttons()
+{
+	$submit = array('action' => 'comment_submit');
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'form', '_bindings' => array('action' => 'comment_form')), 'children' => array(
+			comments_widget_test_control('textarea', 'comment_message'),
+			array('type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Send link', 'href' => '#', '_bindings' => $submit), 'children' => array()),
+			array('type' => 'semantic', 'props' => array('tag' => 'a', 'text' => 'Send anchor', '_attrs' => array(array('name' => 'href', 'value' => '#')), '_bindings' => $submit), 'children' => array()),
+			array('type' => 'semantic', 'props' => array('tag' => 'span', 'text' => 'Send span', '_bindings' => $submit), 'children' => array()),
+			array('type' => 'component', 'props' => array('componentType' => 'btn', 'text' => 'Send btn', '_bindings' => $submit), 'children' => array()),
+			array('type' => 'semantic', 'props' => array('tag' => 'button', 'text' => 'Send button', '_bindings' => $submit), 'children' => array()),
+		)),
+	));
+
+	pg_comments_apply_form_bindings($tree, comments_widget_test_form_ctx());
+	$html = _render_tree_node($tree, 0, 0);
+	pg_assert_false(strpos($html, 'Send link'), 'a content link is left out');
+	pg_assert_false(strpos($html, 'Send anchor'), 'a semantic link is left out');
+	pg_assert_false(strpos($html, 'Send span'), 'so is any other element');
+	pg_assert_same(2, substr_count($html, 'data-pg-comment-submit'), 'the button component and the button send');
+	pg_assert_contains('Send btn', $html, 'the button component');
+	pg_assert_contains('Send button', $html, 'the button');
 }
 
 function test_comments_widget_hidden_html()
@@ -833,6 +1010,58 @@ function test_comments_widget_draw_end_to_end()
 	}
 }
 
+// The comments go where the loop_area is. A box the design hides takes them
+// with it, as in every other widget; only a layout without a loop_area gets
+// the default card in front of the rest.
+function test_comments_widget_draw_hidden_list()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+
+	$members = comments_widget_test_stamped_tree();
+	$members['children'][0]['children'][1]['props']['_bindings'] = array('eo_visible_if' => 'is_signed_in');
+	$html = pg_comments_widget_draw($members, comments_widget_test_draw_data());
+	pg_assert_false(strpos($html, 'id="c-7"'), 'a list shown only to members has no comment for a visitor');
+	pg_assert_false(strpos($html, 'pg-comments-list'), 'and no default card either');
+	pg_assert_contains('<form id="software_add_comment"', $html, 'the rest is drawn');
+
+	$signed_in = pg_comments_widget_draw($members, comments_widget_test_draw_data(array('facts' => array('signed_in' => true))));
+	pg_assert_same(1, substr_count($signed_in, 'id="c-7"'), 'a member gets the comment');
+
+	// A loop_area inside the form goes with the form.
+	$in_form = comments_widget_test_stamped_tree();
+	$list = $in_form['children'][0]['children'][1];
+	$in_form['children'][0]['children'][1] = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array());
+	$in_form['children'][0]['children'][3]['children'][4]['children'][] = $list;
+	$closed = pg_comments_widget_draw($in_form, comments_widget_test_draw_data(array(
+		'facts' => array('allow_new' => false),
+		'data' => array('form' => comments_widget_test_form_ctx(array('can_comment' => false))),
+	)));
+	pg_assert_false(strpos($closed, 'id="c-7"'), 'no comment when the form that holds the list is dropped');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
+// A link to a comment's anchor reaches the anchor the comment carries.
+function test_comments_widget_draw_anchor_link()
+{
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'article'), 'children' => array(
+				array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<a href="#^^__comment_anchor^^">Link</a>'), 'children' => array()),
+			)),
+		)),
+	));
+
+	$html = pg_comments_widget_draw($tree, comments_widget_test_draw_data());
+	pg_assert_contains('<article id="c-7">', $html, 'the anchor on the comment');
+	pg_assert_contains('<a href="#c-7">Link</a>', $html, 'the link reaches it');
+}
+
 // The loop_area of a layout that shows a comment's date in a format of the
 // design's, and its name.
 function comments_widget_test_dated_tree()
@@ -920,5 +1149,22 @@ function test_comments_widget_module_wiring()
 			pg_assert_contains($needle, $js, $file . ': ' . $needle);
 		}
 		pg_assert_contains('init_add_comment_publish', $js, $file . ': the classic form keeps its own');
+		// The message may be a textarea or a one-line input.
+		pg_assert_contains('.find(\'[name="message"]\')', $js, $file . ': the leave warning finds the message whatever its tag');
+		pg_assert_false(strpos($js, 'textarea[name="message"]'), $file . ': not only a textarea');
 	}
+
+	// The canvas twin: a page with comments off fades the whole widget, and
+	// only a button is offered the send action.
+	$designer_js = comments_widget_test_source('assets/js/style_designer.js');
+	$twin = strpos($designer_js, 'function _sdCommentsBindingOff(');
+	$twin_end = ($twin === false) ? false : strpos($designer_js, "\n    }\n", $twin);
+	pg_assert_true(($twin !== false) && ($twin_end !== false), 'the canvas twin');
+	if (($twin !== false) && ($twin_end !== false)) {
+		$body = substr($designer_js, $twin, $twin_end - $twin);
+		pg_assert_contains("_getCmtVal('pg_comments') !== '1'", $body, 'the page\'s comments switch');
+		pg_assert_contains("b.action === 'comment_submit'", $body, 'a send action on what is no button');
+		pg_assert_false(strpos($body, 'turn it on in the settings panel'), 'no pointer to a panel the widget lacks');
+	}
+	pg_assert_contains("if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {", $designer_js, 'the send action offered to buttons');
 }
