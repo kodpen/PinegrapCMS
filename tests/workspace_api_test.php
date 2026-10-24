@@ -328,6 +328,36 @@ function test_ws_api_flows_are_drafted_by_tools_and_published_by_the_person()
 	pg_assert_same(201, $routes['workspace.flows.create']['status']);
 }
 
+// A run opens tasks in the flow owner's name: starting and cancelling one
+// are REST calls an application key may make, offered to no MCP client as a
+// tool until an AI app can ask the person first; reading runs stays a tool.
+// A start answers 201, or 200 for the run the same token started.
+function test_ws_api_flow_runs_writes_are_no_tools()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.flow_runs.start', 'workspace.flow_runs.cancel') as $id) {
+		pg_assert_same('POST', $routes[$id]['method'], $id . ' is a REST write');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_false(strpos(ws_api_test_handler_source($routes[$id]['handler']), 'ws_api_own_words_only(') !== false, $id . ' takes an application key');
+	}
+
+	foreach (array('workspace.flow_runs.list', 'workspace.flow_runs.get') as $id) {
+		pg_assert_same('GET', $routes[$id]['method']);
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
+	}
+
+	pg_assert_same(array(201, 200), $routes['workspace.flow_runs.start']['status']);
+	pg_assert_same('/workspace/flows/{id}/runs', $routes['workspace.flow_runs.start']['path']);
+	pg_assert_same('/workspace/flow-runs/{id}/cancel', $routes['workspace.flow_runs.cancel']['path']);
+}
+
 // The list reads changed messages with changed_since, a moment.
 function test_ws_api_messages_list_takes_changed_since()
 {
@@ -1661,6 +1691,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
 		'ws_api_flows_pause'          => array('ws_flow_pause_check(', 'api_dry_run_stop(', 'ws_flow_pause('),
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
+		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
+		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);

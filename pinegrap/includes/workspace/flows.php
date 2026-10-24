@@ -29,8 +29,9 @@
  * read that channel. Site members never reach a flow. Publishing is the
  * person's own decision, since a published flow later acts in their name.
  *
- * The runner, the canvas and the boxes beyond start, task and end come later
- * on the same tables (ws_flow_runs, ws_flow_run_steps).
+ * Its runs are carried out by includes/workspace/flow_runs.php. The canvas
+ * and the boxes beyond start, task and end come later on the same tables
+ * (ws_flow_runs, ws_flow_run_steps).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1022,8 +1023,8 @@ function ws_flow_pause($viewer, $flow)
 }
 
 /**
- * Whether the person may delete the flow: theirs to change. Nothing else
- * holds it back while flows have no runs.
+ * Whether the person may delete the flow: theirs to change. Its open runs do
+ * not hold it back: they end with it.
  *
  * @param array $viewer
  * @param array $flow
@@ -1043,8 +1044,10 @@ function ws_flow_bin_check($viewer, $flow)
 }
 
 /**
- * Deletes a flow: it is marked binned and nobody reaches it any more. The row
- * and its versions are kept for the runs that will point at them.
+ * Deletes a flow: it is marked binned and nobody reaches it any more, its
+ * runs included, so its open runs are cancelled (the tasks they opened stay
+ * as they are). The row and its versions are kept for the runs that point
+ * at them.
  *
  * @param array $viewer
  * @param array $flow
@@ -1062,6 +1065,8 @@ function ws_flow_bin($viewer, $flow)
 
     db("UPDATE ws_flows SET status = 'binned', binned_at = '" . $now . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . $now . "'
         WHERE id = '" . (int) $flow['id'] . "' AND status <> 'binned'");
+
+    ws_flow_runs_cancel_for_flow($flow);
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was deleted', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 

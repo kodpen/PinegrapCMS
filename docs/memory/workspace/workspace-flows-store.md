@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-store
-description: Workspace flows, first slice (store, graph check, API; no canvas, no runner): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
+description: Workspace flows, first slice (store, graph check, API; runs in workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 ---
 
 ## What is there?
-- Tables (2026.11.0, 11.0.80; probe `ws_flows_ready()`): `ws_flows` (owner, home `channel_id`, name, status draft/live/paused/binned, `draft` JSON, `draft_rev`, live `version_id`), `ws_flow_versions` (flow_id, n, graph; never changed, UNIQUE (flow_id, n)), `ws_flow_runs`, `ws_flow_run_steps` (empty until the runner), `ws_scheduled_actions.flow_id` (the hidden trigger action later). VARCHAR statuses, no JSON in SQL.
+- Tables (2026.11.0, 11.0.80; probe `ws_flows_ready()`): `ws_flows` (owner, home `channel_id`, name, status draft/live/paused/binned, `draft` JSON, `draft_rev`, live `version_id`), `ws_flow_versions` (flow_id, n, graph; never changed, UNIQUE (flow_id, n)), `ws_flow_runs`, `ws_flow_run_steps` (the runner: `workspace-flows-runner.md`), `ws_scheduled_actions.flow_id` (the hidden trigger action later). VARCHAR statuses, no JSON in SQL.
 - Code: `includes/workspace/flows.php` (store), `api_flows.php` (handlers), routes in `ws_api_routes()`. Tests: `tests/workspace_flows_test.php`.
 
 ## What does a graph look like?
@@ -21,7 +21,7 @@ description: Workspace flows, first slice (store, graph check, API; no canvas, n
 ## How do the writes work?
 - `ws_flow_save_check()` / `ws_flow_save()`: name 1-160, home channel public/private and readable (checked only when it changes), graph normalized; problems are answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
 - `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; version n = MAX+1 through `@mysqli_query` (db() would end the request on 1062), duplicate → 409; status live. Publishing a paused flow makes it live again (no resume route yet).
-- `ws_flow_pause*()` live → paused; `ws_flow_bin*()` status binned. Create, publish, pause and delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
+- `ws_flow_pause*()` live → paused (runs going go on); `ws_flow_bin*()` status binned, its open runs cancelled. Create, publish, pause and delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
 
 ## Which routes?
 - GET/POST `/workspace/flows`, GET and POST (PATCH) `/workspace/flows/{id}` with `draft_rev` required, POST `/{id}/publish`, `/{id}/pause`, DELETE `/{id}` and POST `/{id}/delete`. Body parts `nodes`, `edges`, `notes` (a part not sent is kept). All writes `dry_run`; a draft rehearsal answers its problems.

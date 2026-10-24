@@ -38,6 +38,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
+ *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done()
@@ -324,6 +325,19 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $notice ? (string) $notice['text'] : '',
                 'url'   => $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
                 'icon'  => 'bi-alarm',
+            );
+
+        // A run of one of the person's flows ended (flow_runs.php): the
+        // sentence that names the flow and the run sits beside the inbox row,
+        // as a scheduled action's notice does.
+        case 'flow_finished':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang('A run of your flow ended'),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . 'workspace_flows.php',
+                'icon'  => 'bi-diagram-3',
             );
 
         case 'scheduled_failed':

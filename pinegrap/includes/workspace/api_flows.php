@@ -4,14 +4,17 @@
  *
  * Workspace - flows in the external API: the owner's flows and the live ones
  * of the channels they read, drafting a flow (create and change its draft),
- * publishing, pausing and deleting it. The checks are the store's own
- * (includes/workspace/flows.php), so a dry run meets the refusals the real
- * call meets.
+ * publishing, pausing and deleting it; and its runs: starting one, reading
+ * them and cancelling one. The checks are the store's and the runner's own
+ * (includes/workspace/flows.php, flow_runs.php), so a dry run meets the
+ * refusals the real call meets.
  *
  * An application key or an OAuth connection may draft, since a draft never
  * runs: an assistant can lay a process out for the person to look at.
  * Publishing is the person's own decision, made from their team devices
  * session: a published flow later opens tasks in their name.
+ * Starting and cancelling a run are REST calls only for now: an AI app is to
+ * ask the person first, which the MCP server cannot do yet.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -489,4 +492,292 @@ function ws_api_flows_delete($params)
     $flow['updated_at'] = time();
 
     api_ok(ws_api_flow_present($flow, ws_flow_version($flow['version_id']), false));
+}
+
+/* ---------------------------------------------------------------------------
+   Runs (includes/workspace/flow_runs.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The most characters of a box's result an answer carries.
+ */
+define('WS_API_FLOW_RESULT_CHARS', 1000);
+
+/**
+ * One box of a run as the API hands it out: which box, how it stands, the
+ * task it opened, its times and how it went, in short.
+ *
+ * @param array $step  ws_flow_run_steps row
+ * @param array $graph the version the run follows
+ * @return array
+ */
+function ws_api_flow_run_step_present($step, $graph)
+{
+    $node = ws_flow_graph_node($graph, $step['node_id']);
+    $task_id = ws_flow_effect_task_id((string) $step['effect']);
+
+    return array(
+        'node_id'     => (string) $step['node_id'],
+        'kind'        => $node ? (string) $node['kind'] : '',
+        'name'        => $node ? ws_flow_box_name($node) : (string) $step['node_id'],
+        'status'      => (string) $step['status'],
+        'outcome'     => ((string) $step['outcome'] !== '') ? (string) $step['outcome'] : null,
+        'task_id'     => ($task_id > 0) ? $task_id : null,
+        'attempt'     => (int) $step['attempt'],
+        'ready_at'    => api_time($step['ready_at']),
+        'started_at'  => api_time($step['claimed_at']),
+        'finished_at' => api_time($step['finished_at']),
+        'result'      => mb_substr(ws_flow_result_text($step['result']), 0, WS_API_FLOW_RESULT_CHARS),
+    );
+}
+
+// What ws_api_flow_run_step_present() returns.
+function ws_api_flow_run_step_schema()
+{
+    return array(
+        'node_id'     => 'string',
+        'kind'        => 'string',
+        'name'        => 'string',
+        'status'      => 'string',
+        'outcome'     => 'string?',
+        'task_id'     => 'integer?',
+        'attempt'     => 'integer',
+        'ready_at'    => 'string?',
+        'started_at'  => 'string?',
+        'finished_at' => 'string?',
+        'result'      => 'string',
+    );
+}
+
+/**
+ * One run. A single run read carries its boxes and the graph of the version
+ * it follows; the listing carries neither.
+ *
+ * @param array      $viewer
+ * @param array      $run   ws_flow_runs row with access (edit or read)
+ * @param int        $n     the number of the version it follows
+ * @param array|null $steps its ws_flow_run_steps rows, for a single read
+ * @param array|null $graph the version's graph, with the steps
+ * @return array
+ */
+function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null)
+{
+    $starter = ((int) $run['started_by'] === (int) $viewer['id']);
+    $full = ($steps !== null) && ($graph !== null);
+
+    return array(
+        'id'          => (int) $run['id'],
+        'flow_id'     => (int) $run['flow_id'],
+        'version_id'  => (int) $run['version_id'],
+        'version'     => (int) $n,
+        'status'      => (string) $run['status'],
+        'access'      => (string) $run['access'],
+        'can_cancel'  => ws_flow_run_open($run['status']) && ws_flow_run_cancel_allowed((string) $run['access'], $starter),
+        'started_by'  => (int) $run['started_by'],
+        'actor_id'    => (int) $run['actor_id'],
+        'boxes_run'   => (int) $run['boxes_run'],
+        'started_at'  => api_time($run['started_at']),
+        'updated_at'  => api_time($run['updated_at']),
+        'finished_at' => api_time($run['finished_at']),
+        'steps'       => $full ? array_map(function ($step) use ($graph) {
+            return ws_api_flow_run_step_present($step, $graph);
+        }, $steps) : null,
+        'graph'       => $full ? ws_api_flow_graph_present($graph) : null,
+    );
+}
+
+// What ws_api_flow_run_present() returns.
+function ws_api_flow_run_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'flow_id'     => 'integer',
+        'version_id'  => 'integer',
+        'version'     => 'integer',
+        'status'      => 'string',
+        'access'      => 'string',
+        'can_cancel'  => 'boolean',
+        'started_by'  => 'integer',
+        'actor_id'    => 'integer',
+        'boxes_run'   => 'integer',
+        'started_at'  => 'string?',
+        'updated_at'  => 'string?',
+        'finished_at' => 'string?',
+        'steps'       => 'WorkspaceFlowRunStep[]?',
+        'graph'       => 'WorkspaceFlowGraph?',
+    );
+}
+
+/**
+ * A run the owner of the application reaches, with access and its flow;
+ * anything else is a 404.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array
+ */
+function ws_api_flow_run_or_404($viewer, $id)
+{
+    $run = ws_flow_run_for($viewer, (int) $id);
+
+    if (!$run) {
+        api_fail_not_found(lang('Flow run'));
+    }
+
+    return $run;
+}
+
+/**
+ * A refused run write, as the API answers it.
+ *
+ * @param array $result a ws_flow_run_*_check() or write result
+ */
+function ws_api_flow_run_refused($result)
+{
+    if ((int) $result['status'] === 404) {
+        api_fail_not_found(lang('Flow run'));
+    }
+
+    ws_api_flow_refused($result);
+}
+
+/**
+ * The run as it is now, with its boxes and its version's graph.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array
+ */
+function ws_api_flow_run_answer($viewer, $id)
+{
+    $run = ws_api_flow_run_or_404($viewer, $id);
+    $version = ws_flow_version($run['version_id']);
+
+    return ws_api_flow_run_present($viewer, $run, is_array($version) ? (int) $version['n'] : 0, ws_flow_run_steps($run['id']), ws_flow_run_graph($run));
+}
+
+function ws_api_flow_runs_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_or_404($viewer, $params['id']);
+    $before = 0;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+
+        if ($cursor === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+
+        $before = (int) $cursor['i'];
+    }
+
+    $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
+    $page = ws_flow_runs_list($flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit));
+    $version_ids = array();
+
+    foreach ($page['rows'] as $run) {
+        $version_ids[(int) $run['version_id']] = (int) $run['version_id'];
+    }
+
+    $numbers = array();
+
+    if (!empty($version_ids)) {
+        foreach ((array) db_items("SELECT id, n FROM ws_flow_versions WHERE id IN (" . implode(',', $version_ids) . ")") as $version) {
+            $numbers[(int) $version['id']] = (int) $version['n'];
+        }
+    }
+
+    // Whoever reaches the flow reads its runs; its editor may cancel them.
+    $access = ((string) $flow['access'] === 'edit') ? 'edit' : 'read';
+    $out = array();
+
+    foreach ($page['rows'] as $run) {
+        $run['access'] = $access;
+        $out[] = ws_api_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0);
+    }
+
+    api_ok_list($out, $limit, ($page['next'] !== null) ? api_cursor_encode($page['next'], $page['next']) : null);
+}
+
+function ws_api_flow_runs_get($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    api_ok(ws_api_flow_run_answer($viewer, $params['id']));
+}
+
+// A run opens tasks in the flow owner's name; an AI app is to ask the person
+// before it starts one, which the MCP server cannot do yet, so this route is
+// offered to no MCP client as a tool.
+function ws_api_flow_runs_start($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_or_404($viewer, $params['id']);
+    $data = array_key_exists('token', $params) ? array('token' => (string) $params['token']) : array();
+
+    // The checks ws_flow_run_start() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_flow_run_start_check($viewer, $flow, $data);
+
+    if (!$checked['ok']) {
+        ws_api_flow_refused($checked);
+    }
+
+    api_dry_run_stop('started', 'workspace_flow_run', array(
+        'flow_id'  => (int) $flow['id'],
+        'version'  => (int) $checked['version']['n'],
+        'boxes'    => count($checked['graph']['nodes']),
+        'existing' => ($checked['existing'] > 0) ? (int) $checked['existing'] : null,
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $flow, $data) {
+        return ws_flow_run_start($viewer, $flow, $data);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_run_answer($viewer, $result['run_id']), $result['started'] ? 201 : 200);
+}
+
+// Cancelled, a run stops acting in the owner's name; an AI app is to ask the
+// person first, as for a start, so this is no MCP tool either.
+function ws_api_flow_runs_cancel($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $run = ws_api_flow_run_or_404($viewer, $params['id']);
+    $checked = ws_flow_run_cancel_check($viewer, $run);
+
+    if (!$checked['ok']) {
+        ws_api_flow_run_refused($checked);
+    }
+
+    api_dry_run_stop('cancelled', 'workspace_flow_run', array(
+        'id'         => (int) $run['id'],
+        'open_boxes' => (int) $checked['open'],
+        'tasks_kept' => $checked['task_ids'],
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $run) {
+        return ws_flow_run_cancel($viewer, $run);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_run_refused($result);
+    }
+
+    api_ok(ws_api_flow_run_answer($viewer, $run['id']));
 }
