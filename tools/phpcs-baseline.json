@@ -3,9 +3,6 @@
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2,
         "PHPCompatibility.ParameterValues.NewHTMLEntitiesFlagsDefault.NotSet": 3
     },
-    "pinegrap/add_theme_file.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
-    },
     "pinegrap/chat.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.finfo_closeDeprecated": 2
     },
@@ -14,34 +11,25 @@
         "PHPCompatibility.ParameterValues.NewHTMLEntitiesFlagsDefault.NotSet": 23
     },
     "pinegrap/import_contacts.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/import_design.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
     },
     "pinegrap/import_email_campaign_profiles.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/import_key_codes.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/import_products.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
-    },
-    "pinegrap/import_products_f.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/import_submitted_forms.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/import_users.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
+        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
     },
     "pinegrap/includes/api/outbound/http.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
@@ -51,12 +39,6 @@
     },
     "pinegrap/includes/dashboard/widgets/widget_14.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/includes/erp/audit.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
-    },
-    "pinegrap/includes/erp/bank_import.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 1
     },
     "pinegrap/includes/erp/edoc/registry.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
@@ -159,9 +141,6 @@
     "pinegrap/includes/templates/si.php": {
         "PHPCompatibility.Constants.NewConstants.php_os_familyFound": 1
     },
-    "pinegrap/includes/translate/jobs.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 5
-    },
     "pinegrap/includes/webauthn/webauthn.php": {
         "PHPCompatibility.ParameterValues.NewIDNVariantDefault.NotSet": 1
     },
@@ -211,8 +190,5 @@
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 17,
         "PHPCompatibility.FunctionUse.RemovedFunctions.pfpro_processRemoved": 2
-    },
-    "pinegrap/view_visitor_report.php": {
-        "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2
     }
 }

@@ -16,7 +16,7 @@ description: Rich-text text areas on designed forms: three-state _cf.wysiwyg, on
 
 ## What happens to `required` and pre-filled values?
 - A rich textarea loses `required` and gets `aria-required="true"`: TinyMCE syncs only on submit, so `pg_cf_validation_script()` blocked it. The server's required check (`custom_form.php`) stays.
-- The starting value (liveform, `?value_<id>`) goes through `pg_sanitize_rich_text()` before it becomes the textarea text, because the editor parses it as HTML.
+- The starting value (from any source) goes through `pg_sanitize_rich_text()` before it becomes the textarea text, because the editor parses it as HTML.
 
 ## How is a rich value stored and printed?
 - The classic handler stores it as `form_data.type = 'html'`, filtered. Output keys on the field flag (legacy parity): `pg_sw_apply_tokens()` and the order-form values in `widgets_catalog.php` print `pg_defuse_php_tags(pg_sanitize_rich_text(...))`. Host element is a `div` (`wysiwyg-text-binding.md`).

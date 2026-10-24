@@ -40,6 +40,6 @@ description: form_list_view filters valued from the page address (author, tag ar
 - A filter on a hidden field is a yes/no oracle for it.
 
 ## What is deferred?
-- Record links (`_bindParams.href`); per-filter tokens; per-value description/JSON-LD/sitemap; sample preview; "current record" value.
+- Per-filter tokens; per-value description/JSON-LD/sitemap; sample preview; "current record". Links: [[record-value-page-links]].
 
 Tests: `tests/designer_form_list_url_filter_test.php`.

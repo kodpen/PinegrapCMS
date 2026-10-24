@@ -149,7 +149,7 @@ if (!$_POST) {
     // get file handle for uploaded CSV file
     $handle = fopen($_FILES['file']['tmp_name'], "r");
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",");
+    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
 
     // if file is empty
     if (!$columns) {
@@ -203,7 +203,7 @@ if (!$_POST) {
     $imported_contacts = 0;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",")) {
+    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
         // Assume that this line does not have a value,
         // until we find out otherwise.
         $line_has_value = false;
