@@ -6,6 +6,7 @@ description: Variables a form item view layout (and form e-mail subject/body) ca
 ## Which variables can a layout use?
 - `^^name^^` for every field of the form (`form_fields.name`, not information fields) and for every standard field of `get_standard_fields_for_view()` (`includes/fn/forms.php`): `reference_code`, `submitted_date_and_time`, `referring_url`, `submitter`, `last_modifier`, `number_of_views`, `newest_comment_id`, ... The token is the list's `value`.
 - Replaced by `get_form_item_view.php` for the page and by `get_variable_submitted_form_data_for_content()` (`includes/fn/content.php`) for form e-mail subjects and bodies; both read the same two lists. An unknown name is left as written (e-mail campaigns use `^^name^^` too).
+- `^^email_preferences_url^^` and `^^confirm_subscription_url^^` are not standard fields; only the sender's e-mail fills them (`form-mail-link-variables.md`).
 
 ## How does a conditional block work?
 - `[[shown when there is a value: ^^name^^ || shown when there is not]]`; the `|| ...` part is optional. A `^^reference_code^^` inside is skipped when another variable follows it (every form has a reference code).

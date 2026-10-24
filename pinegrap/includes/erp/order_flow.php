@@ -80,6 +80,68 @@ function erp_order_flow_invoice_account_id($invoice, $will_bill)
 }
 
 /**
+ * The buyer the invoice step holds against what the e-document provider
+ * would refuse (erp_edoc_account_missing()): the account the invoice is, or
+ * will be, written to (erp_order_flow_invoice_account_id()).
+ *
+ * A new customer's first order has no account yet: the invoice opens it
+ * from the contact card, its gaps filled from the order's billing block
+ * (erp_account_for_contact()). Those fields, read without writing anything,
+ * are the buyer then. Without them nothing would be checked, the invoice
+ * would be issued and the gap would show only when the e-document is sent.
+ *
+ * @param array      $order    orders row: contact_id, erp_account_id and the billing_* columns
+ * @param array|null $invoice  The order's invoice (not a cancelled one), or null
+ * @return array|null  An erp_accounts row; the unsaved fields of the account
+ *                     the invoice would open (no id); null when there is neither
+ */
+function erp_order_flow_invoice_buyer($order, $invoice)
+{
+    $account_id = erp_order_flow_invoice_account_id($invoice, erp_order_invoice_account_id($order));
+
+    if ($account_id > 0) {
+        $account = db_item("SELECT * FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+
+        return is_array($account) ? $account : null;
+    }
+
+    $contact_id = (int) ($order['contact_id'] ?? 0);
+
+    return ($contact_id > 0) ? erp_account_data_for_contact($contact_id, $order) : null;
+}
+
+/**
+ * The card the buyer's gaps are put right on: the account card, or, while
+ * the account is still to be opened, the new account form filled in from
+ * the contact card and the order's billing block, as the invoice would open
+ * it (add_erp_account.php).
+ *
+ * Not the contact card: it has no district box, its street brings the whole
+ * address with it (erp_account_data_with_order()), so a field typed there
+ * can stay missing, and it is behind the contacts right rather than the
+ * ERP's.
+ *
+ * @param array $buyer     erp_order_flow_invoice_buyer() output
+ * @param int   $order_id  The order being invoiced, 0 for none
+ * @return array ['card' => 'account' | 'new_account' | '', 'url' => string]
+ */
+function erp_order_flow_buyer_card($buyer, $order_id)
+{
+    if ((int) ($buyer['id'] ?? 0) > 0) {
+        return array('card' => 'account', 'url' => 'edit_erp_account.php?id=' . (int) $buyer['id']);
+    }
+
+    if ((int) ($buyer['contact_id'] ?? 0) > 0) {
+        return array(
+            'card' => 'new_account',
+            'url' => 'add_erp_account.php?contact_id=' . (int) $buyer['contact_id'] . (((int) $order_id > 0) ? '&order_id=' . (int) $order_id : ''),
+        );
+    }
+
+    return array('card' => '', 'url' => '');
+}
+
+/**
  * Where an order's four documents stand, and what can be done next.
  *
  * @param int $order_id
@@ -94,7 +156,9 @@ function erp_order_flow_state($order_id)
 {
     $order_id = (int) $order_id;
     $order = db_item("SELECT id, order_number, status, contact_id, erp_invoice_id, erp_account_id,
-            payment_method, transaction_id, refunded_amount, refund_status
+            payment_method, transaction_id, refunded_amount, refund_status,
+            billing_company, billing_first_name, billing_last_name, billing_address_1, billing_address_2,
+            billing_city, billing_state, billing_zip_code, billing_country, billing_email_address, billing_phone_number
         FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
 
     if (!is_array($order)) {
@@ -113,12 +177,6 @@ function erp_order_flow_state($order_id)
 
     $account_id = is_array($invoice) ? (int) $invoice['account_id'] : (int) $order['erp_account_id'];
     $account = ($account_id > 0) ? db_item("SELECT * FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1") : null;
-
-    // The invoice step asks the provider's gaps of the account the invoice
-    // is written to; the other steps keep the one above.
-    $invoice_account_id = erp_order_flow_invoice_account_id($invoice, erp_order_invoice_account_id($order));
-    $invoice_account = ($invoice_account_id === $account_id) ? $account
-        : (($invoice_account_id > 0) ? db_item("SELECT * FROM erp_accounts WHERE id = '" . $invoice_account_id . "' LIMIT 1") : null);
 
     $waybill = db_item("SELECT * FROM erp_waybills WHERE order_id = '" . $order_id . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
     $waybill = is_array($waybill) ? $waybill : null;
@@ -167,15 +225,27 @@ function erp_order_flow_state($order_id)
         $step['reason'] = lang('The invoice takes its figures from the order, with a number from the sales series.');
 
         // The buyer's gaps, said before the number is spent: issuing checks
-        // the same list when a provider is active and refuses.
-        if (($provider !== '') && is_array($invoice_account)) {
-            $gaps = erp_edoc_account_missing($invoice_account);
+        // the same list when a provider is active and refuses. The buyer is
+        // the account the invoice is written to, or the one it would open;
+        // the other steps keep the account above.
+        $buyer = ($provider !== '') ? erp_order_flow_invoice_buyer($order, $invoice) : null;
+
+        if (is_array($buyer)) {
+            $gaps = erp_edoc_account_missing($buyer);
             if (!empty($gaps['fields'])) {
+                $card = erp_order_flow_buyer_card($buyer, $order_id);
+                $vars = array($gaps['label'], erp_edoc_fix_summary($gaps['fields']));
                 $step['state'] = 'blocked';
                 $step['action'] = '';
                 $step['disabled_action'] = 'invoice';
-                $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}.', 'vars' => array($gaps['label'], erp_edoc_fix_summary($gaps['fields']))));
-                $step['links'][] = array('label' => lang('Complete the account card'), 'url' => 'edit_erp_account.php?id=' . (int) $invoice_account['id']);
+
+                if ($card['card'] === 'new_account') {
+                    $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}. The customer has no account yet; the invoice would open it from the contact card and the order\'s billing address.', 'vars' => $vars));
+                    $step['links'][] = array('label' => lang('Open an Account'), 'url' => $card['url']);
+                } else {
+                    $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}.', 'vars' => $vars));
+                    $step['links'][] = array('label' => lang('Complete the account card'), 'url' => $card['url']);
+                }
             }
         }
 
@@ -245,7 +315,7 @@ function erp_order_flow_state($order_id)
             $step['state'] = 'ready';
             $step['action'] = 'edoc_submit';
             $step['reason'] = lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => $provider_label));
-        } elseif (in_array($status, array('queued', 'sending', 'sent'), true)) {
+        } elseif (in_array($status, array('queued', 'sending', 'sent'), true) && !erp_edoc_invoice_send_stalled($invoice)) {
             $step['state'] = 'waiting';
             $step['action'] = 'edoc_poll';
             $step['reason'] = lang('Sent; GİB has not answered yet. Ask again in a little while.');
@@ -290,6 +360,11 @@ function erp_order_flow_state($order_id)
                 if ($message !== '') {
                     $step['facts'][] = array('text' => lang(array('string' => 'Last answer: {var:1}', 'vars' => $message)));
                 }
+            }
+
+            // The send that stopped may have left a draft at the provider.
+            if (erp_edoc_invoice_send_stalled($invoice)) {
+                $step['facts'][] = array('text' => lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $provider_label)));
             }
         }
     }
@@ -459,6 +534,24 @@ function erp_order_flow_invoice_row($order)
 }
 
 /**
+ * Whether the returns raised against an invoice have taken all of it back.
+ *
+ * Measured in money: the returns that stand give back the invoice's total.
+ * An invoice of 0.00 (a free order) gives no money back, so for it a return
+ * has to stand at all; without one nothing has been taken back, and a
+ * cancelled order's invoice is still to be cancelled or returned.
+ *
+ * @param int $grand    The invoice's grand total
+ * @param int $returned What its returns give back (erp_invoice_returned_total())
+ * @param int $returns  How many returns stand against it (erp_invoice_returns())
+ * @return bool
+ */
+function erp_order_flow_returned_in_full($grand, $returned, $returns)
+{
+    return ((int) $returned >= (int) $grand) && (((int) $grand !== 0) || ((int) $returns > 0));
+}
+
+/**
  * The two steps a cancelled or refunded order adds: the document that takes
  * the sale back, and the money that goes back to the customer.
  *
@@ -489,7 +582,9 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
     // ------------------------------------------------------ the document
     $step = array('label' => lang('Return or cancellation'), 'state' => 'ready', 'title' => '', 'facts' => array(), 'action' => '', 'reason' => '', 'links' => array());
 
-    foreach (erp_invoice_returns($invoice_id) as $return) {
+    $returns = erp_invoice_returns($invoice_id);
+
+    foreach ($returns as $return) {
         $step['links'][] = array('label' => (string) $return['full_number'], 'url' => 'edit_erp_invoice.php?id=' . (int) $return['id']);
     }
 
@@ -514,10 +609,10 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
         $step['title'] = lang('The invoice was cancelled');
         $step['facts'][] = (string) $invoice['full_number'];
         $step['links'][] = array('label' => lang('View'), 'url' => 'edit_erp_invoice.php?id=' . $invoice_id);
-    } elseif ($returned >= $grand) {
+    } elseif (erp_order_flow_returned_in_full($grand, $returned, count($returns))) {
         $step['state'] = 'done';
         $step['title'] = lang('Returned in full');
-    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty(erp_invoice_returns($invoice_id))) {
+    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty($returns)) {
         $step['action'] = 'invoice_cancel';
         if (!$has_edoc && ($provider_label === '')) {
             // Without an e-document provider the invoice is paper: whether
@@ -614,6 +709,7 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
  * An invoice cancelled from the card frees its allocations first, so the
  * money that paid it is no longer tied to it. Then the account's credit is
  * the only measure left, and the figure is marked as a guess for the form.
+ * An invoice of 0.00 took no money, so nothing is guessed for it.
  *
  * @param array $order
  * @param array $invoice
@@ -659,8 +755,9 @@ function erp_order_flow_money($order, $invoice)
 
     // A cancelled invoice has no allocations left to count. If nothing tied
     // to the order says what came in, the account's credit stands in for it
-    // until a refund has been recorded from here.
-    if ($cancelled && ($in === 0) && empty($refunds)) {
+    // until a refund has been recorded from here. An invoice of 0.00 took
+    // no money, so a credit on the account belongs to other sales.
+    if ($cancelled && ($in === 0) && empty($refunds) && ((int) $invoice['grand_total'] !== 0)) {
         $balance = (int) db_value("SELECT COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_base ELSE -amount_base END), 0)
             FROM erp_account_transactions WHERE account_id = '" . (int) $invoice['account_id'] . "'");
         if ($balance < 0) {

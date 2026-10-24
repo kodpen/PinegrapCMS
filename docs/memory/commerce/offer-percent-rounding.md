@@ -22,8 +22,8 @@ description: An offer's percentage as a figure (order discount, product, gift, s
 - On PHP 8.3 no figure moved: the test holds the old float formulas equal there (CI runs 8.3) over 20,000 random amounts to 2^31, half of them at a half minor unit, and both helpers against an exact integer reference on every version.
 
 ## What still rounds a float percentage?
-- The card surcharge (`ECOMMERCE_SURCHARGE_PERCENTAGE`): `submit_order.php`, `pg_express_order_charged_totals()`, the express order and order preview pages. It is not an offer and its setting is a decimal.
+- Not the card surcharge: it takes `pg_percent_of()` too (#1388, commerce/card-surcharge-rounding.md).
 - The bulk price change by percentage: `pg_bulk_price_change()` methods 3 and 4 (`edit_products.php`) and the Catalog Manager's `increase_percent` / `decrease_percent` (`view_folder_and_files_f.php`), `round(((100 - $value) / 100) * $price)` on a typed decimal. It writes `products.price`, not an offer.
 - The ERP storefront's best offer (`includes/erp/products.php`) already uses `erp_apply_rate()`.
 
-Related: docs/memory/commerce/offer-order-discount-ladder.md, docs/memory/commerce/offer-gift-lines.md, docs/memory/commerce/offer-discounted-units.md
+Related: docs/memory/commerce/offer-order-discount-ladder.md, docs/memory/commerce/offer-gift-lines.md, docs/memory/commerce/offer-discounted-units.md, docs/memory/commerce/card-surcharge-rounding.md

@@ -841,6 +841,10 @@ function pg_sw_index_form_data($data_rows)
                     'data'    => $value,
                     'type'    => $type,
                     'wysiwyg' => (!empty($data_row['field_wysiwyg']) && $type === 'text area') ? 1 : 0,
+                    // Whether the field's answers are translated
+                    // (form_fields.translate_values); read before the column
+                    // existed, they are.
+                    'translate' => (isset($data_row['field_translate']) && (string)$data_row['field_translate'] === '0') ? 0 : 1,
                 );
             }
         }
@@ -1980,7 +1984,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
-            form_fields.wysiwyg AS field_wysiwyg,
+            form_fields.wysiwyg AS field_wysiwyg,"
+            . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
             files.name          AS file_name
          FROM form_data
          LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -2791,6 +2796,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__not_found_message'    => $not_found_message,
             '__new_account_email'    => '',
             '__new_account_password' => '',
+            '__new_account_set_password_url' => '',
             '__edit_url'             => '',
         );
     } else {
@@ -2806,7 +2812,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
-                form_fields.wysiwyg AS field_wysiwyg,
+                form_fields.wysiwyg AS field_wysiwyg,"
+                . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
              LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -2826,11 +2833,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the
         // legacy custom form confirmation screen did. No password is handed
-        // out; the password token carries the set password link instead
-        // (pg_cf_new_account_password_note()), for the visitor alone.
+        // out. The set password link, for the visitor alone, has a token of
+        // its own for a button's href; the password token, which older
+        // designs print as text, carries a sentence with that link
+        // (pg_cf_new_account_password_note()).
         $new_account_email = pg_cf_new_account_email((int)$form_row['id']);
+        $new_account_link  = ($new_account_email !== '') ? pg_cf_new_account_link((int)$form_row['id']) : '';
         $new_account_note  = ($new_account_email !== '')
-            ? pg_cf_new_account_password_note(pg_cf_new_account_link((int)$form_row['id']), pg_cf_new_account_for_submitter()) : '';
+            ? pg_cf_new_account_password_note($new_account_link, pg_cf_new_account_for_submitter()) : '';
 
         $extra = array(
             'form_item_view'         => $self_url !== '' ? $self_url : '#',
@@ -2840,6 +2850,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__not_found_message'    => '',
             '__new_account_email'    => h($new_account_email),
             '__new_account_password' => h($new_account_note),
+            // Empty unless the link is live and the viewer sent the form.
+            '__new_account_set_password_url' => h($new_account_link),
             // The record's edit screen, for whoever may edit this form's
             // submissions (the legacy form item view's Edit button).
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
@@ -2877,6 +2889,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         ? $_SESSION['software']['submitted_form_reference_codes'] : array();
     $flags = array(
         'has_new_account'        => $found_and_allowed && $extra['__new_account_email'] !== '',
+        'has_set_password_link'  => $found_and_allowed && $extra['__new_account_set_password_url'] !== '',
         'record_found'           => (bool)$found_and_allowed,
         'record_not_found'       => !$found_and_allowed,
         'submitted_this_session' => $found_and_allowed && in_array((string)$form_row['reference_code'], array_map('strval', $own_codes), true),
@@ -5611,8 +5624,10 @@ function pg_sw_item_missing($mark = null)
     }
     // The address may be one that a short link with a * in its name stands
     // for (includes/fn/short_link_redirects.php); then this does not return.
+    // Otherwise it goes into the 404 log (includes/fn/not_found_log.php).
     if (function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
     $missing = true;
     if (!headers_sent()) {

@@ -423,6 +423,8 @@ if (!$_POST) {
     $spacing_below = $row['spacing_below'];
     $contact_field = $row['contact_field'];
     $office_use_only = $row['office_use_only'];
+    // Read before the upgrade adds the column: included.
+    $translate_values = isset($row['translate_values']) ? (int)$row['translate_values'] : 1;
     $upload_folder_id = $row['upload_folder_id'];
     $quiz_question = $row['quiz_question'];
     $quiz_answer = $row['quiz_answer'];
@@ -624,6 +626,7 @@ if (!$_POST) {
     $output_rss_field_row = '';
     $output_contact_field_row = '';
     $output_office_use_only_row = '';
+    $output_translate_values_row = '';
     $output_quiz_rows = '';
     $delete_data_warning = '';
     
@@ -648,6 +651,18 @@ if (!$_POST) {
                     <label class="form-check-label" for="office_use_only">' . lang('Hide This Field from Submitter') . '</label>
                 </div>
             </div>';
+
+        // Answers to a text field are translated where a widget includes the
+        // form's records; codes or icon names typed into one are left out.
+        if (pg_schema_has('form_fields', 'translate_values')) {
+            $output_translate_values_row =
+                '<div class="col-12 my-1 collapse" id="translate_values_row">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="translate_values" name="translate_values" value="1"' . ($translate_values !== 0 ? ' checked="checked"' : '') . '>
+                        <label class="form-check-label" for="translate_values">' . lang('Include in translation') . '</label>
+                    </div>
+                </div>';
+        }
         
         // if quiz is enabled for custom form, then prepare to output quiz fields
         if ($quiz == 1) {
@@ -757,6 +772,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         ' . $output_office_use_only_row . '
+                                        ' . $output_translate_values_row . '
                                         <div class="col-12 my-1 collapse" id="wysiwyg_row">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="wysiwyg" name="wysiwyg" value="1"' . $wysiwyg_checked . '>
@@ -1057,6 +1073,13 @@ if (!$_POST) {
         }
 
         $sql_upload_folder_id = "";
+
+        // Only a custom form's text box or text area can be left out of
+        // translation; other forms keep the column as it is.
+        $sql_translate_values = "";
+        if (($form_type == 'custom') && pg_schema_has('form_fields', 'translate_values')) {
+            $sql_translate_values = "translate_values = '" . pg_cf_translate_flag(!empty($_POST['translate_values']), $_POST['type'] ?? '') . "',";
+        }
         
         // If this is a file upload field, then check access to selected folder,
         // and prepare to add folder info to SQL. A signature is written into that
@@ -1112,6 +1135,7 @@ if (!$_POST) {
                     contact_field = '" . escape($_POST['contact_field'] ?? '') . "',
                     office_use_only = '" . escape($_POST['office_use_only'] ?? '') . "',
                     $sql_upload_folder_id
+                    $sql_translate_values
                     quiz_question = '" . escape($_POST['quiz_question'] ?? '') . "',
                     quiz_answer = '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
                     user = '" . $user['id'] . "',
