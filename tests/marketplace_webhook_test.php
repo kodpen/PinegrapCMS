@@ -358,3 +358,30 @@ function test_marketplace_webhook_screen_never_draws_the_key()
 	pg_assert_true($seen > 0, 'the register action keeps the key');
 	pg_assert_contains("mp_webhook_register_problem(\$account)", $source, 'registration is refused while one is registered');
 }
+
+// Deleting an account removes its webhook from the marketplace first, and a
+// failed removal leaves the account in place: a webhook left behind delivers
+// to an address answering 404 for ever.
+function test_marketplace_webhook_account_delete_removes_the_webhook_first()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "if (\$action === 'delete' && \$account) {");
+	$end = strpos($source, "if (\$action === 'categories' && \$account) {");
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end));
+
+	$delete = substr($source, $start, $end - $start);
+
+	$remove = strpos($delete, "mp_call(\$account['provider'], 'remove_webhook', array(\$account))");
+	$refuse = strpos($delete, 'if (!$removed[\'ok\']) {');
+	$back = strpos($delete, "header('Location: ' . \$screen_url . '?account=' . \$account_id);");
+	$first_delete = strpos($delete, 'DELETE FROM');
+
+	pg_assert_true($remove !== false, 'the webhook is removed');
+	pg_assert_true(($remove !== false) && ($first_delete !== false) && ($remove < $first_delete), 'before anything is deleted');
+	pg_assert_true(($refuse !== false) && ($back !== false) && ($refuse < $back) && ($back < $first_delete),
+		'a failed removal goes back to the account without deleting');
+	pg_assert_contains("mp_can(\$account['provider'], 'remove_webhook')", $delete);
+	pg_assert_contains('h($removed[\'error\'])', $delete, 'the connector\'s message is escaped');
+}

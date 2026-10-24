@@ -261,6 +261,33 @@ if ($_POST) {
 
 	if ($action === 'delete' && $account) {
 
+		// A registered webhook is removed from the marketplace first. Left
+		// behind, it would deliver to an address that answers 404 for ever:
+		// Trendyol mails the seller about the failures and counts it against
+		// their fifteen webhooks per seller. When the removal fails the account
+		// stays, so that it can be tried again; a webhook already removed in
+		// their panel answers 404, which the connector reads as removed.
+		$webhook_id = isset($account['credentials']['webhook_id']) ? (string)$account['credentials']['webhook_id'] : '';
+
+		if ($webhook_id !== '' && mp_can($account['provider'], 'remove_webhook')) {
+
+			$removed = mp_call($account['provider'], 'remove_webhook', array($account));
+
+			if (!$removed['ok']) {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, or remove the webhook in your {var:1} seller panel and then remove the marketplace here.',
+					'vars'   => array(h(mp_provider_name($account['provider'])), h($removed['error']))
+				)));
+
+				header('Location: ' . $screen_url . '?account=' . $account_id);
+
+				exit();
+
+			}
+
+		}
+
 		db("DELETE FROM marketplace_sync_queue WHERE account_id = '" . e($account_id) . "'");
 
 		db("DELETE FROM marketplace_product_map WHERE account_id = '" . e($account_id) . "'");
@@ -1868,7 +1895,12 @@ if ($selected) {
 			</div>
 			<hr>
 			<p class="small opacity-75">'
-				. lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.') . '</p>
+				. (!empty($selected['credentials']['webhook_id'])
+					? h(lang(array(
+						'string' => 'Removing a marketplace deletes its product matches and its queue. Your products are not touched. Its webhook is removed from {var:1} first; nothing else is removed from the marketplace itself.',
+						'vars'   => array(mp_provider_name($selected['provider']))
+					)))
+					: lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.')) . '</p>
 			<button type="submit" class="btn btn-outline-danger btn-sm" name="mp_action" value="delete"
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
 				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>

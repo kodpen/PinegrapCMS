@@ -18,6 +18,9 @@ description: marketplace_webhook.php: how an order webhook is registered, checke
 - Save merges the stored blob under the form's fields; before, the first Save wiped `webhook_key`/`webhook_id`.
 - Paused or import off with a webhook registered: deliveries get 403 and Trendyol switches it off. Save warns, and the block with Remove stays drawn.
 
+## What happens on account delete?
+- A registered webhook is removed from the marketplace first (404 = already gone). If that fails the account is not deleted: the screen shows the reason and sends the operator back. Left behind, it would deliver to a 404 for ever, Trendyol would mail the seller, and it counts toward their 15.
+
 ## What are Trendyol's webhook facts?
 - Create `POST /integration/webhook/sellers/{sellerId}/webhooks` `{url, authenticationType:"API_KEY", apiKey, subscribedStatuses:[]}` (empty = every status) → `{id}`; delete `DELETE …/webhooks/{id}`, 404 read as gone. Delivery: POST JSON, an order-package page, key in `x-api-key` (or Basic for `BASIC_AUTHENTICATION`), no signature, no stock or product events.
 - https only; the URL must not contain "Trendyol", "Dolap" or "Localhost"; 15 per seller (passive ones count); retried every 5 minutes, passive after 13 errors.
