@@ -841,7 +841,8 @@ function pg_extract_archive($archive_path, $destination)
     $blocked = array();
 
     // whether a file can be created in a directory: the directory, or the
-    // nearest ancestor that exists, must be writable. Asked once per directory.
+    // nearest ancestor that exists, must be writable. Asked once per directory,
+    // with pg_dir_writable(), not is_writable(): Windows folders (see there).
     $directory_writable = array();
 
     $can_create_in = function ($directory) use (&$directory_writable) {
@@ -863,7 +864,7 @@ function pg_extract_archive($archive_path, $destination)
             $probe = $parent;
         }
 
-        $directory_writable[$directory] = (($probe !== '') && is_dir($probe) && is_writable($probe));
+        $directory_writable[$directory] = (($probe !== '') && pg_dir_writable($probe));
 
         return $directory_writable[$directory];
     };
