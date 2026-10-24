@@ -117,6 +117,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-listings.md: Trendyol V2 listing create (connectors/trendyol.php): barcode as the key, brand id by name at send time, what is refused before the call, batch result per barcode, what SUCCESS means.
 - trendyol-orders.md: Trendyol order packages: v2/orders pull, 14-day window and page caps, Awaiting/Verified skipped, UnPacked = cancelled, seller-only discount money, barcode/sku match, Picking push, unverified points.
+- trendyol-own-carrier-shipping.md: Trendyol packages shipped with the shop's own carrier: the Shipping carrier choice, the alternative-delivery call, which packages and parcels the job reports, Picking first (unverified).
 - trendyol-stock-price.md: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result; webhooks carry no stock.
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the single compute function and its JS preview twin.
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
