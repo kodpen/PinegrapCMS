@@ -13,6 +13,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Never call `lang()` or other `functions.php` code in `router.php`, the firewall's router phase or `get_file.php`; use `waf_text()` / `get_file_text()` (`router-no-functions-php.md`).
 - Guard every function a host may disable with `function_exists()` and treat its answer as optional, above all on the install and upgrade path (`disable-functions-rule.md`).
 - Touch pixels only through `pg_process_image_file()` in `includes/image_engine.php`; never open a second compression path (`image-processing-engine.md`).
+- Read a picture that may be WebP with `pg_image_from_string()` or `pg_image_gd_read()`, or ask `pg_image_webp_gd_readable()` first below PHP 8.2: GD's fatal error on an animated or cut-short WebP ends the request there (`gd-webp-read.md`).
 - Add a web-root server rule only to `pg_server_config_blocks()` and the default skeleton; the default must pass its own detect, and repair only adds (`server-config-web-root-rules.md`).
 - Before a new door gives, zips, copies or renames a file, ask `pg_file_withheld()`; a stored name built outside `prepare_file_name()` asks `pg_file_name_reserved()` (`dkim-key-in-file-manager.md`).
 - Set an optional cookie with `pg_consent_setcookie()` (keep a session copy), list it in `pg_consent_catalogue()`, hold third-party tags with `pg_consent_hold_scripts()` (`cookie-consent-new-cookies.md`).
@@ -40,6 +41,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
+- gd-webp-read.md: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on an animated or cut-short WebP, imagecreatefromstring() reads WebP from 7.3; pg_image_webp_gd_readable(), pg_image_from_string()
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-color-profile.md: ICC colour profiles in the image engine: Imagick and GD keep a non-sRGB RGB profile, GD writes it into JPEG/PNG/WebP itself and refuses (color_profile) only what it cannot carry; how a profile is read
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
