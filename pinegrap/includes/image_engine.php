@@ -281,6 +281,80 @@ function pg_image_is_animated_webp($file_path)
 
 
 /**
+ * Whether GD can be handed WebP bytes, as far as their structure tells: a
+ * still picture whose RIFF container and every chunk it declares lie inside
+ * the bytes, and whose image data starts as it should, a key frame ("VP8 ")
+ * with its first partition or a lossless stream ("VP8L"). An animation is
+ * refused; GD cannot decode one.
+ *
+ * PHP's bundled GD before 8.2 ends the request with a fatal error, not a
+ * warning, on a WebP it cannot decode ("gd-webp cannot get webp info",
+ * "gd-webp cannot allocate temporary buffer"): an animated one, or one cut
+ * short, as a copy or transfer that did not finish leaves it. So on those
+ * versions GD is handed only WebP bytes that pass this. Damaged image data
+ * inside a whole file is not told here and still ends the request there.
+ *
+ * @param string $bytes the whole file
+ * @return bool
+ */
+function pg_image_webp_gd_readable($bytes)
+{
+    $bytes = (string) $bytes;
+    $length = strlen($bytes);
+
+    if (($length < 20) || (substr($bytes, 0, 4) !== 'RIFF') || (substr($bytes, 8, 4) !== 'WEBP')) {
+        return false;
+    }
+
+    $riff = unpack('V', substr($bytes, 4, 4));
+    $end = 8 + $riff[1];
+
+    if (($riff[1] < 12) || ($end > $length)) {
+        return false;
+    }
+
+    $offset = 12;
+
+    while ($offset + 8 <= $end) {
+        $type = substr($bytes, $offset, 4);
+        $size = unpack('V', substr($bytes, $offset + 4, 4));
+        $size = $size[1];
+        $data = $offset + 8;
+
+        if (($size < 0) || ($data + $size > $end)) {
+            return false;
+        }
+
+        if ($type === 'VP8 ') {
+            if ($size < 10) {
+                return false;
+            }
+
+            // The frame tag: bit 0 clear for a key frame, the first
+            // partition's size in its top 19 bits; then the start code.
+            $tag = ord($bytes[$data]) | (ord($bytes[$data + 1]) << 8) | (ord($bytes[$data + 2]) << 16);
+
+            return (($tag & 1) === 0)
+                && (substr($bytes, $data + 3, 3) === "\x9D\x01\x2A")
+                && (10 + (($tag >> 5) & 0x7FFFF) <= $size);
+        }
+
+        if ($type === 'VP8L') {
+            return ($size >= 5) && (ord($bytes[$data]) === 0x2F);
+        }
+
+        if ((($type === 'VP8X') && (($size < 10) || (ord($bytes[$data]) & 0x02))) || ($type === 'ANIM') || ($type === 'ANMF')) {
+            return false;
+        }
+
+        $offset = $data + $size + ($size % 2);
+    }
+
+    return false;
+}
+
+
+/**
  * Whether an image file holds an animation: a GIF with more than one frame,
  * an APNG or an animated WebP. Told by the file's own first bytes, not by its
  * name. The engine leaves these files as they are (no optimize, no resize, no
@@ -1119,6 +1193,11 @@ function pg_image_gd_read($file_path, $type)
     }
 
     if (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP) && function_exists('imagecreatefromwebp')) {
+        // Before PHP 8.2 a WebP GD cannot decode is a fatal error.
+        if ((PHP_VERSION_ID < 80200) && !pg_image_webp_gd_readable((string) @file_get_contents($file_path))) {
+            return false;
+        }
+
         return @imagecreatefromwebp($file_path);
     }
 

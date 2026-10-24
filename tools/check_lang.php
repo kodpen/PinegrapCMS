@@ -5,12 +5,16 @@
  * Checks that every translation key used in the code exists in the language
  * file, and that the designer's keys follow the literal-only rule.
  *
- * Two contracts are enforced:
+ * Three contracts are enforced:
  *   1. lang('English text') in PHP and _sdT('English text') in the style
  *      designer must resolve to a key present in includes/local/tr.json.
  *   2. _sdT() takes a single-quoted literal only. The server scans the file
  *      for that exact pattern, so _sdT("x"), _sdT($x) and _sdT('a' . $b)
  *      silently ship untranslated text.
+ *   3. tr.json holds every key once. json_decode() keeps the last copy
+ *      without a word, so a second copy with another value hides the first
+ *      one's translation. Each duplicate is reported with every line it is
+ *      on, and whether the copies' values differ.
  *
  * Usage:  php tools/check_lang.php [directory]     (default: pinegrap/)
  * Exit:   0 when everything resolves, 1 otherwise.
@@ -60,10 +64,23 @@ if (!is_file($language_path)) {
 	exit(1);
 }
 
-$translations = json_decode(file_get_contents($language_path), true);
+$language_json = file_get_contents($language_path);
+
+$translations = json_decode($language_json, true);
 
 if (!is_array($translations)) {
 	fwrite(STDERR, 'Language file is not valid JSON: ' . json_last_error_msg() . "\n");
+	exit(1);
+}
+
+// pg_json_duplicate_keys() lives in includes/fn/core.php; functions.php loads
+// the modules under includes/fn/ without a connection.
+require_once(dirname(__DIR__) . '/pinegrap/functions.php');
+
+$duplicates = pg_json_duplicate_keys($language_json);
+
+if (!is_array($duplicates)) {
+	fwrite(STDERR, 'Could not scan ' . $language_file . " for duplicate keys.\n");
 	exit(1);
 }
 
@@ -266,13 +283,22 @@ foreach ($missing as $key => $where) {
 	echo '      not in ' . $language_file . ': ' . $key . "\n";
 }
 
+foreach ($duplicates as $duplicate) {
+	echo 'DUPE  ' . $language_file . ':' . implode(', ', $duplicate['lines']) . "\n";
+	echo '      key written ' . count($duplicate['lines']) . ' times: ' . $duplicate['key'] . "\n";
+
+	if ($duplicate['values_differ']) {
+		echo '      the values differ; json_decode() keeps the last one' . "\n";
+	}
+}
+
 echo "\n";
 echo 'Scanned ' . $scanned . ' file(s); ' . count($used) . ' key(s) used, ' . count($translations) . ' key(s) defined.' . "\n";
 
-if ((count($missing) > 0) || (count($violations) > 0)) {
-	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s).' . "\n";
+if ((count($missing) > 0) || (count($violations) > 0) || (count($duplicates) > 0)) {
+	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s), ' . count($duplicates) . ' duplicate key(s).' . "\n";
 	exit(1);
 }
 
-echo "OK: every key resolves.\n";
+echo "OK: every key resolves, and none is written twice in " . $language_file . ".\n";
 exit(0);

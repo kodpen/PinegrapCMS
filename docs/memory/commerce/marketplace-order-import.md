@@ -19,7 +19,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 ## What happens with unmatched or code-matched lines?
 - One unmatched line makes the WHOLE order rejected: an order missing a line shows an incomplete shipment and decrements stock from the wrong product.
 - Match order (`mp_order_match_product()`): mapping (`remote_code = code`); `product_barcodes.barcode = code` for a barcode-keyed provider (Trendyol); `products.name = sku` (Trendyol `stockCode`); `products.name = code` (n11).
-- A product matched without a mapping is mapped at that moment under `code`, or its stock change never enters the queue. `INSERT IGNORE`: one already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key.
+- A product matched without a mapping is mapped then under `code`, or its stock change never enters the queue. `INSERT IGNORE`: one already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key (PR #1452).
 
 ## How do packages arrive?
 - By the job's pull and by `marketplace_webhook.php` (`marketplace-webhook-receiver.md`), both through `mp_import_order()`. The receiver accepts nothing; `mp_sync_approve_pending()` does on the next pull, so turning auto-accept on also accepts the last day's still-`Created` packages, n11's too (PR #1453).

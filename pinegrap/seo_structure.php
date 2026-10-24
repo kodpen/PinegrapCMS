@@ -541,7 +541,7 @@ function pg_seo_analyze_html($html, $mode = 'document', $context = array(), &$li
         // is what the accessibility guidance asks for. It is not a finding.
         } elseif (trim($image->getAttribute('alt')) !== '') {
             $alt = trim($image->getAttribute('alt'));
-            $file_name = basename($is_lazy ? $image->getAttribute('data-src') : $source);
+            $file_name = pg_basename($is_lazy ? $image->getAttribute('data-src') : $source);
 
             if (($file_name !== '') && (mb_strtolower($alt, 'UTF-8') === mb_strtolower($file_name, 'UTF-8'))) {
                 $add('img_alt_is_filename', 1, $alt);
