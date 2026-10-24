@@ -14,8 +14,9 @@
  * (2025-03-26 to 2025-11-25) is opened with initialize, may hand out a session
  * id that every later request has to carry, and may answer a POST with an
  * event stream (text/event-stream) instead of a single JSON object; the answer
- * is then read out of the stream. A session the server has forgotten (404) is
- * opened again, once.
+ * is then read out of the stream, which is read only until the event that
+ * answers the request has arrived. A session the server has forgotten (404)
+ * is opened again, once.
  *
  * Nothing here keeps state: the caller passes a connection in and gets it
  * back with what was learnt on the way (the version, a session id) and keeps
@@ -39,9 +40,12 @@
  *             (PG_MCP_CLIENT_TASKS); declared with every request, so a
  *             server may answer in their shapes. Empty by default: a caller
  *             that cannot follow a task never gets one
- *   transport a callable taking (url, body, headers, timeout, max_body) and
- *             answering like api_http_request() with response_headers; only
- *             the tests set it
+ *   transport a callable taking (url, body, headers, timeout, max_body,
+ *             complete) and answering like api_http_request() with
+ *             response_headers; complete is the stop test given to
+ *             api_http_request() (pg_mcp_client_sse_stop()), null for a
+ *             notification. Set by the tests and by the sign-in probe
+ *             (pg_mcp_client_discover_auth())
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -252,9 +256,15 @@ function pg_mcp_client_post($conn, $message, $method, $version) {
 
 	$headers = pg_mcp_client_headers($conn, $method, $params, $version);
 
+	// A request is read until the event that answers it: a server that keeps
+	// its event stream open afterwards would otherwise hold every call until
+	// it closes the stream or the timeout ends it. A notification waits for
+	// no answer, so its body is read as it comes.
+	$complete = isset($message['id']) ? pg_mcp_client_sse_stop($message['id']) : null;
+
 	if (isset($conn['transport']) && is_callable($conn['transport'])) {
 
-		$response = call_user_func($conn['transport'], $conn['url'], $body, $headers, $conn['timeout'], PG_MCP_CLIENT_MAX_BODY);
+		$response = call_user_func($conn['transport'], $conn['url'], $body, $headers, $conn['timeout'], PG_MCP_CLIENT_MAX_BODY, $complete);
 
 	} else {
 
@@ -264,14 +274,22 @@ function pg_mcp_client_post($conn, $message, $method, $version) {
 
 		}
 
-		$response = api_http_request('POST', $conn['url'], array(
+		$options = array(
 			'body'             => $body,
 			'headers'          => $headers,
 			'timeout'          => $conn['timeout'],
 			'max_body'         => PG_MCP_CLIENT_MAX_BODY,
 			'agent'            => 'mcp',
 			'response_headers' => true
-		));
+		);
+
+		if ($complete !== null) {
+
+			$options['complete'] = $complete;
+
+		}
+
+		$response = api_http_request('POST', $conn['url'], $options);
 
 	}
 
@@ -363,7 +381,7 @@ function pg_mcp_client_read($response, $id) {
 
 		list($message, $raw) = $candidate;
 
-		if (array_key_exists('id', $message) && ($message['id'] === $id) && (isset($message['result']) || isset($message['error']))) {
+		if (pg_mcp_client_is_answer($message, $id)) {
 
 			return array('message' => $message, 'raw' => $raw);
 
@@ -391,6 +409,145 @@ function pg_mcp_client_read($response, $id) {
 	}
 
 	return array('message' => null, 'raw' => '');
+
+}
+
+// Whether a decoded JSON-RPC message is the answer to request $id: the same
+// id (compared strictly: the client sends integers and a server echoes them
+// as they came) and a result or an error. A request or a notification of the
+// server's own carries a method and is never an answer, whatever its id.
+function pg_mcp_client_is_answer($message, $id) {
+
+	return is_array($message)
+		&& array_key_exists('id', $message) && ($message['id'] === $id)
+		&& (isset($message['result']) || isset($message['error']))
+		&& !isset($message['method']);
+
+}
+
+// Whether an event stream already holds the answer to request $id: a
+// finished event (a blank line after it) whose data is that answer, or a
+// batch (a JSON array) holding it. An event still arriving, a notification, a
+// request from the server and another request's answer do not count. A
+// server may keep the stream open after the answer (GitMCP holds it about
+// ten seconds); nothing it sends after the answer is anything this request
+// waits for.
+function pg_mcp_client_sse_complete($body, $id) {
+
+	// Any of CRLF, LF and CR ends a line of an event stream; JSON keeps none
+	// of them raw inside a string, so turning them all into LF changes no
+	// data.
+	$text = str_replace(array("\r\n", "\r"), "\n", (string)$body);
+
+	$end = strrpos($text, "\n\n");
+
+	if ($end === false) {
+
+		return false;
+
+	}
+
+	foreach (pg_mcp_client_sse_messages(substr($text, 0, $end)) as $candidate) {
+
+		$messages = array_key_exists(0, $candidate[0]) ? $candidate[0] : array($candidate[0]);
+
+		foreach ($messages as $message) {
+
+			if (pg_mcp_client_is_answer($message, $id)) {
+
+				return true;
+
+			}
+
+		}
+
+	}
+
+	return false;
+
+}
+
+// The offset just past the last blank line of an event stream that starts at
+// or after byte $from, -1 for none. Two line ends in a row make a blank line,
+// and every such pair holds LF LF, LF CR or CR CR (CRLF CRLF holds LF CR); a
+// CR that turns out to start a CRLF takes its LF along when it is already
+// there.
+function pg_mcp_client_sse_event_end($text, $from) {
+
+	$text = (string)$text;
+
+	$from = max(0, (int)$from);
+
+	if ($from >= strlen($text)) {
+
+		return -1;
+
+	}
+
+	$end = -1;
+
+	foreach (array("\n\n", "\n\r", "\r\r") as $pair) {
+
+		$at = strrpos($text, $pair, $from);
+
+		if ($at === false) {
+
+			continue;
+
+		}
+
+		$after = $at + 2;
+
+		if (($pair !== "\n\n") && (substr($text, $after, 1) === "\n")) {
+
+			$after++;
+
+		}
+
+		$end = max($end, $after);
+
+	}
+
+	return $end;
+
+}
+
+// The complete option of api_http_request() for request $id: given the
+// stream received so far, true once it holds the answer. Only the bytes new
+// since the last call (and the one before them, for a blank line split
+// across two pieces) are searched for the end of an event, and an event is
+// read once: events already read and found not to be the answer never become
+// it, so the next look starts after them. A long stream is read once, not
+// once per piece or per event.
+function pg_mcp_client_sse_stop($id) {
+
+	$start = 0;
+
+	$seen = 0;
+
+	return function ($received) use ($id, &$start, &$seen) {
+
+		$received = (string)$received;
+
+		$from = max($start, $seen - 1);
+
+		$seen = strlen($received);
+
+		$end = pg_mcp_client_sse_event_end($received, $from);
+
+		if ($end < 0) {
+
+			return false;
+
+		}
+
+		$done = pg_mcp_client_sse_complete(substr($received, $start, $end - $start), $id);
+
+		$start = $end;
+
+		return $done;
+
+	};
 
 }
 
@@ -1500,9 +1657,11 @@ function pg_mcp_client_auth_server_read($metadata, $issuer) {
 }
 
 // What the sign-in's requests go through when the caller passes nothing.
+// $complete, when given, is api_http_request()'s complete option: the probe
+// of the server itself stops at the event that answers it.
 function pg_mcp_client_fetcher($timeout = 20) {
 
-	return function ($method, $url, $body, $headers) use ($timeout) {
+	return function ($method, $url, $body, $headers, $complete = null) use ($timeout) {
 
 		if (!function_exists('api_http_request')) {
 
@@ -1521,6 +1680,12 @@ function pg_mcp_client_fetcher($timeout = 20) {
 		if ($body !== null) {
 
 			$options['body'] = $body;
+
+		}
+
+		if (is_callable($complete)) {
+
+			$options['complete'] = $complete;
 
 		}
 
@@ -1573,9 +1738,9 @@ function pg_mcp_client_discover_auth($url, $fetch = null, $timeout = 20) {
 	// Asked without a credential, a server that wants a sign-in says where.
 	$conn = pg_mcp_client_connection($url, array(), '', '', $timeout);
 
-	$conn['transport'] = function ($to, $body, $headers, $seconds, $max_body) use ($fetch) {
+	$conn['transport'] = function ($to, $body, $headers, $seconds, $max_body, $complete = null) use ($fetch) {
 
-		return call_user_func($fetch, 'POST', $to, $body, $headers);
+		return call_user_func($fetch, 'POST', $to, $body, $headers, $complete);
 
 	};
 
