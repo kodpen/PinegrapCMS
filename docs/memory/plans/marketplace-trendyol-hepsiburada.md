@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453), 2b-i (#<PR>) done; 2b-ii or 4c next
+description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453), 4c (#1493), 2b-i (#1539) done; 2b-ii or 5 next
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 ## What remains? (Trendyol; repeat for Hepsiburada)
 1. ~~Driver, credentials, connection test, categories + attributes.~~ Done #880.
 2. ~~Listing create, barcode and VAT checks, batch result.~~ Done #906.
-2b-i. ~~Approval/rejection status onto the map row.~~ Done #<PR>.
+2b-i. ~~Approval/rejection status onto the map row.~~ Done #1539.
 2b-ii. Listing update by `contentId` (`PUT …/v2/products`, docs "Ürün Güncelleme - Onaylı Ürün v2"); commission shown read-only needs a `commission` column on `marketplace_product_map` (S–M).
 3. ~~Stock/price queue.~~ Done #932.
 4a. ~~Order import (V2), Picking push, cancel sync, barcode/sku matching.~~ Done #1452.
@@ -34,7 +34,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 - Owner: first live call with credentials; whether Kodpen registers as a Trendyol integrator (User-Agent `SelfIntegration` until then); whether to add the `commission` column of 2b-ii.
 
 ## Where are the finished steps' decisions?
-- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-listing-status.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`. The `[NEW]` changelog line came with #932.
+- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-listing-status.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`, `trendyol-own-carrier-shipping.md`. The `[NEW]` changelog line came with #932.
 
 ## Where to start?
-- Step 2b-ii or 4c, after `trendyol-api-facts.md` and `trendyol-orders.md`. Live calls wait for the owner's test or live credentials.
+- Step 2b-ii or 5, after `trendyol-api-facts.md` and `trendyol-orders.md`. Live calls wait for the owner's test or live credentials.
