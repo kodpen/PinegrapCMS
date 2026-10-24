@@ -1461,9 +1461,12 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //
 // Config (`system_region_config`) keys used here:
 //   items_per_page      int (default 10, max 500)
+//   max_results         int (default 0 = no cap, max 100000): the records a
+//                       visitor can page through
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
-//   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
+//   empty_message       string         shown when no records match (default: the
+//                                      translated "No records found.")
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
 //                               recent_views | newest_activity_date_and_time |
@@ -1487,6 +1490,14 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // records match; the visibility flags has_filter_value (that case) and
 // no_filter_value (no value applied) tell the states apart; the page's
 // head follows them through pg_sw_url_filter_state().
+//
+// ^^__result_count^^ prints, in the surround and in every row, how many
+// complete records the list matched (its filters, the visitor's search and
+// the viewer filter), capped at max_results like the classic list's "Found
+// N results", grouped with the site's separators. The flags has_records and
+// no_records follow that number. A list whose loop area is empty but whose
+// surround is not (a "1,284 topics" strip) runs only the count and returns
+// the surround, without rows or pagination.
 //
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
@@ -1573,7 +1584,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Only the flags a list evaluates are marked: a flag from another widget
     // type (a pasted record block's record_found) leaves its element drawn,
     // as lists did before they had flags of their own.
-    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));
     pg_sw_record_href_bindings($tree_decoded);
     // Links to another page with the record's values: a token each, and
     // their pages read once, before the surround and the rows are drawn.
@@ -1786,6 +1797,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $filter_join  = ($filter_where !== '' && $filter_sql['tokens'])
         ? pg_sw_standard_sql($filter_sql['tokens'], isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, array('reference_code'))
         : array('select' => '', 'join' => '');
+    // ^^__result_count^^ and its flags, set once the records are counted.
+    $result_count      = 0;
+    $result_count_html = '0';
 
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
@@ -1840,10 +1854,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // (the rows come from a template resolved the same way), so the pattern
     // never spans record HTML: a long span would exceed PCRE's backtrack
     // limit and empty the list, and a record's own text could close a span.
-    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, $page_link_bare) {
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, $page_link_bare) {
         if ($static_html === '') return $search_html . $rows . $pagination;
         $html = _pg_sw_resolve_visibility(
-            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array('__filter_value' => pg_sw_filter_value_html($filter_value)) + $page_link_bare)),
+            pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array(
+                '__filter_value' => pg_sw_filter_value_html($filter_value),
+                '__result_count' => $result_count_html,
+            ) + $page_link_bare)),
             $flags
         );
         if (strpos($html, '<!--pg-loop-before-->') !== false) {
@@ -1856,13 +1873,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         return str_replace('<!--pg-loop-slot-->', $search_html . $rows . $pagination, $html);
     };
 
-    // If the loop template is empty, we still want to honor empty/search/pagination
-    // on the static surround. But absent a per-record visual there's nothing to repeat,
-    // so just return the static HTML with search/empty injected at the slot.
-    if ($loop_template === '') {
-        if ($static_html === '') return '';
-        return $stitch($empty_html, '');
-    }
+    // An empty loop area has no record to repeat, but its surround may still
+    // print the count, the flags and the search box (a "1,284 topics" strip):
+    // such a list runs only the count below and returns before the rows.
+    // Taken before "Show only when" is resolved on the template, so a loop
+    // area that only a flag empties stays a list with rows and pages.
+    // With neither loop nor surround there is nothing to print.
+    $loop_empty = ($loop_template === '');
+    if ($loop_empty && $static_html === '') return '';
 
     // ── Count total matching rows (for pagination) ────────────────────────
     $total_records = (int)db_value(
@@ -1874,6 +1892,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $search_where
            $sql_viewer_filter"
     );
+    // The number a visitor can page through, as the classic list's "Found
+    // N results" and the search results widget count it: max_results caps it.
+    $result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;
+    $result_count_html = h(pg_format_number($result_count, 0));
 
     // What the address applied, for this list's tokens and flags and for
     // the page's head (canonical, title, robots, feed link).
@@ -1896,7 +1918,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['inexact'] = true;
     }
     $filter_value = pg_sw_url_filter_value($filter_sql, $total_records);
-    $flags = array('has_filter_value' => $filter_value !== '', 'no_filter_value' => empty($filter_sql['params']));
+    $flags = array(
+        'has_filter_value' => $filter_value !== '',
+        'no_filter_value'  => empty($filter_sql['params']),
+        'has_records'      => $result_count > 0,
+        'no_records'       => $result_count === 0,
+    );
     // The flags are final: the per-record template is resolved once, before
     // any record is drawn into it.
     $loop_template = _pg_sw_resolve_visibility($loop_template, $flags);
@@ -1912,6 +1939,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     }
 
     if ($total_records === 0) return $stitch($empty_html, '');
+    // A count strip: the head state above is registered, no row is read.
+    if ($loop_empty) return $stitch('', '');
 
     // Apply the outer dataset cap BEFORE pagination math so the user only ever
     // pages through the first $max_results rows. Final page's LIMIT may be
@@ -2061,6 +2090,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         // form list printed an empty address.
         $extra['__detail_url'] = $extra['form_item_view'];
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
+        $extra['__result_count'] = $result_count_html;
         // Links to another page, valued from this record.
         $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
             'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',

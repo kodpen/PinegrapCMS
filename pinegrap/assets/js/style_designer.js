@@ -34478,9 +34478,12 @@ const StyleDesigner = (function () {
 
     // The list view offers the shared set plus its own state: the value a
     // URL-parameter filter took from the page address (?author=Jane),
-    // filled only when "is equal to" finds records for it.
+    // filled only when "is equal to" finds records for it, and how many
+    // records the list matched (capped at max results, as search results
+    // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
-        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
+        ['__result_count', _sdT('Number of results')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -36012,7 +36015,9 @@ const StyleDesigner = (function () {
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
-            ['no_filter_value',  _sdT('No value from the page address is applied')]
+            ['no_filter_value',  _sdT('No value from the page address is applied')],
+            ['has_records',      _sdT('The list found records')],
+            ['no_records',       _sdT('The list found nothing')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],

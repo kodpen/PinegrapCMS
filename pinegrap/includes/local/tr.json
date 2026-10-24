@@ -26882,5 +26882,7 @@
     "Paraşüt could not be asked whether this order's sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.": "Bu siparişin satış faturasının (ID: {var:1}) irsaliyeli olup olmadığı Paraşüt'e sorulamadı: {var:2}. İrsaliye oluşturulmadı; bir dakika sonra yeniden deneyin.",
     "This order's sales invoice in Paraşüt (ID: {var:1}) carries the shipment: its goods left stock with it, so a shipment document would count them out a second time. A separate e-waybill needs the invoice issued without shipment. No shipment document was created.": "Bu siparişin Paraşüt'teki satış faturası (ID: {var:1}) irsaliyeli: mallar bu faturayla stoktan çıktı, ayrı bir irsaliye onları ikinci kez stoktan düşerdi. Ayrı bir e-irsaliye için faturanın irsaliyesiz kesilmesi gerekir. İrsaliye oluşturulmadı.",
     "The full amount was refunded.": "Tutarın tamamı iade edildi.",
-    "An order cannot be moved from {var:1} to {var:2}.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz."
+    "An order cannot be moved from {var:1} to {var:2}.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz.",
+    "The list found records": "Liste kayıt buldu",
+    "The list found nothing": "Liste kayıt bulamadı"
 }
