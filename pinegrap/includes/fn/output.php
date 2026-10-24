@@ -459,6 +459,9 @@ function pg_preloader_markup()
             if (!a) return;
             if (a.target && a.target !== '_self') return;
             if (a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return;
+            // A main menu row that opens its panel stays on the page; its
+            // address is only for a new tab (backend.src.js, initMenuPanels()).
+            if (a.hasAttribute('data-pg-menu-panel')) return;
             // A link the settings dialog answers is not a navigation, and a
             // curtain over a page that stays put has to be waited out. Asked
             // of the dialog rather than matched here, so there is one list of
@@ -1978,9 +1981,7 @@ function output_header($properties = false)
             <nav id="menu" class="menu z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
-                    <div class=" list-group list-group-flush" style="--bs-list-group-bg:transparent;">
-                        ' . output_menu(array('toolbar' => $toolbar)) . '
-                    </div>
+                    ' . output_menu(array('toolbar' => $toolbar)) . '
                 </div>' . pg_menu_mode_switch($menu_state) . '
             </nav>
         </div>';
@@ -3588,7 +3589,7 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
 
         // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
-        // both are reached from the right-click menu of Page Styles, below.
+        // both are reached from the panel of Page Styles, below.
         // Slots 18 and 19 stay unused, under the never-reused rule of the ERP's
         // 22.
         $design_menus_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-menu-button bi-me-2\'>' . lang('All Menus') . '</a>';
@@ -3619,9 +3620,9 @@ function output_menu($properties = false)
             $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_dynamic_region.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Dynamic Region'))) . '</a>';
         }
 
-        // Page Styles' right-click menu is where menus and regions are
-        // reached: the three make up the classic template screens, and a
-        // designer working in one needs the others at hand.
+        // Page Styles' panel is where menus and regions are reached: the
+        // three make up the classic template screens, and a designer working
+        // in one needs the others at hand.
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />' . $design_menus_content
             . '<hr class=\'divider my-2\' />' . $design_regions_content;
 
@@ -4097,6 +4098,7 @@ function output_menu($properties = false)
     }
 
     $output_all_menu_items = '';
+    $output_menu_panels = '';
     foreach ($menu_items as $key => $options) {
 
         //also add active class for full menu item that user viewed.
@@ -4105,14 +4107,17 @@ function output_menu($properties = false)
             $active_menu_class = ' active';
         }
 
-        $context_enabled = '';
-        if (isset($options['context']) && $options['context'] != false) {
-            $context_enabled = ' data-bs-toggle="context"';
+        // The entries of a row are the string built above under each entry's
+        // own permission check. They are drawn as they are, so the panel shows
+        // exactly what this person may reach and nothing is checked twice.
+        $menu_panel_entries = '';
+        if (isset($options['context']) && $options['context'] != false && isset($options['data-bs-content']) && $options['data-bs-content'] != false) {
+            $menu_panel_entries = (string) $options['data-bs-content'];
         }
 
-        $context_content = '';
-        if (isset($options['data-bs-content']) && $options['data-bs-content'] != false) {
-            $context_content = ' data-bs-content="' . $options['data-bs-content'] . '"';
+        $menu_panel_id = '';
+        if (pg_menu_row_opens_panel($menu_panel_entries, $options['href'])) {
+            $menu_panel_id = 'menu_panel_' . $options['id'];
         }
 
         $output_menu_item_icon = '';
@@ -4140,12 +4145,99 @@ function output_menu($properties = false)
             $output_menu_item_badge = '<span class="pg-menu-badge badge rounded-pill text-bg-danger"' . (isset($options['badge_title']) ? ' title="' . h($options['badge_title']) . '"' : '') . '>' . (((int) $options['badge'] > 99) ? '99+' : (int) $options['badge']) . '</span>';
         }
 
-        $output_all_menu_items .= '<a id="menu_item_' . $options['id'] . '" ' . $context_enabled . $context_content . ' class="list-group-item list-group-item-action border-0' . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . '</a>';
+        // A row with a panel keeps its address, so a middle click or "open in
+        // a new tab" still reaches its screen; a plain click opens the panel
+        // instead (backend.src.js). The hint is filled there with the entry
+        // of the panel that is the current page.
+        $output_menu_row_panel = '';
+        $output_menu_row_end = '';
+        if ($menu_panel_id !== '') {
+            $output_menu_row_panel = ' data-pg-menu-panel="' . $menu_panel_id . '" aria-controls="' . $menu_panel_id . '" aria-expanded="false"';
+            $output_menu_row_end = '<span class="pg-menu-hint"></span><i class="bi bi-chevron-right pg-menu-chevron" aria-hidden="true"></i>';
+            $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries);
+        }
+
+        // no-popover: the row keeps the browser's own title hint, which names
+        // the icon on the rail, instead of a hover popover (pgBindTitlePopovers()).
+        $output_all_menu_items .= '<a id="menu_item_' . $options['id'] . '"' . $output_menu_row_panel . ' class="list-group-item list-group-item-action border-0 no-popover' . (($menu_panel_id !== '') ? ' pg-menu-parent' : '') . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . $output_menu_row_end . '</a>';
 
 
     }
-    // output full menu.
-    return $output_all_menu_items;
+
+    // The rows, then the panels they open; backend.src.js shows one of the
+    // two at a time.
+    return '<div class="pg-menu-main list-group list-group-flush" style="--bs-list-group-bg:transparent;">' . $output_all_menu_items . '</div>'
+        . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '');
+}
+
+/**
+ * Whether a row of the main menu opens a panel of its entries inside the menu
+ * or is a plain link to its screen.
+ *
+ * A row opens a panel when it has more than one entry, a control of its own
+ * (the dashboard's widget settings), or a single entry that goes somewhere
+ * other than the row itself. One entry that is the row's own screen would
+ * make a panel of one line, so that row stays a link.
+ *
+ * @param string $entries  the row's entries, as output_menu() built them
+ * @param string $row_href the row's own address, relative to the panel folder
+ * @return bool
+ */
+function pg_menu_row_opens_panel($entries, $row_href)
+{
+    $entries = (string) $entries;
+
+    if (trim($entries) === '') {
+        return false;
+    }
+
+    if (preg_match('/<(form|select|input|textarea|button)\b/i', $entries)) {
+        return true;
+    }
+
+    $count = preg_match_all('/<a\b[^>]*>/i', $entries, $links);
+
+    if (!$count) {
+        return false;
+    }
+
+    if ($count > 1) {
+        return true;
+    }
+
+    if (!preg_match('/\shref\s*=\s*([\'"])(.*?)\1/i', $links[0][0], $href)) {
+        return true;
+    }
+
+    $target = html_entity_decode($href[2], ENT_QUOTES, 'UTF-8');
+    $row_href = (string) $row_href;
+
+    if (($row_href === '') || ($target === '')) {
+        return true;
+    }
+
+    return !(($target === $row_href) || (substr($target, -(strlen($row_href) + 1)) === '/' . $row_href));
+}
+
+/**
+ * One panel of the main menu: what a row with several entries opens inside
+ * the menu in place of the rows, headed by the way back and the row's name.
+ *
+ * @param string $panel_id id of the panel (menu_panel_<row id>)
+ * @param string $row_id   id of the row that opens it
+ * @param string $title    the row's name, translated
+ * @param string $entries  the row's entries, as output_menu() built them
+ * @return string
+ */
+function pg_menu_panel($panel_id, $row_id, $title, $entries)
+{
+    return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '" role="group" aria-labelledby="' . $panel_id . '_title">'
+        . '<div class="pg-menu-panel-head">'
+        . '<button type="button" class="pg-menu-back no-popover" data-pg-menu-back aria-label="' . h(lang('Back')) . '" title="' . h(lang('Back')) . '"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>'
+        . '<span id="' . $panel_id . '_title" class="pg-menu-panel-title">' . h($title) . '</span>'
+        . '</div>'
+        . '<div class="pg-menu-panel-body">' . $entries . '</div>'
+        . '</div>';
 }
 
 // The address the account menu's Check License button opens: the screen it is
