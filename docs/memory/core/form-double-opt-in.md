@@ -22,7 +22,7 @@ description: Double opt-in for custom forms that add to a contact group (11.0.27
 
 ## What goes into consent_log?
 - channel `email`, purpose `group:<id>`, source `form`, ip and user agent. `pending` is written before each confirmation mail; no row, no mail. At most one mail a day per address and group (`pg_fs_resend_allowed()`, newest pending row by person token).
-- The limit is per exact address: plus tags and Gmail dots make new tokens, so a variant gets its own mail a day. The per-recipient and per-domain buckets of #1386 must cover this mail too.
+- The limit is per exact address: plus tags and Gmail dots make new tokens, so a variant gets its own mail a day. #1386's per-address day limit (`cfr`, folded inbox) counts these forms, so the variants share 3 a day; the domain limit only when switched on (`waf/form-submission-limits.md`).
 - Pending is never consent: the privacy export prints it as "Waiting for confirmation".
 
 ## What must the submitter-mail variable respect?
