@@ -55,6 +55,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
+	upgrade_2026_11_0_workspace_flows();        // 11.0.80
 
 }
 
@@ -1248,5 +1249,110 @@ function upgrade_2026_11_0_page_cache_generation() {
 	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
+
+}
+
+// Workspace flows (2026.11.0, 11.0.80; includes/workspace/flows.php).
+//
+// A flow is a graph of boxes and arrows drawn on the Workspace canvas: a
+// trigger, the tasks it opens one after another, an end. ws_flows keeps one
+// row per flow: its owner, an optional home channel whose readers may run it,
+// the draft being edited (graph JSON) with draft_rev, which every save raises
+// so that a save made against an older draft is refused, and the live
+// version. ws_flow_versions keeps every published graph as it was published
+// and is never changed afterwards; a run keeps the version it started on.
+// ws_flow_runs and ws_flow_run_steps hold the runs and the state of each box
+// in them (one row per box and pass, so two requests that finish parallel
+// boxes never write over each other). The runner comes later; the tables are
+// created together so that it needs no second schema step.
+// ws_scheduled_actions.flow_id ties the hidden scheduled action that starts a
+// flow on a time or an event to its flow.
+//
+// Statuses are VARCHAR rather than ENUM, for the reason the price history step
+// gives: a status added later must not turn into '' on a server that has not
+// run its step. Graphs and contexts are JSON read and written in PHP only; no
+// JSON column type or function is used, so the step runs on MySQL 5.7 and
+// MariaDB 10.2.
+function upgrade_2026_11_0_workspace_flows() {
+
+	install_create_table('ws_flows', "CREATE TABLE ws_flows (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		owner_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		name        VARCHAR(160) NOT NULL DEFAULT '',
+		status      VARCHAR(16) NOT NULL DEFAULT 'draft',
+		draft       MEDIUMTEXT NULL,
+		draft_rev   INT UNSIGNED NOT NULL DEFAULT 0,
+		version_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		binned_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_owner (owner_id, status),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_flow_versions', "CREATE TABLE ws_flow_versions (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		flow_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		n             INT UNSIGNED NOT NULL DEFAULT 0,
+		graph         MEDIUMTEXT NULL,
+		published_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		published_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_flow_n (flow_id, n)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_flow_runs', "CREATE TABLE ws_flow_runs (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		flow_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		version_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		status        VARCHAR(16) NOT NULL DEFAULT 'running',
+		started_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		actor_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		start_key     VARCHAR(64) NOT NULL DEFAULT '',
+		subject_type  VARCHAR(32) NOT NULL DEFAULT '',
+		subject_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		context       MEDIUMTEXT NULL,
+		depth         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		boxes_run     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		finished_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_start (flow_id, start_key),
+		KEY idx_flow (flow_id, id),
+		KEY idx_status (status, updated_at),
+		KEY idx_subject (subject_type, subject_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_flow_run_steps', "CREATE TABLE ws_flow_run_steps (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		run_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		node_id      VARCHAR(32) NOT NULL DEFAULT '',
+		pass         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		status       VARCHAR(16) NOT NULL DEFAULT 'ready',
+		outcome      VARCHAR(32) NOT NULL DEFAULT '',
+		attempt      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		ready_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		claimed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		wait_event   VARCHAR(64) NOT NULL DEFAULT '',
+		wait_key     VARCHAR(64) NOT NULL DEFAULT '',
+		wake_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		effect       VARCHAR(64) NOT NULL DEFAULT '',
+		result       TEXT NULL,
+		finished_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_node (run_id, node_id, pass),
+		KEY idx_ready (status, ready_at),
+		KEY idx_wait (status, wait_event, wait_key),
+		KEY idx_wake (status, wake_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_scheduled_actions', 'flow_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_scheduled_actions', 'idx_flow', "INDEX idx_flow (flow_id)");
+
+	install_note('Workspace: the tables that will keep the flows drawn on the Workspace canvas, their published versions and their runs are added. Nothing changes in the Workspace with this update.');
 
 }

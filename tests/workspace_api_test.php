@@ -165,7 +165,8 @@ function test_ws_api_own_words_routes_are_no_tools()
 	}
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
-		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create') as $id) {
+		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create',
+		'workspace.flows.publish') as $id) {
 		pg_assert_contains($id, $gated);
 	}
 }
@@ -262,7 +263,7 @@ function test_ws_api_own_words_refusals_name_the_team_devices_session()
 	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", ws_api_test_handler_source('ws_api_own_words_only'), $found);
 	$texts = array_merge($texts, $found[1]);
 
-	foreach (array('api_resources.php', 'api_threads.php') as $file) {
+	foreach (array('api_resources.php', 'api_threads.php', 'api_flows.php') as $file) {
 		preg_match_all("/ws_api_own_words_only\\(lang\\('((?:[^'\\\\]|\\\\.)*)'\\)\\)/", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file), $found);
 		$texts = array_merge($texts, $found[1]);
 	}
@@ -297,6 +298,34 @@ function test_ws_api_scheduled_message_is_scheduled_by_the_person()
 	foreach (array('workspace.scheduled_messages.list', 'workspace.scheduled_messages.delete') as $id) {
 		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
 	}
+}
+
+// A flow is drafted by anybody the owner lets in, an assistant included,
+// since a draft never runs; it is published by the person alone, from their
+// team devices session, because it later acts in their name. The removal
+// addressed as a POST is the same tool as the DELETE.
+function test_ws_api_flows_are_drafted_by_tools_and_published_by_the_person()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$publish = ws_api_test_handler_source($routes['workspace.flows.publish']['handler']);
+
+	pg_assert_true(strpos($publish, 'ws_api_own_words_only(') !== false, 'publishing asks for the team devices session');
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.flows.publish']), 'publishing is no MCP tool');
+
+	foreach (array('workspace.flows.list', 'workspace.flows.get', 'workspace.flows.create', 'workspace.flows.update', 'workspace.flows.pause', 'workspace.flows.delete') as $id) {
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
+		pg_assert_false(strpos(ws_api_test_handler_source($routes[$id]['handler']), 'ws_api_own_words_only(') !== false, $id . ' takes an application key');
+	}
+
+	pg_assert_false(pg_mcp_route_is_offered($routes['workspace.flows.delete_post']), 'the POST alias is no tool');
+	pg_assert_same($routes['workspace.flows.delete']['handler'], $routes['workspace.flows.delete_post']['handler']);
+	pg_assert_same(array('PATCH'), $routes['workspace.flows.update']['also_accepts']);
+	pg_assert_same(201, $routes['workspace.flows.create']['status']);
 }
 
 // The list reads changed messages with changed_since, a moment.
@@ -1627,6 +1656,11 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_plan_items_update'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
 		'ws_api_changes_apply'        => array('ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
 		'ws_api_changes_dismiss'      => array('ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
+		'ws_api_flows_create'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
+		'ws_api_flows_update'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
+		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
+		'ws_api_flows_pause'          => array('ws_flow_pause_check(', 'api_dry_run_stop(', 'ws_flow_pause('),
+		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);
