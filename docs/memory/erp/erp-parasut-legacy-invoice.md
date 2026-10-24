@@ -16,6 +16,7 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: th
 
 ## Which buyer card does it open? (#1408)
 - `parasut_sync_contact()` opens it once per order (`orders.parasut_contact_id`) with `parasut_order_contact_attributes()`: the VKN/TCKN (`_parasut_order_identity()`) in `tax_number`; a person without a billing company or with 11 digits, as the driver. A person's TCKN used to go as an unlisted `tckn`; a card opened so may lack the number.
+- Turkish address (billing country, else the store's: `erp_account_country()`; #PR): the driver's mapping, `erp_address_from_checkout()`: `address` the street lines, `city` the state field (province), `district` the city field, `postal_code`; empty ones left off. Abroad: one folded `address` as before, no city or district. Before, every card was folded (city and district null). `parasut_sync_contact()` loads the ERP code for it (`_parasut_order_invoice_load()`); nothing is refused for an address.
 
 ## What does its e-document carry? (#1278)
 - The kind is asked of GİB before the buyer card is opened. `parasut_order_edoc_attributes()` gives the driver's `erp_edoc_parasut_edoc_attributes()` the order's `erp_order_sale_fields()` (erp-vuk-509-fields.md), dated by the sales invoice's day: a zero-rated line's exemption (`erp_vat_line_exemption_code()`), the commercial scenario and mailbox of an e-Invoice, an internet sale's `internet_sale` and `shipment` on e-Archive.

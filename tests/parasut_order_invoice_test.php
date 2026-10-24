@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/accounts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
@@ -643,7 +644,9 @@ function test_parasut_order_contact_attributes_keep_the_identity_in_tax_number()
 		'billing_email_address' => 'a@example.test',
 		'billing_phone_number' => '',
 		'billing_address_1' => 'Cad. 1',
-		'billing_city' => 'İstanbul',
+		'billing_city' => 'Kadıköy',
+		'billing_state' => 'İstanbul',
+		'billing_zip_code' => '34710',
 		'billing_country' => 'TR',
 	);
 
@@ -655,7 +658,10 @@ function test_parasut_order_contact_attributes_keep_the_identity_in_tax_number()
 		'email' => 'a@example.test',
 		'phone' => '',
 		'tax_number' => '10000000146',
-		'address' => 'Cad. 1, İstanbul, TR',
+		'address' => 'Cad. 1',
+		'city' => 'İstanbul',
+		'district' => 'Kadıköy',
+		'postal_code' => '34710',
 	), $person);
 	pg_assert_false(isset($person['tckn']), 'no attribute the documentation does not list');
 
@@ -675,6 +681,103 @@ function test_parasut_order_contact_attributes_keep_the_identity_in_tax_number()
 	pg_assert_false(array_key_exists('tax_number', parasut_order_contact_attributes($order, '')));
 }
 
+// A Turkish billing address goes on the card in Paraşüt's own fields, as
+// the ERP's driver writes an account opened from the order
+// (erp_address_from_checkout(), erp_edoc_parasut_contact_attributes()):
+// the checkout's state field is the province (city), its city field the
+// district, the street lines the address, the postcode postal_code. An
+// e-Archive or e-Invoice needs the city and the district; folded into the
+// address they reached Paraşüt as null.
+function test_parasut_order_contact_attributes_split_a_turkish_address()
+{
+	$order = array(
+		'billing_company' => '',
+		'billing_first_name' => 'PG Canlı Test',
+		'billing_last_name' => 'Alıcı',
+		'billing_email_address' => 'b@example.test',
+		'billing_phone_number' => '05550000000',
+		'billing_address_1' => 'Test Sokak 1',
+		'billing_address_2' => 'Daire 3',
+		'billing_city' => 'Konak',
+		'billing_state' => 'İzmir',
+		'billing_zip_code' => '35000',
+		'billing_country' => 'TR',
+	);
+
+	$card = parasut_order_contact_attributes($order, '');
+	pg_assert_same('Test Sokak 1 Daire 3', $card['address'], 'the street lines, as the ERP account takes them');
+	pg_assert_same('İzmir', $card['city'], 'the province');
+	pg_assert_same('Konak', $card['district'], 'the district');
+	pg_assert_same('35000', $card['postal_code']);
+	pg_assert_false(isset($card['state']), 'Paraşüt has no state field');
+	pg_assert_false(isset($card['is_abroad']), 'nothing the card did not carry before');
+
+	// The country code is read as the ERP reads an account's.
+	$order['billing_country'] = 'tr';
+	pg_assert_same('İzmir', parasut_order_contact_attributes($order, '')['city']);
+
+	// No billing country: the store's (erp_account_country()); a Turkish
+	// store splits the address, a store that chose none keeps it folded.
+	$order['billing_country'] = '';
+	$card = parasut_order_contact_attributes($order, '', 'TR');
+	pg_assert_same('Test Sokak 1 Daire 3', $card['address']);
+	pg_assert_same('Konak', $card['district']);
+	pg_assert_same('Test Sokak 1, Daire 3, Konak, İzmir, 35000', parasut_order_contact_attributes($order, '', '')['address']);
+
+	// An empty field is left off rather than sent empty.
+	$order['billing_country'] = 'TR';
+	$order['billing_address_2'] = '';
+	$order['billing_state'] = '';
+	$order['billing_zip_code'] = '';
+	$card = parasut_order_contact_attributes($order, '');
+	pg_assert_same('Test Sokak 1', $card['address']);
+	pg_assert_same('Konak', $card['district']);
+	pg_assert_false(array_key_exists('city', $card), 'no province given');
+	pg_assert_false(array_key_exists('postal_code', $card), 'no postcode given');
+
+	$order['billing_address_1'] = '';
+	pg_assert_false(array_key_exists('address', parasut_order_contact_attributes($order, '')), 'no street given');
+}
+
+// An address abroad keeps the card it was given before: one folded address
+// line, no city or district (Paraşüt's city and district are Turkey's
+// provinces and districts). The identity rules do not depend on the country.
+function test_parasut_order_contact_attributes_keep_an_address_abroad_folded()
+{
+	$order = array(
+		'billing_company' => 'Muster GmbH',
+		'billing_first_name' => 'Max',
+		'billing_last_name' => 'Muster',
+		'billing_email_address' => 'm@example.test',
+		'billing_phone_number' => '',
+		'billing_address_1' => 'Hauptstr. 5',
+		'billing_address_2' => '',
+		'billing_city' => 'Berlin',
+		'billing_state' => 'BE',
+		'billing_zip_code' => '10115',
+		'billing_country' => 'DE',
+	);
+
+	pg_assert_same(array(
+		'account_type' => 'customer',
+		'contact_type' => 'company',
+		'name' => 'Muster GmbH',
+		'email' => 'm@example.test',
+		'phone' => '',
+		'tax_number' => '123456789',
+		'address' => 'Hauptstr. 5, Berlin, BE, 10115, DE',
+	), parasut_order_contact_attributes($order, '123456789'));
+
+	$order['billing_company'] = '';
+	$person = parasut_order_contact_attributes($order, '');
+	pg_assert_same('person', $person['contact_type']);
+	pg_assert_same('Max Muster', $person['name']);
+	pg_assert_false(array_key_exists('tax_number', $person));
+	pg_assert_false(array_key_exists('city', $person));
+	pg_assert_false(array_key_exists('district', $person));
+	pg_assert_false(array_key_exists('postal_code', $person));
+}
+
 // The order screen's buttons open the buyer card with those attributes.
 function test_parasut_sync_contact_writes_the_card_with_the_order_attributes()
 {
@@ -687,4 +790,10 @@ function test_parasut_sync_contact_writes_the_card_with_the_order_attributes()
 
 	pg_assert_contains('parasut_order_contact_attributes($order, _parasut_order_identity($order))', $body);
 	pg_assert_false(strpos($body, "'tckn'") !== false, 'no tckn attribute');
+
+	// The address is read by the ERP's accounts code, loaded first also for
+	// E-Shipment, which does not load it itself.
+	$load = strpos($body, '_parasut_order_invoice_load();');
+	pg_assert_true($load !== false, 'the ERP code is loaded');
+	pg_assert_true($load < strpos($body, 'parasut_order_contact_attributes('), 'before the attributes are built');
 }
