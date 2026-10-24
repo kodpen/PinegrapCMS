@@ -554,3 +554,385 @@ function test_comments_widget_designer_settings_rows()
 		pg_assert_contains($needle, $sect, 'the settings section has ' . $needle);
 	}
 }
+
+// -- the canvas and the Preview ---------------------------------------------------
+
+// The editor's unsaved settings take the place of the stored ones for the
+// page being previewed, and only the comment columns.
+function test_comments_widget_designer_page_override()
+{
+	if (!comments_widget_designer_test_has('pg_comments_page_override')) {
+		return;
+	}
+
+	$row = array('page_id' => '7', 'page_name' => 'topic', 'comments' => '1', 'comments_message' => 'old', 'comments_rating' => '0');
+	$override = array('page_id' => 7, 'columns' => array(
+		'comments_message' => 'New intro', 'comments_rating' => 1, 'page_name' => 'hacked', 'comments_label' => 'Reply',
+	));
+
+	$out = pg_comments_page_override($row, $override);
+	pg_assert_same('New intro', $out['comments_message'], 'the intro is the editor\'s');
+	pg_assert_same('1', $out['comments_rating'], 'stars on, as a string');
+	pg_assert_same('topic', $out['page_name'], 'a column outside the comment settings is never replaced');
+	pg_assert_false(array_key_exists('comments_label', $out), 'a column the row does not have is not added');
+	pg_assert_same('1', $out['comments'], 'a column not sent is kept');
+
+	pg_assert_same($row, pg_comments_page_override($row, array('page_id' => 8, 'columns' => array('comments_message' => 'x'))), 'another page');
+	pg_assert_same($row, pg_comments_page_override($row, null), 'no override');
+	pg_assert_same($row, pg_comments_page_override($row, 'x'), 'not an array');
+	pg_assert_same($row, pg_comments_page_override($row, array('page_id' => 7)), 'no columns');
+}
+
+// The override is kept for the request until it is cleared.
+function test_comments_widget_designer_preview_page_registry()
+{
+	if (!comments_widget_designer_test_has('pg_comments_preview_page')) {
+		return;
+	}
+
+	$before = pg_comments_preview_page(array());
+	pg_assert_same(null, pg_comments_preview_page(), 'cleared');
+
+	$set = array('page_id' => 7, 'columns' => array('comments_rating' => 1));
+	pg_assert_same(null, pg_comments_preview_page($set), 'the old value comes back');
+	pg_assert_same($set, pg_comments_preview_page(), 'read');
+	pg_assert_same($set, pg_comments_preview_page(false), 'a clear hands back the value');
+	pg_assert_same(null, pg_comments_preview_page(), 'cleared again');
+	pg_assert_same(null, pg_comments_preview_page(array('page_id' => 0, 'columns' => array())), 'no page clears');
+
+	if (is_array($before) && $before) {
+		pg_comments_preview_page($before);
+	}
+}
+
+// Who the widget draws for: a live visitor uses the session; the search
+// index and a background render (the Preview, the SEO pass) are anonymous.
+function test_comments_widget_designer_audience_table()
+{
+	if (!comments_widget_designer_test_has('pg_comments_widget_audience')) {
+		return;
+	}
+
+	pg_assert_same(array('staff' => true, 'signed_in' => true, 'session' => true), pg_comments_widget_audience(false, false, true, true), 'live staff');
+	pg_assert_same(array('staff' => false, 'signed_in' => false, 'session' => false), pg_comments_widget_audience(true, false, true, true), 'search index');
+	pg_assert_same(array('staff' => false, 'signed_in' => false, 'session' => false), pg_comments_widget_audience(false, true, true, true), 'background render');
+	pg_assert_same(array('staff' => false, 'signed_in' => false, 'session' => true), pg_comments_widget_audience(false, false, false, false), 'signed-out visitor');
+	pg_assert_same(array('staff' => false, 'signed_in' => true, 'session' => true), pg_comments_widget_audience(false, false, false, true), 'member');
+}
+
+// The Preview draws the comments of the saved page with the editor's
+// settings; the renderer asks who it draws for; the endpoint ignores a page
+// the user may not know.
+function test_comments_widget_designer_preview_wiring()
+{
+	$preview = comments_widget_designer_test_php_body('pg_designer_preview_widgets');
+	pg_assert_true($preview !== '', 'pg_designer_preview_widgets is found');
+	foreach (array('pg_sw_render_context(', 'pg_comments_widget_pages(', '_pg_preview_newest_record_code(', 'pg_comment_editor_columns(') as $call) {
+		pg_assert_contains($call, $preview, 'the Preview calls ' . $call);
+	}
+	pg_assert_true(substr_count($preview, 'pg_comments_preview_page(') >= 2, 'the Preview sets the page settings and clears them');
+	pg_assert_true(function_exists('_pg_preview_newest_record_code'), 'the newest record helper exists');
+	if (function_exists('pg_designer_preview_widgets')) {
+		$fn = new ReflectionFunction('pg_designer_preview_widgets');
+		pg_assert_same(3, $fn->getNumberOfParameters(), 'the Preview takes the comment settings');
+	}
+
+	$render = comments_widget_designer_test_php_body('_render_system_widget_comments');
+	pg_assert_contains('pg_comments_widget_audience(', $render, 'the renderer asks who it draws for');
+	pg_assert_contains('pg_comments_page_override(', $render, 'the renderer takes the Preview settings');
+	pg_assert_contains('pg_seo_rendering()', $render, 'a background render is anonymous');
+
+	$panel = comments_widget_designer_test_source('includes/panel/designer.php');
+	$case = substr($panel, (int) strpos($panel, "case 'preview_widgets':"), 900);
+	pg_assert_contains("comment_settings", $case, 'the endpoint reads the comment settings');
+	pg_assert_contains('pg_designer_page_access(', $case, 'the endpoint checks the page');
+}
+
+// The canvas twin of the thread flags gives what the server gives.
+function test_comments_widget_designer_thread_flags_twin()
+{
+	$sets = array(
+		'default' => array(),
+		'closed' => array('allow_new' => false, 'count' => 3),
+		'must sign in' => array('allow_new' => true, 'require_login' => true, 'signed_in' => false),
+		'member, chosen name' => array('allow_new' => 1, 'signed_in' => 1, 'name_mode' => 'chosen', 'watching_on' => 1, 'count' => '4'),
+		'member, fixed name, watching' => array('allow_new' => '1', 'signed_in' => true, 'name_mode' => 'fixed', 'watching_on' => true, 'is_watcher' => true),
+		'staff with watchers' => array('allow_new' => true, 'signed_in' => true, 'staff' => true, 'watching_on' => true, 'manage_watchers' => true, 'name_mode' => 'typed', 'count' => 2),
+		'search index' => array('allow_new' => true, 'signed_in' => true, 'staff' => true, 'search_index' => true, 'count' => 5, 'watching_on' => true),
+		'replying' => array('allow_new' => true, 'replying' => true, 'name_mode' => 'typed', 'count' => 1),
+		'featured none' => array('featured_mode' => 'none', 'has_featured' => true, 'count' => 2, 'featured_view' => '0'),
+		'pages 3' => array('pages' => 3, 'count' => 40, 'featured_view' => true, 'has_featured' => 1, 'rating_on' => 1, 'files_on' => ''),
+		'odd values' => array('pages' => '2', 'count' => '0', 'allow_new' => 'yes', 'submitter_notified' => 1, 'signed_in' => 1, 'watching_on' => 1),
+	);
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsThreadFlags'),
+		'var sets = ' . json_encode($sets) . ";\nvar out = {};\nObject.keys(sets).forEach(function (k) { out[k] = _sdCommentsThreadFlags(sets[k]); });\nprocess.stdout.write(JSON.stringify(out));\n");
+	if ($res === null) {
+		return;
+	}
+
+	foreach ($sets as $name => $facts) {
+		$php = pg_comments_widget_thread_flags($facts);
+		pg_assert_same(22, count($php), $name . ': 22 flags');
+		$js = isset($res[$name]) ? $res[$name] : array();
+		ksort($php);
+		ksort($js);
+		pg_assert_same($php, $js, $name);
+	}
+}
+
+// The script that runs the canvas states: a small tree in the shape of the
+// starter, the stubs the functions read, and the twin.
+function comments_widget_designer_test_canvas_script($body)
+{
+	return <<<'JS'
+function _sdT(s, v) { return (v === undefined) ? s : String(s).replace(/\{var(?::1)?\}/g, v); }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+var _cmt = { pg_comments: '1', pg_comments_rating: '1', pg_comments_select_name: '0', pg_comments_label: '' };
+function _getCmtVal(k) { return _cmt[k] || ''; }
+var _sdCommentsCanvasState = 'comments';
+var _sdCommentSample = null;
+function n(type, props, kids, name) { props = props || {}; props.customName = name; return { type: type, props: props, children: kids || [] }; }
+function flag(f, kids, name) { return n('semantic', { tag: 'div', _bindings: { eo_visible_if: f } }, kids, name); }
+var named = {};
+function keep(node) { named[node.props.customName] = node; return node; }
+var loop = keep(n('loop_area', {}, [n('semantic', { tag: 'div' }, [
+    keep(flag('comment_is_pending', [], 'status')),
+    keep(flag('comment_has_quote', [], 'quote')),
+    keep(flag('is_staff', [], 'staff name')),
+    keep(n('semantic', { tag: 'div' }, [], 'card text'))
+], 'card')], 'loop'));
+var tree = n('root', {}, [n('container', {}, [
+    keep(flag('has_comments', [], 'heading')),
+    n('semantic', { tag: 'div' }, [loop], 'list'),
+    keep(flag('no_comments', [], 'empty')),
+    keep(flag('comments_open', [], 'add heading')),
+    keep(flag('comments_closed', [], 'closed')),
+    keep(flag('must_sign_in', [], 'sign in')),
+    keep(n('semantic', { tag: 'form', _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
+        keep(flag('is_replying', [keep(n('semantic', { tag: 'span' }, [], 'replying text'))], 'replying')),
+        keep(flag('rating_on', [], 'rating')),
+        keep(flag('name_is_chosen', [], 'name select'))
+    ], 'form')),
+    keep(flag('is_staff', [], 'staff controls')),
+    keep(n('semantic', { tag: 'div' }, [], 'plain'))
+])]);
+var cfg = { regionType: 'comments', featured: 'first', per_page: 0, layout: 'flat' };
+var out = {};
+JS
+		. "\n" . $body . "\nprocess.stdout.write(JSON.stringify(out));\n";
+}
+
+// Each state hides what that visitor would not get; a switched-off feature
+// is never hidden (it fades); a row flag hides only in a sample comment.
+function test_comments_widget_designer_canvas_flag_off_and_state_for()
+{
+	$body = <<<'JS'
+out.states = _sdCommentsCanvasStates().map(function (s) { return s[0]; });
+['comments', 'closed', 'empty', 'staff', 'member', 'sign_in', 'replying'].forEach(function (st) {
+    _sdCommentsCanvasState = st;
+    var r = {};
+    Object.keys(named).forEach(function (k) { r[k] = _sdCommentsFlagOff(named[k], cfg); });
+    out[st] = r;
+});
+_cmt.pg_comments_select_name = '1';
+_sdCommentsCanvasState = 'member';
+out.member_chosen = _sdCommentsFlagOff(named['name select'], cfg);
+_cmt.pg_comments_select_name = '0';
+_sdCommentsCanvasState = 'comments';
+_sdCommentSample = { key: 'pending', flags: { comment_has_quote: false, comment_is_pending: true }, values: {} };
+out.sample_quote = _sdCommentsFlagOff(named['quote'], cfg);
+out.sample_status = _sdCommentsFlagOff(named['status'], cfg);
+_sdCommentSample = null;
+out.other_kind = _sdCommentsFlagOff(named['closed'], { regionType: 'login_region' });
+var foreign = n('semantic', { tag: 'div', _bindings: { eo_visible_if: 'is_staff' } }, [], 'foreign');
+var pick = function (current, node) { _sdCommentsCanvasState = current; return _sdCommentsStateFor(tree, node, cfg); };
+out.pick = {
+    form_from_closed: pick('closed', named['form']),
+    replying: pick('comments', named['replying text']),
+    sign_in: pick('comments', named['sign in']),
+    staff: pick('comments', named['staff controls']),
+    card_from_empty: pick('empty', named['card text']),
+    plain: pick('closed', named['plain']),
+    foreign: pick('staff', foreign),
+    shown_already: pick('member', named['form'])
+};
+JS;
+
+	$res = comments_widget_designer_test_node(
+		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
+		comments_widget_designer_test_canvas_script($body));
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff'), $res['states'], 'the states in order');
+
+	pg_assert_true($res['closed']['add heading'], 'closed hides comments_open');
+	pg_assert_true($res['closed']['form'], 'closed hides the form');
+	pg_assert_false($res['closed']['closed'], 'closed shows comments_closed');
+	pg_assert_true($res['comments']['closed'], 'open hides comments_closed');
+	pg_assert_false($res['comments']['form'], 'open shows the form');
+
+	pg_assert_true($res['empty']['loop'], 'no comments hides the loop area');
+	pg_assert_true($res['empty']['heading'], 'no comments hides has_comments');
+	pg_assert_false($res['empty']['empty'], 'no comments shows no_comments');
+	pg_assert_false($res['comments']['loop'], 'comments show the loop area');
+	pg_assert_true($res['comments']['empty'], 'comments hide no_comments');
+
+	pg_assert_false($res['staff']['staff controls'], 'staff shows is_staff');
+	pg_assert_true($res['comments']['staff controls'], 'a visitor does not get is_staff');
+	pg_assert_true($res['comments']['staff name'], 'nor the staff name in the card');
+	pg_assert_false($res['staff']['staff name'], 'staff get the staff name');
+
+	pg_assert_false($res['comments']['quote'], 'the card shows every row part');
+	pg_assert_false($res['comments']['status'], 'the card shows the status');
+	pg_assert_true($res['sample_quote'], 'a sample without a quote hides it');
+	pg_assert_false($res['sample_status'], 'a pending sample shows its status');
+
+	foreach (array('comments', 'closed', 'empty', 'staff', 'member', 'sign_in', 'replying') as $state) {
+		pg_assert_false($res[$state]['rating'], 'rating_on is never hidden: ' . $state);
+		pg_assert_false($res[$state]['plain'], 'an unflagged node shows: ' . $state);
+	}
+
+	pg_assert_true($res['sign_in']['form'], 'must sign in hides the form');
+	pg_assert_false($res['sign_in']['sign in'], 'must sign in shows the note');
+	pg_assert_true($res['comments']['replying'], 'not replying hides the reply line');
+	pg_assert_false($res['replying']['replying'], 'replying shows it');
+	pg_assert_true($res['member']['name select'], 'a member without a name choice has a fixed name');
+	pg_assert_false($res['member_chosen'], 'with the choice on, a member picks a name');
+	pg_assert_false($res['other_kind'], 'another widget kind is left alone');
+
+	pg_assert_same('comments', $res['pick']['form_from_closed'], 'the form opens the comments state');
+	pg_assert_same('replying', $res['pick']['replying'], 'the reply line opens replying');
+	pg_assert_same('sign_in', $res['pick']['sign_in'], 'the sign-in note opens sign in');
+	pg_assert_same('staff', $res['pick']['staff'], 'staff controls open staff');
+	pg_assert_same('comments', $res['pick']['card_from_empty'], 'the card opens a state with comments');
+	pg_assert_same('closed', $res['pick']['plain'], 'an unflagged node keeps the state');
+	pg_assert_same('staff', $res['pick']['foreign'], 'a node outside the widget keeps the state');
+	pg_assert_same('member', $res['pick']['shown_already'], 'a state that shows the node is kept');
+}
+
+// The three sample comments after the card: a reply with a quote, one
+// awaiting approval, one with stars and a file.
+function test_comments_widget_designer_samples()
+{
+	$body = <<<'JS'
+var by = function (list) { var o = {}; list.forEach(function (s) { o[s.key] = s; }); return o; };
+out.flat = by(_sdCommentSamples({ regionType: 'comments', layout: 'flat' }, { is_staff: false }));
+out.threaded = by(_sdCommentSamples({ regionType: 'comments', layout: 'threaded' }, { is_staff: false }));
+out.staff = by(_sdCommentSamples({ regionType: 'comments', layout: 'flat' }, { is_staff: true }));
+_cmt.pg_comments_rating = '0';
+_cmt.pg_comments_label = 'Answer';
+out.no_stars = by(_sdCommentSamples({ regionType: 'comments' }, { is_staff: false }));
+out.keys = _sdCommentSamples({ regionType: 'comments' }, { is_staff: false }).map(function (s) { return s.key; });
+Object.keys(out).forEach(function (k) {
+    if (k === 'keys') return;
+    Object.keys(out[k]).forEach(function (s) {
+        Object.keys(out[k][s].values).forEach(function (v) {
+            if (typeof out[k][s].values[v] === 'function') out[k][s].values[v] = out[k][s].values[v]();
+        });
+    });
+});
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentSamples'), comments_widget_designer_test_canvas_script($body));
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('reply', 'pending', 'rated'), $res['keys'], 'three samples');
+
+	$flat = $res['flat']['reply'];
+	pg_assert_true($flat['flags']['comment_is_root'], 'a flat reply is drawn as a top-level comment');
+	pg_assert_false($flat['flags']['comment_is_reply'], 'not indented');
+	pg_assert_true($flat['flags']['comment_has_quote'], 'it quotes the comment answered');
+	pg_assert_same('0', $flat['values']['__comment_depth'], 'depth 0');
+	pg_assert_same('Jane Cooper', $flat['values']['__comment_parent_name'], 'the name answered');
+	pg_assert_contains('Thanks, that answered my question.', $flat['values']['__comment_message_html'], 'the message');
+
+	$threaded = $res['threaded']['reply'];
+	pg_assert_true($threaded['flags']['comment_is_reply'], 'a threaded reply is a reply');
+	pg_assert_false($threaded['flags']['comment_is_root'], 'not top-level');
+	pg_assert_true($threaded['flags']['comment_has_quote'], 'still quoted');
+	pg_assert_same('1', $threaded['values']['__comment_depth'], 'depth 1');
+
+	$pending = $res['flat']['pending'];
+	pg_assert_true($pending['flags']['comment_is_pending'], 'pending');
+	pg_assert_true($pending['flags']['comment_is_own_pending'], 'the visitor\'s own');
+	pg_assert_same('Your comment is awaiting approval', $pending['values']['__comment_status'], 'its status');
+	pg_assert_false($pending['flags']['comment_has_quote'], 'no quote');
+	pg_assert_false($res['staff']['pending']['flags']['comment_is_own_pending'], 'staff read someone else\'s');
+	pg_assert_same('Not Published', $res['staff']['pending']['values']['__comment_status'], 'staff status');
+	pg_assert_same('Your answer is awaiting approval', $res['no_stars']['pending']['values']['__comment_status'], 'the page label');
+
+	$rated = $res['flat']['rated'];
+	pg_assert_true($rated['flags']['comment_has_file'], 'a file');
+	pg_assert_true($rated['flags']['comment_has_rating'], 'stars while the page has them');
+	pg_assert_false($res['no_stars']['rated']['flags']['comment_has_rating'], 'no stars while the page has none');
+	pg_assert_same('photo.jpg', $rated['values']['__comment_file_name'], 'the file name');
+
+	pg_assert_false($flat['flags']['comment_can_edit'], 'a visitor cannot edit');
+	pg_assert_true($res['staff']['rated']['flags']['comment_can_edit'], 'staff can');
+	foreach (array('comment_is_featured', 'comment_is_scheduled', 'comment_has_seller_reply', 'comment_has_badge') as $off) {
+		pg_assert_false($rated['flags'][$off], $off . ' is off');
+	}
+}
+
+
+// The login region's two chips are built as before.
+function test_comments_widget_designer_session_chips_unchanged()
+{
+	$script = <<<'JS'
+function _sdT(s) { return s; }
+var _sdSessionPreview = 'signed_out';
+function _sdSetSessionPreview() {}
+function el(tag) {
+    return { tag: tag, attrs: {}, kids: [], className: '', textContent: '', type: '',
+        setAttribute: function (k, v) { this.attrs[k] = String(v); },
+        appendChild: function (c) { this.kids.push(c); return c; },
+        addEventListener: function () {} };
+}
+var doc = { createElement: el };
+var w = _sdSessionChips(doc, {});
+var out = { className: w.className, role: w.attrs.role, label: w.attrs['aria-label'],
+    chips: w.kids.map(function (b) { return [b.tag, b.type, b.className, b.attrs['aria-pressed'], b.textContent]; }) };
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdStateChips', '_sdSessionChips'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('sd-session-chips', $res['className'], 'the group');
+	pg_assert_same('group', $res['role']);
+	pg_assert_same('Canvas shows', $res['label']);
+	pg_assert_same(array(
+		array('button', 'button', 'sd-session-chip is-on', 'true', 'Signed out'),
+		array('button', 'button', 'sd-session-chip', 'false', 'Signed in'),
+	), $res['chips'], 'two chips');
+}
+
+// The panel's canvas preview section and the Preview's request.
+function test_comments_widget_designer_canvas_wiring()
+{
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+
+	pg_assert_contains('_sdCommentsCanvasSect(', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the widget panel has the canvas preview');
+	$canvas = comments_widget_designer_test_js_function($js, '_sdCommentsCanvasSect');
+	pg_assert_contains('sd-cmt-canvas-state', $canvas, 'the state select');
+	pg_assert_contains('sd-sw-ghosts', $canvas, 'the sample switch');
+	pg_assert_contains('sd-cmt-canvas-state', comments_widget_designer_test_js_function($js, '_wireSystemWidgetProps'), 'the state select is wired');
+
+	$payload = comments_widget_designer_test_js_function($js, '_sdPreviewWidgetPayload');
+	pg_assert_contains('comment_settings', $payload, 'the Preview sends the unsaved settings');
+	pg_assert_contains('_sdCommentSettingsValues()', $payload, 'read from the hidden inputs');
+
+	$ref = comments_widget_designer_test_js_function($js, 'buildSharedRefEl');
+	pg_assert_contains('_sdAppendCommentSamples(', $ref, 'the samples follow the card');
+	pg_assert_contains('_sdCommentsCanvasStates()', $ref, 'the band carries the state chips');
+	pg_assert_contains('_sdCommentsFlagOff(', comments_widget_designer_test_js_function($js, 'buildNodeEl'), 'the canvas hides what a state leaves out');
+	pg_assert_contains('_sdCommentsStateFor(', comments_widget_designer_test_js_function($js, '_sdSelectionNeedsCanvas'), 'a hidden node picked switches the state');
+	pg_assert_contains('_sdCommentSample', comments_widget_designer_test_js_function($js, '_displayValueForBinding'), 'a sample\'s values are drawn');
+}

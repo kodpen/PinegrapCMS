@@ -133,6 +133,108 @@ function pg_comments_widget_drawn($page_id, $pages = null)
 }
 
 // ============================================================================
+// Who a thread is drawn for, and the editor's Preview
+// ============================================================================
+
+/**
+ * Who the widget draws a thread for. Pure.
+ *
+ * A live visitor's request reads and writes the visitor's session: the
+ * add-comment form state, the CAPTCHA, the CSRF token, the visitor's own
+ * pending comments. The search index and a background render (the editor's
+ * Preview, the SEO pass: pg_seo_rendering()) draw what a visitor who is not
+ * signed in reads, and never touch the session of the user whose request
+ * runs them.
+ *
+ * @param mixed $search     the page is drawn for the search index
+ * @param mixed $background a background render
+ * @param mixed $staff      edit access to the page
+ * @param mixed $signed_in  a signed-in visitor
+ * @return array 'staff', 'signed_in', 'session' (bool)
+ */
+function pg_comments_widget_audience($search, $background, $staff, $signed_in)
+{
+    $anonymous = (bool) $search || (bool) $background;
+
+    return array(
+        'staff' => (bool) $staff && !$anonymous,
+        'signed_in' => (bool) $signed_in && !$anonymous,
+        'session' => !$anonymous,
+    );
+}
+
+/**
+ * The comment settings the editor holds for the page it previews, saved or
+ * not: array('page_id' => int, 'columns' => column => value), the columns as
+ * pg_comment_editor_columns() gives them. pg_designer_preview_widgets() sets
+ * it around the Preview and clears it after.
+ *
+ * Pass an array with a page id to set it; pass anything else to clear it;
+ * either way the previous value comes back. Pass nothing to read (null when
+ * none is set).
+ *
+ * @param mixed $set
+ * @return array|null
+ */
+function pg_comments_preview_page($set = null)
+{
+    static $preview = null;
+
+    if (func_num_args() === 0) {
+        return $preview;
+    }
+
+    $old = $preview;
+    $page_id = (is_array($set) && isset($set['page_id']) && is_scalar($set['page_id']) && !is_bool($set['page_id'])) ? (int) $set['page_id'] : 0;
+    $preview = ($page_id > 0)
+        ? array('page_id' => $page_id, 'columns' => (isset($set['columns']) && is_array($set['columns'])) ? $set['columns'] : array())
+        : null;
+
+    return $old;
+}
+
+/**
+ * A page row with the editor's unsaved comment settings in place of the
+ * stored ones, for the page the Preview draws (pg_comments_preview_page()).
+ * Pure.
+ *
+ * Only a comment setting column (pg_comment_editor_keys()) that the row
+ * holds is replaced, as a string, the way the row reads it from the
+ * database. Another page's row, or no override, comes back as it is.
+ *
+ * @param mixed $row      the page row
+ * @param mixed $override array('page_id', 'columns'), or null
+ * @return mixed
+ */
+function pg_comments_page_override($row, $override)
+{
+    if (!is_array($row) || !is_array($override) || !isset($override['page_id'], $override['columns']) || !is_array($override['columns'])) {
+        return $row;
+    }
+
+    if (!isset($row['page_id']) || !is_scalar($override['page_id']) || ((int) $override['page_id'] <= 0)
+        || ((int) $override['page_id'] !== (int) $row['page_id'])) {
+        return $row;
+    }
+
+    $allowed = array();
+
+    foreach (pg_comment_editor_keys() as $def) {
+        foreach ($def['columns'] as $column) {
+            $allowed[$column] = true;
+        }
+    }
+
+    foreach ($override['columns'] as $column => $value) {
+        if (isset($allowed[$column]) && array_key_exists($column, $row) && is_scalar($value)) {
+            $row[$column] = (string) $value;
+        }
+    }
+
+    return $row;
+}
+
+// ============================================================================
 // Display options, the order a thread is drawn in, the featured links
 // ============================================================================
 
@@ -3168,6 +3270,10 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
+    // The editor's Preview draws the page with the comment settings the
+    // editor holds, saved or not.
+    $page = pg_comments_page_override($page, pg_comments_preview_page());
+
     // The thread: the record the page's form_item_view widget shows, else
     // the page's own. The read thread of a page that shows no record is
     // every comment on the page, as the classic block reads it.
@@ -3212,19 +3318,22 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     // Who reads it. The search index stores what a visitor who is not signed
-    // in reads.
+    // in reads; a background render (the editor's Preview, the SEO pass)
+    // draws the same and leaves the session of the user whose request runs
+    // it alone: no form state read or used up, no CAPTCHA issued, no token.
     $search = defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
-    $staff = (check_edit_access($page['page_folder']) == true);
+    $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+    $audience = pg_comments_widget_audience($search, $background, check_edit_access($page['page_folder']) == true, _pg_acct_signed_in());
     $record_form = ($record !== null)
         ? array('form_editor_user_id' => $record['form']['form_editor_user_id'], 'form_editor_username' => $record['form']['form_editor_username'])
         : null;
-    $viewer = pg_comments_viewer($staff, $record_form, $search);
-    $is_staff = $staff && !$search;
-    $signed_in = _pg_acct_signed_in() && !$search;
-    $user_id = (defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
-    $role = defined('USER_ROLE') ? USER_ROLE : '';
-    $email = defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '';
-    $form_editor = !empty($viewer['form_editor']) && !$search;
+    $viewer = pg_comments_viewer($audience['staff'], $audience['session'] ? $record_form : null, !$audience['session']);
+    $staff = $is_staff = $audience['staff'];
+    $signed_in = $audience['signed_in'];
+    $user_id = ($audience['session'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
+    $role = ($audience['session'] && defined('USER_ROLE')) ? USER_ROLE : '';
+    $email = ($audience['session'] && defined('USER_EMAIL_ADDRESS')) ? (string) USER_EMAIL_ADDRESS : '';
+    $form_editor = !empty($viewer['form_editor']) && $audience['session'];
 
     // Which comments, and which page of them. A page asked for by number
     // (?comments_page=) wins; else the page that holds the comment the
@@ -3272,12 +3381,15 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
     }
 
-    $lf = new liveform('add_comment', $page_id);
+    $lf = $audience['session'] ? new liveform('add_comment', $page_id) : null;
     $field = function ($name) use ($lf) {
-        $value = $lf->get_field_value($name);
+        $value = $lf ? $lf->get_field_value($name) : null;
         return is_scalar($value) ? (string) $value : '';
     };
-    $in_session = isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    $in_session = $lf && isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    // The CSRF token of the forms; none in a render that is not the
+    // visitor's own.
+    $token = $audience['session'] ? get_token_field() : '';
 
     $facts = array(
         'allow_new' => $allow_new,
@@ -3488,7 +3600,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $sections = array(
-        'comment_captcha' => $captcha_on ? (string) get_captcha_fields($lf) : '',
+        'comment_captcha' => ($captcha_on && $lf) ? (string) get_captcha_fields($lf) : '',
         'comment_rating_input' => ($settings['rating'] && $can_comment) ? pg_comments_rating_input_html($field('rating')) : '',
         'comment_publish' => '',
         'comment_watchers' => '',
@@ -3555,7 +3667,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $typed = (new liveform('add_or_remove_watcher', $page_id))->get_field_value('username_or_email_address');
         $sections['comment_watchers'] = pg_comments_watchers_html(array(
             'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
-            'token_field' => get_token_field(),
+            'token_field' => $token,
             'send_to' => get_request_uri(),
             'page_id' => $page_id,
             'item_type' => $post_type,
@@ -3570,11 +3682,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'can_comment' => $can_comment,
         'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php',
         'hidden_html' => $can_comment
-            ? pg_comments_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
+            ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
             : '',
         'multipart' => $settings['attachments'],
         'label_slot' => 'pg_comment_form_label',
-        'watcher_checked' => !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
+        'watcher_checked' => !$lf || !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
         // A staff comment from a form without the publish options follows
         // the page's setting, as the classic form's default does.
         'publish_default' => $can_publish ? ($settings['auto_publish'] ? 'now' : 'manual') : '',
@@ -3601,13 +3713,13 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'is_watcher' => $is_watcher,
         'watch_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
         'watch_hidden_html' => $can_watch
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
             : '',
         'is_staff' => $is_staff,
         'allow_new' => $allow_new,
         'allow_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/allow_or_disallow_new_comments.php',
         'allow_hidden_html' => $is_staff
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
             : '',
     );
 
@@ -3628,9 +3740,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'edit_chips' => $is_staff && pg_sw_edit_chips_on(),
     ));
 
-    $lf->remove_form();
+    if ($lf) {
+        $lf->remove_form();
+    }
 
-    if ($watching_on) {
+    if ($watching_on && $audience['session']) {
         (new liveform('add_or_remove_watcher', $page_id))->remove_form();
     }
 

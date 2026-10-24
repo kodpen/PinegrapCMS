@@ -28230,5 +28230,19 @@
     "Closed message": "Kapalı mesajı",
     "Shown while new comments are off.": "Yeni yorumlar kapalıyken gösterilir.",
     "Sender manages watchers": "Gönderen izleyicileri yönetir",
-    "On a page with a Form Item View widget, the record's sender may add and remove who is notified.": "Form Öğesi Görünümü widget'ı olan sayfada kaydı gönderen, kimlerin bildirim alacağını ekleyip çıkarabilir."
+    "On a page with a Form Item View widget, the record's sender may add and remove who is notified.": "Form Öğesi Görünümü widget'ı olan sayfada kaydı gönderen, kimlerin bildirim alacağını ekleyip çıkarabilir.",
+    "Replying": "Yanıtlıyor",
+    "No comments": "Yorum yok",
+    "Sample comments": "Örnek yorumlar",
+    "After the card you design, the canvas shows three sample comments: a reply, one awaiting approval, one with stars and a file. They cannot be selected and are not saved.": "Tuval, tasarladığınız kartın ardından üç örnek yorum gösterir: bir yanıt, onay bekleyen bir yorum ve yıldızlı, dosyalı bir yorum. Seçilemezler ve kaydedilmezler.",
+    "{var} sample comments after the card": "kartın ardından {var} örnek yorum",
+    "Chris Park": "Can Öztürk",
+    "1 hour ago": "1 saat önce",
+    "1 day ago": "1 gün önce",
+    "Has anyone tried this with the new version?": "Bunu yeni sürümle deneyen oldu mu?",
+    "Thanks, that answered my question.": "Teşekkürler, sorumu yanıtladı.",
+    "I will try this tonight.": "Bu akşam deneyeceğim.",
+    "Works well, here is a photo.": "İyi çalışıyor, işte bir fotoğraf.",
+    "3 Comments": "3 Yorum",
+    "Be kind and stay on topic.": "Nazik olun ve konudan ayrılmayın."
 }

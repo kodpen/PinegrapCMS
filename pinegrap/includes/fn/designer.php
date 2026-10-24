@@ -8706,11 +8706,21 @@ function _pg_preview_drop_tab_refs($value)
  * output_error() throws, no status code is written, nobody is redirected,
  * and it is drawn as a visitor who is not signed in would see it.
  *
- * @param int   $page_id the page, 0 when it has not been saved
- * @param array $widgets [{id, tree_json, system_region_config}]
+ * A comments widget draws the saved page's thread: the page is the drawn
+ * page (pg_sw_render_context()'s 'page_id'), the page's record widget (the
+ * stored one, the widget pg_sw_record_comment_context() reads) gets its
+ * newest record in ?r=, and the page's comment settings are the ones the
+ * editor holds ($comment_settings, the editor's pg_comments* fields, saved
+ * or not: pg_comments_preview_page()). A page not saved yet has no thread:
+ * the widget draws nothing.
+ *
+ * @param int   $page_id          the page, 0 when it has not been saved
+ * @param array $widgets          [{id, tree_json, system_region_config}]
+ * @param array $comment_settings the page's comment settings as the editor
+ *                                holds them (pg_comment_editor_keys())
  * @return array sid => html
  */
-function pg_designer_preview_widgets($page_id, $widgets)
+function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
     $overrides = array();
@@ -8736,6 +8746,18 @@ function pg_designer_preview_widgets($page_id, $widgets)
     pg_sw_preview_overrides($overrides);
 
     $out = array();
+    // The drawn page, for a widget whose data is the page's own (the comments
+    // widget's thread); a pass of its own, so the claims of the page drawn
+    // around this request are neither read nor cleared; the comment settings
+    // the editor holds for the page.
+    $saved_ctx      = pg_sw_render_context(array('email' => false, 'page_id' => $page_id));
+    $saved_comments = function_exists('pg_comments_widget_pages') ? pg_comments_widget_pages(array()) : null;
+    $saved_preview  = null;
+    $preview_set    = function_exists('pg_comments_preview_page') && $page_id > 0
+        && is_array($comment_settings) && !empty($comment_settings);
+    if ($preview_set) {
+        $saved_preview = pg_comments_preview_page(array('page_id' => $page_id, 'columns' => pg_comment_editor_columns($comment_settings)));
+    }
     try {
         foreach ($overrides as $sid => $ov) {
             $_GET = array();
@@ -8748,20 +8770,17 @@ function pg_designer_preview_widgets($page_id, $widgets)
             $type = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
 
             if ($type === 'form_item_view') {
-                $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-                // The newest record the widget's filters let through.
-                $code = '';
-                if ($form_pid > 0) {
-                    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), $page_id, true);
-                    $code = (string)db_value(
-                        "SELECT forms.reference_code FROM forms
-                         {$clause['join']}
-                         WHERE forms.page_id = '" . $form_pid . "'
-                           {$clause['where']}
-                         ORDER BY forms.id DESC
-                         LIMIT 1");
-                }
+                $code = _pg_preview_newest_record_code($cfg, $page_id);
                 if ($code !== '') $_GET['r'] = $code;
+            } elseif ($type === 'comments' && $page_id > 0) {
+                // A record page's thread is the shown record's: the newest
+                // one of the page's stored record widget, as that widget
+                // shows it here.
+                $fiv = pg_sw_page_widget($page_id, 'form_item_view');
+                if ($fiv) {
+                    $code = _pg_preview_newest_record_code($fiv['cfg'], $page_id);
+                    if ($code !== '') $_GET['r'] = $code;
+                }
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
                 $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);
                 $address = ($group > 0)
@@ -8790,8 +8809,37 @@ function pg_designer_preview_widgets($page_id, $widgets)
         pg_seo_rendering($saved_seo);
         pg_error_throws($saved_throw);
         pg_sw_preview_overrides(array());
+        pg_sw_render_context($saved_ctx);
+        if (is_array($saved_comments)) pg_comments_widget_pages($saved_comments);
+        if ($preview_set) {
+            pg_comments_preview_page(array());
+            if (is_array($saved_preview)) pg_comments_preview_page($saved_preview);
+        }
     }
     return $out;
+}
+
+/**
+ * The reference code of the newest record a form_item_view widget's form
+ * holds and its filters let through, as the Preview shows one ('' for none).
+ *
+ * @param array $cfg     the widget's settings
+ * @param int   $page_id the page it is drawn on
+ * @return string
+ */
+function _pg_preview_newest_record_code($cfg, $page_id)
+{
+    if (!is_array($cfg)) return '';
+    $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+    if ($form_pid <= 0) return '';
+    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), (int)$page_id, true);
+    return (string)db_value(
+        "SELECT forms.reference_code FROM forms
+         {$clause['join']}
+         WHERE forms.page_id = '" . $form_pid . "'
+           {$clause['where']}
+         ORDER BY forms.id DESC
+         LIMIT 1");
 }
 
 /**
