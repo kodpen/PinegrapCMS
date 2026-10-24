@@ -43,6 +43,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *   rss_field       title / description / media / category role
  *   contact_field   the contact column the field fills and updates
  *   office_use_only staff see and fill it; the visitor never does
+ *   url_param       a page-address parameter the field starts with
+ *                   (?topic=…), read at render time, never stored in a row
  *   validation_message, upload_folder_id, quiz_question, quiz_answer
  *
  * On every page save the server reads the widget trees and writes the
@@ -1304,16 +1306,157 @@ function pg_cf_connect_to_contact_off()
 }
 
 /**
- * What a bound control should start out showing, in the order the legacy form
- * screen resolves it. The order matters and is not arbitrary:
+ * The value of page-address parameter $name a designed form control starts
+ * with (props._cf.url_param, ?topic=…). The list-filter rule of
+ * pg_sw_url_param_value() with a longer cap: a string only (?topic[]=x is no
+ * value), trimmed, valid UTF-8 without control or format characters (C0 and
+ * C1 controls, zero-width characters, the byte order mark, bidi controls) or
+ * line and paragraph separators, cut to $max characters.
+ *
+ * $multiline (a text area) keeps line breaks and tabs; \r\n and \r become \n.
+ * A value holding '^^' is refused: the renderer replaces ^^__…^^ tokens over
+ * the drawn form and pg_sw_sweep_tokens() would cut the text between two
+ * pairs. '' when there is no usable value.
+ *
+ * @param array  $request   the query parameters (pg_sw_filter_request())
+ * @param string $name      a parameter name pg_sw_url_param_name() accepted
+ * @param bool   $multiline whether line breaks and tabs are kept
+ * @param int    $max       the longest value kept, in characters
+ * @return string
+ */
+function pg_cf_url_prefill_value($request, $name, $multiline = false, $max = 1000)
+{
+    if (!is_string($name) || $name === '' || !is_array($request)
+        || !isset($request[$name]) || !is_string($request[$name])) return '';
+
+    $value = trim($request[$name]);
+    // The encoding is checked before any /u pattern runs: preg_match() gives
+    // up on invalid UTF-8 and would let the value through unchecked.
+    if ($value === '' || !mb_check_encoding($value, 'UTF-8')) return '';
+
+    if ($multiline) {
+        $value = str_replace(array("\r\n", "\r"), "\n", $value);
+        $refused = '/(?![\t\n])\p{Cc}|[\p{Cf}\p{Zl}\p{Zp}]/u';
+    } else {
+        $refused = '/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u';
+    }
+    if (preg_match($refused, $value) || strpos($value, '^^') !== false) return '';
+
+    return mb_substr($value, 0, max(1, (int)$max), 'UTF-8');
+}
+
+/**
+ * The option $value names, in the option's own spelling: an exact match
+ * first, then one that differs only in upper and lower case (UTF-8). '' when
+ * nothing matches. An empty option value never matches, so a "Choose…"
+ * prompt is never picked.
+ *
+ * @param string $value
+ * @param array  $option_values the option values the control draws
+ * @return string
+ */
+function pg_cf_match_option($value, array $option_values)
+{
+    $value = is_scalar($value) ? (string)$value : '';
+    if ($value === '') return '';
+
+    foreach ($option_values as $option) {
+        if (is_scalar($option) && (string)$option !== '' && (string)$option === $value) return (string)$option;
+    }
+    $lower = mb_strtolower($value, 'UTF-8');
+    foreach ($option_values as $option) {
+        if (!is_scalar($option) || (string)$option === '') continue;
+        if (mb_strtolower((string)$option, 'UTF-8') === $lower) return (string)$option;
+    }
+    return '';
+}
+
+/**
+ * The starting values a designed form takes from the page address, keyed by
+ * the lower-cased field names that key $map.
+ *
+ * A field takes one only when its lead control (the first control with its
+ * name, _pg_cf_controls()) names a parameter in `_cf.url_param` that
+ * pg_sw_url_param_name() accepts, its row exists, it is not hidden from the
+ * visitor (office_use_only on the control or the row: a crafted link must
+ * not preset a staff-only field staff might then send unnoticed), it is not
+ * a file upload, and it is not a lone check box (fewer than two distinct
+ * values: a consent box is never ticked from a link).
+ *
+ * A radio or check-box group keeps only a value one of its boxes carries
+ * (pg_cf_match_option()). A pick list is matched later, in
+ * pg_cf_apply_field_bindings(), against the options it actually draws.
+ *
+ * @param array $controls _pg_cf_controls() of the widget tree, names as drawn
+ * @param array $map      pg_cf_field_map() of the form's page
+ * @param array $request  the query parameters (pg_sw_filter_request())
+ * @return array field key => value
+ */
+function pg_cf_url_prefill_values($controls, $map, $request)
+{
+    $out = array();
+    if (!is_array($controls) || !is_array($map) || !is_array($request) || empty($request)) return $out;
+
+    foreach ($controls as $key => $control) {
+        if (!is_array($control) || !isset($map[$key]) || !is_array($map[$key])) continue;
+        $name = pg_sw_url_param_name(isset($control['url_param']) ? $control['url_param'] : '');
+        if ($name === '') continue;
+
+        $row = $map[$key];
+        if (!empty($control['office_use_only']) || !empty($row['office_use_only'])) continue;
+
+        // The row's type is what custom_form.php validates; the control's is
+        // what the page draws until the next save. Both must allow it.
+        $types = array(
+            isset($row['type']) ? (string)$row['type'] : '',
+            isset($control['type']) ? (string)$control['type'] : '',
+        );
+        if (in_array('file upload', $types, true)) continue;
+
+        // The values the boxes draw, each once: a group that repeats one
+        // value is still a single yes/no box.
+        $options = array();
+        $drawn   = (isset($control['options']) && is_array($control['options'])) ? $control['options'] : array();
+        foreach ($drawn as $option) {
+            if (!is_array($option) || !isset($option['value'])) continue;
+            $option_value = (string)$option['value'];
+            if ($option_value !== '' && !in_array($option_value, $options, true)) $options[] = $option_value;
+        }
+        if (in_array('check box', $types, true) && count($options) < 2) continue;
+
+        $max = 1000;
+        $maxlength = isset($row['maxlength']) ? (int)$row['maxlength'] : 0;
+        if ($maxlength > 0 && $maxlength < $max) $max = $maxlength;
+
+        $multiline = ($types[0] === 'text area' && $types[1] === 'text area');
+        $value = pg_cf_url_prefill_value($request, $name, $multiline, $max);
+        if ($value === '') continue;
+
+        if (in_array('radio button', $types, true) || in_array('check box', $types, true)) {
+            $value = pg_cf_match_option($value, $options);
+            if ($value === '') continue;
+        }
+        $out[$key] = $value;
+    }
+    return $out;
+}
+
+/**
+ * What a bound control should start out showing. The legacy form screen's
+ * order, with a designed form's named address parameter after ?value_<id>
+ * (a source the legacy screen does not have). The order matters and is not
+ * arbitrary:
  *
  *   1. what the visitor typed before a failed submission - never lose that
  *   2. ?value_<id> in the URL - a link that pre-fills the form on purpose
- *   3. the visitor's own contact record - the reason contact_field exists
- *   4. the folder name, when the field is set to use it
- *   5. the field's default value
+ *   3. $url_value, the control's `_cf.url_param` read from the page address
+ *      (pg_cf_url_prefill_values()) - a link that names the field instead
+ *      of its row id
+ *   4. the visitor's own contact record - the reason contact_field exists
+ *   5. the folder name, when the field is set to use it
+ *   6. the field's default value
  */
-function pg_cf_field_initial_value($field, $lf, $folder_id = 0)
+function pg_cf_field_initial_value($field, $lf, $folder_id = 0, $url_value = '')
 {
     $id = (int)$field['id'];
 
@@ -1325,6 +1468,7 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0)
     if (isset($_GET['value_' . $id]) && is_string($_GET['value_' . $id]) && trim($_GET['value_' . $id]) !== '') {
         return trim($_GET['value_' . $id]);
     }
+    if (is_string($url_value) && $url_value !== '') return $url_value;
     if (!empty($field['contact_field'])) {
         $contact = pg_cf_submitter_contact();
         $key     = (string)$field['contact_field'];
@@ -1453,6 +1597,12 @@ function pg_cf_link_labels(&$tree)
  * $lf is the page's liveform, used to re-fill what the visitor typed when the
  * submission came back with an error.
  *
+ * $url_values are the starting values the controls' `_cf.url_param` read from
+ * the page address (pg_cf_url_prefill_values(), field key => value). They
+ * come after ?value_<id> (pg_cf_field_initial_value()). A pick list keeps
+ * one only when an option it draws carries it; otherwise the next source
+ * applies.
+ *
  * A text area whose row is rich text (`wysiwyg`) gets `data-pg-rich-text`,
  * and the page brings the editor for it (pg_cf_rich_text_inject()). Its
  * `required` moves to `aria-required`, because the editor hides the control
@@ -1460,7 +1610,7 @@ function pg_cf_link_labels(&$tree)
  * starting value goes through pg_sanitize_rich_text(), because the editor
  * reads that text as HTML and a pre-fill link can put anything there.
  */
-function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0, $staff = false)
+function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0, $staff = false, $url_values = array())
 {
     if (!is_array($tree)) return;
 
@@ -1572,14 +1722,25 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 }
             }
 
+            // The value the control's named address parameter carries. A
+            // pick list takes it only when one of the options drawn above
+            // carries it (in that option's spelling); otherwise it falls
+            // through to the contact record, the folder or the default.
+            $url_value = (is_array($url_values) && isset($url_values[$key]) && is_string($url_values[$key]))
+                ? $url_values[$key] : '';
+            if ($tag_lc === 'select' && $url_value !== '') {
+                $url_value = pg_cf_match_option($url_value, pg_cf_select_option_values($tree));
+            }
+
             // Starting value: what the visitor typed before a failed
-            // submission, a pre-fill link, their own contact record, the
-            // folder name, the field default - in that order.
-            $stored = pg_cf_field_initial_value($row, $lf, $cf_folder_id);
+            // submission, a pre-fill link (?value_<id>, then the named
+            // address parameter), their own contact record, the folder name,
+            // the field default - in that order.
+            $stored = pg_cf_field_initial_value($row, $lf, $cf_folder_id, $url_value);
             if ($tag_lc === 'textarea') {
                 // The editor parses a rich text area's text as HTML, and the
-                // text can come from the address (?value_<id>): it is filtered
-                // the way the stored answer will be.
+                // text can come from the address (?value_<id> or the named
+                // parameter): it is filtered the way the stored answer will be.
                 if (!is_array($stored) && $stored !== '') {
                     $tree['props']['text'] = $cf_rich ? pg_sanitize_rich_text((string)$stored) : (string)$stored;
                 }
@@ -1638,7 +1799,7 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
         }
 
         foreach ($tree['children'] as &$child) {
-            pg_cf_apply_field_bindings($child, $map, $lf, $cf_folder_id, $staff);
+            pg_cf_apply_field_bindings($child, $map, $lf, $cf_folder_id, $staff, $url_values);
         }
         unset($child);
 
@@ -1787,6 +1948,32 @@ function pg_cf_apply_section_bindings(&$tree, $sections_html)
     }
 }
 
+// The values of a <select> node's <option> children, read the way
+// pg_cf_select_stored_option() reads them: the `value` attribute, or the text
+// when there is none. Empty values (a "Choose…" prompt) are left out.
+function pg_cf_select_option_values($select_node)
+{
+    $out = array();
+    if (!is_array($select_node) || !isset($select_node['children']) || !is_array($select_node['children'])) return $out;
+
+    foreach ($select_node['children'] as $opt) {
+        if (!is_array($opt) || !isset($opt['props']['tag'])) continue;
+        if (strtolower((string)$opt['props']['tag']) !== 'option') continue;
+        $val = null;
+        if (isset($opt['props']['_attrs']) && is_array($opt['props']['_attrs'])) {
+            foreach ($opt['props']['_attrs'] as $a) {
+                if (is_array($a) && isset($a['name']) && $a['name'] === 'value') {
+                    $val = isset($a['value']) ? (string)$a['value'] : '';
+                    break;
+                }
+            }
+        }
+        if ($val === null) $val = isset($opt['props']['text']) ? (string)$opt['props']['text'] : '';
+        if ($val !== '') $out[] = $val;
+    }
+    return $out;
+}
+
 // Mark the <option> matching what the visitor picked. Only touches `selected`,
 // so an option the designer marked selected in the tree stays that way until
 // there is a submitted value to honour instead.
@@ -1914,7 +2101,8 @@ function _pg_cf_type_by_input()
 
 // The `_cf` record a control carries, with every key present. `wysiwyg` and
 // `translate` are three-state: null when the control does not say (the field
-// row keeps the flag it has), otherwise true or false.
+// row keeps the flag it has), otherwise true or false. `url_param` is kept as
+// written; pg_sw_url_param_name() decides where it is used.
 function _pg_cf_node_record($node)
 {
     $cf = (is_array($node) && isset($node['props']['_cf']) && is_array($node['props']['_cf']))
@@ -1931,6 +2119,7 @@ function _pg_cf_node_record($node)
         'quiz_answer'        => isset($cf['quiz_answer']) ? (string)$cf['quiz_answer'] : '',
         'wysiwyg'            => array_key_exists('wysiwyg', $cf) ? !empty($cf['wysiwyg']) : null,
         'translate'          => array_key_exists('translate', $cf) ? !empty($cf['translate']) : null,
+        'url_param'          => (isset($cf['url_param']) && is_scalar($cf['url_param'])) ? trim((string)$cf['url_param']) : '',
     );
 }
 
@@ -1955,6 +2144,9 @@ function _pg_cf_node_record($node)
  * flag (pg_cf_rich_text_flag()). The editor's twin is _cfFieldsOf().
  * `translate` (include the answers in translation) is three-state the same
  * way (pg_cf_translate_flag()).
+ * `url_param` (the page-address parameter the field starts with) is read
+ * from the field's first control, like every `_cf` key, and is never written
+ * to a row: the renderer reads it (pg_cf_url_prefill_values()).
  */
 function _pg_cf_controls($widget_tree, $page_id = 0)
 {
@@ -2062,6 +2254,7 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'translate'       => $cf['translate'],
                         'rss_field'       => $rss,
                         'contact_field'   => $cf['contact_field'],
+                        'url_param'       => $cf['url_param'],
                         'default_value'   => $default,
                         'folder_default'  => false,
                         'size'            => (int)(isset($a['size']) ? $a['size'] : 0),

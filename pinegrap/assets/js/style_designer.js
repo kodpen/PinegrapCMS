@@ -1494,6 +1494,10 @@ const StyleDesigner = (function () {
      *                       left out of translation (icon names, codes,
      *                       JSON); absent, the field row keeps its own flag
      *                       (form_fields.translate_values, new fields on)
+     *   url_param           the page-address parameter the field starts with
+     *                       (?topic=…), on the field's first control
+     *                       (_cfFieldLeadOf); read when the page is drawn
+     *                       (pg_cf_url_prefill_values), never stored in a row
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1832,6 +1836,7 @@ const StyleDesigner = (function () {
                     required: _cfHasAttr(c.node, 'required'),
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
+                    url_param: String(rec.url_param || ''),
                     office_use_only: !!rec.office_use_only,
                     rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
@@ -1920,6 +1925,38 @@ const StyleDesigner = (function () {
             if (list[j].fieldset === me.fieldset && list[j].itype === me.itype) return list[j].node;
         }
         return node;
+    }
+
+    // The control the server reads a field's `_cf` from: the first control
+    // with the field's name in document order (_pg_cf_controls() keeps the
+    // first). Unlike _cfLeadOf(), a same-named group outside a <fieldset>
+    // gives its first box, not the clicked one.
+    function _cfFieldLeadOf(node, root) {
+        var key = String(_cfControlName(node) || '').toLowerCase();
+        if (!key) return node;
+        var list = _cfControls(root);
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].name && list[i].name.toLowerCase() === key) return list[i].node;
+        }
+        return node;
+    }
+
+    // Whether a field can start from the page address. Twin of the skips in
+    // pg_cf_url_prefill_values(): never a file upload or a password, and
+    // never a lone check box (fewer than two distinct values among its boxes,
+    // counted as _pg_cf_controls() counts options).
+    function _cfUrlParamApplies(lead, members) {
+        var type = _cfControlType(lead);
+        if (type === 'file upload' || _cfInputType(lead) === 'password') return false;
+        if (type === 'check box') {
+            var values = [];
+            (members || [lead]).forEach(function (n) {
+                var v = _cfNodeAttr(n, 'value');
+                if (v !== null && v !== '' && values.indexOf(v) === -1) values.push(v);
+            });
+            return values.length >= 2;
+        }
+        return true;
     }
 
     // Every control that shares a name with `node` (a group), or just the node.
@@ -2272,6 +2309,38 @@ const StyleDesigner = (function () {
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
 
+        // A field can start from a named parameter of the page address
+        // (?topic=…), read when the page is drawn (pg_cf_url_prefill_values()).
+        // The setting sits on the field's first control, the one the server
+        // reads, whichever box of a group is selected.
+        var urlLead = _cfFieldLeadOf(node, w.tree);
+        if (_cfUrlParamApplies(urlLead, _cfGroupOf(urlLead, w.tree))) {
+            var urlRec = (urlLead.props && urlLead.props._cf && typeof urlLead.props._cf === 'object' && !Array.isArray(urlLead.props._cf))
+                ? urlLead.props._cf : {};
+            var urlParam  = String(urlRec.url_param || '');
+            var urlOffice = !!urlRec.office_use_only;
+            var urlHints;
+            if (urlOffice) {
+                urlHints = _cfHint(esc(_sdT('A field hidden from the visitor is never filled from the page address.')));
+            } else {
+                urlHints = _cfHint(esc(_sdT('Starts with the value of ?{var}=… in the page address unless the visitor has already typed one. Leave empty to turn it off.', _swUrlParamName(urlParam) || 'topic')));
+                if (_cfIsCheck(urlLead) || _cfTagOf(urlLead) === 'select') {
+                    urlHints += _cfHint(esc(_sdT('Only a value that matches one of the options is used (upper and lower case alike).')));
+                }
+                if (_cfInputType(urlLead) === 'hidden') {
+                    urlHints += _cfHint(esc(_sdT('The visitor can change this value: treat it as something they typed.')));
+                }
+                if (urlParam !== '' && _swUrlParamName(urlParam) === '') {
+                    urlHints += '<div style="font-size:.66rem;color:#b45309;margin-top:2px;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                        esc(_sdT('This name cannot be used: the software reads it from page addresses itself, or it is not a plain name. Pick another, such as topic or post.')) + '</div>';
+                }
+            }
+            html += row(esc(_sdT('Fill from the address')),
+                '<input type="text" class="form-control form-control-sm sd-cf-urlparam" maxlength="32" spellcheck="false" placeholder="topic"' +
+                    ' aria-label="' + esc(_sdT('Parameter name')) + '" value="' + esc(urlParam) + '"' + (urlOffice ? ' disabled' : '') + '>' +
+                urlHints);
+        }
+
         html += row(_sdT('RSS / list role'),
             _cfSel('sd-cf-rss', rec.rss_field || '', rss, null) +
             _cfHint(_sdT('<strong>Title</strong> is the submission\'s name, address and RSS title; <strong>Description</strong> is the meta description; <strong>Media</strong> is the image (og:image). Each role belongs to one field in the form.')));
@@ -2474,6 +2543,21 @@ const StyleDesigner = (function () {
         on('sd-cf-contact', 'change', function (el) {
             _cfRec(lead).contact_field = el.value;
             commit(false);
+        });
+        on('sd-cf-urlparam', 'change', function (el) {
+            // Written on the control the server reads (the field's first),
+            // cleaned as a list filter's parameter name is.
+            var fl  = _cfFieldLeadOf(node, w.tree);
+            var v   = String(el.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+            var rec = _cfRec(fl);
+            if (v) {
+                rec.url_param = v;
+            } else {
+                delete rec.url_param;
+                // An empty `_cf` turns into an array on the server's round trip.
+                if (!Object.keys(rec).length) delete fl.props._cf;
+            }
+            commit(true);
         });
         on('sd-cf-rss', 'change', function (el) {
             var role = el.value;
@@ -31593,6 +31677,9 @@ const StyleDesigner = (function () {
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
                             if (f.rich)            flags.push(_sdT('rich text'));
+                            // Only what the server honours (pg_cf_url_prefill_values()).
+                            var fUrl = _swUrlParamName(f.url_param);
+                            if (fUrl && !f.office_use_only && _cfUrlParamApplies(f.lead, f.members)) flags.push('?' + fUrl + '=');
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -47742,6 +47829,7 @@ const StyleDesigner = (function () {
     // Query parameter names the software reads itself, so a filter may not
     // take its value from them; twin of pg_sw_url_param_reserved() in
     // includes/fn/widgets.php (a test compares the two lists).
+    // A designed form control's _cf.url_param obeys the same names.
     var _SW_URL_PARAM_RESERVED = [
         'page', 'page_number', 'query', 'r', 'rss', 'pdf', 'icalendar', 'email',
         'edit', 'edit_theme', 'edit_submitted_form', 'theme_id', 'from', 'logged_out',

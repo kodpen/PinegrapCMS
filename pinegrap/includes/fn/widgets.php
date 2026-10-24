@@ -1013,6 +1013,7 @@ function pg_sw_should_count_record_view($seen, $method, $automated)
 // widgets read the rest (page_number, query, r, ...). The names starting
 // with utm_ or pg_ are refused in pg_sw_url_param_name(). The editor keeps
 // a copy (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
+// A designed form control's _cf.url_param obeys the same names.
 function pg_sw_url_param_reserved()
 {
     return array(
@@ -7093,7 +7094,16 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // half of "not saved yet".
     if ($form_page_id > 0 && function_exists('pg_cf_field_map')) {
         $cf_field_map = pg_cf_field_map($form_page_id);
-        pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff);
+        // A control set to start from a named address parameter
+        // (_cf.url_param) is read here, while the controls still carry the
+        // names they were drawn with; the bindings rename them to row ids.
+        // pg_sw_filter_request() is empty in an e-mail, the SEO pass, the
+        // editor's preview and the search indexer, so nothing is filled
+        // there. A form without the setting costs one strpos().
+        $cf_url_values = (strpos((string)$tree_json, '"url_param"') !== false)
+            ? pg_cf_url_prefill_values(_pg_cf_controls($tree_decoded, $form_page_id), $cf_field_map, pg_sw_filter_request())
+            : array();
+        pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
     }
     // Ids are final now, including the ones invented above, so a label that
     // names nothing can be pointed at the control beside it.
