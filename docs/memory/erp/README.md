@@ -99,7 +99,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: its status line, the three connect steps, what Connect answers (fill, status read with the token's owner), the company number on save
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect endpoint, company id discovery
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
-- erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, and what is still open
+- erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live
 - erp-parasut-legacy-inbox.md: The legacy Paraşüt e-invoice inbox screen (view_parasut_inbox.php): what its tabs read, the query and date filter its lists send (gteq/lteq, #1505), Paraşüt's flaky purchase_bills
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: the ERP's lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), the e-document attributes (#1278)
