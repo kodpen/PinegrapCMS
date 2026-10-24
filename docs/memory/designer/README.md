@@ -36,6 +36,9 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
+- comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, watch box, frontend init
+- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
+- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, tokens, flags, escaping, default layout, checks
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.

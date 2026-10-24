@@ -505,14 +505,26 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
+    // The pages whose comment thread a comments widget drew in this pass
+    // (widgets_comments.php); the classic comments block below leaves them
+    // alone.
+    $pg_cw_pages = array();
     if (strpos($content, '<!--pg-system-widget:') !== false) {
+        // The drawn page's id wins over a dynamic property of that name: a
+        // widget whose data is the page's own (its comment thread) reads it
+        // here.
         $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
-            ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
+            ? pg_sw_render_context(array('email' => (bool)$email, 'page_id' => (int)$page_id) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
             : null;
+        // Each pass keeps its own record of the pages a comments widget drew:
+        // an e-mail or another page drawn meanwhile neither adds to it nor
+        // clears it.
+        $pg_cw_prev = function_exists('pg_comments_widget_pages') ? pg_comments_widget_pages(array()) : null;
         $content = _expand_system_widgets($content, $mode, $email);
         // A widget's own layout can place shared components and other
         // widgets; their markers come out of the widget's render.
         $content = pg_expand_nested_components($content, $mode, $email);
+        if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 
@@ -3744,8 +3756,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $cm_check    = 'software_input_checkbox' . ($cm_bs ? ' form-check-input' : '');
             $cm_btn_secondary = $cm_bs ? ' btn btn-sm btn-outline-secondary' : '';
 
-            // if comments are turned on for this page then output comments, add comment form, and watch comments area
-            if ($comments_settings['enabled'] && (($comments_record === null) || $comments_record['visible'])) {
+            // if comments are turned on for this page then output comments, add comment form, and watch comments area.
+            // A comments widget that drew this page's thread owns it: no second list,
+            // no second reader of the add_comment form state and no append to the
+            // System region. A comments-block marker is still emptied further down,
+            // as $comments_block_html stays empty.
+            if ($comments_settings['enabled'] && (($comments_record === null) || $comments_record['visible']) && !pg_comments_widget_drawn($system_region_properties['page_id'], $pg_cw_pages)) {
                 $item_id = '0';
                 $item_type = '';
 
