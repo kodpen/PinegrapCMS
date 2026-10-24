@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-connectors
-description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 (SSE stop); answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
+description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521; answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
 ---
 
 ## What is asked? (owner, 2026-10-23)
