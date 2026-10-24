@@ -5896,14 +5896,14 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 /**
  * What the page is being drawn for, as the system widgets need to know it.
  *
- * get_page_content() sets it around the widget pass: 'email' when the page is
- * the body of an e-mail, plus the dynamic properties the sender passed with
- * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
- * order receipt. A widget on an e-mail page has no address to read ?r= or
- * ?order_id= from, and the recipient is chosen by the server, so the checks
- * that keep a visitor to their own records do not apply there. Pass an array
- * to set (the previous context comes back, for restoring); pass nothing to
- * read.
+ * get_page_content() sets 'email' for its whole render (true when the page is
+ * the body of an e-mail), and its widget pass adds the dynamic properties the
+ * sender passed with it - 'form_id' for a form's confirmation or
+ * notification, 'order_id' for an order receipt. A widget on an e-mail page
+ * has no address to read ?r= or ?order_id= from, and the recipient is chosen
+ * by the server, so the checks that keep a visitor to their own records do
+ * not apply there. Pass an array to set (the previous context comes back,
+ * for restoring); pass nothing to read.
  *
  * @param array|null $set
  * @return array
@@ -7599,9 +7599,11 @@ function pg_sw_calendar_event_page_allows($page_id, $event_id)
     return _pg_sw_calendar_event_allowed($widget['cfg'], $event_id);
 }
 
-function _pg_sw_calendar_event_allowed($cfg, $event_id)
+// $event_calendars: the event's calendars when the caller has read them
+// already (_pg_sw_calendar_event_calendar_ids()).
+function _pg_sw_calendar_event_allowed($cfg, $event_id, $event_calendars = null)
 {
-    $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
+    if (!is_array($event_calendars)) $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
     if (!$event_calendars) return false;
     $allowed = array();
     foreach (_pg_sw_calendars($cfg) as $c) $allowed[] = (int)$c['id'];
@@ -7990,7 +7992,14 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
     $event_id   = (isset($_GET['id']) && is_scalar($_GET['id'])) ? (int)$_GET['id'] : 0;
     $recurrence = (isset($_GET['recurrence_number']) && is_scalar($_GET['recurrence_number'])) ? max(0, (int)$_GET['recurrence_number']) : 0;
     $event = ($event_id > 0) ? get_calendar_event($event_id, $recurrence) : false;
-    $shown = is_array($event) && (int)$event['published'] === 1 && _pg_sw_calendar_event_allowed($cfg, $event_id);
+    // The event's calendars, read once: for the widget's own calendars and
+    // for the pencil's rights.
+    $event_calendars = array();
+    $shown = false;
+    if (is_array($event) && (int)$event['published'] === 1) {
+        $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
+        $shown = _pg_sw_calendar_event_allowed($cfg, $event_id, $event_calendars);
+    }
 
     $values = array(
         '__event_title' => '', '__event_date_range' => '', '__event_start_date' => '', '__event_start_time' => '',
@@ -8071,7 +8080,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
     $html = str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
     // The pencil on the event, for whoever may edit it.
     if ($shown && pg_sw_edit_chips_on()) {
-        $html = _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence, _pg_sw_calendar_event_calendar_ids($event_id));
+        $html = _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence, $event_calendars);
     }
     return $html;
 }
