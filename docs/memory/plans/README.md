@@ -19,13 +19,16 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
 - design-template-forum-leftovers.md: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501 done, 5 the template built on feature/forum-5-template): step 4, the comments widget move and the watcher fix left
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
-- designable-comments.md: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+- designable-comments.md: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
+- designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
+- designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
+- graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
@@ -40,6 +43,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; items 3 (#972), 4 (#1039) and the CSV $escape (#1450) done
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #1383, #938; next step 4): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+- prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
+- prototype-sharing.md: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team (F7), a link later
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
 - security-findings-2026-10-api.md: Security findings of the 2026-10-20 external API scan: role-3 forms folder rule (PR #933) and customers group rule (PR #956) done; left: private-folder moves pass the widening check
@@ -60,9 +65,11 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a helper in #1512, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, steps 1-2 in #1510, answers given): a channel icon its manager picks from a curated Bootstrap Icons list; kind marks stay visible; colour and icon in the API
-- workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+- workspace-composer-tools.md: Plan (2026-10-23, 1 in #1554, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, not started, answers open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
+- workspace-flows-scheduled-merge.md: Plan (2026-10-24, not started, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
+- workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule, the slice that keeps it, how its test reads keys without a database
 - workspace-flows.md: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
