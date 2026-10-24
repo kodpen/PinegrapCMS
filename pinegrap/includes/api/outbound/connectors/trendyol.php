@@ -17,12 +17,13 @@
 // documentation marks as shared by V1 and V2, are used.
 //
 // What this connector does so far: prove the credentials, read the category
-// tree and what a category demands, open listings, send stock and price, read
-// the result of a batch, read order packages (pulled, or delivered by their
-// webhook), accept one (Picking), report one shipped with the seller's own
-// carrier, and register or remove that webhook. What it does not name in the
-// table below - invoices among them - mp_can() answers no for, so nothing
-// queues work this connector cannot do.
+// tree and what a category demands, open listings and read whether they were
+// approved, send stock and price, read the result of a batch, read order
+// packages (pulled, or delivered by their webhook), accept one (Picking),
+// report one shipped with the seller's own carrier, and register or remove
+// that webhook. What it does not name in the table below - invoices among
+// them - mp_can() answers no for, so nothing queues work this connector
+// cannot do.
 //
 // Four things about this provider shape the code:
 //
@@ -70,6 +71,7 @@ function mp_trendyol_connector() {
 		'create_listings'     => 'mp_trendyol_create_listings',
 		'push_stock_price'    => 'mp_trendyol_push_stock_price',
 		'read_task'           => 'mp_trendyol_read_task',
+		'listing_status'      => 'mp_trendyol_listing_status',
 		'pull_orders'         => 'mp_trendyol_pull_orders',
 		'order_stage'         => 'mp_trendyol_order_stage',
 		'approve_lines'       => 'mp_trendyol_approve_lines',
@@ -1579,6 +1581,239 @@ function mp_trendyol_reason_text($reasons) {
 	}
 
 	return mb_substr(implode('; ', array_unique($parts)), 0, 500);
+
+}
+
+/* ----------------------------------------------------------- listing state */
+
+// The most barcodes their product filters take in one request.
+function mp_trendyol_listing_status_size() {
+
+	return 50;
+
+}
+
+// Where each listing stands on Trendyol, by barcode.
+//
+// A listing created here goes to their approval first: a SUCCESS batch line
+// only means it was handed over. Two services say what happened next, both
+// filtered by barcode: the approved products (a content per listing, its
+// barcodes inside variants[]) and the unapproved ones (one entry per barcode,
+// pendingApproval or rejected). With fifty barcodes asked, each answers with
+// at most fifty contents or entries, so one page of each is the whole answer.
+//
+// Answers data['listings'], barcode => a state array: 'approved' (content_id,
+// commission, on_sale, locked, lock_reason, archived, blacklisted,
+// product_url), 'rejected' or 'pending' (reasons, doc_needed), or 'unknown'
+// for a barcode neither service knows - one never listed, one deleted over
+// there, or one still on its way through their batch. Barcodes their rules
+// refuse are not asked about and are answered in data['refused'] (barcode =>
+// reason).
+function mp_trendyol_listing_status($account, $barcodes, $transport = null) {
+
+	$barcodes = array_values(array_unique(array_map(function ($barcode) {
+
+		return trim((string)$barcode);
+
+	}, (array)$barcodes)));
+
+	if (count($barcodes) > mp_trendyol_listing_status_size()) {
+
+		return mp_error(lang(array(
+			'string' => 'Trendyol is asked about at most {var:1} barcodes at a time.',
+			'vars'   => array(mp_trendyol_listing_status_size())
+		)));
+
+	}
+
+	$refused = array();
+
+	// Folded to lower case, so that a barcode they spell in other capitals is
+	// still the one that was asked about; the answer keeps the spelling asked.
+	$wanted = array();
+
+	foreach ($barcodes as $barcode) {
+
+		$problem = mp_trendyol_barcode_problem($barcode);
+
+		if ($problem !== '') {
+
+			$refused[$barcode] = $problem;
+
+			continue;
+
+		}
+
+		$wanted[mb_strtolower($barcode)] = $barcode;
+
+	}
+
+	if (!$wanted) {
+
+		return mp_ok(array('listings' => array(), 'refused' => $refused));
+
+	}
+
+	$query = implode(',', array_map('rawurlencode', array_values($wanted)));
+
+	$path = '/integration/product/sellers/' . mp_trendyol_seller_id($account) . '/products/';
+
+	$approved = mp_trendyol_call($account, $path . 'approved?barcodes=' . $query . '&page=0&size=100', 8388608, $transport);
+
+	if (!$approved['ok']) {
+
+		return $approved;
+
+	}
+
+	$unapproved = mp_trendyol_call($account, $path . 'unapproved?barcodes=' . $query . '&page=0&size=1000', 8388608, $transport);
+
+	if (!$unapproved['ok']) {
+
+		return $unapproved;
+
+	}
+
+	$listings = array();
+
+	foreach ($wanted as $barcode) {
+
+		$listings[$barcode] = array('state' => 'unknown');
+
+	}
+
+	// The approved answer last: a listing on sale is what the buyer sees,
+	// whatever change of it may be waiting for approval beside it. Assigned
+	// one by one: a barcode of digits is an integer key, which array_merge()
+	// would renumber.
+	foreach (array(mp_trendyol_unapproved_states($unapproved['data'], $wanted),
+		mp_trendyol_approved_states($approved['data'], $wanted)) as $found) {
+
+		foreach ($found as $barcode => $state) {
+
+			$listings[$barcode] = $state;
+
+		}
+
+	}
+
+	return mp_ok(array('listings' => $listings, 'refused' => $refused));
+
+}
+
+// The approved listings among the barcodes in $wanted (lower case => as asked).
+function mp_trendyol_approved_states($decoded, $wanted) {
+
+	$states = array();
+
+	$content = (isset($decoded['content']) && is_array($decoded['content'])) ? $decoded['content'] : array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$content_id = mp_trendyol_text($entry, array('contentId'));
+
+		$variants = (isset($entry['variants']) && is_array($entry['variants'])) ? $entry['variants'] : array();
+
+		foreach ($variants as $variant) {
+
+			$barcode = is_array($variant) ? mp_trendyol_text($variant, array('barcode')) : '';
+
+			$key = mb_strtolower($barcode);
+
+			if ($barcode === '' || $content_id === '' || !isset($wanted[$key])) {
+
+				continue;
+
+			}
+
+			$states[$wanted[$key]] = array(
+				'state'       => 'approved',
+				'content_id'  => $content_id,
+				'commission'  => (isset($variant['commission']) && is_numeric($variant['commission'])) ? (float)$variant['commission'] : null,
+				'on_sale'     => !empty($variant['onSale']),
+				'locked'      => !empty($variant['locked']),
+				'lock_reason' => mp_trendyol_text($variant, array('lockReason')),
+				'archived'    => !empty($variant['archived']),
+				'blacklisted' => !empty($variant['blacklisted']),
+				'product_url' => mp_trendyol_text($variant, array('productUrl'))
+			);
+
+		}
+
+	}
+
+	return $states;
+
+}
+
+// The listings awaiting approval or rejected among the barcodes in $wanted.
+// Each reason is written "reason: detail".
+function mp_trendyol_unapproved_states($decoded, $wanted) {
+
+	$states = array();
+
+	$content = (isset($decoded['content']) && is_array($decoded['content'])) ? $decoded['content'] : array();
+
+	foreach ($content as $entry) {
+
+		$barcode = is_array($entry) ? mp_trendyol_text($entry, array('barcode')) : '';
+
+		$key = mb_strtolower($barcode);
+
+		if ($barcode === '' || !isset($wanted[$key])) {
+
+			continue;
+
+		}
+
+		$status = strtolower(mp_trendyol_text($entry, array('status')));
+
+		if ($status !== 'rejected' && $status !== 'pendingapproval') {
+
+			continue;
+
+		}
+
+		$reasons = array();
+
+		$details = (isset($entry['rejectReasonDetails']) && is_array($entry['rejectReasonDetails'])) ? $entry['rejectReasonDetails'] : array();
+
+		foreach ($details as $detail) {
+
+			if (!is_array($detail)) {
+
+				continue;
+
+			}
+
+			$parts = array_filter(array(
+				mp_trendyol_text($detail, array('rejectReason')),
+				mp_trendyol_text($detail, array('rejectReasonDetail'))
+			), 'strlen');
+
+			if ($parts) {
+
+				$reasons[] = implode(': ', $parts);
+
+			}
+
+		}
+
+		$states[$wanted[$key]] = array(
+			'state'      => ($status === 'rejected') ? 'rejected' : 'pending',
+			'reasons'    => $reasons,
+			'doc_needed' => !empty($entry['docNeeded'])
+		);
+
+	}
+
+	return $states;
 
 }
 

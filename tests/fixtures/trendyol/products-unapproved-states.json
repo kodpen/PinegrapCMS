@@ -1,0 +1,34 @@
+{
+    "totalElements": 3,
+    "totalPages": 1,
+    "page": 0,
+    "size": 1000,
+    "content": [
+        {
+            "barcode": "8680000000042",
+            "status": "rejected",
+            "title": "Bambu Havlu",
+            "stockCode": "TOWEL-1",
+            "docNeeded": false,
+            "rejectReasonDetails": [
+                {"rejectReason": "Görsel hatalı", "rejectReasonDetail": "Ürün görseli beyaz arka planlı olmalı"},
+                {"rejectReason": "Marka uyuşmazlığı", "rejectReasonDetail": "Marka belgesi eksik"}
+            ]
+        },
+        {
+            "barcode": "8680000000059",
+            "status": "pendingApproval",
+            "title": "Kozmetik Set",
+            "stockCode": "COSM-1",
+            "docNeeded": true,
+            "rejectReasonDetails": []
+        },
+        {
+            "barcode": "8680000000066",
+            "status": "pendingApproval",
+            "title": "Defter",
+            "stockCode": "NOTE-1",
+            "docNeeded": false
+        }
+    ]
+}
