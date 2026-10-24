@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453), 4c (#<PR>) done; 2b or 5 next
+description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453), 4c (#1493) done; 2b or 5 next
 ---
 
 ## Why?
@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 3. ~~Stock/price queue.~~ Done #932. Its webhook receiver moved to step 4b: Trendyol webhooks carry only order statuses.
 4a. ~~Order import (V2), Picking push, cancel sync, barcode/sku matching.~~ Done #1452.
 4b. ~~Webhook receiver `marketplace_webhook.php`, registration on the account screen, job accepting webhook-imported packages.~~ Done #1453.
-4c. ~~Own-carrier shipment push (alternative delivery).~~ Done #<PR>.
+4c. ~~Own-carrier shipment push (alternative delivery).~~ Done #1493.
 5. Invoice link push, returns, Q&A (M).
 6. API fields: `/products/{id}/marketplaces`, webhook events `marketplace.order.*` (S).
 7. Memory: each step adds what it verified to the `trendyol-*.md` files.
