@@ -249,25 +249,99 @@ function test_designer_collapse_state_canvas_open_survives_rebuild()
 // emptied (only when the canvas shows the active page, whose ids the keys
 // name) and restores after the build; the mirror from the canvas into the
 // tree is for a collapse only and skips the canvas-only kinds; the context
-// bar's Show / Hide writes the tree for a collapse only.
+// bar's Show / Hide writes the tree for a collapse only. The drawn page is
+// the page object, not its key: the first save of a new page re-keys it, and
+// the next redraw must still find the canvas showing it. A fresh canvas
+// document gets what the old one had open.
 function test_designer_collapse_state_canvas_open_wiring()
 {
 	$render = _test_blocks_slice('    function renderCanvas() {', "\n    }\n");
-	$capture = strpos($render, 'canvasDoc.body._sdDrawnPage === _activeKey ? _sdCanvasOpenCapture(canvasDoc) : {}');
+	$page = strpos($render, 'var _page = _pgActivePage();');
+	$capture = strpos($render, 'canvasDoc.body._sdDrawnPage === _page ? _sdCanvasOpenCapture(canvasDoc)');
+	$pending = strpos($render, ': ((_sdPendingOpen && _sdPendingOpen.page === _page) ? _sdPendingOpen.open : {});');
+	$used = strpos($render, '_sdPendingOpen = null;');
 	$wipe = strpos($render, "canvasDoc.body.innerHTML = '';");
 	$build = strpos($render, 'buildNodeEl(tree)');
-	$stamp = strpos($render, 'canvasDoc.body._sdDrawnPage = _activeKey;');
+	$stamp = strpos($render, 'canvasDoc.body._sdDrawnPage = _page;');
 	$restore = strpos($render, '_sdCanvasOpenRestore(canvasDoc, _openToggleables, _sdFindNodeForEl);');
-	pg_assert_true($capture !== false && $wipe !== false && $build !== false && $stamp !== false && $restore !== false, 'renderCanvas() captures, stamps and restores');
-	pg_assert_true($capture < $wipe && $wipe < $build && $build < $stamp && $stamp < $restore, 'capture before the wipe, restore after the build');
+	pg_assert_true($page !== false && $capture !== false && $pending !== false && $used !== false && $wipe !== false && $build !== false && $stamp !== false && $restore !== false, 'renderCanvas() captures, stamps and restores');
+	pg_assert_true($page < $capture && $capture < $pending && $pending < $used && $used < $wipe && $wipe < $build && $build < $stamp && $stamp < $restore, 'capture before the wipe, restore after the build');
+	pg_assert_same(0, preg_match('/_sdDrawnPage\s*(?:===?|!==?)\s*_activeKey|_sdDrawnPage\s*=\s*_activeKey/', _test_blocks_js()), 'the drawn page is never the key, which a save changes');
+	$after_save = _test_blocks_slice('    function _pgTabsAfterSave(data) {', "\n    }\n");
+	pg_assert_true(strpos($after_save, 'if (_activeKey === p.key) _activeKey = newKey;') !== false, 'the first save of a new page re-keys the active page (the reason the object is compared)');
+
+	$reset = _test_blocks_slice('    function _sdCanvasRealmReset() {', "\n    }\n");
+	$keep = strpos($reset, '_sdPendingOpen = { page: canvasDoc.body._sdDrawnPage, open: _sdCanvasOpenCapture(canvasDoc) };');
+	$drop = strpos($reset, 'canvasDoc = null;');
+	pg_assert_true($keep !== false && $drop !== false && $keep < $drop, 'a realm reset notes what the old document had open before it lets the document go');
 
 	$sync = _test_blocks_slice('    function _syncToggleableShowStateFromDom() {', "\n    }\n");
-	pg_assert_true(strpos($sync, "canvasDoc.body._sdDrawnPage !== _activeKey) return;") !== false, 'the mirror waits for the active page on the canvas');
+	pg_assert_true(strpos($sync, "canvasDoc.body._sdDrawnPage !== _pgActivePage()) return;") !== false, 'the mirror waits for the active page on the canvas');
 	pg_assert_true(strpos($sync, "canvasDoc.querySelectorAll('.collapse')") !== false, 'the mirror reads collapse elements only');
 	pg_assert_true(strpos($sync, '_sdShowIsCanvasOnly(node.props.cssClass)) continue;') !== false, 'the mirror skips a canvas-only node');
 
 	$ctx = _test_blocks_slice('    function ctxBarToggle(toShow) {', "\n    }\n");
 	pg_assert_true(strpos($ctx, 'if (!_sdShowIsCanvasOnly(targetNode.props.cssClass)) {') !== false, 'Show / Hide writes the tree for a collapse only');
+}
+
+// A dropdown menu's open state is held by its canvas element alone, so the
+// element is found from the node, within the node's widget: a widget's menu
+// whose id a page element also uses is the widget's element, not the page's
+// (and a page node is never matched inside a widget). The context bar's
+// Open / Close and the Options panel's Expanded switch read and write it so.
+function test_designer_collapse_state_canvas_inner_of_node()
+{
+	$fns = _test_blocks_slice('    function _sdCanvasInnerOf(node) {', '    /**')
+		. _test_blocks_slice('    function _findCanvasEl(node) {', "\n    }\n") . "\n    }\n"
+		. _test_blocks_slice('    function _resolveSharedSid(node) {', "\n    }\n") . "\n    }\n"
+		. _test_blocks_slice('    function _nodeInTree(target, root) {', "\n    }\n") . "\n    }\n";
+	pg_assert_true(strpos($fns, 'function _sdWrapInner(wrap)') !== false, 'the designer has _sdCanvasInnerOf() and _sdWrapInner()');
+
+	$answer = designer_collapse_state_run(
+		$fns
+		// Elements with classes, attributes, children and querySelector() for
+		// [a="v"] lists with an optional :not([a]).
+		. 'function E(cls, attrs, kids) { var self = this; this.cls = String(cls).split(/\\s+/).filter(Boolean); this.attrs = attrs || {}; this.children = kids || [];'
+		. ' this.classList = { contains: function (c) { return self.cls.indexOf(c) !== -1; } }; }'
+		. 'E.prototype.hasAttribute = function (n) { return Object.prototype.hasOwnProperty.call(this.attrs, n); };'
+		. 'E.prototype.getAttribute = function (n) { return this.hasAttribute(n) ? this.attrs[n] : null; };'
+		. 'function all(root) { var out = []; (function walk(e) { out.push(e); e.children.forEach(walk); })(root); return out; }'
+		. 'function match(e, sel) { var not = /:not\\(\\[([\\w-]+)\\]\\)$/.exec(sel); if (not && e.hasAttribute(not[1])) return false;'
+		. ' var re = /\\[([\\w-]+)="([^"]*)"\\]/g, m, any = false; while ((m = re.exec(sel))) { any = true; if (e.getAttribute(m[1]) !== m[2]) return false; } return any; }'
+		. 'var pageForm = new E("", {}), pageWrap = new E("sd-wrap", { "data-sd-id": "sd_8" }, [new E("sd-tb"), pageForm]);'
+		. 'var menu = new E("dropdown-menu", {}), menuWrap = new E("sd-wrap", { "data-sd-id": "sd_8", "data-sw-sid": "7" }, [new E("sd-tb"), new E("sd-dz"), menu]);'
+		. 'var self = new E("dropdown-menu", { "data-sd-id": "sd_9", "data-sd-self": "" });'
+		. 'var body = new E("", {}, [pageWrap, new E("widget", {}, [menuWrap]), self]);'
+		. 'var canvasDoc = { querySelector: function (sel) { return all(body).filter(function (e) { return match(e, sel); })[0] || null; } };'
+		. 'var menuNode = N("semantic", { tag: "ul", cssClass: "dropdown-menu" }); menuNode._id = "sd_8";'
+		. 'var formNode = N("semantic", { tag: "form" }); formNode._id = "sd_8";'
+		. 'var selfNode = N("semantic", { tag: "ul", cssClass: "dropdown-menu" }); selfNode._id = "sd_9";'
+		. 'var tree = N("root", {}, [formNode, selfNode]);'
+		. 'var _sharedCache = { 7: { tree: N("root", {}, [N("semantic", { tag: "div", cssClass: "dropdown" }, [menuNode])]) } };'
+		. 'function name(el) { return el === menu ? "widget menu" : el === pageForm ? "page form" : el === self ? "self" : String(el); }'
+		. 'var lone = N("semantic", {}); lone._id = "sd_404";'
+		. 'out([name(_sdCanvasInnerOf(menuNode)), name(_sdCanvasInnerOf(formNode)), name(_sdCanvasInnerOf(selfNode)), _sdCanvasInnerOf(lone), _sdCanvasInnerOf(null), _sdWrapInner(new E("sd-wrap", {}, [new E("sd-tb")]))]);'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('widget menu', 'page form', 'self', null, null, null), $answer, 'each node finds its own element; none, nothing');
+
+	$ctx = _test_blocks_slice('    function updateCtxBar() {', "\n    }\n");
+	pg_assert_true(substr_count($ctx, '_sdCanvasInnerOf(menuNode)') >= 2, 'the context bar reads and toggles the menu of the node it was drawn for');
+	$props = _test_blocks_slice('    function propsDropdownOptions(n) {', "\n    }\n");
+	pg_assert_true(strpos($props, 'var menuEl      = menuNode ? _sdCanvasInnerOf(menuNode) : null;') !== false, 'Expanded reads the menu of the node');
+	$change = _test_blocks_slice('    function handleDropdownPropChange(ddProp, val) {', "\n    }\n\n    function btnGroup(");
+	$open = strpos($change, 'var mel = _sdCanvasInnerOf(menuNode);');
+	$bar = $open === false ? false : strpos($change, 'updateCtxBar();', $open);
+	$next = strpos($change, "case 'alignment':");
+	pg_assert_true($open !== false, 'Expanded opens the menu of the node');
+	pg_assert_true($bar !== false && $next !== false && $bar < $next, 'Expanded redraws the context bar, whose Open / Close label reads the menu');
+	foreach (array($ctx, $props, $change) as $body) {
+		pg_assert_same(0, preg_match('/getCanvasInnerEl\((?:menuNode|mNode|triggerNode|node)\._id\)/', $body), 'no id lookup for the dropdown nodes');
+	}
 }
 
 // The Expanded / Collapsed switches open or close a panel and flip every

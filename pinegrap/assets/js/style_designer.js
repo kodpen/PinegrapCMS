@@ -6999,13 +6999,21 @@ const StyleDesigner = (function () {
     // never runs on top of the previous copy. The iframe element is replaced
     // rather than reopened: document.open() keeps the window, its timers and
     // its globals. The editor's own state (selection, zoom, width, dark
-    // canvas, grid and outline, scroll position) carries over.
+    // canvas, grid and outline, scroll position, an open modal, offcanvas or
+    // dropdown menu) carries over.
     var _sdPendingScrollY = 0;
+    // The modals, offcanvases and dropdown menus open in the old document
+    // and the page they were drawn for: the first renderCanvas() of the new
+    // one opens them again (their open state is on the canvas only).
+    var _sdPendingOpen = null;
     function _sdCanvasRealmReset() {
         var old = document.getElementById('sd-canvas-iframe');
         if (!old || !old.parentNode) return;
         if (canvasDoc && canvasDoc.documentElement) {
             _sdPendingScrollY = canvasDoc.documentElement.scrollTop || (canvasDoc.body ? canvasDoc.body.scrollTop : 0) || 0;
+        }
+        if (canvasDoc && canvasDoc.body) {
+            _sdPendingOpen = { page: canvasDoc.body._sdDrawnPage, open: _sdCanvasOpenCapture(canvasDoc) };
         }
         var fresh = document.createElement('iframe');
         for (var i = 0; i < old.attributes.length; i++) {
@@ -7137,10 +7145,24 @@ const StyleDesigner = (function () {
      */
     function getCanvasInnerEl(nodeId) {
         if (!canvasDoc) return null;
-        var wrap = canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]');
+        return _sdWrapInner(canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]'));
+    }
+
+    // The same for a node rather than an id: the wrapper is looked up within
+    // the node's widget (_findCanvasEl()), since a widget's tree keeps ids
+    // that page nodes use too. For state that only the canvas element holds
+    // (an open dropdown menu), the element of another node would be read or
+    // written instead.
+    function _sdCanvasInnerOf(node) {
+        return _sdWrapInner(_findCanvasEl(node));
+    }
+
+    // The semantic element of a canvas wrapper: the wrapper itself when it
+    // draws itself (data-sd-self), else its first child that is not the
+    // selection toolbar or a drop zone.
+    function _sdWrapInner(wrap) {
         if (!wrap) return null;
         if (wrap.hasAttribute('data-sd-self')) return wrap;
-        // The first child that is NOT sd-tb and NOT sd-dz is the inner el
         for (var i = 0; i < wrap.children.length; i++) {
             var ch = wrap.children[i];
             if (!ch.classList.contains('sd-tb') && !ch.classList.contains('sd-dz')) {
@@ -7946,9 +7968,11 @@ const StyleDesigner = (function () {
             bar.removeAttribute('data-ctx-target-id');
 
             // Open or closed on the canvas: a menu's open state is never in
-            // the tree ("Toggleable open state").
+            // the tree ("Toggleable open state"). The menu node itself, not
+            // its id, names the element: inside a widget the id may be a page
+            // node's too.
             var menuNode   = findDropdownMenu(ddContainer);
-            var menuEl     = menuNode ? getCanvasInnerEl(menuNode._id) : null;
+            var menuEl     = menuNode ? _sdCanvasInnerOf(menuNode) : null;
             var isExpanded = !!(menuEl && menuEl.classList.contains('show'));
             var menuId = menuNode ? menuNode._id : '';
 
@@ -7956,18 +7980,15 @@ const StyleDesigner = (function () {
             if (showHide) {
                 showHide.innerHTML =
                     '<button type="button" class="sd-ctx-btn sd-ctx-dd-open-close' +
-                    (isExpanded ? ' sd-ctx-active' : '') +
-                    '" data-dd-container-id="' + ddContainer._id + '">' +
+                    (isExpanded ? ' sd-ctx-active' : '') + '">' +
                     '<span class="bi ' + (isExpanded ? 'bi-eye-slash' : 'bi-eye') + '"></span> ' +
                     (isExpanded ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>';
                 showHide.style.display = '';
                 var ocBtn = showHide.querySelector('.sd-ctx-dd-open-close');
                 if (ocBtn) ocBtn.addEventListener('click', function() {
-                    var cNode = findNodeById(this.getAttribute('data-dd-container-id'), activeTree());
-                    if (!cNode) return;
-                    var mNode = findDropdownMenu(cNode);
-                    if (!mNode) return;
-                    var mel = getCanvasInnerEl(mNode._id);
+                    // The bar is drawn again after every render, so the
+                    // menu node it was drawn for is current.
+                    var mel = menuNode ? _sdCanvasInnerOf(menuNode) : null;
                     if (!mel) return;
                     var wasExpanded = mel.classList.contains('show');
                     mel.classList.toggle('show', !wasExpanded);
@@ -8697,7 +8718,7 @@ const StyleDesigner = (function () {
     // Only while the canvas shows the active page: after a page switch the
     // ids on the canvas name nodes of the page left. Idempotent + cheap.
     function _syncToggleableShowStateFromDom() {
-        if (!canvasDoc || !canvasDoc.body || canvasDoc.body._sdDrawnPage !== _activeKey) return;
+        if (!canvasDoc || !canvasDoc.body || canvasDoc.body._sdDrawnPage !== _pgActivePage()) return;
         var live = canvasDoc.querySelectorAll('.collapse');
         if (!live || !live.length) return;
         for (var i = 0; i < live.length; i++) {
@@ -9909,8 +9930,14 @@ const StyleDesigner = (function () {
         _captureDetailsState();
         // A modal, offcanvas or dropdown menu open on the canvas stays open:
         // the tree has no `show` for it. Only for the page drawn before; the
-        // ids of another page's tree name other nodes.
-        var _openToggleables = canvasDoc.body._sdDrawnPage === _activeKey ? _sdCanvasOpenCapture(canvasDoc) : {};
+        // ids of another page's tree name other nodes. The page object is
+        // compared, not its key: the first save of a new page re-keys it
+        // (_pgTabsAfterSave()). A fresh canvas document gets what the old one
+        // had open (_sdCanvasRealmReset()).
+        var _page = _pgActivePage();
+        var _openToggleables = canvasDoc.body._sdDrawnPage === _page ? _sdCanvasOpenCapture(canvasDoc)
+            : ((_sdPendingOpen && _sdPendingOpen.page === _page) ? _sdPendingOpen.open : {});
+        _sdPendingOpen = null;
         if (tree) injectGoogleFonts();
         canvasDoc.body.innerHTML = '';
         // A shared tree left marked open by an interrupted render would draw
@@ -9918,7 +9945,7 @@ const StyleDesigner = (function () {
         _sdSharedOpen = {};
         if (tree) canvasDoc.body.appendChild(buildNodeEl(tree));
         canvasDoc._sdDrawn = true;
-        canvasDoc.body._sdDrawnPage = _activeKey;
+        canvasDoc.body._sdDrawnPage = _page;
         _sdCanvasOpenRestore(canvasDoc, _openToggleables, _sdFindNodeForEl);
         // Apply root-level fontFamily directly to the iframe <body> so the
         // canvas previews body-wide typography. Empty/missing prop clears
@@ -39738,7 +39765,7 @@ const StyleDesigner = (function () {
         var trigAttrs  = triggerNode ? (triggerNode.props._attrs   || []) : [];
 
         // Expanded is the canvas view of the menu, not a saved state.
-        var menuEl      = menuNode ? getCanvasInnerEl(menuNode._id) : null;
+        var menuEl      = menuNode ? _sdCanvasInnerOf(menuNode) : null;
         var isExpanded  = !!(menuEl && menuEl.classList.contains('show'));
         var alignment   = menuCls.indexOf('dropdown-menu-end') !== -1 ? 'end'
                         : menuCls.indexOf('dropdown-menu-lg-end') !== -1 ? 'lg-end'
@@ -39786,7 +39813,7 @@ const StyleDesigner = (function () {
             if (on && idx === -1) arr.push(cls);
             if (!on && idx !== -1) arr.splice(idx, 1);
             node.props.cssClass = arr.join(' ');
-            var el = getCanvasInnerEl(node._id);
+            var el = _sdCanvasInnerOf(node);
             if (el) el.classList.toggle(cls, on);
         }
         function swapCls(node, group, newCls) {
@@ -39794,7 +39821,7 @@ const StyleDesigner = (function () {
             group.forEach(function(c) { var i = arr.indexOf(c); if (i !== -1) arr.splice(i, 1); });
             if (newCls) arr.push(newCls);
             node.props.cssClass = arr.join(' ');
-            var el = getCanvasInnerEl(node._id);
+            var el = _sdCanvasInnerOf(node);
             if (el) { group.forEach(function(c) { el.classList.remove(c); }); if (newCls) el.classList.add(newCls); }
         }
 
@@ -39804,20 +39831,17 @@ const StyleDesigner = (function () {
                 break;
             case 'expanded':
                 if (menuNode) {
-                    var mel = getCanvasInnerEl(menuNode._id);
+                    var mel = _sdCanvasInnerOf(menuNode);
                     if (mel) mel.classList.toggle('show', !!val);
-                    // Sync ctx bar
-                    var showBtn = document.getElementById('sd-ctx-show');
-                    var hideBtn = document.getElementById('sd-ctx-hide');
-                    if (showBtn) showBtn.classList.toggle('sd-ctx-active', val);
-                    if (hideBtn) hideBtn.classList.toggle('sd-ctx-active', !val);
                     // Sync trigger aria-expanded
                     if (triggerNode) {
-                        var tel = getCanvasInnerEl(triggerNode._id);
+                        var tel = _sdCanvasInnerOf(triggerNode);
                         if (tel) tel.setAttribute('aria-expanded', val ? 'true' : 'false');
                     }
                     // Strip any stale data-bs-popper — see ctxBarToggle comment for why.
                     if (mel) mel.removeAttribute('data-bs-popper');
+                    // The context bar's Open / Close reads the menu element.
+                    updateCtxBar();
                 }
                 break;
             case 'alignment':
@@ -39842,7 +39866,7 @@ const StyleDesigner = (function () {
                     }
                     triggerNode.props._attrs = attrs;
                     // Sync DOM
-                    var trigEl = getCanvasInnerEl(triggerNode._id);
+                    var trigEl = _sdCanvasInnerOf(triggerNode);
                     if (trigEl) {
                         if (val === 'true') trigEl.removeAttribute('data-bs-auto-close');
                         else trigEl.setAttribute('data-bs-auto-close', val);
