@@ -16,7 +16,7 @@ description: Magazine look and shapes: pm- User Styles, fonts and serif body, co
 
 ## Why `p:first-of-type` / `p:last-of-type` with resets?
 - `::first-letter` on the body would land on an `h2` or a figure; `p:last-child::after` would mark every quotation and list item. The resets for `blockquote`, `li`, `td`, `th`, `dd` and `div` repeat the pseudo-class: (0,2,3) beats the main rule's (0,2,2); without it a reset is (0,1,3) and loses. A body pasted inside one `div` loses its drop cap: none beats one per block.
-- No `:first-child` or `:last-child` anywhere: the edit chip's `<style>` may come first (news lesson). The river's first story is `article:first-of-type`.
+- No `:first-child` or `:last-child` anywhere: an editor's edit pencil comes first in a record (news lesson). The river's first story is `article:first-of-type`.
 
 ## Why do the quote and letter bands vanish when empty?
 - `.pm-quote-band:has(.pg-sw-empty),.pm-letter-band:has(.pg-sw-empty){display:none}`: a reader never sees "mark a story as…" in a hero-sized band. An older Firefox without `:has()` shows the sentence.

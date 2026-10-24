@@ -549,6 +549,21 @@ function ws_editor_js_strings()
         'table_total'               => lang('Total'),
         'table_fill_down'           => lang('Copy the formula to the cells below'),
         'update_block'              => lang('Update'),
+        // The rows of tools under a box (PGWsEditor.toolbar()).
+        'tool_bar'                  => lang('Text tools'),
+        'tool_bar_message'          => lang('Message tools'),
+        'tool_bar_note'             => lang('Note tools'),
+        'tool_undo'                 => lang('Undo (Ctrl+Z)'),
+        'tool_redo'                 => lang('Redo (Ctrl+Y)'),
+        'tool_bold'                 => lang('Bold (Ctrl+B)'),
+        'tool_italic'               => lang('Italic (Ctrl+I)'),
+        'tool_strike'               => lang('Strikethrough (Ctrl+Shift+X)'),
+        'tool_code'                 => lang('Code (Ctrl+E)'),
+        'tool_link'                 => lang('Link (Ctrl+K)'),
+        'tool_checklist'            => lang('Checklist'),
+        'tool_table'                => lang('Table'),
+        'tool_calc'                 => lang('Calculation'),
+        'tool_codeblock'            => lang('Code block'),
     );
 }
 

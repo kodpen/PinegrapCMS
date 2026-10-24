@@ -1178,10 +1178,13 @@ function get_install_system_checks() {
 
 	$data_directory_path = dirname(__FILE__) . '/../data';
 
+	// pg_dir_writable(), not is_writable(): Windows folders (see there)
+	$data_directory_writable = pg_dir_writable($data_directory_path);
+
 	$checks[] = array(
 		'label' => lang('Write permission'),
-		'value' => (is_writable($data_directory_path) ? lang('Available') : lang('Not available')),
-		'state' => (is_writable($data_directory_path) ? 'ok' : 'error')
+		'value' => ($data_directory_writable ? lang('Available') : lang('Not available')),
+		'state' => ($data_directory_writable ? 'ok' : 'error')
 	);
 
 	return $checks;
