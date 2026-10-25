@@ -21,7 +21,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Mark the component a node lives in when a path writes the node without selecting it (`_sdSharedMarkEdited(node)`); never take a snapshot after a change, or Save skips it as unchanged (`shared-component-editor-cache.md`).
 - Add a new page-save dependency beyond the page's tree and settings to `_pgPageUnchanged()`, or Save skips the page as unchanged (`multi-page-designer-editor.md`).
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
-- A widget condition is `_bindings.show_if` + `_bindParams.show_if`, resolved by the finish pass; never a class (`widget-conditions.md`).
+- A widget condition is `_bindings.show_if` + `_bindParams.show_if`, resolved by the finish pass; never a class (`widget-conditions.md`, `widget-finish-pass.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -202,6 +202,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
-- widget-conditions.md: Value conditions on system widget nodes (show_if): operators, number and text comparison, carriers, refused tokens, fail closed, the nonce and the finish pass stages (#NNNN).
+- widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#NNNN).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
+- widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, cut points, the pg-hide-if-empty rerun and the strip stage (#NNNN).
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

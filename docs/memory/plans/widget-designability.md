@@ -10,7 +10,7 @@ description: Plan (2026-10-24, in progress, W1 done #NNNN): legacy-layout power 
 ## What are the rules?
 - A condition is a binding: `_bindings.show_if` + `_bindParams.show_if {op, value}`; a list is a `loop_area` with `props.source`. Never a class.
 - Markers carry a per-request nonce and exist only inside a widget render; a tree without new props renders byte-identical.
-- Values reach the pass through carriers (comment pair around `^^token^^`) filled by the renderer's own fill; an unfilled carrier reads as empty. No carrier for tokens a renderer looks for or builds as a block (`*_html`, `__variant_picker`, catalog filter blocks, `__edit_url`, `__empty_message`, `__page_link`, `__link_label`).
+- Values reach the pass through carriers (comment pair around `^^token^^`) filled by the renderer's own fill; an unfilled carrier reads as empty. No carrier for a token a renderer looks for in the template or builds as a block; checks of the saved tree skip conditions ([[widget-conditions]]).
 - Values in attributes use plain-character placeholders: `h()` escapes comments in href/src.
 - Unknown operator or list source: nothing on the site, faded on the canvas.
 - New object props go into `pg_designer_tree_objects()`. Legacy `render_layout()` is not touched.
@@ -21,9 +21,10 @@ description: Plan (2026-10-24, in progress, W1 done #NNNN): legacy-layout power 
 
 ## What does the owner still answer?
 OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical old blocks; words beside a value; code areas; page-level facts; per-placement settings; gallery sources; parts with controls; express order lists; classic bridge.
+Before W4: a cut required control (custom_form, registration, express_order) still blocks submit; refuse show_if on required controls? `pg_tr_node_fields()` skips `_bindParams`: a text operand is not translated.
 
 ## What are the steps? (one PR each)
-- W1 done (#NNNN): finish pass and value conditions, server side ([[widget-conditions]]).
+- W1 done (#NNNN): finish pass and value conditions, server side ([[widget-finish-pass]], [[widget-conditions]]).
 - W2 Palette double-click lands beside the selection, inside a widget too (shared_ref items stop at the widget).
 - W3 Row position `__loop_index/count/is_first/is_last/is_odd/is_even`; row marks only when used.
 - W4 Bind Data "Show only when a value…" for every kind, canvas chip, position group.

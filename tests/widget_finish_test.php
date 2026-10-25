@@ -282,6 +282,102 @@ function test_widget_finish_hide_empty_rerun()
 	pg_assert_same('<div class="box pg-hide-if-empty"></div><p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'catalog_listing')), 'catalog_listing');
 }
 
+// The form starters bind the value element itself inside a pg-hide-if-empty
+// "label: value" row. A condition that cuts that element leaves the row
+// with an empty value, so the row goes as it does for a blank field; in a
+// kind that does not honour the class only the value goes.
+function test_widget_finish_field_value_cut_drops_row()
+{
+	$row  = '<p class="card-text small mb-1 pg-hide-if-empty"><span class="fw-semibold me-1">Section:</span>'
+		. pg_sw_finish_wrap('<span class="pg-field-value">^^section^^</span>', _widget_finish_spec('section', 'eq', 'kültür'))
+		. '</p>';
+	$html = '<div class="card">' . str_replace('^^section^^', 'Tarih', $row) . str_replace('^^section^^', 'Kültür', $row) . '</div>';
+	$kept = '<p class="card-text small mb-1 pg-hide-if-empty"><span class="fw-semibold me-1">Section:</span><span class="pg-field-value">Kültür</span></p>';
+
+	pg_assert_same('<div class="card">' . $kept . '</div>', pg_sw_finish_widget_html($html, array('kind' => 'form_list_view')), 'form_list_view');
+	pg_assert_same('<div class="card">' . $kept . '</div>', pg_sw_finish_widget_html($html, array('kind' => 'form_item_view')), 'form_item_view');
+	pg_assert_same('<div class="card"><p class="card-text small mb-1 pg-hide-if-empty"><span class="fw-semibold me-1">Section:</span></p>' . $kept . '</div>',
+		pg_sw_finish_widget_html($html, array('kind' => 'catalog_listing')), 'catalog_listing: the class is not honoured there');
+
+	// The same row drawn from the starter's tree.
+	$tree = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'mb-3 pg-hide-if-empty'), 'children' => array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Section', 'cssClass' => 'small mb-0'), 'children' => array()),
+		_widget_finish_node('section', 'section', array('op' => 'eq', 'value' => 'kültür'), 'mb-0 pg-field-value'),
+	));
+	$tpl = _widget_finish_in_scope('form_item_view', function () use ($tree) {
+		return _render_tree_node($tree);
+	});
+	$out = pg_sw_finish_widget_html(_pg_sw_fill_tokens($tpl, array('section' => 'Tarih')), array('kind' => 'form_item_view'));
+	pg_assert_same('', trim($out), 'the starter row of a failing value goes');
+	$out = pg_sw_finish_widget_html(_pg_sw_fill_tokens($tpl, array('section' => 'Kültür')), array('kind' => 'form_item_view'));
+	pg_assert_contains('Kültür</p>', $out);
+	pg_assert_contains('>Section</p>', $out);
+	_widget_finish_no_markers($out);
+}
+
+// After a cut only the pg-hide-if-empty elements around a cut are judged
+// again: an empty box elsewhere (the static part of a form list, which the
+// renderer never judges) stays as it was.
+function test_widget_finish_rerun_only_around_a_cut()
+{
+	$html = '<div class="head pg-hide-if-empty"></div>'
+		. '<ul><li class="pg-hide-if-empty"><div class="pg-hide-if-empty">'
+		. pg_sw_finish_wrap('<b>^^__d^^</b>', _widget_finish_spec('__d', 'gt', '5'))
+		. '</div></li><li class="pg-hide-if-empty">x</li></ul>';
+	$out = pg_sw_finish_widget_html(str_replace('^^__d^^', '1', $html), array('kind' => 'form_list_view'));
+	pg_assert_same('<div class="head pg-hide-if-empty"></div><ul><li class="pg-hide-if-empty">x</li></ul>', $out);
+	_widget_finish_no_markers($out);
+	pg_assert_same(false, strpos($out, 'pg-cut:'), 'no cut point left');
+}
+
+// pg_sw_hide_empty_fields() with a cut point judges only the elements that
+// hold it, and one that goes leaves the point for the element around it.
+function test_widget_finish_hide_empty_with_mark()
+{
+	$html = '<div class="a pg-hide-if-empty"></div>'
+		. '<div class="b pg-hide-if-empty"><p class="pg-hide-if-empty"><!--m--></p></div>'
+		. '<div class="c pg-hide-if-empty"><p class="pg-hide-if-empty"><!--m--></p>text</div>'
+		. '<img class="pg-hide-if-empty" src="">';
+	pg_assert_same('<div class="a pg-hide-if-empty"></div><!--m--><div class="c pg-hide-if-empty"><!--m-->text</div><img class="pg-hide-if-empty" src="">',
+		pg_sw_hide_empty_fields($html, '<!--m-->'));
+	pg_assert_same('<div class="c pg-hide-if-empty">text</div>', pg_sw_hide_empty_fields($html), 'without a mark every element is judged');
+	pg_assert_same('<div class="a pg-hide-if-empty"></div>', pg_sw_hide_empty_fields('<div class="a pg-hide-if-empty"></div>', '<!--m-->'), 'no mark in the markup: as it was');
+}
+
+// A span may hold a body of any size: it is found without a pattern that
+// could run out of backtracking, so a big span and a small one beside it
+// are both judged.
+function test_widget_finish_large_span_body()
+{
+	$scope = array('kind' => 'form_list_view');
+	$big   = '<div>' . str_repeat('<p>Long body text, row after row.</p>', 60000) . '</div>';
+	pg_assert_true(strlen($big) > 2000000, 'the body is over 2 MB');
+	$html  = pg_sw_finish_wrap('<i>^^__a^^</i>', _widget_finish_spec('__a'))
+		. pg_sw_finish_wrap($big . '^^__b^^', _widget_finish_spec('__b'))
+		. '<p>after</p>';
+
+	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html(strtr($html, array('^^__a^^' => '', '^^__b^^' => '')), $scope), 'both cut');
+	pg_assert_same($big . 'B<p>after</p>', pg_sw_finish_widget_html(strtr($html, array('^^__a^^' => '', '^^__b^^' => 'B')), $scope), 'the small cut, the big kept');
+
+	$nonce = pg_sw_marker_nonce();
+	pg_assert_same('<p>x</p><p>y</p>', pg_sw_finish_strip_carriers('<p>x</p><!--pg-cv:' . $nonce . ':4-->' . $big . '<!--/pg-cv:' . $nonce . ':4--><p>y</p>'), 'a big carrier');
+}
+
+// A row template placed inside a copy of itself (a reply in its comment)
+// nests a span in a span of the same number; each keeps its own value.
+function test_widget_finish_span_nested_in_its_own_copy()
+{
+	$tpl  = pg_sw_finish_wrap('<div>^^__a^^[replies]</div>', _widget_finish_spec('__a'));
+	$fill = function ($a, $replies) use ($tpl) {
+		return strtr($tpl, array('^^__a^^' => $a, '[replies]' => $replies));
+	};
+	$scope = array('kind' => 'catalog_listing');
+
+	pg_assert_same('<div>P</div>', pg_sw_finish_widget_html($fill('P', $fill('', '')), $scope), 'the reply cut, its parent kept');
+	pg_assert_same('', pg_sw_finish_widget_html($fill('', $fill('R', '')), $scope), 'the parent cut with its reply');
+	pg_assert_same('<div>P<div>R</div></div><div>Q</div>', pg_sw_finish_widget_html($fill('P', $fill('R', '')) . $fill('Q', ''), $scope), 'both kept, then a sibling');
+}
+
 // The edit pencil still finds a row's first element when the row starts
 // with a condition.
 function test_widget_finish_edit_chip_finds_first_element()

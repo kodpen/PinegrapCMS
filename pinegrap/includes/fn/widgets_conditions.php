@@ -86,15 +86,16 @@ function pg_sw_cond_spec($props)
 // The tokens a condition may not read. A carrier repeats its token in the
 // template, so:
 //   - a token a renderer looks for in the template to decide whether the
-//     design placed it (the edit link, the empty-list message, the item form,
-//     gift card and recurring blocks, the variant picker) would count as
-//     placed and the renderer would stop adding its own;
+//     design placed it (the edit links, the empty-list message, the item
+//     form, gift card and recurring blocks, the variant picker) would count
+//     as placed and the renderer would stop adding its own;
 //   - the catalog's filter blocks are decided through the bindings it
 //     records, and are markup, not values;
 //   - __page_link and __link_label are sentinels rewritten per node.
-// Every *_html token is markup a renderer builds. A plain list on purpose:
-// tools/check_bindings.php reads quoted '__name' map keys in these files as
-// tokens a renderer fills.
+// Every *_html token is markup a renderer builds. A renderer that looks in
+// the saved tree instead reads it through pg_sw_cond_tree_json(), so those
+// tokens stay allowed. A plain list on purpose: tools/check_bindings.php
+// reads quoted '__name' map keys in these files as tokens a renderer fills.
 function pg_sw_cond_denied_tokens()
 {
     return array(
@@ -111,6 +112,43 @@ function pg_sw_cond_denied_tokens()
     );
 }
 
+// A widget tree as JSON with its conditions taken out, for a renderer that
+// looks in the saved tree for a name to decide whether the design placed
+// it (the order view's legal documents, withdrawal line, returns block and
+// not-found message, the cart's and the account's states): a condition
+// names a token without placing it. $tree is the decoded tree or its JSON;
+// JSON that holds no condition comes back as it is.
+function pg_sw_cond_tree_json($tree)
+{
+    if (is_string($tree)) {
+        if (strpos($tree, 'show_if') === false) return $tree;
+        $decoded = json_decode($tree, true);
+        if (!is_array($decoded)) return $tree;
+        $tree = $decoded;
+    }
+    if (is_array($tree)) _pg_sw_cond_drop_conditions($tree);
+    return (string)json_encode($tree);
+}
+
+// Takes the condition out of $node and every node under it.
+function _pg_sw_cond_drop_conditions(&$node)
+{
+    if (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) {
+        unset($node['props']['_bindings']['show_if']);
+    }
+    if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+        unset($node['props']['_bindParams']['show_if']);
+    }
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            if (is_array($child)) {
+                _pg_sw_cond_drop_conditions($child);
+                $node['children'][$i] = $child;
+            }
+        }
+    }
+}
+
 // Whether a condition may read $token (see pg_sw_cond_denied_tokens()).
 // The numbered forms of the two sentinels (__page_link_0, __link_label_2)
 // are refused with them.
@@ -124,15 +162,21 @@ function pg_sw_cond_token_allowed($token)
     return !preg_match('/^__(page_link|link_label)_\d+$/', $lower);
 }
 
-// Spaces as one reads them: a no-break space is a space, runs of white
-// space are one, none at either end.
+// Spaces as one reads them: runs of white space are one space, none at
+// either end. White space is this set, written out so the editor's twin
+// reads the same one (PCRE's \s and JavaScript's \s differ on U+0085,
+// U+180E and U+FEFF): the ASCII spaces, the no-break space and the Unicode
+// spaces, U+0085, U+180E, the line and paragraph separators and U+FEFF. A
+// zero-width space is not one.
 function pg_sw_cond_plain($s)
 {
-    $s = str_replace("\xC2\xA0", ' ', (string)$s);
-    $collapsed = preg_replace('/\s+/u', ' ', $s);
-    // Not valid UTF-8: collapse byte-wise rather than lose the value.
-    if ($collapsed === null) $collapsed = preg_replace('/\s+/', ' ', $s);
-    return trim((string)$collapsed);
+    $s  = (string)$s;
+    $ws = '\t\n\x0B\f\r \x{85}\x{A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+    $collapsed = preg_replace('/[' . $ws . ']+/u', ' ', $s);
+    // Not valid UTF-8: collapse the ASCII spaces and the no-break space
+    // byte-wise rather than lose the value.
+    if ($collapsed === null) $collapsed = preg_replace('/[\t\n\x0B\f\r ]+/', ' ', str_replace("\xC2\xA0", ' ', $s));
+    return trim((string)$collapsed, ' ');
 }
 
 // What a visitor reads in a filled carrier: the markup and comments go, the
@@ -143,28 +187,66 @@ function pg_sw_cond_text($html)
     return pg_sw_cond_plain($text);
 }
 
-// Text folded for comparison: lower case, and the dot a capital İ leaves on
-// its small i dropped, so 'İstanbul' equals 'istanbul'.
+// Text folded for comparison: lower case, the dot a capital İ leaves on its
+// small i dropped and the dotless ı read as i, so 'İstanbul' equals
+// 'istanbul' and 'IRMAK' (I is the capital of ı in Turkish) equals 'ırmak'.
 function pg_sw_cond_fold($s)
 {
-    return str_replace("\xCC\x87", '', mb_strtolower((string)$s, 'UTF-8'));
+    return str_replace(array("\xCC\x87", "\xC4\xB1"), array('', 'i'), mb_strtolower((string)$s, 'UTF-8'));
 }
 
 // The number a value shows, or null when it shows none. Amounts are read
 // the way the site writes them: an optional minus first (pg_format_money()
-// puts it before the symbol: '-₺12,50'), an optional symbol or code, the
-// figure, an optional code, symbol or percent sign after it
-// (pg_visitor_money(): '€12,50 EUR'). The figure is read by
-// pg_parse_amount(), which takes 1.234,56 and 1,234.56; a single separator
-// with three digits after it (1.500) follows the site language.
+// puts it before the symbol: '-₺12,50'), an optional unit, the figure, an
+// optional unit or percent sign after it (pg_visitor_money(): '€12,50
+// EUR'). A unit is a currency sign, an all-capital three-letter code (EUR,
+// TRY), TL, or one or two capitals with a dollar sign (US$, R$); any other
+// word makes the value text, so 'Kat 2' is no 2. The figure must be
+// grouped as amounts are (pg_sw_cond_figure_ok()), so a dotted date is
+// text too. pg_parse_amount() reads it, taking 1.234,56 and 1,234.56; a
+// single separator with three digits after it (1.500) follows the site
+// language.
 function pg_sw_cond_number($s)
 {
     $s = pg_sw_cond_plain($s);
     if ($s === '') return null;
-    $re = '/^(-?)\s*(?:\p{Sc}|[a-z]{2,3}\$?)?\s*([0-9., ]*[0-9][0-9., ]*?)\s*(?:\p{Sc}|[a-z]{2,3}\$?|%)?$/iu';
-    if (!preg_match($re, $s, $m)) return null;
+    $unit = '(?:\p{Sc}|[A-Z]{1,2}\$|[A-Z]{3}|TL)';
+    $re   = '/^(-?) ?(?:' . $unit . ' ?)?([0-9]+(?:[., ][0-9]+)*) ?(?:' . $unit . '|%)?$/u';
+    if (!preg_match($re, $s, $m) || !pg_sw_cond_figure_ok($m[2])) return null;
     $number = pg_parse_amount($m[2]);
     return ($m[1] === '-') ? -$number : $number;
+}
+
+// Whether a figure (digits with one separator between groups: '.', ',' or
+// a space) is grouped the way an amount is. The last separator is the
+// decimal point when it is a '.' or ',' found nowhere else in the figure;
+// every separator before it groups thousands: all one kind, the first group
+// one to three digits, each other exactly three. So 12,50, 1.500,
+// 1.234.567,89 and 1 234,56 are figures, and 24.10.2026, 1.2,5 and 2 5 are
+// not.
+function pg_sw_cond_figure_ok($figure)
+{
+    $parts = preg_split('/([., ])/', (string)$figure, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $groups = array();
+    $seps   = array();
+    foreach ($parts as $i => $part) {
+        if ($i % 2) $seps[] = $part;
+        else $groups[] = $part;
+    }
+    $n = count($seps);
+    if ($n === 0) return true;
+
+    $last = $seps[$n - 1];
+    if ($last !== ' ' && count(array_keys($seps, $last, true)) === 1) {
+        if ($n === 1) return true;
+        array_pop($seps);
+        array_pop($groups);
+    }
+    if (count(array_unique($seps)) !== 1 || strlen($groups[0]) > 3) return false;
+    for ($i = 1, $c = count($groups); $i < $c; $i++) {
+        if (strlen($groups[$i]) !== 3) return false;
+    }
+    return true;
 }
 
 // Whether a value shows a number (pg_sw_cond_number()).

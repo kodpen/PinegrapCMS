@@ -102,12 +102,51 @@ function test_widget_conditions_money_formats()
 	pg_assert_same(12.0, pg_sw_cond_number('US$12'));
 	pg_assert_same(12.5, pg_sw_cond_number('12,50 TL'));
 	pg_assert_same(12.5, pg_sw_cond_number('₺ 12,50'));
+	pg_assert_same(12.5, pg_sw_cond_number('TRY 12,50'));
+	pg_assert_same(12.0, pg_sw_cond_number('12 USD'));
+	pg_assert_same(1234567.0, pg_sw_cond_number('1 234 567'));
+	pg_assert_same(1234567.89, pg_sw_cond_number('1.234.567,89'));
+}
+
+// Only a currency sign, an all-capital three-letter code, TL or a code
+// written with a dollar sign stands beside a figure; a word does not.
+function test_widget_conditions_words_are_not_codes()
+{
+	foreach (array('Kat 2', 'Oda 2', 'No 5', 'Room 2', '12 tl', 'try 12', 'Kapı 3', '5 adet', 'Ab$5') as $text) {
+		pg_assert_same(null, pg_sw_cond_number($text), json_encode($text, JSON_UNESCAPED_UNICODE));
+	}
+	pg_assert_false(pg_sw_cond_eval('eq', 'Kat 2', 'Oda 2'));
+	pg_assert_true(pg_sw_cond_eval('neq', 'Kat 2', 'Oda 2'));
+	pg_assert_false(pg_sw_cond_eval('eq', 'No 5', '5'));
+}
+
+// A figure that repeats a separator is grouped in threes or it is no number:
+// a dotted date is text, so eq compares it as written and gt, lt are false.
+function test_widget_conditions_dotted_dates_are_text()
+{
+	foreach (array('24.10.2026', '1.11.2026', '01.01.2026', '11.1.2026', '2026.10.24', '1.2,5', '2 5', '1,2,3', '1 234.567,89') as $text) {
+		pg_assert_same(null, pg_sw_cond_number($text), $text);
+	}
+	pg_assert_false(pg_sw_cond_eval('eq', '1.11.2026', '11.1.2026'));
+	pg_assert_true(pg_sw_cond_eval('eq', '24.10.2026', '24.10.2026'));
+	pg_assert_false(pg_sw_cond_eval('gt', '15.03.2025', '01.01.2026'));
+	pg_assert_false(pg_sw_cond_eval('lt', '15.03.2025', '01.01.2026'));
+	pg_assert_same(1.1, pg_sw_cond_number('1.10'), 'one separator is a decimal point');
+}
+
+// White space is one explicit set, the same in the editor's twin: U+FEFF
+// and U+0085 are spaces, a zero-width space is not.
+function test_widget_conditions_white_space_set()
+{
+	pg_assert_same('a b c', pg_sw_cond_plain("\u{FEFF}a\u{85}b\u{2028}\u{3000}c\u{FEFF}"));
+	pg_assert_same("a\u{200B}b", pg_sw_cond_plain("a\u{200B}b"));
+	pg_assert_true(pg_sw_cond_eval('empty', "\u{FEFF}", ''));
 }
 
 // Text is not a number.
 function test_widget_conditions_not_numbers()
 {
-	foreach (array('', 'abc', 'Room 12', '12 apples', '1e5', '%10', '--5', '₺') as $text) {
+	foreach (array('', 'abc', 'Room 12', '12 apples', '1e5', '%10', '--5', '₺', '٣') as $text) {
 		pg_assert_same(null, pg_sw_cond_number($text), json_encode($text, JSON_UNESCAPED_UNICODE));
 		pg_assert_false(pg_sw_cond_is_number($text), json_encode($text, JSON_UNESCAPED_UNICODE));
 	}
@@ -133,6 +172,8 @@ function test_widget_conditions_fold()
 	pg_assert_same('istanbul', pg_sw_cond_fold('ISTANBUL'));
 	pg_assert_true(pg_sw_cond_eval('eq', 'İSTANBUL', 'istanbul'));
 	pg_assert_true(pg_sw_cond_eval('contains', 'Büyük İndirim', 'indirim'));
+	pg_assert_same('irmak', pg_sw_cond_fold('ırmak'), 'a dotless ı folds to i');
+	pg_assert_true(pg_sw_cond_eval('eq', 'IRMAK', 'ırmak'));
 }
 
 // Comparing text with gt or lt is false whichever way.
@@ -191,11 +232,60 @@ function test_widget_conditions_denied_tokens()
 		pg_assert_false(pg_sw_cond_token_allowed($token), $token);
 		pg_assert_false(pg_sw_cond_spec(array('_bindings' => array('show_if' => $token))), 'spec ' . $token);
 	}
-	foreach (array('__discount_percent', '__event_location', '__price_formatted', 'title', 'publish-date', '__page_links', '__link_label_x') as $token) {
+	// The names a renderer looks for in the saved tree stay allowed: it reads
+	// the tree through pg_sw_cond_tree_json().
+	foreach (array('__discount_percent', '__event_location', '__price_formatted', 'title', 'publish-date', '__page_links', '__link_label_x',
+		'__legal_preinfo_url', '__legal_contract_url', '__withdrawal_deadline', '__return_form', '__returns', '__not_found_message') as $token) {
 		pg_assert_true(pg_sw_cond_token_allowed($token), $token);
 	}
 	foreach (pg_sw_cond_denied_tokens() as $key => $token) {
 		pg_assert_true(is_int($key) && is_string($token), 'a plain list: ' . $token);
+	}
+}
+
+// A condition names a token without placing it: the tree a renderer
+// searches for a placed name has every condition taken out, at any depth.
+function test_widget_conditions_tree_json_without_conditions()
+{
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'h5', 'text' => 'Legal documents',
+			'_bindings' => array('show_if' => '__legal_preinfo_url'),
+			'_bindParams' => array('show_if' => array('op' => 'contains', 'value' => '__returns'), 'href' => array('page_id' => 4))),
+			'children' => array(
+				array('type' => 'content', 'props' => array('_bindings' => array('text' => '__order_no', 'show_if' => '__not_found_message')), 'children' => array()),
+				array('type' => 'semantic', 'props' => array('_bindings' => array('eo_visible_if' => 'has_items', 'show_if' => 'not_logged_in')), 'children' => array()),
+			)),
+	));
+	$json = pg_sw_cond_tree_json($tree);
+	foreach (array('__legal_preinfo_url', '__returns', '__not_found_message', 'not_logged_in', 'show_if') as $name) {
+		pg_assert_same(false, strpos($json, $name), $name);
+	}
+	pg_assert_contains('"has_items"', $json, 'a placed flag stays');
+	pg_assert_contains('__order_no', $json, 'a placed token stays');
+	pg_assert_contains('"page_id":4', $json, 'other parameters stay');
+
+	$encoded = json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same($json, pg_sw_cond_tree_json($encoded), 'the saved JSON reads the same');
+	$plain = '{"type":"root","props":{"_bindings":{"text":"__legal_preinfo_url"}},"children":[]}';
+	pg_assert_same($plain, pg_sw_cond_tree_json($plain), 'JSON without a condition is returned as it is');
+	pg_assert_same('not json show_if', pg_sw_cond_tree_json('not json show_if'));
+}
+
+// The order view, the cart and the account widget ask whether the design
+// placed a name through pg_sw_cond_tree_json(), never through the raw tree.
+function test_widget_conditions_placement_checks_skip_conditions()
+{
+	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	$cart    = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), 'not_logged_in')", $widgets);
+	pg_assert_contains("strpos(pg_sw_cond_tree_json(\$tree_decoded), '__not_found_message')", $widgets);
+	pg_assert_contains('$placed_json = pg_sw_cond_tree_json((string)$tree_json);', $widgets);
+	foreach (array('__legal_preinfo_url', '__legal_contract_url', '__withdrawal_deadline', '__return_form', '__returns') as $name) {
+		pg_assert_contains("strpos(\$placed_json, '" . $name . "')", $widgets, $name);
+	}
+	pg_assert_contains("strpos(pg_sw_cond_tree_json((string)\$tree_json), '\"has_items\"')", $cart);
+	foreach (array($widgets, $cart) as $i => $source) {
+		pg_assert_same(0, preg_match("/strpos\\(\\(string\\)(\\\$tree_json|json_encode\\(\\\$tree_decoded\\)), '(__legal|__withdrawal|__return|__not_found|not_logged_in|\"has_items)/", $source), 'no raw check left in file ' . $i);
 	}
 }
 

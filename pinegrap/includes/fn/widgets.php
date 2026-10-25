@@ -535,9 +535,14 @@ function pg_sw_default_date_format($type)
 // a frame, a link and a form control. Marked elements inside marked elements
 // go first, so a box whose rows all left goes with them. Any element can
 // carry the class; the designer keeps one by taking the class off.
-function pg_sw_hide_empty_fields($html)
+// With $mark (the finish pass's cut point, widgets_finish.php) only the
+// elements that hold $mark are judged, and one that goes leaves $mark in
+// its place, so the element around it is judged in turn.
+function pg_sw_hide_empty_fields($html, $mark = null)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
+    $mark = ($mark === null) ? '' : (string)$mark;
+    if ($mark !== '' && strpos($html, $mark) === false) return $html;
     if (!preg_match_all('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*>#i', $html, $opens, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
         return $html;
     }
@@ -550,15 +555,16 @@ function pg_sw_hide_empty_fields($html)
         $tag   = strtolower($opens[$i][1][0]);
 
         if (pg_sw_is_void_tag($tag)) {
-            if (!pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            if ($mark === '' && !pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
             continue;
         }
 
         $close = pg_sw_closing_tag($html, $tag, $start + strlen($open));
         if ($close === null) continue;
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
+        if ($mark !== '' && strpos($inner, $mark) === false) continue;
         if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
-        $html = substr($html, 0, $start) . substr($html, $close[1]);
+        $html = substr($html, 0, $start) . $mark . substr($html, $close[1]);
     }
 
     return $html;
@@ -3584,7 +3590,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         // A tree with no place for ^^not_logged_in^^ (the starter has none)
         // showed a signed-out visitor an empty profile card and one blank
         // row of the submissions list: say why instead, with the way in.
-        if (strpos((string)json_encode($tree_decoded), 'not_logged_in') === false) {
+        if (strpos(pg_sw_cond_tree_json($tree_decoded), 'not_logged_in') === false) {
             $login_url = function_exists('_pg_acct_page_url') ? _pg_acct_page_url($login_page_id, 'login') : '';
             return _pg_sw_render_message_only($tree_decoded, 'my_account',
                 h($not_logged_in_message)
@@ -6176,7 +6182,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // other tree came out as a page of headings with nothing under them, or
     // as nothing at all, so it shows the message through its message area.
     $render_not_found = function () use ($tree_decoded, $not_found_message) {
-        if (strpos((string)json_encode($tree_decoded), '__not_found_message') === false) {
+        if (strpos(pg_sw_cond_tree_json($tree_decoded), '__not_found_message') === false) {
             return _pg_sw_render_message_only($tree_decoded, 'order_view', h($not_found_message), 'warning');
         }
         $split_empty = _split_widget_tree($tree_decoded);
@@ -6781,12 +6787,14 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before the links existed binds neither of them: the
     // kept copies are listed in a card after the widget instead, so every
     // design shows them, with the withdrawal line under them unless the
-    // layout places that itself. A layout that binds a link places them.
-    $legal_block = (strpos((string)$tree_json, '__legal_preinfo_url') === false
-                    && strpos((string)$tree_json, '__legal_contract_url') === false)
+    // layout places that itself. A layout that binds a link places them; a
+    // condition that reads one does not (pg_sw_cond_tree_json()).
+    $placed_json = pg_sw_cond_tree_json((string)$tree_json);
+    $legal_block = (strpos($placed_json, '__legal_preinfo_url') === false
+                    && strpos($placed_json, '__legal_contract_url') === false)
         ? pg_legal_documents_order_view_block(
             $legal_urls,
-            (strpos((string)$tree_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
+            (strpos($placed_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
         )
         : '';
 
@@ -6845,8 +6853,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before returns existed places neither token: once the
     // setting is on, the block goes after the widget so every design has it.
     $_ov_returns_tail = (is_array($_ov_returns) && $_ov_returns['enabled']
-                         && strpos((string)$tree_json, '__return_form') === false
-                         && strpos((string)$tree_json, '__returns') === false)
+                         && strpos($placed_json, '__return_form') === false
+                         && strpos($placed_json, '__returns') === false)
         ? pg_return_block_html($_ov_returns_list, $_ov_return_form)
         : '';
 
