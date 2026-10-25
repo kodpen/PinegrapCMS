@@ -12,6 +12,7 @@ description: How the comments widget and the classic comments block share a page
 - After that check, before every other refusal: comments off, a record the visitor may not see, a form_item_view below the top level (fail closed). The widget owns the thread even when it then prints nothing; a second comments widget on the page finds the claim and prints nothing.
 - `get_page_content()` starts each widget pass with an empty record (`pg_comments_widget_pages(array())`) and restores the previous one after it, so an e-mail or another page drawn meanwhile neither adds to it nor clears it.
 - The classic block skips a page in its pass's record (`pg_comments_widget_drawn()`): no second list, no second add_comment form-state reader, no System-region append; a `<!--pg-comments-block-->` marker is emptied.
+- In a comment e-mail the live claim is never reached: the e-mail branch claims the e-mail page only after it drew the comment with its link, and that claim also leaves out the e-mail's fixed comment markup (`pg_comments_email_keeps_fixed_markup()`, [[comments-widget-email]]).
 
 ## Which page id is it?
 - `pg_sw_render_context()['page_id']`, set by `get_page_content()` for the drawn page; never `_pg_sw_current_page_id()` (0 on the home page, in e-mails and the search index, cached per request). The editor's Preview sets the saved page's id in a claim record of its own ([[comments-widget-canvas]]); no page (an unsaved one): nothing drawn, nothing claimed.
