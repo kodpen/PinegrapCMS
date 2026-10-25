@@ -1737,6 +1737,18 @@ const StyleDesigner = (function () {
         return { sid: sid, cfg: cfg, tree: _sharedCache[sid].tree, owns: owns };
     }
 
+    // The comments widget a node lives in, as { sid, cfg }, or null: for the
+    // widget's placement itself (a shared_ref, whose panel holds the
+    // settings) and for a node of any other widget or none.
+    function _sdCommentsWidgetOf(node) {
+        if (!node || node.type === 'shared_ref') return null;
+        var sid = (typeof _isInsideSystemWidget === 'function') ? _isInsideSystemWidget(node) : 0;
+        if (!sid) return null;
+        var cfg = _cfCfgOf(sid);
+        if (!cfg || cfg.regionType !== 'comments') return null;
+        return { sid: sid, cfg: cfg };
+    }
+
     // Every custom_form widget on a page tree, as {sid, cfg, tree, owns}.
     function _cfWidgetsOn(pageTree) {
         var out = [], seen = {};
@@ -3057,9 +3069,10 @@ const StyleDesigner = (function () {
         return hit;
     }
 
-    // Select the widget's placement so the panel shows its form settings,
-    // and bring the Custom Form Settings section into view.
-    function _cfOpenFormSettings(sid) {
+    // Select a widget's placement so the panel shows its settings, open the
+    // section that holds the element `anchorId` if it was collapsed, and
+    // bring it into view.
+    function _sdOpenWidgetSection(sid, anchorId) {
         var ref = _cfRefOf(parseInt(sid, 10) || 0);
         if (!ref) return;
         selectedNode  = ref;
@@ -3067,13 +3080,39 @@ const StyleDesigner = (function () {
         if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
         _sdSelectRender();
         setTimeout(function () {
-            var src  = document.getElementById('sd-sw-cf-source');
-            var sect = src ? src.closest('.sd-props-section') : null;
+            var anchor = document.getElementById(anchorId);
+            var sect = anchor ? anchor.closest('.sd-props-section') : null;
             if (!sect) return;
             var hdr = sect.querySelector('.sd-sect-hdr');
             if (hdr && !hdr.classList.contains('sd-sect-open')) hdr.click();
             sect.scrollIntoView({ block: 'start', behavior: 'smooth' });
         }, 0);
+    }
+
+    // The Custom Form Settings section of a custom form widget.
+    function _cfOpenFormSettings(sid) {
+        _sdOpenWidgetSection(sid, 'sd-sw-cf-source');
+    }
+
+    // The "Comment settings" bar on top of the panel of any node inside a
+    // comments widget: a click on the canvas lands on a part of the comment
+    // card or the form, never on the widget, whose panel holds the page's
+    // comment settings. While comments are off for the page it says so: the
+    // widget then draws nothing on the site.
+    function _sdCommentsSettingsShortcut(node) {
+        var w = _sdCommentsWidgetOf(node);
+        if (!w) return '';
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
+                '<i class="bi bi-chat-square-text me-1"></i>' + esc(_sdT('Comment settings')) +
+            '</button>' +
+            (_getCmtVal('pg_comments') !== '1'
+                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                      esc(_sdT('Comments are off for this page: the widget draws nothing until they are on.')) +
+                  '</div>'
+                : '') +
+        '</div>';
     }
 
     // The "Form settings" bar on top of the panel of any node inside a
@@ -5531,6 +5570,7 @@ const StyleDesigner = (function () {
         // canvas is not drawing (switched on the widget's band).
         '.sd-wrap.sd-state-off { display:none !important; }',
         '.sd-session-chips { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; pointer-events:auto; }',
+        '.sd-session-chips.sd-chips-wrap { flex-wrap:wrap; row-gap:2px; }',
         '.sd-session-chip { font:600 .6rem/1.3 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; padding:1px 7px; border:1px solid rgba(99,102,241,.45); border-radius:3px; background:#fff; color:#6366f1; cursor:pointer; }',
         '.sd-session-chip.is-on { background:#6366f1; border-color:#6366f1; color:#fff; }',
         // Responsive position utilities — Bootstrap 5 does not ship these natively.
@@ -8979,6 +9019,10 @@ const StyleDesigner = (function () {
         if (!cached || !cached.tree || !cached.system_region_config) return false;
         var cfg = cached.system_region_config;
         if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        // A comments widget's node that the state on the canvas leaves out.
+        if (cfg && cfg.regionType === 'comments') {
+            return _sdCommentsStateFor(cached.tree, selectedNode, cfg) !== _sdCommentsCanvasState;
+        }
         if (!cfg || cfg.regionType !== 'login_region') return false;
         var st = _sdSessionStateOf(cached.tree, selectedNode);
         return !!st && st !== _sdSessionPreview;
@@ -10723,27 +10767,35 @@ const StyleDesigner = (function () {
         render();
     }
 
-    // The two-button switch on a login region's band.
-    function _sdSessionChips(doc, refNode) {
+    // The switch on a widget's band between the states the canvas draws:
+    // `states` [[key, label]], the one drawn (`current`) pressed; a click
+    // calls pick(key, refNode).
+    function _sdStateChips(doc, refNode, states, current, pick, extraClass) {
         var wrap = doc.createElement('span');
-        wrap.className = 'sd-session-chips';
+        wrap.className = 'sd-session-chips' + (extraClass ? ' ' + extraClass : '');
         wrap.setAttribute('role', 'group');
         wrap.setAttribute('aria-label', _sdT('Canvas shows'));
-        [['signed_out', _sdT('Signed out')], ['signed_in', _sdT('Signed in')]].forEach(function (s) {
+        states.forEach(function (s) {
             var b = doc.createElement('button');
             b.type = 'button';
-            b.className = 'sd-session-chip' + (_sdSessionPreview === s[0] ? ' is-on' : '');
-            b.setAttribute('aria-pressed', _sdSessionPreview === s[0] ? 'true' : 'false');
+            b.className = 'sd-session-chip' + (current === s[0] ? ' is-on' : '');
+            b.setAttribute('aria-pressed', current === s[0] ? 'true' : 'false');
             b.textContent = s[1];
             b.addEventListener('mousedown', function (e) { e.stopPropagation(); });
             b.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                _sdSetSessionPreview(s[0], refNode);
+                pick(s[0], refNode);
             });
             wrap.appendChild(b);
         });
         return wrap;
+    }
+
+    // The two-button switch on a login region's band.
+    function _sdSessionChips(doc, refNode) {
+        return _sdStateChips(doc, refNode, [['signed_out', _sdT('Signed out')], ['signed_in', _sdT('Signed in')]],
+            _sdSessionPreview, _sdSetSessionPreview, '');
     }
 
     function buildSharedRefEl(node) {
@@ -10925,6 +10977,14 @@ const StyleDesigner = (function () {
                 if (_sysCfg && _sysCfg.regionType === 'login_region') {
                     band.appendChild(_sdSessionChips(doc, node));
                 }
+                // A comments widget draws one visitor's state at a time; an
+                // element picked from the layer tree is drawn in a state
+                // that shows it.
+                if (_sysCfg && _sysCfg.regionType === 'comments') {
+                    if (selectedNode) _sdCommentsCanvasState = _sdCommentsStateFor(cached.tree, selectedNode, _sysCfg);
+                    band.appendChild(_sdStateChips(doc, node, _sdCommentsCanvasStates(), _sdCommentsCanvasState,
+                        _sdSetCommentsCanvasState, 'sd-chips-wrap'));
+                }
                 inner.appendChild(band);
             }
             var _hasKids = cached.tree.children && cached.tree.children.length > 0;
@@ -10973,6 +11033,9 @@ const StyleDesigner = (function () {
                 _sysWidgetRenderCfg = _sysCfg;
                 _sysWidgetRenderTreeRoot = cached.tree;
                 inner.appendChild(buildNodeEl(cached.tree));
+                // Sample comments after the card (canvas only), drawn while
+                // the widget's settings and tree are the ones read.
+                _sdAppendCommentSamples(doc, inner, cached, _sysCfg);
                 _sysWidgetRenderCfg = _prevCfg;
                 _sysWidgetRenderTreeRoot = _prevRoot;
                 // Real records after the card being designed (canvas only).
@@ -11191,12 +11254,13 @@ const StyleDesigner = (function () {
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
     // here, with the reason. The canvas reads the comments switch, the star
-    // rating and the watcher e-mail of the page being edited (its comment
-    // settings, kept in the pg_comments* fields) and the site's CAPTCHA
-    // setting. A page with comments off prints no widget, so the whole
-    // widget fades. The attachment box and the choose-a-name select have no
-    // page field in the designer yet; they join this twin with those fields.
-    // The watch form, its buttons and the watcher list follow the watcher
+    // rating, the attachments, the members' choice of name, the date and the
+    // watcher e-mail of the page being edited (its comment settings, kept in
+    // the pg_comments* fields) and the site's CAPTCHA setting. A page with
+    // comments off prints no widget, so the whole widget fades. The
+    // attachment box follows the attachments, the choose-a-name select the
+    // name choice, a comment's date the date setting (the site prints it
+    // empty). The watch form, its buttons and the watcher list follow the watcher
     // e-mail page; a reply control fades while the page takes no new
     // comments; a control only a button (or only a link or a button) works
     // as fades elsewhere, and so does the pagination while the widget shows
@@ -11220,6 +11284,15 @@ const StyleDesigner = (function () {
         if (b.section === 'comment_captcha') return (flags && flags.captcha === false) ? SITE : '';
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
             return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
+        }
+        if (b.value === 'comment_file' || b.eo_visible_if === 'files_on') {
+            return (_getCmtVal('pg_comments_attachments') !== '1') ? PAGE : '';
+        }
+        if (b.value === 'comment_name_type') {
+            return (_getCmtVal('pg_comments_select_name') !== '1') ? PAGE : '';
+        }
+        if (b.text === '__comment_date' || b.text === '__comment_datetime') {
+            return (_getCmtVal('pg_comments_show_date') !== '1') ? PAGE : '';
         }
         var isButton = tag === 'button' || (node.type === 'component' && node.props && node.props.componentType === 'btn');
         var isLink = tag === 'a' || (node.type === 'content' && node.props && node.props.contentType === 'link');
@@ -11286,6 +11359,340 @@ const StyleDesigner = (function () {
             return reason;
         }
         return '';
+    }
+
+    // ── Comments widget: the canvas states ────────────────────────────────
+    // The canvas twin of pg_comments_widget_thread_flags()
+    // (widgets_comments.php): the 22 thread flags from the same facts, line
+    // for line. tests/comments_widget_designer_test.php compares the two
+    // under Node; a flag added there is added here.
+    function _sdCommentsThreadFlags(facts) {
+        facts = (facts && typeof facts === 'object') ? facts : {};
+        var on = function (key) {
+            var v = facts[key];
+            return !(v === undefined || v === null || v === false || v === 0 || v === '' || v === '0' ||
+                (Array.isArray(v) && v.length === 0));
+        };
+        var whole = function (key, def) {
+            var v = facts[key];
+            if (typeof v === 'number') return (v < 0) ? Math.ceil(v) : Math.floor(v);
+            if (typeof v === 'string') { var n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+            return def;
+        };
+        var search = on('search_index');
+        var allowNew = on('allow_new');
+        var signedIn = on('signed_in') && !search;
+        var mustSignIn = allowNew && !on('signed_in') && on('require_login') && !search;
+        var canComment = allowNew && !mustSignIn && !search;
+        var count = whole('count', 0);
+        var mode = (typeof facts.featured_mode === 'string') ? facts.featured_mode : 'first';
+        var nameMode = (typeof facts.name_mode === 'string') ? facts.name_mode : '';
+        var pages = whole('pages', 1);
+        var canWatch = on('watching_on') && signedIn && !on('submitter_notified');
+
+        return {
+            comments_open: allowNew,
+            comments_closed: !allowNew,
+            can_comment: canComment,
+            must_sign_in: mustSignIn,
+            is_signed_in: signedIn,
+            is_signed_out: !signedIn,
+            has_comments: (count > 0),
+            no_comments: (count === 0),
+            featured_view: on('featured_view'),
+            has_featured: (mode !== 'none') && on('has_featured'),
+            is_staff: on('staff') && !search,
+            name_is_typed: canComment && (nameMode === 'typed'),
+            name_is_chosen: canComment && (nameMode === 'chosen'),
+            name_is_fixed: canComment && (nameMode === 'fixed'),
+            rating_on: on('rating_on'),
+            files_on: on('files_on'),
+            watching_on: on('watching_on'),
+            has_more_pages: (pages > 1),
+            is_replying: canComment && on('replying'),
+            is_watching: canWatch && on('is_watcher'),
+            not_watching: canWatch && !on('is_watcher'),
+            can_manage_watchers: on('watching_on') && signedIn && on('manage_watchers')
+        };
+    }
+
+    // The visitors the canvas draws a comments widget for, one at a time
+    // (the chips on its band, the Canvas shows select). Editor-only; the page
+    // keeps every part.
+    function _sdCommentsCanvasStates() {
+        return [
+            ['comments', _sdT('Comments')],
+            ['replying', _sdT('Replying')],
+            ['empty', _sdT('No comments')],
+            ['member', _sdT('Member')],
+            ['sign_in', _sdT('Sign in')],
+            ['closed', _sdT('Closed')],
+            ['staff', _sdT('Staff')]
+        ];
+    }
+    var _sdCommentsCanvasState = 'comments';
+
+    // The facts of a canvas state, for _sdCommentsThreadFlags(). A feature
+    // the page's settings switch on and off (stars, attachments, watching)
+    // is always on here: switched off it fades (_sdCommentsBindingOff()),
+    // it is never hidden.
+    function _sdCommentsCanvasFacts(state, cfg) {
+        cfg = cfg || {};
+        var facts = {
+            allow_new: true, signed_in: false, require_login: false, count: 3,
+            featured_mode: (typeof cfg.featured === 'string' && cfg.featured !== '') ? cfg.featured : 'first',
+            has_featured: true, name_mode: 'typed',
+            rating_on: true, files_on: true, watching_on: true,
+            pages: (parseInt(cfg.per_page, 10) > 0) ? 2 : 1
+        };
+        if (state === 'replying') {
+            facts.replying = true;
+        } else if (state === 'empty') {
+            facts.count = 0;
+        } else if (state === 'member') {
+            facts.signed_in = true;
+            facts.name_mode = (_getCmtVal('pg_comments_select_name') === '1') ? 'chosen' : 'fixed';
+        } else if (state === 'sign_in') {
+            facts.require_login = true;
+        } else if (state === 'closed') {
+            facts.allow_new = false;
+        } else if (state === 'staff') {
+            facts.signed_in = true;
+            facts.staff = true;
+            facts.manage_watchers = true;
+        }
+        return facts;
+    }
+
+    // The thread flags of the state the canvas draws.
+    function _sdCommentsCanvasFlags(cfg) {
+        return _sdCommentsThreadFlags(_sdCommentsCanvasFacts(_sdCommentsCanvasState, cfg));
+    }
+
+    // Whether the canvas leaves a node of a comments widget out of the state
+    // it draws: the loop area (the comment card) without comments, a node
+    // shown only when a thread flag is false. A comment's own flags hide a
+    // node only in a sample comment (_sdCommentSample); the card shows every
+    // part of a comment.
+    function _sdCommentsFlagOff(node, cfg) {
+        if (!node || !cfg || cfg.regionType !== 'comments') return false;
+        var flags = _sdCommentsCanvasFlags(cfg);
+        if (node.type === 'loop_area') return !flags.has_comments;
+        var f = (node.props && node.props._bindings) ? node.props._bindings.eo_visible_if : '';
+        if (!f || typeof f !== 'string') return false;
+        if (Object.prototype.hasOwnProperty.call(flags, f)) return !flags[f];
+        if (/^comment_/.test(f)) {
+            return !!(_sdCommentSample && _sdCommentSample.flags && _sdCommentSample.flags[f] === false);
+        }
+        return false;
+    }
+
+    // The state that shows a node of the widget's tree: the one drawn when it
+    // does, else the first that does, else the one drawn. Read from the
+    // thread flags on the way from the root to the node (the loop area needs
+    // comments); a node outside the tree keeps the state.
+    function _sdCommentsStateFor(root, target, cfg) {
+        var current = _sdCommentsCanvasState;
+        var path = null;
+        (function walk(n, trail) {
+            if (path || !n) return;
+            var here = trail.concat([n]);
+            if (n === target) { path = here; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
+        })(root, []);
+        if (!path) return current;
+        var need = [];
+        path.forEach(function (n) {
+            if (n.type === 'loop_area') { need.push('has_comments'); return; }
+            var f = (n.props && n.props._bindings) ? n.props._bindings.eo_visible_if : '';
+            if (f && typeof f === 'string') need.push(f);
+        });
+        var shows = function (state) {
+            var flags = _sdCommentsThreadFlags(_sdCommentsCanvasFacts(state, cfg));
+            return need.every(function (f) { return !Object.prototype.hasOwnProperty.call(flags, f) || flags[f]; });
+        };
+        if (shows(current)) return current;
+        var states = _sdCommentsCanvasStates();
+        for (var i = 0; i < states.length; i++) {
+            if (shows(states[i][0])) return states[i][0];
+        }
+        return current;
+    }
+
+    // Switch the state the canvas draws. A selection the new state hides
+    // moves up to the widget (refNode), or the next render would switch back.
+    function _sdSetCommentsCanvasState(state, refNode) {
+        if (!_sdCommentsCanvasStates().some(function (s) { return s[0] === state; })) return;
+        _sdCommentsCanvasState = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            var cfg = sid ? _cfCfgOf(sid) : null;
+            if (cached && cached.tree && cfg && _sdCommentsStateFor(cached.tree, selectedNode, cfg) !== state) {
+                selectedNode = refNode;
+                selectedNodes = [];
+            }
+        }
+        render();
+    }
+
+    // ── Comments widget: sample comments after the card ───────────────────
+    // The comment card is designed on one comment. After it the canvas draws
+    // three sample comments from the same tree (_sdAppendCommentSamples()):
+    // a reply with a quote, one awaiting approval, one with stars and a file.
+    // While one is drawn, its flags and values are here.
+    var _sdCommentSample = null;
+
+    // The samples, as { key, flags (the 14 row flags), values (tokens; a
+    // function is called) }. `thread` is the state's thread flags.
+    function _sdCommentSamples(cfg, thread) {
+        cfg = cfg || {};
+        thread = thread || {};
+        var staff = !!thread.is_staff;
+        var threaded = (cfg.layout === 'threaded');
+        var label = String(_getCmtVal('pg_comments_label') || _sdT('Comment'));
+        var flags = function (over) {
+            var f = {
+                comment_is_root: true, comment_is_reply: false, comment_is_featured: false,
+                comment_is_pending: false, comment_is_own_pending: false, comment_is_scheduled: false,
+                comment_has_quote: false, comment_has_replies: false, comment_has_rating: false,
+                comment_has_file: false, comment_has_badge: false, comment_has_seller_reply: false,
+                comment_is_verified: false, comment_can_edit: staff
+            };
+            Object.keys(over).forEach(function (k) { f[k] = over[k]; });
+            return f;
+        };
+        return [
+            {
+                key: 'reply',
+                // A flat thread draws a reply in time order, quoting the
+                // comment it answers; a threaded one under it.
+                flags: flags({ comment_is_root: !threaded, comment_is_reply: threaded, comment_has_quote: true }),
+                values: {
+                    __comment_name: _sdT('Michael Brooks'),
+                    __comment_date: _sdT('1 hour ago'),
+                    __comment_parent_name: _sdT('Jane Cooper'),
+                    __comment_quote: _sdT('Has anyone tried this with the new version?'),
+                    __comment_message_html: function () { return esc(_sdT('Thanks, that answered my question.')); },
+                    __comment_depth: threaded ? '1' : '0'
+                }
+            },
+            {
+                key: 'pending',
+                flags: flags({ comment_is_pending: true, comment_is_own_pending: !staff }),
+                values: {
+                    __comment_name: _sdT('Emily Turner'),
+                    __comment_status: staff ? _sdT('Not Published') : _sdT('Your {var:1} is awaiting approval', label.toLowerCase()),
+                    __comment_message_html: function () { return esc(_sdT('I will try this tonight.')); }
+                }
+            },
+            {
+                key: 'rated',
+                flags: flags({ comment_has_rating: _getCmtVal('pg_comments_rating') === '1', comment_has_file: true }),
+                values: {
+                    __comment_name: _sdT('Daniel Ross'),
+                    __comment_rating: '4',
+                    __comment_file_name: 'photo.jpg',
+                    __comment_file_size: '120 KB',
+                    __comment_message_html: function () { return esc(_sdT('Works well, here is a photo.')); }
+                }
+            }
+        ];
+    }
+
+    // The first loop area of a tree (the one the server repeats).
+    function _sdFirstLoopArea(tree) {
+        var found = null;
+        (function walk(n) {
+            if (found || !n) return;
+            if (n.type === 'loop_area') { found = n; return; }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return found;
+    }
+
+    // Draws the sample comments after the card, while the widget's settings
+    // and tree are the ones buildNodeEl() reads. They are built from the
+    // card's nodes and made ghost DOM: no node id, no toolbar, inert, never
+    // selectable, never in the tree. Off with the canvas's sample switch, and
+    // in a state without comments.
+    function _sdAppendCommentSamples(doc, inner, cached, cfg) {
+        if (!_sdGhostsOn || !cfg || cfg.regionType !== 'comments' || !cached || !cached.tree) return;
+        var thread = _sdCommentsCanvasFlags(cfg);
+        if (!thread.has_comments) return;
+        var loop = _sdFirstLoopArea(cached.tree);
+        var loopEl = inner.querySelector('.sd-loop-area');
+        if (!loop || !Array.isArray(loop.children) || !loop.children.length || !loopEl) return;
+        var samples = _sdCommentSamples(cfg, thread);
+        samples.forEach(function (sample) {
+            _sdCommentSample = sample;
+            try {
+                loop.children.forEach(function (child) {
+                    var el = buildNodeEl(child);
+                    el.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+                    [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'))).forEach(function (x) {
+                        ['data-sd-id', 'id', 'draggable', 'contenteditable'].forEach(function (a) { x.removeAttribute(a); });
+                        x.classList.remove('sd-selected');
+                    });
+                    el.classList.add('sd-ghost', 'sd-comment-sample');
+                    el.setAttribute('aria-hidden', 'true');
+                    el.setAttribute('inert', '');
+                    loopEl.appendChild(el);
+                });
+            } finally {
+                _sdCommentSample = null;
+            }
+        });
+        var band = loopEl.querySelector('.sd-loop-band');
+        if (band && !band.querySelector('.sd-ghost-note')) {
+            var note = doc.createElement('span');
+            note.className = 'sd-ghost-note';
+            note.textContent = '· ' + _sdT('{var} sample comments after the card', samples.length);
+            band.appendChild(note);
+        }
+    }
+
+    // The page's own words in a comments widget's tokens, read live from the
+    // page's comment settings; null for any other token.
+    function _sdCommentsPageToken(fieldName) {
+        if (fieldName === '__comments_intro') {
+            return _getCmtVal('pg_comments_message') || _sdT('Be kind and stay on topic.');
+        }
+        if (fieldName === '__comments_closed_message') {
+            return _getCmtVal('pg_comments_closed_message') || _sdT('We\'re sorry. New comments are no longer being accepted.');
+        }
+        if (fieldName === '__comments_label') {
+            return _getCmtVal('pg_comments_label') || _sdT('Comment');
+        }
+        return null;
+    }
+
+    // Whether a token is one of the comments widget's text tokens. A rich-text
+    // node's slot is markup (its text is drawn as HTML), and the page fills it
+    // with the token's value escaped once (pg_sw_escape_token_values() before
+    // pg_binding_text_slot()); the canvas does the same, because the value can
+    // be the page's own words an operator typed (_sdCommentsPageToken(), a
+    // sample's status with the page's label). The HTML tokens
+    // (_SD_HTML_PREVIEW_TOKENS) are markup already.
+    var _sdCommentsTokenSet = null;
+    function _sdCommentsTextToken(tok) {
+        if (!tok || _sdIsHtmlPreviewToken(tok)) return false;
+        if (!_sdCommentsTokenSet) {
+            if (!Array.isArray(SW_COMMENTS_TOKEN_GROUPS)) return false;
+            _sdCommentsTokenSet = {};
+            SW_COMMENTS_TOKEN_GROUPS.forEach(function (g) {
+                g.tokens.forEach(function (t) { _sdCommentsTokenSet[t[0]] = true; });
+            });
+        }
+        return Object.prototype.hasOwnProperty.call(_sdCommentsTokenSet, tok);
+    }
+
+    // The page's comment settings as the editor holds them, saved or not,
+    // for the Preview (pg_comment_editor_keys()).
+    function _sdCommentSettingsValues() {
+        var out = {};
+        _PG_CMT_FIELDS.forEach(function (k) { out[k] = _getCmtVal(k); });
+        return out;
     }
 
     // Builds what a wrapper's toolbar holds, the first time it is needed:
@@ -11490,6 +11897,11 @@ const StyleDesigner = (function () {
                 (_stFlag === 'is_signed_out' && _sdSessionPreview !== 'signed_out')) {
                 wrapper.classList.add('sd-state-off');
             }
+        }
+        // Comments widget: the canvas draws one visitor's state at a time
+        // (_sdCommentsFlagOff()); what that visitor does not get is left out.
+        if (_sysWidgetRenderCfg && _sdCommentsFlagOff(node, _sysWidgetRenderCfg)) {
+            wrapper.classList.add('sd-state-off');
         }
 
         // ── loop_area visibility — hide in single-record widget types ─────────
@@ -11740,6 +12152,18 @@ const StyleDesigner = (function () {
                 cfSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
                 cfSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _cfOpenFormSettings(_cfTbW.sid); });
                 tbBtns.appendChild(cfSetBtn);
+            }
+            // Inside a comments widget: the page's comment settings, which
+            // sit in the widget's panel.
+            var _cmtTbW = (node.type !== 'root') ? _sdCommentsWidgetOf(node) : null;
+            if (_cmtTbW) {
+                var cmtSetBtn = doc.createElement('button');
+                cmtSetBtn.type = 'button';
+                cmtSetBtn.className = 'bi bi-chat-square-text';
+                cmtSetBtn.title = _sdT('Comment settings');
+                cmtSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                cmtSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _sdOpenWidgetSection(_cmtTbW.sid, 'sd-cmt-settings'); });
+                tbBtns.appendChild(cmtSetBtn);
             }
             // Notes — opens a floating notes popup anchored to this node
             if (node.type !== 'root') {
@@ -12762,7 +13186,24 @@ const StyleDesigner = (function () {
         '__shipping_address_html': _sdT('Address line 1') + '\n' + _sdT('Address line 2') + '\n' + _sdT('10001 New York'),
         '__order_notes': _sdT('Please deliver the order to the door.'),
         '__notes': _sdT('Please deliver the order to the door.'),
-        '__cancel_status': ''
+        '__cancel_status': '',
+        // Comments widget: the comment card and the thread (the page's own
+        // words come from _sdCommentsPageToken()).
+        '__comment_name': _sdT('Jane Cooper'),
+        '__comment_parent_name': _sdT('Jane Cooper'),
+        '__comment_author_name': _sdT('Jane Cooper'),
+        '__reply_to_name': _sdT('Jane Cooper'),
+        '__comment_staff_name': 'jane',
+        '__comment_date': _sdT('2 days ago'),
+        '__comment_status': _sdT('Awaiting approval'),
+        '__comment_badge': _sdT('Badge'),
+        '__comment_quote': _sdT('Quoted text'),
+        '__comment_file_name': 'file.pdf',
+        '__comment_file_size': '12 KB',
+        '__comment_seller_reply_date': _sdT('1 day ago'),
+        '__comments_title': _sdT('3 Comments'),
+        '__comments_count': '3',
+        '__comments_label_plural': _sdT('Comments')
     };
 
     // ── HTML-emit token previews ──────────────────────────────────────────
@@ -13163,6 +13604,13 @@ const StyleDesigner = (function () {
 
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
+        // A sample comment after a comments widget's card draws its own
+        // values (_sdAppendCommentSamples()).
+        if (_sdCommentSample && _sdCommentSample.values && fieldName &&
+            Object.prototype.hasOwnProperty.call(_sdCommentSample.values, fieldName)) {
+            var _sample = _sdCommentSample.values[fieldName];
+            return (typeof _sample === 'function') ? _sample() : _sample;
+        }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
@@ -13174,6 +13622,9 @@ const StyleDesigner = (function () {
             if (fieldName === '__link_label' && node && node.props) {
                 return (node.props._labelDetail != null) ? node.props._labelDetail : _sdT('View');
             }
+            // A comments widget's words the page's comment settings hold.
+            var _cmtWords = _sdCommentsPageToken(fieldName);
+            if (_cmtWords !== null) return _cmtWords;
             // HTML-emit slots first: these produce markup, and every map
             // below would only ever return a plain string for them.
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
@@ -13333,6 +13784,7 @@ const StyleDesigner = (function () {
             for (var prop in b) {
                 if (!b[prop]) continue;
                 var shown = _displayValueForBinding(prop, b[prop], node);
+                if (richText && prop === 'text' && _sdCommentsTextToken(b[prop])) shown = esc(shown);
                 out[prop] = (richText && prop === 'text') ? _sdBindTextSlot(node.props.text, shown) : shown;
             }
         }
@@ -29882,11 +30334,14 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
+            _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
         if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
+        var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
+        if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
@@ -30135,6 +30590,194 @@ const StyleDesigner = (function () {
     function _setCmtVal(fieldName, val) {
         var el = document.querySelector('#style_designer_form [name="' + fieldName + '"]');
         if (el) el.value = val;
+        // The Preview draws a comments widget with the page's settings as
+        // the editor holds them, saved or not.
+        _sdLivePreviewSchedule();
+    }
+
+    // A comment setting changed in the panel. A switch or the e-mail page
+    // (`final`) redraws everything: the panel's warning and the canvas's
+    // fades follow them. A text box redraws only the canvas once it is left
+    // (its words show in the comments widget), so the click that left it
+    // is not lost to a panel drawn again under the pointer.
+    function _sdCommentSettingsChanged(final) {
+        if (final) {
+            render();
+            return;
+        }
+        renderCanvas();
+        _sdLivePreviewSchedule();
+    }
+
+    // The page's comment settings: the section of the fixed comments block
+    // (opts.widget false) and of the comments widget (opts.widget true). They
+    // live in the hidden pg_comments* inputs, one set per page, saved with
+    // the page. On the widget the heading names the page, because every page
+    // that places the widget keeps its own; its display options are the
+    // widget's (_sdCommentsDisplaySect()).
+    function _sdCommentSettingsSect(opts) {
+        opts = opts || {};
+        var _cmtEnabled  = _getCmtVal('pg_comments')           === '1';
+        var _cmtAllowNew = _getCmtVal('pg_comments_allow_new') !== '0';
+        var _cmtRating   = _getCmtVal('pg_comments_rating')    === '1';
+        var _cmtLabel    = _getCmtVal('pg_comments_label');
+        var _cmtAuto     = _getCmtVal('pg_comments_auto_publish') === '1';
+        var _cmtDate     = _getCmtVal('pg_comments_show_date')    === '1';
+        var _cmtLogin    = _getCmtVal('pg_comments_login')        === '1';
+        var _cmtSwitch   = function (prop, on) {
+            return '<label class="sd-prop-switch">' +
+                '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="' + prop + '"' + (on ? ' checked' : '') + '>' +
+                '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+            '</label>';
+        };
+        var _cmtHint = function (text) {
+            return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
+        };
+        var title = _sdT('Comment Settings');
+        var lead = '';
+        var offWarn = '';
+        if (opts.widget) {
+            var _cmtPage = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+            title = esc(_sdT('Comment settings for {var}', (_cmtPage && _cmtPage.page_name) ? _cmtPage.page_name : _sdT('this page')));
+            lead = '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
+                esc(_sdT('Saved with this page; other pages that show this widget keep their own.')) + '</div>';
+            if (!_cmtEnabled) {
+                offWarn = '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                    '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                    esc(_sdT('Comments are off for this page: the widget draws nothing until they are on.')) + '</div>';
+            }
+        }
+        return sect('bi-chat-square-text', title,
+            '<div id="sd-cmt-settings">' +
+            lead +
+            row(_sdT('Comments'), _cmtSwitch('pg_comments', _cmtEnabled) + offWarn) +
+            row(_sdT('Title'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_label" ' +
+                    'value="' + esc(_cmtLabel) + '" placeholder="' + esc(_sdT('Comments...')) + '">'
+            ) +
+            row(_sdT('New Comment'), _cmtSwitch('pg_comments_allow_new', _cmtAllowNew)) +
+            row(_sdT('Scoring'), _cmtSwitch('pg_comments_rating', _cmtRating)) +
+            row(_sdT('Publish at once'),
+                _cmtSwitch('pg_comments_auto_publish', _cmtAuto) +
+                _cmtHint(_sdT('While off, a visitor\'s comment waits for approval; the site staff always see it.'))
+            ) +
+            row(_sdT('Show the date'),
+                _cmtSwitch('pg_comments_show_date', _cmtDate)
+            ) +
+            row(_sdT('Signed-in visitors only'),
+                _cmtSwitch('pg_comments_login', _cmtLogin)
+            ) +
+            row(_sdT('File attachments'),
+                _cmtSwitch('pg_comments_attachments', _getCmtVal('pg_comments_attachments') === '1') +
+                _cmtHint(_sdT('Visitors may attach a file to their comment.'))
+            ) +
+            row(_sdT('Members choose their name'),
+                _cmtSwitch('pg_comments_select_name', _getCmtVal('pg_comments_select_name') === '1') +
+                _cmtHint(_sdT('A signed-in member picks the name their comment shows.'))
+            ) +
+            row(_sdT('Intro message'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_message" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_message')) + '" maxlength="255">' +
+                _cmtHint(_sdT('Shown with the form.'))
+            ) +
+            // Left empty, the widget prints the standard sentence
+            // (__comments_closed_message) and the fixed block prints none:
+            // each panel says what its own renderer does.
+            row(_sdT('Closed message'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_closed_message" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_closed_message')) + '" maxlength="255"' +
+                    (opts.widget ? ' placeholder="' + esc(_sdT('We\'re sorry. New comments are no longer being accepted.')) + '"' : '') + '>' +
+                _cmtHint(opts.widget ? _sdT('Shown while new comments are off.') : _sdT('Shown while new comments are off. Leave it empty to show no message.'))
+            ) +
+            row(_sdT('Sender manages watchers'),
+                _cmtSwitch('pg_comments_watchers_managed', _getCmtVal('pg_comments_watchers_managed') === '1') +
+                _cmtHint(_sdT('On a page with a Form Item View widget, the record\'s sender may add and remove who is notified.'))
+            ) +
+            // E-mails. The page is sent when a comment is published: to
+            // whoever sent the record (on a Form Item View page) and to
+            // the visitors watching the page. Its System region carries
+            // the comment and a "View or Reply" button.
+            row(_sdT('E-mail page'),
+                '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
+                    _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
+                '</select>' +
+                _cmtHint(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.'))
+            ) +
+            row(_sdT('E-mail subject'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_email_subject" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_email_subject')) + '" maxlength="255" placeholder="' + esc(_sdT('New comment')) + '">'
+            ) +
+            row(_sdT('Notify the staff'),
+                '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_notify_email" ' +
+                    'value="' + esc(_getCmtVal('pg_comments_notify_email')) + '" maxlength="100" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
+                _cmtHint(_sdT('Every new comment is sent to this address (plain text). Leave it empty and nobody is notified.'))
+            ) +
+            '<div style="font-size:.66rem;color:#888;margin-top:2px">' + esc(_sdT('On a page with a Form Item View widget the comments belong to the record shown, and only visitors who may see that record see them.')) + '</div>' +
+            '</div>'
+        );
+    }
+
+    // The comments widget's display options, kept in its system_region_config
+    // and shared by every page that places it. The generic [data-sw-cfg]
+    // handler writes them; a choice is stored as its text ('10', '2'), which
+    // pg_comments_widget_options() reads as a number. The selected values
+    // follow that function's defaults and clamps.
+    function _sdCommentsDisplaySect(sid, cfg) {
+        cfg = cfg || {};
+        var word = function (key, allowed, def) {
+            var v = (typeof cfg[key] === 'string') ? cfg[key] : '';
+            return (allowed.indexOf(v) !== -1) ? v : def;
+        };
+        var depth = parseInt(cfg.max_depth, 10);
+        depth = isNaN(depth) ? 1 : Math.min(3, Math.max(1, depth));
+        var perPage = String(parseInt(cfg.per_page, 10));
+        if (['0', '10', '20', '50'].indexOf(perPage) === -1) perPage = '0';
+        var choice = function (key, opts, current) {
+            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+                opts.map(function (o) { return o[0]; }).join(',') + '">' +
+                opts.map(function (o) {
+                    return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                }).join('') +
+            '</select>';
+        };
+        var hint = function (text) {
+            return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
+        };
+        var layout = word('layout', ['flat', 'threaded'], 'flat');
+        return sect('bi-sliders', _sdT('Display'),
+            '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
+                esc(_sdT('Shared: every page that shows this widget uses these options.')) + '</div>' +
+            row(_sdT('Comment order'), choice('order',
+                [['oldest', _sdT('Oldest first')], ['newest', _sdT('Newest first')]], word('order', ['oldest', 'newest'], 'oldest'))) +
+            row(_sdT('Featured comments'), choice('featured',
+                [['first', _sdT('First, then the others')], ['filter', _sdT('Only these, until Show all')], ['none', _sdT('Not marked')]],
+                word('featured', ['first', 'filter', 'none'], 'first'))) +
+            row(_sdT('Replies'), choice('layout',
+                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout)) +
+            (layout === 'threaded'
+                ? row(_sdT('Reply depth'), choice('max_depth', [['1', '1'], ['2', '2'], ['3', '3']], String(depth)))
+                : '') +
+            row(_sdT('Comments per page'), choice('per_page',
+                [['0', _sdT('All on one page')], ['10', '10'], ['20', '20'], ['50', '50']], perPage) +
+                hint(_sdT('Counted by top-level comments; each keeps its replies.')))
+        );
+    }
+
+    // The comments widget's canvas: which visitor's state it draws, and the
+    // sample comments after the card (the canvas's real-records switch).
+    function _sdCommentsCanvasSect(sid) {
+        var opts = _sdCommentsCanvasStates().map(function (s) {
+            return '<option value="' + s[0] + '"' + (s[0] === _sdCommentsCanvasState ? ' selected' : '') + '>' + esc(s[1]) + '</option>';
+        }).join('');
+        return sect('bi-collection', _sdT('Canvas Preview'),
+            row(_sdT('Canvas shows'),
+                '<select class="form-select form-select-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
+            ) +
+            row(_sdT('Sample comments'),
+                '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('After the card you design, the canvas shows three sample comments: a reply, one awaiting approval, one with stars and a file. They cannot be selected and are not saved.')) + '</div>'
+            )
+        );
     }
 
     function propsRegion(n) {
@@ -30151,83 +30794,33 @@ const StyleDesigner = (function () {
         var nameOpts = buildRegionNames(n.props.regionType);
         var show = needsName(n.props.regionType);
 
-        // Comments block: show interactive settings controls
+        // Comments block: the page's comment settings (_sdCommentSettingsSect()),
+        // and the way to the Comments widget (_sdCommentsMakeDesignable()).
         var commentsInfo = '';
+        var designableHtml = '';
         if (n.props.regionType === 'comments_block') {
             if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
-            var _cmtEnabled  = _getCmtVal('pg_comments')           === '1';
-            var _cmtAllowNew = _getCmtVal('pg_comments_allow_new') !== '0';
-            var _cmtRating   = _getCmtVal('pg_comments_rating')    === '1';
-            var _cmtLabel    = _getCmtVal('pg_comments_label');
-            var _cmtAuto     = _getCmtVal('pg_comments_auto_publish') === '1';
-            var _cmtDate     = _getCmtVal('pg_comments_show_date')    === '1';
-            var _cmtLogin    = _getCmtVal('pg_comments_login')        === '1';
-            var _cmtSwitch   = function (prop, on) {
-                return '<label class="sd-prop-switch">' +
-                    '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="' + prop + '"' + (on ? ' checked' : '') + '>' +
-                    '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                '</label>';
-            };
-            commentsInfo = sect('bi-chat-square-text', _sdT('Comment Settings'),
-                row(_sdT('Comments'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments"' + (_cmtEnabled ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Title'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_label" ' +
-                        'value="' + esc(_cmtLabel) + '" placeholder="' + esc(_sdT('Comments...')) + '">'
-                ) +
-                row(_sdT('New Comment'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments_allow_new"' + (_cmtAllowNew ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Scoring'),
-                    '<label class="sd-prop-switch">' +
-                        '<input type="checkbox" class="sd-sw-inp" data-cmt-prop="pg_comments_rating"' + (_cmtRating ? ' checked' : '') + '>' +
-                        '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
-                    '</label>'
-                ) +
-                row(_sdT('Publish at once'),
-                    _cmtSwitch('pg_comments_auto_publish', _cmtAuto) +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While off, a visitor\'s comment waits for approval; the site staff always see it.')) + '</div>'
-                ) +
-                row(_sdT('Show the date'),
-                    _cmtSwitch('pg_comments_show_date', _cmtDate)
-                ) +
-                row(_sdT('Signed-in visitors only'),
-                    _cmtSwitch('pg_comments_login', _cmtLogin)
-                ) +
-                // E-mails. The page is sent when a comment is published: to
-                // whoever sent the record (on a Form Item View page) and to
-                // the visitors watching the page. Its System region carries
-                // the comment and a "View or Reply" button.
-                row(_sdT('E-mail page'),
-                    '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
-                        _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
-                    '</select>' +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.')) + '</div>'
-                ) +
-                row(_sdT('E-mail subject'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_email_subject" ' +
-                        'value="' + esc(_getCmtVal('pg_comments_email_subject')) + '" maxlength="255" placeholder="' + esc(_sdT('New comment')) + '">'
-                ) +
-                row(_sdT('Notify the staff'),
-                    '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_notify_email" ' +
-                        'value="' + esc(_getCmtVal('pg_comments_notify_email')) + '" maxlength="100" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Every new comment is sent to this address (plain text). Leave it empty and nobody is notified.')) + '</div>'
-                ) +
-                '<div style="font-size:.66rem;color:#888;margin-top:2px">' + esc(_sdT('On a page with a Form Item View widget the comments belong to the record shown, and only visitors who may see that record see them.')) + '</div>'
-            );
+            commentsInfo = _sdCommentSettingsSect({});
+            if (_sdCommentsSwapOffered(n)) {
+                designableHtml =
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-make-designable">' +
+                            '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('Puts the design\'s Comments widget in place of this fixed block: the same comments, watchers and settings, in a layout you design. Back to the fixed block undoes it.')) +
+                        '</div>' +
+                    '</div>';
+            }
         }
         // commentsInfo is itself a sect() — append AFTER the Region section, not inside it
         return sect('bi-puzzle', _sdT('Region'),
             legacyNote +
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
-            '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>'
+            '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
+            designableHtml
         ) + commentsInfo;
     }
 
@@ -32498,6 +33091,13 @@ const StyleDesigner = (function () {
                 }
                 systemSection += sect((_swTypeInfo(_regionType) || {}).icon || 'bi-person', _sdT('Account Page Settings'), _acRows);
             }
+
+            // ── comments: the widget's display options, then the page's
+            // comment settings (every page that places it keeps its own) ──
+            if (_isComments) {
+                systemSection += _sdCommentsDisplaySect(sid, _cfg) + _sdCommentSettingsSect({ widget: true }) + _sdCommentsCanvasSect(sid);
+                if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
+            }
         }
 
         // Bottom action area:
@@ -32535,6 +33135,21 @@ const StyleDesigner = (function () {
                         esc(_sdT('Clears every reference and deletes it from the database. This cannot be undone.')) +
                     '</div>' +
                 '</div>';
+            // A Comments widget placed on the page goes back to the fixed
+            // comments block (_sdCommentsBackToBlock()).
+            if (_cfg.regionType === 'comments' && _sdCommentsSwapOffered(n)) {
+                actionHtml =
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
+                            '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Back to the fixed block')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('This placement becomes the fixed comments block again; the comments, watchers and settings stay with the page.')) +
+                        '</div>' +
+                    '</div>' + actionHtml;
+            }
         }
 
         // Where the widget is placed: the pages of this design (open tabs,
@@ -33807,6 +34422,17 @@ const StyleDesigner = (function () {
                 try { localStorage.setItem('pg_sd_ghosts', _sdGhostsOn ? '1' : '0'); } catch (e) {}
                 if (typeof renderCanvas === 'function') renderCanvas();
             });
+        }
+
+        // The visitor whose state a comments widget is drawn in.
+        var cmtStateEl = document.getElementById('sd-cmt-canvas-state');
+        if (cmtStateEl) {
+            cmtStateEl.addEventListener('change', function () { _sdSetCommentsCanvasState(this.value, null); });
+        }
+        // A Comments widget placement goes back to the fixed comments block.
+        var cmtBackEl = document.getElementById('sd-cmt-back-to-block');
+        if (cmtBackEl) {
+            cmtBackEl.addEventListener('click', function () { _sdCommentsBackToBlock(selectedNode); });
         }
 
         // ── cart_link settings ────────────────────────────────────────────────
@@ -43304,9 +43930,14 @@ const StyleDesigner = (function () {
 
         // ── Comments settings controls (data-cmt-prop / data-cmt-txt) ──────────
         // These update the hidden form fields instead of node props.
+        // A switch and the e-mail page redraw the panel and the canvas, which
+        // fade and hide by them; a text box redraws the canvas once it is
+        // left (_sdCommentSettingsChanged()). Every change reaches the live
+        // preview (_setCmtVal()).
         document.querySelectorAll('#sd-properties [data-cmt-prop]').forEach(function(el) {
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-prop'), this.checked ? '1' : '0');
+                _sdCommentSettingsChanged(true);
             });
         });
         // The e-mail page picker may name an unsaved tab (`tab:<key>`); the
@@ -43314,6 +43945,7 @@ const StyleDesigner = (function () {
         document.querySelectorAll('#sd-properties [data-cmt-page]').forEach(function(el) {
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-page'), _swPageVal(this));
+                _sdCommentSettingsChanged(true);
             });
         });
         document.querySelectorAll('#sd-properties [data-cmt-txt]').forEach(function(el) {
@@ -43322,8 +43954,12 @@ const StyleDesigner = (function () {
             });
             el.addEventListener('change', function() {
                 _setCmtVal(this.getAttribute('data-cmt-txt'), this.value);
+                _sdCommentSettingsChanged(false);
             });
         });
+        // The fixed comments block becomes the design's Comments widget.
+        var cmtDesignBtn = document.getElementById('sd-cmt-make-designable');
+        if (cmtDesignBtn) cmtDesignBtn.addEventListener('click', function () { _sdCommentsMakeDesignable(selectedNode); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
@@ -48465,6 +49101,9 @@ const StyleDesigner = (function () {
     }
     function _swBelongsToDesign(where) {
         if (!where) return false;
+        // Made for every page of the design (the Comments widget that
+        // replaces the fixed comments block).
+        if (where.designWide) return true;
         if (where.target && _sdSharedOwnerOf(where.target)) return true;
         var sid = parseInt(where.sid, 10) || 0;
         if (!sid) return false;
@@ -48680,6 +49319,269 @@ const StyleDesigner = (function () {
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
             sdToast(_sdT('"{var}" added.', esc(newName)) + (type ? '' : ' ' + _sdT('Choose the content type in the right-hand panel.')), 'success');
         });
+    }
+
+    // ── Comments: the fixed block and the Comments widget ─────────────────
+    // A page's comments, watchers and settings are keyed by the page, so the
+    // fixed comments block (a comments_block region) and a placement of the
+    // design's Comments widget show the same thread: "Make designable" puts
+    // one in place of the other, "Back to the fixed block" the other way
+    // round, each one undo step.
+
+    // The design's Comments widget: the first one placed on a page of the
+    // design (inside a component placed there too), else one the design used
+    // by the usage list, else the first comments widget among `spare` (ids of
+    // widgets no page may place now, such as the one a page went back to the
+    // fixed block from); 0 for none. A widget is known by its config alone,
+    // so one `cfgOf` has no config for is passed over. Pure: the configs,
+    // the component trees, the usage and the spare ids come from the caller.
+    function _sdCommentsPickWidget(pageTrees, cfgOf, treeOf, usage, styleId, spare) {
+        var isComments = function (sid) {
+            var c = cfgOf(sid);
+            return !!c && c.regionType === 'comments';
+        };
+        var seen = {};
+        var hit = 0;
+        var walk = function (n) {
+            if (hit || !n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid) return;
+                if (isComments(sid)) { hit = sid; return; }
+                if (seen[sid]) return;
+                seen[sid] = true;
+                walk(treeOf(sid));
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        (pageTrees || []).forEach(function (e) { walk((e && e.tree) ? e.tree : e); });
+        if (hit) return hit;
+        var style = parseInt(styleId, 10) || 0;
+        if (style > 0 && usage) {
+            var keys = Object.keys(usage);
+            for (var i = 0; i < keys.length; i++) {
+                var sid = parseInt(keys[i], 10) || 0;
+                if (sid > 0 && isComments(sid) &&
+                    (usage[keys[i]] || []).some(function (u) { return parseInt(u.style_id, 10) === style; })) return sid;
+            }
+        }
+        var rest = Array.isArray(spare) ? spare : [];
+        for (var j = 0; j < rest.length; j++) {
+            var spareId = parseInt(rest[j], 10) || 0;
+            if (spareId > 0 && isComments(spareId)) return spareId;
+        }
+        return 0;
+    }
+
+    // The comments widget rows named after the design (`name`, the name
+    // "Make designable" gives a widget it makes, also with the number the
+    // server adds to a name already taken), in list order. Pure.
+    function _sdCommentsNamedRows(items, name) {
+        var out = [];
+        if (!name) return out;
+        (Array.isArray(items) ? items : []).forEach(function (it) {
+            if (!it) return;
+            var n = String(it.name || '');
+            if (n !== name && !(n.indexOf(name) === 0 && /^ \[\d+\]$/.test(n.slice(name.length)))) return;
+            var cfg = null;
+            try { cfg = JSON.parse(String(it.system_region_config || '')); } catch (e) { cfg = null; }
+            if (!cfg || cfg.regionType !== 'comments') return;
+            var sid = parseInt(it.id, 10) || 0;
+            if (sid > 0) out.push(sid);
+        });
+        return out;
+    }
+
+    // The parsed config of every widget row ({sid: cfg}). The cache holds
+    // the configs of the widgets on the tabs opened in this editor only;
+    // the rows hold one for each widget, so a widget placed only on a tab
+    // not opened yet is known by its kind too. Pure.
+    function _sdCommentsRowConfigs(items) {
+        var out = {};
+        (Array.isArray(items) ? items : []).forEach(function (it) {
+            if (!it) return;
+            var sid = parseInt(it.id, 10) || 0;
+            if (sid <= 0) return;
+            var cfg = null;
+            try { cfg = JSON.parse(String(it.system_region_config || '')); } catch (e) { cfg = null; }
+            if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) out[sid] = cfg;
+        });
+        return out;
+    }
+
+    // The shared components the pages place (also inside a loaded one)
+    // whose layout is not loaded: those of tabs not opened in this editor,
+    // where a Comments widget may sit inside one. Widgets (a config) are
+    // left out: their kind is known without their layout. Each id once.
+    // Pure: the configs and the trees come from the caller.
+    function _sdCommentsUnloadedRefs(pageTrees, cfgOf, treeOf) {
+        var out = [];
+        var seen = {};
+        var walk = function (n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid || seen[sid]) return;
+                seen[sid] = true;
+                if (cfgOf(sid)) return;
+                var t = treeOf(sid);
+                if (t) walk(t);
+                else out.push(sid);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        (pageTrees || []).forEach(function (e) { walk((e && e.tree) ? e.tree : e); });
+        return out;
+    }
+
+    function _sdCommentsTreeOf(sid) {
+        var c = _sharedCache[sid];
+        return (c && c.tree) ? c.tree : null;
+    }
+
+    // The widget a page of this editor last went back to the fixed block
+    // from: "Make designable" places it again, even when no page places it
+    // any more and it has been renamed. Editor only, never saved.
+    var _sdCommentsSentBack = 0;
+
+    // `cfgOf` (optional): the configs to judge by, the cache's by default.
+    function _sdCommentsDesignWidget(cfgOf) {
+        return _sdCommentsPickWidget(_pgAllPageTrees(), cfgOf || _cfCfgOf, _sdCommentsTreeOf, _sharedUsage,
+            (_design && _design.styleId) ? _design.styleId : 0, [_sdCommentsSentBack]);
+    }
+
+    // The site's widget rows (shared_component list), for a widget of the
+    // design on a tab not opened in this editor or on no page now.
+    // cb(items) once; [] when the server cannot be reached.
+    function _sdCommentsFetchRows(cb) {
+        var done = false;
+        var finish = function (items) { if (done) return; done = true; cb(items); };
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', _swApiBase(), true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var resp = null;
+            try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+            finish((resp && resp.status === 'success' && Array.isArray(resp.items)) ? resp.items : []);
+        };
+        xhr.onerror = function () { finish([]); };
+        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list', token: _swToken() }));
+    }
+
+    // A placement of a widget, and the fixed comments block.
+    function _sdCommentsRefNode(sid, name) {
+        return { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: name }, children: [] };
+    }
+    function _sdCommentsBlockNode() {
+        return { _id: gid(), type: 'region', props: { regionType: 'comments_block', regionName: '' }, children: [] };
+    }
+
+    // Whether the operator may turn this fixed block or this placement into
+    // the other: a designer, on the page's own tree (not inside a component).
+    function _sdCommentsSwapOffered(node) {
+        return !!node && !_sdIsContentLevel() && !!findParent(node, tree);
+    }
+
+    // The fixed comments block becomes a placement of the design's Comments
+    // widget: one a page places (also on a tab not opened yet, known from
+    // the server's rows), the one a page went back from, or a row named
+    // after the design that no page places now. With none, one is made from
+    // the starter layout, showing only the featured comments while there
+    // are some, as the block does. A page shows one Comments widget.
+    function _sdCommentsMakeDesignable(regionNode) {
+        if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
+            regionNode.props.regionType !== 'comments_block' || !_sdCommentsSwapOffered(regionNode)) return;
+        // A page a colleague holds is read-only here, as for every change.
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdCommentsPickWidget([{ tree: tree }], _cfCfgOf, _sdCommentsTreeOf, {}, 0)) {
+            sdToast(esc(_sdT('This page already shows a Comments widget.')), 'warning');
+            return;
+        }
+        var place = function (sid, name, created) {
+            var parent = findParent(regionNode, tree);
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) return;
+            saveState();
+            var ref = _sdCommentsRefNode(sid, name);
+            parent.children.splice(idx, 1, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            var cfg = _cfCfgOf(sid);
+            var msg = esc(_sdT('The fixed block is now the Comments widget "{var}": the same comments, watchers and settings.', name));
+            if (!created && (!cfg || cfg.featured !== 'filter')) msg += ' ' + esc(_sdT('Its display options are shared with the other pages that show it.'));
+            sdToast(msg, 'success', 7000);
+        };
+        var ownName = _swAutoName('comments', null, { designWide: true });
+        var reuse = function (sid) {
+            var cached = _sharedCache[sid];
+            place(sid, (cached && cached.name) ? cached.name : ownName, false);
+        };
+        var sid = _sdCommentsDesignWidget();
+        if (sid) { reuse(sid); return; }
+        _sdCommentsFetchRows(function (rows) {
+            // The cache knows the widgets of the tabs opened in this editor;
+            // the rows know every widget's kind, so one placed only on a tab
+            // not opened yet is the design's too.
+            var rowCfg = _sdCommentsRowConfigs(rows);
+            var cfgOf = function (s) { return _cfCfgOf(s) || rowCfg[s] || null; };
+            var decide = function (loaded) {
+                // The block may have gone meanwhile (another tab, an undo).
+                if (!findParent(regionNode, tree)) return;
+                var found = _sdCommentsDesignWidget(cfgOf);
+                if (!found && !loaded) {
+                    // The components those tabs place, loaded once: the
+                    // design's widget may sit inside one.
+                    var unloaded = _sdCommentsUnloadedRefs(_pgAllPageTrees(), cfgOf, _sdCommentsTreeOf);
+                    if (unloaded.length) { prefetchShared(unloaded, function () { decide(true); }); return; }
+                }
+                if (!found) found = _sdCommentsNamedRows(rows, ownName)[0] || 0;
+                if (found) {
+                    // Its name and settings from its row, for the placement
+                    // and the panel; its layout is fetched when it is drawn
+                    // (place()).
+                    var hitRow = null;
+                    (rows || []).forEach(function (it) { if (!hitRow && it && (parseInt(it.id, 10) || 0) === found) hitRow = it; });
+                    if (hitRow) {
+                        if (!_sharedCache[found]) _sharedCache[found] = { name: hitRow.name || ownName, tree: null };
+                        if (!_sharedCache[found].system_region_config) _sharedCache[found].system_region_config = hitRow.system_region_config || null;
+                    }
+                    reuse(found);
+                    return;
+                }
+                var cfg = _swTypeDefaults({}, 'comments');
+                cfg.featured = 'filter';
+                _swCreateRow(ownName, cfg, _buildStarterTree('comments'), function (newId, newName) {
+                    place(newId, newName, true);
+                });
+            };
+            decide(false);
+        });
+    }
+
+    // A placement of the Comments widget becomes the fixed comments block
+    // again; the widget stays in the design, and "Make designable" places it
+    // again (_sdCommentsSentBack, the rows named after the design).
+    function _sdCommentsBackToBlock(refNode) {
+        if (!refNode || refNode.type !== 'shared_ref' || !_sdCommentsSwapOffered(refNode)) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var parent = findParent(refNode, tree);
+        var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(refNode) : -1;
+        if (idx === -1) return;
+        _sdCommentsSentBack = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+        saveState();
+        var block = _sdCommentsBlockNode();
+        parent.children.splice(idx, 1, block);
+        selectedNode  = block;
+        selectedNodes = [];
+        render();
+        sdToast(esc(_sdT('Back to the fixed comments block; the widget stays in the design.')), 'success');
     }
 
     // Give THIS page its own copy of a widget other pages also place:
@@ -54844,13 +55746,20 @@ const StyleDesigner = (function () {
         });
         if (!ids.length) return null;
         var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
-        return {
+        var payload = {
             page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0,
             widgets: ids.map(function (id) {
                 var c = _sharedCache[id] || {};
                 return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
             })
         };
+        // A comments widget draws the page's thread under the comment
+        // settings the editor holds, saved or not; they are part of the
+        // payload, so a changed setting asks the server again.
+        if (ids.some(function (id) { var cfg = _cfCfgOf(parseInt(id, 10)); return !!cfg && cfg.regionType === 'comments'; })) {
+            payload.comment_settings = _sdCommentSettingsValues();
+        }
+        return payload;
     }
 
     var _sdPreviewWin  = null;  // the preview window this editor opened
@@ -56260,13 +57169,26 @@ const StyleDesigner = (function () {
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
+        'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
+        'pg_comments_closed_message', 'pg_comments_watchers_managed',
         'page_meta_tags', 'page_custom_jsonld',
         'page_canonical_url', 'page_noarchive', 'page_max_snippet'
+    ];
+    // The page's comment settings: the hidden pg_comments* inputs of the
+    // editor screen, which the comments panel writes. The keys and their
+    // order are pg_comment_editor_keys()'s (includes/fn/comments.php).
+    var _PG_CMT_FIELDS = [
+        'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
+        'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
+        'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
+        'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
+        'pg_comments_closed_message', 'pg_comments_watchers_managed'
     ];
     var _PG_BOOL_FIELDS = {
         page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1, page_noarchive: 1,
         pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1,
-        pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1
+        pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1,
+        pg_comments_attachments: 1, pg_comments_select_name: 1, pg_comments_watchers_managed: 1
     };
     var _pgNewTabSeq = 0;
 
@@ -56363,9 +57285,7 @@ const StyleDesigner = (function () {
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
-         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
-         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
+        _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             p[k] = _PG_BOOL_FIELDS[k] ? ((el.value === '1') ? 1 : 0) : el.value;
@@ -56396,9 +57316,7 @@ const StyleDesigner = (function () {
                 if (document.body.contains(el)) tagin(el);
             }
         });
-        ['pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
-         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
-         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email'].forEach(function (k) {
+        _PG_CMT_FIELDS.forEach(function (k) {
             var el = document.querySelector('input[type="hidden"][name="' + k + '"]');
             if (!el) return;
             el.value = _PG_BOOL_FIELDS[k] ? (p[k] ? '1' : '0') : (p[k] == null ? '' : String(p[k]));
@@ -56919,6 +57837,7 @@ const StyleDesigner = (function () {
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+            pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
             tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: null, treeLoadWarning: false,
             formSettings: {}
@@ -56967,6 +57886,9 @@ const StyleDesigner = (function () {
             pg_comments_login: src.pg_comments_login ? 1 : 0,
             pg_comments_email_page: src.pg_comments_email_page || 0, pg_comments_email_subject: src.pg_comments_email_subject || '',
             pg_comments_notify_email: src.pg_comments_notify_email || '',
+            pg_comments_attachments: src.pg_comments_attachments ? 1 : 0, pg_comments_select_name: src.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: src.pg_comments_message || '', pg_comments_closed_message: src.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: src.pg_comments_watchers_managed ? 1 : 0,
             tree: cloneTree(_pgTreeOf(src) || createDefaultTree()),
             undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
             // The form settings come along. The fields do not need to: they
@@ -57062,6 +57984,9 @@ const StyleDesigner = (function () {
             pg_comments_login: sp.pg_comments_login ? 1 : 0,
             pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
             pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
             tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree), baseline: null, treeLoadWarning: false,
             // The form settings come along; the fields are made under the
             // copy's own id by the first save, as for a duplicate.
@@ -58782,6 +59707,9 @@ const StyleDesigner = (function () {
             pg_comments_login: sp.pg_comments_login ? 1 : 0,
             pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
             pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
             tree: sp.tree || createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0,
             baseline: '__attached__',   // never equal → stays dirty until saved
             treeLoadWarning: false,
@@ -59170,6 +60098,7 @@ const StyleDesigner = (function () {
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+                    pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
                     tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree),
                     baseline: null, treeLoadWarning: false
                 };
@@ -59436,6 +60365,9 @@ const StyleDesigner = (function () {
                 pg_comments_login: sp.pg_comments_login ? 1 : 0,
                 pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
                 pg_comments_notify_email: sp.pg_comments_notify_email || '',
+                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
                 tree: pt, undoStack: [], redoStack: [], nodeIdCounter: reindex(pt),
                 baseline: null, treeLoadWarning: false,
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
@@ -60071,6 +61003,9 @@ const StyleDesigner = (function () {
                 pg_comments_login: sp.pg_comments_login ? 1 : 0,
                 pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
                 pg_comments_notify_email: sp.pg_comments_notify_email || '',
+                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
@@ -60092,6 +61027,7 @@ const StyleDesigner = (function () {
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
+                pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
                 tree: createDefaultTree(), undoStack: [], redoStack: [], nodeIdCounter: 0, baseline: null, treeLoadWarning: false,
                 formSettings: {}
             });

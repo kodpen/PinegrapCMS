@@ -5,7 +5,7 @@ description: The comments system widget (regionType comments): whose thread it s
 
 ## What is it and where does it live?
 - Kind `comments` (`includes/fn/widgets_comments.php`, `SW_TYPES`, `pg_sw_type_labels()`): a page's thread and add-comment form ([[comments-widget-form]]) in the design's layout, shared by every page placing it; comments and `comments_*` settings stay the page's ([[comment-thread-rules]]).
-- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured top-level comments pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). No panel control yet.
+- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured top-level comments pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). Panel: [[comments-widget-panel]].
 
 ## Which thread does a page show?
 - The drawn page's (`pg_sw_render_context()['page_id']`). A top-level form_item_view widget (`pg_sw_record_comment_context()`): that record's thread, posted as `submitted_form`. Else the page's own: read as every comment on the page (null thread, as the classic block), posted as `''` / 0.

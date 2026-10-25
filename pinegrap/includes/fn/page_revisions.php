@@ -145,6 +145,9 @@ function pg_page_revision_settings_from_row($row)
         'comments_automatic_publish', 'comments_show_submitted_date_and_time',
         'comments_require_login_to_comment', 'comments_submitter_email_page_id',
         'comments_submitter_email_subject', 'comments_administrator_email_to_email_address',
+        'comments_watcher_email_page_id', 'comments_watcher_email_subject',
+        'comments_allow_file_attachments', 'comments_allow_user_to_select_name', 'comments_message',
+        'comments_disallow_new_comment_message', 'comments_watchers_managed_by_submitter',
         'page_meta_tags', 'custom_jsonld', 'canonical_url', 'noarchive', 'max_snippet',
     );
 

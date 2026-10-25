@@ -14,7 +14,7 @@ description: How the comments widget and the classic comments block share a page
 - The classic block skips a page in its pass's record (`pg_comments_widget_drawn()`): no second list, no second add_comment form-state reader, no System-region append; a `<!--pg-comments-block-->` marker is emptied.
 
 ## Which page id is it?
-- `pg_sw_render_context()['page_id']`, set by `get_page_content()` for the drawn page; never `_pg_sw_current_page_id()` (0 on the home page, in e-mails and the search index, cached per request). No page (the editor's Preview, for now): nothing drawn, nothing claimed.
+- `pg_sw_render_context()['page_id']`, set by `get_page_content()` for the drawn page; never `_pg_sw_current_page_id()` (0 on the home page, in e-mails and the search index, cached per request). The editor's Preview sets the saved page's id in a claim record of its own ([[comments-widget-canvas]]); no page (an unsaved one): nothing drawn, nothing claimed.
 
 ## How is it checked?
 - `tests/comments_widget_test.php`: the claim registry, the classic-thread table, the renderer's order (classic check, claim, the other refusals), the wiring in `get_page_content.php`.
