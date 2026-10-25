@@ -7,7 +7,7 @@ description: Bootstrap 6 references for panel UI work: llms.txt and llms-full.tx
 - Index of every docs page: https://getbootstrap.com/llms.txt
 - Full docs text in one file (1.3 MB; grep its `# <Component>` headings): https://getbootstrap.com/llms-full.txt
 - Both serve the 6.0 docs (checked 2026-10-25); npm `latest` is 5.3.8, `next` is `6.0.0-alpha.1`.
-- `assets/lib/bootstrap-6` holds an older v6-dev preview (header `v6.0.0-alpha1`, 2026-09-17) that lacks `.table-card`, `.placeholder-pulse` and `.form-floating-always`; step B0b puts npm `6.0.0-alpha.1` there. `.form-adorn-sm`/`-lg` are documented but in neither. Check classes and tokens against the dist, not only the docs.
+- `assets/lib/bootstrap-6` holds npm `6.0.0-alpha.1` (`document.txt`: source, sha512, CDN SRI). The docs run ahead of it: `.form-adorn-sm`/`-lg` are documented but missing. Check classes and tokens against the dist, not only the docs. Line numbers quoted from an earlier preview copy (header `v6.0.0-alpha1`) no longer match.
 
 ## Which skills are in the repo?
 - `.claude/skills/bootstrap-v5-v6-migration`, `bootstrap-v6-install`, `bootstrap-color-system`, `bootstrap-component`: unchanged copies of twbs/bootstrap `skills/` at 6ae3f86 (2026-10-24); MIT notice in `.claude/skills/LICENSE-bootstrap.txt`. Update by copying the upstream folders again; never edit them.

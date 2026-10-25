@@ -8,7 +8,7 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 - Screens the owner likes must not look worse: workspace, view_files, product_builder, edit_user, welcome, view_product_groups, view_offers, edit_offer, header, footer, main menu. The visual editor keeps its look.
 
 ## What did the owner decide (2026-10-25)?
-- Start now on npm 6.0.0-alpha.1 (step B0b brings the files).
+- Start now on npm 6.0.0-alpha.1 (in `assets/lib/bootstrap-6` since B0b).
 - Old browsers get a non-blocking "update your browser" notice. A classic `<head>` script tests `CSS.supports` for `light-dark()`, `selector(:has(*))` and `oklch(from red l c h)`, which fail below Chrome/Edge 123, Firefox 128, Safari 17.5. One `lang()` text, printed by `output_control_panel_header_includes()` and the 4 standalone screens, closable for the session.
 - The switch keeps today's look; the redesign comes after. The component swaps he named belong to the first stage.
 - A separate branch is allowed; the model was left to this plan.
@@ -22,7 +22,7 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 
 ## In which order?
 - Cold areas first: panel templates, dashboard, users and contacts, products and offers, ERP (not Paraşüt files under open claims). Then forms and content, orders, workspace, the rest. Last: `output.php`, `backend.src.css`/`.js`, settings, `install/index.php`, the visual editor.
-- Claim as `[plan:bootstrap-6-panel] B<n> — <topic>`; steps and status: `bootstrap-6-panel-steps.md`.
+- Claim with a draft PR titled `[plan:bootstrap-6-panel] B<n> — <topic>`; steps and status: `bootstrap-6-panel-steps.md`.
 
 ## What is still open?
 1. Parallel sessions on independent steps: not assigned by the owner yet (CLAUDE.md).
