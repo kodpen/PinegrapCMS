@@ -7,8 +7,9 @@
  * written to (the channel's customer, else an account tied to it through
  * its contact; only an active account that is not a supplier alone), who is
  * offered it (the ERP right without the accountant's read-only one), that
- * nobody else's request reads an account, let alone opens one, and that
- * the channel's menu never ends on the divider drawn below the item.
+ * nobody else's request reads an account, let alone opens one, that the
+ * customer's ties are read once per channel, and that the channel's menu
+ * never ends on the divider drawn below the item.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -44,6 +45,21 @@ function workspace_sales_quote_test_links(array $pairs)
 	}
 
 	return $out;
+}
+
+// The source of a loaded function with its whitespace and comments taken
+// out, so a test can look for a statement however it is laid out.
+function workspace_sales_quote_test_compact($function)
+{
+	$compact = '';
+
+	foreach (pg_test_source_tokens(pg_test_function_source($function)) as $token) {
+		if (!is_array($token) || ($token[0] !== T_WHITESPACE)) {
+			$compact .= pg_test_source_text($token);
+		}
+	}
+
+	return $compact;
 }
 
 // A Workspace member, with or without the ERP right.
@@ -115,14 +131,7 @@ function test_workspace_sales_quote_offered_to_erp_writers_only()
 function test_workspace_sales_quote_lookup_reads_nothing_without_the_right()
 {
 	$source = pg_test_function_source('ws_channel_sales_quote_account');
-	$compact = '';
-
-	foreach (pg_test_source_tokens($source) as $token) {
-		if (!is_array($token) || ($token[0] !== T_WHITESPACE)) {
-			$compact .= pg_test_source_text($token);
-		}
-	}
-
+	$compact = workspace_sales_quote_test_compact('ws_channel_sales_quote_account');
 	$body = (string) substr($compact, (int) strpos($compact, '{'));
 	$gate = '{if(!ws_sales_quote_may_start($viewer,$erp_readonly)){return0;}';
 
@@ -132,6 +141,28 @@ function test_workspace_sales_quote_lookup_reads_nothing_without_the_right()
 	// (erp_account_for_contact() creates one).
 	pg_assert_false(strpos($source, 'erp_account_for_contact') !== false, 'never opens an account');
 	pg_assert_false(stripos($source, 'INSERT') !== false, 'writes nothing');
+}
+
+// The records tied to the customer are read once per channel: the channel's
+// details read them for the customer card and hand the same list to the
+// lookup, which reads none itself, so an ERP writer's channel open does not
+// run the contact, user and account queries twice. Read from the source,
+// because the runner has no database to count queries on.
+function test_workspace_sales_quote_channel_ties_read_once()
+{
+	$detail = workspace_sales_quote_test_compact('ws_channel_detail');
+
+	pg_assert_same(1, substr_count($detail, 'ws_customer_link_tokens('), 'the channel details read the ties once');
+	pg_assert_true((bool) preg_match('/\\$(\\w+)=[^;]*ws_customer_link_tokens\\(/', $detail, $read), 'into a variable');
+
+	$links = '$' . ($read[1] ?? '');
+
+	pg_assert_true(strpos($detail, 'ws_channel_customer_present($viewer,$channel,' . $links . ')') !== false, 'the customer card gets them');
+	pg_assert_true((bool) preg_match('/ws_channel_sales_quote_account\\([^;]*,' . preg_quote($links, '/') . '\\);/', $detail), 'the lookup gets them');
+
+	pg_assert_false(strpos(workspace_sales_quote_test_compact('ws_channel_sales_quote_account'), 'ws_customer_link_tokens(') !== false, 'the lookup reads no ties');
+	pg_assert_true(strpos(workspace_sales_quote_test_compact('ws_channel_customer_present'), 'ws_customer_present($viewer,$type,$id,$links)') !== false, 'the channel card hands them on');
+	pg_assert_true(strpos(workspace_sales_quote_test_compact('ws_customer_present'), 'if(!is_array($links)){$links=ws_customer_link_tokens($type,$id);}') !== false, 'the card reads them only when none are given');
 }
 
 // The item draws a divider below it, though a reader may be offered
