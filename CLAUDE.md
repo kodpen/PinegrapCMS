@@ -164,9 +164,15 @@ session).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` PRs not counted, no session starts a new task. The check
    is made before the draft PR that claims the task, before any work; a
-   session whose work is done still marks its PR ready. About 6 to 8 working
-   sessions at a time.
+   session whose work is done still marks its PR ready. How many sessions
+   work at a time is set per account by its coordinator (rule 9).
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
+9. **Coordinators.** One coordinator session per account keeps its cloud
+   workers on free plan steps and gathers the owner's questions
+   (`docs/memory/workflow/coordinator.md`); it writes no code, opens no PR
+   and merges nothing. A worker that needs the owner's decision writes it
+   under `## Questions for the owner` in its PR body and waits; the answer
+   comes back as a comment on the PR.
 
 ## Fixed rules
 
