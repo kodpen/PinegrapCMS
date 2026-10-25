@@ -320,7 +320,8 @@ function ws_erp_quotes_readable()
  * @param array $viewer
  * @param array $tokens ws_tokens() rows, from any number of texts
  * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon;
- *               a channel also badge (ws_channel_icon_badge())
+ *               a channel also badge (ws_channel_icon_badge()); a tag whose
+ *               record is gone (or whose module is off) also gone (true)
  */
 function ws_refs_resolve($viewer, $tokens)
 {
@@ -785,12 +786,14 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
-    // Tags whose record is gone are still drawn, and say so.
+    // Tags whose record is gone are still drawn, and say so. gone tells them
+    // apart from a record the reader may not see (known false too).
     foreach ((array) $tokens as $token) {
         $key = $token['type'] . ':' . (int) $token['id'];
 
         if (!isset($out[$key])) {
             $put($token['type'], $token['id'], lang('Deleted record'), '', '', '', false, 'bi-x-circle');
+            $out[$key]['gone'] = true;
         }
     }
 

@@ -31,9 +31,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The scope each right of the reader the summary reads is narrowed to: the
  * one the external API reads that kind of record with (ws_api_search_record_scopes(),
- * which the assistants follow too).
+ * which the assistants follow too). User accounts have none: no API scope
+ * reads them, so GET /workspace/search leaves them out and a user, the
+ * customer or a tie, goes by kind and number here.
  *
- * @return array ws_viewer() right => scope
+ * @return array ws_viewer() right => scope, null for none
  */
 function ws_api_customer_scopes()
 {
@@ -43,13 +45,15 @@ function ws_api_customer_scopes()
         'erp'       => 'erp:read',
         'erp_cash'  => 'erp_cash:read',
         'forms'     => 'forms:read',
+        'users'     => null,
     );
 }
 
 /**
  * The reader narrowed to the key's scopes: a right stays only where the key
- * holds its scope. A scope never opens what the person may not see. The
- * rights the summary does not read are left as they are.
+ * holds its scope, and a right no scope reads is dropped. A scope never opens
+ * what the person may not see. The rights the summary does not read are left
+ * as they are.
  *
  * @param array    $viewer ws_viewer()
  * @param string[] $scopes the key's scopes (api_current_scopes())
@@ -58,7 +62,7 @@ function ws_api_customer_scopes()
 function ws_api_customer_viewer($viewer, $scopes)
 {
     foreach (ws_api_customer_scopes() as $right => $scope) {
-        $viewer[$right] = !empty($viewer[$right]) && api_has_scope($scopes, $scope);
+        $viewer[$right] = ($scope !== null) && !empty($viewer[$right]) && api_has_scope($scopes, $scope);
     }
 
     return $viewer;

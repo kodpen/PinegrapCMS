@@ -54,6 +54,12 @@ function workspace_customer_summary_test_ref($type, $id, $label, $known, $url = 
 	return array('type' => $type, 'id' => $id, 'label' => $label, 'url' => $url, 'meta' => $meta, 'status' => '', 'known' => $known, 'icon' => '');
 }
 
+// The entry ws_refs_resolve() draws for a tag whose record is gone.
+function workspace_customer_summary_test_gone($type, $id)
+{
+	return array('type' => $type, 'id' => $id, 'label' => lang('Deleted record'), 'url' => '', 'meta' => '', 'status' => '', 'known' => false, 'icon' => 'bi-x-circle', 'gone' => true);
+}
+
 // Every right a section can ask for.
 function workspace_customer_summary_test_viewer($rights = array())
 {
@@ -135,8 +141,8 @@ function test_ws_customer_identity_build_names_the_customer_and_its_ties()
 }
 
 // A customer the reader may not see goes by its kind and number, with no
-// address and nothing that would tell more; one that is gone is nobody.
-function test_ws_customer_identity_build_unknown_and_gone()
+// address and nothing that would tell more.
+function test_ws_customer_identity_build_unknown()
 {
 	$refs = array('contact:12' => workspace_customer_summary_test_ref('contact', 12, lang('Contact'), false));
 	$identity = ws_customer_identity_build('contact', 12, 12, array(), $refs);
@@ -152,8 +158,81 @@ function test_ws_customer_identity_build_unknown_and_gone()
 
 	pg_assert_same(lang('Contact') . ' #12', ws_customer_identity_build('contact', 12, 12, array(), $nameless)['customer']['label'], 'a contact with nothing to call it by');
 
-	pg_assert_same(null, ws_customer_identity_build('contact', 12, 12, array(), array()), 'deleted since it was chosen');
 	pg_assert_same(null, ws_customer_identity_build('', 0, 0, array(), array()), 'a channel about nobody');
+}
+
+// A customer deleted since it was chosen is nobody: ws_refs_resolve() still
+// hands over an entry for its tag, marked gone, and that entry is not taken
+// for a record the reader may not see. A tie that is gone is not listed.
+function test_ws_customer_identity_build_deleted_customer_is_nobody()
+{
+	foreach (array('contact', 'user_account', 'erp_account') as $type) {
+		$refs = array($type . ':99' => workspace_customer_summary_test_gone($type, 99));
+
+		pg_assert_same(null, ws_customer_identity_build($type, 99, ($type === 'contact') ? 99 : 0, array(), $refs), $type . ' deleted since it was chosen');
+	}
+
+	$links = array(array('sigil' => '#', 'type' => 'user_account', 'id' => 3));
+	$refs = array(
+		'contact:5'      => workspace_customer_summary_test_ref('contact', 5, 'Ayşe Demir', true, '/pg/edit_contact.php?id=5'),
+		'user_account:3' => workspace_customer_summary_test_gone('user_account', 3),
+	);
+
+	pg_assert_same(array(), ws_customer_identity_build('contact', 5, 5, $links, $refs)['links'], 'a tie that is gone is not listed');
+
+	pg_assert_contains("['gone'] = true", workspace_customer_summary_test_source('ws_refs_resolve'), 'the resolver marks a tag whose record is gone');
+}
+
+// An owner with the user role (3) opens a contact only through a contact
+// group given to them, as the address book and GET /customers/{id} do: a
+// contact outside is named by its kind and number, with no detail and no
+// address, the customer and its ties alike.
+function test_ws_customer_identity_contact_group_rule()
+{
+	pg_assert_true(function_exists('ws_customer_refs_narrow') && function_exists('ws_customer_contacts_open'), 'the contact-group rule is applied');
+
+	if (!function_exists('ws_customer_refs_narrow') || !function_exists('ws_customer_contacts_open')) {
+		return;
+	}
+
+	$refs = array(
+		'contact:12'     => workspace_customer_summary_test_ref('contact', 12, 'Ayşe Demir', true, '/pg/edit_contact.php?id=12', 'ayse@example.com'),
+		'contact:5'      => workspace_customer_summary_test_ref('contact', 5, 'Mehmet Kaya', true, '/pg/edit_contact.php?id=5', 'mehmet@example.com'),
+		'erp_account:9'  => workspace_customer_summary_test_ref('erp_account', 9, 'Acme Ltd', true, '/pg/edit_erp_account.php?id=9'),
+	);
+
+	$narrow = ws_customer_refs_narrow($refs, array(5));
+	$identity = ws_customer_identity_build('contact', 12, 12, array(), $narrow);
+
+	pg_assert_same(array(
+		'type'   => 'contact',
+		'id'     => 12,
+		'kind'   => lang('Contact'),
+		'label'  => lang('Contact') . ' #12',
+		'detail' => '',
+		'known'  => false,
+		'url'    => '',
+	), $identity['customer'], 'a contact outside the reader\'s groups');
+
+	pg_assert_same($refs['contact:5'], $narrow['contact:5'], 'a contact in one of them is left as it is');
+	pg_assert_same($refs['erp_account:9'], $narrow['erp_account:9'], 'other kinds are left as they are');
+	pg_assert_same(12, $identity['contact_id'], 'the sections still read by it, each with its own right');
+
+	$tie = ws_customer_identity_build('erp_account', 9, 12, array(array('sigil' => '#', 'type' => 'contact', 'id' => 12)), $narrow);
+
+	pg_assert_same(array(), $tie['links'], 'a contact tie outside the groups is not listed');
+	pg_assert_same(array(12, 5), ws_customer_contacts_open(array('id' => 7, 'role' => 2), array(12, '5', 0, 12)), 'staff open every contact');
+	pg_assert_same(array(), ws_customer_contacts_open(array('id' => 7, 'role' => 3), array(0)), 'no contact, no query');
+
+	$open = workspace_customer_summary_test_source('ws_customer_contacts_open');
+
+	pg_assert_contains('contacts_contact_groups_xref', $open, 'the groups the contact is filed in');
+	pg_assert_contains('users_contact_groups_xref', $open, 'the groups given to the reader');
+
+	$source = workspace_customer_summary_test_source('ws_customer_identity');
+
+	pg_assert_true(strpos($source, 'ws_customer_refs_narrow(') > strpos($source, 'ws_refs_resolve('), 'narrowed after the tags are resolved');
+	pg_assert_true(strpos($source, 'ws_customer_identity_build(') > strpos($source, 'ws_customer_refs_narrow('), 'and before the customer is named');
 }
 
 /* ---------------------------------------------------------------------------
@@ -534,4 +613,11 @@ function test_ws_api_customer_viewer_narrows_to_the_scopes()
 	pg_assert_false($wide['erp'], 'a scope never opens what the person may not see');
 	pg_assert_true($wide['forms']);
 	pg_assert_same(array('orders', 'cart_quotes', 'forms'), array_keys(array_filter(ws_customer_summary_rights(ws_api_customer_viewer($viewer, array('orders:read', 'forms:read'))))), 'the sections follow the narrowed rights');
+
+	// No API scope reads user accounts (GET /workspace/search leaves them
+	// out), so a user, the customer or a tie, goes by kind and number.
+	$staff = workspace_customer_summary_test_viewer(array('role' => 2, 'users' => true));
+
+	pg_assert_false(ws_api_customer_viewer($staff, array('workspace:read'))['users'], 'the workspace scope alone');
+	pg_assert_false(ws_api_customer_viewer($staff, array('workspace:read', 'customers:read', 'orders:read', 'erp:read', 'forms:read'))['users'], 'nor any other scope');
 }

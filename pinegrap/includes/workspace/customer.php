@@ -451,11 +451,13 @@ function ws_customer_kind_labels()
  * Who a channel's customer is: the record chosen (ws_channel_customer_of()),
  * named for the reader, and the records tied to it through its contact
  * (ws_customer_link_tokens()) that the reader may see. A record the reader
- * may not see is named by its kind and number only. The ids the summary
- * reads by - the contact, every tied user and current account, seen or not -
- * come with it, for the readers below; they are not shown. Nothing is
- * written: the contact a channel stands for is brought in step where the
- * channel's card is drawn (ws_channel_customer_present()).
+ * may not see is named by its kind and number only; so is a contact outside
+ * the contact groups given to a reader with the user role, as the address
+ * book opens it (ws_customer_contacts_open()). The ids the summary reads by -
+ * the contact, every tied user and current account, seen or not - come with
+ * it, for the readers below; they are not shown. Nothing is written: the
+ * contact a channel stands for is brought in step where the channel's card is
+ * drawn (ws_channel_customer_present()).
  *
  * @param array $viewer
  * @param array $channel a ws_channels row
@@ -471,9 +473,74 @@ function ws_customer_identity($viewer, $channel)
     }
 
     $links = ws_customer_link_tokens($type, $id);
-    $refs = ws_refs_resolve($viewer, array_merge(array(array('sigil' => '#', 'type' => $type, 'id' => $id)), $links));
+    $tokens = array_merge(array(array('sigil' => '#', 'type' => $type, 'id' => $id)), $links);
+    $refs = ws_refs_resolve($viewer, $tokens);
+
+    $contact_ids = array();
+
+    foreach ($tokens as $token) {
+        if ($token['type'] === 'contact') {
+            $contact_ids[] = $token['id'];
+        }
+    }
+
+    $refs = ws_customer_refs_narrow($refs, ws_customer_contacts_open($viewer, $contact_ids));
 
     return ws_customer_identity_build($type, $id, ws_customer_contact_of($type, $id), $links, $refs);
+}
+
+/**
+ * The contacts of a set the reader may open by the address book's row rule
+ * (validate_contact_access(), api_customer_owner_filter() for the API): staff
+ * open every contact; a reader with the user role only one filed in a contact
+ * group given to them. Asked of the reader, not of whoever is signed in.
+ *
+ * @param array $viewer
+ * @param int[] $contact_ids
+ * @return int[]
+ */
+function ws_customer_contacts_open($viewer, $contact_ids)
+{
+    $ids = ws_customer_ids($contact_ids);
+
+    if (empty($ids) || ((int) $viewer['role'] < 3)) {
+        return $ids;
+    }
+
+    // Without the contacts right ws_refs_resolve() names no contact anyway.
+    if (empty($viewer['contacts'])) {
+        return array();
+    }
+
+    return ws_customer_ids(db_values("SELECT DISTINCT contacts_contact_groups_xref.contact_id
+        FROM contacts_contact_groups_xref
+        INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id
+        WHERE users_contact_groups_xref.user_id = '" . (int) $viewer['id'] . "'
+            AND contacts_contact_groups_xref.contact_id IN ('" . implode("','", $ids) . "')"));
+}
+
+/**
+ * The resolved tags of a customer with every contact the reader may not open
+ * (ws_customer_contacts_open()) drawn as ws_refs_resolve() draws a contact for
+ * a reader without the contacts right: no name, no detail, no address.
+ *
+ * @param array $refs             ws_refs_resolve() of the customer and its ties
+ * @param int[] $open_contact_ids the contacts the reader may open
+ * @return array the same entries
+ */
+function ws_customer_refs_narrow($refs, $open_contact_ids)
+{
+    $open = ws_customer_ids($open_contact_ids);
+
+    foreach ((array) $refs as $key => $ref) {
+        if ((($ref['type'] ?? '') !== 'contact') || empty($ref['known']) || in_array((int) $ref['id'], $open, true)) {
+            continue;
+        }
+
+        $refs[$key] = array_merge($ref, array('label' => lang('Contact'), 'url' => '', 'meta' => '', 'status' => '', 'known' => false));
+    }
+
+    return $refs;
 }
 
 /**
@@ -488,6 +555,7 @@ function ws_customer_identity($viewer, $channel)
  * @return array|null customer (ws_customer_identity_item()), links (the ties
  *                    the reader may see, the same), contact_id, user_ids,
  *                    erp_account_ids; null when the customer is not there
+ *                    (ws_refs_resolve() marks a record gone since: gone)
  */
 function ws_customer_identity_build($type, $id, $contact_id, $links, $refs)
 {
@@ -495,7 +563,7 @@ function ws_customer_identity_build($type, $id, $contact_id, $links, $refs)
     $id = (int) $id;
     $customer = $refs[$type . ':' . $id] ?? null;
 
-    if (!in_array($type, ws_customer_types(), true) || ($id <= 0) || !is_array($customer)) {
+    if (!in_array($type, ws_customer_types(), true) || ($id <= 0) || !is_array($customer) || !empty($customer['gone'])) {
         return null;
     }
 
