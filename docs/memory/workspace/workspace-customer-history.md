@@ -17,7 +17,7 @@ description: A channel's customer history (CRM seams slice 4, #1681): union read
 - A page never ends inside a second: when the first entry left out shares its second with the last ones shown, those wait too and `before` is that second + 1. A page made of one second alone keeps it and `before` is that second.
 
 ## Where is it used?
-- API: GET /workspace/channels/{id}/customer/history (`workspace.channels.customer_history`, workspace:read, an MCP tool), `before` and `limit`; read as the summary route reads (`ws_api_assistant_channel_reader()`, `ws_api_customer_viewer()` narrows ecommerce, erp, forms to orders:read, erp:read, forms:read). Objects `WorkspaceCustomerHistory`, `WorkspaceCustomerHistoryEntry`; `before` is null when `more` is false.
+- API: GET /workspace/channels/{id}/customer/history (`workspace.channels.customer_history`, workspace:read, an MCP tool), `before` and `limit`; read as the summary route reads (`ws_api_assistant_channel_reader()`, `ws_api_customer_viewer()` narrows ecommerce, erp, forms to orders:read, erp:read, forms:read). Tasks need tasks:read (`history_tasks`), and Claude's key reads messages and tasks only in channels Claude may be asked in (`history_claude`, `ws_claude_channel_allowed()`): without both the route returned task titles to a key without tasks:read and message excerpts of private channels to Claude (found before the merge of #1681). Objects `WorkspaceCustomerHistory`, `WorkspaceCustomerHistoryEntry`; `before` is null when `more` is false.
 - Panel: action `ws_channel_customer_history` (adds `at_text`, `ws_time_label()`); the customer card's History button (assets/js/workspace_customer.js) reads the first page on demand, "Show older" the next.
 
 ## What was not checked live?

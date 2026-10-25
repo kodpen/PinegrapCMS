@@ -384,7 +384,11 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
  * (ws_refs), below the page's start, newest first: a message only in a
  * channel the reader may read and not in this channel, whose own messages
  * are on screen already; a task only where the reader may see it. Nothing for
- * whoever is no member of the Workspace.
+ * whoever is no member of the Workspace. The API marks its reader: without
+ * tasks:read no task (history_tasks false), and Claude's key reads messages
+ * and tasks only in channels Claude may be asked in (history_claude), as
+ * every other Workspace read of channel content (ws_api_refs_within()). The
+ * panel's reader carries neither mark.
  *
  * @param array $viewer
  * @param array $channel  the customer's channel
@@ -432,10 +436,10 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
     }
 
     $after = ($before > 0) ? " AND created_at < '" . (int) $before . "'" : '';
+    $claude = !empty($viewer['history_claude']);
+    $channels = array();
 
     if (!empty($message_ids)) {
-        $channels = array();
-
         foreach ((array) db_items("SELECT id, channel_id, sender_id, body, created_at FROM ws_messages
             WHERE id IN (" . implode(',', $message_ids) . ") AND deleted_at = 0 AND channel_id <> '" . (int) $channel['id'] . "'" . $after . "
             ORDER BY created_at DESC, id DESC") as $message) {
@@ -445,7 +449,8 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
                 $channels[$channel_id] = ws_channel($channel_id);
             }
 
-            if (!$channels[$channel_id] || !ws_can_read_channel($viewer, $channels[$channel_id])) {
+            if (!$channels[$channel_id] || !ws_can_read_channel($viewer, $channels[$channel_id])
+                || ($claude && !ws_claude_channel_allowed($channels[$channel_id]))) {
                 continue;
             }
 
@@ -464,13 +469,23 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
         }
     }
 
-    if (!empty($task_ids)) {
+    if (!empty($task_ids) && ($viewer['history_tasks'] ?? true)) {
         $tasks = (array) db_items("SELECT * FROM ws_tasks WHERE id IN (" . implode(',', $task_ids) . ")" . $after . " ORDER BY created_at DESC, id DESC");
         $assignees = ws_task_assignees_map(array_keys($task_ids));
 
         foreach ($tasks as $task) {
             if (!ws_can_see_task($viewer, $task, $assignees[(int) $task['id']] ?? array())) {
                 continue;
+            }
+
+            if ($claude && ((int) $task['channel_id'] > 0)) {
+                if (!array_key_exists((int) $task['channel_id'], $channels)) {
+                    $channels[(int) $task['channel_id']] = ws_channel((int) $task['channel_id']);
+                }
+
+                if (!$channels[(int) $task['channel_id']] || !ws_claude_channel_allowed($channels[(int) $task['channel_id']])) {
+                    continue;
+                }
             }
 
             $out['tasks'][] = array(

@@ -300,6 +300,11 @@ function ws_api_channel_customer_history($params)
     list($viewer, $channel) = ws_api_assistant_channel_reader($params['id']);
 
     $viewer = ws_api_customer_viewer($viewer, api_current_scopes());
+    // Tasks need tasks:read, as every other Workspace read of tasks; Claude's
+    // key reads messages and tasks only in channels Claude may be asked in
+    // (ws_customer_history_ref_rows()).
+    $viewer['history_tasks'] = api_has_scope(api_current_scopes(), 'tasks:read');
+    $viewer['history_claude'] = ws_api_is_claude();
     $identity = ws_customer_identity($viewer, $channel);
     $history = is_array($identity)
         ? ws_customer_history($viewer, $channel, $identity, (int) ($params['before'] ?? 0), ws_customer_history_limit($params['limit'] ?? null))

@@ -258,6 +258,8 @@ function test_ws_customer_history_readers()
 	pg_assert_contains('ws_can_see_task(', $refs, 'a task only when the reader may see it');
 	pg_assert_contains("\$viewer['member']", $refs, 'never for a site member');
 	pg_assert_contains('deleted_at = 0', $refs, 'no deleted message');
+	pg_assert_contains('ws_claude_channel_allowed(', $refs, "Claude's key reads only channels Claude may be asked in");
+	pg_assert_contains("\$viewer['history_tasks']", $refs, 'tasks only when the reader may read tasks');
 }
 
 // The route: read with workspace:read, a page asked with before and limit.
@@ -289,6 +291,8 @@ function test_ws_api_customer_history_route()
 	pg_assert_contains('ws_api_assistant_channel_reader(', $handler, 'the channel read as the summary reads it');
 	pg_assert_contains('ws_api_customer_viewer(', $handler, 'the reader narrowed to the key\'s scopes');
 	pg_assert_contains('ws_customer_history_limit(', $handler, 'the page size bounded');
+	pg_assert_contains("'tasks:read'", $handler, 'tasks only with tasks:read, as every other Workspace read of tasks');
+	pg_assert_contains('ws_api_is_claude()', $handler, "Claude's key marked for the channel gate");
 }
 
 // The objects are registered and each presenter answers with exactly the
