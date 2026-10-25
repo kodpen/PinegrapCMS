@@ -8069,7 +8069,10 @@ function _pg_tpl_clean_starter($tree, $prefix)
  * anything is written.
  *
  * $opts:
- *   starters  array  regionType => tree, for the widgets left to the editor
+ *   starters  array  kind (pg_sw_widget_kind(), e.g. 'comments_recent' for a
+ *                    comments widget in the recent mode) => tree, for the
+ *                    widgets left to the editor
+ *                    (pg_design_template_starter_kinds())
  *   home      bool   make the template's home page - the page keyed 'home',
  *                    else its first page - the site's home page
  *   look      string the design's look (pg_design_looks()); left out: none

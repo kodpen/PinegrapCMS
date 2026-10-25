@@ -17,7 +17,7 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 - Approved with the column under fixed rule 5 (2026-10-23).
 
 ## Which indexes serve a list of recent comments?
-- No new one ([[comments-widget-recent-reads]]): `idx_thread`, `item_id`, `created_timestamp` (mine; no author index), `published`; `submitted_form_info.newest_comment_id` ranks records.
+- No new one ([[comments-widget-recent-reads]]): `idx_thread` (page threads skip `item_id`, `published` by hint), `created_timestamp` (no author index); `submitted_form_info.newest_comment_id` ranks records.
 
 ## What does the step cost on a big site?
 - The column goes in with `install_add_columns_instant()` (InnoDB on MySQL 8.0.12+ / MariaDB 10.3.2+: a moment), else `install_add_column()`. An index on InnoDB is built in place.

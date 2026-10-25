@@ -6,7 +6,7 @@ description: The comments widget's panel: page comment settings shared with the 
 ## What does the widget's panel show?
 - Display (`_sdCommentsDisplaySect()`), the widget's own `system_region_config`, shared by every page placing it: Comment order, Featured comments, Replies, Reply depth (threaded only), Comments per page. Selects on the generic `[data-sw-cfg]` handler, kind `choice`: stored as text (`'10'`), read as numbers (ctype_digit, `parseInt`); selected by `pg_comments_widget_options()`'s defaults and clamps. The row says "Comment order": `Order` is "Sipariş" in tr.json.
 - Comment settings (`_sdCommentSettingsSect({ widget: true })`): the same section the fixed `comments_block` region shows (`{}`), headed "Comment settings for <page>" with "Saved with this page; ...", warning while comments are off. Body in `#sd-cmt-settings`. Closed message: the widget's box shows the sentence it prints when empty; the block's says empty prints none.
-- Canvas Preview and Back to the fixed block: [[comments-widget-canvas]], [[comments-widget-conversion]]. A recent list has its own section: [[comments-widget-recent-editor]].
+- Canvas Preview and Back to the fixed block: [[comments-widget-canvas]], [[comments-widget-conversion]]. A recent list has its own section: [[comments-widget-recent-panel]].
 
 ## How does an inner node reach the settings?
 - `_sdCommentsWidgetOf(node)` (a node inside a thread, kind `comments`, never its shared_ref) gets the "Comment settings" button on top of its panel (`_sdCommentsSettingsShortcut()`, with the comments-off warning) and a `bi-chat-square-text` toolbar button. Both call `_sdOpenWidgetSection(sid, 'sd-cmt-settings')`, as `_cfOpenFormSettings()` does ([[custom-form-settings-shortcut]]).

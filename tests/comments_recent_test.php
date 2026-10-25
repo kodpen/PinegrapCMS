@@ -202,6 +202,7 @@ function comments_recent_test_facts($over = array())
 		'personal' => false,
 		'show' => 'published',
 		'signed_in' => false,
+		'sign_in_page' => false,
 	);
 }
 
@@ -226,6 +227,9 @@ function test_comments_recent_source_decision_table()
 		'a viewer filter in a background render' => array('viewer_filter' => true, 'signed_in' => false, 'personal' => false),
 		'pending without edit rights' => array('show' => 'pending'),
 		'mine signed out' => array('show' => 'mine'),
+		'a page that sends a visitor to sign in' => array('record' => false, 'sign_in_page' => true),
+		'a page that sends a visitor to sign in, drawn in the background' => array('record' => false, 'sign_in_page' => true, 'signed_in' => false, 'personal' => false),
+		'a page that sends a visitor to sign in, for staff' => array('record' => false, 'sign_in_page' => true, 'staff' => true, 'show' => 'pending'),
 	);
 	$reasons = array(
 		'missing' => 'missing',
@@ -242,6 +246,9 @@ function test_comments_recent_source_decision_table()
 		'a viewer filter in a background render' => 'viewer_filter',
 		'pending without edit rights' => 'not_staff',
 		'mine signed out' => 'signed_out',
+		'a page that sends a visitor to sign in' => 'sign_in',
+		'a page that sends a visitor to sign in, drawn in the background' => 'sign_in',
+		'a page that sends a visitor to sign in, for staff' => 'sign_in',
 	);
 
 	foreach ($refused as $name => $over) {
@@ -259,6 +266,7 @@ function test_comments_recent_source_decision_table()
 		'pending for staff' => array(array('show' => 'pending', 'staff' => true), 'record'),
 		'mine signed in' => array(array('show' => 'mine', 'signed_in' => true), 'record'),
 		'a page source with a form id left over' => array(array('record' => false, 'form_id' => 0), 'page'),
+		'a page that asks a visitor to sign in, for a signed-in member' => array(array('record' => false, 'sign_in_page' => true, 'signed_in' => true, 'personal' => true), 'page'),
 	);
 
 	foreach ($used as $name => $case) {
@@ -294,6 +302,38 @@ function test_comments_recent_viewer_filters()
 	$view = array('regionType' => 'form_item_view', 'filters' => array(array('field' => 'submitter', 'value' => '', 'dynamic_value' => 'viewer')));
 	pg_assert_false(pg_sw_search_index_eligible(array(), $view), 'the search index leaves such a view out');
 	pg_assert_contains('pg_sw_filters_compare_viewer(', comments_recent_test_php_body('pg_sw_search_index_eligible'), 'through the shared helper');
+}
+
+// get_page.php sends a visitor who is not signed in to the sign-in screen
+// before it asks the folder for these pages, so a list must not show their
+// comments to such a visitor either.
+function test_comments_recent_sign_in_pages()
+{
+	if (!comments_recent_test_has('pg_comments_recent_sign_in_page')) {
+		return;
+	}
+
+	foreach (array('my account', 'my account profile', 'view order', 'affiliate sign up form') as $type) {
+		pg_assert_true(pg_comments_recent_sign_in_page($type, null), $type . ': asks for a sign-in');
+	}
+	foreach (array('standard', 'form item view', 'form list view', 'registration entrance', 'membership entrance', 'catalog detail', '', null, 5) as $type) {
+		pg_assert_false(pg_comments_recent_sign_in_page($type, null), json_encode($type) . ': open to a visitor');
+	}
+
+	$form = array('auto_registration' => '0', 'membership' => '0', 'membership_days' => '0', 'private' => '0', 'private_folder_id' => '0');
+	pg_assert_false(pg_comments_recent_sign_in_page('custom form', $form), 'a plain custom form');
+	pg_assert_true(pg_comments_recent_sign_in_page('custom form', array('membership' => '1', 'membership_days' => '30') + $form), 'a form that grants a trial membership');
+	pg_assert_false(pg_comments_recent_sign_in_page('custom form', array('membership' => '1', 'membership_days' => '0') + $form), 'a membership of no days');
+	pg_assert_true(pg_comments_recent_sign_in_page('custom form', array('private' => '1', 'private_folder_id' => '8') + $form), 'a form that grants private access');
+	pg_assert_false(pg_comments_recent_sign_in_page('custom form', array('private' => '1', 'private_folder_id' => '0') + $form), 'private access to no folder');
+	pg_assert_false(pg_comments_recent_sign_in_page('custom form', array('auto_registration' => '1', 'membership' => '1', 'membership_days' => '30') + $form), 'one that registers the visitor itself');
+	pg_assert_true(pg_comments_recent_sign_in_page('custom form', array('membership' => 1, 'membership_days' => 30, 'auto_registration' => 0)), 'numbers, as read');
+	pg_assert_false(pg_comments_recent_sign_in_page('custom form', null), 'a custom form without its settings row');
+	pg_assert_false(pg_comments_recent_sign_in_page('standard', array('membership' => '1', 'membership_days' => '30') + $form), 'settings of another type are not read');
+
+	$sources = comments_recent_test_php_body('pg_comments_recent_sources');
+	pg_assert_contains('pg_comments_recent_sign_in_page(', $sources, 'the sources ask it');
+	pg_assert_contains("get_page_type_properties(\$page_id, 'custom form')", $sources, 'a custom form\'s settings are read');
 }
 
 // -- the gates in SQL ----------------------------------------------------------
@@ -347,6 +387,40 @@ function test_comments_recent_audience_sql()
 	pg_assert_same(" AND (comments.published = '0')", pg_comments_recent_audience_sql('pending', 0), 'pending');
 	pg_assert_same(" AND (comments.published = '1')", pg_comments_recent_audience_sql('other', 3), 'an unknown scope reads published');
 	pg_assert_false(strpos((string) pg_comments_recent_audience_sql('mine', 42), 'comments.id'), 'never the session\'s comment ids');
+
+	// An account id a deleted account had may be handed out again (MySQL 5.7
+	// resets AUTO_INCREMENT on a restart); the comments that account wrote
+	// are older than the new account, so 'mine' starts at its creation.
+	pg_assert_same(" AND (comments.created_user_id = '42') AND (comments.created_timestamp >= '1700000000')",
+		pg_comments_recent_audience_sql('mine', 42, 1700000000), 'mine: only what the account wrote since it was made');
+	pg_assert_same(" AND (comments.created_user_id = '42') AND (comments.created_timestamp >= '1700000000')",
+		pg_comments_recent_audience_sql('mine', 42, '1700000000'), 'the time as text');
+	foreach (array(0, '0', -5, 'x', '17e8', null, true, 1.5) as $unknown) {
+		pg_assert_same(" AND (comments.created_user_id = '42')", pg_comments_recent_audience_sql('mine', 42, $unknown), 'an unknown creation time adds no bound: ' . json_encode($unknown));
+	}
+	pg_assert_same(" AND (comments.published = '1')", pg_comments_recent_audience_sql('published', 42, 1700000000), 'published has no bound');
+	pg_assert_same(" AND (comments.published = '0')", pg_comments_recent_audience_sql('pending', 42, 1700000000), 'pending neither');
+	pg_assert_same(null, pg_comments_recent_audience_sql('mine', 0, 1700000000), 'mine signed out stays nothing');
+}
+
+// The time an account was made, for 'mine': user.user_created, written once
+// by every screen that makes an account; 0 (unknown) for accounts made before
+// the column, and before the upgrade that adds it.
+function test_comments_recent_account_since()
+{
+	if (!comments_recent_test_has('pg_comments_recent_account_since')) {
+		return;
+	}
+
+	$body = comments_recent_test_php_body('pg_comments_recent_account_since');
+	pg_assert_contains("pg_schema_has('user', 'user_created')", $body, 'probed before it is read');
+	pg_assert_contains('SELECT user_created FROM user WHERE user_id', $body, 'read by the account\'s id');
+	pg_assert_same(0, pg_comments_recent_account_since(0), 'no account: unknown');
+	pg_assert_same(0, pg_comments_recent_account_since(-3), 'not an account: unknown');
+
+	$recent = comments_recent_test_php_body('_render_system_widget_comments_recent');
+	pg_assert_contains('pg_comments_recent_account_since(', $recent, 'the list reads it for mine');
+	pg_assert_contains("'since' =>", $recent, 'and hands it to the reader');
 }
 
 // -- the statements ---------------------------------------------------------------
@@ -404,6 +478,20 @@ function test_comments_recent_sql_text()
 
 	$pages = comments_recent_test_squash(pg_comments_recent_pages_sql(array(3, 4), " AND (comments.published = '0')", 'oldest', 11));
 	pg_assert_same(2, substr_count($pages, "(comments.item_type = '') AND (comments.item_id = '0')"), 'the page thread of each page');
+	// item_id = 0 and published = 1 match most of the site's comments:
+	// without the hint the optimizer intersects one of those keys with
+	// page_id and sorts the page's whole thread instead of reading
+	// idx_thread backward. Both keys are in every install, so the hint never
+	// names a missing key.
+	pg_assert_same(2, substr_count($pages, 'FROM comments IGNORE INDEX (item_id, published) WHERE'), 'each part reads past the item_id and published keys');
+	foreach (array('english_default', 'turkish_default') as $dump) {
+		$sql = (string) file_get_contents(PG_FUNCTIONS_DIR . '/data/backups/' . $dump . '/sql.sql');
+		$at = strpos($sql, 'CREATE TABLE `comments` (');
+		$table = ($at === false) ? '' : substr($sql, $at, strpos($sql, 'ENGINE=', $at) - $at);
+		pg_assert_contains('KEY `item_id` (`item_id`)', $table, $dump . ' installs the item_id key');
+		pg_assert_contains('KEY `published` (`published`)', $table, $dump . ' installs the published key');
+	}
+	pg_assert_false(strpos($pages, 'FORCE INDEX'), 'never forces idx_thread, which an install without the 11.0.31 step lacks');
 	pg_assert_same(2, substr_count($pages, "(comments.published = '0')"), 'the audience in each part');
 	pg_assert_same(2, substr_count($pages, 'ORDER BY comments.created_timestamp ASC LIMIT 11)'), 'oldest first');
 	pg_assert_contains("(comments.page_id = '4')", $pages, 'each page');
@@ -590,6 +678,56 @@ function test_comments_recent_read_statements()
 	$log = array();
 	pg_comments_recent_titles(array($entries[3]), $sources, comments_recent_test_fetcher($log, array()));
 	pg_assert_same(array(), $log, 'page comments read no record');
+}
+
+// job.php publishes a scheduled comment by giving it the current time and
+// writes its (older, lower) id as the record's newest_comment_id: the record
+// ranks below records whose newest comment is older. Every record among the
+// 2k candidates is read, so such a record is listed while it is among them.
+function test_comments_recent_read_keeps_every_candidate()
+{
+	if (!comments_recent_test_has('pg_comments_recent_read')) {
+		return;
+	}
+
+	comments_recent_test_db_stub();
+
+	$visitor = array('signed_in' => false, 'user_id' => 0, 'live' => true);
+	$options = array('show' => 'published', 'page_ids' => array(12), 'limit' => 1, 'order' => 'newest');
+	$log = array();
+	$read = pg_comments_recent_read(array(comments_recent_test_source_row()), $options, $visitor, comments_recent_test_fetcher($log, array(
+		'FROM submitted_form_info' => array(
+			array('submitted_form_id' => '11', 'newest_comment_id' => '400', 'reference_code' => 'K1', 'address_name' => ''),
+			array('submitted_form_id' => '12', 'newest_comment_id' => '300', 'reference_code' => 'K2', 'address_name' => ''),
+			array('submitted_form_id' => '13', 'newest_comment_id' => '200', 'reference_code' => 'K3', 'address_name' => ''),
+			array('submitted_form_id' => '14', 'newest_comment_id' => '5', 'reference_code' => 'K4', 'address_name' => ''),
+		),
+		'UNION ALL' => array(
+			array('id' => '400', 'page_id' => '12', 'item_id' => '11', 'created_timestamp' => '4000'),
+			array('id' => '300', 'page_id' => '12', 'item_id' => '12', 'created_timestamp' => '3000'),
+			array('id' => '200', 'page_id' => '12', 'item_id' => '13', 'created_timestamp' => '2000'),
+			array('id' => '5', 'page_id' => '12', 'item_id' => '14', 'created_timestamp' => '9000'),
+		),
+	)));
+
+	pg_assert_same(2, count($log), 'the candidates, then their newest comments');
+	pg_assert_contains('LIMIT 4', $log[0], '2k candidates (k = limit + 1)');
+	foreach (array(11, 12, 13, 14) as $record_id) {
+		pg_assert_contains("(comments.item_id = '" . $record_id . "')", $log[1], 'record ' . $record_id . ' among the candidates is read');
+	}
+	pg_assert_same(array(5), array_map(function ($e) { return $e['id']; }, $read['entries']), 'the comment job.php published last is the newest');
+	pg_assert_same(14, $read['entries'][0]['record_id'], 'on its record');
+	pg_assert_same('K4', $read['entries'][0]['reference_code'], 'with its address');
+	pg_assert_true($read['more'], 'more remain');
+
+	// 'mine' starts at the account's creation, in the statement that picks.
+	$log = array();
+	pg_comments_recent_read(array(comments_recent_test_source_row(), comments_recent_test_source_row(array('kind' => 'page', 'page_id' => 3))),
+		array('show' => 'mine') + $options, array('signed_in' => true, 'user_id' => 42, 'live' => true, 'since' => 1700000000), comments_recent_test_fetcher($log, array()));
+	pg_assert_same(2, count($log), 'a record and a page statement');
+	foreach ($log as $sql) {
+		pg_assert_contains("(comments.created_user_id = '42') AND (comments.created_timestamp >= '1700000000')", $sql, 'bounded by the account\'s creation');
+	}
 }
 
 // -- the merge -----------------------------------------------------------------
@@ -1143,6 +1281,7 @@ function test_comments_recent_wiring()
 	pg_assert_contains("'recent' => true", $recent, 'it draws as a list');
 	pg_assert_contains("'can_comment' => false", $recent, 'with no form');
 	pg_assert_false(strpos($module, "['filters']"), 'no record filters are read in this mode');
+	pg_assert_false(strpos(comments_recent_test_php_body('pg_comments_recent_read'), 'count($records) >= $k'), 'no candidate record is dropped after it is read');
 
 	pg_assert_contains('pg_sw_widget_kind(', comments_recent_test_php_body('pg_comments_component_census'), 'the census records the kind');
 	pg_assert_contains('pg_sw_widget_kind(', comments_recent_test_php_body('pg_design_template_starter_kinds'), 'a template starter by kind');

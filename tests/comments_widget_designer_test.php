@@ -1782,6 +1782,8 @@ JS;
 	pg_assert_contains('_buildStarterTree(_swKindOf(tcfg))', $js, 'the repair of a template placeholder');
 	pg_assert_contains('_SW_NO_MESSAGES[_swKindOf(mcfg)]', $js, 'the Messages drop on load');
 	pg_assert_contains('opts.regionType !== _swKindOf(cfg)', comments_widget_designer_test_js_function($js, '_swForkForThisPage'), 'the copy');
+	pg_assert_contains('_swTypeInfo(_swKindOf(itemCfg))', $js, 'the System palette names and draws each widget by its kind');
+	pg_assert_false(strpos($js, '_swTypeInfo(itemCfg.regionType)'), 'never by the stored regionType alone');
 	pg_assert_contains("{ type: 'comments_recent',", $js, 'the editor knows the kind');
 	pg_assert_contains('comments_recent: 1', $js, 'it has no Messages node');
 }
@@ -1857,6 +1859,8 @@ function row(label, ctrl) { return '<div data-row="' + label + '">' + ctrl + '</
 function _swPageRef(p) { return (p.page_id > 0) ? String(p.page_id) : ('tab:' + p.key); }
 var cfgs = { 7: { regionType: 'form_item_view', custom_form_page_id: 70 } };
 function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var _sharedCache = { 7: { tree: { type: 'root', children: [] }, system_region_config: JSON.stringify(cfgs[7]) } };
+var _sdCommentsRecentAsked = {};
 var _customFormsCache = [{ page_id: 70, page_name: 'Forum Topics' }];
 var _activeKey = 'home';
 function _getCmtVal() { return '0'; }
@@ -1901,6 +1905,89 @@ JS;
 	pg_assert_contains('Pick the pages whose comments it lists.', $res['mine'], 'no page yet');
 	pg_assert_same(2, substr_count($res['full'], ' disabled'), 'at five pages the design\'s other two cannot be ticked');
 	pg_assert_same(array(array('tab:topic', 'record', true), array('12', 'page', false)), $res['sources'], 'the sources the design offers');
+}
+
+// The editor loads only the open tab's components: a tab not opened yet
+// places a record view the cache does not know. Its kind is shown as loading,
+// its components are fetched once, and the panel is drawn again.
+function test_comments_widget_designer_recent_section_cold_cache()
+{
+	$script = <<<'JS'
+function _sdT(s, v) {
+    if (v === undefined) return s;
+    if (Array.isArray(v)) return String(s).replace(/\{var:(\d)\}/g, function (m, i) { return v[i - 1]; });
+    return String(s).replace(/\{var(?::1)?\}/g, v);
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function sect(icon, title, body) { return '<section data-title="' + title + '">' + body + '</section>'; }
+function row(label, ctrl) { return '<div data-row="' + label + '">' + ctrl + '</div>'; }
+function _swPageRef(p) { return (p.page_id > 0) ? String(p.page_id) : ('tab:' + p.key); }
+var cfgs = {};
+function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var _sharedCache = { 4: { tree: { type: 'root', children: [] }, system_region_config: null } };
+var _sdCommentsRecentAsked = {};
+var _customFormsCache = [{ page_id: 70, page_name: 'Forum Topics' }];
+var _activeKey = 'home';
+function _getCmtVal() { return '0'; }
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid }, children: [] }; }
+var _pages = [
+    { key: 'home', page_id: 1, page_name: 'home', pg_comments: 0, tree: { type: 'root', children: [ref(4)] } },
+    { key: 'topic', page_id: 0, page_name: 'topic', pg_comments: 1, tree: { type: 'root', children: [{ type: 'container', children: [ref(7)] }] } },
+    { key: 'doc', page_id: 12, page_name: 'doc', pg_comments: 1, tree: { type: 'root', children: [ref(9)] } },
+    { key: 'about', page_id: 13, page_name: 'about', pg_comments: 0, tree: { type: 'root', children: [ref(8)] } }
+];
+function _pgTreeOf(p) { return p.tree; }
+var fetched = [];
+var renders = 0;
+// The server answers for 7 (a record view) only.
+function prefetchShared(ids, cb) {
+    fetched.push(ids.slice());
+    if (ids.indexOf(7) !== -1) {
+        cfgs[7] = { regionType: 'form_item_view', custom_form_page_id: 70 };
+        _sharedCache[7] = { tree: { type: 'root', children: [] }, system_region_config: JSON.stringify(cfgs[7]) };
+    }
+    cb();
+}
+function renderProperties() { renders++; }
+var kinds = function (cfg) { return _sdCommentsRecentSources(cfg).map(function (s) { return [s.ref, s.kind]; }); };
+var cfg = { regionType: 'comments', mode: 'recent', recent_page_ids: ['tab:topic'] };
+var out = {};
+out.cold = kinds(cfg);
+out.coldSect = _sdCommentsRecentSect(5, cfg);
+_sdCommentsRecentLoad(cfg);
+out.fetched = fetched.slice();
+out.renders = renders;
+out.warm = kinds(cfg);
+out.warmSect = _sdCommentsRecentSect(5, cfg);
+_sdCommentsRecentLoad(cfg);
+out.fetchedAgain = fetched.length;
+out.rendersAgain = renders;
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsRecentSources', '_sdCommentsRecentSect', '_sdCommentsRecentLoad'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('tab:topic', 'loading'), array('12', 'loading'), array('13', 'loading')), $res['cold'],
+		'tabs that place components not loaded yet: loading, never a page source');
+	pg_assert_contains('topic — loading its widgets…', $res['coldSect'], 'shown as loading');
+	pg_assert_false(strpos($res['coldSect'], 'topic — the page'), 'not labelled as the page\'s comments');
+	pg_assert_false(strpos($res['coldSect'], 'Every complete record'), 'no source note before its kind is known');
+	pg_assert_false(strpos($res['coldSect'], 'home —'), 'a loaded plain component is no record view');
+
+	pg_assert_same(array(array(7, 9, 8)), $res['fetched'], 'the components of every tab, fetched once together');
+	pg_assert_same(1, $res['renders'], 'the panel is drawn again when they arrive');
+	pg_assert_same(array(array('tab:topic', 'record'), array('12', 'page')), $res['warm'],
+		'a record view once known; a component the server did not return no longer holds a tab back');
+	pg_assert_contains('topic — records of Forum Topics', $res['warmSect'], 'the record source by name');
+	pg_assert_contains('Every complete record of Forum Topics that has a comment can be listed here', $res['warmSect'], 'with its note');
+	pg_assert_same(1, $res['fetchedAgain'], 'nothing is fetched twice');
+	pg_assert_same(1, $res['rendersAgain'], 'and the panel is not drawn again for nothing');
+
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	pg_assert_contains('_sdCommentsRecentLoad(_cfg);', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the panel loads them');
 }
 
 // -- the recent list on the canvas -----------------------------------------------

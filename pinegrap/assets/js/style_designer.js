@@ -22557,7 +22557,7 @@ const StyleDesigner = (function () {
                     // one is a blank widget still waiting for its kind.
                     var itemCfg = null;
                     try { itemCfg = JSON.parse(item.system_region_config || 'null'); } catch (e) {}
-                    var kind = (itemCfg && _swTypeInfo(itemCfg.regionType)) || null;
+                    var kind = (itemCfg && _swTypeInfo(_swKindOf(itemCfg))) || null;
                     var usedOn = (_sharedUsage[sid] || []).map(_sharedUsageText);
                     var tip = (kind ? kind.label : _sdT('No type selected')) +
                               (usedOn.length ? ' · ' + usedOn.join(', ') : '') +
@@ -30998,13 +30998,22 @@ const StyleDesigner = (function () {
     }
 
     // ── Comments widget: a list of recent comments ───────────────────────
+    // The components the recent section asked the server for, because a tab
+    // not opened in this editor places them and their kind decides whether
+    // the tab is a record source: sid -> 'pending' while asked, 'done' once
+    // answered (a component the server did not return then counts as no
+    // record view, so a tab is never held back for good).
+    var _sdCommentsRecentAsked = {};
+
     // The design's pages a list reads: a page whose own Form Item View shows
     // a form gives that form's records' comments ('record'), any other page
     // with comments on its own ('page'), as the server reads them
-    // (pg_comments_recent_sources()). Each as { ref (the value the list
+    // (pg_comments_recent_sources()). A page that places a component whose
+    // row is not loaded yet (only the open tab's are) is 'loading' until
+    // _sdCommentsRecentLoad() has it. Each as { ref (the value the list
     // stores, _swPageRef()), page, kind, form (the record view's form name),
     // comments (on), filtered (the view holds filters), viewerFilter (they
-    // keep records per viewer), checked }.
+    // keep records per viewer), checked, unloaded (those components' ids) }.
     function _sdCommentsRecentSources(cfg) {
         cfg = cfg || {};
         var chosen = {};
@@ -31013,20 +31022,26 @@ const StyleDesigner = (function () {
         ((typeof _pages !== 'undefined' && Array.isArray(_pages)) ? _pages : []).forEach(function (p) {
             var t = (typeof _pgTreeOf === 'function') ? _pgTreeOf(p) : p.tree;
             var view = null;
+            var unloaded = [];
             // The page's own placements: a record view inside a component
             // decides no thread.
             (function walk(n) {
                 if (view || !n) return;
                 if (n.type === 'shared_ref') {
-                    var c = _cfCfgOf(parseInt(n.props && n.props.sharedId, 10) || 0);
+                    var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                    var c = _cfCfgOf(sid);
+                    var cached = sid ? _sharedCache[sid] : null;
                     if (c && c.regionType === 'form_item_view') view = c;
+                    else if (!c && sid && !(cached && (cached.system_region_config || cached.tree)) &&
+                             _sdCommentsRecentAsked[sid] !== 'done' && unloaded.indexOf(sid) === -1) unloaded.push(sid);
                     return;
                 }
                 if (Array.isArray(n.children)) n.children.forEach(walk);
             })(t);
             var on = String((p.key === _activeKey) ? _getCmtVal('pg_comments') : p.pg_comments);
             on = (on === '1' || on === 'true');
-            if (!view && !on) return;
+            if (view) unloaded = [];
+            if (!view && !on && !unloaded.length) return;
             var form = '';
             if (view) {
                 var formId = String(view.custom_form_page_id || view.form_page_id || '');
@@ -31045,10 +31060,29 @@ const StyleDesigner = (function () {
             });
             var ref = _swPageRef(p);
             var filtered = !!view && Array.isArray(view.filters) && view.filters.length > 0;
-            out.push({ ref: ref, page: p, kind: view ? 'record' : 'page', form: form, comments: on, filtered: filtered,
-                viewerFilter: viewerFilter, checked: !!chosen[ref] });
+            out.push({ ref: ref, page: p, kind: view ? 'record' : (unloaded.length ? 'loading' : 'page'), form: form, comments: on, filtered: filtered,
+                viewerFilter: viewerFilter, checked: !!chosen[ref], unloaded: unloaded });
         });
         return out;
+    }
+
+    // Fetch, once, the components the design's tabs place whose kind the
+    // recent section cannot tell yet (_sdCommentsRecentSources()'s
+    // 'unloaded'), and draw the panel again when they arrive.
+    function _sdCommentsRecentLoad(cfg) {
+        var ids = [];
+        _sdCommentsRecentSources(cfg).forEach(function (src) {
+            (src.unloaded || []).forEach(function (sid) {
+                if (_sdCommentsRecentAsked[sid]) return;
+                _sdCommentsRecentAsked[sid] = 'pending';
+                ids.push(sid);
+            });
+        });
+        if (!ids.length) return;
+        prefetchShared(ids, function () {
+            ids.forEach(function (sid) { _sdCommentsRecentAsked[sid] = 'done'; });
+            renderProperties();
+        });
     }
 
     // The list's section of the widget panel: what it shows, from which
@@ -31104,8 +31138,11 @@ const StyleDesigner = (function () {
             var name = src.page.page_name || _sdT('New Page');
             boxes += box(src.ref, (src.kind === 'record')
                 ? _sdT('{var:1} — records of {var:2}', [name, src.form])
-                : _sdT('{var} — the page\'s comments', name), src.checked);
-            if (!src.checked) return;
+                : ((src.kind === 'loading')
+                    ? _sdT('{var} — loading its widgets…', name)
+                    : _sdT('{var} — the page\'s comments', name)), src.checked);
+            // What a page adds is known once its widgets are loaded.
+            if (!src.checked || src.kind === 'loading') return;
             if (!src.comments) notes += warn(_sdT('Comments are off for {var}: it adds nothing until they are on.', name));
             if (src.kind === 'record' && src.viewerFilter) {
                 notes += warn(_sdT('{var} shows each member their own records: it adds nothing for a visitor who is not signed in.', name));
@@ -33460,6 +33497,9 @@ const StyleDesigner = (function () {
             // own page's) ──
             if (_isCommentsRecent) {
                 if (!_customFormsCache && typeof _fetchCustomForms === 'function') _fetchCustomForms(function () { renderProperties(); });
+                // The components of tabs not opened yet: whether such a tab
+                // shows records is known only from their settings.
+                _sdCommentsRecentLoad(_cfg);
                 systemSection += _sdCommentsRecentSect(sid, _cfg) + _sdCommentsCanvasSect(sid, _cfg);
             }
         }

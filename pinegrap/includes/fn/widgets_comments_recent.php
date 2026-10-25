@@ -113,23 +113,69 @@ function pg_comments_recent_options($cfg)
 // ============================================================================
 
 /**
+ * Whether get_page.php sends a visitor who is not signed in to the sign-in
+ * screen when they open a page of this type, whatever its folder. Pure; the
+ * same rule as get_page.php's switch on the page type, which runs before the
+ * folder is asked.
+ *
+ * - 'my account', 'my account profile', 'view order', 'affiliate sign up
+ *   form': always.
+ * - 'custom form': when the form does not register the visitor itself
+ *   (auto_registration 0) and grants a trial membership (membership 1 with
+ *   membership_days above 0) or private access to a folder (private with a
+ *   private_folder_id). $properties is the form's custom_form_pages row
+ *   (get_page_type_properties()); null when the page has none.
+ *
+ * @param mixed $page_type
+ * @param mixed $properties
+ * @return bool
+ */
+function pg_comments_recent_sign_in_page($page_type, $properties)
+{
+    $page_type = is_string($page_type) ? $page_type : '';
+
+    if (in_array($page_type, array('my account', 'my account profile', 'view order', 'affiliate sign up form'), true)) {
+        return true;
+    }
+
+    if (($page_type !== 'custom form') || !is_array($properties)) {
+        return false;
+    }
+
+    $number = function ($key) use ($properties) {
+        return (isset($properties[$key]) && is_scalar($properties[$key]) && !is_bool($properties[$key])) ? (int) $properties[$key] : 0;
+    };
+
+    if ($number('auto_registration') !== 0) {
+        return false;
+    }
+
+    return (($number('membership') === 1) && ($number('membership_days') > 0))
+        || (($number('private') !== 0) && ($number('private_folder_id') > 0));
+}
+
+/**
  * Whether one source page adds comments to the list, and as what. Pure.
  *
  * Facts: exists, binned (in the Recycle Bin), archived (an archived folder),
  * staff (edit access to the page's folder in a live render), view (the
  * visitor could open the page now: check_view_access() without the
  * registration and guest grant in a live render, a public folder in a
- * background render), comments_on (the page's comment switch, the
- * Preview's unsaved settings included), page_type, record (a top-level
- * form_item_view widget), form_id (that view's form), nested (a
- * form_item_view below the top level), viewer_filter (the view's filters
- * compare a field with the viewer, pg_sw_filters_compare_viewer()),
- * personal (a live render for a signed-in visitor), show, signed_in.
+ * background render), sign_in_page (the page sends a visitor who is not
+ * signed in to the sign-in screen, pg_comments_recent_sign_in_page()),
+ * comments_on (the page's comment switch, the Preview's unsaved settings
+ * included), page_type, record (a top-level form_item_view widget), form_id
+ * (that view's form), nested (a form_item_view below the top level),
+ * viewer_filter (the view's filters compare a field with the viewer,
+ * pg_sw_filters_compare_viewer()), personal (a live render for a signed-in
+ * visitor), show, signed_in (a live render for a signed-in visitor).
  *
  * A page with a record view adds that view's records' threads ('record');
  * any other page adds its own thread ('page'). Refusals, in order:
  * 'missing', 'binned', 'archived' (for a visitor who may not edit it),
- * 'closed' (a folder the visitor may not open), 'comments_off', 'classic'
+ * 'closed' (a folder the visitor may not open), 'sign_in' (a page that asks
+ * a visitor who is not signed in, and every background render, to sign in
+ * first), 'comments_off', 'classic'
  * (a page that keeps its classic comments block,
  * pg_comments_widget_classic_thread()), 'nested' (a page source whose
  * record view is below the top level: its thread cannot be told), 'no_form'
@@ -166,6 +212,9 @@ function pg_comments_recent_source_decision($facts)
     }
     if (!$on('view')) {
         return $refuse('closed');
+    }
+    if ($on('sign_in_page') && !$on('signed_in')) {
+        return $refuse('sign_in');
     }
     if (!$on('comments_on')) {
         return $refuse('comments_off');
@@ -256,14 +305,21 @@ function pg_comments_recent_access_sql($access, $viewer)
  * - 'published' (and any unknown scope): published comments.
  * - 'mine': the comments the account $user_id wrote, in any state; null for
  *   no account. Never the session's comment ids: a session survives a
- *   sign-in, so on a shared browser one member would read another's.
+ *   sign-in, so on a shared browser one member would read another's. With
+ *   $since (the account's creation time, pg_comments_recent_account_since())
+ *   only comments written from then on: deleting an account leaves its
+ *   comments' created_user_id, and MySQL 5.7 hands the highest user id out
+ *   again after a restart, so a new account could otherwise list a deleted
+ *   member's comments, waiting ones included, as its own. 0 (unknown) adds
+ *   no bound.
  * - 'pending': comments not published yet, scheduled ones included.
  *
  * @param mixed $show
  * @param mixed $user_id
+ * @param mixed $since
  * @return string|null
  */
-function pg_comments_recent_audience_sql($show, $user_id)
+function pg_comments_recent_audience_sql($show, $user_id, $since = 0)
 {
     if ($show === 'mine') {
         $id = 0;
@@ -274,7 +330,20 @@ function pg_comments_recent_audience_sql($show, $user_id)
             $id = (int) $user_id;
         }
 
-        return ($id > 0) ? " AND (comments.created_user_id = '" . $id . "')" : null;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $from = 0;
+
+        if (is_int($since)) {
+            $from = $since;
+        } elseif (is_string($since) && ($since !== '') && ctype_digit($since)) {
+            $from = (int) $since;
+        }
+
+        return " AND (comments.created_user_id = '" . $id . "')"
+            . (($from > 0) ? " AND (comments.created_timestamp >= '" . $from . "')" : '');
     }
 
     if ($show === 'pending') {
@@ -337,9 +406,13 @@ function _pg_comments_recent_gate($gate)
  * submitted_form_info (one row per record and page), so its cost follows the
  * records that have comments on the page, never the comments. The record
  * gate is part of it: the view's form, a complete record, the access
- * setting ($access) and the view's filters ($gate). 2k rows are read: a
- * comment job.php published late keeps its old id but takes a new time, and
- * the margin keeps such a record in. Pure.
+ * setting ($access) and the view's filters ($gate). 2k rows are read and
+ * every record among them is read on (pg_comments_recent_read()): job.php
+ * publishes a scheduled comment by giving it the current time, and writes
+ * its older id as the record's newest_comment_id, so the record ranks below
+ * records whose newest comment is older. The margin keeps such a record in
+ * while it is among the 2k; below them it is listed after the record's next
+ * comment. Pure.
  *
  * @param mixed  $page_id the source page
  * @param mixed  $form_id its record view's form
@@ -396,6 +469,14 @@ function pg_comments_recent_latest_sql($page_id, $record_ids, $k)
  * scope: one statement, one part per page, on the idx_thread key. '' without
  * a page. Pure.
  *
+ * Each part reads past the item_id and published keys: item_id = 0 and
+ * published = 1 match most comments of the site, yet the optimizer
+ * intersects one of them with page_id and sorts the page's whole thread
+ * (about 0.1 s for 50,000 comments; MyISAM takes item_id, InnoDB published)
+ * instead of reading idx_thread backward (under 1 ms). Both keys are in
+ * every install, so the hint never names a missing key; forcing idx_thread
+ * would fail where the 11.0.31 step has not run yet.
+ *
  * @param mixed  $page_ids
  * @param string $audience pg_comments_recent_audience_sql()
  * @param string $order    'newest' | 'oldest'
@@ -409,7 +490,7 @@ function pg_comments_recent_pages_sql($page_ids, $audience, $order, $k)
 
     foreach (_pg_comments_recent_ids($page_ids) as $page_id) {
         $parts[] = "(SELECT comments.id, comments.page_id, comments.item_id, comments.created_timestamp
-            FROM comments
+            FROM comments IGNORE INDEX (item_id, published)
             WHERE (comments.page_id = '" . $page_id . "') AND (comments.item_type = '') AND (comments.item_id = '0')" . (string) $audience . "
             ORDER BY comments.created_timestamp " . $direction . " LIMIT " . max(1, (int) $k) . ")";
     }
@@ -983,13 +1064,25 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
                 : (!empty($view_cfg['form_page_id']) ? $view_cfg['form_page_id'] : 0));
         }
 
+        // get_page.php asks a visitor who is not signed in to sign in before
+        // it asks the folder, for some page types; asked only of such a
+        // visitor (one query for a custom form's settings).
+        $page_type = (string) $row['page_type'];
+        $sign_in_page = false;
+
+        if (!$signed_in) {
+            $sign_in_page = pg_comments_recent_sign_in_page($page_type,
+                ($page_type === 'custom form') ? get_page_type_properties($page_id, 'custom form') : null);
+        }
+
         $facts += array(
             'binned' => in_array($folder, $bin, true),
             'archived' => ((string) $row['folder_archived'] === '1'),
             'staff' => $staff,
             'view' => $live ? (check_view_access($folder) == true) : (get_access_control_type($folder) === 'public'),
+            'sign_in_page' => $sign_in_page,
             'comments_on' => $settings['enabled'],
-            'page_type' => (string) $row['page_type'],
+            'page_type' => $page_type,
             'record' => ($widget !== null),
             'form_id' => $form_id,
             'viewer_filter' => ($widget !== null) && pg_sw_filters_compare_viewer(pg_sw_record_view_filters($view_cfg)),
@@ -1049,9 +1142,11 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
  * 'source' (the page id), 'record_id' (0 for a page's comment),
  * 'reference_code', 'address_name'; and 'more'.
  *
- * - 'published' on a record source: its candidates
+ * - 'published' on a record source: its 2k candidates
  *   (pg_comments_recent_candidates_sql()), then the newest k comments of
- *   the first k records among them (pg_comments_recent_latest_sql()).
+ *   every record among them (pg_comments_recent_latest_sql()), so a record
+ *   whose newest comment job.php published late is not cut before the merge
+ *   sorts by time.
  * - 'mine' and 'pending' on a record source: one statement with the gate
  *   and the scope (pg_comments_recent_direct_sql()).
  * - the page sources: one statement for all (pg_comments_recent_pages_sql()).
@@ -1062,7 +1157,8 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
  *
  * @param mixed    $sources pg_comments_recent_sources()
  * @param mixed    $options pg_comments_recent_options()
- * @param mixed    $viewer  signed_in, user_id, live
+ * @param mixed    $viewer  signed_in, user_id, live, since (the account's
+ *                          creation time for 'mine', 0 when unknown)
  * @param callable $fetch
  * @return array 'entries', 'more'
  */
@@ -1075,7 +1171,8 @@ function pg_comments_recent_read($sources, $options, $viewer, $fetch = 'db_items
     $k = $limit + 1;
     $order = (($show !== 'published') && isset($options['order']) && ($options['order'] === 'oldest')) ? 'oldest' : 'newest';
     $signed_in = !empty($viewer['live']) && !empty($viewer['signed_in']);
-    $audience = pg_comments_recent_audience_sql($show, $signed_in ? _pg_comments_row_int($viewer, 'user_id') : 0);
+    $audience = pg_comments_recent_audience_sql($show, $signed_in ? _pg_comments_row_int($viewer, 'user_id') : 0,
+        $signed_in ? _pg_comments_row_int($viewer, 'since') : 0);
     $none = array('entries' => array(), 'more' => false);
 
     if ($audience === null) {
@@ -1126,10 +1223,6 @@ function pg_comments_recent_read($sources, $options, $viewer, $fetch = 'db_items
                 }
 
                 $records[$record_id] = $candidate;
-
-                if (count($records) >= $k) {
-                    break;
-                }
             }
 
             if (!$records) {
@@ -1170,6 +1263,26 @@ function pg_comments_recent_read($sources, $options, $viewer, $fetch = 'db_items
     }
 
     return $lists ? pg_comments_recent_merge($lists, $order, $limit) : $none;
+}
+
+/**
+ * When the account $user_id was made: user.user_created, which every screen
+ * that makes an account writes once (pg_user_created_stamp()). 0 when it is
+ * unknown: no account, an account made before the column existed, or a site
+ * that has not run the upgrade that adds it (probed first).
+ *
+ * @param mixed $user_id
+ * @return int
+ */
+function pg_comments_recent_account_since($user_id)
+{
+    $id = (is_int($user_id) || (is_string($user_id) && ($user_id !== '') && ctype_digit($user_id))) ? (int) $user_id : 0;
+
+    if (($id <= 0) || !pg_schema_has('user', 'user_created')) {
+        return 0;
+    }
+
+    return max(0, (int) db_value("SELECT user_created FROM user WHERE user_id = '" . $id . "' LIMIT 1"));
 }
 
 /**
@@ -1329,11 +1442,13 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
     $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
     $audience = pg_comments_widget_audience(false, $background, false, _pg_acct_signed_in());
     $user_id = ($audience['signed_in'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
-    $viewer = array('signed_in' => $audience['signed_in'] && ($user_id > 0), 'user_id' => $user_id, 'live' => $audience['session']);
+    $signed_in = $audience['signed_in'] && ($user_id > 0);
+    $since = ($signed_in && $audience['session'] && ($options['show'] === 'mine')) ? pg_comments_recent_account_since($user_id) : 0;
+    $viewer = array('signed_in' => $signed_in, 'user_id' => $user_id, 'live' => $audience['session'], 'since' => $since);
 
     $sources = pg_comments_recent_sources($options['page_ids'], $options['show'], $viewer);
     $read = pg_comments_recent_read($sources, $options, $viewer);
-    $audience_sql = pg_comments_recent_audience_sql($options['show'], $viewer['signed_in'] ? $user_id : 0);
+    $audience_sql = pg_comments_recent_audience_sql($options['show'], $viewer['signed_in'] ? $user_id : 0, $since);
     $ids = array();
 
     foreach ($read['entries'] as $entry) {

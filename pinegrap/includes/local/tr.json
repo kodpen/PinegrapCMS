@@ -28310,5 +28310,6 @@
     "After the card you design, the canvas shows sample comments as this list shows them: one on a record and one on a page, both awaiting approval in a list of comments awaiting approval, and in the member's own list one more of theirs awaiting approval. They cannot be selected and are not saved.": "Tasarladığınız kartın ardından tuval, örnek yorumları bu listenin gösterdiği gibi gösterir: biri bir kayıtta, biri bir sayfada; onay bekleyen yorumlar listesinde ikisi de onay bekler, üyenin kendi listesinde ise onay bekleyen bir yorumu daha eklenir. Seçilemezler ve kaydedilmezler.",
     "Off — a list of recent comments has no form or thread controls": "Kapalı — son yorumlar listesinde form ya da yorum dizisi denetimleri yok",
     "Off — filled only in a list of recent comments": "Kapalı — yalnızca son yorumlar listesinde dolar",
-    "Off — no page is chosen under Comments from": "Kapalı — Yorumların geldiği sayfalar altında sayfa seçilmedi"
+    "Off — no page is chosen under Comments from": "Kapalı — Yorumların geldiği sayfalar altında sayfa seçilmedi",
+    "{var} — loading its widgets…": "{var} — bileşenleri yükleniyor…"
 }

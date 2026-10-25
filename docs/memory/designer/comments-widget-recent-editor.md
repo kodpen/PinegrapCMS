@@ -1,10 +1,10 @@
 ---
 name: comments-widget-recent-editor
-description: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, the panel section, bind lists, fades, canvas states and samples, tab keys in the page list
+description: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
 ---
 
 ## How does the editor tell a list from a thread?
-- `_swKindOf(cfg)` (twin of `pg_sw_widget_kind()`, compared in tests): `comments_recent` for `regionType 'comments'` + `mode 'recent'`, else the regionType. `SW_TYPES` and `pg_sw_type_labels()` list "Recent Comments" (slug `recent-comments`) right after Comments (designer_components_test compares their order).
+- `_swKindOf(cfg)` (twin of `pg_sw_widget_kind()`, compared in tests): `comments_recent` for `regionType 'comments'` + `mode 'recent'`, else the regionType. `SW_TYPES` and `pg_sw_type_labels()` list "Recent Comments" (slug `recent-comments`) right after Comments (designer_components_test compares their order); the System palette's widget list takes icon and tooltip from the kind.
 - Thread-only places ask the kind: `_sdCommentsWidgetOf()` (settings shortcut), `_sdCommentsPickWidget()` and `_sdCommentsNamedRows()` (Make designable), Back to the fixed block, `_sdPreviewWidgetPayload()` (no comment settings for a page with only lists), `pg_designer_preview_widgets()` (`?r=` only for a thread), `pg_comments_component_census()` (no save warning for a list).
 
 ## How is one made or changed?
@@ -16,12 +16,11 @@ description: The recent comments list in the editor: the kind twin, palette, Cha
 - `_buildStarterTree('comments_recent')` = `pg_comments_recent_default_tree()` (compared node for node; its loop is also the server's fallback): heading, list-group of status, title link (`__comment_url`), name line, stars, excerpt; "No comments yet." No form, no Messages node (`_SW_NO_MESSAGES`; `prefetchShared()` drops one by kind).
 
 ## What does the panel show?
-- `_sdCommentsRecentSect()` instead of Display and Comment settings: Shows, Comments from (the design's pages with a top-level record view, "{page} — records of {form}", or comments on, "{page} — the page's comments"; at five the rest disable; a page outside the design is "Another page (#id)"), Comment order (mine, pending), Number of comments; notes: comments off, viewer-filtered view, an unfiltered view lists every complete record with a comment, audiences, each comment follows its page's settings, the Preview is signed out.
-- `[data-sw-cfg-list-kind="page"]` writes `_swCfgListValues()`: ids or `tab:<key>`, five at most. `_swResolveTabRefs()` now walks arrays, as the server's `pg_designer_resolve_tab_values()`; export, install and Preview walk the list too.
+- Its own section, not Display and Comment settings: [[comments-widget-recent-panel]].
 
 ## Which bindings does it offer and fade?
 - `SW_COMMENTS_RECENT_TOKEN_GROUPS`, `SW_VISIBILITY_FLAGS.comments_recent` (6 list + 9 row flags), `_swBindTokenGroups('comments_recent')`; actions only `comment_share`; no value or section bindings.
-- `_sdCommentsModeOff()` (twin of `pg_comments_mode_off_bindings()`) fades in a list the form, thread controls, sections, thread-only tokens and flags; in a thread the list's tokens and flags. A list without a page fades its root.
+- `_sdCommentsModeOffBindings()` (twin of `pg_comments_mode_off_bindings()`, compared under Node) holds the lists; `_sdCommentsModeOff()` fades by them: in a list the form, thread controls, sections, thread-only tokens and flags; in a thread the list's tokens and flags. A list without a page fades its root.
 
 ## What does the canvas draw?
 - States (`_sdCommentsCanvasStates(cfg)`): comments, no comments, signed out (mine only), staff. `_sdCommentsRecentFacts()` -> `_sdCommentsRecentFlags()`, line for line `pg_comments_recent_flags()` (Node).
