@@ -1114,6 +1114,43 @@ function ws_note_save($viewer, $data)
 }
 
 /**
+ * The rows ws_note_deletions keeps when a note is deleted: one for its owner,
+ * one for each person it was shared with, one for each channel it was shared
+ * in (user_id 0), each once.
+ *
+ * @param array $note   id, user_id
+ * @param array $shares the note's ws_note_shares rows: user_id, channel_id
+ * @param int   $by     who deleted it
+ * @param int   $now
+ * @return array[] note_id, user_id, channel_id, deleted_by, deleted_at
+ */
+function ws_note_deletion_rows($note, $shares, $by, $now)
+{
+    $people = array((int) $note['user_id'] => true);
+    $channels = array();
+
+    foreach ((array) $shares as $share) {
+        if ((int) ($share['user_id'] ?? 0) > 0) {
+            $people[(int) $share['user_id']] = true;
+        } elseif ((int) ($share['channel_id'] ?? 0) > 0) {
+            $channels[(int) $share['channel_id']] = true;
+        }
+    }
+
+    $rows = array();
+
+    foreach (array_keys($people) as $user_id) {
+        $rows[] = array('note_id' => (int) $note['id'], 'user_id' => $user_id, 'channel_id' => 0, 'deleted_by' => (int) $by, 'deleted_at' => (int) $now);
+    }
+
+    foreach (array_keys($channels) as $channel_id) {
+        $rows[] = array('note_id' => (int) $note['id'], 'user_id' => 0, 'channel_id' => $channel_id, 'deleted_by' => (int) $by, 'deleted_at' => (int) $now);
+    }
+
+    return $rows;
+}
+
+/**
  * Deletes a note: its owner only. Its shares, files and inbox lines go with
  * it; a card in a channel says the note is no longer shared.
  *
