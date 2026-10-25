@@ -17,7 +17,7 @@ description: The finish pass every system widget render goes through: scope, mar
 - `pg_sw_marker_nonce()` is random per request: text in a value shaped like a marker is inert, and only this request's markers are removed.
 
 ## How are spans found?
-- With `strpos()`, outermost first, never one pattern over a body: no body size hits `pcre.backtrack_limit`. A span's value is the last carrier of its number in its body; an open marker of the same number inside it is counted, so a row template nested in a copy of itself (a reply in its comment) pairs right.
+- With `strpos()`, outermost first, never one pattern over a body: no body size hits `pcre.backtrack_limit`. A span's value is the last carrier of its number in its body; an open marker of the same number inside it is counted, so a row template nested in a copy of itself (a reply in its comment) pairs right; it is sought only before the next close, so the cost stays linear in the records.
 - A marker without its pair is left; the strip stage takes it out and the node shows.
 
 ## What does a cut leave?

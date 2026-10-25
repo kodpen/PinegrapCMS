@@ -160,14 +160,17 @@ function _pg_sw_finish_is_field_value($html)
 // the start of the open marker (up to its number), $close the whole close
 // marker. A pair of the same number inside it (a row template placed in a
 // copy of itself, a reply in its comment) is counted, so the pairs match.
+// An inner open marker is looked for only before the next close marker, so
+// a pair costs the length of its own body, not of the markup after it (a
+// search to the end per pair made a page of many records quadratic).
 function _pg_sw_finish_pair_end($html, $open, $close, $from)
 {
     $depth = 1;
     while (($c = strpos($html, $close, $from)) !== false) {
-        $o = strpos($html, $open, $from);
-        if ($o !== false && $o < $c) {
+        $o = ($c > $from) ? strpos(substr($html, $from, $c - $from), $open) : false;
+        if ($o !== false) {
             $depth++;
-            $from = $o + strlen($open);
+            $from += $o + strlen($open);
             continue;
         }
         if (--$depth === 0) return array($c, $c + strlen($close));

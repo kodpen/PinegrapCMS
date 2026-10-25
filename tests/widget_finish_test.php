@@ -378,6 +378,24 @@ function test_widget_finish_span_nested_in_its_own_copy()
 	pg_assert_same('<div>P<div>R</div></div><div>Q</div>', pg_sw_finish_widget_html($fill('P', $fill('R', '')) . $fill('Q', ''), $scope), 'both kept, then a sibling');
 }
 
+// The pair finder counts an open marker of its number inside the pair, and
+// only there: one after the pair's close belongs to a later pair.
+function test_widget_finish_pair_end()
+{
+	$open  = '<!--o:1:';
+	$close = '<!--/c:1-->';
+	$h     = 'x<!--o:1:-->a<!--o:1:-->b' . $close . 'c' . $close . 'd<!--o:1:-->e' . $close;
+	$from  = strlen('x<!--o:1:-->');
+	$at    = strpos($h, $close . 'd');
+	pg_assert_same(array($at, $at + strlen($close)), _pg_sw_finish_pair_end($h, $open, $close, $from), 'a nested pair of the same number is skipped');
+
+	$h = 'a' . $close . 'b<!--o:1:-->c' . $close;
+	pg_assert_same(array(1, 1 + strlen($close)), _pg_sw_finish_pair_end($h, $open, $close, 0), 'an open marker after the close is not counted');
+	pg_assert_same(array(0, strlen($close)), _pg_sw_finish_pair_end($close . 'z', $open, $close, 0), 'an empty body');
+	pg_assert_same(null, _pg_sw_finish_pair_end('a<!--o:1:-->b' . $close, $open, $close, 0), 'a nested pair without its own close');
+	pg_assert_same(null, _pg_sw_finish_pair_end('no close here', $open, $close, 0), 'no close marker');
+}
+
 // The edit pencil still finds a row's first element when the row starts
 // with a condition.
 function test_widget_finish_edit_chip_finds_first_element()
