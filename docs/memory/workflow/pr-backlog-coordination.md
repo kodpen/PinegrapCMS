@@ -4,7 +4,7 @@ description: The one session that merges PRs on development: claim, take-over co
 ---
 
 ## Who merges PRs into development?
-- Owner (2026-10-24): about ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one (two lenses, three refuters for each blocking finding), fixes what is confirmed on the branch, cleans body and comments, squash-merges and closes the PR's claim.
+- Owner (2026-10-24): about ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one once and fixes only blocking findings on the branch (`merge-review.md`), cleans body and comments, merges in a train (`merge-train.md`) and closes the PR's claim.
 
 ## Who clears a backlog of open PRs?
 - One coordinating session claims the whole list in a `sahiplenildi` issue (first time: #1133, 2026-10-21; again #1426, 2026-10-23) and leaves an English take-over comment on every PR it pushes to; from then on no other session pushes to those branches. A branch with commits in the last hour belongs to the session pushing to it until that session comments "ready" on the PR.
@@ -28,7 +28,7 @@ description: The one session that merges PRs on development: claim, take-over co
 - Fix them on the PR that merges last.
 
 ## What happens to each PR before the merge?
-- Confirmed review findings are fixed on the branch, the body is rewritten in English, the Claude Code footer removed (`pr-footer-and-trailers.md`), CI must be green on the final head, the squash commit keeps the PR title and gets a short English message, and the PR's own claim is closed with the PR number.
+- Blocking review findings are fixed on the branch, minor ones go to the follow-up issue (`merge-review.md`); the body is rewritten in English, the Claude Code footer removed (`pr-footer-and-trailers.md`), CI must be green on the final head, the squash commit keeps the PR title and gets a short English message, and the PR's own claim is closed with the PR number.
 - Removing the footer is the merging session's job (owner, 2026-10-24): the sessions that opened the PRs need not touch it.
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/owner-rules.md

@@ -1,6 +1,6 @@
 ---
 name: working-mode
-description: Owner rules (2026-10-25) for every session: one open PR, no stacked branches, hand over when green, light checks, small PRs, one task per session, own analysis cache
+description: Owner rules (2026-10-25) for every session: one open PR, no stacked branches, queue limit, hand over when green, light checks, small PRs, changelog via the PR body, one task per session
 ---
 
 ## Why these rules?
@@ -27,7 +27,13 @@ description: Owner rules (2026-10-25) for every session: one open PR, no stacked
 ## How long does a session live?
 - One task. Hand over through the plan file, the claim and the PR, then end. A long session pays for its whole context on every wake. At most one safety check-in while a PR waits; never poll.
 
-## Who works where?
-- Fewer working sessions merge faster than many: aim for about eight at once, each on its own area (the memory folder table in `CLAUDE.md`). Two sessions never hold the same files; the claim check still applies.
+## When may nobody open a PR?
+- While more than 10 PRs are open (`gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq length`): finish, hand over or stop instead. About 6 to 8 working sessions at a time, each on its own area (the memory folder table in `CLAUDE.md`); two sessions never hold the same files.
+
+## What about changelog.txt?
+- A PR does not edit it. Its body names the `[NEW]` line or the area for the `[SCHEME]` line; the merging session writes it when it lands the PR (`merge-train.md`). Every schema PR used to conflict on the one `[SCHEME]` line.
+
+## What if my PR is sent back?
+- The merging session fixes a small blocker itself; a larger one gets a comment and is taken by a new session with a claim (`merge-review.md`). The merging session takes no PR over the size limit into a train.
 
 Related: docs/memory/workflow/merge-train.md, docs/memory/workflow/pr-backlog-coordination.md, docs/memory/plans/tr-json-split.md
