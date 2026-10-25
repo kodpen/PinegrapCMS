@@ -1283,6 +1283,58 @@ JS;
 	pg_assert_same(array(), $res['block']['children']);
 }
 
+// The editor caches the configs and layouts of the tabs opened so far; the
+// conversion reads the other tabs' widgets from the site's widget rows and
+// loads the components those tabs place, so a Comments widget placed only
+// on a tab not opened yet is still the design's.
+function test_comments_widget_designer_parked_tab_lookups()
+{
+	$script = <<<'JS'
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid, sharedName: 'w' + sid }, children: [] }; }
+function root(kids) { return { type: 'root', props: {}, children: kids }; }
+var out = {};
+out.configs = _sdCommentsRowConfigs([
+    { id: '5', name: 'a', system_region_config: '{"regionType":"comments","featured":"first"}' },
+    { id: 6, name: 'b', system_region_config: '' },
+    { id: 7, name: 'c', system_region_config: null },
+    { id: 8, name: 'd', system_region_config: 'not json' },
+    { id: 9, name: 'e', system_region_config: '[1]' },
+    { id: 0, name: 'f', system_region_config: '{"regionType":"comments"}' },
+    null
+]);
+out.configs_none = _sdCommentsRowConfigs(null);
+var cfgs = { 5: { regionType: 'comments' }, 6: { regionType: 'comments' }, 7: { regionType: 'form_item_view' } };
+var trees = { 9: root([ref(6), ref(12)]), 10: root([ref(11)]), 11: root([ref(10)]) };
+var cfgOf = function (sid) { return cfgs[sid] || null; };
+var treeOf = function (sid) { return trees[sid] || null; };
+out.unloaded = _sdCommentsUnloadedRefs([
+    { tree: root([ref(5), ref(7), ref(9), ref(13), { type: 'container', props: {}, children: [ref(13)] }]) },
+    { tree: root([ref(14)]) }
+], cfgOf, treeOf);
+out.unloaded_loop = _sdCommentsUnloadedRefs([{ tree: root([ref(10)]) }], cfgOf, treeOf);
+out.unloaded_none = _sdCommentsUnloadedRefs(null, cfgOf, treeOf);
+// A placement on a parked tab: no cache entry, its kind only in the rows.
+var rowCfg = _sdCommentsRowConfigs([{ id: '31', system_region_config: '{"regionType":"comments"}' }]);
+var parkedPages = [{ tree: root([ref(7)]) }, { tree: root([ref(31)]) }];
+out.pick_cache_only = _sdCommentsPickWidget(parkedPages, function () { return null; }, treeOf, {}, 3);
+out.pick_with_rows = _sdCommentsPickWidget(parkedPages, function (s) { return cfgs[s] || rowCfg[s] || null; }, treeOf, {}, 3);
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(5 => array('regionType' => 'comments', 'featured' => 'first')), $res['configs'], 'only a row with an id and a config object');
+	pg_assert_same(array(), $res['configs_none'], 'no rows');
+	pg_assert_same(array(12, 13, 14), $res['unloaded'], 'components with no cached layout, each once, also inside a loaded one; widgets left out');
+	pg_assert_same(array(), $res['unloaded_loop'], 'a loop between loaded components ends');
+	pg_assert_same(array(), $res['unloaded_none'], 'no pages');
+	pg_assert_same(0, $res['pick_cache_only'], 'a parked tab\'s widget is missed without its config');
+	pg_assert_same(31, $res['pick_with_rows'], 'and found with the config its row carries');
+}
+
 
 // Make designable and Back to the fixed block as the operator runs them:
 // each is one undo step on the page's own tree, a widget made for it shows
@@ -1315,7 +1367,12 @@ function render() { log.push('render'); }
 function sdToast(msg, type) { log.push('toast:' + type + ':' + msg); }
 function expandAncestorsAnywhere() {}
 function _refreshSystemTab() {}
-function prefetchShared(ids, cb) { log.push('fetch:' + ids.join(',')); }
+var server = {};
+function prefetchShared(ids, cb) {
+    log.push('fetch:' + ids.join(','));
+    ids.forEach(function (id) { if (server[id]) _sharedCache[id] = server[id]; });
+    if (cb) cb();
+}
 function _buildStarterTree(kind) { return { type: 'root', props: {}, children: [], starter: kind }; }
 function _swTypeDefaults(cfg, type) { cfg.regionType = type; cfg.featured = 'first'; return cfg; }
 function _swAutoName(type, page, where) { return (where && where.designWide) ? 'design-' + type + '-widget' : 'page-' + type + '-widget'; }
@@ -1337,7 +1394,7 @@ function page(kids) { return { type: 'root', props: {}, children: [{ type: 'cont
 var out = {};
 var run = function (setup, act) {
     log = []; created = []; _seq = 100; selectedNode = null; otherPage = null; _collab.mayEdit = true; _access = 'full';
-    _sharedCache = {}; rows = []; _sdCommentsSentBack = 0;
+    _sharedCache = {}; rows = []; server = {}; _sdCommentsSentBack = 0;
     var b = block();
     tree = page([b]);
     var ctx = { block: b };
@@ -1374,11 +1431,40 @@ out.named_row = run(function (c) {
     rows = [{ id: '88', name: 'design-comments-widget', system_region_config: '{"regionType":"comments","featured":"filter"}' },
             { id: '89', name: 'other-comments-widget', system_region_config: '{"regionType":"comments"}' }];
 }, function (c) { _sdCommentsMakeDesignable(c.block); });
+// The design's widget is placed only on a tab not opened in this editor:
+// the cache knows nothing of it, its row does. It is placed, under its own
+// name, before a row named after the design and before making one.
+out.parked = run(function (c) {
+    otherPage = page([{ type: 'shared_ref', props: { sharedId: 91, sharedName: 'Forum talk' }, children: [] }]);
+    rows = [{ id: '88', name: 'design-comments-widget', system_region_config: '{"regionType":"comments"}' },
+            { id: '91', name: 'Forum talk', system_region_config: '{"regionType":"comments","featured":"first"}' }];
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
+// It sits inside a component that tab places: the component is loaded
+// once, then the widget inside it is placed.
+out.parked_component = run(function (c) {
+    otherPage = page([{ type: 'shared_ref', props: { sharedId: 40, sharedName: 'Discussion' }, children: [] }]);
+    rows = [{ id: '40', name: 'Discussion', system_region_config: null },
+            { id: '92', name: 'Thread', system_region_config: '{"regionType":"comments","featured":"filter"}' }];
+    server[40] = { name: 'Discussion', tree: { type: 'root', props: {}, children: [{ type: 'shared_ref', props: { sharedId: 92, sharedName: 'Thread' }, children: [] }] }, system_region_config: null };
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
+// The rows cannot be read (the server answered nothing): the placements
+// the cache does not know are loaded once, and the widget among them is
+// placed.
+out.parked_no_list = run(function (c) {
+    otherPage = page([{ type: 'shared_ref', props: { sharedId: 93, sharedName: 'Q&A' }, children: [] }]);
+    server[93] = { name: 'Q&A', tree: { type: 'root', props: {}, children: [] }, system_region_config: '{"regionType":"comments","featured":"filter"}' };
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
+// A component the server no longer has is asked for once; a widget is
+// made then.
+out.parked_gone = run(function (c) {
+    otherPage = page([{ type: 'shared_ref', props: { sharedId: 42, sharedName: 'Gone' }, children: [] }]);
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode',
-		'_sdCommentsBlockNode', '_sdCommentsSwapOffered', '_sdCommentsMakeDesignable', '_sdCommentsBackToBlock'), $script);
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs',
+		'_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode', '_sdCommentsBlockNode', '_sdCommentsSwapOffered', '_sdCommentsMakeDesignable',
+		'_sdCommentsBackToBlock'), $script);
 	if ($res === null) {
 		return;
 	}
@@ -1436,6 +1522,38 @@ JS;
 	pg_assert_true(in_array('list', $named['log'], true), 'after asking the server for the rows');
 	pg_assert_true(in_array('fetch:88', $named['log'], true), 'its layout is fetched to draw it');
 	pg_assert_same(1, count(array_keys($named['log'], 'undo', true)), 'one undo step');
+
+	$parked = $res['parked'];
+	pg_assert_same(array(), $parked['created'], 'a widget placed only on a tab not opened yet is reused, no second one is made');
+	pg_assert_contains('"sharedId":91,"sharedName":"Forum talk"', $parked['tree'], 'it takes the block\'s place under its own name');
+	pg_assert_false(strpos($parked['tree'], 'comments_block') !== false, 'the block is gone');
+	pg_assert_true(in_array('list', $parked['log'], true), 'its kind is read from the rows');
+	pg_assert_true(in_array('fetch:91', $parked['log'], true), 'its layout is fetched to draw it');
+	$parked_toast = '';
+	foreach ($parked['log'] as $line) {
+		if (strpos($line, 'toast:success:') === 0) {
+			$parked_toast = $line;
+		}
+	}
+	pg_assert_contains('&quot;Forum talk&quot;', $parked_toast, 'the toast names it');
+	pg_assert_contains('Its display options are shared with the other pages that show it.', $parked_toast, 'and says its options are shared, read from its row');
+	pg_assert_same(1, count(array_keys($parked['log'], 'undo', true)), 'one undo step');
+
+	$in_component = $res['parked_component'];
+	pg_assert_same(array(), $in_component['created'], 'a widget inside a component of a parked tab is reused');
+	pg_assert_contains('"sharedId":92,"sharedName":"Thread"', $in_component['tree'], 'it takes the block\'s place');
+	pg_assert_same(1, count(array_keys($in_component['log'], 'fetch:40', true)), 'the component is loaded once');
+
+	$no_list = $res['parked_no_list'];
+	pg_assert_same(array(), $no_list['created'], 'without the rows a parked tab\'s widget is still reused');
+	pg_assert_contains('"sharedId":93,"sharedName":"Q&A"', $no_list['tree'], 'it takes the block\'s place under its own name');
+	pg_assert_same(1, count(array_keys($no_list['log'], 'fetch:93', true)), 'it is loaded once, to learn its kind');
+	pg_assert_same(1, count(array_keys($no_list['log'], 'undo', true)), 'one undo step');
+
+	$gone = $res['parked_gone'];
+	pg_assert_same(1, count($gone['created']), 'nothing found: one widget is made');
+	pg_assert_same(1, count(array_keys($gone['log'], 'fetch:42', true)), 'a component the server lacks is asked for once');
+	pg_assert_contains('"sharedId":77', $gone['tree'], 'the new widget is placed');
 }
 
 // A template may ship a comments widget with the editor's starter layout.

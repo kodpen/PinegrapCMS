@@ -49069,8 +49069,9 @@ const StyleDesigner = (function () {
     // The design's Comments widget: the first one placed on a page of the
     // design (inside a component placed there too), else one the design used
     // by the usage list, else the first comments widget among `spare` (ids of
-    // widgets no page places now: the one a page went back to the fixed block
-    // from, the rows named after the design); 0 for none. Pure: the configs,
+    // widgets no page may place now, such as the one a page went back to the
+    // fixed block from); 0 for none. A widget is known by its config alone,
+    // so one `cfgOf` has no config for is passed over. Pure: the configs,
     // the component trees, the usage and the spare ids come from the caller.
     function _sdCommentsPickWidget(pageTrees, cfgOf, treeOf, usage, styleId, spare) {
         var isComments = function (sid) {
@@ -49130,6 +49131,49 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The parsed config of every widget row ({sid: cfg}). The cache holds
+    // the configs of the widgets on the tabs opened in this editor only;
+    // the rows hold one for each widget, so a widget placed only on a tab
+    // not opened yet is known by its kind too. Pure.
+    function _sdCommentsRowConfigs(items) {
+        var out = {};
+        (Array.isArray(items) ? items : []).forEach(function (it) {
+            if (!it) return;
+            var sid = parseInt(it.id, 10) || 0;
+            if (sid <= 0) return;
+            var cfg = null;
+            try { cfg = JSON.parse(String(it.system_region_config || '')); } catch (e) { cfg = null; }
+            if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) out[sid] = cfg;
+        });
+        return out;
+    }
+
+    // The shared components the pages place (also inside a loaded one)
+    // whose layout is not loaded: those of tabs not opened in this editor,
+    // where a Comments widget may sit inside one. Widgets (a config) are
+    // left out: their kind is known without their layout. Each id once.
+    // Pure: the configs and the trees come from the caller.
+    function _sdCommentsUnloadedRefs(pageTrees, cfgOf, treeOf) {
+        var out = [];
+        var seen = {};
+        var walk = function (n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid || seen[sid]) return;
+                seen[sid] = true;
+                if (cfgOf(sid)) return;
+                var t = treeOf(sid);
+                if (t) walk(t);
+                else out.push(sid);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        (pageTrees || []).forEach(function (e) { walk((e && e.tree) ? e.tree : e); });
+        return out;
+    }
+
     function _sdCommentsTreeOf(sid) {
         var c = _sharedCache[sid];
         return (c && c.tree) ? c.tree : null;
@@ -49140,14 +49184,15 @@ const StyleDesigner = (function () {
     // any more and it has been renamed. Editor only, never saved.
     var _sdCommentsSentBack = 0;
 
-    function _sdCommentsDesignWidget() {
-        return _sdCommentsPickWidget(_pgAllPageTrees(), _cfCfgOf, _sdCommentsTreeOf, _sharedUsage,
+    // `cfgOf` (optional): the configs to judge by, the cache's by default.
+    function _sdCommentsDesignWidget(cfgOf) {
+        return _sdCommentsPickWidget(_pgAllPageTrees(), cfgOf || _cfCfgOf, _sdCommentsTreeOf, _sharedUsage,
             (_design && _design.styleId) ? _design.styleId : 0, [_sdCommentsSentBack]);
     }
 
     // The site's widget rows (shared_component list), for a widget of the
-    // design that no page places now. cb(items) once; [] when the server
-    // cannot be reached.
+    // design on a tab not opened in this editor or on no page now.
+    // cb(items) once; [] when the server cannot be reached.
     function _sdCommentsFetchRows(cb) {
         var done = false;
         var finish = function (items) { if (done) return; done = true; cb(items); };
@@ -49179,11 +49224,11 @@ const StyleDesigner = (function () {
     }
 
     // The fixed comments block becomes a placement of the design's Comments
-    // widget: one a page places, the one a page went back from, or a row
-    // named after the design that no page places now (asked from the
-    // server). With none, one is made from the starter layout, showing only
-    // the featured comments while there are some, as the block does. A page
-    // shows one Comments widget.
+    // widget: one a page places (also on a tab not opened yet, known from
+    // the server's rows), the one a page went back from, or a row named
+    // after the design that no page places now. With none, one is made from
+    // the starter layout, showing only the featured comments while there
+    // are some, as the block does. A page shows one Comments widget.
     function _sdCommentsMakeDesignable(regionNode) {
         if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
             regionNode.props.regionType !== 'comments_block' || !_sdCommentsSwapOffered(regionNode)) return;
@@ -49219,25 +49264,42 @@ const StyleDesigner = (function () {
         var sid = _sdCommentsDesignWidget();
         if (sid) { reuse(sid); return; }
         _sdCommentsFetchRows(function (rows) {
-            // The block may have gone meanwhile (another tab, an undo).
-            if (!findParent(regionNode, tree)) return;
-            var named = _sdCommentsNamedRows(rows, ownName);
-            if (named.length) {
-                // Its name and settings, for the placement and the panel;
-                // its layout is fetched when it is drawn (place()).
-                var hitRow = null;
-                (rows || []).forEach(function (it) { if (!hitRow && it && (parseInt(it.id, 10) || 0) === named[0]) hitRow = it; });
-                if (!_sharedCache[named[0]] && hitRow) {
-                    _sharedCache[named[0]] = { name: hitRow.name || ownName, tree: null, system_region_config: hitRow.system_region_config || null };
+            // The cache knows the widgets of the tabs opened in this editor;
+            // the rows know every widget's kind, so one placed only on a tab
+            // not opened yet is the design's too.
+            var rowCfg = _sdCommentsRowConfigs(rows);
+            var cfgOf = function (s) { return _cfCfgOf(s) || rowCfg[s] || null; };
+            var decide = function (loaded) {
+                // The block may have gone meanwhile (another tab, an undo).
+                if (!findParent(regionNode, tree)) return;
+                var found = _sdCommentsDesignWidget(cfgOf);
+                if (!found && !loaded) {
+                    // The components those tabs place, loaded once: the
+                    // design's widget may sit inside one.
+                    var unloaded = _sdCommentsUnloadedRefs(_pgAllPageTrees(), cfgOf, _sdCommentsTreeOf);
+                    if (unloaded.length) { prefetchShared(unloaded, function () { decide(true); }); return; }
                 }
-                reuse(named[0]);
-                return;
-            }
-            var cfg = _swTypeDefaults({}, 'comments');
-            cfg.featured = 'filter';
-            _swCreateRow(ownName, cfg, _buildStarterTree('comments'), function (newId, newName) {
-                place(newId, newName, true);
-            });
+                if (!found) found = _sdCommentsNamedRows(rows, ownName)[0] || 0;
+                if (found) {
+                    // Its name and settings from its row, for the placement
+                    // and the panel; its layout is fetched when it is drawn
+                    // (place()).
+                    var hitRow = null;
+                    (rows || []).forEach(function (it) { if (!hitRow && it && (parseInt(it.id, 10) || 0) === found) hitRow = it; });
+                    if (hitRow) {
+                        if (!_sharedCache[found]) _sharedCache[found] = { name: hitRow.name || ownName, tree: null };
+                        if (!_sharedCache[found].system_region_config) _sharedCache[found].system_region_config = hitRow.system_region_config || null;
+                    }
+                    reuse(found);
+                    return;
+                }
+                var cfg = _swTypeDefaults({}, 'comments');
+                cfg.featured = 'filter';
+                _swCreateRow(ownName, cfg, _buildStarterTree('comments'), function (newId, newName) {
+                    place(newId, newName, true);
+                });
+            };
+            decide(false);
         });
     }
 
