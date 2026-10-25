@@ -5,8 +5,8 @@
  * Tests for the Paraşüt card of the commerce settings and the connection it
  * makes (includes/fn/parasut.php): the owner stamp of a token from the
  * authorization code, the Client Secret and Password boxes drawn from what
- * is really stored, the company a code connection works in, the notice
- * Connect answers with, and the default product/service help.
+ * is really stored, the company a code connection works in, the notice and
+ * the warning Connect answers with, and the default product/service help.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -151,8 +151,8 @@ function test_parasut_connection_card_credential_boxes_follow_what_is_stored()
 	pg_assert_same($saved, $password_only['password']['placeholder']);
 
 	// A blob that is not there, or cannot be read, holds nothing.
-	pg_assert_same(array('client_secret' => '', 'password' => ''), _parasut_credentials_decode(''));
-	pg_assert_same(array('client_secret' => '', 'password' => ''), _parasut_credentials_decode('no-iv-here'));
+	pg_assert_same(array('client_secret' => '', 'password' => ''), parasut_credentials_decode(''));
+	pg_assert_same(array('client_secret' => '', 'password' => ''), parasut_credentials_decode('no-iv-here'));
 }
 
 // The card draws each box with its own placeholder and help.
@@ -166,12 +166,13 @@ function test_parasut_connection_card_draws_each_box_from_its_own_value()
 	parasut_connection_card_test_has('h($parasut_secret_help)', $card);
 	parasut_connection_card_test_has('h($parasut_password_help)', $card);
 	pg_assert_same(false, strpos($card, '$parasut_credential_placeholder'));
-	parasut_connection_card_test_has("_parasut_credentials_decode((string) (\$row['parasut_credentials_enc'] ?? ''))", $prep);
+	parasut_connection_card_test_has("parasut_credential_boxes(parasut_credentials_decode((string) (\$row['parasut_credentials_enc'] ?? '')))", $prep);
 }
 
 // The company box holds the saved number when the card is drawn, and Connect
 // posts it. Another account whose one company is a different one takes that
-// company instead of spending the code on a refusal; a number typed in the
+// company instead of spending the code on a refusal, and the saved number
+// given up is named - also when the box was emptied. A number typed in the
 // box is still refused when the user cannot see it.
 function test_parasut_connection_card_connect_company()
 {
@@ -198,10 +199,31 @@ function test_parasut_connection_card_connect_company()
 	pg_assert_same('830533', $same['company_id']);
 	pg_assert_same('', $same['replaced']);
 
-	// An empty box: the one company, or the list.
-	$empty = parasut_connect_company('', '830533', $one);
-	pg_assert_same('999', $empty['company_id']);
-	pg_assert_same('', $empty['replaced']);
+	// An empty box with nothing saved: the one company, or the list.
+	$first = parasut_connect_company('', '', $one);
+	pg_assert_same('999', $first['company_id']);
+	pg_assert_same('', $first['replaced']);
+
+	// An emptied box with a saved number the new user cannot see: the one
+	// company is taken, and the switch is named as with the box as drawn.
+	$emptied = parasut_connect_company('', '830533', $one);
+	pg_assert_same('999', $emptied['company_id']);
+	pg_assert_same('830533', $emptied['replaced']);
+	pg_assert_same('', $emptied['error']);
+
+	// An emptied box keeps the saved number the user can see, also among
+	// several companies: the box's help says an empty box keeps it.
+	$kept = parasut_connect_company('', '830533', array('999' => 'A', '830533' => 'Demo'));
+	pg_assert_same('830533', $kept['company_id']);
+	pg_assert_same('', $kept['replaced']);
+	pg_assert_same('', parasut_connect_company('', '830533', array('830533' => 'Demo'))['replaced']);
+
+	// Several companies without the saved number: the list, nothing taken.
+	$listed = parasut_connect_company('', '830533', array('999' => 'A', '1000' => 'B'));
+	pg_assert_same('', $listed['company_id']);
+	pg_assert_same('', $listed['replaced']);
+	pg_assert_contains('A (999), B (1000)', $listed['error']);
+
 	pg_assert_same('', parasut_connect_company('', '', array())['company_id']);
 	pg_assert_true(parasut_connect_company('', '', array())['error'] !== '');
 	pg_assert_contains('A (999), 1000', parasut_connect_company(' ', '', array('999' => 'A', '1000' => ''))['error']);
@@ -213,24 +235,35 @@ function test_parasut_connection_card_connect_company()
 	pg_assert_same('42', parasut_connect_company('', '', array(42 => 'Int'))['company_id']);
 }
 
-// Connect's notice says when the saved company was given up for the user's
-// one company, and that the defaults set for the old one need a look.
-function test_parasut_connection_card_connect_lines_name_a_company_change()
+// Connect's notice says whom and which company. The saved company given up
+// for the user's one company is a warning naming both numbers, as is the
+// activity log line; the defaults set for the old company need a look.
+function test_parasut_connection_card_connect_report_warns_of_a_company_change()
 {
-	$plain = parasut_connect_lines(array('email' => 'a@example.com', 'company_id' => '830533', 'company_name' => 'Demo', 'replaced_company_id' => ''));
-	pg_assert_same(1, count($plain));
-	pg_assert_contains('a@example.com', $plain[0]);
-	pg_assert_contains('Demo (830533)', $plain[0]);
+	$plain = parasut_connect_report(array('email' => 'a@example.com', 'company_id' => '830533', 'company_name' => 'Demo', 'replaced_company_id' => ''));
+	pg_assert_same(1, count($plain['notices']));
+	pg_assert_contains('a@example.com', $plain['notices'][0]);
+	pg_assert_contains('Demo (830533)', $plain['notices'][0]);
+	pg_assert_same(array(), $plain['warnings']);
+	pg_assert_same(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => '830533')), $plain['log']);
 
-	$changed = parasut_connect_lines(array('email' => '', 'company_id' => '999', 'company_name' => '', 'replaced_company_id' => '830533'));
-	pg_assert_same(2, count($changed));
-	pg_assert_contains(lang('the authorized user'), $changed[0]);
-	pg_assert_contains('830533', $changed[1]);
-	pg_assert_contains('999', $changed[1]);
+	$changed = parasut_connect_report(array('email' => '', 'company_id' => '999', 'company_name' => 'Yeni Ltd.', 'replaced_company_id' => '830533'));
+	pg_assert_same(1, count($changed['notices']));
+	pg_assert_contains(lang('the authorized user'), $changed['notices'][0]);
+	pg_assert_same(1, count($changed['warnings']));
+	pg_assert_contains('830533', $changed['warnings'][0]);
+	pg_assert_contains('Yeni Ltd. (999)', $changed['warnings'][0]);
+	pg_assert_contains('830533', $changed['log']);
+	pg_assert_contains('999', $changed['log']);
 
-	// Both ways in say it: the Connect button and Save with a code.
-	parasut_connection_card_test_has('parasut_connect_lines($result)', file_get_contents(PG_FUNCTIONS_DIR . '/parasut_connect.php'));
-	parasut_connection_card_test_has('parasut_connect_lines($parasut_connected)', file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php'));
+	// Both ways in show the switch as a warning: the Connect button by the
+	// answer's tone, Save with a code by the page's warning.
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/parasut_connect.php');
+	parasut_connection_card_test_has('parasut_connect_report($result)', $endpoint);
+	parasut_connection_card_test_has("\$tone = \$ok ? (\$warned ? 'warning' : 'success') : 'danger';", $endpoint);
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
+	parasut_connection_card_test_has('parasut_connect_report($parasut_connected)', $save);
+	parasut_connection_card_test_has('$liveform->add_warning(h($parasut_line));', $save);
 
 	// Connect hands the saved number to the company choice.
 	$body = parasut_connection_card_test_body('parasut_connect_with_code');

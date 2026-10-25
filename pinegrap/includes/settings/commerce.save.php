@@ -594,12 +594,18 @@ function pg_parasut_credentials_for_save()
         $parasut_connected = parasut_connect_with_code($parasut_code, $parasut_text('parasut_client_id'), $parasut_text('parasut_client_secret'), $parasut_text('parasut_company_id'));
 
         if (!empty($parasut_connected['success'])) {
-            foreach (parasut_connect_lines($parasut_connected) as $parasut_line) {
+            // A switch to the authorized user's one company is a warning.
+            $parasut_report = parasut_connect_report($parasut_connected);
+
+            foreach ($parasut_report['notices'] as $parasut_line) {
                 $liveform->add_notice(h($parasut_line));
             }
 
-            log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $parasut_connected['company_id'])),
-                (string) ($_SESSION['sessionusername'] ?? ''));
+            foreach ($parasut_report['warnings'] as $parasut_line) {
+                $liveform->add_warning(h($parasut_line));
+            }
+
+            log_activity($parasut_report['log'], (string) ($_SESSION['sessionusername'] ?? ''));
         } else {
             $liveform->add_warning(h((string) $parasut_connected['error']));
         }

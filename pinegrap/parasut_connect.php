@@ -41,6 +41,7 @@ pg_request_single_values(array('parasut_auth_code', 'parasut_client_id', 'parasu
 
 $lines = array();
 $ok = false;
+$warned = false;
 
 // What the card puts in its boxes and its status line after a connection,
 // so the open page holds what was saved and its own Save writes it again.
@@ -60,9 +61,11 @@ if (!function_exists('parasut_connect_with_code')) {
     $ok = !empty($result['success']);
 
     if ($ok) {
-        // Whom and which company; also when the saved company was given up
-        // for the authorized user's one company.
-        $lines = array_merge($lines, parasut_connect_lines($result));
+        // Whom and which company; a warning when the saved company was given
+        // up for the authorized user's one company.
+        $report = parasut_connect_report($result);
+        $lines = array_merge($lines, $report['notices'], $report['warnings']);
+        $warned = !empty($report['warnings']);
 
         $fill = array(
             'parasut_company_id' => (string) $result['company_id'],
@@ -77,15 +80,14 @@ if (!function_exists('parasut_connect_with_code')) {
             ? parasut_connection_line(parasut_connection_status(((string) ($result['owner'] ?? '') !== '') ? (string) $result['owner'] : null))
             : array();
 
-        log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $result['company_id'])),
-            (string) ($_SESSION['sessionusername'] ?? ''));
+        log_activity($report['log'], (string) ($_SESSION['sessionusername'] ?? ''));
     } else {
         $lines[] = (string) $result['error'];
     }
 }
 
-$tone = $ok ? 'success' : 'danger';
-$icon = $ok ? 'bi-check-circle' : 'bi-x-circle';
+$tone = $ok ? ($warned ? 'warning' : 'success') : 'danger';
+$icon = $ok ? ($warned ? 'bi-exclamation-triangle' : 'bi-check-circle') : 'bi-x-circle';
 
 if ((string) ($_POST['format'] ?? '') === 'json') {
 

@@ -417,7 +417,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // source. All the screen gets is whether each one is stored; an empty box
     // means "keep what is there" (see pg_parasut_credentials_for_save()). The
     // blob holds both, and a connection by code stores the secret alone.
-    $parasut_credential_boxes = parasut_credential_boxes(_parasut_credentials_decode((string) ($row['parasut_credentials_enc'] ?? '')));
+    $parasut_credential_boxes = parasut_credential_boxes(parasut_credentials_decode((string) ($row['parasut_credentials_enc'] ?? '')));
     $parasut_secret_placeholder = $parasut_credential_boxes['secret']['placeholder'];
     $parasut_secret_help = $parasut_credential_boxes['secret']['help'];
     $parasut_password_placeholder = $parasut_credential_boxes['password']['placeholder'];

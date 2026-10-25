@@ -434,7 +434,7 @@ function _parasut_credentials($fresh = false)
         return $credentials;
     }
 
-    $credentials = _parasut_credentials_decode($fresh
+    $credentials = parasut_credentials_decode($fresh
         ? (string) db_value("SELECT parasut_credentials_enc FROM config LIMIT 1")
         : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : ''));
 
@@ -443,13 +443,14 @@ function _parasut_credentials($fresh = false)
 
 /**
  * One config.parasut_credentials_enc value decoded: what _parasut_credentials()
- * reads, for a caller holding the column's value (the settings card).
+ * reads, for a caller holding the column's value (the settings card,
+ * includes/settings/prep.php).
  *
  * @param string $stored  "<ciphertext>:<iv>", or ''
  * @return array ['client_secret' => string, 'password' => string]; empty
  *               strings for a value that is not there or cannot be read
  */
-function _parasut_credentials_decode($stored)
+function parasut_credentials_decode($stored)
 {
     $credentials = ['client_secret' => '', 'password' => ''];
     $stored = (string) $stored;
@@ -477,7 +478,7 @@ function _parasut_credentials_decode($stored)
  * both boxes told the operator a password was on file to fall back on when
  * there was none.
  *
- * @param array $credentials  _parasut_credentials_decode() output
+ * @param array $credentials  parasut_credentials_decode() output
  * @return array ['secret' => ['placeholder' => string, 'help' => string],
  *                'password' => ['placeholder' => string, 'help' => string]]
  */
@@ -1013,14 +1014,17 @@ function _parasut_me_parse($body)
  * The company a connection by code works in, from the Company ID box as
  * posted, the saved number and the companies the authorized user can see.
  *
- * An empty box takes the user's one company, and lists them when there are
- * several. A number the user cannot see is refused with the user's companies
- * listed - except the saved number itself while the user has exactly one
- * company: the card draws the saved number in the box, so connecting another
- * account whose one company is a different one posted it, and the code was
- * spent on the refusal. That company is taken instead, and 'replaced' names
- * the saved number given up so that the answer can say so. A number typed in
- * the box is never replaced.
+ * An empty box keeps the saved number while the user can see it (the box's
+ * help says so), takes the user's one company otherwise, and lists them when
+ * there are several. A number the user cannot see is refused with the user's
+ * companies listed - except the saved number itself while the user has
+ * exactly one company: the card draws the saved number in the box, so
+ * connecting another account whose one company is a different one posted
+ * it, and the code was spent on the refusal. That company is taken instead.
+ *
+ * Whenever the saved number is given up for the user's one company - the
+ * box as drawn, or emptied - 'replaced' names it, so that the answer can
+ * warn about the switch. A number typed in the box is never replaced.
  *
  * @param string $posted     The Company ID box as posted
  * @param string $saved      The saved company number
@@ -1044,8 +1048,13 @@ function parasut_connect_company($posted, $saved, $companies)
     };
 
     if ($posted === '') {
+        if (($saved !== '') && in_array($saved, $ids, true)) {
+            return ['company_id' => $saved, 'replaced' => '', 'error' => ''];
+        }
+
+        // The saved number, if there is one, is not among these companies.
         if (count($ids) === 1) {
-            return ['company_id' => $ids[0], 'replaced' => '', 'error' => ''];
+            return ['company_id' => $ids[0], 'replaced' => $saved, 'error' => ''];
         }
 
         if (count($ids) === 0) {
@@ -1073,47 +1082,59 @@ function parasut_connect_company($posted, $saved, $companies)
 }
 
 /**
- * The lines Connect answers with, the same for the Connect button and for
- * a code saved with the page: whom and which company it connected to, and
- * when the saved company was given up for the authorized user's one company
- * (parasut_connect_company()), that it was - the default product/service and
- * warehouse ids on the card were set for the company before.
+ * What Connect answers with, the same for the Connect button and for a code
+ * saved with the page: a notice saying whom and which company it connected
+ * to, and the activity log line. When the saved company was given up for
+ * the authorized user's one company (parasut_connect_company()), the switch
+ * is a warning naming both numbers - the default product/service and
+ * warehouse ids on the card were set for the company before - and the log
+ * line names both numbers too.
  *
  * @param array $result  A successful parasut_connect_with_code() answer
- * @return array  Plain text lines, not escaped
+ * @return array ['notices' => string[], 'warnings' => string[], 'log' => string];
+ *               plain text, not escaped
  */
-function parasut_connect_lines($result)
+function parasut_connect_report($result)
 {
     $result = (array) $result;
     $company_id = (string) ($result['company_id'] ?? '');
     $company_name = (string) ($result['company_name'] ?? '');
     $company = ($company_name !== '') ? $company_name . ' (' . $company_id . ')' : $company_id;
+    $replaced = trim((string) ($result['replaced_company_id'] ?? ''));
 
-    $lines = [lang(array(
-        'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
-        'vars' => array(
-            ((string) ($result['email'] ?? '') !== '') ? (string) $result['email'] : lang('the authorized user'),
-            $company,
-        ),
-    ))];
+    $report = [
+        'notices' => [lang(array(
+            'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
+            'vars' => array(
+                ((string) ($result['email'] ?? '') !== '') ? (string) $result['email'] : lang('the authorized user'),
+                $company,
+            ),
+        ))],
+        'warnings' => [],
+        'log' => lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => $company_id)),
+    ];
 
-    if (trim((string) ($result['replaced_company_id'] ?? '')) !== '') {
-        $lines[] = lang(array(
+    if ($replaced !== '') {
+        $report['warnings'][] = lang(array(
             'string' => 'The saved company {var:1} is not among the companies of the Paraşüt user you authorized; its one company, {var:2}, is saved instead. Check the default product/service and warehouse IDs: they were set for the company before.',
-            'vars' => array(trim((string) $result['replaced_company_id']), $company),
+            'vars' => array($replaced, $company),
+        ));
+        $report['log'] = lang(array(
+            'string' => 'parasut connection was authorized for company {var:1} in place of the saved company {var:2}',
+            'vars' => array($company_id, $replaced),
         ));
     }
 
-    return $lines;
+    return $report;
 }
 
 /**
  * Turns the authorization code Paraşüt showed into a connection: the code is
  * exchanged for a token pair, the account is asked who it is and which
  * companies it can see, and what the next request needs is written down -
- * client id and secret in the config row, the company id when the box was
- * empty (or held only the saved number) and the account has exactly one
- * (parasut_connect_company()), and the sealed token with its refresh token.
+ * client id and secret in the config row, the company the box and the
+ * account's companies leave (parasut_connect_company()), and the sealed
+ * token with its refresh token.
  * No password is involved, so none is stored.
  *
  * A code is good for one exchange and a few minutes; a second click with
