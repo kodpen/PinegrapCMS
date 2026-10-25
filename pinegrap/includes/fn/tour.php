@@ -414,10 +414,10 @@ function pg_tour_shell_head($toolbar = false)
                         // The menu this entry lives in stays open on a click
                         // inside it, and would then sit on top of the very bar
                         // the last step rings.
-                        if ((window.bootstrap) && (window.bootstrap.Dropdown)) {
+                        if (window.pgUI) {
 
                             var toggle = document.querySelector(".pg-acctbtn");
-                            var open = toggle ? window.bootstrap.Dropdown.getInstance(toggle) : null;
+                            var open = toggle ? window.pgUI.menu.find(toggle) : null;
 
                             if (open) { open.hide(); }
                         }

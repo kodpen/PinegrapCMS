@@ -363,23 +363,21 @@ if (!$_POST) {
         if ($selector === '' || $domain === '') {
             $liveform_settings->add_warning(lang('DKIM domain and selector must be filled before generating key.'));
         } else {
-            // Delete the old records and files
-            db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
-            @unlink(FILE_DIRECTORY_PATH . '/dkim.key');
-            @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
+            // The new pair is made before the old one is touched: when OpenSSL
+            // cannot make a key, the pair in use keeps signing.
+            $dkim_pair = pg_dkim_key_pair($selector, $domain);
 
-            $res = openssl_pkey_new(['private_key_bits'=>2048,'private_key_type'=>OPENSSL_KEYTYPE_RSA]);
-            if ($res) {
-                openssl_pkey_export($res, $private_pem);
-                $details = openssl_pkey_get_details($res);
-                $public_pem = isset($details['key']) ? $details['key'] : '';
-                $pub = str_replace(
-                    ["-----BEGIN PUBLIC KEY-----","-----END PUBLIC KEY-----","\r","\n"],
-                    '',
-                    $public_pem
-                );
-                $pub = trim($pub);
-                $txt_record = $selector . '._domainkey.' . $domain . ' IN TXT "v=DKIM1; k=rsa; p=' . $pub . '"';
+            if (!$dkim_pair) {
+                $liveform_settings->add_warning(lang('The DKIM key could not be generated on this server. Any existing DKIM key was left unchanged.'));
+            } else {
+                // Delete the old records and files
+                db("DELETE FROM files WHERE name IN ('dkim.key','dkim.pub')");
+                @unlink(FILE_DIRECTORY_PATH . '/dkim.key');
+                @unlink(FILE_DIRECTORY_PATH . '/dkim.pub');
+
+                $private_pem = $dkim_pair['private'];
+                $public_pem = $dkim_pair['public'];
+                $txt_record = $dkim_pair['txt_record'];
 
                 // Private key file
                 file_put_contents(FILE_DIRECTORY_PATH . '/dkim.key', $private_pem);

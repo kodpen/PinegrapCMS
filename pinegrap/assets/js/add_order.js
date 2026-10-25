@@ -1073,7 +1073,7 @@
     /* ── Quick account ────────────────────────────────────────────────── */
 
     function openAccountModal(name) {
-        if (!el.accountModal || !window.bootstrap) {
+        if (!el.accountModal || !window.pgUI) {
             return;
         }
         var form = el.accountForm;
@@ -1082,11 +1082,11 @@
             node.classList.remove('is-invalid');
         });
         form.elements.title.value = name || '';
-        bootstrap.Modal.getOrCreateInstance(el.accountModal).show();
+        pgUI.dialog.show(el.accountModal);
     }
 
     if (el.accountModal) {
-        el.accountModal.addEventListener('shown.bs.modal', function () {
+        pgUI.dialog.on(el.accountModal, 'shown', function () {
             el.accountForm.elements.title.focus();
         });
 
@@ -1113,7 +1113,7 @@
                 if (answer.ok) {
                     state.picker = false;
                     el.customer.innerHTML = state.customerHtml;
-                    bootstrap.Modal.getOrCreateInstance(el.accountModal).hide();
+                    pgUI.dialog.hide(el.accountModal);
                     toast(answer.message, 'success');
                     el.product.focus();
                     return;
@@ -1145,7 +1145,7 @@
     root.addEventListener('click', function (event) {
         var button = event.target.closest('[data-sale-ledger]');
         var panel = byId('erp_drawer');
-        if (!button || !panel || !window.bootstrap) {
+        if (!button || !panel || !window.pgUI) {
             return;
         }
         var title = byId('erp_drawer_title');
@@ -1154,7 +1154,7 @@
         title.textContent = '';
         open.classList.add('d-none');
         body.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
-        bootstrap.Offcanvas.getOrCreateInstance(panel).show();
+        pgUI.drawer.show(panel);
 
         fetch(cfg.drawerUrl + '?type=account&id=' + encodeURIComponent(button.getAttribute('data-sale-ledger')), {
             credentials: 'same-origin',
@@ -1301,10 +1301,10 @@
 
     if (el.clearBtn) {
         el.clearBtn.addEventListener('click', function () {
-            bootstrap.Modal.getOrCreateInstance(byId('pg_sale_clear')).show();
+            pgUI.dialog.show(byId('pg_sale_clear'));
         });
         byId('pg_sale_clear_go').addEventListener('click', function () {
-            bootstrap.Modal.getOrCreateInstance(byId('pg_sale_clear')).hide();
+            pgUI.dialog.hide(byId('pg_sale_clear'));
             send('clear_cart', {}, { toast: true });
             el.product.focus();
         });
@@ -1312,7 +1312,7 @@
 
     document.querySelectorAll('[data-sale-keys]').forEach(function (button) {
         button.addEventListener('click', function () {
-            bootstrap.Modal.getOrCreateInstance(byId('pg_sale_keys')).show();
+            pgUI.dialog.show(byId('pg_sale_keys'));
         });
     });
 
@@ -1325,11 +1325,11 @@
         });
     });
 
-    if (el.recent && window.bootstrap) {
+    if (el.recent && window.pgUI) {
         el.recentBtn.addEventListener('click', function () {
-            bootstrap.Offcanvas.getOrCreateInstance(el.recent).show();
+            pgUI.drawer.show(el.recent);
         });
-        el.recent.addEventListener('show.bs.offcanvas', function () {
+        pgUI.drawer.on(el.recent, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
             el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
             getJson({ request: 'recent' }).then(function (data) {
@@ -1339,7 +1339,7 @@
                 el.recentBody.firstChild.textContent = t.loadFailed;
             });
         });
-        el.recent.addEventListener('hidden.bs.offcanvas', function () {
+        pgUI.drawer.on(el.recent, 'hidden', function () {
             document.body.classList.remove('pg-side-panel-open');
         });
     }
@@ -1347,7 +1347,7 @@
     /* ── Keyboard ─────────────────────────────────────────────────────── */
 
     document.addEventListener('keydown', function (event) {
-        if (document.querySelector('.modal.show')) {
+        if (pgUI.anyOpen('dialog')) {
             return;
         }
         if (event.key === 'F2') {
@@ -1392,7 +1392,7 @@
             avgTimeByChar: 100,
             ignoreIfFocusOn: 'input, textarea, select, [contenteditable="true"]',
             onComplete: function (code) {
-                if (document.querySelector('.modal.show')) {
+                if (pgUI.anyOpen('dialog')) {
                     return;
                 }
                 var dot = el.foot.querySelector('.pg-sale-dot');

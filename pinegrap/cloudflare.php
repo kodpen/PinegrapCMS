@@ -1063,7 +1063,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   var editModal = document.getElementById("editModal");
-  editModal.addEventListener("show.bs.modal", function (event) {
+  pgUI.dialog.on(editModal, "show", function (event) {
     var button = event.relatedTarget;
     document.getElementById("edit_id").value      = button.getAttribute("data-id");
     document.getElementById("edit_type").value    = button.getAttribute("data-type");

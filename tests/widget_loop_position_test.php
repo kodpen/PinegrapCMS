@@ -442,13 +442,14 @@ function _widget_loop_run_js($script)
 	if ($from === false) return null;
 	$to = strpos($js, "\n    ];\n", $from);
 	$cut = substr($js, $from, $to + 7 - $from);
-	foreach (array('_swInMainLoop', '_swPositionLabel', '_swBindTokenOptions', '_swBindLabel') as $name) {
+	foreach (array('_swInMainLoop', '_swPositionLabel', '_swBindTokenOptions', '_swBindLabel', '_sdListIsSourced', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel') as $name) {
 		$fn = _widget_loop_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
 		$cut .= $fn;
 	}
 
 	$stubs = "var _sdT = function (s) { return s; };\n"
+		. "var SW_LIST_SOURCES = {};\n"
 		. "var KIND = '';\n"
 		. "var PARENTS = new Map();\n"
 		. "function _sdAnyParent(n) { return PARENTS.has(n) ? { parent: PARENTS.get(n), sid: 0 } : null; }\n"

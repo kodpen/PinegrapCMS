@@ -135,32 +135,18 @@ function pg_push_vapid_public_key()
 // whichever pair lands first is the one every browser is then told about.
 function pg_push_create_vapid_keys()
 {
-	$arguments = array(
+	// On a server without an OpenSSL configuration file the key is made with
+	// the one shipped beside this file (pg_openssl_key_new()).
+	$made = pg_openssl_key_new(array(
 		'curve_name'       => 'prime256v1',
 		'private_key_type' => OPENSSL_KEYTYPE_EC
-	);
+	));
 
-	$key = @openssl_pkey_new($arguments);
-
-	// OpenSSL reads a configuration file before it will make a key, and on a
-	// server where none is installed - Windows unless someone put one there, or
-	// a host whose OPENSSL_CONF points at a path that has since gone - the call
-	// fails with "configuration file routines: no such file" and no amount of
-	// correct arguments helps. The file shipped beside this one is the fallback,
-	// which is why the second attempt is worth making before giving up.
-	if (!$key) {
-		$configuration = dirname(__FILE__) . '/openssl.cnf';
-
-		if (file_exists($configuration)) {
-			$arguments['config'] = $configuration;
-			$key = @openssl_pkey_new($arguments);
-		}
-	}
-
-	if (!$key) {
+	if (!$made) {
 		return '';
 	}
 
+	$key = $made['key'];
 	$details = @openssl_pkey_get_details($key);
 
 	if ((!$details) || (!isset($details['ec']['x'])) || (!isset($details['ec']['y'])) || (!isset($details['ec']['d']))) {
@@ -184,7 +170,7 @@ function pg_push_create_vapid_keys()
 	// back, and the 'raw:' marker is what tells them apart.
 	$private = '';
 
-	if ((!function_exists('openssl_pkey_export')) || (!@openssl_pkey_export($key, $private, null, $arguments)) || (trim((string) $private) == '')) {
+	if ((!function_exists('openssl_pkey_export')) || (!@openssl_pkey_export($key, $private, null, $made['arguments'])) || (trim((string) $private) == '')) {
 		$private = 'raw:' . pg_push_base64url_encode(str_pad($details['ec']['d'], 32, "\0", STR_PAD_LEFT));
 	}
 

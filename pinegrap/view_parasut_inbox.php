@@ -504,7 +504,7 @@ $output_detail_modal = '
 document.addEventListener("DOMContentLoaded", function () {
     var modal = document.getElementById("detailModal");
     if (!modal) return;
-    modal.addEventListener("show.bs.modal", function (e) {
+    pgUI.dialog.on(modal, "show", function (e) {
         var btn = e.relatedTarget;
         document.getElementById("modal-contact").textContent = btn.dataset.contact || "—";
         document.getElementById("modal-date").textContent    = btn.dataset.date    || "—";
