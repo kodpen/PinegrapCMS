@@ -1495,12 +1495,60 @@ function workspace_flows_parity_read_outcomes()
 // The limits scheduled.php defines: NAME=value.
 function workspace_flows_parity_read_limits()
 {
-	preg_match_all("/^define\('(WS_SCHEDULED_[A-Z_]+)',\s*([0-9]+)\);/m", workspace_flows_parity_file('includes/workspace/scheduled.php'), $matches, PREG_SET_ORDER);
+	return workspace_flows_parity_limits_in(workspace_flows_parity_file('includes/workspace/scheduled.php'));
+}
 
+// The WS_SCHEDULED_* constants a PHP file (its whole text) defines, by
+// define() or const, comments left out, in the order they come: NAME=value,
+// the value as PHP works it out (the file is loaded), so a limit written as
+// 10 * 60 is read as 600, however the call is spaced or quoted. A define()
+// whose name is worked out by code throws, since it may name a limit, and so
+// does one the test has not loaded.
+function workspace_flows_parity_limits_in($code)
+{
+	$tokens = array_values(array_filter(token_get_all($code), function ($token) {
+		return !is_array($token) || !in_array($token[0], array(T_COMMENT, T_DOC_COMMENT), true);
+	}));
 	$out = array();
 
-	foreach ($matches as $match) {
-		$out[] = $match[1] . '=' . $match[2];
+	foreach ($tokens as $i => $token) {
+		if (!is_array($token)) {
+			continue;
+		}
+
+		$name = null;
+
+		if (($token[0] === T_STRING) && (strtolower($token[1]) === 'define')) {
+			$args = workspace_flows_parity_php_args($tokens, $i);
+
+			if ($args === null) {
+				continue;
+			}
+
+			$first = array_values(array_filter($args[0], function ($part) {
+				return !is_array($part) || ($part[0] !== T_WHITESPACE);
+			}));
+
+			if ((count($first) !== 1) || !is_array($first[0]) || ($first[0][0] !== T_CONSTANT_ENCAPSED_STRING)) {
+				throw new RuntimeException('A define() whose name is worked out by code (' . trim(implode('', array_map('pg_test_source_text', $args[0]))) . '): teach workspace_flows_parity_limits_in() which constant that defines.');
+			}
+
+			$name = pg_test_source_string($first[0][1]);
+		} elseif ($token[0] === T_CONST) {
+			$next = $i + 1;
+			pg_test_source_skip($tokens, $next);
+			$name = (is_array($tokens[$next] ?? null) && ($tokens[$next][0] === T_STRING)) ? $tokens[$next][1] : null;
+		}
+
+		if (($name === null) || (strpos($name, 'WS_SCHEDULED_') !== 0)) {
+			continue;
+		}
+
+		if (!defined($name)) {
+			throw new RuntimeException($name . ' is defined in the code but not loaded by the test: load the file that defines it, so its value is read.');
+		}
+
+		$out[] = $name . '=' . var_export(constant($name), true);
 	}
 
 	return $out;
@@ -2697,4 +2745,25 @@ function test_workspace_flows_parity_caps_read_comparisons()
 	pg_assert_same(array('x count > 50'), workspace_flows_parity_caps_in('x', 'if (50 < count($ids)) {'), 'a number first is turned round');
 	pg_assert_same(array('x min 720', 'x first 160', 'x count > 1', 'x first 160 #2'), workspace_flows_parity_caps_in('x', 'min(720, $a); mb_substr($n, 0, 160); if (count($given) > 1) {} mb_substr($m, 0, 160);'), 'every shape, a repeat numbered');
 	pg_assert_same(array(), workspace_flows_parity_caps_in('x', 'if (mb_strlen($body) > WS_MESSAGE_MAX) {} if (count($a) === 0) {}'), 'a constant or an equality is no cap written as a number');
+}
+
+// The limits are read from every define() and const of the file, the value
+// as PHP works it out; a define whose name is worked out by code throws.
+function test_workspace_flows_parity_limits_read_any_define()
+{
+	pg_assert_same(
+		array('WS_SCHEDULED_LOCK=600', 'WS_SCHEDULED_BATCH=5', 'WS_SCHEDULED_CHAIN_DEPTH=8'),
+		workspace_flows_parity_limits_in("<?php\n define( \"WS_SCHEDULED_LOCK\" , 10 * 60 );\nconst WS_SCHEDULED_BATCH = 5;\ndefine('WS_OTHER', 1);\n// define('WS_SCHEDULED_GONE', 1);\ndefine('WS_SCHEDULED_CHAIN_DEPTH', 8);\n"),
+		'spaces, double quotes, an expression and const are read; other names and comments are not'
+	);
+
+	$thrown = '';
+
+	try {
+		workspace_flows_parity_limits_in("<?php\ndefine('WS_SCHEDULED_' . \$name, 3);\n");
+	} catch (RuntimeException $exception) {
+		$thrown = $exception->getMessage();
+	}
+
+	pg_assert_contains('worked out by code', $thrown, 'a name worked out by code throws');
 }
