@@ -286,6 +286,23 @@ function pg_mcp_prompt_result($name, $values, $site, $routes, $embedded) {
 
 }
 
+// The resource a prompt embeds, read through its route: the route's answer
+// as one content item when it answered the caller (2xx), null when it
+// refused or failed - an API error is never passed off as the resource.
+function pg_mcp_prompt_embedded($uri, $status_code, $body) {
+
+	if (($status_code < 200) || ($status_code >= 300)) {
+
+		return null;
+
+	}
+
+	$contents = pg_mcp_resource_contents($uri, $body);
+
+	return $contents['contents'][0];
+
+}
+
 /* ---------------------------------------------------------------------------
    Within a request
    --------------------------------------------------------------------------- */
@@ -350,11 +367,7 @@ function pg_mcp_prompt_get($id, $params, $modern) {
 
 		pg_mcp_route_run($route, $arguments, function ($status_code, $body) use ($id, $modern, $name, $values, $site, $routes, $uri) {
 
-			$contents = pg_mcp_resource_contents($uri, $body);
-
-			$embedded = (($status_code >= 200) && ($status_code < 300)) ? $contents['contents'][0] : null;
-
-			pg_mcp_result($id, pg_mcp_prompt_result($name, $values, $site, $routes, $embedded), $modern);
+			pg_mcp_result($id, pg_mcp_prompt_result($name, $values, $site, $routes, pg_mcp_prompt_embedded($uri, $status_code, $body)), $modern);
 
 		});
 

@@ -6,9 +6,11 @@
  * (includes/mcp/resources.php, includes/mcp/prompts.php): how a resource URI
  * is matched against the fixed resources and the URI templates, which
  * resources and prompts a caller is offered (the routes behind them as
- * tools/list filters them), the errors a read that names nothing gets in each
- * protocol generation, the contents a read answers with, the arguments a
- * prompt takes and the messages it is built from.
+ * tools/list filters them), the four lists as a request answers them (cache
+ * hints, a cursor refused), what a read runs and answers in each protocol
+ * generation (a uri that names nothing, a refusal, the contents), the
+ * arguments a prompt takes, the messages it is built from and when it embeds
+ * a resource.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -67,6 +69,52 @@ function test_mcp_resources_capabilities_are_advertised()
 	pg_assert_same(array('listChanged' => false), $capabilities['tools']);
 	pg_assert_same(array('listChanged' => false), $capabilities['resources'], 'resources, without subscriptions or list notifications');
 	pg_assert_same(array('listChanged' => false), $capabilities['prompts']);
+}
+
+// A value as JSON: a tool's input schema holds an object, which === compares
+// by identity, not by what it holds.
+function mcp_resources_test_json($value)
+{
+	return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+// The four lists as pg_mcp_run() answers them: the caller's own entries,
+// cached a few minutes by that client alone in the current generation.
+// Nothing is paged, so a cursor is one the server never handed out: invalid
+// params in both generations, as the pagination utility asks.
+function test_mcp_resources_lists_answer()
+{
+	$routes = mcp_resources_test_routes(array('workspace:read'));
+	$lists = array(
+		'tools/list'               => array('tools', pg_mcp_tools_list($routes)),
+		'resources/list'           => array('resources', pg_mcp_resources_list($routes)),
+		'resources/templates/list' => array('resourceTemplates', pg_mcp_resource_templates_list($routes)),
+		'prompts/list'             => array('prompts', pg_mcp_prompts_list($routes)),
+	);
+	$refused = array('error' => array('code' => -32602, 'message' => 'Invalid params: unknown cursor.'));
+
+	foreach ($lists as $method => $list) {
+		list($key, $entries) = $list;
+
+		pg_assert_true(count($entries) > 0, $method . ': the caller has entries');
+		pg_assert_same(mcp_resources_test_json(array('result' => array($key => $entries, 'ttlMs' => 300000, 'cacheScope' => 'private'))), mcp_resources_test_json(pg_mcp_list_answer($method, array(), $routes, true)), $method . ': the caller\'s entries, cached by that client alone');
+		pg_assert_same(mcp_resources_test_json(array('result' => array($key => $entries))), mcp_resources_test_json(pg_mcp_list_answer($method, array(), $routes, false)), $method . ': no cache hints before 2026-07-28');
+		pg_assert_same(array(), pg_mcp_list_answer($method, array(), array(), true)['result'][$key], $method . ': nothing for a caller with no tools');
+
+		foreach (array(true, false) as $modern) {
+			foreach (array('garbage', 'eyJwYWdlIjoyfQ==', 5, array('page' => 2), true) as $cursor) {
+				pg_assert_same($refused, pg_mcp_list_answer($method, array('cursor' => $cursor), $routes, $modern), $method . ': a cursor never handed out, ' . var_export($cursor, true));
+			}
+
+			pg_assert_same(mcp_resources_test_json($entries), mcp_resources_test_json(pg_mcp_list_answer($method, array('cursor' => null), $routes, $modern)['result'][$key]), $method . ': a null cursor is no cursor');
+			pg_assert_same(mcp_resources_test_json($entries), mcp_resources_test_json(pg_mcp_list_answer($method, array('cursor' => ''), $routes, $modern)['result'][$key]), $method . ': nor is an empty one');
+			pg_assert_same(mcp_resources_test_json($entries), mcp_resources_test_json(pg_mcp_list_answer($method, array('_meta' => array('progressToken' => 1)), $routes, $modern)['result'][$key]), $method . ': other params are no cursor');
+		}
+	}
+
+	foreach (array('tools/call', 'resources/read', 'prompts/get', 'ping', 'tools/lists', '') as $method) {
+		pg_assert_same(null, pg_mcp_list_answer($method, array('cursor' => 'x'), $routes, true), var_export($method, true) . ' is no list');
+	}
 }
 
 function test_mcp_resources_parse_fixed_and_templates()
@@ -284,6 +332,77 @@ function test_mcp_resources_errors()
 
 	pg_assert_same(array('uri' => $uri), pg_mcp_resource_refusal($uri, 404, null, true)['data'], 'no error object, only the uri');
 	pg_assert_same(array('uri' => $uri), pg_mcp_resource_refusal($uri, 404, array('error' => 'text'), true)['data'], 'an error that is not an object is left out');
+
+	// The API error goes on as the tool shows it, its code included: a
+	// channel Claude may not be asked in answers 403 forbidden, as the tool
+	// does, not the 404 of a channel that is not there.
+	$forbidden = array('code' => 'forbidden', 'message' => 'Claude may not be asked in this channel.');
+
+	pg_assert_same($forbidden, pg_mcp_resource_refusal($uri, 403, array('error' => $forbidden), true)['data']['error'], 'the tool\'s 403, unchanged');
+}
+
+// resources/read before any route runs: a request without a uri, a uri that
+// names nothing and a uri whose route is not one of the caller's tools, in
+// each generation; and what a read that goes ahead runs.
+function test_mcp_resources_read_target()
+{
+	$routes = mcp_resources_test_routes(array('workspace:read'));
+	$no_uri = array('error' => array('code' => -32602, 'message' => 'Invalid params: uri must be a string.'));
+
+	foreach (array(true, false) as $modern) {
+		pg_assert_same($no_uri, pg_mcp_resource_target(array(), $routes, $modern), 'no uri');
+		pg_assert_same($no_uri, pg_mcp_resource_target(array('uri' => 5), $routes, $modern), 'a uri that is no string');
+		pg_assert_same($no_uri, pg_mcp_resource_target(array('uri' => array('pinegrap://workspace/my-day')), $routes, $modern), 'a list');
+	}
+
+	$nothing = 'pinegrap://workspace/nothing/5';
+
+	pg_assert_same(array('error' => pg_mcp_resource_not_found($nothing, true)), pg_mcp_resource_target(array('uri' => $nothing), $routes, true), 'a uri that names nothing: -32602 in the current generation');
+	pg_assert_same(array('error' => pg_mcp_resource_not_found($nothing, false)), pg_mcp_resource_target(array('uri' => $nothing), $routes, false), 'and -32002 before');
+	pg_assert_same(-32002, pg_mcp_resource_target(array('uri' => $nothing), $routes, false)['error']['code']);
+
+	$uri = 'pinegrap://workspace/channels/12/context';
+
+	foreach (array(array(), array('tasks:read')) as $scopes) {
+		pg_assert_same(-32602, pg_mcp_resource_target(array('uri' => $uri), mcp_resources_test_routes($scopes), true)['error']['code'], 'a route outside the caller\'s scopes: not found');
+		pg_assert_same(-32002, pg_mcp_resource_target(array('uri' => $uri), mcp_resources_test_routes($scopes), false)['error']['code'], 'in earlier generations too');
+	}
+
+	$no_tool = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.channels.context', array('mcp' => false)));
+
+	pg_assert_same(-32002, pg_mcp_resource_target(array('uri' => $uri), $no_tool, false)['error']['code'], 'a route that is no tool');
+
+	$target = pg_mcp_resource_target(array('uri' => 'PINEGRAP://workspace/channels/12/context'), $routes, true);
+
+	pg_assert_same(array('route', 'arguments', 'uri'), array_keys($target), 'a read that goes ahead');
+	pg_assert_same('workspace.channels.context', $target['route']['id'], 'through its route');
+	pg_assert_same(array('id' => '12'), $target['arguments'], 'the variables as the route\'s parameters');
+	pg_assert_same('PINEGRAP://workspace/channels/12/context', $target['uri'], 'the uri as the client sent it');
+	pg_assert_same(array('type' => 'order', 'id' => '5'), pg_mcp_resource_target(array('uri' => 'pinegrap://workspace/refs/order/5'), $routes, false)['arguments']);
+}
+
+// resources/read once its route has answered: the contents on a 2xx, stale at
+// once in the current generation; a refusal is a resource not found and a
+// failure an internal error, each with its generation's code.
+function test_mcp_resources_read_answer()
+{
+	$uri = 'pinegrap://workspace/my-day';
+	$body = array('due' => array(), 'name' => 'Çağla');
+
+	pg_assert_same(array('result' => array('contents' => pg_mcp_resource_contents($uri, $body)['contents'], 'ttlMs' => 0, 'cacheScope' => 'private')), pg_mcp_resource_answer($uri, 200, $body, true), 'the contents, never used again');
+	pg_assert_same(array('result' => pg_mcp_resource_contents($uri, $body)), pg_mcp_resource_answer($uri, 200, $body, false), 'no cache hints before 2026-07-28');
+
+	$error = array('error' => array('code' => 'not_found', 'message' => 'Channel not found.'));
+
+	foreach (array(400, 403, 404, 422) as $status) {
+		pg_assert_same(array('error' => pg_mcp_resource_refusal($uri, $status, $error, true)), pg_mcp_resource_answer($uri, $status, $error, true), $status . ': the refusal');
+		pg_assert_same(-32602, pg_mcp_resource_answer($uri, $status, $error, true)['error']['code'], $status . ': resource not found in the current generation');
+		pg_assert_same(-32002, pg_mcp_resource_answer($uri, $status, $error, false)['error']['code'], $status . ': and before');
+	}
+
+	foreach (array(true, false) as $modern) {
+		pg_assert_same(-32603, pg_mcp_resource_answer($uri, 500, array('error' => array('code' => 'server_error')), $modern)['error']['code'], 'a failure of the route');
+	}
 }
 
 function test_mcp_resources_contents()
@@ -413,6 +532,22 @@ function test_mcp_prompts_channel_summary_messages()
 	pg_assert_same('user', $embedded['messages'][1]['role']);
 	pg_assert_same(array('type' => 'resource', 'resource' => $item), $embedded['messages'][1]['content'], 'an embedded resource');
 	pg_assert_contains('attached', $embedded['messages'][0]['content']['text']);
+}
+
+// channel_summary embeds the channel context only when the route answered the
+// caller: a refusal or a failure embeds nothing, so the prompt reads the same
+// for a channel that is missing and one the caller may not read, and never
+// carries an API error as if it were the context.
+function test_mcp_prompts_embed_only_an_answer()
+{
+	$uri = 'pinegrap://workspace/channels/12/context';
+	$body = array('channel' => array('id' => 12));
+
+	pg_assert_same(pg_mcp_resource_contents($uri, $body)['contents'][0], pg_mcp_prompt_embedded($uri, 200, $body), 'the route answered: the context');
+
+	foreach (array(400, 403, 404, 422, 500, 503) as $status) {
+		pg_assert_same(null, pg_mcp_prompt_embedded($uri, $status, array('error' => array('code' => 'forbidden', 'message' => 'Claude may not be asked in this channel.'))), $status . ': nothing embedded');
+	}
 }
 
 function test_mcp_prompts_weekly_report_messages()

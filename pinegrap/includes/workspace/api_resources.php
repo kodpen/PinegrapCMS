@@ -3909,10 +3909,56 @@ function ws_api_refs_schema()
     );
 }
 
+/**
+ * The parts of ws_record_refs() that sit in channels $allowed accepts: its
+ * messages and customer channels by their channel, its tasks by theirs, and
+ * a task in no channel kept. Only the three lists ws_api_refs_get() answers
+ * come back.
+ *
+ * @param array    $refs    ws_record_refs()
+ * @param callable $allowed channel id => bool
+ * @return array messages, tasks, channels
+ */
+function ws_api_refs_within($refs, $allowed)
+{
+    $out = array('messages' => array(), 'tasks' => array(), 'channels' => array());
+
+    foreach ($refs['messages'] as $message) {
+        if ($allowed((int) $message['channel_id'])) {
+            $out['messages'][] = $message;
+        }
+    }
+
+    foreach ($refs['tasks'] as $task) {
+        if (((int) $task['channel_id'] <= 0) || $allowed((int) $task['channel_id'])) {
+            $out['tasks'][] = $task;
+        }
+    }
+
+    foreach ($refs['channels'] as $channel) {
+        if ($allowed((int) $channel['id'])) {
+            $out['channels'][] = $channel;
+        }
+    }
+
+    return $out;
+}
+
 function ws_api_refs_get($params)
 {
     $viewer = ws_api_viewer();
     $refs = ws_record_refs($viewer, (string) $params['type'], (int) $params['id'], 100);
+
+    // The application Claude works through reads only where Claude may be
+    // asked, as it does everywhere else: ws_record_refs() counts every
+    // channel the owner reads, private ones and guest rooms included.
+    if (ws_api_is_claude()) {
+        $refs = ws_api_refs_within($refs, function ($channel_id) {
+            $channel = ws_channel($channel_id);
+
+            return $channel && ws_claude_channel_allowed($channel);
+        });
+    }
 
     $messages = array();
 

@@ -271,6 +271,23 @@ function pg_mcp_error($id, $code, $message, $data = null, $http_status = 400) {
 
 }
 
+// Writes an answer built without side effects (pg_mcp_list_answer(),
+// pg_mcp_resource_target(), pg_mcp_resource_answer()): array('result' => ...)
+// or array('error' => array('code', 'message', 'data' when there is one)).
+// Such an error is about the request's params, so it travels with HTTP 200 in
+// both generations, as the tools' do.
+function pg_mcp_answer($id, $answer, $modern) {
+
+	if (isset($answer['error'])) {
+
+		pg_mcp_error($id, $answer['error']['code'], $answer['error']['message'], isset($answer['error']['data']) ? $answer['error']['data'] : null, 200);
+
+	}
+
+	pg_mcp_result($id, $answer['result'], $modern);
+
+}
+
 /* ---------------------------------------------------------------------------
    What the server says about itself
    --------------------------------------------------------------------------- */
@@ -318,6 +335,41 @@ function pg_mcp_instructions() {
 /* ---------------------------------------------------------------------------
    The request
    --------------------------------------------------------------------------- */
+
+// The answer to tools/list, resources/list, resources/templates/list or
+// prompts/list for a caller whose tools are $routes (pg_mcp_routes()), or
+// null for any other method. The lists depend on who asks, so each is cached
+// by that client alone, and for a few minutes: a permission granted or taken
+// away shows within them. None is paged: each is complete in one answer and
+// no nextCursor is ever handed out, so a cursor the client sends is one this
+// server never gave, and invalid params (the pagination utility of every
+// generation). A null or empty cursor is no cursor.
+function pg_mcp_list_answer($method, $params, $routes, $modern) {
+
+	$lists = array(
+		'tools/list'               => array('tools', 'pg_mcp_tools_list'),
+		'resources/list'           => array('resources', 'pg_mcp_resources_list'),
+		'resources/templates/list' => array('resourceTemplates', 'pg_mcp_resource_templates_list'),
+		'prompts/list'             => array('prompts', 'pg_mcp_prompts_list')
+	);
+
+	if (!isset($lists[$method])) {
+
+		return null;
+
+	}
+
+	if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+
+		return array('error' => array('code' => -32602, 'message' => 'Invalid params: unknown cursor.'));
+
+	}
+
+	list($key, $builder) = $lists[$method];
+
+	return array('result' => pg_mcp_cache_hints(array($key => call_user_func($builder, $routes)), 300000, $modern));
+
+}
 
 function pg_mcp_run() {
 
@@ -490,32 +542,20 @@ function pg_mcp_run() {
 				'cacheScope'        => 'private'
 			), $modern);
 
-		// The lists depend on who asks, so each is cached by that client
-		// alone, and for a few minutes: a permission granted or taken away
-		// shows within them. None is paged: each is complete in one answer.
 		case 'tools/list':
+		case 'resources/list':
+		case 'resources/templates/list':
+		case 'prompts/list':
 
-			pg_mcp_result($id, pg_mcp_cache_hints(array('tools' => pg_mcp_tools_list()), 300000, $modern), $modern);
+			pg_mcp_answer($id, pg_mcp_list_answer($method, $params, pg_mcp_routes(), $modern), $modern);
 
 		case 'tools/call':
 
 			pg_mcp_tool_call($id, $params, $modern);
 
-		case 'resources/list':
-
-			pg_mcp_result($id, pg_mcp_cache_hints(array('resources' => pg_mcp_resources_list(pg_mcp_routes())), 300000, $modern), $modern);
-
-		case 'resources/templates/list':
-
-			pg_mcp_result($id, pg_mcp_cache_hints(array('resourceTemplates' => pg_mcp_resource_templates_list(pg_mcp_routes())), 300000, $modern), $modern);
-
 		case 'resources/read':
 
 			pg_mcp_resource_read($id, $params, $modern);
-
-		case 'prompts/list':
-
-			pg_mcp_result($id, pg_mcp_cache_hints(array('prompts' => pg_mcp_prompts_list(pg_mcp_routes())), 300000, $modern), $modern);
 
 		case 'prompts/get':
 

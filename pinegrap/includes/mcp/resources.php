@@ -280,8 +280,10 @@ function pg_mcp_resource_not_found($uri, $modern, $error = null) {
 
 // The error for a read the route refused. A refusal of the caller's request -
 // a record that is not there or not theirs, a value the route does not take -
-// is a resource not found, whatever its status, so a read says no more than
-// the tool's 404 says; a failure of the route itself is an internal error.
+// is a resource not found, whatever its status; data.error is the route's
+// error object as the tool shows it, its code included (a 403 stays
+// forbidden), so a read tells what the tool tells, no more and no less. A
+// failure of the route itself is an internal error.
 function pg_mcp_resource_refusal($uri, $status_code, $body, $modern) {
 
 	$error = (is_array($body) && isset($body['error']) && is_array($body['error'])) ? $body['error'] : null;
@@ -316,17 +318,16 @@ function pg_mcp_resource_contents($uri, $body) {
 
 }
 
-/* ---------------------------------------------------------------------------
-   Within a request
-   --------------------------------------------------------------------------- */
-
-// resources/read. A read is never cached for longer than the answer itself:
-// what it holds changes with every message.
-function pg_mcp_resource_read($id, $params, $modern) {
+// What resources/read does before any route runs, for a caller whose tools
+// are $routes (pg_mcp_routes()): array('error' => ...) for params without a
+// uri, or a uri that names nothing this caller may read (pg_mcp_answer()
+// writes it), otherwise array('route', 'arguments', 'uri') - the route to
+// run, its parameters from the uri's variables, and the uri as sent.
+function pg_mcp_resource_target($params, $routes, $modern) {
 
 	if (!isset($params['uri']) || !is_string($params['uri'])) {
 
-		pg_mcp_error($id, -32602, 'Invalid params: uri must be a string.', null, 200);
+		return array('error' => array('code' => -32602, 'message' => 'Invalid params: uri must be a string.'));
 
 	}
 
@@ -334,27 +335,54 @@ function pg_mcp_resource_read($id, $params, $modern) {
 
 	$found = pg_mcp_resource_parse($uri);
 
-	$route = ($found !== null) ? pg_mcp_resource_route($found['kind'], pg_mcp_routes()) : null;
+	$route = ($found !== null) ? pg_mcp_resource_route($found['kind'], $routes) : null;
 
 	if ($route === null) {
 
-		$error = pg_mcp_resource_not_found($uri, $modern);
-
-		pg_mcp_error($id, $error['code'], $error['message'], $error['data'], 200);
+		return array('error' => pg_mcp_resource_not_found($uri, $modern));
 
 	}
 
-	pg_mcp_route_run($route, $found['arguments'], function ($status_code, $body) use ($id, $uri, $modern) {
+	return array('route' => $route, 'arguments' => $found['arguments'], 'uri' => $uri);
 
-		if (($status_code >= 200) && ($status_code < 300)) {
+}
 
-			pg_mcp_result($id, pg_mcp_cache_hints(pg_mcp_resource_contents($uri, $body), 0, $modern), $modern);
+// What resources/read answers once the route has: array('result' => the
+// contents) on a 2xx, array('error' => ...) for a refusal or a failure
+// (pg_mcp_resource_refusal()). A read is never cached for longer than the
+// answer itself: what it holds changes with every message.
+function pg_mcp_resource_answer($uri, $status_code, $body, $modern) {
 
-		}
+	if (($status_code >= 200) && ($status_code < 300)) {
 
-		$error = pg_mcp_resource_refusal($uri, $status_code, $body, $modern);
+		return array('result' => pg_mcp_cache_hints(pg_mcp_resource_contents($uri, $body), 0, $modern));
 
-		pg_mcp_error($id, $error['code'], $error['message'], $error['data'], 200);
+	}
+
+	return array('error' => pg_mcp_resource_refusal($uri, $status_code, $body, $modern));
+
+}
+
+/* ---------------------------------------------------------------------------
+   Within a request
+   --------------------------------------------------------------------------- */
+
+// resources/read.
+function pg_mcp_resource_read($id, $params, $modern) {
+
+	$target = pg_mcp_resource_target($params, pg_mcp_routes(), $modern);
+
+	if (isset($target['error'])) {
+
+		pg_mcp_answer($id, $target, $modern);
+
+	}
+
+	$uri = $target['uri'];
+
+	pg_mcp_route_run($target['route'], $target['arguments'], function ($status_code, $body) use ($id, $uri, $modern) {
+
+		pg_mcp_answer($id, pg_mcp_resource_answer($uri, $status_code, $body, $modern), $modern);
 
 	});
 

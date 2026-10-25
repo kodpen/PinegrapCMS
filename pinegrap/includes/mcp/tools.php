@@ -296,6 +296,21 @@ function pg_mcp_routes_for($schema, $scopes) {
 
 }
 
+// tools/list: a tool for each of the caller's routes (pg_mcp_routes_for()).
+function pg_mcp_tools_list($routes) {
+
+	$tools = array();
+
+	foreach ($routes as $route) {
+
+		$tools[] = pg_mcp_tool_from_route($route);
+
+	}
+
+	return $tools;
+
+}
+
 /* ---------------------------------------------------------------------------
    Within a request: the caller's tools, and running one
    --------------------------------------------------------------------------- */
@@ -312,20 +327,6 @@ function pg_mcp_routes() {
 	}
 
 	return $routes;
-
-}
-
-function pg_mcp_tools_list() {
-
-	$tools = array();
-
-	foreach (pg_mcp_routes() as $route) {
-
-		$tools[] = pg_mcp_tool_from_route($route);
-
-	}
-
-	return $tools;
 
 }
 
