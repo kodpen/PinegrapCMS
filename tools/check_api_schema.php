@@ -103,6 +103,7 @@ $presenters = array(
 	'api_design_restore_schema'  => 'api_design_restore_present',
 	'ws_api_claude_change_type_schema' => 'ws_api_claude_change_type_present',
 	'ws_api_claude_record_schema'      => 'ws_api_claude_record_present',
+	'ws_api_proposal_schema'           => 'ws_api_proposal_present',
 	'erp_api_quote_schema'            => 'erp_api_quote_present',
 	'erp_api_purchase_order_schema'   => 'erp_api_purchase_order_present',
 	'erp_api_cheque_schema'           => 'erp_api_cheque_present',

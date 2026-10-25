@@ -245,8 +245,21 @@ function ws_inbox_describe($viewer, $row)
             $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
 
             // Written by an application (Claude): its name, not a person's.
+            // A proposal an OAuth connection made (proposals.php) is named by
+            // the client, as the channel screen draws its message: every
+            // client writes through the one OAuth application.
             if ($message && ($message['sender_kind'] === 'app')) {
-                $actor = (string) (ws_app_sender((int) $message['sender_id'])['name'] ?? $actor);
+                $sender = ws_app_sender((int) $message['sender_id']);
+
+                if (function_exists('ws_proposals_by_reply') && function_exists('ws_proposal_sender')) {
+                    $agent = ws_proposals_by_reply(array((int) $message['id']))[(int) $message['id']] ?? '';
+
+                    if ($agent !== '') {
+                        $sender = ws_proposal_sender($sender, $agent);
+                    }
+                }
+
+                $actor = (string) ($sender['name'] ?? $actor);
             }
 
             return array(
@@ -456,8 +469,9 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-cpu',
             );
 
-        // An assistant finished a run one asked for on a task (delegation.php):
-        // the latest of them names the assistant and how it ended.
+        // An assistant finished a run one asked for on a task (delegation.php),
+        // or an application proposed changes on it: the latest of them names
+        // the assistant or the application and how it ended.
         case 'task_assistant':
             $run = (($task !== null) && function_exists('ws_delegation_ready') && ws_delegation_ready())
                 ? db_item("SELECT agent, status" . ws_delegation_server_column() . " FROM ws_ai_requests
@@ -473,14 +487,24 @@ function ws_inbox_describe($viewer, $row)
             // (changes.php), counted when the banner is drawn.
             $waiting = ($task && function_exists('ws_task_delegation_waiting_map')) ? (int) (ws_task_delegation_waiting_map(array($task['id']))[(int) $task['id']] ?? 0) : 0;
 
+            // An application's proposal on the task (proposals.php) asked
+            // nothing, so it is not an answer.
+            $proposal = function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse($agent);
+
+            if ($proposal) {
+                $title = lang(array('string' => '{var:1} proposed changes on {var:2}', 'vars' => array($name, $number)));
+            } elseif (is_array($run) && ($run['status'] === 'failed')) {
+                $title = lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)));
+            } else {
+                $title = lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number)));
+            }
+
             return array(
-                'title' => (is_array($run) && ($run['status'] === 'failed'))
-                    ? lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)))
-                    : lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number))),
+                'title' => $title,
                 'body'  => ($task ? (string) $task['title'] : '')
                     . (($waiting > 0) ? ' — ' . lang(array('string' => '{var:1} proposed change(s) wait for approval', 'vars' => $waiting)) : ''),
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
-                'icon'  => ($agent === 'ai') ? 'bi-cpu' : 'bi-stars',
+                'icon'  => $proposal ? 'bi-plug' : (($agent === 'ai') ? 'bi-cpu' : 'bi-stars'),
             );
 
         // A note on a task one is on, written by somebody else
