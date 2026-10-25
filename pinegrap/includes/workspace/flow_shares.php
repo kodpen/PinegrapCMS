@@ -313,6 +313,43 @@ function ws_flow_share_channel_readable($viewer, $channel)
 }
 
 /**
+ * Does the person read this channel, as a flow's home, a channel a flow is
+ * shared in or the channel a run was started in
+ * (ws_flow_share_channel_readable())? Answered once a request per person and
+ * channel: a list of flows or runs asks it for every row and every channel
+ * share, and ws_channel() reads the row each time. The membership generation
+ * is part of the key, so the answer is read again once the request changed a
+ * membership; the role and the member flag are, as ws_can_read_channel()
+ * decides by them.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @return bool
+ */
+function ws_flow_channel_readable($viewer, $channel_id)
+{
+    static $seen = array();
+
+    $channel_id = (int) $channel_id;
+
+    if ($channel_id <= 0) {
+        return false;
+    }
+
+    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0)
+        . ':' . (int) ($viewer['id'] ?? 0)
+        . ':' . (int) ($viewer['role'] ?? 3)
+        . ':' . (empty($viewer['member']) ? 0 : 1)
+        . ':' . $channel_id;
+
+    if (!isset($seen[$key])) {
+        $seen[$key] = ws_flow_share_channel_readable($viewer, ws_channel($channel_id));
+    }
+
+    return $seen[$key];
+}
+
+/**
  * What the shares of a flow give the person: the level of the one made to
  * them, and whether it is shared in a channel they read.
  *
@@ -328,7 +365,7 @@ function ws_flow_share_reach($viewer, $flow)
         if (((string) $share['target_type'] === 'user') && ((int) $share['target_id'] === (int) $viewer['id'])) {
             $reach['person'] = (string) $share['level'];
         } elseif (((string) $share['target_type'] === 'channel') && !$reach['channel']) {
-            $reach['channel'] = ws_flow_share_channel_readable($viewer, ws_channel((int) $share['target_id']));
+            $reach['channel'] = ws_flow_channel_readable($viewer, (int) $share['target_id']);
         }
     }
 

@@ -207,6 +207,36 @@ function test_workspace_flow_shares_access_reads_the_shares()
 	pg_assert_contains("=== 'view'", $start, 'a view share is refused a run');
 }
 
+// A list of flows or runs asks for every row whether the person reads a
+// channel: the flow's home, a channel it is shared in, the channel a run was
+// started in. All three ask one memo, read once a request per person and
+// channel and again after the request changed a membership, so a page of
+// rows costs a read per distinct channel instead of one per row and share.
+function test_workspace_flow_shares_channels_are_read_once_a_request()
+{
+	$memo = ws_flow_shares_test_function('includes/workspace/flow_shares.php', 'ws_flow_channel_readable');
+
+	pg_assert_true($memo !== '', 'the memo is found');
+	pg_assert_contains('static $', $memo, 'kept for the request');
+	pg_assert_contains('ws_membership_generation', $memo, 'read again once a membership changed');
+	pg_assert_contains('ws_flow_share_channel_readable(', $memo, 'a public or private channel the person reads');
+
+	$callers = array(
+		'ws_flow_access'               => 'includes/workspace/flows.php',
+		'ws_flow_share_reach'          => 'includes/workspace/flow_shares.php',
+		'ws_flow_run_channel_readable' => 'includes/workspace/flow_runs.php',
+	);
+
+	foreach ($callers as $name => $file) {
+		$body = ws_flow_shares_test_function($file, $name);
+
+		pg_assert_contains('ws_flow_channel_readable(', $body, $name . ' asks the memo');
+		pg_assert_false(strpos($body, 'ws_channel(') !== false, $name . ' reads no channel row itself');
+	}
+
+	pg_assert_false(ws_flow_channel_readable(array('id' => 4, 'member' => true, 'role' => 0), 0), 'no channel');
+}
+
 // The table is probed by its exact name, and the list reads the shares of
 // every flow it lists in one statement.
 function test_workspace_flow_shares_probe_and_list()

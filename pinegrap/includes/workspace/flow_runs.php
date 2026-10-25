@@ -802,8 +802,9 @@ function ws_flow_run_graph($run)
 
 /**
  * Does the person read the channel the run was started in (a public or
- * private one)? Read once a request per person and channel: a listing asks
- * it for every run, and most of a flow's runs share one channel.
+ * private one)? Read once a request per person and channel
+ * (ws_flow_channel_readable()): a listing asks it for every run, and most of
+ * a flow's runs share one channel.
  *
  * @param array $viewer
  * @param array $run
@@ -811,22 +812,7 @@ function ws_flow_run_graph($run)
  */
 function ws_flow_run_channel_readable($viewer, $run)
 {
-    static $seen = array();
-
-    $channel_id = ws_flow_run_channel_id($run);
-
-    if ($channel_id <= 0) {
-        return false;
-    }
-
-    $key = (int) $viewer['id'] . ':' . $channel_id;
-
-    if (!isset($seen[$key])) {
-        $channel = ws_channel($channel_id);
-        $seen[$key] = $channel && in_array((string) $channel['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $channel);
-    }
-
-    return $seen[$key];
+    return ws_flow_channel_readable($viewer, ws_flow_run_channel_id($run));
 }
 
 /**

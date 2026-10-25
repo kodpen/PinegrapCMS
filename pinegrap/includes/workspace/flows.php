@@ -628,9 +628,10 @@ function ws_flow_access($viewer, $flow)
 
     $home = false;
 
+    // A public or private home channel the person reads, asked once a
+    // request per channel: a list asks it for every flow or run.
     if (((string) $flow['status'] === 'live') && ((int) $flow['channel_id'] > 0)) {
-        $channel = ws_channel($flow['channel_id']);
-        $home = $channel && in_array((string) $channel['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $channel);
+        $home = ws_flow_channel_readable($viewer, (int) $flow['channel_id']);
     }
 
     // Read only for a flow with an id: ws_flows_nav_visible() asks about a
