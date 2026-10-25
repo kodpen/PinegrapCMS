@@ -17,7 +17,7 @@ description: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old brows
 
 ## Where are the hot spots?
 - Hottest: output.php, backend.src.css and .js, style_designer.js (110 commits in 30 days), install/index.php (53), settings prep.php and registry.php. Coldest: panel templates, dashboard, users and contacts, products, ERP.
-- tr.json is in about 40% of commits. Pre-switch PRs add their own keys (`check_lang.php` fails without them); only `feature/bootstrap-6` collects its keys in its last commit.
+- Language keys used to collide in one tr.json; they now go into sorted shards with `php tools/tr_add.php` (`core/lang-files.md`), so each step adds its own keys.
 
 ## How does the visual editor split?
 - style_designer.js: 54 top-level members write site markup, 63 run in the canvas (its own 5.3.8), 245 are chrome. The codemod skips marked members; elsewhere it rewrites only class tokens in `class="…"` literals with no createNode/sem call or cssClass/_attrs/html/toHTML/render property above them; never bare class names, `--bs-*` strings or classList calls.

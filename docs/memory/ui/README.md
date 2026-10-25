@@ -17,7 +17,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Gate `settings_pane.php` with `validate_user()` + `'manager'`, answer in JSON past the gate, compare its CSRF token with `hash_equals()` (`settings-modal-endpoint.md`).
 - Keep a button's label while it works; disable an Ajax button only while its request runs and enable it again on every path (`button-busy-state.md`).
 - Lay out edit screens as a form column, a sticky status column and a sticky save bar (`product_builder.php`), not stacked full-width cards (`edit-screen-wide-layout.md`).
-- The panel moves to Bootstrap 6 by plan (`plans/bootstrap-6-panel.md`); until the switch keep Bootstrap 5 markup, and check v6 classes against the dist in `assets/lib/bootstrap-6`, not only the docs (`bootstrap-6.md`).
+- The panel moves to Bootstrap 6 by plan (`plans/bootstrap-6-panel.md`); until the switch keep Bootstrap 5 markup, check v6 classes against the dist in `assets/lib/bootstrap-6`, not only the docs (`bootstrap-6.md`), and convert classes only with `tools/bs6_migrate.php`, once per line (`bootstrap-6-codemod.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -31,6 +31,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
+- bootstrap-6-codemod.md: tools/bs6_migrate.php and tools/check_bs6.php for the panel's Bootstrap 6 move: contexts read, what is rewritten or only reported, sizes converted once per line, file scope, the first full run
 - bootstrap-6.md: Bootstrap 6 references for panel UI work: llms.txt and llms-full.txt, the four upstream skills in .claude/skills, the dist copy, what moves and what changes at the switch
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
