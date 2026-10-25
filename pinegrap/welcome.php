@@ -880,12 +880,16 @@ $brief = pg_dashboard_brief($user, $changelog_sections);
 // The system status bar that used to sit above the widget grid is gone: the
 // same checks are widget 2 now, so keeping the bar would have printed the same
 // score twice on one screen. The popover binding stays, because the widget's
-// tiles use it and it has to exist before the widget's markup arrives.
+// tiles use it and it has to exist before the widget's markup arrives. It
+// waits for Bootstrap through pgUI: this script runs while the page is
+// parsed, and Bootstrap 6 loads as a deferred module.
 $output_status_popover_script = '
 <script>
-    var statuspopover = new bootstrap.Popover(document.body, {
-      selector: \'.status-popover\',
-      trigger: "hover"
+    pgUI.ready(function () {
+        pgUI.popover.get(document.body, {
+            selector: \'.status-popover\',
+            trigger: "hover"
+        });
     });
 </script>';
 print

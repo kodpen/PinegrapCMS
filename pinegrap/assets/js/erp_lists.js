@@ -18,7 +18,10 @@
 
     var panel = document.getElementById('erp_drawer');
 
-    if (!panel || !window.bootstrap || !bootstrap.Offcanvas) {
+    // This runs while the page is parsed. Bootstrap is reached only through
+    // pgUI and only on a click, so a Bootstrap that loads later (6 is a
+    // deferred module) is in place by then.
+    if (!panel || !window.pgUI) {
         return;
     }
 
@@ -28,7 +31,6 @@
     var type = panel.getAttribute('data-erp-drawer-type');
     var endpoint = panel.getAttribute('data-erp-drawer-url');
     var failure = panel.getAttribute('data-erp-drawer-error');
-    var drawer = bootstrap.Offcanvas.getOrCreateInstance(panel);
 
     // The request in flight; a second click supersedes the first, so a slow
     // answer for the previous row never lands in the drawer of the next.
@@ -52,7 +54,7 @@
         title.textContent = '';
         open.classList.add('d-none');
         body.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
-        drawer.show();
+        pgUI.drawer.show(panel);
 
         fetch(endpoint + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id), {
             credentials: 'same-origin',
@@ -113,10 +115,10 @@
 
     // The chat launcher sits above the offcanvas; the shared class moves it
     // out of the way (backend.src.css, body.pg-side-panel-open).
-    panel.addEventListener('show.bs.offcanvas', function () {
+    pgUI.drawer.on(panel, 'show', function () {
         document.body.classList.add('pg-side-panel-open');
     });
-    panel.addEventListener('hidden.bs.offcanvas', function () {
+    pgUI.drawer.on(panel, 'hidden', function () {
         document.body.classList.remove('pg-side-panel-open');
         mark(null);
     });
