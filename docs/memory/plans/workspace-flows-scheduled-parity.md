@@ -4,24 +4,25 @@ description: Parity rows of plans/workspace-flows-scheduled-merge.md: every sche
 ---
 
 ## How does the test read keys?
-- tests/workspace_flows_parity_test.php: `workspace_flows_parity_table()`, a reader per group. Keys behind a probe or constant (no database or constants in tools/test.php) come from source (`pg_test_function_source()`, `pg_test_ws_change_types()`); card, list, form openers from workspace.js.
-- A source reader throws on a shape it does not model (an entry not a literal, a new condition, an option read another way); a JS line only made dead (`false &&`) still passes.
-- Workdays cases of `ws_scheduled_next_run()` run in their own PHP process with a stub `ws_day_off()`.
+- tests/workspace_flows_parity_test.php: `workspace_flows_parity_table()`, a reader per group. Keys behind a probe come from source (tests/helpers/source_reader.php), the screen's from workspace.js.
+- A source reader throws on a shape it does not model (a new condition, any other write, a key worked out by code); a JS line only made dead (`false &&`) passes.
+- A place (call, label) is keyed by the functions it is in, a repeat numbered (`#2`).
+- Workdays cases of `ws_scheduled_next_run()`: own process, stub `ws_day_off()`.
 
 ## Which rows? (merge slice)
-- Action (1-3): name, rules, action, follow (on, do), channel_id or note_id; a 5.81 row's then_action, read as a done follow-up.
-- When (3): `at` (`ws_scheduled_repeats()`, every, until, workdays); `trigger`: by hand or another action ('chain' template); `join`: any public channel (0) or one, unarchived public or private (`ws_scheduled_greets()`), a start per newcomer; `event` (`ws_events_catalog()`).
-- Event filters (3): form page, order status, task status, approval outcome, one channel; the creator must see each workspace event (`ws_events_creator_sees()`), checked again at run time.
+- Action (1-3): name, rules, action, follow (on, do), channel_id or note_id; a 5.81 then_action as a done follow-up; the form's request, what each route takes.
+- When (3): `at` (`ws_scheduled_repeats()`, every, until, workdays); `trigger`: by hand or chain; `join`: any public channel (0) or one (`ws_scheduled_greets()`), a start per newcomer; `event` (`ws_events_catalog()`, each kept by `pg_event_workspace_events()` or `ws_events_own()`). Starts: drivers, `ws_scheduled_execute()`, `ws_event()` emitters, joins.
+- Event filters (3): form page, order status, task status, approval outcome, one channel; the creator must see each workspace event (`ws_events_creator_sees()`), at run time too.
 - Conditions (3): record (`ws_scheduled_record_types()`; `_operators()`, within/overdue on dates only), metric (`_metrics()`, `_count_operators()`, channel or threshold, since the last run), workday, weekdays, hours; a failed one skips with its reason.
-- Steps (3): post (or the channel joined, -1); email (or a site page as HTML, its title the empty subject); notify; task; task_digest (`ws_scheduled_digest_filters()`, mine or channel, missed with an AI recap only in a background run); webhook (`_webhook_formats()`); web_check (status: redirect, contains, max_ms; ssl: days left); report; trigger (delay); change (`ws_change_types()` minus `ws_scheduled_change_skipped()`, update or delete); approval; checkin.
-- Webhook body (3, 5): an outside contract (n8n, Zapier), event workspace.scheduled_action; the id kept when converted.
+- Steps (3): post (or the channel joined, -1); email (or a site page); notify; task (priority); task_digest (filters, mine or channel, AI recap only in a background run); webhook (formats); web_check (status: redirect, contains, max_ms; ssl: days left); report (counts, param); trigger (delay); change (`ws_change_types()` minus `ws_scheduled_change_skipped()`, update or delete, every update field); approval (any, all); checkin. Number caps (delay, rules, people, texts).
+- Webhook body (3, 5): an outside contract (n8n, Zapier); the id kept when converted.
 - Follow-ups (3): `ws_scheduled_outcomes()`, at most 5 in order; one failing fails a good run.
-- Chains (3): depth 8: `ws_event_depth()` hands it to caused events, `ws_events_start()` drops and `ws_scheduled_start()` refuses at 8; 60 starts an hour (join, event too); self-retry.
-- Tokens (3): `_placeholders()`, `ws_scheduled_fill()`, `ws_events_fill_values()`.
-- States (5): `ws_scheduled_states()`; a one-off is done once run, by hand too; a paused repeating one run by hand stays paused; resume counts from now, refuses a passed time; editing a failed one makes it active; cancel drops waiting starts; a converted anchor keeps these.
+- Chains (3): depth 8: `ws_event_depth()` hands it to caused events, `ws_events_start()` drops and `ws_scheduled_start()` refuses at 8; 60 starts an hour (join, event); self-retry.
+- Tokens (3): `_placeholders()`, `ws_scheduled_fill()`, `ws_events_fill_values()`, {{count:key:param}}.
+- States (5): `ws_scheduled_states()`; a one-off is done once run (by hand too); a paused repeating one run by hand stays paused; resume counts from now, refuses a passed time; a failed one edited is active; cancel drops waiting starts; a converted anchor keeps these.
 - News (5): channel line, Site Log, creator's scheduled_failed, on a first run, a new outcome, a single action or by hand (`ws_scheduled_report()`); `ws_scheduled_runs` deleted only with a scheduled message.
-- Record writes (3): `ws_change_source()` kind scheduled names the action on the record; the run logs its own line.
-- Screen (1): state chips, "in #channel / in note"; card (non-staff: name, time, state), starters, last run, Edit, Pause/Resume, Run now, Duplicate, History, Cancel; drawn in the list, under its message, in the note strip; decision under it; form (18 templates, AI sentence, next runs); actions.php routes kept (messages' stay).
-- Entry points (1, 4): list, composer insert menu (no discussions), note toolbar, @ai draft Open; propose_scheduled_action and drafts of kind scheduled (API list, apply refused): slice 4.
-- Links in (1): ?view=scheduled, the rail (`ws_nav_groups()`) and workspace.php sidebar entries (staff's, "Scheduled messages" for others), scheduled_failed without a card, scheduled_message, tour on the sidebar entry (optional).
+- Record writes (3): `ws_change_source()` kind scheduled names the action; the run logs a line.
+- Screen (1): state chips, "in #channel / in note"; card (non-staff: name, time, state), follow-ups, starters, last run, Edit, Pause/Resume, Run now, Duplicate, History, Cancel; in the list, under its message, in the note strip; decision under it; form (18 templates, AI sentence, next runs); routes and `pg_panel_actions()` rows kept.
+- Entry points (1, 4): list, composer insert menu (not discussions), notes, @ai draft Open (Save marks the draft); propose_scheduled_action, drafts of kind scheduled: slice 4.
+- Links in (1): ?view=scheduled, rail (`ws_nav_groups()`) and sidebar entries ("Scheduled messages" for others), scheduled_failed without a card, scheduled_message (staff: the link names the Messages tab), tour step.
 - API (5): public inbox kinds scheduled_notice (with its text), scheduled_failed.

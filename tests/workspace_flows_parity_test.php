@@ -3,13 +3,15 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Scheduled actions move into Flows with nothing lost: every key a scheduled
- * action has (what it is made of, its "when", the events, the conditions,
- * the twelve steps, each option they read and the values one takes from a
- * list, the webhook's body, the outcomes, the chain limits, the
- * placeholders, the states, the news it gives, how it writes a record, its
- * card - the buttons, the rest it draws, where it is drawn -, the list, the
- * panel routes, the ways into its form, Pinegrap AI's drafts, the links to
- * it, the inbox kinds the API shows) is listed in the parity table below
+ * action has (what it is made of and what the form sends for it, its
+ * "when", the events, the conditions, the twelve steps, each option they
+ * read and the values one takes from a list, the fields a change writes,
+ * the webhook's body, the outcomes, the chain limits and the caps written
+ * as numbers, what starts and runs it, the placeholders, the states, the
+ * news it gives, how it writes a record, its card - the buttons, the rest it
+ * draws, where it is drawn -, the list, the panel routes, the ways into its
+ * form, Pinegrap AI's drafts, the links to it, the inbox kinds the API
+ * shows) is listed in the parity table below
  * with the merge slice and the box that keeps it, or 'form' with the reason
  * it stays in the form. The keys are read from the code - by calling the
  * functions that run without a database, and from their source where a
@@ -81,12 +83,51 @@ function workspace_flows_parity_cases($source)
 	return $out;
 }
 
-// The keys a piece of code reads from an array variable: $variable['key'].
+// The keys a piece of code reads from an array variable: $variable['key'] or
+// $variable["key"]. A key worked out by code ($variable[$name]) throws: the
+// reader cannot tell which key that is.
 function workspace_flows_parity_reads($source, $variable)
 {
-	preg_match_all('/\$' . preg_quote($variable, '/') . "\['([a-z_]+)'\]/", $source, $matches);
+	$name = preg_quote($variable, '/');
 
-	return array_values(array_unique($matches[1]));
+	if (preg_match('/\$' . $name . '\[(?!\s*(?:\'[A-Za-z0-9_]+\'|"[A-Za-z0-9_]+")\s*\])(?!\s*\])[^\]]*\]?/', $source, $code)) {
+		throw new RuntimeException('$' . $variable . ' is read with a key worked out by code (' . $code[0] . '): teach workspace_flows_parity_reads() which keys that reads.');
+	}
+
+	preg_match_all('/\$' . $name . '\[\s*(?:\'([A-Za-z0-9_]+)\'|"([A-Za-z0-9_]+)")\s*\]/', $source, $matches, PREG_SET_ORDER);
+
+	$out = array();
+
+	foreach ($matches as $match) {
+		$out[] = ($match[1] !== '') ? $match[1] : $match[2];
+	}
+
+	return array_values(array_unique($out));
+}
+
+// A key of an array variable in a pattern, in either kind of quotes:
+// $variable['key'] or $variable["key"]; $key is a pattern itself, and a
+// group in it is the pattern's only group.
+function workspace_flows_parity_subscript($variable, $key)
+{
+	return '\$' . preg_quote($variable, '/') . '\[\s*[\'"]' . $key . '[\'"]\s*\]';
+}
+
+// The keys in a list, each one a repeat of an earlier one numbered: a, b,
+// a #2. A reader whose keys are places (a call, a label) keys them so, so a
+// second place written the same way is a key of its own, and a place taken
+// away while its twin stays is missed too.
+function workspace_flows_parity_numbered(array $keys)
+{
+	$seen = array();
+	$out = array();
+
+	foreach ($keys as $key) {
+		$seen[$key] = ($seen[$key] ?? 0) + 1;
+		$out[] = ($seen[$key] > 1) ? $key . ' #' . $seen[$key] : $key;
+	}
+
+	return $out;
 }
 
 // The literal written right after a marker in some code (the list of an
@@ -239,39 +280,64 @@ function workspace_flows_parity_js_calls($code, $name)
 	return $calls;
 }
 
-// The name of the innermost named JavaScript function (function name() or
-// name: function ()) whose body holds an offset of some code; '' for none.
+// The named JavaScript functions (function name() or name: function ())
+// whose bodies hold an offset of some code, the innermost first, as
+// "name() in outer()"; '' for none.
 function workspace_flows_parity_js_enclosing($code, $offset)
 {
 	preg_match_all('/(?:\bfunction\s+([A-Za-z_$][\w$]*)\s*\(|(?<![\w$.])([A-Za-z_$][\w$]*)\s*:\s*function\s*\()/', substr($code, 0, $offset), $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	$names = array();
 
 	foreach (array_reverse($found) as $match) {
 		$name = ((($match[2][1] ?? -1) >= 0) && ($match[2][0] !== '')) ? $match[2][0] : $match[1][0];
 		$open = strpos($code, '{', strpos($code, ')', $match[0][1]));
 
 		if (workspace_flows_parity_js_close($code, $open) > $offset) {
-			return $name;
+			$names[] = $name . '()';
 		}
 	}
 
-	return '';
+	return implode(' in ', $names);
 }
 
 // The keys of the labels some JavaScript code writes with t('key').
 function workspace_flows_parity_t_keys($code)
 {
-	preg_match_all("/\bt\('([a-z_]+)'[,)]/", $code, $keys);
-
-	return array_values(array_unique($keys[1]));
+	return array_values(array_unique(workspace_flows_parity_t_uses($code)));
 }
 
-// The fields of a variable some JavaScript code reads: variable.field (not
-// other.variable.field).
+// Each label some JavaScript code writes with t('key'), as often as it
+// writes it, in order.
+function workspace_flows_parity_t_uses($code)
+{
+	preg_match_all("/\bt\('([a-z_]+)'[,)]/", $code, $keys);
+
+	return $keys[1];
+}
+
+// The fields of a variable some JavaScript code reads, with the fields of
+// those: variable.field, variable.field.inner (not other.variable.field; a
+// method called on one, such as .map(), is not a field).
 function workspace_flows_parity_js_fields($code, $variable)
 {
-	preg_match_all('/(?<![A-Za-z0-9_$.])' . preg_quote($variable, '/') . '\.([a-z_]+)/', $code, $fields);
+	preg_match_all('/(?<![A-Za-z0-9_$.])' . preg_quote($variable, '/') . '((?:\.[A-Za-z_][A-Za-z0-9_]*)+)(\s*\()?/', $code, $paths, PREG_SET_ORDER);
 
-	return array_values(array_unique($fields[1]));
+	$out = array();
+
+	foreach ($paths as $path) {
+		$fields = explode('.', substr($path[1], 1));
+
+		if (!empty($path[2])) {
+			array_pop($fields);
+		}
+
+		if (!empty($fields)) {
+			$out[] = implode('.', $fields);
+		}
+	}
+
+	return array_values(array_unique($out));
 }
 
 // The index of the token before $i that is not whitespace, -1 for none.
@@ -286,16 +352,13 @@ function workspace_flows_parity_token_before(array $tokens, $i)
 	return -1;
 }
 
-// The entries a function writes into an array variable as literals: the
-// literal it is set to ($var = array(...)), those added to it ($var +=
-// array(...)) and the entries set one at a time ($var['key'] = array(...)),
-// read as source_reader.php reads literals, however many lines an entry
-// takes and in whatever order its keys come. Any other write to the variable
-// (a key worked out by code, a nested key, a merge, an unset) throws: the
-// reader would miss what it adds or takes away, so it has to learn it first.
-function workspace_flows_parity_literal_entries($function, $variable)
+// Every write some PHP code (its tokens, pg_test_source_tokens()) makes to a
+// variable, in order: its subscripts as literal keys (null for a key worked
+// out by code), the same as written ('$type', "'task'"), the operator ('='
+// or '+=', 'unset', '&' for a reference taken), whether it is a static
+// declaration, and where the value written starts.
+function workspace_flows_parity_writes(array $tokens, $variable)
 {
-	$tokens = pg_test_source_tokens(workspace_flows_parity_source($function));
 	$count = count($tokens);
 	$assignments = array('=', '+=', '-=', '*=', '/=', '.=', '%=', '|=', '&=', '^=', '<<=', '>>=', '**=', '??=');
 	$out = array();
@@ -309,10 +372,11 @@ function workspace_flows_parity_literal_entries($function, $variable)
 		$previous = ($before >= 0) ? $tokens[$before] : null;
 		$call = ($previous === '(') ? workspace_flows_parity_token_before($tokens, $before) : -1;
 		$unset = ($call >= 0) && is_array($tokens[$call]) && ($tokens[$call][0] === T_UNSET);
-		$static = is_array($previous) && ($previous[0] === T_STATIC);
+		$reference = ($previous !== null) && (pg_test_source_text($previous) === '&');
 
 		// Its subscripts: a literal key, or null for code.
 		$keys = array();
+		$written_as = array();
 		$j = $i + 1;
 		pg_test_source_skip($tokens, $j);
 
@@ -337,37 +401,117 @@ function workspace_flows_parity_literal_entries($function, $variable)
 			}
 
 			$keys[] = ((count($inner) === 1) && is_array($inner[0]) && ($inner[0][0] === T_CONSTANT_ENCAPSED_STRING)) ? pg_test_source_string($inner[0][1]) : null;
+			$written_as[] = implode('', array_map('pg_test_source_text', $inner));
 			$j++;
 			pg_test_source_skip($tokens, $j);
 		}
 
 		$operator = isset($tokens[$j]) ? pg_test_source_text($tokens[$j]) : '';
-		$written = $unset || (($previous !== null) && (pg_test_source_text($previous) === '&')) || in_array($operator, $assignments, true);
 
-		if (!$written) {
+		if (!$unset && !$reference && !in_array($operator, $assignments, true)) {
 			continue;
 		}
 
 		$at = $j + 1;
 		pg_test_source_skip($tokens, $at);
-		$literal = !$unset && pg_test_source_array_starts($tokens, $at);
 
-		if ($static && empty($keys) && ($operator === '=')) {
+		$out[] = array(
+			'keys'       => $keys,
+			'written_as' => $written_as,
+			'operator'   => $unset ? 'unset' : ($reference ? '&' : $operator),
+			'static'     => is_array($previous) && ($previous[0] === T_STATIC),
+			'value'      => $at,
+		);
+	}
+
+	return $out;
+}
+
+// The entries a function writes into an array variable as literals: the
+// literal it is set to ($var = array(...)), those added to it ($var +=
+// array(...)) and the entries set one at a time under a literal key
+// ($var['key'] = ..., the value a literal or the code that works it out),
+// read as source_reader.php reads literals, however many lines an entry
+// takes and in whatever order its keys come. Any other write to the variable
+// (a key worked out by code, a nested key, a merge, an unset) throws: the
+// reader would miss what it adds or takes away, so it has to learn it first.
+function workspace_flows_parity_literal_entries($function, $variable)
+{
+	return workspace_flows_parity_literal_entries_in(workspace_flows_parity_source($function), $variable, $function . '()');
+}
+
+// The same for a piece of PHP code; $label names it in the error.
+function workspace_flows_parity_literal_entries_in($code, $variable, $label)
+{
+	$tokens = pg_test_source_tokens($code);
+	$out = array();
+
+	foreach (workspace_flows_parity_writes($tokens, $variable) as $write) {
+		$at = $write['value'];
+		$keys = $write['keys'];
+		$operator = $write['operator'];
+
+		if ($write['static'] && empty($keys) && ($operator === '=')) {
 			continue;
 		}
 
-		if ($literal && empty($keys) && in_array($operator, array('=', '+='), true)) {
+		if (empty($keys) && in_array($operator, array('=', '+='), true) && pg_test_source_array_starts($tokens, $at)) {
 			$value = pg_test_source_value($tokens, $at);
 			$out = ($operator === '=') ? $value : $out + $value;
 			continue;
 		}
 
-		if ($literal && (count($keys) === 1) && is_string($keys[0]) && ($operator === '=')) {
+		if ((count($keys) === 1) && is_string($keys[0]) && ($operator === '=')) {
 			$out[$keys[0]] = pg_test_source_value($tokens, $at);
 			continue;
 		}
 
-		throw new RuntimeException($function . '() writes ' . $variable . ' in a way workspace_flows_parity_literal_entries() does not read (' . ($unset ? 'unset' : $variable . str_repeat('[...]', count($keys)) . ' ' . $operator) . '): teach it to read that.');
+		throw new RuntimeException($label . ' writes ' . $variable . ' in a way workspace_flows_parity_literal_entries() does not read (' . (($operator === 'unset') ? 'unset' : $variable . str_repeat('[...]', count($keys)) . ' ' . $operator) . '): teach it to read that.');
+	}
+
+	return $out;
+}
+
+// The ways through the first switch statement of some PHP code: for each
+// branch (as workspace_flows_parity_cases() names them), the code before the
+// switch, the branch's own code and the code after the switch, one after
+// the other, so a reader sees every write a run through that branch makes.
+function workspace_flows_parity_switch_paths($source)
+{
+	$tokens = token_get_all('<?php ' . $source);
+	array_shift($tokens);
+	$count = count($tokens);
+	$text = function ($from, $to) use ($tokens) {
+		return implode('', array_map('pg_test_source_text', array_slice($tokens, $from, max(0, $to - $from))));
+	};
+
+	for ($start = 0; ($start < $count) && !(is_array($tokens[$start]) && ($tokens[$start][0] === T_SWITCH)); $start++) {
+	}
+
+	// The body: from the brace after the condition to the brace that closes it.
+	for ($open = $start; ($open < $count) && ($tokens[$open] !== '{'); $open++) {
+	}
+
+	$depth = 0;
+
+	for ($close = $open; $close < $count; $close++) {
+		$token = $tokens[$close];
+
+		if (($token === '{') || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
+			$depth++;
+		} elseif (($token === '}') && (--$depth === 0)) {
+			break;
+		}
+	}
+
+	if ($close >= $count) {
+		throw new RuntimeException('No switch statement that closes in: ' . substr(trim($source), 0, 80));
+	}
+
+	$out = array();
+
+	foreach (workspace_flows_parity_cases($text($open + 1, $close)) as $case => $code) {
+		$out[$case] = $text(0, $start) . "\n" . $code . "\n" . $text($close + 1, $count);
 	}
 
 	return $out;
@@ -397,6 +541,45 @@ function workspace_flows_parity_php_calls($code)
 	return array_values(array_unique($out));
 }
 
+// The arguments of the call of the function named at token $i, each a list
+// of its tokens, up to the bracket that closes the call; null when $i is no
+// call (a declaration, a method, a name not followed by a bracket).
+function workspace_flows_parity_php_args(array $tokens, $i)
+{
+	$count = count($tokens);
+	$before = workspace_flows_parity_token_before($tokens, $i);
+	$j = $i + 1;
+	pg_test_source_skip($tokens, $j);
+
+	if ((($tokens[$j] ?? null) !== '(') || (($before >= 0) && is_array($tokens[$before]) && in_array($tokens[$before][0], array(T_FUNCTION, T_OBJECT_OPERATOR, T_DOUBLE_COLON, T_NEW), true))) {
+		return null;
+	}
+
+	$args = array(array());
+	$depth = 0;
+
+	for ($j++; $j < $count; $j++) {
+		$token = $tokens[$j];
+
+		if (in_array($token, array('(', '[', '{'), true) || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
+			$depth++;
+		} elseif (in_array($token, array(')', ']', '}'), true)) {
+			if ($depth === 0) {
+				break;
+			}
+
+			$depth--;
+		} elseif (($token === ',') && ($depth === 0)) {
+			$args[] = array();
+			continue;
+		}
+
+		$args[count($args) - 1][] = $token;
+	}
+
+	return $args;
+}
+
 // The Workspace functions some PHP code hands a whole array variable to (not
 // one of its values), each with the name it gives it, and on into those they
 // hand it to in turn: [function, parameter] (parameter without its $).
@@ -411,36 +594,10 @@ function workspace_flows_parity_handed($code, $variable, array &$seen)
 			continue;
 		}
 
-		$before = workspace_flows_parity_token_before($tokens, $i);
-		$j = $i + 1;
-		pg_test_source_skip($tokens, $j);
+		$args = workspace_flows_parity_php_args($tokens, $i);
 
-		if ((($tokens[$j] ?? null) !== '(') || (($before >= 0) && is_array($tokens[$before]) && in_array($tokens[$before][0], array(T_FUNCTION, T_OBJECT_OPERATOR, T_DOUBLE_COLON), true))) {
+		if ($args === null) {
 			continue;
-		}
-
-		// The arguments, each a list of its tokens, up to the bracket that
-		// closes the call.
-		$args = array(array());
-		$depth = 0;
-
-		for ($j++; $j < $count; $j++) {
-			$token = $tokens[$j];
-
-			if (in_array($token, array('(', '[', '{'), true) || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
-				$depth++;
-			} elseif (in_array($token, array(')', ']', '}'), true)) {
-				if ($depth === 0) {
-					break;
-				}
-
-				$depth--;
-			} elseif (($token === ',') && ($depth === 0)) {
-				$args[] = array();
-				continue;
-			}
-
-			$args[count($args) - 1][] = $token;
 		}
 
 		foreach ($args as $index => $arg) {
@@ -479,6 +636,59 @@ function workspace_flows_parity_handed($code, $variable, array &$seen)
 			$seen[$function . '$' . $name] = true;
 			$out[] = array($function, $name);
 			$out = array_merge($out, workspace_flows_parity_handed(workspace_flows_parity_source($function), $name, $seen));
+		}
+	}
+
+	return $out;
+}
+
+// The values of an array variable some PHP code hands on to a Workspace
+// function under their own key in an array literal, as ws_approval_input(
+// ..., array('rule' => (string) ($action['rule'] ?? 'any'))) does:
+// [function, parameter, key, default] ('' for none), the parameter without
+// its $.
+function workspace_flows_parity_handed_by_name($code, $variable)
+{
+	$tokens = pg_test_source_tokens($code);
+	$out = array();
+
+	foreach ($tokens as $i => $token) {
+		if (!is_array($token) || ($token[0] !== T_STRING) || (strpos($token[1], 'ws_') !== 0) || !function_exists($token[1])) {
+			continue;
+		}
+
+		$args = workspace_flows_parity_php_args($tokens, $i);
+
+		if ($args === null) {
+			continue;
+		}
+
+		$parameters = (new ReflectionFunction($token[1]))->getParameters();
+
+		foreach ($args as $index => $arg) {
+			$arg = array_values(array_filter($arg, function ($part) {
+				return !is_array($part) || ($part[0] !== T_WHITESPACE);
+			}));
+			$arg[] = ')';
+			$at = 0;
+
+			if (!isset($parameters[$index]) || !pg_test_source_array_starts($arg, 0)) {
+				continue;
+			}
+
+			$literal = pg_test_source_value($arg, $at);
+
+			if (!is_array($literal) || ($arg[$at] ?? null) !== ')') {
+				continue;
+			}
+
+			foreach ($literal as $key => $value) {
+				$code_of = ($value instanceof PgTestSourceExpression) ? $value->code : '';
+
+				if (is_string($key) && preg_match('/' . workspace_flows_parity_subscript($variable, preg_quote($key, '/')) . "(?:\s*\?\?\s*'([a-z_]*)')?/", $code_of, $match)) {
+					$out[] = array($token[1], $parameters[$index]->getName(), $key, $match[1] ?? '');
+				}
+			}
 		}
 	}
 
@@ -555,6 +765,119 @@ function workspace_flows_parity_product_files()
 	}
 
 	return $files;
+}
+
+// The calls of a function in the product's PHP files, comments left out, by
+// where they are: "name(first argument) in file", then the function they
+// are in (none outside a function) and the case of the switch they come
+// under there, if any ("case 'ws_tick'"); a second call in the same place
+// written the same way numbered (workspace_flows_parity_numbered()).
+function workspace_flows_parity_php_call_sites($name)
+{
+	$root = realpath(PG_FUNCTIONS_DIR);
+	$out = array();
+
+	foreach (workspace_flows_parity_product_files() as $path) {
+		$code = (string) file_get_contents($path);
+
+		if (strpos($code, $name) === false) {
+			continue;
+		}
+
+		$tokens = array_values(array_filter(token_get_all($code), function ($token) {
+			return !is_array($token) || !in_array($token[0], array(T_COMMENT, T_DOC_COMMENT), true);
+		}));
+		$file = str_replace('\\', '/', substr($path, strlen($root) + 1));
+		$depth = 0;
+		$functions = array();
+		$cases = array();
+		$pending = '';
+
+		foreach ($tokens as $i => $token) {
+			if (($token === '{') || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
+				$depth++;
+
+				if ($pending !== '') {
+					$functions[] = array($pending, $depth);
+					$pending = '';
+				}
+
+				continue;
+			}
+
+			if ($token === '}') {
+				$depth--;
+
+				while (!empty($functions) && (end($functions)[1] > $depth)) {
+					array_pop($functions);
+				}
+
+				foreach (array_keys($cases) as $level) {
+					if ($level > $depth) {
+						unset($cases[$level]);
+					}
+				}
+
+				continue;
+			}
+
+			// A declaration without a body (abstract, an interface's).
+			if ($token === ';') {
+				$pending = '';
+			}
+
+			if (!is_array($token)) {
+				continue;
+			}
+
+			$next = $i + 1;
+			pg_test_source_skip($tokens, $next);
+
+			if ($token[0] === T_FUNCTION) {
+				if (($tokens[$next] ?? null) === '&') {
+					$next++;
+					pg_test_source_skip($tokens, $next);
+				}
+
+				if (is_array($tokens[$next] ?? null) && ($tokens[$next][0] === T_STRING)) {
+					$pending = $tokens[$next][1];
+				}
+
+				continue;
+			}
+
+			if (($token[0] === T_CASE) && is_array($tokens[$next] ?? null) && ($tokens[$next][0] === T_CONSTANT_ENCAPSED_STRING)) {
+				$cases[$depth] = 'case ' . $tokens[$next][1];
+				continue;
+			}
+
+			if (($token[0] !== T_STRING) || ($token[1] !== $name)) {
+				continue;
+			}
+
+			$args = workspace_flows_parity_php_args($tokens, $i);
+
+			if ($args === null) {
+				continue;
+			}
+
+			$first = trim(preg_replace('/\s+/', ' ', implode('', array_map('pg_test_source_text', $args[0]))));
+			$where = array($file);
+
+			if (!empty($functions)) {
+				$where[] = end($functions)[0];
+			}
+
+			if (!empty($cases)) {
+				ksort($cases);
+				$where[] = end($cases);
+			}
+
+			$out[] = $name . '(' . $first . ') in ' . implode(' ', $where);
+		}
+	}
+
+	return workspace_flows_parity_numbered($out);
 }
 
 // Every function of the Workspace module whose source names a word.
@@ -702,11 +1025,12 @@ function workspace_flows_parity_read_event_filters()
 }
 
 // The values of the filters that take one from a list: filter=value, the
-// lists as ws_scheduled_rule_input() names them ($filter_values).
+// lists as ws_scheduled_rule_input() names them ($filter_values, every
+// write to it read).
 function workspace_flows_parity_read_event_filter_values()
 {
 	$out = array();
-	$lists = pg_test_source_array_in(workspace_flows_parity_rule_cases()['event'], '$filter_values');
+	$lists = workspace_flows_parity_literal_entries_in(workspace_flows_parity_rule_cases()['event'], '$filter_values', 'The event branch of ws_scheduled_rule_input()');
 
 	foreach ($lists as $filter => $expression) {
 		if (!($expression instanceof PgTestSourceExpression) || !preg_match('/(ws_[a-z_]+)\(\)\s*(?::|$)/', $expression->code, $call)) {
@@ -738,13 +1062,19 @@ function workspace_flows_parity_record_types()
 	// The function as this reader models it: one loop over the change
 	// catalogue that skips the kinds of one in_array() and drops the fields
 	// of one kind, then the task's own. A condition, a skip or a write added
-	// to it changes this, and the reader has to learn it first.
+	// to it (any write to $out, a nested key or an unset too) changes this,
+	// and the reader has to learn it first.
 	$flow = workspace_flows_parity_control_flow($source);
-	preg_match_all('/\$out\[[^\]]*\]\s*=(?!=)/', $source, $writes);
+	$writes = array();
+
+	foreach (workspace_flows_parity_writes(pg_test_source_tokens($source), '$out') as $write) {
+		$writes[] = '$out' . (empty($write['written_as']) ? '' : '[' . implode('][', $write['written_as']) . ']') . ' ' . $write['operator'];
+	}
+
 	preg_match_all("/\\\$field\[0\]\s*!==\s*'([a-z_]+)'/", $source, $dropped);
 
-	if (($flow !== 'foreach if continue return return') || (count($writes[0]) !== 2) || (count($dropped[1]) !== 1)) {
-		throw new RuntimeException('ws_scheduled_record_types() is no longer the loop workspace_flows_parity_record_types() models (control flow "' . $flow . '", ' . count($writes[0]) . ' writes to $out): teach the reader what it does now.');
+	if (($flow !== 'foreach if continue return return') || ($writes !== array('$out =', '$out[$type] =', "\$out['task'] =")) || (count($dropped[1]) !== 1)) {
+		throw new RuntimeException('ws_scheduled_record_types() is no longer the loop workspace_flows_parity_record_types() models (control flow "' . $flow . '", writes ' . implode(', ', $writes) . '): teach the reader what it does now.');
 	}
 
 	$skipped = workspace_flows_parity_list_after($source, 'in_array($type, ');
@@ -846,7 +1176,9 @@ function workspace_flows_parity_step_code()
 	return $out;
 }
 
-// The keys each step reads from its action, in all its code: step.key.
+// The keys each step reads from its action, in all its code: step.key; and
+// the keys of the items of a list option, read in a loop over it:
+// step.key.item_key (report.metrics.param).
 function workspace_flows_parity_read_step_options()
 {
 	$out = array();
@@ -856,6 +1188,10 @@ function workspace_flows_parity_read_step_options()
 
 		foreach ($parts as $part) {
 			$keys = array_merge($keys, workspace_flows_parity_reads($part[0], $part[1]));
+
+			foreach (workspace_flows_parity_loop_items($part[0], $part[1]) as $item) {
+				$keys[] = $item;
+			}
 		}
 
 		foreach (array_unique($keys) as $key) {
@@ -866,20 +1202,66 @@ function workspace_flows_parity_read_step_options()
 	return $out;
 }
 
-// The values a step option takes from a list written in the code: an option
-// compared as (string) ($action['mode'] ?? 'status') === 'ssl', its default,
-// the values it is compared with and those the check writes ('mode' =>
-// 'ssl'): step.key=value. Such an option read any other way throws, so a
-// value added there is not missed.
+// The keys some PHP code reads from the items of a list in an array
+// variable, in the body of a loop over it: foreach ((array) $action['metrics']
+// as $item) { ... $item['param'] ... } is metrics.param.
+function workspace_flows_parity_loop_items($code, $variable)
+{
+	preg_match_all('/\bforeach\s*\(([^;{]*?)\s+as\s+(?:\$[A-Za-z_]\w*\s*=>\s*)?\$([A-Za-z_]\w*)\s*\)\s*\{/', $code, $loops, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	$out = array();
+
+	foreach ($loops as $loop) {
+		$lists = workspace_flows_parity_reads($loop[1][0], $variable);
+
+		if (empty($lists)) {
+			continue;
+		}
+
+		// The body, from its brace to the one that closes it (PHP's brackets,
+		// strings and comments step over as JavaScript's do here).
+		$open = $loop[0][1] + strlen($loop[0][0]) - 1;
+		$body = substr($code, $open, workspace_flows_parity_js_close($code, $open) - $open + 1);
+
+		foreach ($lists as $list) {
+			foreach (workspace_flows_parity_reads($body, $loop[2][0]) as $key) {
+				$out[] = $list . '.' . $key;
+			}
+		}
+	}
+
+	return array_values(array_unique($out));
+}
+
+// The values a step option takes from a list written in the code:
+// step.key=value. Three shapes are read:
+// - compared: (string) ($action['mode'] ?? 'status') === 'ssl', its default,
+//   the values it is compared with and those the check writes ('mode' =>
+//   'ssl');
+// - handed on by name to a Workspace function that compares it there:
+//   ws_approval_input(..., array('rule' => (string) ($action['rule'] ??
+//   'any'))), where ($data['rule'] ?? 'any') === 'all', and on into the
+//   functions that one hands the array to;
+// - kept to a list: $priority = (string) ($action['priority'] ?? 'normal')
+//   checked with isset(ws_task_priorities()[$priority]): the list's keys.
+// An option compared or handed on that is read any other way throws, so a
+// value added there is not missed; one kept to a list can take no other
+// value, however the run reads it.
 function workspace_flows_parity_read_step_option_values()
 {
+	$compare = function ($variable, $key) {
+		return '/' . workspace_flows_parity_subscript($variable, $key) . "\s*\?\?\s*'([a-z_]*)'\s*\)\s*[!=]==\s*'([a-z_]+)'/";
+	};
 	$out = array();
 
 	foreach (workspace_flows_parity_step_code() as $step => $parts) {
 		$values = array();
+		$listed = array();
+		$known = array();
+		$elsewhere = array();
 
-		foreach ($parts as $part) {
-			preg_match_all('/\$' . preg_quote($part[1], '/') . "\['([a-z_]+)'\]\s*\?\?\s*'([a-z_]*)'\s*\)\s*[!=]==\s*'([a-z_]+)'/", $part[0], $compared, PREG_SET_ORDER);
+		foreach ($parts as $index => $part) {
+			preg_match_all($compare($part[1], '([a-z_]+)'), $part[0], $compared, PREG_SET_ORDER);
 
 			foreach ($compared as $match) {
 				$values[$match[1]][] = $match[3];
@@ -887,21 +1269,75 @@ function workspace_flows_parity_read_step_option_values()
 				if ($match[2] !== '') {
 					$values[$match[1]][] = $match[2];
 				}
+
+				$known[$index][$match[1]] = ($known[$index][$match[1]] ?? 0) + 1;
+			}
+
+			foreach (workspace_flows_parity_handed_by_name($part[0], $part[1]) as $handed) {
+				list($function, $parameter, $key, $default) = $handed;
+				$seen = array();
+				$targets = array_merge(array(array($function, $parameter)), workspace_flows_parity_handed(workspace_flows_parity_source($function), $parameter, $seen));
+				$found = array();
+
+				foreach ($targets as $target) {
+					preg_match_all($compare($target[1], preg_quote($key, '/')), workspace_flows_parity_source($target[0]), $there, PREG_SET_ORDER);
+
+					foreach ($there as $match) {
+						$found[] = $match[2];
+
+						if ($match[1] !== '') {
+							$found[] = $match[1];
+						}
+					}
+				}
+
+				// Handed on but compared nowhere: not an option from a list.
+				if (empty($found)) {
+					continue;
+				}
+
+				$values[$key] = array_merge($values[$key] ?? array(), $found, ($default !== '') ? array($default) : array());
+				$known[$index][$key] = ($known[$index][$key] ?? 0) + 1;
+
+				foreach ($targets as $target) {
+					$elsewhere[] = array($target[0], $target[1], $key);
+				}
+			}
+
+			preg_match_all('/\$([a-z_]+)\s*=\s*\(string\)\s*\(' . workspace_flows_parity_subscript($part[1], '([a-z_]+)') . "\s*\?\?\s*'([a-z_]*)'\s*\);/", $part[0], $assigned, PREG_SET_ORDER);
+
+			foreach ($assigned as $match) {
+				if (preg_match('/\bisset\(\s*(ws_[a-z_]+)\(\)\[\$' . $match[1] . '\]\s*\)/', $part[0], $list)) {
+					$values[$match[2]] = array_merge($values[$match[2]] ?? array(), array_map('strval', array_keys(call_user_func($list[1]))), ($match[3] !== '') ? array($match[3]) : array());
+					$listed[$match[2]] = true;
+				}
 			}
 		}
 
 		foreach (array_keys($values) as $key) {
-			foreach ($parts as $part) {
-				$variable = preg_quote($part[1], '/');
-				$reads = preg_match_all('/\$' . $variable . "\['" . $key . "'\]/", $part[0]);
-				$known = preg_match_all('/\$' . $variable . "\['" . $key . "'\]\s*\?\?\s*'[a-z_]*'\s*\)\s*[!=]==\s*'[a-z_]+'/", $part[0]);
+			foreach ($parts as $index => $part) {
+				if (empty($listed[$key])) {
+					$reads = preg_match_all('/' . workspace_flows_parity_subscript($part[1], $key) . '/', $part[0]);
 
-				if ($reads !== $known) {
-					throw new RuntimeException('The ' . $step . ' step reads ' . $key . ' other than as ($' . $part[1] . "['" . $key . "'] ?? '...') === '...': teach workspace_flows_parity_read_step_option_values() to read its values.");
+					if ($reads !== ($known[$index][$key] ?? 0)) {
+						throw new RuntimeException('The ' . $step . ' step reads ' . $key . ' other than as ($' . $part[1] . "['" . $key . "'] ?? '...') === '...' or handed on by name to where it is compared so: teach workspace_flows_parity_read_step_option_values() to read its values.");
+					}
 				}
 
 				preg_match_all("/'" . $key . "'\s*=>\s*'([a-z_]+)'/", $part[0], $written);
 				$values[$key] = array_merge($values[$key], $written[1]);
+			}
+
+			foreach ($elsewhere as $target) {
+				if ($target[2] !== $key) {
+					continue;
+				}
+
+				$source = workspace_flows_parity_source($target[0]);
+
+				if (preg_match_all('/' . workspace_flows_parity_subscript($target[1], $key) . '/', $source) !== preg_match_all($compare($target[1], $key), $source)) {
+					throw new RuntimeException($target[0] . '() reads the ' . $key . ' the ' . $step . ' step hands it other than as ($' . $target[1] . "['" . $key . "'] ?? '...') === '...': teach workspace_flows_parity_read_step_option_values() to read its values.");
+				}
 			}
 
 			foreach (array_unique($values[$key]) as $value) {
@@ -951,6 +1387,40 @@ function workspace_flows_parity_read_change_kinds()
 	return $out;
 }
 
+// The fields a change step can write that no condition looks at: of each
+// kind it updates (workspace_flows_parity_read_change_kinds()), the fields
+// ws_change_fields_for() gives an update, called on the change catalogue as
+// written, but those of workspace_flows_parity_read_record_fields(), which
+// the change box writes as well: kind.field.
+function workspace_flows_parity_read_change_fields()
+{
+	$check = workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_action_input'))['change'];
+
+	if (substr_count($check, "ws_change_fields_for(\$types[\$record_type], 'update')") !== 1) {
+		throw new RuntimeException('The change step no longer takes its fields from ws_change_fields_for($types[$record_type], \'update\'): teach workspace_flows_parity_read_change_fields() where they come from.');
+	}
+
+	$types = pg_test_ws_change_types();
+	$conditions = workspace_flows_parity_read_record_fields();
+	$out = array();
+
+	foreach (workspace_flows_parity_read_change_kinds() as $change) {
+		list($type, $verb) = explode('.', $change, 2);
+
+		if ($verb !== 'update') {
+			continue;
+		}
+
+		foreach (array_keys(ws_change_fields_for($types[$type], 'update')) as $field) {
+			if (!in_array($type . '.' . $field, $conditions, true)) {
+				$out[] = $type . '.' . $field;
+			}
+		}
+	}
+
+	return $out;
+}
+
 function workspace_flows_parity_read_digest_filters()
 {
 	return array_keys(ws_scheduled_digest_filters());
@@ -962,7 +1432,9 @@ function workspace_flows_parity_read_webhook_formats()
 }
 
 // The body a webhook step sends, per format: format.key, nested keys with a
-// dot; the generic body is the switch's default.
+// dot; the generic body is the switch's default. Every write to $payload on
+// the way through a format's branch (before the switch, in the branch, after
+// it) is read: a key set on its own is a key, any other write throws.
 function workspace_flows_parity_read_webhook_body()
 {
 	$out = array();
@@ -976,8 +1448,9 @@ function workspace_flows_parity_read_webhook_body()
 		}
 	};
 
-	foreach (workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_webhook')) as $format => $code) {
-		$flatten((($format === 'default') ? 'generic' : $format) . '.', pg_test_source_array_in($code, '$payload'));
+	foreach (workspace_flows_parity_switch_paths(workspace_flows_parity_source('ws_scheduled_webhook')) as $format => $code) {
+		$name = ($format === 'default') ? 'generic' : $format;
+		$flatten($name . '.', workspace_flows_parity_literal_entries_in($code, '$payload', 'ws_scheduled_webhook() (' . $name . ')'));
 	}
 
 	return $out;
@@ -1002,6 +1475,57 @@ function workspace_flows_parity_read_limits()
 	return $out;
 }
 
+// The caps written as numbers in the code that checks an action, which no
+// WS_SCHEDULED_* constant names: a value kept to at most N (min(N, ...)), a
+// text or a list cut to its first N (..., 0, N)): "place min N", "place
+// first N". The places: the action's own check (action, ws_scheduled_input()),
+// each branch of a rule's check (rule kind) and of a step's (step kind), and
+// the ws_scheduled_* functions those call.
+function workspace_flows_parity_read_caps()
+{
+	$checks = array('ws_scheduled_input', 'ws_scheduled_rule_input', 'ws_scheduled_action_input');
+	$places = array('action' => workspace_flows_parity_source('ws_scheduled_input'));
+
+	foreach (workspace_flows_parity_rule_cases() as $kind => $code) {
+		$places['rule ' . $kind] = $code;
+	}
+
+	foreach (workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_action_input')) as $step => $code) {
+		$places['step ' . $step] = $code;
+	}
+
+	$helpers = array();
+
+	foreach ($places as $code) {
+		foreach (workspace_flows_parity_php_calls($code) as $function) {
+			if ((strpos($function, 'ws_scheduled_') === 0) && !in_array($function, $checks, true)) {
+				$helpers[$function] = true;
+			}
+		}
+	}
+
+	ksort($helpers);
+
+	foreach (array_keys($helpers) as $function) {
+		$places[$function . '()'] = workspace_flows_parity_source($function);
+	}
+
+	$out = array();
+
+	foreach ($places as $place => $code) {
+		preg_match_all('/\bmin\(\s*(\d+)\s*,|,\s*0\s*,\s*(\d+)\s*\)/', $code, $caps, PREG_SET_ORDER);
+		$keys = array();
+
+		foreach ($caps as $cap) {
+			$keys[] = $place . ' ' . (($cap[1] !== '') ? 'min ' . $cap[1] : 'first ' . $cap[2]);
+		}
+
+		$out = array_merge($out, workspace_flows_parity_numbered($keys));
+	}
+
+	return $out;
+}
+
 // Where the chain limits hold, and where a run hands its depth to the events
 // it causes: limit in function.
 function workspace_flows_parity_read_limit_uses()
@@ -1017,14 +1541,36 @@ function workspace_flows_parity_read_limit_uses()
 	return $out;
 }
 
-// The placeholders: those the form lists, those ws_scheduled_fill() and
-// ws_events_fill_values() fill. A count is {{count:<key>}}.
-function workspace_flows_parity_read_tokens()
+// The code that fills the placeholders: ws_scheduled_fill(),
+// ws_events_fill_values() and the Workspace functions they hand the values
+// they build to (ws_events_own_values()), each as [name, source].
+function workspace_flows_parity_fill_code()
 {
-	$tokens = array_keys(ws_scheduled_placeholders());
+	$out = array();
 
 	foreach (array('ws_scheduled_fill', 'ws_events_fill_values') as $function) {
 		$source = workspace_flows_parity_source($function);
+		$out[] = array($function, $source);
+		$seen = array();
+
+		foreach (workspace_flows_parity_handed($source, 'values', $seen) as $handed) {
+			$out[] = array($handed[0], workspace_flows_parity_source($handed[0]));
+		}
+	}
+
+	return $out;
+}
+
+// The placeholders that code fills: the literals ('{{date}}'), those a
+// pattern asks for (\{\{(event|record)\}\}), a count by its key
+// ({{count:<key>}}) and, where the count's pattern takes one, a count with
+// its threshold ({{count:<key>:<param>}}).
+function workspace_flows_parity_filled_tokens()
+{
+	$tokens = array();
+
+	foreach (workspace_flows_parity_fill_code() as $fill) {
+		$source = $fill[1];
 		preg_match_all("/'(\{\{[a-z_]+\}\})'/", $source, $literal);
 		$tokens = array_merge($tokens, $literal[1]);
 
@@ -1034,15 +1580,29 @@ function workspace_flows_parity_read_tokens()
 			}
 		}
 
-		if (strpos($source, '\{\{count:') !== false) {
+		$at = strpos($source, '\{\{count:');
+
+		if ($at !== false) {
 			$tokens[] = '{{count:<key>}}';
+			$end = strpos($source, '\}\}', $at);
+
+			if (($end !== false) && (strpos(substr($source, $at, $end - $at), '(?::(\d+))') !== false)) {
+				$tokens[] = '{{count:<key>:<param>}}';
+			}
 		}
 	}
 
+	return array_values(array_unique($tokens));
+}
+
+// The placeholders: those the form lists, those the fill code fills. A count
+// the form lists is {{count:<key>}}.
+function workspace_flows_parity_read_tokens()
+{
 	$out = array();
 
-	foreach ($tokens as $token) {
-		$out[] = preg_match('/^\{\{count:/', $token) ? '{{count:<key>}}' : $token;
+	foreach (array_merge(array_keys(ws_scheduled_placeholders()), workspace_flows_parity_filled_tokens()) as $token) {
+		$out[] = preg_match('/^\{\{count:[a-z_]+\}\}$/', $token) ? '{{count:<key>}}' : $token;
 	}
 
 	return array_values(array_unique($out));
@@ -1140,14 +1700,26 @@ function workspace_flows_parity_read_card_buttons()
 }
 
 // What a card draws besides its buttons (scheduledCard() in workspace.js):
-// the keys of its labels (label key) and the fields of the action it reads
-// (item.field).
+// its labels, each as often as it writes it (label key, label key #2: a
+// label written in two places is two keys), but the one use of each button's
+// own label; the fields of the action it reads (item.field, item.last.status)
+// and those of what its callbacks are handed: a follow-up, a starter, a
+// History run, an answer (follow.on, run.source, data.item.history).
 function workspace_flows_parity_read_card_parts()
 {
 	$card = workspace_flows_parity_js_function('assets/js/workspace.js', 'scheduledCard');
+	$labels = workspace_flows_parity_t_uses($card);
 	$out = array();
 
-	foreach (array_diff(workspace_flows_parity_t_keys($card), workspace_flows_parity_read_card_buttons()) as $key) {
+	foreach (workspace_flows_parity_read_card_buttons() as $button) {
+		$at = array_search($button, $labels, true);
+
+		if ($at !== false) {
+			unset($labels[$at]);
+		}
+	}
+
+	foreach (workspace_flows_parity_numbered(array_values($labels)) as $key) {
 		$out[] = 'label ' . $key;
 	}
 
@@ -1155,7 +1727,19 @@ function workspace_flows_parity_read_card_parts()
 		$out[] = 'item.' . $field;
 	}
 
-	return $out;
+	// Each callback's own parameter, read in its own body.
+	preg_match_all('/\bfunction\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{/', $card, $callbacks, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	foreach ($callbacks as $callback) {
+		$open = $callback[0][1] + strlen($callback[0][0]) - 1;
+		$body = substr($card, $open, workspace_flows_parity_js_close($card, $open) - $open + 1);
+
+		foreach (workspace_flows_parity_js_fields($body, $callback[1][0]) as $field) {
+			$out[] = $callback[1][0] . '.' . $field;
+		}
+	}
+
+	return array_values(array_unique($out));
 }
 
 // What the list of scheduled actions draws around the cards (showScheduled()
@@ -1186,24 +1770,28 @@ function workspace_flows_parity_read_list_parts()
 }
 
 // Where a card is drawn: each scheduledCard() call of workspace.js, by what
-// it draws and the function it is drawn in.
+// it draws and the functions it is drawn in (a second call written the same
+// way in the same place numbered).
 function workspace_flows_parity_read_card_places()
 {
 	$js = workspace_flows_parity_file('assets/js/workspace.js');
 	$out = array();
 
 	foreach (workspace_flows_parity_js_calls($js, 'scheduledCard') as $offset => $args) {
-		$out[] = 'scheduledCard(' . $args[0] . ') in ' . workspace_flows_parity_js_enclosing($js, $offset) . '()';
+		$out[] = 'scheduledCard(' . $args[0] . ') in ' . workspace_flows_parity_js_enclosing($js, $offset);
 	}
 
-	return $out;
+	return workspace_flows_parity_numbered($out);
 }
 
 // The panel routes of scheduled actions and messages: the branches of the
-// Workspace's action switch (includes/workspace/actions.php) and the api()
-// calls of workspace.js that ask them.
+// Workspace's action switch (includes/workspace/actions.php), the rows of
+// pg_panel_actions() that let api.php take them, and the api() calls of
+// workspace.js that ask them.
 function workspace_flows_parity_read_routes()
 {
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
 	preg_match_all("/^\s*case '(ws_scheduled_[a-z_]+)':/m", workspace_flows_parity_file('includes/workspace/actions.php'), $cases);
 	preg_match_all("/\bapi\('(ws_scheduled_[a-z_]+)'/", workspace_flows_parity_file('assets/js/workspace.js'), $calls);
 
@@ -1213,8 +1801,65 @@ function workspace_flows_parity_read_routes()
 		$out[] = 'route ' . $route;
 	}
 
+	foreach (array_keys(pg_panel_actions()) as $route) {
+		if (strpos($route, 'ws_scheduled_') === 0) {
+			$out[] = 'panel ' . $route;
+		}
+	}
+
 	foreach (array_unique($calls[1]) as $route) {
 		$out[] = 'api ' . $route;
+	}
+
+	return $out;
+}
+
+// What the form sends and the routes take: the keys request() of
+// scheduledForm() in workspace.js builds (scheduledForm.key), and those each
+// route of scheduled actions reads from the request
+// (ws_scheduled_save.key); the scheduled messages' routes are left out.
+function workspace_flows_parity_read_request()
+{
+	$form = workspace_flows_parity_js_function('assets/js/workspace.js', 'scheduledForm');
+	$start = strpos($form, 'function request(');
+
+	if ($start === false) {
+		throw new RuntimeException('scheduledForm() in workspace.js has no function request(): teach workspace_flows_parity_read_request() where the form builds what it sends.');
+	}
+
+	$request = substr($form, $start, workspace_flows_parity_js_close($form, strpos($form, '{', $start)) - $start + 1);
+	$literal = strpos($request, 'var out = {');
+
+	if ($literal === false) {
+		throw new RuntimeException('request() of scheduledForm() no longer starts its answer with var out = {...}: teach workspace_flows_parity_read_request() to read it.');
+	}
+
+	// The literal's own keys: its inner brackets taken out first, so only
+	// the keys at its top are left.
+	$open = $literal + strlen('var out = ');
+	$inner = substr($request, $open + 1, workspace_flows_parity_js_close($request, $open) - $open - 1);
+
+	do {
+		$inner = preg_replace('/\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}/', '', $inner, -1, $taken);
+	} while ($taken > 0);
+
+	preg_match_all('/(?:^|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/', $inner, $keys);
+	preg_match_all('/\bout\.([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/', $request, $set);
+
+	$out = array();
+
+	foreach (array_unique(array_merge($keys[1], $set[1])) as $key) {
+		$out[] = 'scheduledForm.' . $key;
+	}
+
+	foreach (workspace_flows_parity_cases(workspace_flows_parity_file('includes/workspace/actions.php')) as $route => $code) {
+		if ((strpos($route, 'ws_scheduled_') !== 0) || (strpos($route, 'message') !== false)) {
+			continue;
+		}
+
+		foreach (workspace_flows_parity_reads($code, 'request') as $key) {
+			$out[] = $route . '.' . $key;
+		}
 	}
 
 	return $out;
@@ -1230,29 +1875,33 @@ function workspace_flows_parity_read_templates()
 }
 
 // The places that open the form (scheduledForm() in workspace.js), by what
-// they open it with: its first argument, and the preset's key when it has
-// one.
+// they open it with (its first argument, and the preset's key when it has
+// one) and the functions they are in; a second call written the same way in
+// the same place numbered.
 function workspace_flows_parity_read_entry_points()
 {
+	$js = workspace_flows_parity_file('assets/js/workspace.js');
 	$out = array();
 
-	foreach (workspace_flows_parity_js_calls(workspace_flows_parity_file('assets/js/workspace.js'), 'scheduledForm') as $args) {
+	foreach (workspace_flows_parity_js_calls($js, 'scheduledForm') as $offset => $args) {
 		$key = $args[0];
 
 		if (preg_match("/^\{ key: '([a-z_]+)'/", $args[3] ?? '', $preset)) {
 			$key .= ' (' . $preset[1] . ')';
 		}
 
-		$out[] = $key;
+		$out[] = $key . ' in ' . workspace_flows_parity_js_enclosing($js, $offset);
 	}
 
-	return $out;
+	return workspace_flows_parity_numbered($out);
 }
 
 // Pinegrap AI drafting a scheduled action: its tool, as named
 // (ws_ai_tool_names()), offered to the model and handled (ai.php), and the
-// functions that treat a draft of the kind 'scheduled' on its own (the API's
-// list of drafts, applying a draft).
+// functions that treat a draft of the kind 'scheduled' on its own: by its
+// kind ($type === 'scheduled', the API's list of drafts, applying one), by
+// its row (record_type = 'scheduled', marking it saved) or writing one
+// ('type' => 'scheduled').
 function workspace_flows_parity_read_ai_drafts()
 {
 	$out = array();
@@ -1276,7 +1925,7 @@ function workspace_flows_parity_read_ai_drafts()
 	}
 
 	foreach (array('includes/workspace/api_resources.php', 'includes/workspace/changes.php', 'includes/workspace/ai.php', 'includes/workspace/scheduled_draft.php') as $file) {
-		foreach (workspace_flows_parity_functions_at(workspace_flows_parity_file($file), "/\\\$type\s*===\s*'scheduled'/") as $function) {
+		foreach (workspace_flows_parity_functions_at(workspace_flows_parity_file($file), "/\\\$type\s*===\s*'scheduled'|\brecord_type\s*=\s*'scheduled'|'type'\s*=>\s*'scheduled'/") as $function) {
 			$out[] = 'draft kind scheduled in ' . $function;
 		}
 	}
@@ -1361,6 +2010,24 @@ function workspace_flows_parity_read_links_in()
 	return $out;
 }
 
+// What starts and runs an action, by where it is called in the product: the
+// drivers (ws_scheduled_run(), with what it is asked to take), what tells a
+// screen one is due (ws_scheduled_due()), the run of one action
+// (ws_scheduled_execute()), the events taken in and started on
+// (ws_events_process(), ws_events_start()), a join's starts
+// (ws_scheduled_joined()) and the Workspace's own events as they happen
+// (ws_event(), by event).
+function workspace_flows_parity_read_starts()
+{
+	$out = array();
+
+	foreach (array('ws_scheduled_run', 'ws_scheduled_due', 'ws_scheduled_execute', 'ws_events_process', 'ws_events_start', 'ws_scheduled_joined', 'ws_event') as $function) {
+		$out = array_merge($out, workspace_flows_parity_php_call_sites($function));
+	}
+
+	return $out;
+}
+
 // The inbox kinds of scheduled actions the external API names (the inbox
 // route's description in includes/workspace/api.php).
 function workspace_flows_parity_read_inbox_kinds()
@@ -1402,6 +2069,7 @@ function workspace_flows_parity_groups()
 {
 	return array(
 		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input() and ws_scheduled_save(), the row it gives back, the columns of ws_scheduled_decode()'),
+		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'request() of scheduledForm() in workspace.js and the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
 		'when'                => array('When', array(3), 'workspace_flows_parity_read_when', 'the "when" kinds of ws_scheduled_input()'),
 		'repeats'             => array('When', array(3), 'workspace_flows_parity_read_repeats', 'ws_scheduled_repeats()'),
 		'rule_options'        => array('When, Conditions', array(3), 'workspace_flows_parity_read_rule_options', 'the $rule keys of each branch of ws_scheduled_rule_input()'),
@@ -1416,26 +2084,29 @@ function workspace_flows_parity_groups()
 		'count_operators'     => array('Conditions', array(3), 'workspace_flows_parity_read_count_operators', 'ws_scheduled_count_operators()'),
 		'steps'               => array('Steps', array(3), 'workspace_flows_parity_read_steps', 'the branches of ws_scheduled_do()'),
 		'step_options'        => array('Steps', array(3), 'workspace_flows_parity_read_step_options', 'the $action keys of ws_scheduled_action_input(), ws_scheduled_do() and the functions they hand the action to'),
-		'step_option_values'  => array('Steps', array(3), 'workspace_flows_parity_read_step_option_values', 'the values a step option is compared with in the code of its step'),
+		'step_option_values'  => array('Steps', array(3), 'workspace_flows_parity_read_step_option_values', 'the values a step option is compared with in the code of its step, where it is handed on by name, or the list that keeps it'),
 		'change_kinds'        => array('Steps', array(3), 'workspace_flows_parity_read_change_kinds', 'the change catalogue as written, minus ws_scheduled_change_skipped(), update and delete'),
+		'change_fields'       => array('Steps', array(3), 'workspace_flows_parity_read_change_fields', 'the update fields (ws_change_fields_for()) of the kinds a change step updates, but those a condition reads'),
 		'digest_filters'      => array('Steps', array(3), 'workspace_flows_parity_read_digest_filters', 'ws_scheduled_digest_filters()'),
 		'webhook_formats'     => array('Webhook body', array(3, 5), 'workspace_flows_parity_read_webhook_formats', 'ws_scheduled_webhook_formats()'),
 		'webhook_body'        => array('Webhook body', array(3, 5), 'workspace_flows_parity_read_webhook_body', 'the $payload of each format in ws_scheduled_webhook()'),
 		'outcomes'            => array('Follow-ups', array(3), 'workspace_flows_parity_read_outcomes', 'ws_scheduled_outcomes()'),
 		'limits'              => array('Chains', array(3), 'workspace_flows_parity_read_limits', 'the WS_SCHEDULED_* constants of scheduled.php'),
+		'caps'                => array('When, Conditions, Steps', array(3), 'workspace_flows_parity_read_caps', 'the caps written as numbers in ws_scheduled_input(), ws_scheduled_rule_input(), ws_scheduled_action_input() and the ws_scheduled_* functions they call'),
 		'limit_uses'          => array('Chains', array(3), 'workspace_flows_parity_read_limit_uses', 'the Workspace functions that name a chain limit or ws_event_depth()'),
-		'tokens'              => array('Tokens', array(3), 'workspace_flows_parity_read_tokens', 'ws_scheduled_placeholders(), ws_scheduled_fill(), ws_events_fill_values()'),
+		'starts'              => array('When', array(3), 'workspace_flows_parity_read_starts', 'the calls in the product of ws_scheduled_run(), ws_scheduled_due(), ws_scheduled_execute(), ws_events_process(), ws_events_start(), ws_scheduled_joined() and ws_event()'),
+		'tokens'              => array('Tokens', array(3), 'workspace_flows_parity_read_tokens', 'ws_scheduled_placeholders(), ws_scheduled_fill(), ws_events_fill_values() and the functions they hand their values to'),
 		'states'              => array('States', array(5), 'workspace_flows_parity_read_states', 'ws_scheduled_states()'),
 		'news'                => array('News', array(5), 'workspace_flows_parity_read_news', 'what ws_scheduled_report() calls; the deletes of ws_scheduled_runs in the product'),
 		'record_writes'       => array('Record writes', array(3), 'workspace_flows_parity_read_record_writes', 'ws_scheduled_change()'),
 		'card_buttons'        => array('Screen', array(1), 'workspace_flows_parity_read_card_buttons', 'the button() labels of scheduledCard() in workspace.js'),
-		'card_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_card_parts', 'the other labels and the item fields of scheduledCard() in workspace.js'),
+		'card_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_card_parts', 'the other labels (each use), the item fields and those of its callbacks\' parameters in scheduledCard() of workspace.js'),
 		'list_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_list_parts', 'the labels and the item fields of showScheduled() in workspace.js'),
-		'card_places'         => array('Screen', array(1), 'workspace_flows_parity_read_card_places', 'the scheduledCard() calls of workspace.js'),
-		'routes'              => array('Screen', array(1), 'workspace_flows_parity_read_routes', 'the ws_scheduled_* branches of includes/workspace/actions.php and the api() calls of workspace.js'),
+		'card_places'         => array('Screen', array(1), 'workspace_flows_parity_read_card_places', 'the scheduledCard() calls of workspace.js and the functions they are in'),
+		'routes'              => array('Screen', array(1), 'workspace_flows_parity_read_routes', 'the ws_scheduled_* branches of includes/workspace/actions.php, their pg_panel_actions() rows and the api() calls of workspace.js'),
 		'templates'           => array('Screen', array(1), 'workspace_flows_parity_read_templates', 'saTemplates() in workspace.js and templates() in workspace_events.js'),
-		'entry_points'        => array('Entry points', array(1), 'workspace_flows_parity_read_entry_points', 'the scheduledForm() calls of workspace.js'),
-		'ai_drafts'           => array('Entry points', array(1, 4), 'workspace_flows_parity_read_ai_drafts', 'Pinegrap AI\'s tool in ai.php and the functions that treat a draft of the kind scheduled'),
+		'entry_points'        => array('Entry points', array(1), 'workspace_flows_parity_read_entry_points', 'the scheduledForm() calls of workspace.js and the functions they are in'),
+		'ai_drafts'           => array('Entry points', array(1, 4), 'workspace_flows_parity_read_ai_drafts', 'Pinegrap AI\'s tool in ai.php and the functions that treat, mark or write a draft of the kind scheduled'),
 		'links_in'            => array('Links in', array(1), 'workspace_flows_parity_read_links_in', 'ws_inbox_describe(), ws_nav_groups(), workspace.js, ws_tour_steps()'),
 		'inbox_kinds'         => array('API', array(5), 'workspace_flows_parity_read_inbox_kinds', 'the inbox route of includes/workspace/api.php'),
 	);
@@ -1467,6 +2138,21 @@ function workspace_flows_parity_table()
 			array(array('data.follow', 'row.follow', 'column.follow', 'follow.on', 'follow.do'), 3, 'outcome arrows: the outcome and the step that follows it'),
 			array(array('column.then_action'), 2, 'the one follow-up of a 5.81 row, which ws_scheduled_decode() reads as a follow-up on done: the graph and convert (slice 5) read rows through it'),
 			array(array('data.then_action'), 'form', 'the one follow-up an old form sends, which the check takes as a follow-up on done'),
+		),
+		'request' => array(
+			array(array('scheduledForm.id', 'ws_scheduled_save.id', 'ws_scheduled_preview.id'), 1, 'Edit on the card: the same action saved, its sentence and next runs'),
+			array(array('scheduledForm.name', 'ws_scheduled_save.name', 'ws_scheduled_preview.name'), 1, 'the form, opened in the Scheduled actions section of Flows: the name'),
+			array(array('scheduledForm.rules', 'ws_scheduled_save.rules', 'ws_scheduled_preview.rules'), 1, 'the form: the "when" and the conditions'),
+			array(array('scheduledForm.main_action', 'ws_scheduled_save.main_action', 'ws_scheduled_preview.main_action'), 1, 'the form: the step, sent as main_action ("action" names the request itself)'),
+			array(array('scheduledForm.follow', 'ws_scheduled_save.follow', 'ws_scheduled_preview.follow'), 1, 'the form: the follow-ups by outcome'),
+			array(array('scheduledForm.then_action', 'ws_scheduled_save.then_action', 'ws_scheduled_preview.then_action'), 'form', 'the one follow-up the form sends on a site without the 5.85 chains, which the check takes as a follow-up on done'),
+			array(array('scheduledForm.channel_id', 'scheduledForm.note_id', 'ws_scheduled_save.channel_id', 'ws_scheduled_save.note_id', 'ws_scheduled_preview.channel_id', 'ws_scheduled_preview.note_id'), 1, 'where it lives: the channel it was opened in (composer, @ai draft, Duplicate) or the note'),
+			array(array('scheduledForm.draft_change_id', 'ws_scheduled_save.draft_change_id'), 1, '@ai draft Open: saving the new action marks the draft\'s card applied (ws_scheduled_draft_saved())'),
+			array(array('ws_scheduled_list.status', 'ws_scheduled_list.channel_id'), 1, 'Scheduled actions section in Flows: the list by state chip, or one channel\'s'),
+			array(array('ws_scheduled_get.id'), 1, 'History on the card'),
+			array(array('ws_scheduled_draft.text', 'ws_scheduled_draft.channel_id'), 1, 'the form: the AI sentence, for the channel it is opened in'),
+			array(array('ws_scheduled_status.id', 'ws_scheduled_status.status'), 1, 'Pause/Resume and Cancel on the card'),
+			array(array('ws_scheduled_run_now.id'), 1, 'Run now on the card'),
 		),
 		'when' => array(
 			array(array('at'), 3, 'schedule trigger box on the anchor'),
@@ -1570,6 +2256,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('web_check', 'url mode redirect contains max_ms'), 3, 'web check box: status (redirect, contains, slowest answer)'),
 			array(array('web_check.days'), 3, 'web check box: certificate days left (ssl)'),
 			array(workspace_flows_parity_prefixed('report', 'title metrics channel_id to'), 3, 'report box: title, counts, channel and addresses'),
+			array(workspace_flows_parity_prefixed('report.metrics', 'key param'), 3, 'report box: each count by its key, with its channel or threshold'),
 			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a retry'),
 			array(array('trigger.delay'), 3, 'delay box (F5): minutes before the start'),
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
@@ -1581,11 +2268,19 @@ function workspace_flows_parity_table()
 			array(array('web_check.mode=ssl'), 3, 'web check box: the certificate (days left)'),
 			array(array('task_digest.mode=mine'), 3, 'task e-mail box: each person their own tasks'),
 			array(array('task_digest.mode=channel'), 3, 'task e-mail box: the tasks of a channel'),
+			array(workspace_flows_parity_prefixed('task_digest.only=', 'open week overdue stale'), 3, 'task e-mail box: which tasks (ws_scheduled_digest_filters())'),
+			array(workspace_flows_parity_prefixed('task.priority=', 'low normal high urgent'), 3, 'task box: the priority (ws_task_priorities())'),
+			array(workspace_flows_parity_prefixed('webhook.format=', 'generic text discord'), 3, 'webhook box: the format (ws_scheduled_webhook_formats())'),
+			array(workspace_flows_parity_prefixed('approval.rule=', 'any all'), 3, 'approval box: one approval or all of them (ws_approval_input(), ws_approval_rules())'),
 		),
 		'change_kinds' => array(
 			array(array('product.update', 'product.delete', 'stock.update', 'order.update', 'product_group.update', 'product_group.delete'), 3, 'change box: shop records'),
 			array(array('contact.update', 'contact.delete', 'erp_account.update', 'form.update'), 3, 'change box: contacts, ERP accounts, form submissions'),
 			array(array('user.update', 'page.update', 'page.delete', 'file.update', 'file.delete', 'offer.update', 'offer.delete', 'calendar_event.update', 'calendar_event.delete'), 3, 'change box: users, pages, files, offers, calendar events'),
+		),
+		'change_fields' => array(
+			array(array('order.cancellation_reason'), 3, 'change box: the reason an order is cancelled (no column of its own, so no condition reads it)'),
+			array(array('form.answers'), 3, 'change box: a submission\'s answers, a set of fields (no condition reads them)'),
 		),
 		'digest_filters' => array(
 			array(array('open', 'week', 'overdue', 'stale'), 3, 'task e-mail box: which tasks'),
@@ -1610,7 +2305,22 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_MIN_MINUTES=5'), 3, 'schedule trigger box: every 5 minutes at the most'),
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
-			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request'),
+			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request by default (ws_tick, job.php); the Workspace job asks for 20 (see starts)'),
+		),
+		'caps' => array(
+			array(array('action first 160'), 3, 'the anchor: a name of at most 160 characters'),
+			array(array('action first 12'), 3, 'at most 12 rules: the trigger box and its condition boxes'),
+			array(array('rule at min 720', 'rule at min 24', 'rule at min 52', 'rule at min 365'), 3, 'schedule trigger box: every at most 720 minutes, 24 hours, 52 weeks, 365 days, months or years'),
+			array(array('rule record first 500', 'rule record min 3650'), 3, 'condition box: a value of at most 500 characters; within at most 3650 days'),
+			array(array('step email first 250', 'step email first 20000'), 3, 'email box: subject 250, text 20000 characters'),
+			array(array('step notify first 500'), 3, 'notify box: 500 characters'),
+			array(array('step task first 200', 'step task first 8000', 'step task min 3650'), 3, 'task box: title 200, text 8000 characters, due in at most 3650 days'),
+			array(array('step task_digest first 250', 'step task_digest first 2000'), 3, 'task e-mail box: subject 250, intro 2000 characters'),
+			array(array('step webhook first 4000'), 3, 'webhook box: text 4000 characters'),
+			array(array('step web_check min 365', 'step web_check first 200', 'step web_check min 60000'), 3, 'web check box: at most 365 days left asked for, a text of 200 characters, 60000 ms'),
+			array(array('step report first 160', 'step report first 20'), 3, 'report box: title 160 characters, at most 20 counts'),
+			array(array('step trigger min 10080'), 3, 'delay box (F5): at most 10080 minutes (a week)'),
+			array(array('ws_scheduled_people() first 50'), 3, 'notify, task and task e-mail boxes: at most 50 people'),
 		),
 		'limit_uses' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_events_start'), 3, 'event trigger box: an event at depth 8 starts nothing'),
@@ -1624,8 +2334,22 @@ function workspace_flows_parity_table()
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 		),
+		'starts' => array(
+			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
+			array(array('ws_scheduled_run() in job.php'), 3, 'driver: the general job, when ws_scheduled_due() says one is due'),
+			array(array('ws_scheduled_run(20) in workspace_recurring_job.php'), 3, 'driver: the Workspace job, 20 a run'),
+			array(array('ws_scheduled_due() in includes/workspace/actions.php ws_handle_action case \'ws_sync\'', 'ws_scheduled_due() in job.php'), 3, 'driver: ws_sync tells the screen one is due (scheduled_due); the general job asks first'),
+			array(array('ws_scheduled_execute($scheduled[\'id\']) in includes/workspace/actions.php ws_handle_action case \'ws_scheduled_run_now\''), 3, 'the anchor runs on ws_scheduled_execute() until converted: Run now'),
+			array(array('ws_scheduled_execute($scheduled[\'id\']) in includes/workspace/actions.php ws_handle_action case \'ws_scheduled_message_send\''), 'form', 'a scheduled message sent now: scheduled messages are not moved into Flows'),
+			array(array('ws_scheduled_execute((int) $id) in includes/workspace/scheduled.php ws_scheduled_run'), 3, 'driver: each anchor whose time has come'),
+			array(array('ws_scheduled_execute((int) $target[\'id\']) in includes/workspace/scheduled.php ws_scheduled_queue_take'), 3, 'start box, event and join trigger boxes: the waiting starts, taken in turn'),
+			array(array('ws_events_process() in includes/workspace/scheduled.php ws_scheduled_run', 'ws_events_start((int) $row[\'id\']) in includes/workspace/watch.php ws_events_process'), 3, 'event trigger box: the events kept (pg_event_record(), ws_event()) taken in on each run, each starting the actions that wait on it'),
+			array(array('ws_scheduled_joined(ws_channel($channel[\'id\'])) in includes/workspace/channels.php ws_channel_add_members', 'ws_scheduled_joined($channel) in includes/workspace/channels.php ws_channel_join'), 3, 'join trigger box: people added to a channel, or joining one'),
+			array(array('ws_event(\'workspace.task.completed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.status_changed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.overdue\') in includes/workspace/reminders.php ws_task_overdue_run', 'ws_event(\'workspace.approval.decided\') in includes/workspace/approvals.php ws_approval_settle', 'ws_event(\'workspace.guest.message\') in includes/workspace/guests.php ws_guest_send'), 3, 'event trigger box: the Workspace\'s own events, kept where they happen'),
+		),
 		'tokens' => array(
 			array(array('{{date}}', '{{time}}', '{{weekday}}', '{{name}}', '{{run}}', '{{count:<key>}}'), 3, 'every box text (ws_scheduled_fill())'),
+			array(array('{{count:<key>:<param>}}'), 3, 'every box text: a count with its channel or threshold ({{count:stock_low:5}} of the stock template)'),
 			array(array('{{result}}', '{{status}}'), 3, 'outcome arrows: what the step did and how it went'),
 			array(array('{{source}}', '{{source_result}}'), 3, 'start box: the action that started this one'),
 			array(array('{{newcomer}}', '{{newcomer_name}}', '{{channel}}'), 3, 'join trigger box: who joined, where'),
@@ -1660,46 +2384,50 @@ function workspace_flows_parity_table()
 			array(array('item.when', 'item.next', 'label sa_next', 'item.repeats', 'item.joins', 'item.on_event', 'item.trigger_only'), 1, 'card: when it runs and next, with the icon of its kind'),
 			array(array('item.staff', 'label sa_staff_only'), 1, 'card: someone who is not staff sees its name, time and state only'),
 			array(array('item.conditions', 'item.action_text', 'item.follow'), 1, 'card: its conditions, step and follow-ups in words'),
-			array(array('item.starters', 'label sa_started_by'), 1, 'card: the actions that start it (ws_scheduled_starters())'),
-			array(array('item.last', 'label sa_last'), 1, 'card: its last run'),
-			array(array('item.creator', 'item.created', 'label sa_by', 'item.runs', 'label sa_runs'), 1, 'card: who wrote it and when, how many runs'),
-			array(array('item.can_edit', 'item.id', 'item.data', 'item.channel', 'label sa_run_now_confirm', 'label sa_copy_of', 'label sa_cancel_confirm'), 1, 'card buttons: who may edit, the questions they ask, the copy Duplicate makes'),
-			array(array('label sa_no_history', 'label sa_by_hand'), 1, 'card: History lines (by hand, started by)'),
+			array(array('follow.on', 'follow.label', 'follow.text', 'follow.target'), 1, 'card: each follow-up, by outcome, in words, a chain icon when it starts another action'),
+			array(array('item.starters', 'starter.name', 'label sa_started_by'), 1, 'card: the actions that start it (ws_scheduled_starters())'),
+			array(array('item.last', 'item.last.status', 'item.last.label', 'item.last.time', 'item.last.text', 'label sa_last'), 1, 'card: its last run: how it went, when, what it did'),
+			array(array('item.creator', 'item.creator.name', 'item.created', 'label sa_by', 'item.runs', 'label sa_runs'), 1, 'card: who wrote it and when, how many runs'),
+			array(array('item.can_edit', 'item.id', 'item.data', 'item.channel', 'item.channel.id', 'data.item', 'label sa_run_now_confirm', 'label sa_run_now', 'label sa_copy_of', 'label sa_cancel_confirm', 'label sa_cancel'), 1, 'card buttons: who may edit, the questions Run now and Cancel ask, the copy Duplicate makes in the same channel, the card drawn again'),
+			array(array('data.item.history', 'run.status', 'run.label', 'run.time', 'run.text', 'label sa_no_history'), 1, 'card: History lines, how each run went, when, what it did'),
+			array(array('run.by_hand', 'label sa_by_hand', 'run.source', 'label sa_started_by #2'), 1, 'card: History lines, by hand or started by another action'),
 		),
 		'list_parts' => array(
 			array(array('label sa_title', 'label sa_new_long', 'label sa_help', 'label sa_empty'), 1, 'Scheduled actions section in Flows: title, New, help, an empty list'),
 			array(array('label sa_all', 'label sa_state_active', 'label sa_state_paused', 'label sa_state_done', 'label sa_state_failed', 'label sa_state_cancelled'), 1, 'Scheduled actions section in Flows: the state chips'),
-			array(array('label sa_in_channel', 'label sa_in_note', 'item.channel', 'item.note', 'item.message_id'), 1, 'Scheduled actions section in Flows: "in #channel / in note", linked to the card'),
+			array(array('label sa_in_channel', 'label sa_in_note', 'item.channel', 'item.channel.id', 'item.channel.name', 'item.note', 'item.note.id', 'item.note.name', 'item.message_id'), 1, 'Scheduled actions section in Flows: "in #channel / in note", linked to the card'),
 			array(array('label sm_title', 'label sm_mine_help'), 1, '?view=scheduled keeps the Messages tab (scheduled messages are not moved)'),
 		),
 		'card_places' => array(
-			array(array('scheduledCard(item) in load()'), 1, 'Scheduled actions section in Flows: the list'),
+			array(array('scheduledCard(item) in load() in showScheduled()'), 1, 'Scheduled actions section in Flows: the list'),
 			array(array('scheduledCard(message.scheduled) in messageNode()'), 1, 'the card under its message in the channel, kept where written'),
-			array(array('scheduledCard(item) in drawScheduled()'), 1, 'the note strip, kept where written'),
+			array(array('scheduledCard(item) in drawScheduled() in startNotes()'), 1, 'the note strip, kept where written'),
 		),
 		'routes' => array(
-			array(array('route ws_scheduled_list', 'api ws_scheduled_list'), 1, 'Scheduled actions section in Flows: the list, by state'),
-			array(array('route ws_scheduled_get', 'api ws_scheduled_get', 'route ws_scheduled_status', 'api ws_scheduled_status', 'route ws_scheduled_run_now', 'api ws_scheduled_run_now'), 1, 'card buttons: History, Pause/Resume and Cancel, Run now'),
-			array(array('route ws_scheduled_targets', 'api ws_scheduled_targets', 'route ws_scheduled_preview', 'api ws_scheduled_preview', 'route ws_scheduled_draft', 'api ws_scheduled_draft', 'route ws_scheduled_save', 'api ws_scheduled_save'), 1, 'the form: what it can start, the sentence and next runs, the AI sentence, Save'),
-			array(array('route ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
+			array(array('route ws_scheduled_list', 'panel ws_scheduled_list', 'api ws_scheduled_list'), 1, 'Scheduled actions section in Flows: the list, by state'),
+			array(array('route ws_scheduled_get', 'panel ws_scheduled_get', 'api ws_scheduled_get', 'route ws_scheduled_status', 'panel ws_scheduled_status', 'api ws_scheduled_status', 'route ws_scheduled_run_now', 'panel ws_scheduled_run_now', 'api ws_scheduled_run_now'), 1, 'card buttons: History, Pause/Resume and Cancel, Run now'),
+			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets', 'api ws_scheduled_targets', 'route ws_scheduled_preview', 'panel ws_scheduled_preview', 'api ws_scheduled_preview', 'route ws_scheduled_draft', 'panel ws_scheduled_draft', 'api ws_scheduled_draft', 'route ws_scheduled_save', 'panel ws_scheduled_save', 'api ws_scheduled_save'), 1, 'the form: what it can start, the sentence and next runs, the AI sentence, Save'),
+			array(array('route ws_scheduled_messages', 'panel ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'panel ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'panel ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'panel ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
 		),
 		'templates' => array(
 			array(array('welcome', 'task_mail', 'morning', 'digest', 'uptime', 'ssl', 'overdue', 'forms', 'stock', 'orders', 'invoices', 'monthly', 'chain'), 1, 'scheduledForm() templates, kept in the form (canvas starters come in slice 4)'),
 			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
 		),
 		'entry_points' => array(
-			array(array('{}'), 1, 'New on the list, in the Scheduled actions section of Flows'),
-			array(array('{ channel_id: self.channel.id }'), 1, 'composer insert menu (not in discussions) still opens the form'),
-			array(array('{ note_id: current.id }'), 1, 'note toolbar (note edit right) still opens the form'),
-			array(array('{ channel_id: change.draft.channel_id } (sentence)'), 1, '@ai draft Open still opens the form'),
-			array(array('context', 'context (sentence)'), 1, 'inside the form: a template picked, an AI sentence filled in'),
-			array(array('null'), 1, 'Edit on the card'),
-			array(array('item.channel ? { channel_id: item.channel.id } : {}'), 1, 'Duplicate on the card'),
+			array(array('{} in showScheduled()'), 1, 'New on the list, in the Scheduled actions section of Flows'),
+			array(array('{ channel_id: self.channel.id } in action() in composer()'), 1, 'composer insert menu (not in discussions) still opens the form'),
+			array(array('{ note_id: current.id } in toolbar() in startNotes()'), 1, 'note toolbar (note edit right) still opens the form'),
+			array(array('{ channel_id: change.draft.channel_id } (sentence) in changesNode()'), 1, '@ai draft Open still opens the form, its draft_change_id sent on Save (see request)'),
+			array(array('context in scheduledForm()', 'context (sentence) in fill() in saSentenceBox()'), 1, 'inside the form: a template picked, an AI sentence filled in'),
+			array(array('null in scheduledCard()'), 1, 'Edit on the card'),
+			array(array('item.channel ? { channel_id: item.channel.id } : {} in scheduledCard()'), 1, 'Duplicate on the card'),
 		),
 		'ai_drafts' => array(
 			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas (F8); until then Pinegrap AI drafts into the form, opened by @ai draft Open'),
-			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas (F8): a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
+			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas (F8): Pinegrap AI\'s drafts kept under its answer'),
+			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas (F8): a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas (F8): a draft is saved where it is opened, never applied as a change'),
+			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, '@ai draft Open: the action saved from the form marks the draft\'s card applied'),
 		),
 		'links_in' => array(
 			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
@@ -1710,7 +2438,7 @@ function workspace_flows_parity_table()
 			array(array('tour scheduled #ws-root [data-ws-nav="scheduled"]'), 1, 'tour step on the workspace.php sidebar entry (optional: it drops silently), moved with it'),
 			array(array('inbox scheduled_notice'), 1, 'lands on the card in its channel'),
 			array(array('inbox scheduled_failed'), 1, 'lands on the card, or on ?view=scheduled without one'),
-			array(array('inbox scheduled_message'), 1, 'lands on ?view=scheduled, the Messages tab'),
+			array(array('inbox scheduled_message'), 1, 'a scheduled message that failed lands where scheduled messages are: others on ?view=scheduled; for staff the link has to name the Messages tab, since today ?view=scheduled opens their actions part on a fresh load and from slice 1 it opens Flows'),
 		),
 		'inbox_kinds' => array(
 			array(array('scheduled_notice'), 5, 'kept for a converted anchor, with its text'),
@@ -1777,6 +2505,10 @@ function test_workspace_flows_parity_every_key_is_mapped()
 
 		pg_assert_true(!empty($keys), $group . ': ' . $row[3] . ' gives keys');
 
+		// A key given twice would hide a second place behind the first: a
+		// reader numbers its repeats (workspace_flows_parity_numbered()).
+		pg_assert_same(array(), array_values(array_unique(array_diff_assoc($keys, array_unique($keys)))), $row[0] . ' (' . $group . '): ' . $row[3] . ' gives each key once');
+
 		pg_assert_same(array(), array_values(array_diff($keys, $mapped)),
 			$row[0] . ' (' . $group . '): keys in ' . $row[3] . ' that workspace_flows_parity_table() does not map; give each the merge slice and box that keep it, or \'form\' and why');
 
@@ -1797,7 +2529,9 @@ function test_workspace_flows_parity_twelve_steps()
 	pg_assert_same($run, $input, 'ws_scheduled_action_input() checks the steps ws_scheduled_do() runs');
 }
 
-// Every placeholder the form lists is filled, and every one filled is listed.
+// Every placeholder the form lists is filled, and every one filled is listed
+// (a count's threshold, {{count:<key>:<param>}}, is the count the form lists
+// by its key).
 function test_workspace_flows_parity_placeholders_are_filled()
 {
 	$listed = array();
@@ -1806,23 +2540,22 @@ function test_workspace_flows_parity_placeholders_are_filled()
 		$listed[] = preg_match('/^\{\{count:/', $token) ? '{{count:<key>}}' : $token;
 	}
 
-	$filled = array();
-
-	foreach (array('ws_scheduled_fill', 'ws_events_fill_values') as $function) {
-		$source = workspace_flows_parity_source($function);
-		preg_match_all("/'(\{\{[a-z_]+\}\})'/", $source, $literal);
-		$filled = array_merge($filled, $literal[1]);
-
-		if (strpos($source, '\{\{count:') !== false) {
-			$filled[] = '{{count:<key>}}';
-		}
-	}
+	$filled = array_values(array_diff(workspace_flows_parity_filled_tokens(), array('{{count:<key>:<param>}}')));
 
 	sort($listed);
-	$filled = array_values(array_unique($filled));
 	sort($filled);
 
-	pg_assert_same($listed, $filled, 'ws_scheduled_placeholders() lists what ws_scheduled_fill() and ws_events_fill_values() fill');
+	pg_assert_same($listed, $filled, 'ws_scheduled_placeholders() lists what ws_scheduled_fill(), ws_events_fill_values() and the functions they hand their values to fill');
+}
+
+// Every event an action can start on reaches the Workspace: one of the
+// site's events it keeps from pg_announce() (pg_event_workspace_events()),
+// or one of its own it keeps through ws_event() (ws_events_own()).
+function test_workspace_flows_parity_events_reach_actions()
+{
+	$kept = array_merge(pg_event_workspace_events(), ws_events_own());
+
+	pg_assert_same(array(), array_values(array_diff(workspace_flows_parity_read_events(), $kept)), 'the events of ws_events_catalog() are kept by pg_event_workspace_events() or ws_events_own()');
 }
 
 // What the run reads of a rule is what the form's check takes: the
