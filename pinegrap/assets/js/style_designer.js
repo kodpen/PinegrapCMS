@@ -3700,11 +3700,22 @@ const StyleDesigner = (function () {
         return false;
     }
 
-    // Where a pasted block goes. Into the selection when it is something that
-    // holds children — "I selected this area and pasted into it" — and beside
-    // it when it is not, because a paragraph cannot contain a section.
-    function _sdPasteTarget(aimed) {
-        var sel = aimed || selectedNode;
+    // Where pasted `nodes` go, as { parent, index }. Every paste path asks
+    // here (_sdPasteNodes()): the paste event (our nodes off the system
+    // clipboard, imported markup), the context-menu Paste and Ctrl+V without
+    // the system clipboard. The selection decides, and nothing selected
+    // means the end of the page. The node the paste landed on does not
+    // count: a click on a canvas element or an Overview row selects it, so
+    // with nothing selected that node is only where the text caret was left
+    // (the first element after a re-render, a locked Overview row's label).
+    // Into the selection when it holds children, does not look exactly like
+    // a pasted node (_sdPasteRepeats()) and the drop rules let every pasted
+    // node in (_sdPasteFits()) — "I selected this area and pasted into it" —
+    // and beside it otherwise, because a paragraph cannot contain a section.
+    // Beside means in the tree the node lives in: the page's, or the shared
+    // component's or system widget's own tree (_sdAnyParent()).
+    function _sdPasteSpot(nodes) {
+        var sel = selectedNode;
         if (!sel || sel === tree) return { parent: tree, index: (tree.children || []).length };
         var holds = (sel.type === 'root' || sel.type === 'container' || sel.type === 'row' ||
                      sel.type === 'col' || sel.type === 'loop_area' || sel.type === 'recipient_loop_area');
@@ -3714,20 +3725,95 @@ const StyleDesigner = (function () {
                            'base', 'link', 'meta', 'param', 'wbr', 'option', 'textarea', 'select'];
             holds = voidish.indexOf(t) === -1 && _SD_TEXT_SINK_TAGS.indexOf(t) === -1;
         }
-        if (holds) {
+        if (holds && !_sdPasteRepeats(nodes || [], sel) && _sdPasteFits(nodes || [], sel)) {
             if (!Array.isArray(sel.children)) sel.children = [];
             return { parent: sel, index: sel.children.length };
         }
-        var par = findParent(sel, tree) || tree;
+        var found = _sdAnyParent(sel);
+        var par = (found && found.parent) || tree;
         if (!Array.isArray(par.children)) par.children = [];
         var at = par.children.indexOf(sel);
         return { parent: par, index: at === -1 ? par.children.length : at + 1 };
     }
 
-    function _sdPasteNodes(nodes, aimed) {
+    // Is this paste a duplicate of the selection rather than a paste into
+    // it? It is when the selection looks exactly like one of the pasted
+    // nodes (_sdPasteShape()): the copied node itself and every copy of it,
+    // however it was made (a paste, Ctrl+D, the context-menu Duplicate) and
+    // whatever happened since (an undo or redo, a save and reload). For
+    // pasted markup the pasted nodes are what the markup became. Ctrl+C,
+    // Ctrl+V, Ctrl+V on a section so gives sections side by side, instead of
+    // each copy going into the one before. Only the tree on screen is asked,
+    // never how the selection came about: a copy that was edited since, or
+    // any other container, takes the paste inside.
+    function _sdPasteRepeats(nodes, sel) {
+        var shape = _sdPasteShape(sel);
+        if (shape === null) return false;
+        return nodes.some(function (n) { return !!n && _sdPasteShape(n) === shape; });
+    }
+
+    // A node with its subtree as _sdPasteRepeats() compares it: JSON with
+    // sorted keys and without what is not part of how it looks or changes
+    // without an edit. Node ids (every copy gets new ones); the Layers
+    // panel's open/closed flag `_expanded` (selecting sets it on the
+    // ancestors, see _pgBaselineTreeKey()); empty lists and objects (a
+    // selection writes an empty `_attrs`, and a tree saved and loaded again
+    // can bring `[]` back for `{}`); a form control's `name` attribute and
+    // its stored row ids `_cf.ids` (a form widget renames every copy of a
+    // field, _cfEnsureNames()). null when the node cannot be written.
+    function _sdPasteShape(node) {
+        var copy;
+        try { copy = cloneTree(node); } catch (e) { return null; }
+        (function strip(n) {
+            if (!n || typeof n !== 'object') return;
+            delete n._id;
+            delete n._expanded;
+            var p = n.props;
+            var tag = (n.type === 'semantic' && p) ? String(p.tag || '').toLowerCase() : '';
+            if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+                if (Array.isArray(p._attrs)) p._attrs = p._attrs.filter(function (a) { return !(a && a.name === 'name'); });
+                if (p._cf && typeof p._cf === 'object') delete p._cf.ids;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(strip);
+        })(copy);
+        // Keys in order, and an empty list or object counts as none.
+        function plain(v) {
+            if (Array.isArray(v)) {
+                var list = v.map(function (x) { return plain(x); }).filter(function (x) { return x !== undefined; });
+                return list.length ? list : undefined;
+            }
+            if (!v || typeof v !== 'object') return v;
+            var out = {}, any = false;
+            Object.keys(v).sort().forEach(function (k) {
+                var x = plain(v[k]);
+                if (x !== undefined) { out[k] = x; any = true; }
+            });
+            return any ? out : undefined;
+        }
+        var s = JSON.stringify(plain(copy));
+        return (typeof s === 'string') ? s : null;
+    }
+
+    // May every pasted node go into `target`? The drop rules decide
+    // (canDrop()): nothing into a locked element, only columns into a row,
+    // only items into a list. A copy is a new node, so the lock flag it
+    // carries from the copied node does not stop it as it stops moving that
+    // node. A column goes beside a selected column, not into it.
+    function _sdPasteFits(nodes, target) {
+        return nodes.every(function (n) {
+            if (!n || !n.props) return false;
+            if (n.type === 'col' && target.type === 'col') return false;
+            var probe = n.props._locked ? Object.assign({}, n, { props: Object.assign({}, n.props, { _locked: false }) }) : n;
+            return canDrop({ source: 'node', type: n.type, node: probe }, target);
+        });
+    }
+
+    // Pastes a fresh copy of `nodes` where _sdPasteSpot() says, as one
+    // history step, and selects the last copy.
+    function _sdPasteNodes(nodes) {
         if (!nodes || !nodes.length) return;
         saveState();
-        var spot = _sdPasteTarget(aimed);
+        var spot = _sdPasteSpot(nodes);
         var last = null;
         nodes.forEach(function (n, i) {
             var clone = cloneTree(n);
@@ -3770,8 +3856,9 @@ const StyleDesigner = (function () {
     // The selection is not the same question. An operator clicks a heading,
     // then clicks into the page body and pastes: the aim is the body, but the
     // selection is still the heading - and the heading is a text sink, so the
-    // markup arrived as escaped text. Where the paste landed decides; the
-    // selection only answers when nothing was aimed at.
+    // markup arrived as escaped text. Where the paste landed decides whether
+    // markup becomes text; where a pasted block goes is the selection's
+    // alone (_sdPasteSpot()).
     function _sdNodeFromEventTarget(t) {
         if (!t || !t.closest) return null;
         var el = t.closest('[data-sd-id]');
@@ -3833,9 +3920,8 @@ const StyleDesigner = (function () {
             e.preventDefault();
             var payload = null;
             try { payload = JSON.parse(plain.slice(_SD_CLIP_TAG.length)); } catch (_) { payload = null; }
-            var aimedOwn = _sdNodeFromEventTarget(t);
-            if (Array.isArray(payload) && payload.length) _sdPasteNodes(payload, aimedOwn);
-            else if (clipboardNodes && clipboardNodes.length) _sdPasteNodes(clipboardNodes, aimedOwn);
+            if (Array.isArray(payload) && payload.length) _sdPasteNodes(payload);
+            else if (clipboardNodes && clipboardNodes.length) _sdPasteNodes(clipboardNodes);
             return;
         }
 
@@ -3846,9 +3932,9 @@ const StyleDesigner = (function () {
         // what the paste was aimed at. Landing on the page body or on empty
         // canvas is not aiming at a paragraph, however recently one was
         // selected; falling back to the selection here is what turned pasted
-        // markup into escaped text. Placement still falls back to the
-        // selection (see _sdPasteTarget) - that part is a position, not a
-        // statement about what the markup is.
+        // markup into escaped text. Placement goes by the selection (see
+        // _sdPasteSpot) - that part is a position, not a statement about
+        // what the markup is.
         var aimed = _sdNodeFromEventTarget(t);
         if (aimed && _sdIsTextSink(aimed)) {
             e.preventDefault();
@@ -3871,7 +3957,7 @@ const StyleDesigner = (function () {
                 return;
             }
             _backfillIds({ type: 'root', props: {}, children: kids });
-            _sdPasteNodes(kids, aimed);
+            _sdPasteNodes(kids);
             sdToast('<strong>' + kids.length + '</strong> ' +
                     esc(_sdT('element(s) pasted.')), 'success', 4000);
             if (Array.isArray(res.warnings) && res.warnings.length) {
@@ -4244,20 +4330,7 @@ const StyleDesigner = (function () {
                 if (_sdClipStamp) return;
                 if (!clipboardNodes || !clipboardNodes.length) return;
                 e.preventDefault();
-                saveState();
-                var _lastPasted = null;
-                clipboardNodes.forEach(function(cn) {
-                    var _clone = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_clone);
-                    var _par = (selectedNode && selectedNode !== tree) ? (findParent(selectedNode, tree) || tree) : tree;
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _clone);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_clone); }
-                    _lastPasted = _clone;
-                });
-                selectedNodes = [];
-                if (_lastPasted) selectedNode = _lastPasted;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }
 
             // Undo / Redo (mirror main document shortcuts)
@@ -28472,22 +28545,7 @@ const StyleDesigner = (function () {
                 clipboardNodes = targets.map(function(n) { return cloneTree(n); });
             }},
             _sdGuardItem({ icon: 'bi-clipboard-check', label: _sdT('Paste'), disabled: !(clipboardNodes && clipboardNodes.length), handler: function() {
-                saveState();
-                var _lp = null;
-                var _pt = _sdPasteTarget();
-                var _par = _pt.parent;
-                clipboardNodes.forEach(function(cn) {
-                    var _cl = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_cl);
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _cl);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_cl); }
-                    _lp = _cl;
-                });
-                if (_pt.sid) _sharedDirty[_pt.sid] = true;
-                selectedNodes = [];
-                if (_lp) selectedNode = _lp;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }}, [selectedNode || node]),
             _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate') + (multi ? ' (' + targets.length + ')' : ''), handler: function() {
                 saveState();
@@ -40502,17 +40560,6 @@ const StyleDesigner = (function () {
         var p = findParent(node, tree);
         if (p) return { parent: p, sid: 0 };
         return _findParentInShared(node);
-    }
-
-    // Where a clipboard paste lands: beside the selected node — in the page
-    // tree or in the shared widget that owns it — or at the root when nothing
-    // (or the root itself) is selected. Returns { parent, sid }.
-    function _sdPasteTarget() {
-        if (selectedNode && selectedNode !== tree) {
-            var owner = _sdAnyParent(selectedNode);
-            if (owner) return owner;
-        }
-        return { parent: tree, sid: 0 };
     }
 
     // Where a palette item added without a drag (a double-click, the command
@@ -64909,22 +64956,7 @@ const StyleDesigner = (function () {
                 if (_sdClipStamp) return;
                 if (!clipboardNodes || !clipboardNodes.length) return;
                 e.preventDefault();
-                saveState();
-                var _lastP = null;
-                var _kpt = _sdPasteTarget();
-                var _par = _kpt.parent;
-                clipboardNodes.forEach(function(cn) {
-                    var _clone = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_clone);
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _clone);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_clone); }
-                    _lastP = _clone;
-                });
-                if (_kpt.sid) _sharedDirty[_kpt.sid] = true;
-                selectedNodes = [];
-                if (_lastP) selectedNode = _lastP;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }
             // Preview (Ctrl+Alt+P)
             if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openPreview(); }
