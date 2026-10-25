@@ -23,8 +23,8 @@ description: Working rules (2026-10-25) for every session: one open PR, no stack
 - About 1,000 product lines or fewer: changed lines in files under `pinegrap/`, `.min.js` bundles and language files not counted; tests, tools and memory never count. A plan's steps are cut to it when the plan is written ([[merge-flow-tools]]). A finished PR over it still lands, in a train of its own; the split is asked of the next step.
 
 ## What do I do when my PR is merged?
-- Check the queue limit (below). Under it, take your plan's next step that no open PR holds and claim it with a draft PR (`CLAUDE.md`, Claim work); with no plan, no free step or the queue over the limit, end. Before this, every session stopped at the label and had to be told to go on.
-- At most three steps in a row, then hand over through the plan file and end: a long session pays for its whole context on every wake. At most one safety check-in while a PR waits; never poll.
+- Check the queue limit (below). Under it, take your plan's next step that no open PR holds and claim it with a draft PR (`CLAUDE.md`, Claim work); with no plan, no free step or the queue over the limit, end. Before, every session stopped at the label until told to go on.
+- At most three steps in a row, then hand over through the plan file and end: a long session pays for its whole context on every wake. One safety check-in, about 10 minutes after the label; never poll.
 
 ## When may nobody start a task?
 - While more than 15 PRs are open, drafts and `merge-train/*` PRs not counted (the command is in `CLAUDE.md`, Working mode 8). Checked before the draft PR that claims the task; a session whose work is done still marks its PR ready. About 6 to 8 working sessions at a time, each on its own area (the folder table in `CLAUDE.md`); two sessions never hold the same files.
