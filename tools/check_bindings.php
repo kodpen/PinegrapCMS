@@ -29,6 +29,15 @@
  * and the form renderers build its `__page_link_<n>` keys by concatenation,
  * never as a literal key.
  *
+ * The rows of a list inside a record are offered by the list descriptor
+ * (pg_sw_list_sources() in includes/fn/widgets_lists.php, and any later
+ * includes/fn/widgets_lists_<family>.php), not by a palette of the
+ * designer: every `array('__token', …)` pair in those files counts as
+ * offered, and the providers' `'__token' =>` row keys in the same files
+ * count as produced, so a provider token missing from the descriptor still
+ * fails. A descriptor token is therefore never written as `'__x' =>` there,
+ * and a provider token never as `array('__x', …)`.
+ *
  * Usage:  php tools/check_bindings.php [directory]     (default: pinegrap/)
  * Exit:   0 when both sides agree, 1 otherwise.
  *
@@ -46,6 +55,9 @@ if (PHP_SAPI !== 'cli') {
 $designer_file = 'assets/js/style_designer.js';
 
 $renderer_glob = 'includes/fn/widgets*.php';
+
+// The list descriptor: the row tokens of lists inside a record.
+$descriptor_glob = 'includes/fn/widgets_lists*.php';
 
 // Tokens a dropdown is not expected to carry, and why.
 $exempt_suffix = '_inner_html';   // written by the section-binding pass
@@ -144,6 +156,22 @@ foreach ($palettes[0] as $index => $palette) {
 
 		foreach ($matches[1] as $token) {
 			$offered[$token][$name] = true;
+		}
+
+	}
+
+}
+
+// The list descriptor offers the row tokens of lists inside a record as
+// `array('__token', label)` pairs (pg_sw_list_sources()).
+foreach ((array)glob($root_real . '/' . $descriptor_glob) as $file) {
+
+	$source = file_get_contents($file);
+
+	if ($source !== false && preg_match_all("/array\(\s*'(__[a-z0-9_]+)'\s*,/", $source, $matches)) {
+
+		foreach ($matches[1] as $token) {
+			$offered[$token]['list descriptor'] = true;
 		}
 
 	}

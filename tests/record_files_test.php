@@ -100,6 +100,17 @@ function test_record_files_grants_public_bound_view()
 
 	$named = array('regionType' => 'form_item_view', 'source_page' => 'Articles');
 	pg_assert_true(pg_record_file_view_grants(_record_files_facts(array('cfg' => $named))), 'the form named by its page name');
+
+	// An attachments list naming no field prints an upload field not kept
+	// for office use: the decision reads that from the facts.
+	$attachments = array('type' => 'div', 'children' => array(
+		array('type' => 'loop_area', 'props' => array('source' => 'form_record.files'), 'children' => array(
+			array('type' => 'a', 'props' => array('_bindings' => array('href' => '__file_url'))),
+		)),
+	));
+	pg_assert_true(pg_record_file_view_grants(_record_files_facts(array('tree' => $attachments, 'listed' => true))), 'a listed upload');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $attachments, 'listed' => false))), 'an office use upload');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $attachments))), 'not said to be listed');
 }
 
 // Access other than public, a viewer filtered list, another form or another
@@ -203,6 +214,34 @@ function test_record_files_tree_binds()
 	// A binding keeps letters, digits, underscores and hyphens.
 	$hyphen = array('type' => 'img', 'props' => array('_bindings' => array('src' => 'cover-image')));
 	pg_assert_true(pg_record_file_tree_binds($hyphen, pg_record_file_field_identifiers('cover-image')));
+
+	// An attachments list prints the field it names, or, naming none, every
+	// upload field not kept for office use ($listed). A list of a field's
+	// values prints no file.
+	$files = function ($arg) {
+		$props = array('source' => 'form_record.files');
+		if ($arg !== null) $props['sourceArg'] = $arg;
+		return array('type' => 'div', 'children' => array(array('type' => 'loop_area', 'props' => $props, 'children' => array(
+			array('type' => 'a', 'props' => array('_bindings' => array('href' => '__file_url', 'text' => '__file_name'))),
+		))));
+	};
+	pg_assert_true(pg_record_file_tree_binds($files('cover'), $ids), 'a files list naming the field');
+	pg_assert_true(pg_record_file_tree_binds($files('Co\"ver'), $ids), 'a files list naming it, sanitised');
+	pg_assert_true(pg_record_file_tree_binds(json_encode($files('COVER')), $ids), 'in any case, stored');
+	pg_assert_false(pg_record_file_tree_binds($files('photo'), $ids), 'a files list naming another field');
+	pg_assert_false(pg_record_file_tree_binds($files('photo'), $ids, true), 'another field, listed or not');
+	pg_assert_false(pg_record_file_tree_binds($files(null), $ids), 'no arg: not a listed field');
+	pg_assert_true(pg_record_file_tree_binds($files(null), $ids, true), 'no arg: a listed field');
+	pg_assert_true(pg_record_file_tree_binds($files(''), $ids, true), 'an empty arg is none');
+	$values = array('type' => 'loop_area', 'props' => array('source' => 'form_record.values', 'sourceArg' => 'cover'), 'children' => array());
+	pg_assert_false(pg_record_file_tree_binds($values, $ids, true), 'a values list naming the field');
+	$list = array('regionType' => 'form_list_view', 'custom_form_page_id' => 12, 'access_control' => 'public');
+	$surround = array('type' => 'root', 'children' => array($files(null), array('type' => 'loop_area', 'children' => array(array('type' => 'p')))));
+	pg_assert_false(pg_record_file_widget_binds($list, $surround, $ids, true), 'a list\'s surround still prints no record');
+	$in_loop = array('type' => 'root', 'children' => array(array('type' => 'loop_area', 'children' => array($files(null)))));
+	pg_assert_true(pg_record_file_widget_binds($list, $in_loop, $ids, true), 'in the record template, listed');
+	pg_assert_false(pg_record_file_widget_binds($list, $in_loop, $ids), 'in the record template, not listed');
+	pg_assert_true(pg_record_file_widget_binds($list, $files(null), $ids, true), 'a list with no main loop draws its whole tree per record');
 }
 
 // The page tree walk finds the shared components a page places, in tree
@@ -242,6 +281,26 @@ function test_record_files_loop_children_matches_split()
 		array('type' => 'root', 'children' => array(array('type' => 'loop_area'))),
 		array('type' => 'loop_area', 'children' => array($image)),
 		array('type' => 'root', 'children' => array('text', array('type' => 'loop_area', 'children' => array($image)))),
+		// A list (a loop_area with props.source) is never the main loop, and
+		// a loop_area inside one is not either.
+		array('type' => 'root', 'children' => array(
+			array('type' => 'loop_area', 'props' => array('source' => 'form_record.files'), 'children' => array(
+				array('type' => 'loop_area', 'children' => array(array('type' => 'heading'))),
+			)),
+			array('type' => 'div', 'children' => array(array('type' => 'loop_area', 'props' => array(), 'children' => array($image)))),
+		)),
+		array('type' => 'root', 'children' => array(
+			array('type' => 'loop_area', 'props' => array('source' => 'form_record.values', 'sourceArg' => 'a'), 'children' => array($image)),
+		)),
+		array('type' => 'root', 'children' => array(
+			array('type' => 'loop_area', 'children' => array(
+				$image,
+				array('type' => 'loop_area', 'props' => array('source' => 'form_record.split', 'sourceArg' => 'tags'), 'children' => array($image)),
+			)),
+		)),
+		array('type' => 'root', 'children' => array(
+			array('type' => 'loop_area', 'props' => array('source' => ''), 'children' => array($image)),
+		)),
 	);
 	foreach ($trees as $i => $tree) {
 		$split = _split_widget_tree($tree);
@@ -405,7 +464,12 @@ function test_record_files_access_asks_pages_before_filters()
 	pg_assert_same(1, substr_count($body, 'pg_record_file_filter_verdict('), 'one verdict call');
 	pg_assert_same(1, substr_count($body, 'pg_record_file_widget_pages('), 'one page lookup call');
 	pg_assert_contains('foreach (array(pg_record_file_unique_ids($known), null) as $page_ids) {', $body);
-	pg_assert_contains('pg_record_file_widget_binds($facts[\'cfg\'], $facts[\'tree\'], $identifiers)', $body);
+	pg_assert_contains('pg_record_file_widget_binds($facts[\'cfg\'], $facts[\'tree\'], $identifiers, $listed)', $body);
+	pg_assert_contains('\'listed\'         => $listed,', $body, 'the facts carry it to the decision');
+	// An attachments list naming no field prints an upload field not kept
+	// for office use, read with the field's label.
+	pg_assert_contains('SELECT page.page_name, form_fields.label, form_fields.type, form_fields.office_use_only', $body);
+	pg_assert_contains("(string)\$form[0]['type'] === 'file upload' && (string)\$form[0]['office_use_only'] === '0'", $body);
 	pg_assert_same(false, strpos($body, 'pg_record_file_tree_binds('), 'bindings go through the widget rule');
 }
 

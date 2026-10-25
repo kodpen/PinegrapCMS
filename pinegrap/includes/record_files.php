@@ -134,12 +134,17 @@ function pg_record_file_field_identifiers($name, $label = '')
  * value binding naming it (_apply_bindings() turns each into its token), or
  * its ^^token^^ written anywhere in the tree, with or without a %%format%%
  * suffix. The classic rule is the same: the field's variable in the layout.
+ * An attachments list (a loop_area with props.source 'form_record.files',
+ * includes/fn/widgets_lists.php) prints the field its sourceArg names, and,
+ * naming none, every upload field not kept for office use: $listed says
+ * the field is one of those.
  *
  * @param mixed $tree        the decoded tree, or its JSON
  * @param array $identifiers pg_record_file_field_identifiers()
+ * @param bool  $listed      a file upload field not kept for office use
  * @return bool
  */
-function pg_record_file_tree_binds($tree, $identifiers)
+function pg_record_file_tree_binds($tree, $identifiers, $listed = false)
 {
     if (is_string($tree)) $tree = json_decode($tree, true);
     if (!is_array($tree) || !is_array($identifiers) || !$identifiers) return false;
@@ -148,6 +153,12 @@ function pg_record_file_tree_binds($tree, $identifiers)
     $stack = array($tree);
     while ($stack) {
         $node = array_pop($stack);
+        if (isset($node['type'], $node['props']['source']) && $node['type'] === 'loop_area'
+            && $node['props']['source'] === 'form_record.files') {
+            $arg = (isset($node['props']['sourceArg']) && is_scalar($node['props']['sourceArg']) && !is_bool($node['props']['sourceArg']))
+                ? mb_strtolower(preg_replace('/[^a-z0-9_\-]/i', '', (string)$node['props']['sourceArg']), 'UTF-8') : '';
+            if ($arg === '' ? $listed : isset($identifiers[$arg])) return true;
+        }
         foreach ($node as $key => $value) {
             if ($key === '_bindings' && is_array($value)) {
                 foreach ($value as $prop => $field) {
@@ -171,9 +182,11 @@ function pg_record_file_tree_binds($tree, $identifiers)
 }
 
 /**
- * The children of a tree's first loop_area, found depth first in child order
- * from the root's children: the record template _split_widget_tree() cuts
- * out. Null when the tree has none.
+ * The children of a tree's first loop_area that is not a list (a list has a
+ * non-empty string props.source and holds no main loop, so it is skipped
+ * with everything in it), found depth first in child order from the root's
+ * children: the record template _split_widget_tree() cuts out. Null when
+ * the tree has none.
  *
  * @param mixed $tree the decoded tree, or its JSON
  * @return array|null
@@ -188,6 +201,10 @@ function pg_record_file_loop_children($tree)
     while ($stack) {
         $node = array_pop($stack);
         if (!is_array($node)) continue;
+        if (isset($node['type']) && $node['type'] === 'loop_area' && isset($node['props']) && is_array($node['props'])
+            && isset($node['props']['source']) && is_string($node['props']['source']) && $node['props']['source'] !== '') {
+            continue;
+        }
         if (isset($node['type']) && $node['type'] === 'loop_area') {
             return (isset($node['children']) && is_array($node['children'])) ? $node['children'] : array();
         }
@@ -209,9 +226,10 @@ function pg_record_file_loop_children($tree)
  * @param mixed $cfg         the widget's system_region_config
  * @param mixed $tree        the decoded tree, or its JSON
  * @param array $identifiers pg_record_file_field_identifiers()
+ * @param bool  $listed      a file upload field not kept for office use
  * @return bool
  */
-function pg_record_file_widget_binds($cfg, $tree, $identifiers)
+function pg_record_file_widget_binds($cfg, $tree, $identifiers, $listed = false)
 {
     if (is_string($tree)) $tree = json_decode($tree, true);
     $types = pg_record_file_widget_types();
@@ -220,7 +238,7 @@ function pg_record_file_widget_binds($cfg, $tree, $identifiers)
         $loop = pg_record_file_loop_children($tree);
         if ($loop !== null) $tree = array('children' => $loop);
     }
-    return pg_record_file_tree_binds($tree, $identifiers);
+    return pg_record_file_tree_binds($tree, $identifiers, $listed);
 }
 
 /**
@@ -460,6 +478,8 @@ function pg_record_file_merge_filters($list_cfg, $view_cfg)
  *   cfg, tree                      the widget's config and tree
  *   form_page_id, form_page_name   the record's custom form
  *   identifiers                    pg_record_file_field_identifiers()
+ *   listed                         the field is an upload not kept for
+ *                                  office use (pg_record_file_tree_binds())
  *   pages                          the pages carrying the widget, each
  *                                  array('binned', 'draft', 'viewable')
  *   filters                        'pass', 'fail' or 'closed' for the record
@@ -484,7 +504,7 @@ function pg_record_file_view_grants($facts)
             isset($facts['form_page_name']) ? $facts['form_page_name'] : '')) return false;
     if (!pg_record_file_widget_public($cfg)) return false;
     if (!pg_record_file_widget_binds($cfg, isset($facts['tree']) ? $facts['tree'] : null,
-            isset($facts['identifiers']) ? $facts['identifiers'] : array())) return false;
+            isset($facts['identifiers']) ? $facts['identifiers'] : array(), !empty($facts['listed']))) return false;
     if (!isset($facts['filters']) || $facts['filters'] !== 'pass') return false;
     return pg_record_file_open_page(isset($facts['pages']) ? $facts['pages'] : array());
 }
@@ -837,7 +857,7 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
     $cache[$key] = false;
 
     $form = pg_record_file_rows(
-        "SELECT page.page_name, form_fields.label
+        "SELECT page.page_name, form_fields.label, form_fields.type, form_fields.office_use_only
          FROM page
          LEFT JOIN form_fields ON (form_fields.page_id = page.page_id) AND (form_fields.name = '" . escape($field_name) . "')
          WHERE page.page_id = '" . $custom_form_page_id . "'
@@ -848,6 +868,10 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
     // get_file.php sets only when it needs a date.
     if (function_exists('initialize_timezone')) initialize_timezone();
     $identifiers    = pg_record_file_field_identifiers($field_name, (string)$form[0]['label']);
+    // An attachments list that names no field prints this one when it is
+    // an upload field not kept for office use.
+    $listed         = isset($form[0]['type'], $form[0]['office_use_only'])
+        && (string)$form[0]['type'] === 'file upload' && (string)$form[0]['office_use_only'] === '0';
 
     // The widgets of this form that show its records to everyone, and the
     // detail pages its lists name.
@@ -871,6 +895,7 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
             'form_page_id'   => $custom_form_page_id,
             'form_page_name' => $form_page_name,
             'identifiers'    => $identifiers,
+            'listed'         => $listed,
             'pages'          => array(),
             'filters'        => 'fail',
         );
@@ -885,7 +910,7 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
         if (isset($candidates[$sid])) $candidates[$sid]['tree'] = (string)$row['tree_json'];
     }
     foreach ($candidates as $sid => $facts) {
-        if (!pg_record_file_widget_binds($facts['cfg'], $facts['tree'], $identifiers)) unset($candidates[$sid]);
+        if (!pg_record_file_widget_binds($facts['cfg'], $facts['tree'], $identifiers, $listed)) unset($candidates[$sid]);
     }
     if (!$candidates) return false;
 
