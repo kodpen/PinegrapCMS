@@ -869,6 +869,75 @@ function pg_comment_copy_parent_id($parent_id, $copied)
     return max(0, (int) $copied[$id]);
 }
 
+// Links to one comment. They name it with comment=<id>: a comments widget
+// opens the page of the thread that holds it and leaves the featured filter;
+// the classic comments block ignores the parameter and shows every comment
+// (comments=all) as before. The caller appends the comment's anchor,
+// '#c-<id>'.
+
+/**
+ * The query a link to one comment ends with: $query_string (what the page
+ * needs to show the comment's item: '', '?r=<code>', '?id=<n>' or
+ * '/<address name>', get_query_string_for_page_url()) followed by
+ * comments=all and comment=<id>. Pure. A query string that is not a value
+ * reads as ''.
+ *
+ * @param mixed $query_string
+ * @param mixed $comment_id
+ * @return string
+ */
+function pg_comment_view_query($query_string, $comment_id)
+{
+    $query_string = (is_scalar($query_string) && !is_bool($query_string)) ? (string) $query_string : '';
+    $id = (is_scalar($comment_id) && !is_bool($comment_id)) ? (int) $comment_id : 0;
+
+    return $query_string . ((mb_strpos($query_string, '?') === false) ? '?' : '&') . 'comments=all&comment=' . $id;
+}
+
+/**
+ * The address add_comment.php sends the writer back to after a post: the
+ * page they posted from ($path, pg_safe_redirect_path()'s answer), without
+ * the comment they answered (reply_to), the page of the thread they were on
+ * (comments_page) and an earlier comment=, then comment=<the new id>, so a
+ * comments widget opens the page that holds the new comment. While the
+ * thread has featured comments ($featured) the view shows every comment
+ * (comments=all), as before. Pure.
+ *
+ * The query is read with parse_str() and written again with
+ * http_build_query(): a value keeps its meaning, an array parameter is
+ * written with numbered keys. A path parse_url() cannot read, or one
+ * without a path, gets comment=<id> appended as it is. No fragment: the
+ * caller adds '#c-<id>'.
+ *
+ * @param mixed $path
+ * @param mixed $comment_id
+ * @param bool  $featured
+ * @return string
+ */
+function pg_comment_return_url($path, $comment_id, $featured)
+{
+    $path = (is_scalar($path) && !is_bool($path)) ? (string) $path : '';
+    $id = (is_scalar($comment_id) && !is_bool($comment_id)) ? (int) $comment_id : 0;
+    $parts = parse_url($path);
+
+    if (!is_array($parts) || !isset($parts['path'])) {
+        return $path . ((strpos($path, '?') === false) ? '?' : '&') . 'comment=' . $id;
+    }
+
+    $query = array();
+    parse_str(isset($parts['query']) ? $parts['query'] : '', $query);
+    unset($query['reply_to'], $query['comments_page'], $query['comment']);
+
+    if ($featured) {
+        unset($query['comments']);
+        $query['comments'] = 'all';
+    }
+
+    $query['comment'] = $id;
+
+    return $parts['path'] . '?' . http_build_query($query, '', '&');
+}
+
 // The thread as a page shows it. The plural pg_comments_* helpers decide what
 // a page's comment thread is: the page's comment settings, whether the thread
 // takes new comments, who reads it, which comments they read and the order
@@ -1247,6 +1316,9 @@ function _pg_comments_first_int($rows)
  *   or the filter mode reads every comment.
  * - 'parent_id': true adds comments.parent_id after created_timestamp
  *   (0 AS parent_id before 11.0.31). The block never asks.
+ * - 'thread_key': true adds comments.item_type and comments.item_id after
+ *   those, so a caller that reads every comment on a page (a null thread)
+ *   knows which thread each row belongs to. The block never asks.
  *
  * A failed query ends on the db helpers' error page.
  *
@@ -1293,6 +1365,12 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
             comments.parent_id"
             : ",
             0 AS parent_id";
+    }
+
+    if (!empty($options['thread_key'])) {
+        $parent .= ",
+            comments.item_type,
+            comments.item_id";
     }
 
     $rows = call_user_func($fetch,
