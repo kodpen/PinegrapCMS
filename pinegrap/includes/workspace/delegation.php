@@ -111,6 +111,19 @@ function ws_task_run_key($row)
 }
 
 /**
+ * Is this row on a task an application's proposal (proposals.php) rather
+ * than a run an assistant was asked for? Nobody asked for it, so the drawer
+ * draws it with the person it waits for and no instruction.
+ *
+ * @param array $row ws_ai_requests
+ * @return bool
+ */
+function ws_task_run_is_proposal($row)
+{
+    return function_exists('ws_proposal_agent_parse') && (ws_proposal_agent_parse((string) ($row['agent'] ?? '')) !== null);
+}
+
+/**
  * The assistant whose queue, limits and channel switch a key's runs go by:
  * an MCP server's alias is answered by Pinegrap AI, or by the server's own
  * agent when it is one (mcp_agent.php).
@@ -826,7 +839,7 @@ function ws_task_delegation_state($viewer, $row)
     }
 
     // A proposal an application made on the task (proposals.php).
-    if (function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse((string) ($row['agent'] ?? ''))) {
+    if (ws_task_run_is_proposal($row)) {
         return ws_proposal_request_state($row);
     }
 
@@ -938,6 +951,9 @@ function ws_task_delegation_detail($viewer, $task)
             'id'          => (int) $row['id'],
             'agent'       => $agent,
             'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant_avatar($key), 'app' => true),
+            // An application's proposal: asked_by is the person its cards
+            // wait for, not somebody who asked for it.
+            'proposal'    => ws_task_run_is_proposal($row),
             'asked_by'    => $people[(int) $row['requested_by']]['name'] ?? ws_person_name($row['requested_by']),
             'asked_at'    => ws_time_label($row['created_at']),
             'instruction' => ((string) $row['note_text'] !== '') ? ws_render_body((string) $row['note_text'], $refs) : '',
@@ -1183,6 +1199,7 @@ function ws_delegation_js_strings()
         'dg_take_back'     => lang('Take the task back'),
         'dg_take_confirm'  => lang('Take the task back from the assistant? A run under way is stopped.'),
         'dg_asked'         => ws_js_template('{var:1} asked, {var:2}', 2),
+        'dg_proposed'      => ws_js_template('Proposed for {var:1}, {var:2}', 2),
         'dg_no_instruction' => lang('No instruction: the task itself.'),
         'dg_none'          => ($alias !== '')
             ? lang(array('string' => 'No assistant has worked on this task yet. A note that writes @ai, @Claude or an MCP server\'s alias such as {var:1} asks one too.', 'vars' => $alias))

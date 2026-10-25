@@ -381,19 +381,27 @@
             row.appendChild(face(h, item.assistant.avatar, 'ws-task-note-avatar'));
 
             meta.appendChild(h.el('b', '', item.assistant.name));
-            meta.appendChild(h.el('span', '', h.t('dg_asked', item.asked_by, item.asked_at)));
-            main.appendChild(meta);
 
-            var asked = h.el('div', 'ws-task-delegate-ask');
-
-            if (item.instruction) {
-                html(asked, item.instruction);
+            // An application's proposal was asked for by nobody: it names
+            // the person its cards wait for, and has no instruction.
+            if (item.proposal) {
+                meta.appendChild(h.el('span', '', h.t('dg_proposed', item.asked_by, item.asked_at)));
+                main.appendChild(meta);
             } else {
-                asked.textContent = h.t('dg_no_instruction');
-                asked.classList.add('text-body-secondary');
-            }
+                meta.appendChild(h.el('span', '', h.t('dg_asked', item.asked_by, item.asked_at)));
+                main.appendChild(meta);
 
-            main.appendChild(asked);
+                var asked = h.el('div', 'ws-task-delegate-ask');
+
+                if (item.instruction) {
+                    html(asked, item.instruction);
+                } else {
+                    asked.textContent = h.t('dg_no_instruction');
+                    asked.classList.add('text-body-secondary');
+                }
+
+                main.appendChild(asked);
+            }
 
             if (item.answer) {
                 main.appendChild(html(h.el('div', 'ws-msg-body ws-task-delegate-answer'), item.answer));

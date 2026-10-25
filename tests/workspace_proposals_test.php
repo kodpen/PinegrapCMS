@@ -37,6 +37,21 @@ function pg_test_ws_proposals_code($function)
 	return $code;
 }
 
+// The part of a piece of code from one marker to the next, '' when the
+// first is not there.
+function pg_test_ws_proposals_between($code, $from, $to)
+{
+	$start = strpos($code, $from);
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($code, $to, $start + strlen($from));
+
+	return ($end === false) ? substr($code, $start) : substr($code, $start, $end - $start);
+}
+
 // An OAuth connection is kept under its client, since every client writes
 // through the one OAuth application; a key under its application; anything
 // else under none.
@@ -232,6 +247,35 @@ function test_ws_task_delegation_open_row()
 	pg_assert_same($sent, ws_task_delegation_open_row(array($sent, $proposal)), 'a run waiting for its approval is open');
 	pg_assert_same(null, ws_task_delegation_open_row(array($proposal, $earlier)), 'nothing open');
 	pg_assert_same(null, ws_task_delegation_open_row(array()));
+}
+
+// A proposal on a task is no run anybody asked for: the drawer marks it, and
+// draws the person it waits for, with no "asked" line and no instruction.
+function test_ws_task_run_is_proposal()
+{
+	pg_assert_true(ws_task_run_is_proposal(array('agent' => 'oauth:5')), 'an OAuth connection\'s');
+	pg_assert_true(ws_task_run_is_proposal(array('agent' => 'app:12')), 'a key\'s');
+
+	foreach (array('claude', 'ai', 'mcp', '') as $agent) {
+		pg_assert_false(ws_task_run_is_proposal(array('agent' => $agent)), var_export($agent, true) . ' is a run');
+	}
+
+	pg_assert_false(ws_task_run_is_proposal(array()), 'a row from before the column');
+
+	$detail = pg_test_ws_proposals_code('ws_task_delegation_detail');
+
+	pg_assert_contains('ws_task_run_is_proposal(', $detail, 'the drawer asks it of every row');
+	pg_assert_contains("'proposal'", $detail, 'and sends it with the run');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_delegate.js');
+	$run = pg_test_ws_proposals_between($script, 'function run(item)', 'function composer()');
+
+	pg_assert_true($run !== '', 'run() is found');
+	pg_assert_contains('item.proposal', $run, 'run() draws a proposal apart');
+	pg_assert_contains("'dg_proposed'", $run, 'with its own line');
+
+	pg_assert_true(preg_match("/'dg_proposed'\\s*=>\\s*ws_js_template\\('((?:[^'\\\\]|\\\\.)*)'/", pg_test_ws_proposals_code('ws_delegation_js_strings'), $match) === 1, 'the line is defined');
+	pg_assert_true(lang(array('string' => stripslashes($match[1] ?? ''), 'language' => 'tr', 'if_known' => true)) !== null, 'and known in tr.json');
 }
 
 // Every slice of a bulk change after the first is written in a request of

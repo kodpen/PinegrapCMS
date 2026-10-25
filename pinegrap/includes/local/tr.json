@@ -28183,5 +28183,6 @@
     "An assistant is working on this task. Propose the changes when its run has ended, or in a channel.": "Bu görev üzerinde bir asistan çalışıyor. Değişiklikleri onun çalışması bitince ya da bir kanalda önerin.",
     "Only the person's own team devices session (POST /auth/login) can apply or set aside a change an application proposed; an application key or an OAuth connection cannot, whichever application proposed it.": "Bir uygulamanın önerdiği değişikliği yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) uygulayabilir ya da bir kenara bırakabilir; uygulama anahtarı ya da OAuth bağlantısı, öneriyi hangi uygulama yapmış olursa olsun, bunu yapamaz.",
     "The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.": "Bu önerinin yapıldığı kişi bu türde bir kaydı ({var:1}) değiştiremez, bu yüzden önerilemez.",
-    "Applied when {var:1}, to whom {var:2} proposed it, approves": "{var:2} bunu {var:1} için önerdi; {var:1} onaylayınca uygulanır"
+    "Applied when {var:1}, to whom {var:2} proposed it, approves": "{var:2} bunu {var:1} için önerdi; {var:1} onaylayınca uygulanır",
+    "Proposed for {var:1}, {var:2}": "{var:1} için önerildi, {var:2}"
 }
