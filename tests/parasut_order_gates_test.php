@@ -72,18 +72,19 @@ function parasut_order_gates_test_at($needle, $haystack)
 }
 
 // erp_invoices rows of an order's sales invoice, as the ERP leaves them: sent
-// through its Paraşüt provider (edoc_external_id is the sales invoice's id,
-// the driver keeps it in parasut_invoice_id too), a send that got no answer
-// (the driver's mark with the date and buyer card the request carried), sent
-// through another provider, and issued without a provider.
+// through its Paraşüt provider and accepted by GİB (edoc_external_id is the
+// sales invoice's id, the driver keeps it in parasut_invoice_id too), a draft
+// the driver wrote, a send that got no answer (the driver's mark with the
+// date and buyer card the request carried), sent through another provider,
+// and issued without a provider.
 function parasut_order_gates_test_erp_rows()
 {
 	return array(
-		'parasut' => array('full_number' => 'SF2026000041', 'edoc_provider' => 'parasut', 'edoc_external_id' => '1104358636', 'parasut_invoice_id' => '1104358636'),
-		'parasut column only' => array('full_number' => 'SF2026000042', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => '1104358662'),
-		'unsure' => array('full_number' => 'SF2026000043', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => '?2026-10-19:1074160067'),
-		'other' => array('full_number' => 'SF2026000044', 'edoc_provider' => 'isbasi', 'edoc_external_id' => '8812', 'parasut_invoice_id' => ''),
-		'paper' => array('full_number' => 'SF2026000045', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => ''),
+		'parasut' => array('full_number' => 'SF2026000041', 'edoc_provider' => 'parasut', 'edoc_external_id' => '1104358636', 'parasut_invoice_id' => '1104358636', 'edoc_status' => 'accepted'),
+		'parasut column only' => array('full_number' => 'SF2026000042', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => '1104358662', 'edoc_status' => 'created'),
+		'unsure' => array('full_number' => 'SF2026000043', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => '?2026-10-19:1074160067', 'edoc_status' => 'error'),
+		'other' => array('full_number' => 'SF2026000044', 'edoc_provider' => 'isbasi', 'edoc_external_id' => '8812', 'parasut_invoice_id' => '', 'edoc_status' => 'sent'),
+		'paper' => array('full_number' => 'SF2026000045', 'edoc_provider' => '', 'edoc_external_id' => '', 'parasut_invoice_id' => '', 'edoc_status' => 'none'),
 	);
 }
 
@@ -125,16 +126,16 @@ function test_parasut_order_gates_erp_invoice_record()
 {
 	$rows = parasut_order_gates_test_erp_rows();
 
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041'), parasut_order_erp_invoice_record($rows['parasut']));
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358662', 'number' => 'SF2026000042'), parasut_order_erp_invoice_record($rows['parasut column only']));
-	pg_assert_same(array('state' => 'unsure', 'id' => '', 'number' => 'SF2026000043'), parasut_order_erp_invoice_record($rows['unsure']));
-	pg_assert_same(array('state' => 'other', 'id' => '', 'number' => 'SF2026000044'), parasut_order_erp_invoice_record($rows['other']));
-	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => ''), parasut_order_erp_invoice_record($rows['paper']));
-	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => ''), parasut_order_erp_invoice_record(null));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041', 'edoc_status' => 'accepted'), parasut_order_erp_invoice_record($rows['parasut']));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358662', 'number' => 'SF2026000042', 'edoc_status' => 'created'), parasut_order_erp_invoice_record($rows['parasut column only']));
+	pg_assert_same(array('state' => 'unsure', 'id' => '', 'number' => 'SF2026000043', 'edoc_status' => 'error'), parasut_order_erp_invoice_record($rows['unsure']));
+	pg_assert_same(array('state' => 'other', 'id' => '', 'number' => 'SF2026000044', 'edoc_status' => 'sent'), parasut_order_erp_invoice_record($rows['other']));
+	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => ''), parasut_order_erp_invoice_record($rows['paper']));
+	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => ''), parasut_order_erp_invoice_record(null));
 
 	// The record the provider named wins over a mark a later send left.
 	$resent = array_merge($rows['parasut'], array('parasut_invoice_id' => '?2026-10-20:1074160067'));
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041'), parasut_order_erp_invoice_record($resent));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041', 'edoc_status' => 'accepted'), parasut_order_erp_invoice_record($resent));
 }
 
 // The order's ERP invoice is read as the ERP reads it: its one sales
@@ -144,7 +145,7 @@ function test_parasut_order_gates_erp_invoice_reads_the_orders_sales_invoice()
 	$body = parasut_order_gates_test_source('parasut_order_erp_invoice');
 
 	pg_assert_contains("waf_table_has_column('erp_invoices', 'edoc_external_id')", $body);
-	pg_assert_contains("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id FROM erp_invoices", $body);
+	pg_assert_contains("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id, edoc_status FROM erp_invoices", $body);
 	pg_assert_contains("WHERE order_id = '\" . (int) \$order_id . \"' AND direction = 'sales' AND doc_type = 'invoice'", $body);
 	pg_assert_contains("AND status <> 'cancelled'", $body);
 	pg_assert_contains('return parasut_order_erp_invoice_record(', $body);
@@ -345,6 +346,51 @@ function test_parasut_order_gates_row_badge_names_the_erps_invoice()
 	pg_assert_false(strpos($odd, '<b>') !== false, 'number escaped');
 	pg_assert_contains('&lt;b&gt;', $odd);
 	pg_assert_contains('&quot;1&quot;', $odd);
+}
+
+// The ERP's badge takes the colour of the ERP invoice's e-document state and
+// names that state: green only once GİB accepted the document. A draft at the
+// provider, a document still awaiting GİB, an error, a rejection or a send
+// that got no answer is not shown as filed.
+function test_parasut_order_gates_erp_badge_follows_the_edoc_state()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
+
+	$labels = erp_edoc_status_labels();
+	$rows = parasut_order_gates_test_erp_rows();
+	$classes = array(
+		'accepted' => 'bg-success',
+		'sent' => 'bg-primary',
+		'created' => 'bg-warning text-dark',
+		'error' => 'bg-danger',
+		'rejected' => 'bg-danger',
+		'cancelled' => 'bg-secondary',
+		'' => 'bg-secondary',
+	);
+
+	foreach (array('parasut', 'other') as $kind) {
+		foreach ($classes as $status => $class) {
+			$row = $rows[$kind];
+			$row['edoc_status'] = $status;
+			$record = parasut_order_erp_invoice_record($row);
+			$badge = parasut_order_erp_invoice_badge($record);
+
+			pg_assert_same($status, $record['edoc_status'], $kind . ' ' . $status . ': the record keeps the state');
+			pg_assert_contains('<span class="badge ' . $class . '">' . h(lang('Invoiced through the ERP')) . '</span>', $badge, $kind . ' ' . $status);
+
+			if ($status !== '') {
+				pg_assert_contains(h($labels[$status][0]), $badge, $kind . ' ' . $status . ': the state is named');
+			}
+		}
+	}
+
+	// A send that got no answer is a warning, whatever state the row was left in.
+	$unsure = parasut_order_erp_invoice_badge(parasut_order_erp_invoice_record($rows['unsure']));
+	pg_assert_contains('<span class="badge bg-warning text-dark">' . h(lang('Invoiced through the ERP')) . '</span>', $unsure);
+	pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
+
+	// The order screen reads the state with the rest of the row.
+	pg_assert_contains('SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id, edoc_status FROM erp_invoices', parasut_order_gates_test_source('parasut_order_erp_invoice'));
 }
 
 // The order screen: a post refuses a status before the contact and VKN/TCKN

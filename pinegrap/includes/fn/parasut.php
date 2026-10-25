@@ -1453,40 +1453,45 @@ function parasut_order_status_refusal($status, $action, $billable = null)
  *   hold the record (erp_edoc_parasut_unsure_read());
  * - 'other': a record of another provider, the sale's e-document at GİB;
  * - 'none': no ERP invoice, or one never handed to a provider.
+ * The ERP invoice's e-document state (erp_invoices.edoc_status) comes along,
+ * so that the order screen does not show a draft or a failed document as
+ * filed.
  *
  * @param array|null $row  erp_invoices row (full_number, edoc_provider, edoc_external_id,
- *                         parasut_invoice_id) of the order's sales invoice; null for none
+ *                         parasut_invoice_id, edoc_status) of the order's sales invoice;
+ *                         null for none
  * @return array ['state' => string, 'id' => string (the Paraşüt id when 'parasut'),
- *                'number' => string (the ERP invoice's number)]
+ *                'number' => string (the ERP invoice's number), 'edoc_status' => string]
  */
 function parasut_order_erp_invoice_record($row)
 {
     if (!is_array($row)) {
-        return array('state' => 'none', 'id' => '', 'number' => '');
+        return array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => '');
     }
 
     $provider = trim((string) ($row['edoc_provider'] ?? ''));
     $external = trim((string) ($row['edoc_external_id'] ?? ''));
     $kept = trim((string) ($row['parasut_invoice_id'] ?? ''));
     $number = trim((string) ($row['full_number'] ?? ''));
+    $edoc_status = trim((string) ($row['edoc_status'] ?? ''));
 
     if (($external !== '') && ($provider === 'parasut')) {
-        return array('state' => 'parasut', 'id' => $external, 'number' => $number);
+        return array('state' => 'parasut', 'id' => $external, 'number' => $number, 'edoc_status' => $edoc_status);
     }
 
     if (($kept !== '') && !parasut_order_invoice_unsure($kept)) {
-        return array('state' => 'parasut', 'id' => $kept, 'number' => $number);
+        return array('state' => 'parasut', 'id' => $kept, 'number' => $number, 'edoc_status' => $edoc_status);
     }
 
     if ($kept !== '') {
-        return array('state' => 'unsure', 'id' => '', 'number' => $number);
+        return array('state' => 'unsure', 'id' => '', 'number' => $number, 'edoc_status' => $edoc_status);
     }
 
     if ($external !== '') {
-        return array('state' => 'other', 'id' => '', 'number' => $number);
+        return array('state' => 'other', 'id' => '', 'number' => $number, 'edoc_status' => $edoc_status);
     }
 
-    return array('state' => 'none', 'id' => '', 'number' => '');
+    return array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => '');
 }
 
 /**
@@ -1504,7 +1509,7 @@ function parasut_order_erp_invoice($order_id)
         return parasut_order_erp_invoice_record(null);
     }
 
-    $row = db_item("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id FROM erp_invoices
+    $row = db_item("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id, edoc_status FROM erp_invoices
         WHERE order_id = '" . (int) $order_id . "' AND direction = 'sales' AND doc_type = 'invoice'
           AND status <> 'cancelled'
         ORDER BY id ASC
@@ -2803,10 +2808,34 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
 }
 
 /**
+ * The Bootstrap colour of the status row's ERP badge: the ERP's own colour
+ * for the invoice's e-document state (erp_edoc_status_labels()), so that
+ * only a document GİB accepted is green; a draft at the provider is a
+ * warning, a document awaiting GİB is blue, an error or a rejection red. A
+ * send that got no answer is a warning whatever state the row was left in.
+ * A state the ERP does not name is grey.
+ *
+ * @param array $record  parasut_order_erp_invoice_record()
+ * @return string 'success' | 'primary' | 'warning' | 'danger' | 'secondary' | ...
+ */
+function parasut_order_erp_invoice_tone($record)
+{
+    if ((string) ($record['state'] ?? 'none') === 'unsure') {
+        return 'warning';
+    }
+
+    $labels = function_exists('erp_edoc_status_labels') ? erp_edoc_status_labels() : array();
+    $status = (string) ($record['edoc_status'] ?? '');
+
+    return isset($labels[$status][1]) ? (string) $labels[$status][1] : 'secondary';
+}
+
+/**
  * The status row's badge for an order the ERP invoiced through an
  * e-document provider (parasut_order_erp_invoice_record()): the ERP
- * invoice's number, with the Paraşüt id its provider wrote, or the warning
- * to check Paraşüt after a send that got no answer.
+ * invoice's number and its e-document state, with the Paraşüt id its
+ * provider wrote, or the warning to check Paraşüt after a send that got no
+ * answer; coloured by parasut_order_erp_invoice_tone().
  *
  * @param array $record  parasut_order_erp_invoice_record(), state not 'none'
  * @return string HTML
@@ -2814,7 +2843,14 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
 function parasut_order_erp_invoice_badge($record)
 {
     $state = (string) ($record['state'] ?? 'none');
+    $status = (string) ($record['edoc_status'] ?? '');
+    $labels = function_exists('erp_edoc_status_labels') ? erp_edoc_status_labels() : array();
+    $tone = parasut_order_erp_invoice_tone($record);
     $facts = array(h((string) ($record['number'] ?? '')));
+
+    if (($state !== 'unsure') && isset($labels[$status][0])) {
+        $facts[] = h((string) $labels[$status][0]);
+    }
 
     if ($state === 'parasut') {
         $facts[] = lang('Parasut ID') . ': ' . h((string) $record['id']);
@@ -2822,7 +2858,7 @@ function parasut_order_erp_invoice_badge($record)
         $facts[] = h(lang('Check Paraşüt'));
     }
 
-    return '<span class="badge bg-success">' . h(lang('Invoiced through the ERP')) . '</span>'
+    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' text-dark' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
         . ' <small class="text-muted">' . implode(' · ', $facts) . '</small>';
 }
 
@@ -3129,7 +3165,8 @@ function _parasut_stored_record_check($type, $id)
 /**
  * Clears an order's Paraşüt id column for a record Paraşüt no longer holds,
  * only while the column still holds that id: a press running beside this
- * one may have written a new record's id meanwhile.
+ * one may have written a new record's id meanwhile. A sales invoice clears
+ * orders.parasut_exported with it.
  *
  * @param int    $order_id  orders.id
  * @param string $column    'parasut_invoice_id' or 'parasut_shipment_id'
@@ -3142,7 +3179,16 @@ function _parasut_order_forget_record($order_id, $column, $id)
         return;
     }
 
-    db("UPDATE orders SET " . $column . " = '' WHERE id = '" . escape($order_id) . "' AND TRIM(" . $column . ") = '" . escape(trim((string) $id)) . "'");
+    $set = $column . " = ''";
+
+    // A sales invoice that is gone takes its e-document's confirmation
+    // (orders.parasut_exported) with it: the invoice that replaces it is
+    // "Sent" only once its own conversion is seen to finish.
+    if ($column === 'parasut_invoice_id') {
+        $set .= ', parasut_exported = 0';
+    }
+
+    db("UPDATE orders SET " . $set . " WHERE id = '" . escape($order_id) . "' AND TRIM(" . $column . ") = '" . escape(trim((string) $id)) . "'");
 }
 
 /**
