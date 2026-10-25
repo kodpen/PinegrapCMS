@@ -311,7 +311,10 @@ function pg_consent_log_record(array $event)
  * The SQL condition that finds a person's rows: by token (given, or made from
  * 'email'), user or contact, any of them.
  *
- * @param array $person  any of email, person_token, user_id, contact_id
+ * @param array $person  any of email, person_token, user_id, contact_id, and
+ *                       previous_email or previous_token: an address the
+ *                       person had before this request, whose rows are
+ *                       theirs as well
  * @return string  '' when the person has no identifier
  */
 function pg_consent_log_person_where(array $person)
@@ -324,6 +327,14 @@ function pg_consent_log_person_where(array $person)
 
     if ($token !== '') {
         $conditions[] = "person_token = '" . $token . "'";
+    }
+
+    $previous = (isset($person['previous_token']) && pg_privacy_is_person_token($person['previous_token']))
+        ? $person['previous_token']
+        : pg_privacy_person_token(isset($person['previous_email']) ? $person['previous_email'] : '');
+
+    if (($previous !== '') && ($previous !== $token)) {
+        $conditions[] = "person_token = '" . $previous . "'";
     }
 
     foreach (array('user_id', 'contact_id') as $column) {
@@ -467,7 +478,9 @@ function pg_consent_log_changes(array $current, array $answers)
  * answers in their own request.
  *
  * @param array  $person   any of email (the address after the save),
- *                         person_token, user_id, contact_id
+ *                         person_token, user_id, contact_id, and
+ *                         previous_email: the address before the save, whose
+ *                         rows are read with the person's but never written
  * @param array  $answers  "channel:purpose" => bool, true = yes
  * @param string $source   a pg_consent_log_sources() value
  * @return int  rows written
@@ -475,9 +488,13 @@ function pg_consent_log_changes(array $current, array $answers)
 function pg_consent_log_answers(array $person, array $answers, $source)
 {
     // Only the identifiers: the event's own fields come from the answer and the request.
-    $person = array_intersect_key($person, array_flip(array('email', 'person_token', 'user_id', 'contact_id')));
+    $person = array_intersect_key($person, array_flip(array('email', 'person_token', 'user_id', 'contact_id', 'previous_email')));
 
-    if (!$answers || (pg_consent_log_person_where($person) === '') || !pg_consent_log_ready()) {
+    // A row written keeps the person as they are after the save.
+    $stored = $person;
+    unset($stored['previous_email']);
+
+    if (!$answers || (pg_consent_log_person_where($stored) === '') || !pg_consent_log_ready()) {
         return 0;
     }
 
@@ -485,7 +502,7 @@ function pg_consent_log_answers(array $person, array $answers, $source)
     $written = 0;
 
     foreach ($changes as $change) {
-        if (pg_consent_log_record($change + array('source' => (string) $source) + $person) > 0) {
+        if (pg_consent_log_record($change + array('source' => (string) $source) + $stored) > 0) {
             $written++;
         }
     }

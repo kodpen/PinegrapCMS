@@ -811,7 +811,10 @@ function pg_member_activate($form, $opts = array())
     }
 
     // The member's own contact, matched above by number and surname. Its
-    // address becomes the one the member just typed.
+    // address becomes the one the member just typed; the one it had is kept
+    // for the consent log below.
+    $previous_email = (string) db_value("SELECT email_address FROM contacts WHERE id = '" . $contact_id . "'");
+
     db("UPDATE contacts
         SET
             first_name = '" . escape($form->get_field_value('first_name')) . "',
@@ -856,11 +859,12 @@ function pg_member_activate($form, $opts = array())
         pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
     }
 
-    // The marketing answer (see pg_member_register()). The contact id finds
-    // what the member answered under the address the contact had before.
+    // The marketing answer (see pg_member_register()). The contact id and the
+    // address the contact had before find what the member answered earlier;
+    // a one-click unsubscribe is recorded under the address alone.
     if (!empty($opts['opt_in_asked'])) {
         pg_consent_log_answers(
-            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
             array('email:marketing' => ($opt_in === '1')),
             'signup');
     }

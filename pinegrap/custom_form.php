@@ -573,6 +573,12 @@ if ($liveform->check_form_errors() == false) {
     // answer: set by the last field bound to opt_in, as that one is stored.
     $contact_opt_in_asked = false;
 
+    // The query of the address the form was drawn on: ?show_<field id>=false
+    // there draws the field hidden, and it still posts its default
+    // (get_form_info()).
+    $send_to_query = array();
+    parse_str((string) parse_url((string) $liveform->get_field_value('send_to'), PHP_URL_QUERY), $send_to_query);
+
     // Only set when this submission creates a user account; the notification
     // further below is written either way.
     $username = '';
@@ -781,11 +787,15 @@ if ($liveform->check_form_errors() == false) {
                     }
                     $sql_update_contact .= $field['contact_field'] . " = '" . escape($liveform->get_field_value($field['id'])) . "', ";
 
+                    // Only a choice the visitor saw holds the visitor's answer.
                     // An office-use-only field is filled by staff in edit mode
-                    // or carries its default, so only a field every visitor
-                    // sees holds the visitor's answer.
+                    // or carries its default, a designed hidden input is
+                    // stored as a text box, and a field hidden through the
+                    // address posts its default.
                     if ($field['contact_field'] == 'opt_in') {
-                        $contact_opt_in_asked = ($field['office_use_only'] == 0);
+                        $contact_opt_in_asked = ($field['office_use_only'] == 0)
+                            && pg_cf_type_has_options($field['type'])
+                            && !(isset($send_to_query['show_' . $field['id']]) && ($send_to_query['show_' . $field['id']] === 'false'));
                     }
                 }
             }

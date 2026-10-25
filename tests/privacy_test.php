@@ -184,6 +184,13 @@ function test_consent_log_person_where()
 	pg_assert_same("(contact_id = '12')", pg_consent_log_person_where(array('person_token' => "x' OR '1'='1", 'user_id' => "0 OR 1=1", 'contact_id' => '12abc')), 'only what is an identifier');
 	pg_assert_same('', pg_consent_log_person_where(array('email' => 'ali@example.com')), 'no token without a key');
 	pg_assert_same('', pg_consent_log_person_where(array()), 'nobody');
+
+	$previous = str_repeat('1e', 32);
+
+	pg_assert_same("(person_token = '" . $token . "' OR person_token = '" . $previous . "' OR user_id = '5')", pg_consent_log_person_where(array('person_token' => $token, 'previous_token' => $previous, 'user_id' => 5)), 'the address before a save');
+	pg_assert_same("(person_token = '" . $token . "')", pg_consent_log_person_where(array('person_token' => $token, 'previous_token' => $token)), 'an unchanged address once');
+	pg_assert_same("(person_token = '" . $previous . "')", pg_consent_log_person_where(array('previous_token' => $previous)), 'only the address before');
+	pg_assert_same('', pg_consent_log_person_where(array('previous_token' => "x' OR '1'='1", 'previous_email' => 'ali@example.com')), 'no earlier token');
 }
 
 // The newest row of each channel and purpose wins, by time and then id, whatever the order.
