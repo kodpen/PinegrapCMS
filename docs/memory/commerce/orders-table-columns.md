@@ -12,6 +12,7 @@ description: Real column names of orders and order_items (tax, shipping, user_id
 | `subtotal`, `discount`, `surcharge`, `total` | (correct) |
 | `user_id` | `user` (FK to users, NOT orders.user) |
 | `order_date` | int unix timestamp, not a datetime string: `(int)$order['order_date']`, not `strtotime()` |
+- A counter sale (`type = 'local'`) writes the cashier into `user_id` (`local_sale_complete()`); its buyer is `contact_id` / `erp_account_id`. A reader that finds a buyer's orders by `user_id` adds `type <> 'local'` (`ws_customer_order_where()`).
 - `order_items` has NO `item_number` (SKU): take `products.name` ("Product ID / SKU") via a JOIN. `products.code` is NOT a code: it holds the product's image block HTML (`^^image_url^^` loop, the "Code" box of the product screen).
 
 ## Which columns exist only on upgraded installs?

@@ -581,6 +581,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_ai_summary_inject($content);
     }
 
+    // ── Favourite hearts ────────────────────────────────────────────────────────
+    // A catalog widget's heart (data-pg-wishlist) brings the script that
+    // fills it from the visitor's list and saves to it (pg_wishlist_inject()),
+    // checked once everything is drawn in. Not in an e-mail.
+    if (!$email && strpos($content, 'data-pg-wishlist') !== false && function_exists('pg_wishlist_inject')) {
+        $content = pg_wishlist_inject($content);
+    }
+
     // ── Rich-text editor for designed forms ─────────────────────────────────────
     // A designed form's rich-text text areas carry data-pg-rich-text; one
     // editor for all of them is loaded once everything is drawn in, so a
@@ -1166,8 +1174,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $content = $output_javascript_and_css . $content;
         }
         
-        // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript
-        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '')) {
+        // if Google Analytics is enabled and there is a Web Property ID, then add Google Analytics JavaScript.
+        // Not in a background render (the SEO pass, the prototype frame): that is nobody's visit, and the
+        // tag would report a page view with the address the render was asked by.
+        if ((GOOGLE_ANALYTICS == TRUE) && (GOOGLE_ANALYTICS_WEB_PROPERTY_ID != '') && !pg_seo_rendering()) {
 
             $output_ecommerce_tracking_data = '';
 

@@ -11,7 +11,7 @@ description: Shared names and single owners across the Workspace growth plans (2
   - ERP: kind `erp_quote`, "Sales quote" / "Satış teklifi", tag prefixes `satis`, `salesquote` (table `erp_quotes` exists).
   - Site: kind `cart_quote`, `cart_quotes` / `cart_quote_items` (proposed), events `cart_quote.*`, "Cart quote" / "Sepet teklifi", prefixes `sepet`, `cartquote`.
   - "Offer" (`offers`, a discount) is a third thing and keeps `teklif` until the owner decides.
-- Registries: record kinds `ws_record_kinds()` (proposed, refs.php); slash commands `ws_commands()` (proposed, commands.php); agents `ws_assistants()` (delegation.php).
+- Registries: record kinds `ws_record_kinds()` (refs.php); slash commands `ws_commands()` (commands.php); agents `ws_assistants()` (delegation.php).
 - Engine: "scheduled action" (`ws_scheduled_actions`, kind ENUM action/message stays), "step" (`ws_scheduled_do()`), "rule" (at, event, trigger); "flow" is a published graph of boxes on the flows engine (a hidden scheduled action is its trigger); "workflow mode" compiles table rows into a flow's task boxes. `ws_event()` queues triggers in `ws_events_in`; `ws_events` is the calendar.
 - Agent keys: `oauth:<oauth_clients.id>` (integer), `app:<api_apps.id>`, `model:<id>`, today's `mcp` + `mcp_server_id`; vocabulary owned by plans/workspace-agent-handles.md.
 - "Change card" is a `ws_ai_changes` row; "task drafts" are `ws_ai_drafts`.
