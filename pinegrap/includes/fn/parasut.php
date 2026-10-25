@@ -1375,7 +1375,7 @@ function parasut_shipment_invoice_link($invoice_id, $get)
     if (!is_bool($included)) {
         return array('invoice_id' => '', 'error' => lang(array(
             'string' => 'Paraşüt could not be asked whether this order\'s sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.',
-            'vars' => array($invoice_id, _parasut_extract_error((array) $read)),
+            'vars' => array($invoice_id, parasut_refusal_words(_parasut_extract_error((array) $read))),
         )));
     }
 

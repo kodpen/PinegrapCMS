@@ -240,7 +240,8 @@ function test_parasut_stale_ids_shipment_invoice_link_leaves_a_deleted_invoice_o
 // Any other answer than 200 or a 404 naming the invoice as not found still
 // refuses E-Shipment in so many words: the 401 of a company the user cannot
 // reach and a 404 that names no record, which leave the invoice id in
-// place, among them.
+// place, among them. Paraşüt's words go in without their closing period, so
+// "No route matches." does not print "..".
 function test_parasut_stale_ids_shipment_invoice_link_still_refuses_without_an_answer()
 {
 	$answers = parasut_stale_ids_test_answers();
@@ -251,8 +252,9 @@ function test_parasut_stale_ids_shipment_invoice_link_still_refuses_without_an_a
 
 		pg_assert_same(array('invoice_id' => '', 'error' => lang(array(
 			'string' => 'Paraşüt could not be asked whether this order\'s sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.',
-			'vars' => array('77', _parasut_extract_error($answers[$label])),
+			'vars' => array('77', parasut_refusal_words(_parasut_extract_error($answers[$label]))),
 		))), $link, $label);
+		pg_assert_true(strpos($link['error'], '..') === false, $label . ': one period after the words');
 	}
 }
 

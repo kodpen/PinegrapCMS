@@ -149,8 +149,9 @@ function test_parasut_shipment_invoice_link_names_an_invoice_without_shipment()
 }
 
 // A read that fails, or an answer that does not say, is no answer: E-Shipment
-// is refused with Paraşüt's words rather than sent on a guess. An invoice
-// deleted on Paraşüt's screen (404) is no invoice: parasut_stale_ids_test.php.
+// is refused with Paraşüt's words (without their closing period) rather than
+// sent on a guess. An invoice deleted on Paraşüt's screen (404) is no
+// invoice: parasut_stale_ids_test.php.
 function test_parasut_shipment_invoice_link_refuses_when_parasut_does_not_say()
 {
 	$answers = array(
@@ -168,7 +169,7 @@ function test_parasut_shipment_invoice_link_refuses_when_parasut_does_not_say()
 		pg_assert_same('', $link['invoice_id'], $label);
 		pg_assert_same(lang(array(
 			'string' => 'Paraşüt could not be asked whether this order\'s sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.',
-			'vars' => array('77', _parasut_extract_error($answer)),
+			'vars' => array('77', parasut_refusal_words(_parasut_extract_error($answer))),
 		)), $link['error'], $label);
 	}
 }

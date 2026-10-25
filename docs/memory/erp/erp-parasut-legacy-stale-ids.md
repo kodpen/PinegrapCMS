@@ -10,7 +10,7 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 - Read first: `parasut_stored_record_check($type, $id, $get)` (GET `sales_invoices/{id}` or `shipment_documents/{id}`), judged by `parasut_stored_record_state($read, $type)`:
   - 200 `kept`: as before (a second record refused; Create Invoice names the document; E-Shipment judges `shipment_included`).
   - `gone` only for a 404 with an error titled `Record was not found` whose detail starts with `SalesInvoice-` / `ShipmentDocument-` (the kind read): left out, the id cleared (`_parasut_order_forget_record()`, only while the column holds it), the screen told.
-  - Anything else `unknown`: refused. Own id: "... could not be asked whether it is still there: <Paraşüt's words>" (one closing period dropped, `parasut_refusal_words()`); Create Invoice's read of the document likewise; E-Shipment's read of the invoice: its old refusal.
+  - Anything else `unknown`: refused. Own id: "... could not be asked whether it is still there: <Paraşüt's words>" (one closing period dropped, `parasut_refusal_words()`); Create Invoice's read of the document likewise; E-Shipment's read of the invoice: its old sentence, the words likewise.
 - The unsure mark `?` is never read (#1416 unchanged).
 
 ## Why not every 404?
