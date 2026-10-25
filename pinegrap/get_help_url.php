@@ -258,6 +258,7 @@ function get_help_url($properties = array())
         'view_parasut_inbox'                 => 'commerce#parasut-inbox',
         'view_returns'                       => 'commerce#returns',
         'view_return'                        => 'commerce#view-return',
+        'add_return'                         => 'commerce#returns',
         'view_order_reports'                 => 'commerce#order-reports',
         'view_order_report'                  => 'commerce#create-edit-order-report',
         'view_commissions'                   => 'commerce#commissions',

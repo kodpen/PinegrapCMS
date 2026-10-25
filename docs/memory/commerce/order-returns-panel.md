@@ -21,7 +21,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 - `pg_return_decision_mail_body()`: approved → carrier and code (or "you can send the goods back now"), the shop's note, and "tell us on your order page" when `pg_returns_customer_enabled()`; rejected → the shop's note, no carrier or code. Sent by `pg_return_send_decision_mail()` through the mail queue, sharing `pg_return_mail_context()` with the request mail.
 
 ## What is not here yet?
-- Staff recording a request from the panel (source `panel`). The refund, the ERP hand-off and the reminder job: commerce/order-returns-refund.md; the API: commerce/order-returns-api.md; the webhooks and the Workspace trigger: commerce/order-returns-events.md.
+- Staff requests: commerce/order-returns-staff-request.md. The refund, the ERP hand-off and the reminder job: commerce/order-returns-refund.md; the API: commerce/order-returns-api.md; the webhooks and the Workspace trigger: commerce/order-returns-events.md.
 
 ## Tests?
 - `tests/returns_test.php` (filter, defaults, actions, audit fields, refund due, parcel delivery, mail body, order card). The screens ran on a `tools/setup_sandbox.sh` sandbox (PR #808 body).

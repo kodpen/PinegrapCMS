@@ -128,6 +128,7 @@ function test_returns_events_catalogue_holds_the_four()
 	}
 
 	pg_assert_contains('not announced', $events['order.return.approved'], 'a rejection is said not to be announced');
+	pg_assert_contains('recorded by staff on the panel', $events['order.return.requested'], 'a request staff record is announced too');
 	pg_assert_contains('unclear', $events['order.return.refunded'], 'the unclear refund is named');
 }
 

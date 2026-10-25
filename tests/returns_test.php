@@ -699,6 +699,15 @@ function test_returns_panel_card_html()
 	pg_assert_contains('3 item(s)', $html, 'quantities added up');
 	pg_assert_contains('text-bg-info', $html, 'status badge');
 	pg_assert_contains('view_returns.php', $html, 'to the list');
+	pg_assert_false(strpos($html, 'add_return.php') !== false, 'no form offered when nothing is left');
+
+	// An order that can take a return gets the card, with the staff form,
+	// before it has any return.
+	$offer = pg_returns_panel_card_html(array(), 'add_return.php?order_id=12');
+	pg_assert_contains('href="add_return.php?order_id=12"', $offer, 'the staff form');
+	pg_assert_contains('Record a Return', $offer);
+	pg_assert_false(strpos($offer, '<form') !== false, 'links only: the card sits inside the order form');
+	pg_assert_contains('href="add_return.php?order_id=12"', pg_returns_panel_card_html(array(array('id' => 7, 'status' => 'approved', 'requested_at' => 0, 'items' => array())), 'add_return.php?order_id=12'), 'beside the returns');
 }
 
 // Amounts typed as money become minor units; anything else is refused.
