@@ -70,12 +70,39 @@ function pg_sw_type_labels()
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
         'account_invoices'    => lang('My Invoices'),
+        'wishlist'            => lang('Favourites'),
         'account_email'       => lang('Account E-mail'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
         'comments'            => lang('Comments'),
+        'comments_recent'     => lang('Recent Comments'),
     );
+}
+
+/**
+ * The kind of a system widget, as the panel, the palette, a template's
+ * starter and the census name it: its regionType, except a comments widget
+ * in the recent mode ('mode' => 'recent'), which is 'comments_recent'. The
+ * row still stores regionType 'comments', and _expand_system_widgets()
+ * dispatches on that. '' for a config without a kind. Pure.
+ *
+ * The editor's twin is _swKindOf() in assets/js/style_designer.js.
+ *
+ * @param mixed $cfg system_region_config, decoded
+ * @return string
+ */
+function pg_sw_widget_kind($cfg)
+{
+    if (!is_array($cfg) || !isset($cfg['regionType']) || !is_string($cfg['regionType'])) {
+        return '';
+    }
+
+    if (($cfg['regionType'] === 'comments') && isset($cfg['mode']) && ($cfg['mode'] === 'recent')) {
+        return 'comments_recent';
+    }
+
+    return $cfg['regionType'];
 }
 
 // ============================================================================
@@ -3635,7 +3662,11 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
     if (!$logged_in) {
         // Redirect mode: send to login page when configured and accessible.
-        if ($redirect_to_login && $login_page_id > 0) {
+        // A page drawn inside another request (SEO pass, prototype frame)
+        // draws the signed-out view instead: go() would send a Location
+        // header and end that request in the middle of the render.
+        $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+        if ($redirect_to_login && $login_page_id > 0 && !$background) {
             $login_page_name = (string)db_value(
                 "SELECT page_name FROM page WHERE page_id = '" . (int)$login_page_id . "' LIMIT 1"
             );
@@ -5614,14 +5645,27 @@ function _pg_sw_search_merge_pages($first, $rest)
 function pg_sw_search_index_eligible($list_cfg, $view_cfg)
 {
     if (!pg_sw_form_widget_public($list_cfg) || !pg_sw_form_widget_public($view_cfg)) return false;
-    foreach (pg_sw_merge_record_filters($list_cfg, $view_cfg) as $filter) {
+    return !pg_sw_filters_compare_viewer(pg_sw_merge_record_filters($list_cfg, $view_cfg));
+}
+
+// Whether a list of record filters compares a field with the viewer: a
+// filter with a field, no fixed value and the dynamic value 'viewer' or
+// 'viewers email address'. Without a signed-in visitor such a filter reads
+// '' and matches every record sent while signed out, so a render with no
+// visitor of its own (the search index, a list of recent comments drawn for
+// a visitor who is not signed in) must not apply it. Pure.
+function pg_sw_filters_compare_viewer($filters)
+{
+    if (!is_array($filters)) return false;
+    foreach ($filters as $filter) {
+        if (!is_array($filter)) continue;
         $field   = isset($filter['field']) ? trim((string)$filter['field']) : '';
         $value   = isset($filter['value']) ? (string)$filter['value'] : '';
         $dynamic = isset($filter['dynamic_value']) ? (string)$filter['dynamic_value'] : '';
         if ($field === '' || $value !== '') continue;
-        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return false;
+        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return true;
     }
-    return true;
+    return false;
 }
 
 // The address a record's search item is stored under: relative to PATH, as
@@ -5974,15 +6018,17 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * get_page_content() sets 'email' for its whole render (true when the page is
  * the body of an e-mail), and around its widget pass adds 'page_id' and the
  * dynamic properties the sender passed with it - 'form_id' for a form's
- * confirmation or notification, 'order_id' for an order receipt. A widget on
- * an e-mail page has no address to read ?r= or ?order_id= from, and the
- * recipient is chosen by the server, so the checks that keep a visitor to
- * their own records do not apply there. 'page_id' is the page being drawn: a
- * widget whose data is the page's own (the comments widget's thread) reads it
- * here, never through _pg_sw_current_page_id(), which is 0 on the live home
- * page, in e-mails and in the search index, and is cached for the whole
- * request. Pass an array to set (the previous context comes back, for
- * restoring); pass nothing to read.
+ * confirmation or notification, 'order_id' for an order receipt, 'comment_id'
+ * for a comment e-mail whose page places a comments widget (mail.php). A
+ * widget on an e-mail page has no address to read ?r= or ?order_id= from, and
+ * the recipient is chosen by the server, so the checks that keep a visitor to
+ * their own records do not apply there. The comments widget draws only the
+ * comment named, for nobody. 'page_id' is the page being drawn: a widget
+ * whose data is the page's own (the comments widget's thread) reads it here,
+ * never through _pg_sw_current_page_id(), which is 0 on the live home page,
+ * in e-mails and in the search index, and is cached for the whole request.
+ * Pass an array to set (the previous context comes back, for restoring); pass
+ * nothing to read.
  *
  * @param array|null $set
  * @return array

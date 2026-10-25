@@ -40,8 +40,9 @@
  * cancellation, not a return.
  *
  * The customer's side is the order view widget of My Account (the tokens
- * __return_form and __returns, includes/fn/widgets.php) and the endpoint it
- * posts to (order_return.php), behind ECOMMERCE_ORDER_RETURNS_ALLOWED. A
+ * __return_form and __returns, includes/fn/widgets.php), the classic order
+ * view (get_view_order_screen_content.php) and the endpoint both post to
+ * (order_return.php), behind ECOMMERCE_ORDER_RETURNS_ALLOWED. A
  * request mails the customer and rings the staff's bell.
  *
  * @author      Erdal Güral (Kodpen)
@@ -214,6 +215,24 @@ function pg_return_next_statuses($from, $by = 'staff')
 function pg_return_can_move($from, $to, $by = 'staff')
 {
     return in_array($to, pg_return_next_statuses($from, $by), true);
+}
+
+/**
+ * Is a return still in the status a page showed when a move was sent from it?
+ *
+ * A value that is not a status (a form drawn before it carried the status,
+ * anything that is not text) never matches, nor does a current value that is
+ * not one. A caller that compares nothing does not call this.
+ *
+ * @param mixed $shown   the status the page showed
+ * @param mixed $current the status the return is in now
+ * @return bool
+ */
+function pg_return_status_seen($shown, $current)
+{
+    $current = pg_return_status($current);
+
+    return ($current !== '') && (pg_return_status($shown) === $current);
 }
 
 /**
@@ -1444,14 +1463,20 @@ function pg_return_announce($event, $return, $extra = array())
  * (shown to the customer); approving may also say which carrier the goods go
  * back with and the code the customer gives it. Sending back may carry the
  * tracking number and the carrier. The move is made only from the status the
- * return was read in, so two people answering at once cannot both win.
+ * return was read in, so two people answering at once cannot both win. A
+ * caller that knows which status its person saw passes it as status_was: a
+ * return in any other status is refused, even when the move would be allowed
+ * from there (a close sent from a page that showed refunded, after a refused
+ * refund put the return back to received).
  *
  * @param int    $return_id
  * @param string $to
  * @param array  $options by ('customer' or staff), user_id, time, note,
  *                        carrier, carrier_code, tracking_number, announce
  *                        (false: the caller announces the move itself, after
- *                        letting go of a lock it holds)
+ *                        letting go of a lock it holds), status_was (the
+ *                        status the caller's page showed; left out, nothing
+ *                        is compared)
  * @return array ok, error, return (the row as it is now)
  */
 function pg_return_move($return_id, $to, $options = array())
@@ -1473,6 +1498,15 @@ function pg_return_move($return_id, $to, $options = array())
     $by = (isset($options['by']) && ($options['by'] === 'customer')) ? 'customer' : 'staff';
     $from = (string) $return['status'];
     $to = pg_return_status($to);
+
+    // A move sent from a page that showed another status would act on a
+    // state its person never saw. Compared with the row read here, which a
+    // caller holding the order's return lock (pg_return_staff_move()) reads
+    // under it; the conditional UPDATE below still guards the callers that
+    // take no lock (the customer's moves).
+    if (is_array($options) && array_key_exists('status_was', $options) && !pg_return_status_seen($options['status_was'], $from)) {
+        return $refuse(lang('The return was changed in the meantime. Open it again.'));
+    }
 
     if (($to === '') || !pg_return_can_move($from, $to, $by)) {
         return $refuse(lang(array(
@@ -1936,6 +1970,132 @@ function pg_return_block_html($list_html, $form_html)
         . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
         . '<div class="card-body">' . $list_html . $form_html . '</div>'
         . '</div></div>';
+}
+
+/**
+ * A date as the classic order view prints it: the site's long date, as plain
+ * text. get_absolute_time() wraps its answer in a <time> element unless it is
+ * asked for plain text, and the builders escape the dates they are given, so
+ * the element would show as text.
+ *
+ * @param string $ymd Y-m-d
+ * @return string '' when the value is not a date
+ */
+function pg_return_classic_date($ymd)
+{
+    $date = pg_return_date($ymd);
+
+    if ($date === '') {
+        return '';
+    }
+
+    return get_absolute_time(array('timestamp' => strtotime($date), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
+}
+
+/**
+ * The returns block of the classic order view (a page of type "view order",
+ * get_view_order_screen_content.php): a heading and a data area, the way that
+ * page draws its billing and payment sections, around the list and the form
+ * the order view widget uses. No card and no .container: a classic theme may
+ * ship Bootstrap 3, which has no card, and its .container has a fixed width.
+ * Bootstrap 3 has no border and spacing utilities either, so the one rule the
+ * list needs to keep its requests apart comes with the block.
+ *
+ * @param string $list_html pg_returns_list_html()
+ * @param string $form_html pg_return_form_html()
+ * @return string HTML, or '' when both are empty
+ */
+function pg_return_classic_block_html($list_html, $form_html)
+{
+    if (((string) $list_html === '') && ((string) $form_html === '')) {
+        return '';
+    }
+
+    return '<div class="returns heading" style="margin-top: 15px">' . h(lang('Returns')) . '</div>'
+        . '<div class="returns data pg-ov-returns-classic" style="margin-bottom: 15px">'
+        . '<style>.pg-ov-returns-classic .pg-ov-return { border: 1px solid rgba(128, 128, 128, .35); border-radius: 4px; padding: 15px; margin-bottom: 15px; }</style>'
+        . $list_html . $form_html . '</div>';
+}
+
+/**
+ * Whether the classic order view shows returns at all: only to the signed-in
+ * account that owns the order, the rule order_return.php applies (USER_ID,
+ * not the user name the page looks its viewer up by), and never in a page
+ * drawn as an e-mail.
+ *
+ * @param int|string $viewer_id     USER_ID ('' when signed out)
+ * @param int|string $order_user_id orders.user_id (0 for a guest order)
+ * @param bool       $in_email      pg_sw_render_context()'s 'email'
+ * @return bool
+ */
+function pg_return_classic_visible($viewer_id, $order_user_id, $in_email)
+{
+    $viewer_id = (int) $viewer_id;
+
+    return ($viewer_id > 0) && ((int) $order_user_id === $viewer_id) && !$in_email;
+}
+
+/**
+ * The classic order view's block from pg_return_customer_view()'s answer.
+ * The returns are listed whatever the setting, so a return staff or an app
+ * recorded is visible too; the form and the customer's moves (withdraw, "I
+ * have sent it") only while the setting is on.
+ *
+ * @param array $view pg_return_customer_view()
+ * @param array $form as pg_return_form_html() takes it
+ * @return string HTML, or ''
+ */
+function pg_return_classic_view_html($view, $form)
+{
+    if (!is_array($view)) {
+        return '';
+    }
+
+    $enabled = !empty($view['enabled']);
+    $returns = array();
+
+    foreach ((array) (isset($view['returns']) ? $view['returns'] : array()) as $return) {
+        if (!$enabled) {
+            $return['can_withdraw'] = false;
+            $return['can_mark_sent'] = false;
+        }
+
+        $returns[] = $return;
+    }
+
+    $deliveries = ($enabled && !empty($view['can_request']) && isset($view['deliveries'])) ? $view['deliveries'] : array();
+
+    return pg_return_classic_block_html(pg_returns_list_html($returns, $form), pg_return_form_html($deliveries, $form));
+}
+
+/**
+ * The returns block of the classic order view, read from the database. The
+ * caller has checked pg_return_classic_visible().
+ *
+ * @param int    $order_id
+ * @param string $send_to the page's own path, where order_return.php sends
+ *                        the customer back with its answer
+ * @return string HTML, or ''
+ */
+function pg_return_classic_block($order_id, $send_to)
+{
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+        return '';
+    }
+
+    $view = pg_return_customer_view($order_id, 'pg_return_classic_date');
+
+    if (!$view['has_returns'] && !$view['can_request']) {
+        return '';
+    }
+
+    // The builders escape the action and send_to, so both go in raw.
+    return pg_return_classic_view_html($view, array(
+        'action'   => PATH . SOFTWARE_DIRECTORY . '/order_return.php',
+        'send_to'  => (string) $send_to,
+        'token'    => get_token_field(),
+        'order_id' => (int) $order_id,
+    ));
 }
 
 /**
@@ -2437,14 +2597,21 @@ function pg_return_audit_create_fields($row)
  * and pg_return_refund() hold: a return cannot be closed while its refund
  * waits on the payment service, which would leave the refund unkept, or a
  * refusal unable to put the return back. A move made while the lock is busy
- * is refused; the lock is let go before the audit line, the log and the mail.
+ * waits up to 5 seconds for it, then is refused; the lock is let go before
+ * the audit line, the log and the mail.
+ *
+ * Waiting is not enough on its own: a close clicked during a refund that is
+ * then refused gets the lock once the return is back to received, and would
+ * close a return whose money never went back. A move sent with status_was
+ * (the status the person's page showed) is therefore compared with the row
+ * under the lock, by pg_return_move(), and refused when the two differ.
  *
  * The caller has checked the person's commerce rights.
  *
  * @param int    $return_id
  * @param string $to
- * @param array  $options note, carrier, carrier_code, tracking_number (as
- *                        pg_return_move() takes them)
+ * @param array  $options note, carrier, carrier_code, tracking_number,
+ *                        status_was (as pg_return_move() takes them)
  * @param int    $user_id the person making the move
  * @return array ok, error, return (the row as it is now), mailed
  */

@@ -7897,6 +7897,15 @@
                 });
             }
 
+            // A sales quote to the channel's customer: the quote editor on the
+            // current account the server found for it. The address comes
+            // with the channel, only for whoever may write ERP documents and
+            // only when the customer is or is tied to such an account.
+            if (channel.sales_quote_url) {
+                item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+                divider();
+            }
+
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
@@ -8006,6 +8015,13 @@
                         }
                     });
                 });
+            }
+
+            // A group's divider is drawn before it is known whether any item
+            // follows it ("New sales quote" may be the reader's only item):
+            // the menu never ends on one.
+            if (menu.lastElementChild && menu.lastElementChild.querySelector('.dropdown-divider')) {
+                menu.removeChild(menu.lastElementChild);
             }
 
             wrap.appendChild(menu);
@@ -14517,7 +14533,13 @@
             input.rows = 3;
             input.placeholder = t('qe_lines_help');
             input.value = Array.isArray(value) ? value.join('\n') : (value || '');
-        } else if (meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255)) {
+        } else if ((meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255))
+            || ((meta.kind === 'long' || meta.kind === 'text')
+                && /[\r\n]/.test(value === undefined || value === null ? '' : String(value)))) {
+            // A text field, or a long field of 255 characters or less, is one line,
+            // unless its value already holds a line break (a panel textarea stores
+            // one in a meta description): a one-line input drops it, and saving any
+            // other field of the record would send the value back without it.
             input = el('textarea', 'form-control form-control-sm');
             input.rows = 3;
             input.value = value || '';
@@ -21858,9 +21880,10 @@
     // ═══════════════════════════════════════════════════════════════════
 
     // What the screens kept in files of their own lean on here
-    // (workspace_palette.js, workspace_board_channel.js): the small helpers,
-    // the dialogs and menus, the task drawer, the planning board's way of
-    // moving a task, and the channel screen as it stands.
+    // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
+    // the small helpers, the dialogs and menus, the people picker the note
+    // share uses, the task drawer, the planning board's way of moving a task,
+    // and the channel screen as it stands.
     function shareKit() {
         window.PGWsKit = {
             cfg: CFG,
@@ -21870,6 +21893,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            peoplePicker: peoplePicker,
             api: api,
             toast: toast,
             fail: fail,
