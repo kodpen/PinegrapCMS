@@ -34,7 +34,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - F4 Code view style apply drops printed sizing (`_sdCodeSetAttr`): tests/designer_code_view_attrs_test.php.
 - F5 Attributes and Styles read-only at content level (builds on #1479, merged).
 - F6 Facade: primer, `addCompletionRanker`, css/js sources inside HTML, swatches: pg_code_editor.js, tests/code_editor_completion_test.php.
-- 1 Vocabulary: includes/fn/designer_vocab.php, tools/build_designer_vocab.php, assets/js/designer_vocab/bootstrap5.json, tests/designer_vocab_test.php.
+- 1 Vocabulary: includes/fn/designer_vocab.php, tools/build_designer_vocab.php, assets/js/designer_vocab/bootstrap5.json, tests/designer_vocab_test.php. Done #1704.
 - 2 Breakpoint-aware class dedupe (~23686, ~41142).
 - 3 Predictor core: pg_style_predict.js, tests/style_predict_test.php.
 - 4 Loader and class field; `class_suggestions.js` removed (clean_up.php).
