@@ -439,10 +439,37 @@ function pg_wishlist_widget_shop_url($page_ref)
     return $legacy ? (defined('PATH') ? PATH : '/') . encode_url_path((string)$legacy) : '';
 }
 
+/**
+ * Whether the page is drawn for nobody's visit: for the search index
+ * (update_search_index.php, which runs as the manager who started it), for
+ * the SEO score or the editor's preview (pg_seo_rendering()), or as the body
+ * of an e-mail (the render context's 'email'), whose recipient is not the
+ * visitor of the request that sends it. The request's account, cookie and
+ * session belong to somebody else there.
+ *
+ * @return bool
+ */
+function pg_wishlist_widget_background()
+{
+    if (function_exists('pg_seo_rendering') && pg_seo_rendering()) {
+        return true;
+    }
+
+    if (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true) {
+        return true;
+    }
+
+    $sw_ctx = function_exists('pg_sw_render_context') ? pg_sw_render_context() : array();
+
+    return !empty($sw_ctx['email']);
+}
+
 // Render a 'wishlist' system widget ("Favourites"): the visitor's saved
 // products. The list of the signed-in account, or of the visitor whose
 // pg_wishlist cookie the request carries; a visitor without one sees the
-// empty list. Never another person's.
+// empty list. Never another person's: a page drawn for the search index,
+// the SEO score, the editor's preview or an e-mail
+// (pg_wishlist_widget_background()) shows the empty list too.
 //
 // loop_area: one row per saved product, newest first. Row tokens: the
 // catalog cards' ^^__id^^, ^^__name^^, ^^__short_description^^,
@@ -472,15 +499,22 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
 
+    // Drawn inside somebody else's request, the widget belongs to no
+    // visitor: their list is neither moved nor read, no cookie is sent, and
+    // the page shows what a visitor without a list sees.
+    $background = pg_wishlist_widget_background();
+
     // A visitor who has signed in since saving products finds them in the
     // account's list.
-    pg_wishlist_merge();
+    if (!$background) {
+        pg_wishlist_merge();
+    }
 
     $limit = (isset($cfg['max_results']) && (int)$cfg['max_results'] > 0)
         ? min(PG_WISHLIST_WIDGET_ROWS_MAX, (int)$cfg['max_results']) : PG_WISHLIST_WIDGET_ROWS;
     $rows = array();
 
-    if (pg_wishlist_ready()) {
+    if (!$background && pg_wishlist_ready()) {
         $where = pg_wishlist_owner_sql(pg_wishlist_owner(false));
 
         if ($where !== '') {
@@ -502,7 +536,8 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
 
     $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $software  = _pg_acct_software_path();
-    $self      = _pg_acct_url_without(function_exists('get_request_uri') ? (string)get_request_uri() : '', array('cart_added'));
+    // In a background render the request's address is not this page's.
+    $self      = $background ? '' : _pg_acct_url_without(function_exists('get_request_uri') ? (string)get_request_uri() : '', array('cart_added'));
 
     $login_url = _pg_acct_page_url(isset($cfg['login_page_id']) ? $cfg['login_page_id'] : 0, 'login');
     if ($login_url === '') $login_url = $software . '/';
@@ -516,13 +551,13 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
     _pg_inject_messages_node($tree, 'catalog_detail');
 
     $html = pg_wishlist_widget_html($tree, $widget_id, $rows, array(
-        'signed_in'       => pg_wishlist_user_id() > 0,
+        'signed_in'       => !$background && pg_wishlist_user_id() > 0,
         'self'            => $self,
         'login_url'       => $login_url,
         'shop_url'        => pg_wishlist_widget_shop_url(isset($cfg['shop_page_id']) ? $cfg['shop_page_id'] : 0),
         'wishlist_url'    => $software . '/wishlist.php',
         'cart_url'        => $software . '/catalog_detail.php',
-        'token_field'     => get_token_field(),
+        'token_field'     => $background ? '' : get_token_field(),
         'base_path'       => $base_path,
         'detail_prefix'   => ($detail_name !== '') ? $base_path . encode_url_path($detail_name) . '/' : '',
         'currency_symbol' => defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$',

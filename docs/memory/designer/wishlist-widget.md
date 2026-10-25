@@ -4,12 +4,12 @@ description: Favourites system widget (kind wishlist, widgets_wishlist.php): who
 ---
 
 ## What does it show, and to whom?
-- Kind `wishlist` ("Favourites"), renderer `_render_system_widget_wishlist()` in `includes/fn/widgets_wishlist.php`, dispatched from `$account_renderers` (`designer.php`). The core is `commerce/wishlist.md`.
-- The request's own list only: `pg_wishlist_merge()`, then one joined query on `pg_wishlist_owner_sql(pg_wishlist_owner(false))` and `pg_wishlist_product_live_sql()`, newest first, `max_results` (default 100, at most 500). Signed in: the account's list. A guest with the `pg_wishlist` cookie: their list (owner decision: guests open it before signing in). No cookie: the empty state. Never another person's list.
-- Drawing is pure (`pg_wishlist_widget_html($tree, $sid, $rows, $ctx)`, tested in `tests/wishlist_widget_test.php`); the renderer only reads and hands over.
+- Kind `wishlist` ("Favourites"), renderer `_render_system_widget_wishlist()` in `includes/fn/widgets_wishlist.php`, dispatched from `$account_renderers` (`designer.php`).
+- The request's own list only: `pg_wishlist_merge()`, then one joined query on `pg_wishlist_owner_sql(pg_wishlist_owner(false))` and `pg_wishlist_product_live_sql()`, newest first, `max_results` (default 100, at most 500). Signed in: the account's list. A guest with the `pg_wishlist` cookie: their list (owner decision: guests open it before signing in). No cookie, or a page drawn for the search index, SEO score, preview or an e-mail (`pg_wishlist_widget_background()`: no merge, no owner): the empty state. Never another person's list.
+- Drawing is pure (`pg_wishlist_widget_html()`, `tests/wishlist_widget_test.php`); the renderer only reads.
 
 ## Why is it never cached?
-- `pg_page_cache_personal('wishlist')` is the renderer's first line, before every return: the router's file cache does not read the wishlist cookie, so a stored copy would be served to other guests.
+- `pg_page_cache_personal('wishlist')` runs first, before every return: the router's file cache does not read the wishlist cookie, so a stored copy would be served to other guests.
 
 ## Which tokens and flags?
 - Row (loop_area), the catalog cards' names: `__id`, `__name`, `__short_description`, `__detail_url` (`pg_sw_catalog_detail_page_name()`, `#` without one), `__image_url`, `__image_alt`, `__price`, `__price_formatted` (offer price from `get_discounted_product_prices()`, strike block), `__original_price_formatted` (raw: money is markup), `__discount_percent`, `__out_of_stock_label`; and `__added_date`.

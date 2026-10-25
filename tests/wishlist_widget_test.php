@@ -379,6 +379,120 @@ function test_wishlist_widget_renderer_order()
 	pg_assert_contains('pg_wishlist_widget_html(', $source, 'draws through the tested function');
 }
 
+// -- a page drawn for nobody's visit ---------------------------------------
+
+// What pg_wishlist_widget_background() answers in a PHP process of its own
+// set up the way update_search_index.php leaves it: UPDATE_SEARCH_INDEX
+// defined, and the manager who started the run still signed in (init.php
+// ran first). Its own process, because the constant would change every
+// later test. Null when PHP cannot be started again.
+function wishlist_widget_test_search_index_process()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgwishlist');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('UPDATE_SEARCH_INDEX', true);\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "define('USER_LOGGED_IN', true);\n"
+		. "define('USER_ID', 7);\n"
+		. "echo json_encode(array('background' => pg_wishlist_widget_background(), 'user_id' => pg_wishlist_user_id()));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+
+	if (($code !== 0) || !is_array($result)) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return $result;
+}
+
+// The search index draws every page inside the request of the manager who
+// started it: the manager is still signed in there, and the page is no
+// visit of theirs.
+function test_wishlist_widget_background_search_index()
+{
+	$result = wishlist_widget_test_search_index_process();
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(7, isset($result['user_id']) ? $result['user_id'] : null, 'the manager is signed in there');
+	pg_assert_same(true, isset($result['background']) ? $result['background'] : null, 'a background render');
+}
+
+// The SEO score and the editor's preview (pg_seo_rendering()) and an e-mail
+// body (the render context's 'email') draw the page inside somebody else's
+// request too. An ordinary visit is none of them, nor is a page drawn with
+// a context that is not an e-mail.
+function test_wishlist_widget_background_seo_and_email()
+{
+	pg_assert_false(pg_wishlist_widget_background(), 'an ordinary visit');
+
+	$seo = pg_seo_rendering();
+	pg_seo_rendering(true);
+	try {
+		$answer = pg_wishlist_widget_background();
+	} finally {
+		pg_seo_rendering($seo);
+	}
+	pg_assert_true($answer, 'the SEO score, the preview');
+
+	$previous = pg_sw_render_context(array('email' => true, 'form_id' => 4));
+	try {
+		$answer = pg_wishlist_widget_background();
+	} finally {
+		pg_sw_render_context($previous);
+	}
+	pg_assert_true($answer, 'an e-mail body');
+
+	$previous = pg_sw_render_context(array('email' => false, 'order_id' => 4));
+	try {
+		$answer = pg_wishlist_widget_background();
+	} finally {
+		pg_sw_render_context($previous);
+	}
+	pg_assert_false($answer, 'a page drawn for its visitor');
+}
+
+// In such a render the widget belongs to no visitor. The renderer asks
+// before anything that reads or moves a list and then draws what a visitor
+// without a list sees: no merge, no owner lookup, no rows, signed out, no
+// way back to the request's address, no session token.
+function test_wishlist_widget_renderer_background()
+{
+	$source = wishlist_widget_test_function_source('_render_system_widget_wishlist');
+	$asked = strpos($source, '$background = pg_wishlist_widget_background();');
+
+	pg_assert_true($asked !== false, 'asks');
+	foreach (array('pg_wishlist_merge();', 'pg_wishlist_owner(', 'pg_wishlist_user_id()', 'get_request_uri', 'get_token_field()') as $call) {
+		$at = strpos($source, $call);
+		pg_assert_true(($at !== false) && ($asked !== false) && ($at > $asked), $call . ' after the question');
+	}
+
+	pg_assert_same(1, substr_count($source, 'pg_wishlist_merge();'), 'one merge');
+	pg_assert_same(1, preg_match('/if \(!\$background\) \{\s*pg_wishlist_merge\(\);\s*\}/', $source), 'no merge');
+	pg_assert_contains('if (!$background && pg_wishlist_ready()) {', $source, 'no owner, no rows');
+	pg_assert_same(1, preg_match('/\$self\s*=\s*\$background \? \'\' : _pg_acct_url_without\(/', $source), 'no way back to the request');
+	pg_assert_same(1, preg_match("/'signed_in'\\s*=>\\s*!\\\$background && pg_wishlist_user_id\\(\\) > 0,/", $source), 'signed out');
+	pg_assert_same(1, preg_match("/'token_field'\\s*=>\\s*\\\$background \\? '' : get_token_field\\(\\),/", $source), 'no session token');
+}
+
 // -- registrations ---------------------------------------------------------
 
 function test_wishlist_widget_registered_in_php()
