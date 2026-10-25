@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24, in progress, W1, W3 (#1597) done): legacy-layout power in system widgets via one finish pass: conditions, row position, nested lists, record fields, formats, placement, variants
+description: Plan (2026-10-24, W1 #1592, W2 #1582, W3 #1597 done): legacy-layout power in system widgets via one finish pass: conditions, row position, nested lists, record fields, formats, placement
 ---
 
 ## What is built, and why?
@@ -25,19 +25,19 @@ Before W4: a cut required control (custom_form, registration, express_order) sti
 
 ## What are the steps? (one PR each)
 - W1 done (#1592): finish pass and value conditions, server side ([[widget-finish-pass]], [[widget-conditions]]).
-- W2 Palette double-click lands beside the selection, inside a widget too (shared_ref items stop at the widget).
+- W2 done (#1582): palette double-click lands beside the selection, inside a widget too (shared_ref items stop at the widget).
 - W3 done (#1597): row position ([[widget-loop-position]]).
 - W4 Bind Data "Show only when a value…" for every kind, canvas chip, position group.
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
 - W6 Lists engine + form field values and attachments. W7 Lists in the editor. W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
-- W14 Typed fill and filters. W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
+- W14 Typed fill and filters (open PR #1602). W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
-- Claim `[plan:widget-designability] Wn`. W4 after #1567, #1560, #1584 and #1585 (`style_designer.js`); `widgets_catalog.php` after #1560 and #1584; a new kind (#1585) reads its saved-tree checks through `pg_sw_cond_tree_json()`.
+- Claim `[plan:widget-designability] Wn`. W4's waits (#1567, #1560, #1584, #1585) are merged; a new kind (#1585) reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W4; W2's code is independent (it needs only this file).
+- W4.

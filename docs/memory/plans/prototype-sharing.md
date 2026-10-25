@@ -16,12 +16,12 @@ description: Plan (2026-10-24, slice 2 done #1579, 4 done #1578; answers 1, 2, 4
 - Viewer prototype.php (#1579): a session-less frame admitted by a 15-minute address signed for design, page, sub, record and person, bound to the browser; links by `includes/fn/link_resolve.php`; no Analytics, consent refused, forms inert (designer/designer-prototype-viewer.md).
 - Link: a hashed token, expiry, revoke, optional password with a counter of its own (the sign-in throttle's address bucket would lock sign-in, and is off with it), or team only; roles 0-1 make it, Site Log lines, an API route with `dry_run` and `'mcp' => false` (no AI app mints a public link); what it shows and its address: questions 6, 7.
 - Flows: F7 shares read by `ws_flow_access()`: a person gets view, run or edit (edit only for staff), a channel view (run comes from the home channel); a run acts with the owner's rights. A read-only outside graph link like the prototype link (people, channels as kinds) and run state later.
-- Schema (approved 2026-10-24): `prototype_links` (style, start page, token hash and secret (7 b), hint, expiry, password hash, audience, maker, revoked, uses) on general label 11.0.35; `ws_flow_shares` 11.0.83 (in #1578).
+- Schema (approved 2026-10-24): `prototype_links` (style, start page, token hash and secret (7 b), hint, expiry, password hash, audience, maker, revoked, uses) on general label 11.0.35; `ws_flow_shares` 11.0.83 (done #1578).
 
 ## Slices (one PR each)
 1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
 2. Done #1579: prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver.
-3. Share links (schema): dialog, list, revoke, password, WAF offence; only the frame's admission changes, the per-view signature stays.
+3. Share links (schema; open PR #1595): dialog, list, revoke, password, WAF offence; only the frame's admission changes, the per-view signature stays.
 4. Done #1578: F7 flow shares (schema 11.0.83).
 5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
@@ -35,4 +35,4 @@ description: Plan (2026-10-24, slice 2 done #1579, 4 done #1578; answers 1, 2, 4
 7. The address: (a) shown once, like guest links, (b) shown again, like calendar feeds → b.
 
 ## Where to start?
-- Slice 3 (claim #1575); slice 1 open. Read plans/prototype-sharing-code.md, designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
+- Slice 1 (slice 3 is PR #1595). Read plans/prototype-sharing-code.md, designer/README.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.

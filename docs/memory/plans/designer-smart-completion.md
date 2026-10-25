@@ -32,7 +32,7 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - F2 Attributes undo before the change, style row on Enter or blur (~23484-23606).
 - F3 Bracket and quote-aware `_parseInlineStyle`: tests/designer_image_size_test.php.
 - F4 Code view style apply drops printed sizing (`_sdCodeSetAttr`): tests/designer_code_view_attrs_test.php.
-- F5 Attributes and Styles read-only at content level (after #1434 merges).
+- F5 Attributes and Styles read-only at content level (builds on #1479, merged).
 - F6 Facade: primer, `addCompletionRanker`, css/js sources inside HTML, swatches: pg_code_editor.js, tests/code_editor_completion_test.php.
 - 1 Vocabulary: includes/fn/designer_vocab.php, tools/build_designer_vocab.php, assets/js/designer_vocab/bootstrap5.json, tests/designer_vocab_test.php.
 - 2 Breakpoint-aware class dedupe (~23686, ~41142).

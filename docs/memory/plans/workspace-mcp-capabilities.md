@@ -34,4 +34,4 @@ Open: 3. Tool profiles: (a) consent presets, (b) tool groups per connection (sch
 Open: 4. An application's proposal is applied over REST from the team devices session only, no OAuth connection (slice 3, else a client applies its own card): keep?
 
 ## Where to start?
-- Slices 1-3 are in: slice 4 or 5 next. Read workspace/workspace-api-callers.md, workspace-change-proposals.md.
+- Slices 1-4 are in: slice 5 (consent presets) next. Read workspace/workspace-api-callers.md, workspace-change-proposals.md.

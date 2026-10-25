@@ -17,13 +17,13 @@ description: Owner rule (2026-10-25) for the merging session: one merger, merge 
 
 ## How is the train built?
 1. `git fetch origin && git checkout -b merge-train/<yyyymmdd-hhmm> origin/development`.
-2. Merge each PR head in order. Settle the mechanical conflicts: language files with `php tools/tr_resolve.php --development=ours` ([[lang-files]]; until that tool is on `development`, by the `tr.json` rule in `pr-backlog-coordination.md`); generated indexes with `php tools/memory_index.php` (key-rules blocks by hand); `.min.js` bundles with `php tools/build_js.php`, never by hand (a one-line bundle such as `workspace.min.js` conflicts on every change); `docs/memory/core/fn-module-map-additions.md` keeps both lines.
+2. Merge each PR head in order. Settle the mechanical conflicts: language files with `php tools/tr_resolve.php --development=ours` ([[lang-files]]; it handles the single `tr.json` and, after the split, the shards); generated indexes with `php tools/memory_index.php` (key-rules blocks by hand); `.min.js` bundles with `php tools/build_js.php`, never by hand (a one-line bundle such as `workspace.min.js` conflicts on every change); `docs/memory/core/fn-module-map-additions.md` keeps both lines.
 3. Write `changelog.txt` from the PR bodies (the `[NEW]` lines, the `[SCHEME]` areas in the one `[SCHEME]` line): PRs do not edit it (`release/upgrade-changelog-rules.md`).
 4. A conflict in logic, or a semantic clash found in the review, takes that PR out of the train (`merge-review.md`).
 5. Push the train and open it as a draft PR to `development` (CI runs on pull requests only), titled "Merge train <time>: #a #b #c".
 
 ## How does the train land?
-- Green: for each PR in train order, merge `development` into the PR branch with the same resolutions (the merge-base rule for stacked PRs in `pr-backlog-coordination.md` applies), push, and squash-merge it at once with its title and a short English message; no CI wait per PR, the train tested the result. After the last one, `git diff merge-train/<time> origin/development` must be empty; then close the train PR and each PR's claim.
+- Green: for each PR in train order, merge `development` into the PR branch with the same resolutions (the merge-base rule for stacked PRs in `pr-backlog-coordination.md` applies), push, and squash-merge it at once with its title and a short English message; no CI wait per PR, the train tested the result. After the last one, `git diff merge-train/<time> origin/development` must be empty; then close the train PR and any claim of a landed PR that is still open (authors close their own claim when the PR goes up, CLAUDE.md "Claim work", step 3).
 - Red: find the PR that breaks it (drop the PRs that touch the failing area, or split the train in two), take it out with one comment naming the failure, rebuild the rest.
 
 ## Is GitHub's merge queue an option?
