@@ -49,6 +49,7 @@
 [NEW] Added a Community Forum & Docs design template: boards and topics with replies, pinned topics and announcements, guides that members write and moderators review, reported posts, a moderation dashboard, and the account and e-mail pages.
 [NEW] Added ready-made connectors to the Workspace's MCP servers: DeepWiki, Linear, Notion, GitHub and others are added with one click, and any other server from its address alone, the way it signs in found by checking it.
 [NEW] Added a Comments widget to the visual designer: a page's comments and the form that adds one are drawn in the design's own layout, while each page keeps its own comments and comment settings.
+[NEW] Added Workspace Flows: a process is drawn on a canvas as boxes and arrows, published and run by hand; its task boxes open tasks one after another as the ones before them are done, and each run is followed box by box on the canvas.
 [NEW] Added a wishlist: visitors save products with a heart on catalog pages and open them on a Favourites page; a guest's list moves to the account at sign-in.
 [FIX] Miscellaneous bug fixes and new features.
 [SECURITY] Implemented various security fixes.

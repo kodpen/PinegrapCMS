@@ -38,9 +38,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
+ *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
- *                         tells many people in a row and calls ws_push_batch_done()
+ *                         tells many people in a row and calls ws_push_batch_done();
+ *                         separate: always a row of its own, never folded into an
+ *                         unread row of the same kind and ids (a run of a flow that
+ *                         ended, whose ids are all 0: flow_runs.php)
  * @return int the inbox row
  */
 function ws_notify($user_id, $kind, $data)
@@ -63,12 +67,12 @@ function ws_notify($user_id, $kind, $data)
 
     // The same thing twice is one row: an edit that mentions somebody again,
     // a task given to somebody who already had it.
-    $existing = (int) db_value("SELECT id FROM ws_inbox
+    $existing = empty($data['separate']) ? (int) db_value("SELECT id FROM ws_inbox
         WHERE user_id = '" . $user_id . "' AND kind = '" . e($kind) . "' AND read_at = 0
         AND channel_id = '" . $channel_id . "' AND message_id = '" . $message_id . "' AND task_id = '" . $task_id . "'"
         . (($note_id > 0) ? " AND note_id = '" . $note_id . "'" : '')
         . (($event_id > 0) ? " AND event_id = '" . $event_id . "'" : '') . "
-        LIMIT 1");
+        LIMIT 1") : 0;
 
     if ($existing > 0) {
         return $existing;
@@ -239,8 +243,21 @@ function ws_inbox_describe($viewer, $row)
             $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
 
             // Written by an application (Claude): its name, not a person's.
+            // A proposal an OAuth connection made (proposals.php) is named by
+            // the client, as the channel screen draws its message: every
+            // client writes through the one OAuth application.
             if ($message && ($message['sender_kind'] === 'app')) {
-                $actor = (string) (ws_app_sender((int) $message['sender_id'])['name'] ?? $actor);
+                $sender = ws_app_sender((int) $message['sender_id']);
+
+                if (function_exists('ws_proposals_by_reply') && function_exists('ws_proposal_sender')) {
+                    $agent = ws_proposals_by_reply(array((int) $message['id']))[(int) $message['id']] ?? '';
+
+                    if ($agent !== '') {
+                        $sender = ws_proposal_sender($sender, $agent);
+                    }
+                }
+
+                $actor = (string) ($sender['name'] ?? $actor);
             }
 
             return array(
@@ -324,6 +341,19 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $notice ? (string) $notice['text'] : '',
                 'url'   => $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
                 'icon'  => 'bi-alarm',
+            );
+
+        // A run of one of the person's flows ended (flow_runs.php): the
+        // sentence that names the flow and the run sits beside the inbox row,
+        // as a scheduled action's notice does.
+        case 'flow_finished':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang('A run of your flow ended'),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . 'workspace_flows.php',
+                'icon'  => 'bi-diagram-3',
             );
 
         case 'scheduled_failed':
@@ -423,8 +453,9 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-cpu',
             );
 
-        // An assistant finished a run one asked for on a task (delegation.php):
-        // the latest of them names the assistant and how it ended.
+        // An assistant finished a run one asked for on a task (delegation.php),
+        // or an application proposed changes on it: the latest of them names
+        // the assistant or the application and how it ended.
         case 'task_assistant':
             $run = (($task !== null) && function_exists('ws_delegation_ready') && ws_delegation_ready())
                 ? db_item("SELECT agent, status" . ws_delegation_server_column() . " FROM ws_ai_requests
@@ -440,14 +471,24 @@ function ws_inbox_describe($viewer, $row)
             // (changes.php), counted when the banner is drawn.
             $waiting = ($task && function_exists('ws_task_delegation_waiting_map')) ? (int) (ws_task_delegation_waiting_map(array($task['id']))[(int) $task['id']] ?? 0) : 0;
 
+            // An application's proposal on the task (proposals.php) asked
+            // nothing, so it is not an answer.
+            $proposal = function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse($agent);
+
+            if ($proposal) {
+                $title = lang(array('string' => '{var:1} proposed changes on {var:2}', 'vars' => array($name, $number)));
+            } elseif (is_array($run) && ($run['status'] === 'failed')) {
+                $title = lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)));
+            } else {
+                $title = lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number)));
+            }
+
             return array(
-                'title' => (is_array($run) && ($run['status'] === 'failed'))
-                    ? lang(array('string' => '{var:1} could not do what you asked on {var:2}', 'vars' => array($name, $number)))
-                    : lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number))),
+                'title' => $title,
                 'body'  => ($task ? (string) $task['title'] : '')
                     . (($waiting > 0) ? ' — ' . lang(array('string' => '{var:1} proposed change(s) wait for approval', 'vars' => $waiting)) : ''),
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
-                'icon'  => ($agent === 'ai') ? 'bi-cpu' : 'bi-stars',
+                'icon'  => $proposal ? 'bi-plug' : (($agent === 'ai') ? 'bi-cpu' : 'bi-stars'),
             );
 
         // A note on a task one is on, written by somebody else
