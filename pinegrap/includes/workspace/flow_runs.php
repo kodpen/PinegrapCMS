@@ -535,6 +535,22 @@ function ws_flow_result_pack($text, $data = array())
 }
 
 /**
+ * A moment of a run or a box as its answers carry it: ISO 8601 in UTC, null
+ * for none (0). The same text api_time() writes; the presenters of a run
+ * (api_flows.php) answer the canvas's panel actions too, where the external
+ * API's response helpers are not loaded.
+ *
+ * @param int|string $unix
+ * @return string|null
+ */
+function ws_flow_time($unix)
+{
+    $unix = (int) $unix;
+
+    return ($unix > 0) ? gmdate('Y-m-d\TH:i:s\Z', $unix) : null;
+}
+
+/**
  * The sentence of a box's result; a result kept as plain text is that text.
  *
  * @param mixed $stored

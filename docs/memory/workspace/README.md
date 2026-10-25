@@ -35,8 +35,9 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette and the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
-- workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, the editor, autosave, leaving and 409, focus, keys, outline view, read-only, what is left
-- workspace-flows-runner.md: Workspace flow runs (F3a, flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, API routes
+- workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
+- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
+- workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, API routes
 - workspace-flows-store.md: Workspace flows, first slice (store, graph check, API; runs in workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
