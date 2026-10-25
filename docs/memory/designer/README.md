@@ -40,13 +40,18 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-canvas.md: The comments widget on the canvas and in the Preview: visitor states, the thread flag twin, hide versus fade, sample comments, the Preview's page, ?r=, unsaved settings, anonymous background renders
 - comments-widget-conversion.md: Fixed comments block to the Comments widget and back (which widget is the design's, also on tabs not opened yet; featured filter on a new one), templates shipping the kind
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
-- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
+- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
 - comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
+- comments-widget-recent-editor.md: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
+- comments-widget-recent-gates.md: Which source pages a list of recent comments reads and why one adds nothing (sign-in pages included), who sees which comment, the record gate in SQL, 'mine' from the account's creation
+- comments-widget-recent-panel.md: The recent comments list's panel section: what it shows, the pages it offers and how each is labelled, tabs whose components are not loaded yet, notes, the stored page list
+- comments-widget-recent-reads.md: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the open idx_author question, page cache
+- comments-widget-recent.md: The Comments widget's recent mode (kind comments_recent): what a list shows, options, what it never does, tokens and flags, checks
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
 - comments-widget-save-warnings.md: The designer's save warnings about a page's comments that are not drawn (fixed block plus widget, two widgets, nested record widget, comments off): census, approximation, codes
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
-- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, tokens, flags, escaping, default layout, checks
+- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, tokens, flags, escaping, default layout, checks
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
