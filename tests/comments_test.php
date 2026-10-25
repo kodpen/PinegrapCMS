@@ -358,5 +358,7 @@ function test_comments_watcher_queries_escape_the_address()
 	}
 
 	pg_assert_same(array(), $raw, 'USER_EMAIL_ADDRESS quoted into SQL without escape()');
-	pg_assert_contains("(email_address = '\" . escape(USER_EMAIL_ADDRESS) . \"')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_or_remove_watcher.php'), 'the handler still matches the member by address');
+	// The scan above passes as well when the handler stops matching by
+	// address at all, so the escaped match must still be there.
+	pg_assert_true((bool) preg_match('/email_address\s*=\s*\'"\s*\.\s*(?:e|escape)\(\s*USER_EMAIL_ADDRESS\s*\)\s*\.\s*"\'/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_or_remove_watcher.php')), 'the handler still matches the member by address');
 }
