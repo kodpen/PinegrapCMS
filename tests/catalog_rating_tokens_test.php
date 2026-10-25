@@ -299,7 +299,7 @@ function test_catalog_rating_item_view_source()
 	pg_assert_contains("'rating_count'    => \$_p_rating['__rating_count'],", $view);
 
 	// Marked before the tree is drawn, resolved once the product is read.
-	$mark = strpos($view, "_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating'));");
+	$mark = strpos($view, "_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating', 'can_notify'));");
 	$split = strpos($view, '$split = _split_widget_tree($tree_decoded);');
 	$resolve = strpos($view, '$loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);');
 
@@ -313,8 +313,8 @@ function test_catalog_rating_item_view_source()
 	// the variant script, on the card and the surround, and ships the rule
 	// that keeps a hidden state hidden; the script switches them.
 	pg_assert_contains('_pg_catalog_rating_states_differ($variant_data[\'products\'])', $view, 'only when the variants differ');
-	pg_assert_contains('_pg_catalog_variant_flags_keep($loop_template, $_civ_flags)', $view);
-	pg_assert_contains('_pg_catalog_variant_flags_keep($static_html, $_civ_flags)', $view);
+	pg_assert_contains('_pg_catalog_variant_flags_keep($loop_template, $_civ_flags, $_civ_switched)', $view);
+	pg_assert_contains('_pg_catalog_variant_flags_keep($static_html, $_civ_flags, $_civ_switched)', $view);
 	pg_assert_contains('[data-pg-variant-flag][hidden]{display:none!important}', $view);
 	$keep = strpos($view, '_pg_catalog_variant_flags_keep($loop_template');
 	pg_assert_true($keep !== false && $keep > strpos($view, '$variant_data = array('), 'decided once the variant payload is built');

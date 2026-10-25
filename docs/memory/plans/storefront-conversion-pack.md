@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail done): Notify me field, back-in-stock SMS, API, bundles
+description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail and form done): back-in-stock SMS, API, bundles
 ---
 
 ## Why?
@@ -22,10 +22,10 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 3b. (PR #1584) Catalog hearts, `pg_wishlist.js` (`commerce/wishlist-heart.md`).
 3c. (PR #1585) Favourites widget and page, My Account link (`designer/wishlist-widget.md`).
 4a. (PR #1659) Back-in-stock requests, the `inventory.changed` listener and e-mail (`commerce/back-in-stock-notices.md`).
+4b. (PR #1664) "Notify me" field and button in the catalog item view, `can_notify`, starter (`designer/catalog-stock-notify-form.md`).
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
-4b. "Notify me" e-mail field and button in the catalog item view, its starters and the shop templates (S).
 4c. The notice by SMS, after `sms-and-iys.md` step 3 (S).
 5. API: `/products/{id}/reviews`, `/customers/{id}/wishlist`, webhook `product.review.created`, `verified` on comments (S).
 6. Bundles design note before coding (owner review).
@@ -35,4 +35,4 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 - Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
-- Step 4b; read `commerce/back-in-stock-notices.md` and `commerce/wishlist-heart.md` (a binding in the item view).
+- Step 4c or 5; read `commerce/back-in-stock-notices.md` (4c) or `api/api-endpoint-rules.md` (5).

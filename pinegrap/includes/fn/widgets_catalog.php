@@ -749,6 +749,118 @@ function _pg_catalog_rating_states_differ($products)
 }
 
 /**
+ * Whether the variants of a select group differ in stock: some can be asked
+ * for when back in stock (out_of_stock '1') and some can be bought. Only then
+ * does the product page keep both can_notify states for the variant script.
+ *
+ * @param array $products the variant payload's products
+ * @return bool
+ */
+function _pg_catalog_stock_states_differ($products)
+{
+    $out = false;
+    $buyable = false;
+    foreach ((array)$products as $vp) {
+        if (is_array($vp) && isset($vp['out_of_stock']) && (string)$vp['out_of_stock'] === '1') {
+            $out = true;
+        } else {
+            $buyable = true;
+        }
+    }
+    return $out && $buyable;
+}
+
+/**
+ * Wires a control of the back-in-stock form (stock_notify.php): a button
+ * bound to stock_notify submits the form $form_id names, a text input bound
+ * to stock_notify_email becomes its address field, filled with the
+ * signed-in visitor's address. The form is printed after the widget's own,
+ * since a form cannot sit inside the add-to-cart form. A control with no
+ * "Show only when" of its own takes can_notify, so it never shows for a
+ * product that can be bought.
+ *
+ * @param array  $node    a btn component, a <button> or an <input>
+ * @param string $form_id
+ * @param string $email   the signed-in visitor's address, '' for a guest
+ * @return bool false when the node cannot be the control it is bound as
+ */
+function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
+{
+    $bindings = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    $type = isset($node['type']) ? $node['type'] : '';
+    $tag = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    $is_button = ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn')
+        || ($type === 'semantic' && $tag === 'button');
+    $field = isset($bindings['value']) && $bindings['value'] === 'stock_notify_email';
+
+    if ($field ? !($type === 'semantic' && $tag === 'input') : !$is_button) {
+        return false;
+    }
+
+    $managed = array('type' => 1, 'form' => 1, 'formaction' => 1, 'formmethod' => 1, 'name' => 1, 'required' => 1, 'autocomplete' => 1, 'maxlength' => 1);
+    $kept = array();
+    $value = '';
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        $name = (is_array($a) && isset($a['name'])) ? strtolower((string)$a['name']) : '';
+        if ($name === '' || isset($managed[$name])) continue;
+        if ($field && $name === 'value') {
+            $value = isset($a['value']) ? (string)$a['value'] : '';
+            continue;
+        }
+        $kept[] = $a;
+    }
+
+    if ($field) {
+        $kept[] = array('name' => 'type', 'value' => 'email');
+        $kept[] = array('name' => 'name', 'value' => 'email_address');
+        $kept[] = array('name' => 'autocomplete', 'value' => 'email');
+        $kept[] = array('name' => 'maxlength', 'value' => '100');
+        $kept[] = array('name' => 'required', 'value' => 'required');
+        if ($value === '' && $email !== '') $value = $email;
+        if ($value !== '') $kept[] = array('name' => 'value', 'value' => $value);
+    } elseif ($type === 'component') {
+        $node['props']['btnElement'] = 'button';
+        $node['props']['btnType']    = 'submit';
+        $node['props']['href']       = '';
+        $text = isset($node['props']['text']) && is_string($node['props']['text']) ? trim($node['props']['text']) : '';
+        if ($text === '' || $text === 'Click Me' || $text === 'Button') {
+            $node['props']['text'] = lang('Notify me');
+        }
+    } else {
+        $kept[] = array('name' => 'type', 'value' => 'submit');
+    }
+
+    $kept[] = array('name' => 'form', 'value' => (string)$form_id);
+    $node['props']['_attrs'] = $kept;
+
+    if (empty($bindings['eo_visible_if'])) {
+        $node['props']['_bindings']['eo_visible_if'] = 'can_notify';
+    }
+
+    return true;
+}
+
+/**
+ * Whether a node bound to the back-in-stock form is left out: the requests
+ * have no table yet (no form), or the node cannot be the control it is bound
+ * as (a link, a select). A switched-off feature draws nothing.
+ *
+ * @param array $node
+ * @param array $context the item view's binding context (stock_notify_form)
+ * @return bool
+ */
+function _pg_catalog_stock_notify_dropped($node, $context)
+{
+    $bindings = (is_array($node) && isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    if (!(isset($bindings['action']) && $bindings['action'] === 'stock_notify')
+        && !(isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+        return false;
+    }
+    if (empty($context['stock_notify_form'])) return true;
+    return !_pg_catalog_stock_notify_control($node, (string)$context['stock_notify_form'], '');
+}
+
+/**
  * $html with each element at its top level carrying
  * data-pg-variant-flag="<flag>", plus `hidden` when $hidden. The attribute
  * goes into the element's own opening tag, so no box is added around it: a
@@ -4168,6 +4280,16 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']));
     }
 
+    // ── Back-in-stock form: the address field and its button ─────────────
+    // A control that cannot be one (a link, a select) is dropped below.
+    if ((isset($bindings['action']) && $bindings['action'] === 'stock_notify')
+        || (isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+        _pg_catalog_stock_notify_control($node,
+            isset($context['stock_notify_form']) ? (string)$context['stock_notify_form'] : '',
+            isset($context['stock_notify_email']) ? (string)$context['stock_notify_email'] : '');
+        return;
+    }
+
     // ── Input: recipient_name (free-form new recipient) ─────────────────────
     // The new-recipient input is HIDDEN by default — only revealed when the
     // user picks "+ Yeni alıcı ekle" from the recipient_select dropdown. The
@@ -4332,6 +4454,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         foreach ($node['children'] as &$child) {
             if (is_array($child) && _civ_should_skip_node($child, $context)) continue;
             if (_pg_catalog_wishlist_dropped($child, $context, 'wishlist')) continue;
+            if (_pg_catalog_stock_notify_dropped($child, $context)) continue;
             _apply_catalog_item_view_bindings($child, $context);
             $kept[] = $child;
         }
@@ -4361,12 +4484,16 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   ^^__gallery_image_2^^  — …row 2
 //   ^^__gallery_image_3^^, ^^__gallery_image_4^^, ^^__gallery_image_5^^
 //   The rating (^^__rating_avg^^, ^^__rating_count^^) is in the variant
-//   payload too. "Show only when" has_rating / no_rating is resolved after
-//   the product is read (the tree is drawn before): the state that does not
-//   fit is cut, unless the variant script is on the page and the variants
-//   differ in rating; then both states stay, the one that is off hidden,
-//   and the script shows the state of the variant picked
-//   (_pg_catalog_variant_flags_keep()).
+//   payload too. "Show only when" has_rating / no_rating / can_notify is
+//   resolved after the product is read (the tree is drawn before): the state
+//   that does not fit is cut, unless the variant script is on the page and
+//   the variants differ in it; then both states stay, the one that is off
+//   hidden, and the script shows the state of the variant picked
+//   (_pg_catalog_variant_flags_keep()). can_notify: the product can be asked
+//   for when back in stock; a field bound to stock_notify_email and a button
+//   bound to stock_notify post the form printed after the widget's own
+//   (stock_notify.php) and take can_notify when they have no flag of their
+//   own (_pg_catalog_stock_notify_control()).
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
@@ -4453,6 +4580,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         );
     }
     $_civ_pre_tree = json_decode($tree_json, true);
+    // The id of the back-in-stock form, '' while the requests have no table.
+    static $_civ_notify_seq = 0;
+    $_civ_notify_form = pg_stock_notify_ready() ? 'pg-stock-notify-' . (++$_civ_notify_seq) : '';
     if (is_array($_civ_pre_tree)) {
         // Quantity context — config overrides win, product fallbacks otherwise.
         //   min (default 1)    : cfg.quantity_min  > 0
@@ -4528,6 +4658,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // The favourite heart, as in the listing.
             'wishlist_ready'         => pg_wishlist_ready(),
             'wishlist_preview'       => (bool)pg_sw_preview_overrides(),
+            // The back-in-stock form the field and the button belong to.
+            'stock_notify_form'      => $_civ_notify_form,
+            'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($_civ_remuxed !== false) $tree_json = $_civ_remuxed;
@@ -4543,10 +4676,11 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // run, and the detail page then showed every message the session carried
     // rather than its own.
     _pg_inject_messages_node($tree_decoded, 'catalog_detail');
-    // "Show only when" has_rating / no_rating: the tree is drawn before the
-    // product is read, so the elements are marked here and kept or cut once
-    // the rating is known (below). Another widget's flag stays drawn.
-    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating'));
+    // "Show only when" has_rating / no_rating / can_notify: the tree is drawn
+    // before the product is read, so the elements are marked here and kept
+    // or cut once the product is known (below). Another widget's flag stays
+    // drawn.
+    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating', 'can_notify'));
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -5043,20 +5177,35 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         ($p && isset($p['rating_avg'])) ? $p['rating_avg'] : 0,
         ($p && isset($p['rating_count'])) ? $p['rating_count'] : 0
     );
+    // can_notify: the product can be asked for when back in stock (it tracks
+    // stock, none is left, no back order), the rule of __out_of_stock.
     $_civ_flags = array(
         'has_rating' => $_civ_rating['__rating_count'] !== '',
         'no_rating'  => $_civ_rating['__rating_count'] === '',
+        'can_notify' => ($_civ_notify_form !== '') && $p && pg_stock_notify_product_out(array(
+            'enabled'            => '1',
+            'inventory'          => isset($p['inventory']) ? $p['inventory'] : '0',
+            'inventory_quantity' => isset($p['inventory_quantity']) ? $p['inventory_quantity'] : '0',
+            'backorder'          => isset($p['backorder']) ? $p['backorder'] : '0',
+        )),
     );
     // With the variant script on the page and variants that differ in
-    // rating, a switch can change the state: both states stay, each element
-    // marked with its flag and the one that does not fit $p hidden, and the
-    // script shows the state of the variant picked. Otherwise the state that
-    // does not fit is cut here.
+    // rating or in stock, a switch can change the state: both states stay,
+    // each element marked with its flag and the one that does not fit $p
+    // hidden, and the script shows the state of the variant picked.
+    // Otherwise the state that does not fit is cut here.
     $_civ_variants_scripted = $is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs']);
-    $_civ_rating_switch     = $_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products']);
-    if ($_civ_rating_switch) {
-        $loop_template = _pg_catalog_variant_flags_keep($loop_template, $_civ_flags);
-        $static_html   = _pg_catalog_variant_flags_keep($static_html, $_civ_flags);
+    $_civ_switched = array();
+    if ($_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products'])) {
+        $_civ_switched[] = 'has_rating';
+        $_civ_switched[] = 'no_rating';
+    }
+    if ($_civ_variants_scripted && ($_civ_notify_form !== '') && _pg_catalog_stock_states_differ($variant_data['products'])) {
+        $_civ_switched[] = 'can_notify';
+    }
+    if ($_civ_switched) {
+        $loop_template = _pg_catalog_variant_flags_keep($loop_template, $_civ_flags, $_civ_switched);
+        $static_html   = _pg_catalog_variant_flags_keep($static_html, $_civ_flags, $_civ_switched);
     } else {
         $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
         $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
@@ -5741,30 +5890,45 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '5';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '6';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
 
-    // Both rating states kept: the one that is off carries `hidden`, which a
-    // design's display utility (Bootstrap's d-flex is !important) or its own
-    // display rule would beat. Two attribute selectors with !important win
-    // over both. Printed before the elements so the first paint obeys it.
-    $_civ_rating_css = $_civ_rating_switch
+    // Both states of a switched flag kept: the one that is off carries
+    // `hidden`, which a design's display utility (Bootstrap's d-flex is
+    // !important) or its own display rule would beat. Two attribute selectors
+    // with !important win over both. Printed before the elements so the
+    // first paint obeys it.
+    $_civ_flag_css = $_civ_switched
         ? '<style>[data-pg-variant-flag][hidden]{display:none!important}</style>'
+        : '';
+
+    // The back-in-stock form, when a field or a button of it is drawn: the
+    // controls sit in the add-to-cart form and name this one (form=""). On a
+    // select group's page the variant script moves its product_id with the
+    // variant picked (data-pg-stock-notify on the widget's form).
+    $_civ_notify_html = (($_civ_notify_form !== '') && ($_civ_pid_for_form > 0) && (strpos($_civ_html, 'form="' . $_civ_notify_form . '"') !== false))
+        ? '<form id="' . h($_civ_notify_form) . '" action="' . h($_civ_out_path . $_civ_sw_dir . '/stock_notify.php') . '" method="post" class="d-none">'
+            . get_token_field()
+            . '<input type="hidden" name="product_id" value="' . $_civ_pid_for_form . '">'
+            . '<input type="hidden" name="send_to" value="' . h($_civ_current_url) . '">'
+            . '</form>'
         : '';
 
     // No auto-prepended messages placeholder — designer controls placement
     // via a Messages content node inside the widget tree.
     return _pg_widget_layout_css_once()
-         . $_civ_rating_css
-         . '<form action="' . h($_civ_action) . '" method="post" data-pg-civ-form="1">'
+         . $_civ_flag_css
+         . '<form action="' . h($_civ_action) . '" method="post" data-pg-civ-form="1"'
+         . ($_civ_notify_html !== '' ? ' data-pg-stock-notify="' . h($_civ_notify_form) . '"' : '') . '>'
          . $_civ_hidden
          . $_civ_html
          . $_civ_variant_script
          . '</form>'
+         . $_civ_notify_html
          . $_civ_toast;
 }
 
