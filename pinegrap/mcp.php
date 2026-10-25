@@ -11,7 +11,8 @@
 // The MCP server (includes/mcp/). An AI application - Claude, ChatGPT, an
 // editor's assistant - is given this address, signs a person in through the
 // site's OAuth server (oauth.php) and then works with the site through tools
-// that are the external API's own endpoints:
+// that are the external API's own endpoints, reads context as resources
+// answered by their GET routes, and offers ready-made prompts built on them:
 //
 //   POST mcp.php   {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 //
@@ -47,5 +48,7 @@ include('init.php');
 require_once(dirname(__FILE__) . '/includes/api/bootstrap.php');
 require_once(dirname(__FILE__) . '/includes/mcp/protocol.php');
 require_once(dirname(__FILE__) . '/includes/mcp/tools.php');
+require_once(dirname(__FILE__) . '/includes/mcp/resources.php');
+require_once(dirname(__FILE__) . '/includes/mcp/prompts.php');
 
 pg_mcp_run();

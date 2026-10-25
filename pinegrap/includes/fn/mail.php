@@ -596,7 +596,14 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
             <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $reference_code, $comment_id) . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
-        $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        // An e-mail page that places a comments widget is told which comment this is: the widget draws it in its
+        // own layout and the markup above is then left out (widgets_comments.php). Any other e-mail page is drawn
+        // as before, with the markup in its System region.
+        if (pg_comments_page_has_widget($comments_submitter_email_page_id)) {
+            $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true, array('comment_id' => (int) $comment_id));
+        } else {
+            $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        }
         email(array(
             'to' => $email_address,
             'from_name' => ORGANIZATION_NAME,
@@ -734,7 +741,14 @@ function send_comment_email_to_watchers($comment_id)
 
             <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . $page_name . $query_string . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
-        $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        // An e-mail page that places a comments widget is told which comment this is: the widget draws it in its
+        // own layout and the markup above is then left out (widgets_comments.php). Any other e-mail page is drawn
+        // as before, with the markup in its System region.
+        if (pg_comments_page_has_widget($comments_watcher_email_page_id)) {
+            $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true, array('comment_id' => (int) $comment_id));
+        } else {
+            $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        }
         // loop through all watchers in order to e-mail each one
         foreach ($watchers as $watcher) {
             // If this watcher is connected to a user, then use the user's e-mail address.

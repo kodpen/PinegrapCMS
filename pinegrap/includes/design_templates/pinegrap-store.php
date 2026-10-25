@@ -147,6 +147,19 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
 $add_to_cart = function ($text, $variant, $class = '', $outline = false) use ($button) {
     return $button($text, $variant, $class, array('size' => 'sm', 'outline' => $outline, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
+// The favourite heart in the corner of a product card, above the card's
+// stretched link: the listing marks it with the card's product and draws it
+// hidden, the page's script shows it, filled for a product the visitor
+// saved. A product group's card has none.
+$heart = function () use ($button, $el, $span, $attr) {
+    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+        array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
+    $node['children'] = array(
+        $el('i', 'bi bi-heart', '', array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+        $span(lang('Add to favourites'), 'visually-hidden', lang('Screen Reader Text')),
+    );
+    return $node;
+};
 
 // The sample picture a product card shows until the widget fills it in.
 $sample_product = 'https://picsum.photos/seed/pinegrap-store-product/600/600';
@@ -322,6 +335,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                     $link(lang('Log In'), '{{page:login}}', $plain),
                     $link(lang('Sign Up'), '{{page:register}}', $plain),
                     $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
+                    $link(lang('Favourites'), '{{page:favourites}}', $plain),
                 )),
                 $el('div', 'col-6 col-lg-2', lang('Contact Details'), array(
                     $heading('h2', lang('Get in Touch'), 'h6 text-uppercase small fw-bold mb-3'),
@@ -462,10 +476,11 @@ $price = function ($class) use ($span, $bind) {
 };
 
 // Grid: a picture, the category, the name, the price and the button.
-$card_grid = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_grid = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 bg-body-tertiary'),
+            $heart(),
             $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
                 $product_title('h3', 'h6 card-title mb-3'),
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mt-auto position-relative z-2', lang('Price and Button'), array(
@@ -478,9 +493,10 @@ $card_grid = function () use ($el, $col, $product_title, $product_picture, $pric
 };
 
 // List: the picture beside the words, two to a row.
-$card_list = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_list = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 bg-body-tertiary overflow-hidden', lang('Product Card'), array(
+            $heart(),
             $el('div', 'row g-0 h-100 align-items-stretch', lang('Card Row'), array(
                 $el('div', 'col-5', lang('Picture'), array(
                     $product_picture('ratio ratio-1x1 h-100'),
@@ -501,10 +517,11 @@ $card_list = function () use ($el, $col, $product_title, $product_picture, $pric
 
 // Lookbook: a square picture with the name and the price on a frosted
 // label.
-$card_lookbook = function () use ($el, $col, $product_title, $product_picture, $price) {
+$card_lookbook = function () use ($el, $col, $product_title, $product_picture, $price, $heart) {
     return $col(array(
         $el('div', 'position-relative rounded-4 overflow-hidden h-100', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1'),
+            $heart(),
             $el('div', 'position-absolute bottom-0 start-0 end-0 m-3 p-3 rounded-3 bg-body bg-opacity-75 shadow-sm', lang('Label'), array(
                 $product_title('h3', 'h6 mb-1 text-truncate'),
                 $price('small fw-semibold text-body-secondary'),
@@ -514,10 +531,11 @@ $card_lookbook = function () use ($el, $col, $product_title, $product_picture, $
 };
 
 // Strip: small cards side by side, scrolled sideways on a phone.
-$card_strip = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart) {
+$card_strip = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_cart, $heart) {
     return $col(array(
         $el('div', 'card h-100 border shadow-none', lang('Product Card'), array(
             $product_picture('ratio ratio-4x3 bg-body-tertiary'),
+            $heart(),
             $el('div', 'card-body', lang('Card Body'), array(
                 $product_title('h3', 'h6 card-title mb-1'),
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 position-relative z-2', lang('Price and Button'), array(
@@ -1149,6 +1167,7 @@ $account_cards = array(
     $link_card('bi-inbox', lang('Inbox'), lang('Your conversations with us and our answers.'), '{{page:inbox}}'),
     $link_card('bi-person-vcard', lang('My Profile'), lang('Your name, phone and address.'), '#', '__profile_url'),
     $link_card('bi-journal-bookmark', lang('Address Book'), lang('Where your orders are sent.'), '#', '__address_book_url'),
+    $link_card('bi-heart', lang('Favourites'), lang('The products you saved.'), '#', '__my_account_wishlist_url'),
     $link_card('bi-shield-lock', lang('Change Password'), lang('A new password for your account.'), '#', '__change_password_url'),
     $link_card('bi-envelope-paper', lang('Email Preferences'), lang('The mailing lists you receive.'), '#', '__email_preferences_url'),
     $link_card('bi-people', lang('Staff Directory'), lang('The people you can reach, and how.'), '{{page:staff_directory}}'),
@@ -1169,6 +1188,9 @@ $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profil
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book'), array('folder' => 'registration', 'requires' => 'ecommerce'));
+// Favourites: open to every visitor, signed in or not. noindex like the
+// cart: each visitor sees only their own list, a crawler the empty state.
+$pages[] = array_merge($sign_page('favourites', lang('favourites'), lang('Favourites'), 'wishlist'), array('requires' => 'ecommerce', 'noindex' => true));
 
 // The inbox: the member's conversations (for the staff, everybody's), and
 // the conversation page, where both sides answer as comments.
@@ -2221,6 +2243,21 @@ $widgets = array(
         'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'     => 'starter',
     ),
+    // The products saved with the hearts of the catalog. On a page of its
+    // own that every visitor can open: a visitor who is not signed in keeps
+    // a list in this browser until they sign in.
+    'wishlist' => array(
+        'page'     => 'favourites',
+        'requires' => 'ecommerce',
+        'slug'     => lang('favourites'),
+        'config'   => array(
+            'regionType'    => 'wishlist',
+            'max_results'   => 100,
+            'login_page_id' => '{{tab:login}}',
+            'shop_page_id'  => '{{tab:shop}}',
+        ),
+        'tree'     => 'starter',
+    ),
     // The support center's search: the whole store for ?query=, ten results
     // a page. A result that matches a search section links to that part of
     // its page (^^__result_section^^ names it).
@@ -2542,7 +2579,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.0.12',
+    'version'     => '1.0.13',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',
