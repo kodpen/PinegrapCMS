@@ -1,17 +1,17 @@
 ---
 name: designer-prototype-viewer
-description: prototype.php plays a design's saved drafts as a prototype (roles 0-2): session-less signed frame, link kinds, inert forms, no tracking, the resolver in includes/fn/link_resolve.php
+description: prototype.php plays a design's saved drafts as a prototype (roles 0-2, or a share link): session-less signed frame, link kinds, inert forms, no tracking, the resolver in includes/fn/link_resolve.php
 ---
 
 ## What does the viewer show?
 - A design's drafts (`pg_proto_page_set()`: Drafts folder, scheduled until live, none binned) in tab order, as last saved. Opened from a saved draft tab's menu ("Preview as prototype", `_pgPrototypeUrl()`: not on a tab picked from another design and not saved yet; `_design.prototypeUrl` is '' for role 3) or `prototype.php?page=<id>` / `?style=<id>`; another page starts at the first draft with a notice.
-- The bar (name, page list, previous/next, hotspots, close) is the viewer's, never the design's.
+- The bar (name, pages, previous/next, hotspots, close) is the viewer's.
 
 ## Who may open it?
-- Roles 0-2: `validate_user()` and `validate_area_access($user, 'manager')`. Outsider links are slice 3 of plans/prototype-sharing.md. get_page.php's private gate is untouched.
+- Person: roles 0-2, `validate_user()` and `validate_area_access($user, 'manager')`. Share link: `prototype.php?link=<token>`, for anyone or the team, maybe with a password (designer-prototype-share-links.md). get_page.php's private gate is untouched.
 
 ## How is the draft drawn signed out?
-- Two requests. The viewer signs a frame address with ENCRYPTION_KEY (`pg_proto_frame_sign()`: design, page, person, expiry 15 min, item, record: it opens only that view). The frame (`?frame=1`) defines `PG_NO_SESSION` and empties `$_COOKIE` before init.php. The role is read again per frame; an unsigned address is logged (waf_log, firewall.log) and counted (`pg_proto_frame_offence()`).
+- Two requests. The viewer signs a frame address with ENCRYPTION_KEY (`pg_proto_frame_sign()`: design, page, person, expiry 15 min, item, record: only that view; a link's: `pg_proto_link_frame_sign()`, link id for person). The frame (`?frame=1`) defines `PG_NO_SESSION` and empties `$_COOKIE` before init.php. Per frame the role is read again (or the link must still open); an unsigned address is logged (waf_log, firewall.log) and counted (`pg_proto_frame_offence()`).
 - Not one request: USER_* constants keep the editor's role (`pg_designer_preview_widgets()`).
 - `REQUEST_URI` is the page's own address (`pg_proto_public_uri()`), so switcher, calendar and sign-in links never carry the signed one. REQUEST_URL (init.php) stays the frame's: only the panel, error pages and the active-link fallback read it.
 - `get_page_content()` under `pg_seo_rendering(true)`: no status, redirect (My Account's sign-in one included), record view, 404 line; output_error() throws. Then `pg_tr_finalize()`, `pg_version_assets()`. No page cache, Set-Cookie; headers as workspace_guest.php.

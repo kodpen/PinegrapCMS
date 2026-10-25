@@ -411,7 +411,9 @@ function pg_proto_start_page($pages, $requested_id)
 /**
  * The viewer's address for one page of the prototype.
  *
- * @param string $base   PATH . SOFTWARE_DIRECTORY . '/prototype.php'
+ * @param string $base   PATH . SOFTWARE_DIRECTORY . '/prototype.php', or a
+ *                       share link's viewer with its token already in the
+ *                       query (pg_proto_link_viewer_base())
  * @param int    $page_id
  * @param string $sub    the part of a pretty address after the page name
  * @param string $record a record code (?r=)
@@ -420,7 +422,7 @@ function pg_proto_start_page($pages, $requested_id)
  */
 function pg_proto_viewer_url($base, $page_id, $sub = '', $record = '', $anchor = '')
 {
-    $url = (string) $base . '?page=' . (int) $page_id;
+    $url = (string) $base . ((strpos((string) $base, '?') === false) ? '?' : '&') . 'page=' . (int) $page_id;
 
     if ((string) $sub !== '') {
         $url .= '&sub=' . rawurlencode((string) $sub);
@@ -1000,7 +1002,8 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
  * the site's storage.
  *
  * @param array $view design, pages (pg_proto_page_set()), current, fallback,
- *                    frame_url, viewer, close_url, software, lang, error
+ *                    fallback_text (optional), frame_url, viewer, close_url
+ *                    ('' for none), software, lang, error
  * @return string
  */
 function pg_proto_shell_html($view)
@@ -1012,6 +1015,8 @@ function pg_proto_shell_html($view)
     $design = isset($view['design']) ? (string) $view['design'] : '';
     $frame_url = isset($view['frame_url']) ? (string) $view['frame_url'] : '';
     $error = isset($view['error']) ? (string) $view['error'] : '';
+    // A share link's viewer has no editor to go back to: no close button.
+    $close_url = isset($view['close_url']) ? (string) $view['close_url'] : '';
     $version = function ($path) {
         return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
     };
@@ -1056,7 +1061,7 @@ function pg_proto_shell_html($view)
 
     if (!empty($view['fallback'])) {
         $notice = '<div class="pg-proto-notice alert alert-warning rounded-0 border-0 border-bottom small py-1 px-3 mb-0" role="status">'
-            . h(lang('The page you opened is not a saved draft of this design, so the prototype starts at its first draft.')) . '</div>';
+            . h(isset($view['fallback_text']) ? (string) $view['fallback_text'] : lang('The page you opened is not a saved draft of this design, so the prototype starts at its first draft.')) . '</div>';
     }
 
     if ($error !== '') {
@@ -1109,7 +1114,7 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 ' . $nav . '
 <div class="pg-proto-tools">
 <button type="button" class="btn btn-sm btn-outline-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
-<a class="btn btn-sm btn-outline-secondary" id="pg-proto-close" href="' . h(isset($view['close_url']) ? (string) $view['close_url'] : '') . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>
+' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
 </div>
 </nav>
 ' . $notice . '

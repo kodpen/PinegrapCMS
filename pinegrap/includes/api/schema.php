@@ -2753,6 +2753,65 @@ function api_schema() {
 			)
 		),
 
+		// Share links of a design's prototype (includes/fn/prototype_links.php).
+		// Never MCP tools: a public link to unpublished pages is minted by a
+		// person or an integration they set up, not by an AI app.
+		array(
+			'id'      => 'design.prototype_links.list',
+			'method'  => 'GET',
+			'path'    => '/design/designs/{id}/prototype-links',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_prototype_links_list',
+			'mcp'     => false,
+			'returns' => array('list' => 'DesignPrototypeLink'),
+			'summary' => 'Share links of a design\'s prototype',
+			'description' => 'The links that open the design\'s draft pages as a clickable prototype, newest first. audience: anyone (whoever has the link) or team (signed-in administrators, designers and managers). state: open, expired or revoked; revoked links are listed only with revoked=true. hint is how the link\'s address starts; the address itself is answered only when the link is made, and the Visual Page Editor shows it again. Only for an application whose owner is an administrator or a designer (403 otherwise). Cursor paged.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'revoked', 'in' => 'query', 'type' => 'bool', 'default' => false, 'description' => 'List the revoked links as well.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'design.prototype_links.create',
+			'method'  => 'POST',
+			'path'    => '/design/designs/{id}/prototype-links',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_prototype_links_create',
+			'dry_run' => true,
+			'mcp'     => false,
+			'returns' => 'DesignPrototypeLinkCreated',
+			'status'  => 201,
+			'summary' => 'Share a design\'s prototype by a link',
+			'description' => 'A new link that opens the design\'s draft pages (scheduled ones too) as a clickable prototype, always as they were saved last. audience anyone opens for whoever has the link and needs duration; team opens for signed-in administrators, designers and managers, and runs for good without one. duration is one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. start_page_id is the draft it opens on, the design\'s first draft when left out. An optional password (6 to 128 characters) is asked before the prototype opens; ten wrong answers lock it for fifteen minutes. The answer carries url, the link\'s address, and the link. 422 when the design has no draft pages. Only for an application whose owner is an administrator or a designer (403 otherwise).',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'audience',      'in' => 'body', 'type' => 'enum', 'values' => array('anyone', 'team'), 'required' => true, 'description' => 'anyone: whoever has the link; team: signed-in administrators, designers and managers.'),
+				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
+				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
+				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'description' => 'Asked before the prototype opens. 6 to 128 characters.')
+			)
+		),
+
+		array(
+			'id'      => 'design.prototype_links.revoke',
+			'method'  => 'POST',
+			'path'    => '/design/designs/{id}/prototype-links/{link_id}/revoke',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_prototype_links_revoke',
+			'dry_run' => true,
+			'mcp'     => false,
+			'returns' => 'DesignPrototypeLink',
+			'summary' => 'Revoke a share link of a design\'s prototype',
+			'description' => 'The link stops opening the prototype at once and answers as an unknown one does; it cannot be turned back on. Revoking a revoked link changes nothing. Only for an application whose owner is an administrator or a designer (403 otherwise).',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'link_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The link (GET /design/designs/{id}/prototype-links).')
+			)
+		),
+
 		array(
 			'id'      => 'design.proposals.create',
 			'method'  => 'POST',

@@ -10,6 +10,7 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 ## Which routes carry `'mcp' => false`, and why?
 - `GET /workspace/sync` that an app polls, file downloads and uploads, and own-words routes an OAuth client could never call (`workspace/workspace-api-callers.md`).
 - Claude's queues: every route whose handler calls `ws_api_claude_guard()` (`workspace.claude.requests.list`/`claim`/`answer`/`fail`, `workspace.claude.change_types`, `workspace.claude.record`) or `translate_api_claude_guard()` (the five `translations.jobs.*`). They answer only the key of Claude's application, never an OAuth connection, and the routine calls them over REST, so as tools they would refuse every client. Keyed on the guard, not on `ws_claude_api_routes()`: `workspace.channels.context` has none and stays a tool (`test_ws_api_claude_only_routes_are_no_tools`).
+- The prototype share links (`design.prototype_links.*`): no AI app mints a public link to pages that are not on the site (designer/designer-prototype-share-links.md).
 - The person's decisions on a card: `workspace.approvals.decide`, `workspace.changes.apply`, `workspace.changes.dismiss` (owner decision 2026-10-24: made on the card, not offered over MCP). Over MCP an assistant would decide in the person's name or apply its own proposal. REST is unchanged: a device session or an OAuth connection may call them, an application key gets 403 (`test_ws_api_card_decisions_are_no_tools`).
 
 ## How does tools/call run a route?
