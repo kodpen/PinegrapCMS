@@ -750,24 +750,24 @@ function _pg_catalog_rating_states_differ($products)
 
 /**
  * $html with each element at its top level carrying
- * data-pg-rating-flag="<flag>", plus `hidden` when $hidden. The attribute
+ * data-pg-variant-flag="<flag>", plus `hidden` when $hidden. The attribute
  * goes into the element's own opening tag, so no box is added around it: a
  * flagged column stays the direct child of its row, a flex or grid item
  * stays the item and a paragraph keeps its content. A run of text at the top
  * level has no tag of its own and goes into a <span> with the same
  * attributes; comments and whitespace stay as they are.
  *
- * @param string $html   the content of one has_rating / no_rating span
- * @param string $flag   'has_rating' or 'no_rating'
+ * @param string $html   the content of one flagged span
+ * @param string $flag   its flag (has_rating, no_rating, can_notify)
  * @param bool   $hidden whether that state is off for the product drawn first
  * @return string|null null when the markup does not balance (an element that
  *                     is not closed, a closing tag with no opening one, a tag
  *                     or comment that does not end): no element end to find
  */
-function _pg_catalog_rating_flag_mark($html, $flag, $hidden)
+function _pg_catalog_variant_flag_mark($html, $flag, $hidden)
 {
     $html  = (string)$html;
-    $attrs = ' data-pg-rating-flag="' . preg_replace('/[^a-z0-9_]/', '', (string)$flag) . '"' . ($hidden ? ' hidden' : '');
+    $attrs = ' data-pg-variant-flag="' . preg_replace('/[^a-z0-9_]/', '', (string)$flag) . '"' . ($hidden ? ' hidden' : '');
     // The rest of a tag after its name; a quoted attribute value may hold '>'.
     $tag_rest = '(?=[\s\/>])(?:[^>"\']|"[^"]*"|\'[^\']*\')*>';
     $void = array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr');
@@ -822,30 +822,32 @@ function _pg_catalog_rating_flag_mark($html, $flag, $hidden)
 }
 
 /**
- * The product page's has_rating / no_rating elements kept in both states,
- * for a variant group whose variants differ in rating: pg_civ_variants.js
- * shows the state of the variant picked. Each marked span loses its
+ * The product page's elements of the flags a variant switch can change, kept
+ * in both states, for a variant group whose variants differ in them (rating:
+ * has_rating / no_rating; stock: can_notify): pg_civ_variants.js shows the
+ * state of the variant picked. Each marked span of a switched flag loses its
  * markers, and every element at its top level carries
- * data-pg-rating-flag="<flag>", plus `hidden` when the flag is off for the
+ * data-pg-variant-flag="<flag>", plus `hidden` when the flag is off for the
  * product drawn first; text at its top level goes into a span of its own
- * (_pg_catalog_rating_flag_mark()). Markup that does not balance has no
+ * (_pg_catalog_variant_flag_mark()). Markup that does not balance has no
  * element end to mark and is kept or cut for the product drawn first, like
  * a span of any other flag.
  *
- * @param string $html  HTML marked by _pg_sw_mark_visibility()
- * @param array  $flags flag => bool for the product drawn first
+ * @param string $html     HTML marked by _pg_sw_mark_visibility()
+ * @param array  $flags    flag => bool for the product drawn first
+ * @param array  $switched the flags kept in both states
  * @return string
  */
-function _pg_catalog_rating_flags_keep($html, $flags)
+function _pg_catalog_variant_flags_keep($html, $flags, $switched = array('has_rating', 'no_rating'))
 {
     if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
-    return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
+    return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags, $switched) {
         $on = !empty($flags[$m[1]]);
-        if ($m[1] !== 'has_rating' && $m[1] !== 'no_rating') {
-            return $on ? _pg_catalog_rating_flags_keep($m[3], $flags) : '';
+        if (!in_array($m[1], $switched, true)) {
+            return $on ? _pg_catalog_variant_flags_keep($m[3], $flags, $switched) : '';
         }
-        $inner  = _pg_catalog_rating_flags_keep($m[3], $flags);
-        $marked = _pg_catalog_rating_flag_mark($inner, $m[1], !$on);
+        $inner  = _pg_catalog_variant_flags_keep($m[3], $flags, $switched);
+        $marked = _pg_catalog_variant_flag_mark($inner, $m[1], !$on);
         if ($marked === null) return $on ? $inner : '';
         return $marked;
     }, $html);
@@ -4364,7 +4366,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   fit is cut, unless the variant script is on the page and the variants
 //   differ in rating; then both states stay, the one that is off hidden,
 //   and the script shows the state of the variant picked
-//   (_pg_catalog_rating_flags_keep()).
+//   (_pg_catalog_variant_flags_keep()).
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
@@ -5053,8 +5055,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $_civ_variants_scripted = $is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs']);
     $_civ_rating_switch     = $_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products']);
     if ($_civ_rating_switch) {
-        $loop_template = _pg_catalog_rating_flags_keep($loop_template, $_civ_flags);
-        $static_html   = _pg_catalog_rating_flags_keep($static_html, $_civ_flags);
+        $loop_template = _pg_catalog_variant_flags_keep($loop_template, $_civ_flags);
+        $static_html   = _pg_catalog_variant_flags_keep($static_html, $_civ_flags);
     } else {
         $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
         $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
@@ -5751,7 +5753,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // display rule would beat. Two attribute selectors with !important win
     // over both. Printed before the elements so the first paint obeys it.
     $_civ_rating_css = $_civ_rating_switch
-        ? '<style>[data-pg-rating-flag][hidden]{display:none!important}</style>'
+        ? '<style>[data-pg-variant-flag][hidden]{display:none!important}</style>'
         : '';
 
     // No auto-prepended messages placeholder — designer controls placement

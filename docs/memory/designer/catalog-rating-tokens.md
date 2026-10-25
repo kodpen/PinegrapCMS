@@ -15,8 +15,8 @@ description: Product rating in the catalog widgets: __rating_avg / __rating_coun
 - The no-products check counts both cards: a card drawn only with a rating is still a card.
 
 ## What does a variant switch do with the flags?
-- When the variant script is on the page and the variants differ in rating (`_pg_catalog_rating_states_differ()`), both states stay (`_pg_catalog_rating_flags_keep()`): each element of a flagged span gets `data-pg-rating-flag="<flag>"` in its own opening tag, the state that is off also `hidden`; loose text gets a span (`_pg_catalog_rating_flag_mark()`). No wrapper goes around an element: `.row > .col`, flex and grid items and `<p>` keep working.
-- A `[data-pg-rating-flag][hidden]{display:none!important}` rule printed before the form beats `d-flex` and a design's own display.
+- When the variant script is on the page and the variants differ in rating (`_pg_catalog_rating_states_differ()`), both states stay (`_pg_catalog_variant_flags_keep()`): each element of a flagged span gets `data-pg-variant-flag="<flag>"` in its own opening tag, the state that is off also `hidden`; loose text gets a span (`_pg_catalog_variant_flag_mark()`). No wrapper goes around an element: `.row > .col`, flex and grid items and `<p>` keep working.
+- A `[data-pg-variant-flag][hidden]{display:none!important}` rule printed before the form beats `d-flex` and a design's own display.
 - `applyVariant()` in `pg_civ_variants.js` sets `hidden` from the variant's `rating_count`.
 - Custom HTML whose tags do not close has no element end to mark: kept or cut for the variant shown first.
 

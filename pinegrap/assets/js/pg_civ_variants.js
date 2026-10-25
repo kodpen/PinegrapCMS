@@ -266,12 +266,12 @@
 
             // 1b. Elements shown only with or only without a rating. When the
             //     variants differ in rating the page carries both states
-            //     (data-pg-rating-flag); the one that does not fit the chosen
+            //     (data-pg-variant-flag); the one that does not fit the chosen
             //     variant is hidden. rating_count is '' without a review.
             if ('rating_count' in p) {
                 var rated = p.rating_count !== null && p.rating_count !== undefined && String(p.rating_count) !== '';
-                scope.querySelectorAll('[data-pg-rating-flag]').forEach(function (el) {
-                    var flag = el.getAttribute('data-pg-rating-flag');
+                scope.querySelectorAll('[data-pg-variant-flag]').forEach(function (el) {
+                    var flag = el.getAttribute('data-pg-variant-flag');
                     if (flag === 'has_rating') el.hidden = !rated;
                     else if (flag === 'no_rating') el.hidden = rated;
                 });
