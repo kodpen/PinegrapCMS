@@ -36387,9 +36387,6 @@ const StyleDesigner = (function () {
                         || (isSem && tag === 'button');
         var isForm     = (isSem && tag === 'form');
         var isFormCtrl = (isSem && ['input', 'select', 'textarea'].indexOf(tag) !== -1);
-        // Only a button can post a form; a link bound to a list action is
-        // dropped on the page (_pg_wishlist_wire_actions()).
-        var isButton   = (node.type === 'component' && node.props.componentType === 'btn') || (isSem && tag === 'button');
         var cur = node.props._bindings || {};
         var out = '';
 
@@ -36456,7 +36453,10 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
             }
-            if (region === 'wishlist' && isButton) {
+            // Only a button can post a list action's form; a link bound to
+            // one is dropped on the page (_pg_wishlist_wire_actions()), so a
+            // link that already carries one still lists it to be cleared.
+            if (region === 'wishlist' && (isRealButton || cur.action === 'wishlist_add_to_cart' || cur.action === 'wishlist_remove')) {
                 aOpts.push(['wishlist_add_to_cart', _sdT('Add to Cart — per saved product (loop_area)')]);
                 aOpts.push(['wishlist_remove',      _sdT('Remove from Favourites (loop_area)')]);
             }

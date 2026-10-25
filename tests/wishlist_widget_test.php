@@ -525,6 +525,17 @@ function test_wishlist_widget_registered_in_the_editor()
 	$actions = wishlist_widget_test_js_between('function _sdBindingActionRows(node) {', 'function propsDataBinding(node) {');
 	pg_assert_contains("['wishlist_add_to_cart',", $actions, 'add to cart action offered');
 	pg_assert_contains("['wishlist_remove',", $actions, 'remove action offered');
+	// Offered on the function's one real-button test, like the comment
+	// send action; a link that already carries one (the page drops it)
+	// still lists it, so it can be seen and cleared.
+	$offer = '';
+	if (preg_match("/if \\(region === 'wishlist' && \\(([^{]*)\\)\\) \\{/", $actions, $m)) {
+		$offer = $m[1];
+	}
+	pg_assert_contains('isRealButton', $offer, 'offered to real buttons');
+	pg_assert_contains("cur.action === 'wishlist_add_to_cart'", $offer, 'a link carrying add to cart still lists it');
+	pg_assert_contains("cur.action === 'wishlist_remove'", $offer, 'a link carrying remove still lists it');
+	pg_assert_false(strpos($actions, 'var isButton') !== false, 'no second name for the real-button test');
 
 	$palette = wishlist_widget_test_js_between('var SW_WISHLIST_TOKEN_GROUPS = [', "\n    ];");
 	foreach (array('__short_description', '__detail_url', '__image_url', '__price_formatted', '__added_date', '__wishlist_count', '__login_url', '__shop_url') as $token) {
