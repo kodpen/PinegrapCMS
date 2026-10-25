@@ -115,7 +115,7 @@ if($item_type === 'submitted_form'){
     //if this is custom page check referance code from forms
     $form_reference_code = $row['reference_code'];
     if($form_reference_code != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . get_page_name($page_id) . '?r=' . $form_reference_code . '#c-' . $comment_id . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
         $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . $form_reference_code . '</p>';
     }
     
@@ -123,17 +123,17 @@ if($item_type === 'submitted_form'){
     //if this is product group check address name from product groups
     $product_group_address_name = $row['product_group_address_name'];
     if($product_group_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . '#c-' . $comment_id . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
     }
 
 }else if($item_type === 'product'){
     //if this is product group check address name from product groups
     $product_address_name = $row['product_address_name'];
     if($product_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . '#c-' . $comment_id . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
     }
 }else if($item_type === ''){
-    $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . get_page_name($page_id) . '#c-' . $comment_id . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+    $output_reference_button = '<a class="btn btn-link link-secondary py-0 mb-2 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
 }
 
 //if there is a command button to output

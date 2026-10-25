@@ -8,6 +8,7 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
   - necessary, always: the session cookie (`session_name()`), `software[auth]`, `software[remember_me]`, `software[device_type]`, `pg_consent`, `software[view_page_mode]` (written on every page for a signed-in user by `get_page.php` and `update_view_page_mode.php`, 10 years);
   - necessary, while `pg_lang_redirect_enabled()`: `pg_language` (`PG_LANGUAGE_COOKIE`, the language the redirect remembered, 1 year, HttpOnly);
   - necessary, while the page cache is on (`pg_page_cache_ttl() > 0`): `pg_nc` (`PG_PAGE_CACHE_MARKER`, browser session, marks a cart, sign-in or notice for a cache in front, `page-cache-gate.md`);
+  - necessary, while `wishlist_items` exists (`pg_wishlist_ready()`): `pg_wishlist` (`PG_WISHLIST_COOKIE`, a visitor's favourites before signing in, set on the first saved product, 1 year, HttpOnly; `commerce/wishlist.md`);
   - analytics with `VISITOR_TRACKING`: `software[number_of_visits]`, `software[tracking_code]`, `lsid`; with Google Analytics `_ga, _ga_*`;
   - marketing with tracking and the affiliate program: `software[affiliate_code]`;
   - necessary, while `CAPTCHA` is on with a provider: "Cloudflare Turnstile" or "hCaptcha" as a service (not held: a form cannot be sent without it, `waf/form-captcha-providers.md`);

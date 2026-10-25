@@ -22,6 +22,8 @@
  *        - Update every [data-pg-bind] element using the bound field map.
  *        - Refresh the carousel: rebuild slides + thumbs from new gallery.
  *        - Update product_id hidden input on the wrapping form.
+ *        - Dispatch `pg-civ-product-change` on the form (detail.productId),
+ *          which the favourite heart follows (pg_wishlist.js).
  *        - Enable the Add to Cart button.
  *        - Fire a background API call to refresh stock + computed fields.
  *
@@ -262,6 +264,19 @@
                 });
             });
 
+            // 1b. Elements shown only with or only without a rating. When the
+            //     variants differ in rating the page carries both states
+            //     (data-pg-rating-flag); the one that does not fit the chosen
+            //     variant is hidden. rating_count is '' without a review.
+            if ('rating_count' in p) {
+                var rated = p.rating_count !== null && p.rating_count !== undefined && String(p.rating_count) !== '';
+                scope.querySelectorAll('[data-pg-rating-flag]').forEach(function (el) {
+                    var flag = el.getAttribute('data-pg-rating-flag');
+                    if (flag === 'has_rating') el.hidden = !rated;
+                    else if (flag === 'no_rating') el.hidden = rated;
+                });
+            }
+
             // 2. Refresh the carousel — rebuild slides + thumbnails from
             //    the new product's gallery. Walks all carousels inside
             //    the form scope.
@@ -275,6 +290,11 @@
                 var pidInp = form.querySelector('input[type="hidden"][name="product_id"]');
                 if (pidInp) pidInp.value = String(p.id);
             }
+
+            // 3b. Announce the product the form now shows, for the scripts
+            //     that follow it (the favourite heart, pg_wishlist.js). The
+            //     event bubbles from the form; detail.productId is the id.
+            if (form) announceProduct(form, p.id);
 
             // 4. Update browser URL slug (without reload) so refresh /
             //    bookmark / share lands on the chosen variant. The slug
@@ -611,6 +631,21 @@
                 // Unknown prop — no-op (designer might add new bindings).
                 break;
         }
+    }
+
+    // A bubbling `pg-civ-product-change` event on the widget's form, with
+    // detail.productId. CustomEvent's constructor is missing from old
+    // browsers; createEvent() builds the same event there.
+    function announceProduct(form, productId) {
+        var detail = { productId: String(productId) };
+        var ev;
+        try {
+            ev = new CustomEvent('pg-civ-product-change', { bubbles: true, detail: detail });
+        } catch (_) {
+            ev = document.createEvent('CustomEvent');
+            ev.initCustomEvent('pg-civ-product-change', true, false, detail);
+        }
+        form.dispatchEvent(ev);
     }
 
     function escAttr(s) {

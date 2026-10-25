@@ -9724,7 +9724,11 @@
             // opened in their form and saved there, not applied.
             var drafts = message.changes.every(function (change) { return change.action === 'draft'; });
 
-            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
+            // Changes an application proposed (proposals.php) are headed by
+            // its name.
+            var proposer = message.changes[0].proposer || '';
+
+            box.appendChild(el('div', 'ws-drafts-title', proposer ? t('proposal_changes', proposer) : t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
@@ -9924,7 +9928,7 @@
                 if (change.status === 'pending' && change.draft) {
                     // The one who asked has the form to open: nothing to wait for.
                 } else if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker))));
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : (change.proposer ? t('proposal_change_waiting', change.asker, change.proposer) : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker)))));
                 } else if (change.status === 'pending' && change.account) {
                     var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
                     var off = el('a', '', t('mcp_disconnect_me'));
@@ -9964,7 +9968,7 @@
                 } else if (change.status === 'dismissed') {
                     card.appendChild(el('div', 'ws-draft-done', t('change_dismissed', change.decided_by)));
                 } else if (change.status === 'stale') {
-                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t((message.sender && message.sender.ai) ? 'ai_change_stale' : 'change_stale')));
+                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', change.proposer ? t('proposal_change_stale', change.proposer) : t((message.sender && message.sender.ai) ? 'ai_change_stale' : 'change_stale')));
                 } else if (change.status === 'failed') {
                     card.appendChild(el('div', 'ws-draft-done text-danger-emphasis', t('change_failed', change.error)));
                 }
@@ -14529,7 +14533,13 @@
             input.rows = 3;
             input.placeholder = t('qe_lines_help');
             input.value = Array.isArray(value) ? value.join('\n') : (value || '');
-        } else if (meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255)) {
+        } else if ((meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255))
+            || ((meta.kind === 'long' || meta.kind === 'text')
+                && /[\r\n]/.test(value === undefined || value === null ? '' : String(value)))) {
+            // A text field, or a long field of 255 characters or less, is one line,
+            // unless its value already holds a line break (a panel textarea stores
+            // one in a meta description): a one-line input drops it, and saving any
+            // other field of the record would send the value back without it.
             input = el('textarea', 'form-control form-control-sm');
             input.rows = 3;
             input.value = value || '';
@@ -19086,7 +19096,7 @@
             if (item.claude) {
                 var proposal = el('span', 'ws-tl-ai');
                 proposal.appendChild(icon('bi-stars'));
-                proposal.appendChild(document.createTextNode(t(item.claude.agent === 'ai' ? 'tl_ai' : 'tl_claude') + ' · ' + item.claude.type_label));
+                proposal.appendChild(document.createTextNode((item.claude.proposer ? t('tl_proposal', item.claude.proposer) : t(item.claude.agent === 'ai' ? 'tl_ai' : 'tl_claude')) + ' · ' + item.claude.type_label));
                 head.appendChild(proposal);
             }
 
@@ -21870,9 +21880,10 @@
     // ═══════════════════════════════════════════════════════════════════
 
     // What the screens kept in files of their own lean on here
-    // (workspace_palette.js, workspace_board_channel.js): the small helpers,
-    // the dialogs and menus, the task drawer, the planning board's way of
-    // moving a task, and the channel screen as it stands.
+    // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
+    // the small helpers, the dialogs and menus, the people picker the note
+    // share uses, the task drawer, the planning board's way of moving a task,
+    // and the channel screen as it stands.
     function shareKit() {
         window.PGWsKit = {
             cfg: CFG,
@@ -21882,6 +21893,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            peoplePicker: peoplePicker,
             api: api,
             toast: toast,
             fail: fail,
