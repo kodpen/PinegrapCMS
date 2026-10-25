@@ -718,6 +718,11 @@ function test_comments_widget_designer_thread_flags_twin()
 		'featured none' => array('featured_mode' => 'none', 'has_featured' => true, 'count' => 2, 'featured_view' => '0'),
 		'pages 3' => array('pages' => 3, 'count' => 40, 'featured_view' => true, 'has_featured' => 1, 'rating_on' => 1, 'files_on' => ''),
 		'odd values' => array('pages' => '2', 'count' => '0', 'allow_new' => 'yes', 'submitter_notified' => 1, 'signed_in' => 1, 'watching_on' => 1),
+		'email' => array('email' => true, 'count' => 1, 'allow_new' => true, 'rating_on' => 1),
+		'email, everything on' => array('email' => 1, 'count' => 1, 'allow_new' => true, 'signed_in' => true, 'staff' => true, 'require_login' => true,
+			'replying' => true, 'is_watcher' => true, 'manage_watchers' => true, 'featured_view' => true, 'has_featured' => true, 'pages' => 3,
+			'rating_on' => true, 'files_on' => true, 'watching_on' => true, 'name_mode' => 'typed'),
+		'email closed' => array('email' => '1', 'count' => 1, 'allow_new' => false, 'watching_on' => 1),
 	);
 
 	$res = comments_widget_designer_test_node(array('_sdCommentsThreadFlags'),
@@ -728,7 +733,7 @@ function test_comments_widget_designer_thread_flags_twin()
 
 	foreach ($sets as $name => $facts) {
 		$php = pg_comments_widget_thread_flags($facts);
-		pg_assert_same(22, count($php), $name . ': 22 flags');
+		pg_assert_same(23, count($php), $name . ': 23 flags');
 		$js = isset($res[$name]) ? $res[$name] : array();
 		ksort($php);
 		ksort($js);
@@ -755,7 +760,8 @@ var loop = keep(n('loop_area', {}, [n('semantic', { tag: 'div' }, [
     keep(flag('comment_is_pending', [], 'status')),
     keep(flag('comment_has_quote', [], 'quote')),
     keep(flag('is_staff', [], 'staff name')),
-    keep(n('semantic', { tag: 'div' }, [], 'card text'))
+    keep(n('semantic', { tag: 'div' }, [], 'card text')),
+    keep(n('semantic', { tag: 'button' }, [], 'card button'))
 ], 'card')], 'loop'));
 var tree = n('root', {}, [n('container', {}, [
     keep(flag('has_comments', [], 'heading')),
@@ -767,10 +773,16 @@ var tree = n('root', {}, [n('container', {}, [
     keep(n('semantic', { tag: 'form', _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
         keep(flag('is_replying', [keep(n('semantic', { tag: 'span' }, [], 'replying text'))], 'replying')),
         keep(flag('rating_on', [], 'rating')),
-        keep(flag('name_is_chosen', [], 'name select'))
+        keep(flag('name_is_chosen', [], 'name select')),
+        keep(n('semantic', { tag: 'button' }, [], 'submit'))
     ], 'form')),
     keep(flag('is_staff', [], 'staff controls')),
-    keep(n('semantic', { tag: 'div' }, [], 'plain'))
+    keep(n('semantic', { tag: 'div' }, [], 'plain')),
+    keep(flag('is_email', [], 'email note')),
+    keep(flag('watching_on', [keep(n('semantic', { tag: 'input' }, [], 'input'))], 'watch box')),
+    keep(n('component', { componentType: 'btn', btnElement: 'button' }, [], 'btn button')),
+    keep(n('component', { componentType: 'btn', btnElement: 'a' }, [], 'btn link')),
+    keep(n('content', { contentType: 'link', _bindings: { action: 'comment_reply_cancel' } }, [], 'cancel'))
 ])]);
 var cfg = { regionType: 'comments', featured: 'first', per_page: 0, layout: 'flat' };
 var out = {};
@@ -784,7 +796,7 @@ function test_comments_widget_designer_canvas_flag_off_and_state_for()
 {
 	$body = <<<'JS'
 out.states = _sdCommentsCanvasStates().map(function (s) { return s[0]; });
-['comments', 'closed', 'empty', 'staff', 'member', 'sign_in', 'replying'].forEach(function (st) {
+['comments', 'closed', 'empty', 'staff', 'member', 'sign_in', 'replying', 'email'].forEach(function (st) {
     _sdCommentsCanvasState = st;
     var r = {};
     Object.keys(named).forEach(function (k) { r[k] = _sdCommentsFlagOff(named[k], cfg); });
@@ -810,18 +822,43 @@ out.pick = {
     card_from_empty: pick('empty', named['card text']),
     plain: pick('closed', named['plain']),
     foreign: pick('staff', foreign),
-    shown_already: pick('member', named['form'])
+    shown_already: pick('member', named['form']),
+    email_note: pick('comments', named['email note']),
+    card_button_from_email: pick('email', named['card button']),
+    submit_from_email: pick('email', named['submit']),
+    input_from_email: pick('email', named['input']),
+    card_text_in_email: pick('email', named['card text']),
+    card_button: pick('comments', named['card button'])
 };
 JS;
 
 	$res = comments_widget_designer_test_node(
-		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
+		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsEmailDrops', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
 	}
 
-	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff'), $res['states'], 'the states in order');
+	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff', 'email'), $res['states'], 'the states in order');
+
+	// The e-mail state draws what a comment e-mail gets: the comment, no
+	// form, field, button, replying box or cancel control.
+	foreach (array('form', 'submit', 'input', 'btn button', 'cancel', 'card button', 'replying', 'add heading', 'closed', 'sign in', 'staff controls', 'staff name', 'empty') as $gone) {
+		pg_assert_true($res['email'][$gone], 'the e-mail hides ' . $gone);
+	}
+	foreach (array('email note', 'loop', 'heading', 'card text', 'btn link', 'plain', 'rating', 'watch box', 'quote', 'status') as $kept) {
+		pg_assert_false($res['email'][$kept], 'the e-mail shows ' . $kept);
+	}
+	foreach (array('comments', 'closed', 'empty', 'staff', 'member', 'sign_in', 'replying') as $state) {
+		pg_assert_true($res[$state]['email note'], 'only the e-mail shows is_email: ' . $state);
+		pg_assert_false($res[$state]['btn button'] || $res[$state]['card button'] || $res[$state]['cancel'], 'buttons and cancel are drawn outside the e-mail: ' . $state);
+	}
+	pg_assert_same('email', $res['pick']['email_note'], 'an is_email node opens the e-mail state');
+	pg_assert_same('comments', $res['pick']['card_button_from_email'], 'a button the e-mail drops moves off the e-mail state');
+	pg_assert_same('comments', $res['pick']['submit_from_email'], 'and so does the form');
+	pg_assert_same('comments', $res['pick']['input_from_email'], 'and a field');
+	pg_assert_same('email', $res['pick']['card_text_in_email'], 'the card stays in the e-mail state');
+	pg_assert_same('comments', $res['pick']['card_button'], 'a button keeps a state that draws it');
 
 	pg_assert_true($res['closed']['add heading'], 'closed hides comments_open');
 	pg_assert_true($res['closed']['form'], 'closed hides the form');
@@ -866,6 +903,71 @@ JS;
 	pg_assert_same('closed', $res['pick']['plain'], 'an unflagged node keeps the state');
 	pg_assert_same('staff', $res['pick']['foreign'], 'a node outside the widget keeps the state');
 	pg_assert_same('member', $res['pick']['shown_already'], 'a state that shows the node is kept');
+}
+
+// The canvas drops in its e-mail state exactly what the e-mail branch strips
+// (pg_comments_email_drops()), and draws no sample comment there: an e-mail
+// is about one comment.
+function test_comments_widget_designer_email_drops_twin()
+{
+	if (!comments_widget_designer_test_has('pg_comments_email_drops')) {
+		return;
+	}
+
+	$n = function ($type, $props) {
+		return array('type' => $type, 'props' => $props, 'children' => array());
+	};
+	$nodes = array(
+		'form' => $n('semantic', array('tag' => 'form')),
+		'Form' => $n('semantic', array('tag' => 'FORM')),
+		'input' => $n('semantic', array('tag' => 'input')),
+		'select' => $n('semantic', array('tag' => 'select')),
+		'textarea' => $n('semantic', array('tag' => 'textarea')),
+		'button' => $n('semantic', array('tag' => 'button')),
+		'div' => $n('semantic', array('tag' => 'div')),
+		'label' => $n('semantic', array('tag' => 'label')),
+		'a' => $n('semantic', array('tag' => 'a')),
+		'no tag' => $n('semantic', array()),
+		'tag not text' => $n('semantic', array('tag' => array('form'))),
+		'btn button' => $n('component', array('componentType' => 'btn', 'btnElement' => 'button')),
+		'btn input' => $n('component', array('componentType' => 'btn', 'btnElement' => 'input')),
+		'btn a' => $n('component', array('componentType' => 'btn', 'btnElement' => 'a')),
+		'btn default' => $n('component', array('componentType' => 'btn')),
+		'other component' => $n('component', array('componentType' => 'card', 'btnElement' => 'button')),
+		'content input' => $n('content', array('contentType' => 'input', 'tag' => 'input')),
+		'replying' => $n('semantic', array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'is_replying'))),
+		'replying link' => $n('content', array('contentType' => 'link', '_bindings' => array('eo_visible_if' => 'is_replying'))),
+		'cancel' => $n('content', array('contentType' => 'link', '_bindings' => array('action' => 'comment_reply_cancel'))),
+		'reply' => $n('content', array('contentType' => 'link', '_bindings' => array('action' => 'comment_reply'))),
+		'share' => $n('semantic', array('tag' => 'a', '_bindings' => array('action' => 'comment_share'))),
+		'staff' => $n('semantic', array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'is_staff'))),
+		'bindings not a list' => $n('semantic', array('tag' => 'div', '_bindings' => 'is_replying')),
+		'no props' => array('type' => 'semantic'),
+	);
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsEmailDrops'),
+		'var nodes = ' . json_encode($nodes) . ";\nvar out = {};\nObject.keys(nodes).forEach(function (k) { out[k] = _sdCommentsEmailDrops(nodes[k]); });\n"
+		. "out.__null = _sdCommentsEmailDrops(null);\nprocess.stdout.write(JSON.stringify(out));\n");
+	if ($res === null) {
+		return;
+	}
+
+	foreach ($nodes as $name => $node) {
+		pg_assert_same(pg_comments_email_drops($node), isset($res[$name]) ? $res[$name] : null, 'the twins agree: ' . $name);
+	}
+	pg_assert_false($res['__null'], 'no node');
+	pg_assert_true($res['btn button'] && $res['cancel'] && $res['replying'] && $res['form'], 'what the e-mail drops');
+	pg_assert_false($res['btn a'] || $res['reply'] || $res['share'] || $res['staff'], 'links and flagged boxes stay (their flags decide)');
+
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$samples = comments_widget_designer_test_js_function($js, '_sdAppendCommentSamples');
+	$no_comments = strpos($samples, 'if (!thread.has_comments) return;');
+	$email = strpos($samples, 'if (thread.is_email) return;');
+	pg_assert_true(($no_comments !== false) && ($email !== false) && ($no_comments < $email), 'no sample comments in the e-mail state');
+	pg_assert_contains('_sdCommentsEmailDrops(node)', comments_widget_designer_test_js_function($js, '_sdCommentsFlagOff'), 'the e-mail state hides what the e-mail drops');
+	pg_assert_contains('_sdCommentsEmailDrops', comments_widget_designer_test_js_function($js, '_sdCommentsStateFor'), 'and a node it hides opens another state');
+	pg_assert_contains("['is_email', _sdT('Drawn in a comment e-mail')]", $js, 'the designer offers is_email');
+	pg_assert_contains("['email', _sdT('E-mail')]", comments_widget_designer_test_js_function($js, '_sdCommentsCanvasStates'), 'the e-mail state has a chip');
 }
 
 // The three sample comments after the card: a reply with a quote, one
@@ -1189,6 +1291,14 @@ function test_comments_widget_designer_save_warning_codes_and_text()
 		pg_comments_save_warning_codes($f(array('blocks' => 1, 'widgets' => 3, 'nested_record' => true, 'comments_on' => false))), 'all four, in order');
 	pg_assert_same(array(), pg_comments_save_warning_codes('x'), 'not facts');
 
+	// A page another page names as its comment e-mail page: it draws no live
+	// thread, so only the two-widgets warning applies to it.
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array('email_page' => true))), 'an e-mail page, one widget');
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array('email_page' => true, 'blocks' => 1, 'nested_record' => true, 'comments_on' => false))), 'an e-mail page: no block, record or off warning');
+	pg_assert_same(array('widgets'), pg_comments_save_warning_codes($f(array('email_page' => true, 'widgets' => 2, 'blocks' => 1, 'comments_on' => false))), 'an e-mail page with two widgets');
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array('email_page' => true, 'widgets' => 0))), 'an e-mail page without a widget');
+	pg_assert_same(array('off'), pg_comments_save_warning_codes($f(array('email_page' => false, 'comments_on' => false))), 'not an e-mail page');
+
 	foreach (array('block', 'widgets', 'nested_record', 'off') as $code) {
 		pg_assert_contains('"topic-page"', pg_comments_save_warning_text($code, 'topic-page', 3), $code . ' names the page');
 	}
@@ -1201,19 +1311,36 @@ function test_comments_widget_designer_save_warning_codes_and_text()
 	));
 	pg_assert_same(array(), pg_comments_save_warnings($tree, false, 'p'), 'a block alone');
 	pg_assert_same(array(), pg_comments_save_warnings(null, true, 'p'), 'no tree');
+	pg_assert_same(array(), pg_comments_save_warnings($tree, false, 'p', 12), 'a block alone on a saved page reads nothing');
 }
 
-// The nested record reader and the save share the census.
+// The nested record reader, the e-mails' widget check and the save share the
+// census; the save asks whether the page is a comment e-mail page only for a
+// page whose tree reaches a comments widget.
 function test_comments_widget_designer_census_wiring()
 {
+	$facts = comments_widget_designer_test_php_body('pg_comments_page_facts');
+	pg_assert_contains('pg_comments_tree_census(', $facts, 'the page\'s facts take the census');
+	pg_assert_contains('pg_comments_component_census(', $facts, 'and read the components through it');
+	pg_assert_contains('static $cache', $facts, 'cached per page');
+
 	$nested = comments_widget_designer_test_php_body('pg_comments_page_nested_record');
-	pg_assert_contains('pg_comments_tree_census(', $nested, 'the nested record reader takes the census');
-	pg_assert_contains('pg_comments_component_census(', $nested, 'and reads the components through it');
-	pg_assert_contains('static $cache', $nested, 'cached per page');
+	pg_assert_contains('pg_comments_page_facts(', $nested, 'the nested record reader reads them');
+	pg_assert_contains('pg_comments_page_facts(', comments_widget_designer_test_php_body('pg_comments_page_has_widget'), 'and so does the e-mails\' widget check');
 
 	$census = comments_widget_designer_test_php_body('pg_comments_component_census');
 	pg_assert_contains('500', $census, 'at most 500 components');
 	pg_assert_contains('8', $census, 'at most 8 levels');
+
+	$warnings = comments_widget_designer_test_php_body('pg_comments_save_warnings');
+	$refs = strpos($warnings, "if (!\$census['refs'])");
+	$widgets = strpos($warnings, "\$facts['widgets'] > 0");
+	$email = strpos($warnings, 'pg_comments_is_email_page(');
+	pg_assert_true(($refs !== false) && ($widgets !== false) && ($email !== false) && ($refs < $widgets) && ($widgets < $email), 'the e-mail page is asked about only once a widget is found');
+
+	$save = comments_widget_designer_test_php_body('pg_designer_save_page');
+	pg_assert_contains('pg_comments_save_warnings($cw_tree, $cw_on, $name, $page_id)', $save, 'the save passes the page');
+	pg_assert_false(strpos($save, 'pg_comments_is_email_page('), 'and does not ask for every page itself');
 }
 
 // The design's comments widget, the placement and the block the conversion
