@@ -19,6 +19,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Lay out edit screens as a form column, a sticky status column and a sticky save bar (`product_builder.php`), not stacked full-width cards (`edit-screen-wide-layout.md`).
 - The panel moves to Bootstrap 6 by plan (`plans/bootstrap-6-panel.md`); until the switch keep Bootstrap 5 markup, check v6 classes against the dist in `assets/lib/bootstrap-6`, not only the docs (`bootstrap-6.md`), and convert classes only with `tools/bs6_migrate.php`, once per line (`bootstrap-6-codemod.md`).
 - Call Bootstrap's JavaScript and listen to its events only through `pgUI` (`assets/js/pg_ui.js`): kinds dialog/drawer/menu, `pgUI.on()` instead of jQuery `.on('….bs.modal')`, floating layers on `pgUI.overlayHost()` (`pg-ui-adapter.md`).
+- Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -66,6 +67,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: d-none not hidden, Popper in scroll boxes, flex overflow and min-height 0, nested :has(), forms and offcanvas, datepicker, multiselect.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
+- panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, what still calls Bootstrap directly
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
