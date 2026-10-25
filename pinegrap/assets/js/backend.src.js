@@ -9953,14 +9953,28 @@ function initSettingsFilter() {
         card.setAttribute('data-pgtext', (card.textContent || '').replace(/\s+/g, ' ').toLowerCase());
     });
 
-    field.addEventListener('input', function () {
+    // Only what a person typed filters. A password manager writes the saved
+    // username into this box a moment after the page loads (it sits outside the
+    // form, so it has no share of the form's autofill guard) and raises the same
+    // trusted input event a keystroke does; acted on, it hid every card whose
+    // text lacked the name. A fill lands in a box nobody is in, typing never
+    // does, so a value that arrives without focus is wiped instead. The same
+    // goes for a value already there when this runs.
+    function apply() {
+
+        if (document.activeElement !== field) {
+            field.value = '';
+        }
 
         var needle = field.value.trim().toLowerCase();
 
         cards.forEach(function (card) {
             card.classList.toggle('d-none', (needle !== '') && (card.getAttribute('data-pgtext').indexOf(needle) === -1));
         });
-    });
+    }
+
+    field.addEventListener('input', apply);
+    apply();
 }
 
 
