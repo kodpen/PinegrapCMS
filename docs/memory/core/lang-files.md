@@ -20,8 +20,9 @@ description: Turkish wording as sorted shards in includes/local/tr/: why, layout
 - `php tools/tr_add.php "English" "Türkçe" [...]` or `--from=<file.json>`; `--lang=<code>`; never by hand. Each key goes into its shard at its sorted place. Same value already there: skipped; another value: refused unless `--replace`. `--normalize` rewrites a language in its exact form. Files are written through a temporary file and `rename()` (`pg_lang_write_file()`).
 
 ## How do I settle a conflict in a language file?
-- `php tools/tr_resolve.php` (merging `development` into a branch) or `--development=ours` (a branch into `development` or a train): from git's three versions of each conflicted file, development's plus the branch's own edits (`pg_lang_merge3()`; the branch's value wins when both changed a key), written and staged.
-- A branch that still edits the old single `tr.json`: `php tools/tr_resolve.php --legacy=<branch>` re-applies its edits onto the shards, then `git rm` the old file if the merge kept it.
+- `php tools/tr_resolve.php` (merging `development` into a branch) or `--development=ours` (a branch into `development` or a train): each conflicted shard becomes development's plus the branch's own edits (`pg_lang_merge3()`; the branch's value wins when both changed a key), written and staged.
+- The old `tr.json` still edited by one side (modify/delete): the same command puts that side's edits since the merge base onto the shards, stages them and removes the file, never writing it again; `--legacy=<ref>` does so outside a merge. A shard one side deleted, or a git command that fails: SKIPPED, exit 1.
+- Git runs through `proc_open()`, no cmd.exe, no redirection: Windows works too. `.gitattributes` keeps the shards LF on every checkout: check_lang compares bytes.
 
 ## What does check_lang.php check?
 - Each shard against `pg_lang_shard_problems()` (an object of strings, each key in its own shard, the exact form, so no key twice), duplicates with lines (`pg_json_duplicate_keys()`), the keys through `pg_lang_read_folder()`. A folder and a `tr.json` side by side fail.

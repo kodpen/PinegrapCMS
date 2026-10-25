@@ -12,7 +12,7 @@ description: The one session that merges PRs on development: which PRs it may pu
 
 ## In which order do they merge?
 - A PR that carries another open PR's commits waits for it; the PR that rewrites the memory tree merges last.
-- Translation keys live in sorted shards (`includes/local/tr/`), so two PRs adding different keys merge cleanly; two that add neighbouring keys can still conflict in one shard. A PR still editing the old single `tr.json`: `php tools/tr_resolve.php --legacy=<branch>` (`core/lang-files.md`).
+- Translation keys live in sorted shards (`includes/local/tr/`), so two PRs adding different keys merge cleanly; two that add neighbouring keys can still conflict in one shard. A PR still editing the old single `tr.json` conflicts with its removal (modify/delete): `php tools/tr_resolve.php --development=ours` moves its edits onto the shards and removes the file (`core/lang-files.md`).
 - A conflict in a shard: `php tools/tr_resolve.php --development=ours` (`core/lang-files.md`) does this: `development`'s shard plus the keys the PR added, the PR's value for a key it changed; then `php tools/check_lang.php` (no key twice). `changelog.txt` is written by the merging session from the PR body (`merge-train.md`).
 - Generated indexes (`docs/memory/README.md`, folder READMEs) are regenerated with `php tools/memory_index.php`, but the key-rules block between the markers is hand-written: keep the lines both sides added. Taking one side's README whole drops the other side's key rule (#1382 lost one this way, restored before merging).
 
