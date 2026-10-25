@@ -1968,7 +1968,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
                 ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '') . '
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                <input class="form-control form-control-sm ws-grow" type="search" placeholder="' . h(lang('Filter the tools')) . '" aria-label="' . h(lang('Filter the tools')) . '" data-ws-mcp-filter>
+                <input class="form-control form-control-sm ws-grow" type="search" placeholder="' . h(lang('Filter the tools')) . '" aria-label="' . h(lang('Filter the tools')) . '" autocomplete="pg-no-autofill" data-ws-mcp-filter>
                 ' . (($admin && ($reads > 0)) ? '<button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-ws-mcp-all-read><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Every tool that reads only')) . '</button>' : '') . '
                 ' . (($admin && ($unsaid_off > 0)) ? '<button type="submit" name="mcp_declare_all" value="1" class="btn btn-sm btn-outline-warning text-nowrap" onclick="return confirm(' . h(json_encode($declare_warning)) . ');"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Declare the "Not said" ones read-only')) . '</button>' : '') . '
             </div>
@@ -2205,6 +2205,11 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
 
             if (!field.matches || !field.matches(\'[data-ws-mcp-filter]\')) {
                 return;
+            }
+
+            // A password manager fills a box nobody is in; only typing filters.
+            if (document.activeElement !== field) {
+                field.value = \'\';
             }
 
             var words = field.value.toLocaleLowerCase().trim();
