@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * A customer's return request and their own moves on it, posted from the
- * order view widget of My Account (the forms are built by
- * includes/fn/returns.php):
+ * order view widget of My Account or from the classic order view
+ * (get_view_order_screen_content.php); the forms are built by
+ * includes/fn/returns.php:
  *
  *   action=request   order_id, ship_to_id, qty[<order item id>], reason, note
  *   action=withdraw  order_id, return_id  (a request nobody answered yet)
@@ -13,8 +14,9 @@
  * Only for the signed-in owner of the order, and only while
  * ECOMMERCE_ORDER_RETURNS_ALLOWED is on; staff manage returns from the panel.
  * The outcome is told through the order view's messages (liveform
- * 'order_receipt', the name the widget's messages node carries), and the
- * browser goes back to the page the form was on.
+ * 'order_receipt', the name the widget's messages node carries and the
+ * liveform the classic order view prints), and the browser goes back to the
+ * page the form was on.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

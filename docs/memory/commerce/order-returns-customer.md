@@ -28,5 +28,5 @@ description: Customer side of returns in My Account's order view: the switch, __
 - Bell and push: action `order_return` (title the order number, `order_total` requested or shipped, `form_id` the return), for `manage_ecommerce` (`includes/notifications.php`), opening the return's screen (`view_return.php?id=<form_id>`; a row without one opens the order); external API subject `order`.
 - Activity log lines for the request, the withdrawal and the parcel sent back.
 
-## What is not here yet?
-- The classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
+## And the classic order view?
+- The legacy `view order` page shows the same list and form (PR #1617): commerce/order-returns-classic-view.md.

@@ -107,9 +107,10 @@ function pg_mcp_param_schema($param) {
 // The tool for a route.
 //
 // The hints tell the application how careful to be (MCP ToolAnnotations): a
-// GET only reads; a creation only adds; anything else that writes may change
-// or remove what is there. Writes that can be rehearsed take dry_run, the
-// API's X-Dry-Run: the call is checked all the way to the write and the
+// GET only reads; a creation only adds, and so does a proposal (a change
+// card the person applies or sets aside); anything else that writes may
+// change or remove what is there. Writes that can be rehearsed take dry_run,
+// the API's X-Dry-Run: the call is checked all the way to the write and the
 // answer says what would have been done.
 function pg_mcp_tool_from_route($route) {
 
@@ -171,7 +172,7 @@ function pg_mcp_tool_from_route($route) {
 		'annotations' => array(
 			'title'           => isset($route['summary']) ? (string)$route['summary'] : (string)$route['id'],
 			'readOnlyHint'    => $read_only,
-			'destructiveHint' => !$read_only && ($last !== 'create'),
+			'destructiveHint' => !$read_only && !in_array($last, array('create', 'propose'), true),
 			'idempotentHint'  => $read_only,
 			'openWorldHint'   => false
 		)

@@ -10903,6 +10903,7 @@ const StyleDesigner = (function () {
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
                     account_email:        _sdT('Account E-mail'),
+                    wishlist:             _sdT('Favourites'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -11165,6 +11166,27 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Where a node of the comments widget being drawn sits: inside its
+    // loop_area (the template of one comment), inside any form (inForm,
+    // bound or not, as pg_comments_drop_nested_forms() counts it), and the
+    // actions of the bound forms around it, the way _pg_comments_control_walk()
+    // and _pg_comments_row_walk() (widgets_comments.php) meet it.
+    function _sdCommentsPlace(node) {
+        var place = { inComment: false, inForm: false, forms: [] };
+        var root = _sysWidgetRenderTreeRoot;
+        var p = root ? findParent(node, root) : null;
+        while (p) {
+            if (p.type === 'loop_area') place.inComment = true;
+            var pb = (p.props && p.props._bindings) || {};
+            if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form') {
+                place.inForm = true;
+                if (pb.action) place.forms.push(pb.action);
+            }
+            p = findParent(p, root);
+        }
+        return place;
+    }
+
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
@@ -11174,6 +11196,16 @@ const StyleDesigner = (function () {
     // setting. A page with comments off prints no widget, so the whole
     // widget fades. The attachment box and the choose-a-name select have no
     // page field in the designer yet; they join this twin with those fields.
+    // The watch form, its buttons and the watcher list follow the watcher
+    // e-mail page; a reply control fades while the page takes no new
+    // comments; a control only a button (or only a link or a button) works
+    // as fades elsewhere, and so does the pagination while the widget shows
+    // every comment on one page. What the page leaves out for where it sits
+    // fades too (_sdCommentsPlace()): reply and share outside the comment
+    // (the loop_area), the thread's controls, small forms and sections
+    // inside it, a button that sends a small form outside that form, and
+    // the comment form, a small form or the watcher list inside any form,
+    // which the page drops before it binds anything.
     function _sdCommentsBindingOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return '';
         var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
@@ -11189,14 +11221,48 @@ const StyleDesigner = (function () {
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
             return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
         }
-        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on') {
+        var isButton = tag === 'button' || (node.type === 'component' && node.props && node.props.componentType === 'btn');
+        var isLink = tag === 'a' || (node.type === 'content' && node.props && node.props.contentType === 'link');
+        // Only a button sends the watch form and the staff's form.
+        if (['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'].indexOf(b.action) !== -1 && !isButton) {
+            return _sdT('Off — only a button sends this form');
+        }
+        // A form inside another form is broken markup the browser ends at
+        // the first </form>: pg_comments_drop_nested_forms() leaves out a
+        // bound form and the watcher list (which holds forms) below any form.
+        var nests = (tag === 'form' && ['comment_form', 'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1) ||
+            b.section === 'comment_watchers';
+        if (nests && _sdCommentsPlace(node).inForm) return _sdT('Off — a form cannot sit inside another form');
+        // Reply and share answer one comment; the thread's controls, small
+        // forms and sections have no place in one; a button sends only the
+        // form it is in.
+        var rowOnly = ['comment_reply', 'comment_share'].indexOf(b.action) !== -1;
+        var threadOnly = ['comment_reply_cancel', 'comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen',
+            'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1 ||
+            b.section === 'comment_watchers' || b.section === 'comment_pagination';
+        if (rowOnly || threadOnly) {
+            var place = _sdCommentsPlace(node);
+            var sends = (b.action === 'comment_watch' || b.action === 'comment_unwatch') ? 'comment_watch_form'
+                : ((b.action === 'comment_close' || b.action === 'comment_reopen') ? 'comment_allow_new_form' : '');
+            if (rowOnly && !place.inComment) return _sdT('Off — works only inside a comment');
+            if (threadOnly && place.inComment) return _sdT('Off — has no place inside a comment');
+            if (sends && place.forms.indexOf(sends) === -1) return _sdT('Off — works only inside its own form');
+        }
+        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on' ||
+            ['comment_watch_form', 'comment_watch', 'comment_unwatch'].indexOf(b.action) !== -1 || b.section === 'comment_watchers') {
             return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PAGE : '';
         }
+        if (b.action === 'comment_reply' && _getCmtVal('pg_comments_allow_new') === '0') return PAGE;
         // Only a button sends the comment; the site leaves anything else
         // bound to the send action out.
-        if (b.action === 'comment_submit' && tag !== 'button' &&
-            !(node.type === 'component' && node.props && node.props.componentType === 'btn')) {
+        if (b.action === 'comment_submit' && !isButton) {
             return _sdT('Off — only a button sends the comment');
+        }
+        if (['comment_reply', 'comment_reply_cancel', 'comment_share'].indexOf(b.action) !== -1 && !isButton && !isLink) {
+            return _sdT('Off — only a link or a button');
+        }
+        if (b.section === 'comment_pagination' && !(parseInt(cfg.per_page, 10) > 0)) {
+            return _sdT('Off — the widget shows every comment on one page');
         }
 
         // A label follows its control.
@@ -11889,6 +11955,9 @@ const StyleDesigner = (function () {
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
                     // Search results and calendar widgets.
                     pagination:           _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    // Comments widget.
+                    comment_pagination:   _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    comment_watchers:     _sdT('Watcher list (filled by the backend — only for who may manage the watchers)'),
                     calendar_picker:      _sdT('Calendar and view picker (filled by the backend)'),
                     month_grid:           _sdT('Month grid (filled by the backend — the events of each day)'),
                     reserve_form:         _sdT('Reserve button (filled by the backend — hidden when reservations are closed)'),
@@ -12679,6 +12748,10 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        // Favourites: the day a product was saved.
+        '__added_date': _sdDateSample(false),
+        // The badge a product out of stock carries (catalog cards, Favourites).
+        '__out_of_stock_label': _sdT('Out of stock'),
         '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
@@ -12906,12 +12979,14 @@ const StyleDesigner = (function () {
         return !!(tok && Object.prototype.hasOwnProperty.call(_SD_HTML_PREVIEW_TOKENS, tok));
     }
 
-    // Numeric / count tokens — return a small integer instead of lorem.
+    // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
         '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
-        '__inventory_quantity': '12', '__item_inventory_quantity': '12'
+        '__inventory_quantity': '12', '__item_inventory_quantity': '12',
+        '__rating_avg': '4.6', '__rating_count': '12',
+        '__wishlist_count': '3'
     };
 
     // Boolean / flag-shaped tokens — empty string (collapses :empty styles).
@@ -13084,7 +13159,7 @@ const StyleDesigner = (function () {
         return 'data:image/svg+xml,' + encodeURIComponent(svg);
     }
 
-    var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1 };
+    var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1, wishlist: 1 };
 
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
@@ -14518,6 +14593,80 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // System widgets whose output is a <form> or holds one. The renderer
+    // prints a <form> around the widget's whole tree for the custom form,
+    // the member and account widgets (_pg_member_form_wrap()), the login
+    // region's sign-in form, the express order's host form and the product
+    // page widget's add-to-cart form (catalog_item_view); some print
+    // it in one state only (signed in or out, before a reset is sent), and
+    // each counts as always printing it. Account security's blocks are forms
+    // of their own, and a tree with no block bound as one is wrapped whole.
+    var _SD_FORM_WIDGET_TYPES = ['custom_form', 'login_form', 'login_region', 'forgot_password', 'registration',
+                                 'membership', 'logout', 'change_password', 'set_password', 'account_profile',
+                                 'email_preferences', 'address_book', 'account_security', 'express_order',
+                                 'catalog_item_view'];
+
+    // Does the tree of system widget `sid` sit in a <form> the server prints
+    // around it, which is not a node there? Account security is left out:
+    // its forms are its blocks, nodes _sdInForm() finds by walking up, and
+    // its whole-tree form is only the fallback for a tree with no bound
+    // block; a form dropped there to be bound is the way back to blocks.
+    function _sdWidgetPrintsForm(sid) {
+        var cfg = sid ? _cfCfgOf(sid) : null;
+        return !!cfg && cfg.regionType !== 'account_security' && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1;
+    }
+
+    // Does the drag place a <form>: the dragged element, any element below
+    // it (a newsletter or login block), a <form> written in a node's own
+    // markup, or a shared component or widget that brings one (a widget of
+    // a kind in _SD_FORM_WIDGET_TYPES, or a component whose cached tree
+    // holds one)? A block's top-level type says nothing about it, so the
+    // tree is walked. A new system widget has no tree yet and counts by its
+    // kind. Kept on the payload like _sdDragCarriesControl().
+    function _sdDragCarriesForm(data) {
+        if (!data) return false;
+        if (typeof data._sdForm === 'boolean') return data._sdForm;
+        var root = _sdDragTree(data);
+        var seen = {};
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_semTag(n) === 'form' || /<form[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+                if (n.type === 'shared_ref') {
+                    var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                    if (!sid || seen[sid]) return false;
+                    seen[sid] = true;
+                    var cfg = _cfCfgOf(sid);
+                    if (cfg && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1) return true;
+                    var cached = _sharedCache[sid];
+                    return !!(cached && cached.tree) && walk(cached.tree);
+                }
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : (data.type === 'system_widget'
+                ? _SD_FORM_WIDGET_TYPES.indexOf(String((data.extra || {}).regionType || '')) !== -1
+                : _semTag({ type: data.type, props: data.extra || {} }) === 'form');
+        try { data._sdForm = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a <form>, or inside one at any depth? The tree of a
+    // system widget that prints a <form> around it (_sdWidgetPrintsForm())
+    // counts as one, its root too: that <form> is not a node there.
+    function _sdInForm(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'form') return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return _sdWidgetPrintsForm(_isInsideSystemWidget(target));
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -14591,6 +14740,13 @@ const StyleDesigner = (function () {
             if (voidTags.indexOf(target.props.tag.toLowerCase()) !== -1) return false;
         }
 
+        // No <form> inside a <form>, at any depth, also when the form comes
+        // inside a dragged block: the browser drops the inner <form> tag, so
+        // the block's fields would submit with the outer form. Asked before
+        // the root's free pass, as a custom form widget's tree root is the
+        // inside of a <form> the server prints.
+        if (_sdDragCarriesForm(data) && _sdInForm(target)) return false;
+
         // Drop onto root: the auto-wrapper takes over
         if (target.type === 'root') return true;
 
@@ -14648,8 +14804,6 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
-        // Rule 7: <form> cannot contain another <form>
-        if (tgtTag === 'form' && srcTag === 'form') return false;
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────
@@ -14823,73 +14977,10 @@ const StyleDesigner = (function () {
         // Track original dropped node before any auto-wrapping so selection stays on what the user dragged
         var _origDroppedNode = n;
 
-        // 1. a row/col dropped straight onto root has to be wrapped in a container — BUT:
-        //    a widget inner tree's root is type='root' as well. EXEMPT the widget root from
-        //    auto-wrapping: a widget is already a constrained area and elements are meant to
-        //    go straight into it ("widget > col > card" rather than "widget > container > col > card").
-        //    _resolveSharedSid(target) > 0 means target is the cached tree root of a
-        //    shared_component (system widgets and shared components alike).
-        var _targetIsSharedRoot = (target.type === 'root') && _resolveSharedSid(target) > 0;
-        if (target.type === 'root' && !_targetIsSharedRoot) {
-            if (t === 'col') {
-                // col → container > row > col (user's col goes directly into row, no extra col-12 wrapper)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
-                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
-                ]);
-            } else if (t === 'row') {
-                // row → container > row (user's row goes directly into container)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
-            }
-            // Auto-wrap complex component explosions (pricing, hero, features, etc.) in a container
-            if (dragData.source === 'palette' && dragData.type === 'component' && n && n.type === 'semantic') {
-                var _noWrapCtypes = ['navbar',
-                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
-                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
-                                     'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
-                                     'cta-simple', 'cta-inline', 'cta-gradient',
-                                     'features-grid', 'features-alt', 'features-list',
-                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
-                                     'image-carousel', 'image-grid', 'image-masonry',
-                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
-                                     'stats-counter', 'stats-icons', 'stats-progress',
-                                     'team-grid', 'team-minimal', 'team-leadership',
-                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
-                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
-                                     'blog-grid', 'blog-featured', 'blog-list',
-                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
-                                     'compare-vs', 'compare-table', 'compare-side-by-side',
-                                     'contact-form', 'contact-info', 'contact-map',
-                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
-                                     'login-centered', 'login-split', 'login-minimal',
-                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
-                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
-                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
-                                     'breadcrumbs-with-header',
-                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
-                                     'steps-numbered', 'booking-cta', 'booking-split',
-                                     'hours-card', 'hours-location', 'locations-cards',
-                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
-                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
-                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
-                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
-                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
-                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
-                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
-                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                var _ct = (dragData.extra || {}).componentType || '';
-                if (_noWrapCtypes.indexOf(_ct) === -1) {
-                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
-                }
-            }
-        }
-
-        // 2. col → col: wrap the inner col in a new row
-        if (target.type === 'col' && (t === 'col' || n.type === 'col')) {
-            var wrapRow = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
-            autoBalanceCols(wrapRow);
-            n = wrapRow;
-        }
+        // 1. At the page root a col, a row or a palette block gets its
+        //    container; 2. a col dropped onto a col gets a row
+        //    (_sdWrapForParent(), shared with the palette insert).
+        n = _sdWrapForParent(target, n, dragData);
 
         // 3. container → container: reject
         if (target.type === 'container' && (t === 'container')) {
@@ -14897,7 +14988,7 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // 4. container → row: reddet
+        // 4. container → row: reject
         if (target.type === 'row' && (t === 'container')) {
             undoStack.pop();
             return;
@@ -21620,29 +21711,14 @@ const StyleDesigner = (function () {
             });
                     el.addEventListener('dblclick', function () {
                         var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                        var target = selectedNode || tree;
-                        if (!target) return;
                         // Carries the id, so canDrop() can refuse placing a component inside itself.
-                        var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                        if (!canDrop(_dbData, target)) {
-                            if (target.children && target.children.length) {
-                                for (var i = target.children.length - 1; i >= 0; i--) {
-                                    if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                                }
-                            }
-                            if (!canDrop(_dbData, target)) target = tree;
-                            if (!canDrop(_dbData, target)) return;
-                        }
+                        var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                        if (!spot) return;
                         saveState();
                         var n = createFromPalette('shared_ref', extra);
                         if (!n) return;
-                        if (!target.children) target.children = [];
-                        target.children.push(n);
-                        // Placed inside a shared component: that component is saved with the next save.
-                        var _dbOwner = _sdSharedOwnerOf(target);
-                        if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                        _sdInsertAt(spot, n);
                         selectedNode = n;
-                        expandAncestors(n, tree);
                         render();
                         // Safety-net: if tree not yet cached, fetch then re-render
                         var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
@@ -21883,18 +21959,12 @@ const StyleDesigner = (function () {
                 el.addEventListener('dblclick', function () {
                     var label = this.dataset.label || _sdT('System Widget');
                     var rtype = this.dataset.regionType || '';
-                    var target = selectedNode || tree;
-                    if (!target) return;
-                    if (!canDrop({ type: 'shared_ref' }, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                        if (!canDrop({ type: 'shared_ref' }, target)) return;
-                    }
-                    _createSystemWidgetNode({ label: label, regionType: rtype }, target, null);
+                    // The payload a drag of this item carries: the widget's
+                    // kind tells canDrop() whether it brings a <form>.
+                    var spot = _sdInsertSpot({ source: 'palette', type: 'system_widget', extra: { label: label, regionType: rtype } });
+                    if (!spot) return;
+                    _createSystemWidgetNode({ label: label, regionType: rtype }, spot.parent,
+                        spot.sibling ? { sibling: spot.sibling, after: spot.after } : null);
                 });
             });
 
@@ -21926,29 +21996,14 @@ const StyleDesigner = (function () {
             });
                 el.addEventListener('dblclick', function () {
                     var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                    var target = selectedNode || tree;
-                    if (!target) return;
                     // Carries the id, so canDrop() can refuse placing a component inside itself.
-                    var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                    if (!canDrop(_dbData, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop(_dbData, target)) target = tree;
-                        if (!canDrop(_dbData, target)) return;
-                    }
+                    var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                    if (!spot) return;
                     saveState();
                     var n = createFromPalette('shared_ref', extra);
                     if (!n) return;
-                    if (!target.children) target.children = [];
-                    target.children.push(n);
-                    // Placed inside a shared component: that component is saved with the next save.
-                    var _dbOwner = _sdSharedOwnerOf(target);
-                    if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                    _sdInsertAt(spot, n);
                     selectedNode = n;
-                    expandAncestors(n, tree);
                     render();
                     var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
                     if (_dbSid > 0 && (!_sharedCache[_dbSid] || !_sharedCache[_dbSid].tree)) {
@@ -30343,6 +30398,7 @@ const StyleDesigner = (function () {
             var _isAccountInvoices = (_regionType === 'account_invoices');
             var _isAccountEmail    = (_regionType === 'account_email');
             var _isComments        = (_regionType === 'comments');
+            var _isWishlist        = (_regionType === 'wishlist');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -30388,6 +30444,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isWishlist) {
+                _sourceInfoHtml = _sdT('The products the visitor saved with the hearts of the catalog, newest first: the signed-in customer\'s list, or the one a visitor who is not signed in keeps in this browser, which moves to the account at sign-in. Bind a button in the repeated card to <strong>Add to Cart</strong> or <strong>Remove from Favourites</strong>.');
             } else if (_isAccountEmail) {
                 _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
@@ -31404,6 +31462,30 @@ const StyleDesigner = (function () {
                     row(_sdT('Documents to list'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="max_results" data-sw-cfg-kind="int" min="1" max="500" value="' + _aiMax + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The newest documents first. The statement covers the whole year whatever the list shows.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── wishlist settings ─────────────────────────────────────────────
+            if (_isWishlist) {
+                var _wlMax = parseInt(_cfg.max_results, 10) > 0 ? parseInt(_cfg.max_results, 10) : 100;
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                systemSection += sect('bi-heart', _sdT('Favourites Settings'),
+                    row(_sdT('Products to list'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="max_results" data-sw-cfg-kind="int" min="1" max="500" value="' + _wlMax + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The products saved last come first.')) + '</div>'
+                    ) +
+                    row(_sdT('Sign-in page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Automatic —') }) +
+                        '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Linked for a visitor who is not signed in; after signing in they come back here.') + ' ' + _swLinkHint('wishlist', '__login_url')) + '</div>'
+                    ) +
+                    row(_sdT('Shop page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.shop_page_id, _allPagesCache, { types: ['catalog_listing'], none: _sdT('— Automatic —') }) +
+                        '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: a page with a catalog widget, else the legacy catalog page.') + ' ' + _swLinkHint('wishlist', '__shop_url')) + '</div>'
                     )
                 );
             }
@@ -34806,6 +34888,12 @@ const StyleDesigner = (function () {
             ['__reward_points', _sdT('Reward points')],
             ['__seo_score',     _sdT('SEO score')]
         ]},
+        // Empty while the product has no verified, starred review; the
+        // "Show only when" flags has_rating / no_rating follow the same count.
+        { label: _sdT('Reviews'), tokens: [
+            ['__rating_avg',    _sdT('Average rating (verified reviews)')],
+            ['__rating_count',  _sdT('Number of verified reviews')]
+        ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
             ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
@@ -34841,6 +34929,7 @@ const StyleDesigner = (function () {
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
             ['__change_password_url',   _sdT('Change password page (the link drops when there is none)')],
             ['__address_book_url',      _sdT('Address book page (shop sites; the link drops when there is none)')],
+            ['__my_account_wishlist_url', _sdT('Favourites page (shop sites; the link drops when there is none)')],
             ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
             ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')]
         ]},
@@ -34947,6 +35036,10 @@ const StyleDesigner = (function () {
         { label: _sdT('Reward & SEO'), tokens: [
             ['__reward_points', _sdT('Reward points')],
             ['__seo_score',     _sdT('SEO score')]
+        ]},
+        { label: _sdT('Reviews'), tokens: [
+            ['__rating_avg',    _sdT('Average rating (verified reviews)')],
+            ['__rating_count',  _sdT('Number of verified reviews')]
         ]},
         { label: _sdT('Variant Picker (select-type group)'), tokens: [
             ['__variant_picker',    _sdT('Variant pickers (HTML — Color/Size/...)')],
@@ -35238,7 +35331,9 @@ const StyleDesigner = (function () {
             ['__comments_label_plural',   _sdT('Comment label, plural')],
             ['__comments_intro',          _sdT('Message above the form (the page\'s comment settings)')],
             ['__comments_closed_message', _sdT('Message while new comments are closed')],
-            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')]
+            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
+            ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
+            ['__watcher_count_text',      _sdT('How many people are told of a new comment')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
@@ -35260,11 +35355,19 @@ const StyleDesigner = (function () {
             ['__comment_file_name',         _sdT('Attachment name')],
             ['__comment_file_size',         _sdT('Attachment size')],
             ['__comment_seller_reply_html', _sdT('Reply from the store (HTML)')],
-            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')]
+            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')],
+            ['__comment_parent_id',         _sdT('Number of the comment it answers')],
+            ['__comment_parent_name',       _sdT('Name on the comment it answers')],
+            ['__comment_quote',             _sdT('Quote of the comment it answers (start of its text)')],
+            ['__comment_depth',             _sdT('Depth in the thread (0 for a top-level comment)')],
+            ['__comment_reply_count',       _sdT('Number of replies')]
         ]},
         { label: _sdT('Comment links (href)'), tokens: [
             ['__comment_file_url',          _sdT('Attachment address')],
-            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')]
+            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')],
+            ['__comment_url',               _sdT('Link to the comment (opens the page that holds it)')],
+            ['__comment_reply_url',         _sdT('Answer the comment (fills the form; empty when the visitor may not answer)')],
+            ['__comment_parent_url',        _sdT('Link to the comment it answers')]
         ]}
     ];
 
@@ -35315,6 +35418,33 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // wishlist (Favourites) token palette — has loop_area (one row per saved
+    // product), with the catalog cards' names. Mirrors
+    // _render_system_widget_wishlist() in widgets_wishlist.php.
+    var SW_WISHLIST_TOKEN_GROUPS = [
+        { label: _sdT('Favourites'), tokens: [
+            ['__wishlist_count',           _sdT('Number of saved products listed')]
+        ]},
+        { label: _sdT('Saved Product (loop_area)'), tokens: [
+            ['__id',                       _sdT('Product ID')],
+            ['__name',                     _sdT('Product name')],
+            ['__short_description',        _sdT('Short description')],
+            ['__price',                    _sdT('Price (number)')],
+            ['__price_formatted',          _sdT('Price (with symbol)')],
+            ['__original_price_formatted', _sdT('Original price (with symbol, to be struck through)')],
+            ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')],
+            ['__image_url',                _sdT('Image URL')],
+            ['__image_alt',                _sdT('Image alt text')],
+            ['__out_of_stock_label',       _sdT('Out of stock label')],
+            ['__added_date',               _sdT('Date saved')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__detail_url',               _sdT('Detail URL')],
+            ['__login_url',                _sdT('Sign-in page address (back to this page afterwards)')],
+            ['__shop_url',                 _sdT('Shop page address (the link drops when there is none)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -35327,7 +35457,8 @@ const StyleDesigner = (function () {
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
         account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
-        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS,
+        wishlist:          SW_WISHLIST_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -36127,6 +36258,16 @@ const StyleDesigner = (function () {
             ['has_results', _sdT('The search found results')],
             ['no_results',  _sdT('The search found nothing')]
         ],
+        // The rating of the card's product (listing) or of the product shown
+        // (detail): verified, starred reviews, as __rating_count counts them.
+        catalog_listing: [
+            ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
+            ['no_rating',  _sdT('Row: the product has no rating yet')]
+        ],
+        catalog_item_view: [
+            ['has_rating', _sdT('The product has a rating from verified reviews')],
+            ['no_rating',  _sdT('The product has no rating yet')]
+        ],
         calendar_view: [
             ['has_navigation', _sdT('The view can be stepped through (monthly or weekly)')],
             ['has_events',     _sdT('There are events')],
@@ -36244,6 +36385,15 @@ const StyleDesigner = (function () {
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
         ],
+        wishlist: [
+            ['has_items',         _sdT('Products are saved')],
+            ['no_items',          _sdT('Nothing is saved yet')],
+            ['is_signed_in',      _sdT('The visitor is signed in')],
+            ['is_signed_out',     _sdT('The visitor is signed out (the list is kept in this browser)')],
+            ['item_in_stock',     _sdT('Row: can go to the cart')],
+            ['item_out_of_stock', _sdT('Row: out of stock')],
+            ['item_has_discount', _sdT('Row: an offer lowers the price')]
+        ],
         cart_link: [
             ['cart_has_items',   _sdT('The cart has something in it')],
             ['cart_is_empty',    _sdT('The cart is empty')]
@@ -36286,6 +36436,11 @@ const StyleDesigner = (function () {
             ['rating_on',                _sdT('Star ratings are on for the page')],
             ['files_on',                 _sdT('Attachments are on for the page')],
             ['watching_on',              _sdT('Notices of new comments are on for the page')],
+            ['has_more_pages',           _sdT('The comments run over more than one page')],
+            ['is_replying',              _sdT('The form answers a comment ("Replying to")')],
+            ['is_watching',              _sdT('The visitor is told of new comments')],
+            ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
+            ['can_manage_watchers',      _sdT('The visitor may manage who is told of new comments')],
             ['comment_is_featured',      _sdT('Row: featured')],
             ['comment_is_pending',       _sdT('Row: not published yet')],
             ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],
@@ -36295,7 +36450,11 @@ const StyleDesigner = (function () {
             ['comment_has_badge',        _sdT('Row: the writer has a badge')],
             ['comment_is_verified',      _sdT('Row: from a verified purchase')],
             ['comment_has_seller_reply', _sdT('Row: the store replied')],
-            ['comment_can_edit',         _sdT('Row: the visitor may edit it')]
+            ['comment_can_edit',         _sdT('Row: the visitor may edit it')],
+            ['comment_is_root',          _sdT('Row: a top-level comment')],
+            ['comment_is_reply',         _sdT('Row: a reply drawn under the comment it answers')],
+            ['comment_has_quote',        _sdT('Row: quotes the comment it answers')],
+            ['comment_has_replies',      _sdT('Row: has replies')]
         ]
     };
 
@@ -36311,7 +36470,9 @@ const StyleDesigner = (function () {
         var isBtnLike = (node.type === 'component' && node.props.componentType === 'btn')
                      || (isSem && (tag === 'button' || tag === 'a'))
                      || (node.type === 'content' && node.props.contentType === 'link');
-        // A real button: an action that submits a form needs one.
+        // A real button: an action that submits a form needs one, and so
+        // does the favourite heart, which the server makes a button of
+        // (_pg_catalog_wishlist_heart()) and would leave a link as it is.
         var isRealButton = (node.type === 'component' && node.props.componentType === 'btn')
                         || (isSem && tag === 'button');
         var isForm     = (isSem && tag === 'form');
@@ -36335,6 +36496,7 @@ const StyleDesigner = (function () {
             var aOpts = [['', _sdT('None')]];
             if (region === 'catalog_item_view') {
                 aOpts.push(['add_to_cart', _sdT('Add to Cart (catalog_item_view)')]);
+                if (isRealButton) aOpts.push(['wishlist', _sdT('Favourite (heart)')]);
             }
             if (region === 'shopping_cart') {
                 aOpts.push(['cart_update',      _sdT('Update Cart (shopping_cart)')]);
@@ -36356,6 +36518,7 @@ const StyleDesigner = (function () {
                 aOpts.push(['clear_filters',       _sdT('Clear Filters (catalog_listing)')]);
                 aOpts.push(['submit_search',       _sdT('Submit the Search (catalog_listing)')]);
                 aOpts.push(['catalog_add_to_cart', _sdT('Add to Cart — per card (catalog_listing loop)')]);
+                if (isRealButton) aOpts.push(['catalog_wishlist', _sdT('Favourite (heart) — per card (catalog_listing loop)')]);
             }
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
@@ -36368,6 +36531,21 @@ const StyleDesigner = (function () {
             // can be seen and cleared.
             if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {
                 aOpts.push(['comment_submit',      _sdT('Send the comment')]);
+            }
+            // A link or a button answers, leaves or shares a comment (a link
+            // works without script too); only a button sends the watch form
+            // and the staff's open-or-close form.
+            if (region === 'comments') {
+                aOpts.push(['comment_reply',        _sdT('Answer the comment (loop_area)')]);
+                aOpts.push(['comment_reply_cancel', _sdT('Stop answering a comment')]);
+                aOpts.push(['comment_share',        _sdT('Share the comment (loop_area)')]);
+            }
+            var _cmtSends = ['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'];
+            if (region === 'comments' && (isRealButton || _cmtSends.indexOf(cur.action) !== -1)) {
+                aOpts.push(['comment_watch',   _sdT('Notify me of new comments (watch form)')]);
+                aOpts.push(['comment_unwatch', _sdT('Stop notifying me (watch form)')]);
+                aOpts.push(['comment_close',   _sdT('Stop new comments (staff form)')]);
+                aOpts.push(['comment_reopen',  _sdT('Allow new comments again (staff form)')]);
             }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
@@ -36382,6 +36560,13 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
             }
+            // Only a button can post a list action's form; a link bound to
+            // one is dropped on the page (_pg_wishlist_wire_actions()), so a
+            // link that already carries one still lists it to be cleared.
+            if (region === 'wishlist' && (isRealButton || cur.action === 'wishlist_add_to_cart' || cur.action === 'wishlist_remove')) {
+                aOpts.push(['wishlist_add_to_cart', _sdT('Add to Cart — per saved product (loop_area)')]);
+                aOpts.push(['wishlist_remove',      _sdT('Remove from Favourites (loop_area)')]);
+            }
             out += mkSelect('data-bind-action', cur.action || '', aOpts, _sdT('Action'),
                 _sdT('The backend wires up the submit or anchor behaviour and ignores conflicting values such as href.'));
         }
@@ -36392,7 +36577,11 @@ const StyleDesigner = (function () {
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
             else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
-            else if (region === 'comments')        fOpts.push(['comment_form', _sdT('Add-comment form')]);
+            else if (region === 'comments') {
+                fOpts.push(['comment_form',           _sdT('Add-comment form')]);
+                fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
+                fOpts.push(['comment_allow_new_form', _sdT('Open-or-close form (staff only)')]);
+            }
             out += mkSelect('data-bind-action', cur.action || '', fOpts, _sdT('Form action'),
                 _sdT('The backend adds the right action / method values and the hidden fields.'));
         }
@@ -38490,6 +38679,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
                 _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
                 _sectionOpts.push(['comment_publish',      _sdT('Publish options (staff only)')]);
+                _sectionOpts.push(['comment_watchers',     _sdT('Watcher list (who may manage the watchers only)')]);
+                _sectionOpts.push(['comment_pagination',   _sdT('Pagination (hidden on a single page)')]);
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
@@ -39039,6 +39230,172 @@ const StyleDesigner = (function () {
             if (owner) return owner;
         }
         return { parent: tree, sid: 0 };
+    }
+
+    // Where a palette item added without a drag (a double-click, the command
+    // palette) goes, for the drop payload `payload`: { parent, sibling,
+    // after, sid } — the insertCtx shape _swInsertRef() takes — or null when
+    // nothing on the way takes it. Into the selection when it holds the
+    // item; else into the last of its children that does (a row's column),
+    // unless the selection takes inline content only (a button, a link, a
+    // select, a heading, a paragraph): a span or an option in it would take
+    // a block canDrop() lets through there; else right after the selection,
+    // in the nearest ancestor that takes it, in the page tree or in the
+    // shared tree the selection lives in; else at the end of the page. `sid`
+    // is the shared component whose tree gets the item (0 for the page). A
+    // component or widget (a shared_ref payload) never goes into a system
+    // widget's own tree, where a loop row would print it once per record: it
+    // goes beside the widget's placement on the open page
+    // (_sdPlacementOnPage()).
+    // A place counts only when the operator may edit it, as handleDrop()
+    // asks _sdMayEdit() of its target: an editable place on the way is taken
+    // first, and when there is none, they are told why (outside their area,
+    // another person holding the page) and nothing is added.
+    function _sdInsertSpot(payload) {
+        if (!tree) return null;
+        var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
+        if (payload && (payload.type === 'shared_ref' || payload.type === 'system_widget')) {
+            var seen = {};
+            for (var wsid = _isInsideSystemWidget(sel); wsid && !seen[wsid]; wsid = _isInsideSystemWidget(sel)) {
+                seen[wsid] = true;
+                sel = _sdPlacementOnPage(wsid) || tree;
+            }
+        }
+        var kids = (_isInteractiveNode(sel) || _sdIsTextSink(sel)) ? [] : (sel.children || []);
+        function find(takes) {
+            if (takes(sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (takes(kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+            }
+            var child = sel;
+            for (var guard = 0; guard < 500; guard++) {
+                var up = _sdAnyParent(child);
+                if (!up || !up.parent) break;
+                if (takes(up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
+                child = up.parent;
+            }
+            return (sel !== tree && takes(tree)) ? { parent: tree, sid: 0 } : null;
+        }
+        var spot = find(function (n) { return canDrop(payload, n) && _sdCanEditNode(n); });
+        if (spot) return spot;
+        var refused = find(function (n) { return canDrop(payload, n); });
+        return (refused && _sdMayEdit(refused.parent)) ? refused : null;
+    }
+
+    // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
+    // last in the parent, wrapped as a drop of `payload` there would be
+    // (_sdWrapForParent()); a column that joins a row rebalances the row's
+    // columns, as after a drop. A shared tree that gets it is saved with the
+    // next save, and the overview opens down to it.
+    function _sdInsertAt(spot, node, payload) {
+        if (!spot.parent.children) spot.parent.children = [];
+        var kids = spot.parent.children;
+        var put = _sdWrapForParent(spot.parent, node, payload);
+        var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
+        if (at === -1) kids.push(put);
+        else kids.splice(spot.after ? at + 1 : at, 0, put);
+        if (spot.parent.type === 'row' && put.type === 'col') autoBalanceCols(spot.parent);
+        if (spot.sid) _sharedDirty[spot.sid] = true;
+        expandAncestorsAnywhere(node);
+        return node;
+    }
+
+    // What goes into `parent` when `node` is placed there by a drop or an
+    // insert of `payload` (the drag payload; without one the node's own
+    // type counts): the Bootstrap structure rules both follow. At the page
+    // root a column comes in a new container > row, a row in a new
+    // container, and a ready-made block from the palette in a boxed
+    // container unless it is a full-width section. A shared component's
+    // tree root is left out: a widget is already a bounded area, so
+    // elements go straight into it. A column into a column comes in a new
+    // row there. Returns `node` itself when nothing wraps it.
+    function _sdWrapForParent(parent, node, payload) {
+        var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
+        var t = payload ? (map[payload.type] || payload.type) : node.type;
+        var n = node;
+        if (parent.type === 'root' && !(_sdSharedOwnerOf(parent) > 0)) {
+            if (t === 'col') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
+                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
+                ]);
+            } else if (t === 'row') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
+            }
+            if (payload && payload.source === 'palette' && payload.type === 'component' && n.type === 'semantic') {
+                var _noWrapCtypes = ['navbar',
+                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
+                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
+                                     'carousel', 'modal', 'offcanvas', 'dropdown',
+                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'cta-simple', 'cta-inline', 'cta-gradient',
+                                     'features-grid', 'features-alt', 'features-list',
+                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
+                                     'image-carousel', 'image-grid', 'image-masonry',
+                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
+                                     'stats-counter', 'stats-icons', 'stats-progress',
+                                     'team-grid', 'team-minimal', 'team-leadership',
+                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
+                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
+                                     'blog-grid', 'blog-featured', 'blog-list',
+                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
+                                     'compare-vs', 'compare-table', 'compare-side-by-side',
+                                     'contact-form', 'contact-info', 'contact-map',
+                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
+                                     'login-centered', 'login-split', 'login-minimal',
+                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
+                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
+                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
+                                     'breadcrumbs-with-header',
+                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
+                                     'steps-numbered', 'booking-cta', 'booking-split',
+                                     'hours-card', 'hours-location', 'locations-cards',
+                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
+                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
+                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
+                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
+                }
+            }
+        }
+        if (parent.type === 'col' && (t === 'col' || n.type === 'col')) {
+            n = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
+            autoBalanceCols(n);
+        }
+        return n;
+    }
+
+    // The placement of shared component `sid` that the open page shows: a
+    // shared_ref on the page tree itself first, else the first one inside a
+    // component placed on this page (a widget in the header). Cached trees
+    // of components that only other pages show are not looked at, so an
+    // insert never lands in another page's header. Null when the page does
+    // not show `sid`.
+    function _sdPlacementOnPage(sid) {
+        var direct = null, nested = null, seen = {};
+        (function walk(n, inShared) {
+            if (!n || direct) return;
+            if (n.type === 'shared_ref') {
+                var s = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (s === sid) {
+                    if (!inShared) direct = n;
+                    else if (!nested) nested = n;
+                    return;
+                }
+                var c = _sharedCache[s];
+                if (s && !seen[s] && c && c.tree) {
+                    seen[s] = true;
+                    walk(c.tree, true);
+                }
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(function (k) { walk(k, inShared); });
+        })(tree, false);
+        return direct || nested;
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -48043,6 +48400,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'wishlist',          label: _sdT('Favourites'),        slug: _sdT('favourites'),        icon: 'bi-heart' },
         { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
@@ -48187,6 +48545,8 @@ const StyleDesigner = (function () {
             if (newType === 'address_book' && cfg.address_type === undefined) cfg.address_type = false;
         } else if (newType === 'account_invoices') {
             if (cfg.max_results === undefined) cfg.max_results = 50;
+        } else if (newType === 'wishlist') {
+            if (cfg.max_results === undefined) cfg.max_results = 100;
         } else if (newType === 'search_results') {
             if (cfg.search_scope === undefined) cfg.search_scope = 'all';
             if (cfg.results_per_page === undefined) cfg.results_per_page = 20;
@@ -48202,8 +48562,9 @@ const StyleDesigner = (function () {
             if (cfg.hide_current === undefined) cfg.hide_current = false;
         } else if (newType === 'comments') {
             // The display options, with the defaults of the PHP twin
-            // pg_comments_widget_options(). layout, max_depth and per_page
-            // are kept for the thread's later shapes.
+            // pg_comments_widget_options(): the order, the featured mode,
+            // flat or threaded replies with their depth cap, and how many
+            // top-level comments a page holds (0 = all).
             if (cfg.order === undefined) cfg.order = 'oldest';
             if (cfg.featured === undefined) cfg.featured = 'first';
             if (cfg.layout === undefined) cfg.layout = 'flat';
@@ -48632,8 +48993,8 @@ const StyleDesigner = (function () {
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact'
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
@@ -50100,6 +50461,26 @@ const StyleDesigner = (function () {
         ]);
     }
 
+    // The favourite heart of a catalog card or a product page: an outline
+    // button with a heart icon and words for a screen reader, bound to
+    // `catalog_wishlist` (listing card) or `wishlist` (product page). The
+    // server marks it with the product and draws it hidden; the page's
+    // script (pg_wishlist.js) shows it, filled for a saved product. A
+    // product group's card has none. Starters only: the design templates
+    // build their own cards.
+    function _sdWishlistHeart(action) {
+        return createNode('component', { componentType: 'btn',
+            btnElement: 'button', btnType: 'button',
+            variant: 'secondary', outline: true, size: 'sm',
+            text: '', customName: _sdT('Favourite'),
+            _bindings: { action: action } }, [
+            createNode('semantic', { tag: 'i', cssClass: 'bi bi-heart', customName: _sdT('Icon'),
+                _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+            createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', customName: _sdT('Screen Reader Text'),
+                text: _sdT('Add to favourites') })
+        ]);
+    }
+
     // `opts.formFields` — the chosen form's fields (list_form_fields rows).
     // Only the two form views read it; every other kind ignores it.
     function _buildStarterTree(regionType, opts) {
@@ -50139,7 +50520,7 @@ const StyleDesigner = (function () {
 
             case 'catalog_listing': {
                 // Per-product card (col-sm-6 col-md-4 grid) inside loop_area.
-                // Card layout: image → title → price → View + Add to Cart.
+                // Card layout: image → title → price → View + heart + Add to Cart.
                 // The View link goes to the configured detail page (per-card
                 // permalink); Add to Cart is the one-click add-to-cart form
                 var loopArea = createNode('loop_area', {}, [
@@ -50181,6 +50562,7 @@ const StyleDesigner = (function () {
                                         _labelDetail: _sdT('View'),
                                         _labelExpand: _sdT('Expand'),
                                         _bindings: { href: '__detail_url', text: '__link_label' } }),
+                                    _sdWishlistHeart('catalog_wishlist'),
                                     // Bindable Add to Cart button.
                                     // Backend wraps this card in a mini-form pointing
                                     // at catalog_detail.php when this binding is present.
@@ -50313,6 +50695,8 @@ const StyleDesigner = (function () {
                 // the box:
                 //   - quantity input  → _bindings.value = 'quantity'
                 //   - Add to Cart btn → _bindings.action = 'add_to_cart'
+                // and the favourite heart beside them (_bindings.action =
+                // 'wishlist'), a plain button that never submits the form.
                 // Backend (`_apply_catalog_item_view_bindings`) converts these
                 // into the right HTML attrs/wrapping at render time.
                 // (Messages content node is no longer added here — the
@@ -50429,7 +50813,8 @@ const StyleDesigner = (function () {
                                 _bindings: { value: 'quantity' } }),
                             createNode('component', { componentType: 'btn',
                                 text: _sdT('Add to Cart'), variant: 'primary', size: '', href: '#',
-                                _bindings: { action: 'add_to_cart' } })
+                                _bindings: { action: 'add_to_cart' } }),
+                            _sdWishlistHeart('wishlist')
                         ])
                     ])
                 ]);
@@ -50581,6 +50966,8 @@ const StyleDesigner = (function () {
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__change_password_url' } }),
                             createNode('content', { contentType: 'link', text: _sdT('Address book'), href: '#',
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__address_book_url' } }),
+                            createNode('content', { contentType: 'link', text: _sdT('Favourites'), href: '#',
+                                cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__my_account_wishlist_url' } }),
                             createNode('content', { contentType: 'link', text: _sdT('Log out'), href: '#',
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__logout_url' } })
                         ]),
@@ -52508,6 +52895,66 @@ const StyleDesigner = (function () {
                 ], true);
             }
 
+            case 'wishlist': {
+                // The visitor's saved products, one card each in the loop
+                // row: the picture, the name, the price, Add to Cart and
+                // Remove. The two buttons are bound to the list's actions;
+                // the server makes each post a hidden form printed after the
+                // widget, and leaves Add to Cart out for a product out of
+                // stock. The empty state links to the shop; the note asks a
+                // visitor who is not signed in to sign in, since their list
+                // is kept in this browser only. Mirrors
+                // _render_system_widget_wishlist().
+                var wlLoop = createNode('loop_area', {}, [
+                    createNode('col', { xs: '12', sm: '6', md: '4', lg: '3', xl: '', xxl: '',
+                                       offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'card h-100', customName: _sdT('Product Card') }, [
+                            createNode('content', { contentType: 'image', src: '', alt: '', fluid: true, rounded: false,
+                                cssClass: 'card-img-top', _bindings: { src: '__image_url', alt: '__short_description' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'card-body d-flex flex-column', customName: _sdT('Card Body') }, [
+                                createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Product name'), cssClass: 'card-title',
+                                    _bindings: { text: '__short_description' } }),
+                                createNode('content', { contentType: 'paragraph', text: _sdMoney(0), cssClass: 'fw-bold mb-2',
+                                    _bindings: { text: '__price_formatted' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary align-self-start mb-2', text: _sdT('Out of stock'),
+                                    customName: _sdT('Out of Stock Badge'), _bindings: { text: '__out_of_stock_label', eo_visible_if: 'item_out_of_stock' } }),
+                                createNode('content', { contentType: 'link', text: _sdT('View'), href: '#', cssClass: 'small mb-3',
+                                    _bindings: { href: '__detail_url' } }),
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 mt-auto', customName: _sdT('Action buttons') }, [
+                                    createNode('component', { componentType: 'btn', btnElement: 'button', btnType: 'submit',
+                                        variant: 'primary', size: 'sm', text: _sdT('Add to Cart'),
+                                        _bindings: { action: 'wishlist_add_to_cart' } }),
+                                    createNode('component', { componentType: 'btn', btnElement: 'button', btnType: 'submit',
+                                        variant: 'secondary', outline: true, size: 'sm', text: _sdT('Remove'),
+                                        _bindings: { action: 'wishlist_remove' } })
+                                ])
+                            ])
+                        ])
+                    ])
+                ]);
+                return createNode('root', {}, [
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [
+                        createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Favourites'), cssClass: 'h3 mb-4' }),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3 mb-4',
+                            customName: _sdT('Signed-out Note'), _bindings: { eo_visible_if: 'is_signed_out' } }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Sign in to keep your list on every device.'), cssClass: 'mb-0' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Log In'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
+                                _bindings: { href: '__login_url' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Empty State'),
+                            _bindings: { eo_visible_if: 'no_items' } }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('You have not saved any products yet.'), cssClass: 'text-muted mb-3' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Visit the shop'), href: '#', cssClass: 'btn btn-primary',
+                                _bindings: { href: '__shop_url' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Saved Products'),
+                            _bindings: { eo_visible_if: 'has_items' } }, [
+                            createNode('row', { gutter: '4', justify: '', align: '', cssClass: '' }, [wlLoop])
+                        ])
+                    ])
+                ]);
+            }
+
             case 'calendar_event_view': {
                 // One event, read from ?id= — the page the calendar's events
                 // link to. Blocks with a "Show only when" condition drop out
@@ -52598,46 +53045,65 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('semantic', { tag: 'div', customName: _sdT('Comment List') }, [
                             createNode('loop_area', {}, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card mb-3', customName: _sdT('Comment') }, [
-                                    createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
-                                            customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                            _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
-                                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
-                                                _bindings: { text: '__comment_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
-                                                _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
-                                                _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
-                                                _bindings: { eo_visible_if: 'comment_is_verified' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
-                                                _bindings: { eo_visible_if: 'comment_is_featured' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
-                                            _bindings: { text: '__comment_date' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
-                                            _bindings: { text: '__comment_message_html' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
-                                            _bindings: { eo_visible_if: 'comment_has_file' } }, [
-                                            createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
-                                                _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
-                                                _bindings: { text: '__comment_file_size' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
-                                            _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
-                                            createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
-                                                _bindings: { text: '__comment_seller_reply_date' } }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
-                                                _bindings: { text: '__comment_seller_reply_html' } })
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex mb-3', customName: _sdT('Comment') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0 border-start border-2 ms-2 me-3', customName: _sdT('Reply Indent'),
+                                        _bindings: { eo_visible_if: 'comment_is_reply' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card flex-grow-1', customName: _sdT('Comment Card') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
+                                                customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
+                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
+                                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
+                                                    _bindings: { text: '__comment_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
+                                                    _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
+                                                    _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
+                                                    _bindings: { eo_visible_if: 'comment_is_verified' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
+                                                    _bindings: { eo_visible_if: 'comment_is_featured' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
+                                                _bindings: { text: '__comment_date' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 my-2 small text-body-secondary', customName: _sdT('Quote'),
+                                                _bindings: { eo_visible_if: 'comment_has_quote' } }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Jane Cooper'), href: '#', cssClass: 'fw-semibold link-secondary',
+                                                    _bindings: { href: '__comment_parent_url', text: '__comment_parent_name' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', text: _sdT('Quoted text'),
+                                                    _bindings: { text: '__comment_quote' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
+                                                _bindings: { text: '__comment_message_html' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
+                                                _bindings: { eo_visible_if: 'comment_has_file' } }, [
+                                                createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
+                                                    _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
+                                                    _bindings: { text: '__comment_file_size' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
+                                                _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
+                                                createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
+                                                    _bindings: { text: '__comment_seller_reply_date' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
+                                                    _bindings: { text: '__comment_seller_reply_html' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-3 mt-3 small', customName: _sdT('Comment Actions') }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Reply'), href: '#', cssClass: 'btn btn-link btn-sm p-0',
+                                                    _bindings: { action: 'comment_reply' } }),
+                                                createNode('content', { contentType: 'link', text: _sdT('Share'), href: '#', cssClass: 'btn btn-link btn-sm p-0 link-secondary',
+                                                    _bindings: { action: 'comment_share' } })
+                                            ])
                                         ])
                                     ])
                                 ])
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Pagination'),
+                                _bindings: { section: 'comment_pagination' } })
                         ]),
                         createNode('content', { contentType: 'paragraph', text: _sdT('No comments yet.'), cssClass: 'text-body-secondary',
                             _bindings: { eo_visible_if: 'no_comments' } }),
@@ -52657,6 +53123,13 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
                                 _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
                                 createNode('content', { contentType: 'messages', cssClass: '' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small', customName: _sdT('Replying To'),
+                                    _bindings: { eo_visible_if: 'is_replying' } }, [
+                                    createNode('semantic', { tag: 'span', text: _sdT('Replying to') }),
+                                    createNode('semantic', { tag: 'strong', _bindings: { text: '__reply_to_name' } }),
+                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto',
+                                        _bindings: { action: 'comment_reply_cancel' } })
+                                ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [
                                     createNode('semantic', { tag: 'label', cssClass: 'form-label visually-hidden', text: _sdT('Comment'),
                                         _attrs: [{ name: 'for', value: 'comment_message' }] }),
@@ -52701,6 +53174,28 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add comment'),
                                         _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_submit' } })
                                 ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', customName: _sdT('Watch'),
+                            _bindings: { eo_visible_if: 'watching_on' } }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', _bindings: { text: '__watcher_count_text' } }),
+                            createNode('semantic', { tag: 'form', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Watch Form'),
+                                _bindings: { action: 'comment_watch_form' } }, [
+                                createNode('content', { contentType: 'messages', cssClass: 'w-100' }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Notify me of new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_watch' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop notifying me'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_unwatch' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', customName: _sdT('Watchers'), _bindings: { section: 'comment_watchers' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-end mt-3', customName: _sdT('Staff Controls'),
+                            _bindings: { eo_visible_if: 'is_staff' } }, [
+                            createNode('semantic', { tag: 'form', customName: _sdT('Open or Close'), _bindings: { action: 'comment_allow_new_form' } }, [
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_close' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Allow new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_reopen' } })
                             ])
                         ])
                     ])
@@ -56670,6 +57165,9 @@ const StyleDesigner = (function () {
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
+        // The design's saved drafts as a clickable prototype, from a saved
+        // draft tab (_pgPrototypeUrl()).
+        var protoUrl = _pgPrototypeUrl(p);
         // A saved page of this design can go to another one; the chooser is
         // on the screen for designers only (pg_designer_target_modal()).
         var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
@@ -56700,6 +57198,7 @@ const StyleDesigner = (function () {
         }
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
+            (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
@@ -56752,10 +57251,11 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
                 && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
+                case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
@@ -59190,6 +59690,18 @@ const StyleDesigner = (function () {
         return (window.OUTPUT_PATH || '/') + p.savedName;
     }
 
+    // The prototype viewer (prototype.php) opened on a draft tab, or '': a
+    // tab never saved, a page on the site, drafts not available, or an
+    // operator the viewer does not admit (_design.prototypeUrl is '' then).
+    // A page picked from another design and not saved here yet still belongs
+    // to that design, whose prototype the viewer would open.
+    // The viewer draws what was last saved, never the editor's unsaved trees.
+    function _pgPrototypeUrl(p) {
+        if (!p || !(p.page_id > 0) || !p.page_draft || p.pickedPending || !_pgDraftsReady()) return '';
+        if (!_design || !_design.prototypeUrl || !(_design.styleId > 0)) return '';
+        return _design.prototypeUrl + '?page=' + encodeURIComponent(p.page_id);
+    }
+
     // "View page" next to Save AND next to Preview on the canvas bar: both
     // only for a page that exists on the site.
     function _pgTabsSyncViewButton() {
@@ -60246,22 +60758,16 @@ const StyleDesigner = (function () {
     }
 
     function _paletteInsert(type, extra) {
-        var target = selectedNode || tree;
-        if (!target) return;
         // The same payload a palette drag carries, so the drop rules see
         // what the item holds (_sdDragTree()), not its type alone.
         var _pd = { source: 'palette', type: type, extra: extra || {} };
-        if (!canDrop(_pd, target)) {
-            target = tree;
-            if (!canDrop(_pd, target)) return;
-        }
+        var spot = _sdInsertSpot(_pd);
+        if (!spot) return;
         saveState();
         var n = createFromPalette(type, extra || {});
         if (!n) return;
-        if (!target.children) target.children = [];
-        target.children.push(n);
+        _sdInsertAt(spot, n, _pd);
         selectedNode = n;
-        expandAncestors(n, tree);
         render();
         _trackRecentComp(type, extra || {});
         var _cl = document.getElementById('sd-comp-list');
@@ -61589,31 +62095,17 @@ const StyleDesigner = (function () {
                 var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                 var hintLabel = this.dataset.label || '';
                 var hintIcon  = this.dataset.icon || '';
-                var target = selectedNode || tree;
-                if (!target) return;
                 // The same payload a palette drag carries (see _paletteInsert()).
                 var _pd = { source: 'palette', type: type, extra: extra };
-                if (!canDrop(_pd, target)) {
-                    if (target.children && target.children.length) {
-                        for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
-                        }
-                    }
-                    if (!canDrop(_pd, target)) target = tree;
-                    if (!canDrop(_pd, target)) return;
-                }
+                var spot = _sdInsertSpot(_pd);
+                if (!spot) return;
                 saveState();
                 var n = createFromPalette(type, extra);
                 if (!n) return;
-                if (!target.children) target.children = [];
-                target.children.push(n);
+                _sdInsertAt(spot, n, _pd);
                 selectedNode = n;
-                expandAncestors(n, tree);
-                // Inserted into a widget's own tree: that tree has to be
-                // flushed, and — same rule as a drop — a control that lands
-                // inside a custom form widget is a field of it.
-                var _dcOwner = (typeof _sdAnyParent === 'function') ? _sdAnyParent(n) : null;
-                if (_dcOwner && _dcOwner.sid) _sharedDirty[_dcOwner.sid] = true;
+                // Same rule as a drop: a control that lands inside a custom
+                // form widget is a field of it.
                 if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(n);
                 render();
                 _trackRecentComp(type, extra, hintLabel, hintIcon);
