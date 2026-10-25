@@ -16,7 +16,7 @@ description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approv
 4. Watch, re-check each quarter: `storefront-api-agentic-commerce`, `addon-hook-system` (after the payment driver layer), `visitor-ai-assistant`, `subscriptions-iyzico-stripe`, `designer-interactions-collections`.
 
 ## Who takes what?
-- Each plan step is one task for one session (workflow/working-mode.md): claim it, one PR, hand over, end. Areas follow the memory-folder table in CLAUDE.md.
+- Each plan step is one PR, claimed with a draft PR (CLAUDE.md, Claim work); its session takes the plan's next step after the merge (workflow/session-lifecycle.md). Areas follow the memory-folder table in CLAUDE.md.
 
 ## Which rules bind every plan?
 - Owner rules (`docs/memory/workflow/owner-rules.md`), CLAUDE.md fixed rules, `workflow/decisions-made.md`. Schema only through 2026.11.0 migration steps. Express-order totals (`get_express_order.php`, `get_order_preview.php`) never change. A plan-driven feature gets one `[NEW]` changelog line when it ships; plans get none.

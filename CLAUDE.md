@@ -1,35 +1,29 @@
 # Pinegrap CMS — Claude context
 
-Loaded in every session, so it holds only the rules that apply to every task.
-Everything else is in memory files, opened only when needed.
+Loaded in every session on every turn, so it holds only what every task
+needs. The detail is in memory files, opened when a task needs them.
 
 ## Memory
 
-- Index: `docs/memory/README.md` lists the memory folders and the other
-  documents under `docs/`. Each folder's `README.md` starts with the area's
-  key rules, then lists its files one line each. Read the folder README the
-  task needs (table below), follow its key rules, then open only the files
-  the task needs.
-- Changes are kept as memory; there is no change log. When something must be
-  remembered, or a PR changes behaviour (what it does now, why, the symptom it
-  fixed, the PR number), add or update a file under
-  `docs/memory/<folder>/`: English, one topic per file, at most 4 KB, written
-  as questions (`## …?`) with short answers, starting with frontmatter:
-  `---` / `name: <file name without .md>` / `description: <one line>` / `---`.
-  Stale information is deleted or corrected, never kept beside a "now" note.
-- Plans are memory files in `docs/memory/plans/`: remaining work, decisions
-  made, open questions, where to start. When a plan is finished, its lasting
-  decisions move to the topic folder and the plan file is deleted.
-- The indexes are generated: run `php tools/memory_index.php` after adding,
-  renaming or deleting a file and commit the result. Never edit or merge a
-  file list by hand; CI runs `--check`. Only a folder's key rules are written
-  by hand, between its `key-rules:start` / `key-rules:end` marker lines; the
-  tool keeps them. After a merge conflict in an index, run the tool again.
+- `docs/memory/README.md` lists the memory folders. Each folder's
+  `README.md` starts with the area's key rules, then lists its files. Read
+  the folder README your task needs (table below), follow its key rules and
+  open only the files you need; give a sub-agent that README's path.
+- What must be remembered, and what a PR changes (the behaviour now, why,
+  the symptom it fixed, the PR number), goes into `docs/memory/<folder>/`:
+  English, one topic per file, at most 4 KB, `## …?` questions with short
+  answers, frontmatter `---` / `name: <file name without .md>` /
+  `description: <one line>` / `---`. Stale text is corrected or deleted,
+  never kept beside a "now" note.
+- Plans are files in `docs/memory/plans/`: remaining work, decisions, open
+  questions, where to start. A finished plan moves its lasting decisions to
+  the topic folder and is deleted.
+- Indexes are generated: after adding, renaming or deleting a file run
+  `php tools/memory_index.php` and commit the result (CI runs `--check`).
+  Only the key-rules block between a README's `key-rules:start` /
+  `key-rules:end` lines is written by hand.
 
 ## Memory folders — read before the matching work
-
-Read `docs/memory/<folder>/README.md` first. When you start a sub-agent,
-write that path into its task.
 
 | Work | Folder |
 |---|---|
@@ -45,7 +39,7 @@ write that path into its task.
 | Orders, cart, checkout, products, marketplaces | `commerce/` |
 | ERP (accounting) module, e-documents | `erp/` |
 | Workspace module and its endpoints | `workspace/` |
-| An audit, or proposing "dead code / cleanup" | `workflow/` (`decisions-made.md`) |
+| Working rules, merging, an audit or a "dead code / cleanup" proposal | `workflow/` |
 
 Read `docs/memory/workflow/decisions-made.md` **before** writing any audit
 finding: it lists decisions already made.
@@ -53,185 +47,133 @@ finding: it lists decisions already made.
 ## Project in two lines
 
 PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 5 + jQuery). Code
-lives under `pinegrap/`; paths in memory are relative to it. Open
-version **2026.11.0**; details in `docs/memory/release/release-status.md`.
-Version numbers are `YYYY.M.PATCH` from 2026.11.0 on (2026.11.0, 2026.11.1,
-2026.12.0; month without a leading zero, three parts always):
-`docs/memory/release/version-numbering.md`.
-Branches: work from `development`, PRs to `development`, never to `main`.
+lives under `pinegrap/`; paths in memory are relative to it. Open version
+**2026.11.0** (`docs/memory/release/release-status.md`); versions are
+`YYYY.M.PATCH`, month without a leading zero (`release/version-numbering.md`).
+Work from `development`, PRs to `development`, never to `main`.
 
 ## Claim work before starting it
 
-Several sessions work on `development` at once, and a plan file shows a step
-as taken only after its PR merges, so work is claimed on GitHub first: with a
-draft PR, never an issue. Issues are not used between sessions at all (no
-claim, hand-off, decision request or follow-up issue): what a session has to
-say goes in its PR, the plan file or its own reply. Use REST
-(`gh api repos/kodpen/pinegrapcms/…`); `gh issue`, `gh pr` (GraphQL) and the
-search API are blocked in cloud sessions.
+Work is claimed on GitHub with a draft PR, never an issue; issues are not
+used between sessions at all. Use REST (`gh api repos/kodpen/pinegrapcms/…`):
+`gh issue`, `gh pr` (GraphQL) and the search API are blocked in cloud
+sessions.
 
-1. **Check.** Before starting a plan step or any task that ends in a PR, list
-   the open PRs, drafts included:
+1. **Check.** List the open PRs, drafts included:
    ```bash
    gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '.[]|"#\(.number) \(if .draft then "draft" else "open" end) \(.head.ref) \(.title)"'
    ```
-   Open each one on the same plan file or area (`…/pulls/<n>/files` lists a
-   PR's files). If another PR holds the same plan file (any step) or the same
-   files, do not start, even if it looks stale: tell the owner which PR holds
-   it. Steps of one plan run in parallel only when the owner assigns them so.
-   The queue limit (Working mode, rule 8) is checked here too.
-2. **Claim.** Branch from `origin/development`, push your first commit (the
-   failing test, or the first slice) and open a **draft** PR to `development`
-   titled `[plan:<plan file name>] <steps> — <topic>` (`[iş] <topic>` outside
-   a plan); its What section names the plan step and the files or folders it
-   will touch. The draft is the claim: it is in the list every session checks,
-   it does not count against the queue limit, and CI does not run on it until
-   it is marked ready. Then list the PRs again: if a lower-numbered draft on
-   the same plan or files appeared meanwhile, close yours and stop. Small
-   fixes, memory-only edits and reviews skip the draft, never the check.
-3. **Finish.** The PR that finishes the steps marks them done in the plan
-   file (each step with its PR number, the status in `description`; after the
-   last step the plan is finished, see Memory). Push the finished work, then
-   mark the draft ready (`gh pr ready <n>` on a machine; in a cloud session
-   `mcp__github__update_pull_request` with `draft: false`): CI runs on that,
-   and the PR counts in the queue from then on. When it is green, Working
-   mode rule 2.
+   A PR on the same plan file (any step) or the same files (`…/pulls/<n>/files`)
+   holds it: do not start, even if it looks stale, and tell the owner which
+   PR. One plan's steps run in parallel only where the owner allowed it.
+   Check the queue limit (Working mode 8) here too.
+2. **Claim.** Branch from `origin/development`, push the first commit (the
+   failing test or the first slice) and open a **draft** PR to `development`
+   titled `[plan:<plan file name>] <steps> — <topic>` (`[iş] <topic>`
+   outside a plan), naming the step and the files it will touch. List again:
+   if a lower-numbered draft on the same plan or files appeared, close yours
+   and stop. Small fixes, memory-only edits and reviews skip the draft, not
+   the check.
+3. **Finish.** Mark the steps done in the plan file with the PR number,
+   push, then mark the draft ready (`gh pr ready <n>`; in a cloud session
+   `mcp__github__update_pull_request` with `draft: false`): CI runs and the
+   PR counts in the queue. When it is green, Working mode 2.
 
-## Working mode (2026-10-25)
+## Working mode
 
-About fifteen sessions on four accounts share one merge queue. Quota spent
-waiting on it, refreshing PRs and re-running checks is quota not spent on
-work, so these rules bind every session (they are the sessions' working
-arrangement, not an owner decision: Fixed rules, 6). Details:
-`docs/memory/workflow/working-mode.md` and `session-checks.md` (every
-session), `merge-train.md` and `merge-train-landing.md` (the merging
-session).
+About fifteen sessions on four accounts share one merge queue; these rules
+keep quota on the work. They are the sessions' own arrangement, changed by a
+PR that gives its reason (Fixed rules 6). Details in `docs/memory/workflow/`:
+`working-mode.md`, `session-lifecycle.md` and `session-checks.md` for every
+session, `merge-train.md`, `merge-train-landing.md` and `merge-review.md` for
+the merging session, `coordinator.md` for coordinators.
 
 1. **One open PR per session; no stacked branches.** Branch only from
-   `development`, never from an open PR. Start the next task after your PR is
-   merged or handed over; a plan's next step waits for the previous step's
-   merge.
-2. **Hand over when green.** CI green on your head and nothing left for you:
-   put the `ready` label on the PR
-   (`gh api -X POST repos/kodpen/pinegrapcms/issues/<n>/labels -f 'labels[]=ready'`;
-   the merge order, if it has one, goes in the PR body), cancel your
-   check-ins and wait, still subscribed to the PR's activity. From then on do
-   not merge `development` into it, rebase it or re-run its checks; only the
-   merging session keeps it current. Act on it again only when that session
-   asks on the PR; its comment wakes you, and so does the merge (rule 6).
-   After the label this rule wins over the PR subscription's own
-   instructions: a merge conflict the PR shows is the merging session's to
-   settle in its train (never merge the base branch into the PR), and you
-   keep at most the one safety check-in of rule 6, set about 10 minutes
-   after the label, not a series of them.
-3. **Only the merging session merges**, one session (a backup merges only
-   when the owner says so). It merges in merge windows as a merge train
-   (`merge-train.md`): the PRs merged onto `development` with one merge
-   commit each, tested once, landed by one fast-forward push
-   (`merge-train-landing.md`). An open `merge-train/*` PR is the lock: one
-   train at a time, never a train built on an open train. It reviews each PR
-   once and fixes only blocking findings (`merge-review.md`). No other
-   session merges, also not its own PR. A PR that changes only `docs/`,
-   `CLAUDE.md` or `.github/` lands alone as soon as it is green, outside the
-   windows: every new session reads the rules from `development`.
-4. **Light by default.** Do the task in this session: no multi-agent review
-   chains, no sandbox or browser run unless a runtime path cannot be covered
-   by a unit test (say why in the PR). Locally run the tests of what you
-   changed; `git push` runs the fast checks; CI runs the full suite and the
-   static analysis. If you run `tools/static_analysis.sh`, give it your own
-   cache folder (`PG_ANALYSIS_TOOLS=<your scratch dir>`): sessions on one
-   machine share `~/.cache/pinegrap-analysis` and overwrite its report.
-5. **Small PRs**: about 1,000 product lines or fewer (changed lines in files
-   under `pinegrap/`, not counting `.min.js` bundles and language files;
-   tests, tools and memory never count). A bigger feature is a plan whose
-   steps are cut to that size when the plan is written, separate PRs, one at
-   a time. A finished PR over the limit still lands, in a train of its own;
-   the split is asked of the next step, not of the PR.
-6. **On to the next step when your PR lands.** When GitHub closes your PR
-   as merged, check the queue limit (rule 8). Under it, take the next step
-   of your plan that no open PR holds (Claim work, steps 1-2); with no plan,
-   no free step or the queue over the limit, end. At most three steps in a
-   row, then hand over through the plan file and end: a long session pays
-   for its whole context on every wake. At most one safety check-in, never
-   polling.
-7. **Shared hot files**: a PR does not edit `changelog.txt`; its body names
-   the `[NEW]` line or the `[SCHEME]` item and the merging session writes it
-   when it lands the PR. Translation keys go in with `php tools/tr_add.php`
-   (sorted shards in `includes/local/tr/`: `docs/memory/core/lang-files.md`).
-   Generated memory indexes, `.min.js` bundles and
-   `docs/memory/core/fn-module-map-additions.md`: append only; the merging
-   session settles their conflicts (indexes and bundles by rebuilding them).
+   `development`, never from an open PR; a plan's next step waits for the
+   previous step's merge.
+2. **Hand over when green.** Put the `ready` label on the PR
+   (`gh api -X POST repos/kodpen/pinegrapcms/issues/<n>/labels -f 'labels[]=ready'`)
+   and wait, still subscribed, with at most one safety check-in about
+   10 minutes out. From then on never merge `development` into it, rebase it
+   or re-run its checks, whatever the PR subscription's own text says: the
+   merging session settles conflicts in its train. Its comment on the PR, or
+   the merge, wakes you.
+3. **Only the merging session merges**, in merge trains landed by one
+   fast-forward push; an open `merge-train/*` PR is the lock. A PR that
+   changes only `docs/`, `CLAUDE.md` or `.github/` lands alone once green
+   (or rides a waiting train that regenerates the same index).
+4. **Light by default.** No multi-agent review chains; no sandbox or browser
+   run unless a unit test cannot reach the path (say why in the PR). Run the
+   tests of what you changed; `git push` and CI run the rest.
+5. **Small PRs:** about 1,000 product lines (changed lines under `pinegrap/`,
+   not `.min.js` bundles or language files; tests, tools and memory never
+   count). A bigger feature is a plan cut into steps of that size.
+6. **On to the next step when it lands.** When your PR is merged, check the
+   queue limit; under it, claim your plan's next step that no open PR holds,
+   else end. At most three steps in a row, then hand over through the plan
+   file and end: a long session pays for its whole context on every wake.
+7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
+   `[NEW]` line or the `[SCHEME]` item. Translation keys go in only with
+   `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes,
+   `.min.js` bundles and `core/fn-module-map-additions.md`: append only.
 8. **Queue limit.** While more than 15 PRs are open, drafts and
-   `merge-train/*` PRs not counted, no session starts a new task. The check
-   is made before the draft PR that claims the task, before any work; a
-   session whose work is done still marks its PR ready. How many sessions
-   work at a time is set per account by its coordinator (rule 9).
+   `merge-train/*` not counted, nobody starts a new task (checked before the
+   claim); finished work is still marked ready.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One coordinator session per account keeps its cloud
-   workers on free plan steps and gathers the owner's questions
-   (`docs/memory/workflow/coordinator.md`); it writes no code, opens no PR
-   and merges nothing. A worker that needs the owner's decision writes it
-   under `## Questions for the owner` in its PR body and waits; the answer
-   comes back as a comment on the PR.
+9. **Coordinators.** One coordinator per account starts its cloud workers
+   and carries the owner's questions; it writes no code and merges nothing.
+   A worker writes a question for the owner under `## Questions for the
+   owner` in its PR body and waits; the answer comes as a PR comment.
 
 ## Fixed rules
 
 1. **Code comments in English, no exceptions** (PHP, JS, CSS, SQL, comments
-   inside strings). Translate Turkish comments in files you touch. Language
+   inside strings); translate Turkish comments in files you touch. Language
    file values and `lang()` strings are not comments.
 2. **No AI or process trace** in comments, commits, PR bodies, PR comments or
    merge messages: no "user decision", "per feedback", phase numbers, plan or
    session references, `Co-Authored-By: Claude`, `Claude-Session:`,
-   "Generated with Claude Code" or claude.ai links. A footer GitHub adds to a
-   PR body or comment is cleaned by the session that merges the PR; others do
-   not spend turns on it (`docs/memory/workflow/pr-footer-and-trailers.md`).
-   Commit author `Erdal Güral <erdaltyy@gmail.com>`. Comments say what the
-   code does and the technical why; decision history goes to memory.
+   "Generated with Claude Code" or claude.ai links. Commit author
+   `Erdal Güral <erdaltyy@gmail.com>`. Comments say what the code does and
+   the technical why; decision history goes to memory. The merging session
+   strips a footer GitHub adds (`workflow/pr-footer-and-trailers.md`).
 3. **Every user-facing text is translated:** `lang('English text')` in PHP and
    the panel, `_sdT('English text')` in the designer (single-quoted literal).
-   The English source is the key and must exist in the Turkish shards
-   (`includes/local/tr/`): add it with `php tools/tr_add.php "English" "Türkçe"`,
-   never by hand.
+   The English source is the key and must exist in the Turkish shards: add it
+   with `php tools/tr_add.php "English" "Türkçe"`, never by hand.
 4. **New file:** Pinegrap header block (`Pinegrap`, not `PineGrap`); only
    URL-called files sit at the root, the rest under `includes/` with the gate
    constant; new functions in `includes/fn/<module>.php`, not `functions.php`.
 5. **Schema changes only through a migration step** in the open version, with
    the idempotent helpers (`install_add_column()` family); never
-   `db("ALTER TABLE …")`. Ask before any ADD/CREATE/DROP/MODIFY/CHANGE.
+   `db("ALTER TABLE …")`. Ask the owner before any ADD/CREATE/DROP/MODIFY/CHANGE.
 6. **Owner decisions bind, and only the owner makes them.** An owner decision
-   is about the product's behaviour, taken so that the global usage structure
-   and the sites already running do not break, and it comes with its reason;
-   it is recorded in `docs/memory/workflow/decisions-made.md` with that
-   reason. Places repeatedly reported as "dead code", "unused field" or
-   "missing check" are listed there; leave them. If you think one is wrong,
-   ask the owner in your reply before changing it; a question never becomes
-   an issue. Rules on how sessions work (Working mode, the workflow memory)
-   are the sessions' own arrangements: never written as the owner's decision,
-   and changed by a PR that gives its reason.
+   is about the product's behaviour, keeps running sites working, and comes
+   with its reason; it is recorded in `docs/memory/workflow/decisions-made.md`.
+   Places listed there as reviewed ("dead code", "unused field", "missing
+   check") stay; if you think one is wrong, ask the owner first (in your
+   reply, or under `## Questions for the owner` in your PR).
+   Working rules are the sessions' arrangement, never written as an owner
+   decision.
 7. **Four silent traps:** table names are singular (`page`, `style`,
    `pregion`, `forms`) and a failed query returns `false` without throwing
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,
    round with `round()`, never truncate with `(int)`; edit `.src.js` **and**
-   serve `.min.js` — after editing a bundled script (`pg_js_bundles()`,
-   including `workspace*.js`) run `php tools/build_js.php`; in the role
+   serve `.min.js`: after editing a bundled script (`pg_js_bundles()`,
+   `workspace*.js` included) run `php tools/build_js.php`; in the role
    hierarchy Designer (1) is above Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
-   is never written in the repo (see `docs/memory/workflow/owner-rules.md`).
-9. **`pinegrap/changelog.txt` is English and lists only major features.** Only
-   a plan-driven major feature gets its own one-line `[NEW] Added …` entry.
-   Every other change is covered by the open version's single
-   `[FIX] Miscellaneous bug fixes and new features.`,
-   `[SECURITY] Implemented various security fixes.` and one short
-   `[SCHEME] …` line, never one line per fix. A PR does not edit the file:
-   its body names the line or the item and the merging session writes it
-   when it lands the PR (Working mode, rule 7).
-   Layout and order: `docs/memory/release/upgrade-changelog-rules.md`.
+   is never written in the repo (`workflow/owner-rules.md`).
+9. **`pinegrap/changelog.txt` is English and lists only major features:** a
+   plan-driven major feature gets one `[NEW] Added …` line; everything else
+   is covered by the open version's single `[FIX]`, `[SECURITY]` and
+   `[SCHEME]` lines. The merging session writes it from the PR bodies
+   (`release/upgrade-changelog-rules.md`).
 
 ## When a task is done
 
-CI (`.github/workflows/php-checks.yml`) runs all of these; none needs a database.
-In a session run the ones your change touches and the tests of your area
-(Working mode, rule 4); the merging session and CI run the rest.
+CI (`.github/workflows/php-checks.yml`) runs all of these; none needs a
+database. Run the ones your change touches and the tests of your area.
 
 ```bash
 php tools/lint.php              # php -l over the product tree
@@ -246,21 +188,14 @@ php tools/memory_index.php --check  # memory index matches its files
 bash tools/static_analysis.sh   # PHPStan level 0 + PHP 7.1+ compatibility against their baselines
 ```
 
-The last one fetches the pinned PHPStan and PHPCompatibility once (no
-Composer); a newer API used behind a guard gets a `phpcs:ignore` with the
-reason, never a baseline entry: `docs/memory/workflow/static-analysis.md`.
+A newer API used behind a guard gets a `phpcs:ignore` with the reason, never
+a baseline entry (`workflow/static-analysis.md`). `git push` runs the fast
+checks first (`tools/pre_push.sh`, `workflow/pre-push-checks.md`); if your
+context lacks the line "git push runs tools/pre_push.sh first", run
+`bash tools/install_git_hooks.sh` once. Change a branch only with
+`git push`; `--no-verify` is only for a broken hook.
 
-`git push` runs the fast ones on the pushed commit first and stops a push
-that fails them (`tools/pre_push.sh`: `docs/memory/workflow/pre-push-checks.md`).
-A cloud session that starts in this clone has the hook; if your context lacks
-the line "git push runs tools/pre_push.sh first", run
-`bash tools/install_git_hooks.sh` once before pushing. Change a branch only
-with `git push` (API and MCP file writes skip the check); fix a failing
-commit and push again, `--no-verify` is only for a broken script.
-
-Also: a test in `tests/<topic>_test.php` for a pure function you add or change
-(red first when behaviour changes); a schema step rerun twice on a dev DB;
-`node --check` after touching `style_designer.js`. The PR says what changed,
-why, and what could not be verified (say so when no running instance was set
-up). A plan step's PR marks the step done in the plan file (Claim work before
-starting it, step 3).
+Also: a test in `tests/<topic>_test.php` for a pure function you add or
+change (red first when behaviour changes); a schema step rerun twice on a dev
+DB; `node --check` after touching `style_designer.js`. The PR says what
+changed, why, and what could not be verified.

@@ -1,6 +1,6 @@
 ---
 name: session-checks
-description: Owner rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
+description: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
 ---
 
 ## How much checking is enough?

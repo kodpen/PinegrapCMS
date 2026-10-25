@@ -15,7 +15,7 @@ description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/set
 ## What is dev.pinegrap.com?
 - The owner's Windows PC: IIS 10 behind cloudflared, MySQL 8.0, no mail server, no AI key. Cloud sessions cannot reach it (or kodpen.com / pinegrap.com).
 - Its PHP: `C:\PHP` = 8.5.11 x64 NTS, for the site and on PATH (from 2026-10-25); OpenSSL 3.5.8 with no `openssl.cnf`. The full unit suite passes there (#1669, #1678), so `git push` runs the pre-push hook as anywhere: a failure there is real, no `--no-verify`.
-- Only one Remote Control session at a time works there; cloud threads never start one. They list dev checks and doc notes in their final reply; the coordinator relays them.
+- Only one Remote Control session at a time works there; cloud threads never start one. They put dev checks in the PR's "Could not verify" section and questions for the owner under `## Questions for the owner` (`coordinator.md`).
 - `gh` is not installed there. A session linked to that machine calls the GitHub REST API with the token `git credential fill` returns for github.com (the credential git push uses) through a small PowerShell helper in its scratchpad; those requests do not pass the cloud proxy, so bodies edited that way carry no Claude Code footer.
 - DB re-run on dev: Ayarlar › İşler › Yazılımı Onar › "Veritabanı yükseltme adımlarını yeniden koş". Test records on dev only with the owner's written "yaz ve sil"; never delete visitor rows, run "şimdi temizle", Optimize or "Şimdi küçült", never send real e-mail.
 
