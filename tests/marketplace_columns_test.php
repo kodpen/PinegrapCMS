@@ -55,3 +55,20 @@ function test_marketplace_columns_step()
 	pg_assert_contains('install_note(', $step);
 	pg_assert_false(strpos($step, 'db(') !== false, 'no raw statement');
 }
+
+// Code that reads either column asks first, by the exact names
+// (pg_schema_has(), never a LIKE probe), and says no when the probe itself is
+// missing; base.php is loaded by every file of the outbound layer.
+function test_marketplace_columns_are_probed_by_their_exact_names()
+{
+	$source = marketplace_columns_test_source('includes/api/outbound/connectors/base.php');
+
+	pg_assert_contains("return function_exists('pg_schema_has') && pg_schema_has('marketplace_product_map', 'commission');",
+		marketplace_columns_test_body($source, 'mp_commission_ready'));
+	pg_assert_contains("return function_exists('pg_schema_has') && pg_schema_has('marketplace_order_map', 'invoice_sent');",
+		marketplace_columns_test_body($source, 'mp_invoice_sent_ready'));
+
+	foreach (array('includes/api/outbound/listings.php', 'includes/api/outbound/orders.php', 'includes/api/outbound/sync.php') as $file) {
+		pg_assert_contains("require_once(dirname(__FILE__) . '/connectors/base.php');", marketplace_columns_test_source($file), $file . ' loads the probes');
+	}
+}

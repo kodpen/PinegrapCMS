@@ -310,6 +310,26 @@ function mp_call($provider, $capability, $arguments = array()) {
 
 }
 
+/* -------------------------------------------------------------------- columns */
+
+// Has the database the column for a listing's commission rate
+// (marketplace_product_map.commission, 2026.11.0, 11.0.37)? Asked before any
+// statement names it: the files land before the upgrade step runs.
+function mp_commission_ready() {
+
+	return function_exists('pg_schema_has') && pg_schema_has('marketplace_product_map', 'commission');
+
+}
+
+// Has the database the column for when an imported package's invoice link was
+// sent (marketplace_order_map.invoice_sent, 2026.11.0, 11.0.37)? Asked the
+// same way.
+function mp_invoice_sent_ready() {
+
+	return function_exists('pg_schema_has') && pg_schema_has('marketplace_order_map', 'invoice_sent');
+
+}
+
 /* ------------------------------------------------------------------ accounts */
 
 // One account row with its credentials already decoded.
