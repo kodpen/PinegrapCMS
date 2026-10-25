@@ -9,9 +9,9 @@
  * of headings and paragraphs, no form goes inside a form at any depth, and
  * a ready-made palette block is judged by what it holds. canDrop() and its
  * helpers, and _paletteInsert(), are cut out of assets/js/style_designer.js
- * and run under Node with stubs for the lock, shared-component, custom form
- * and loop checks, for createFromPalette() and for the component list; on a
- * machine without Node the test is skipped.
+ * and run under Node with stubs for the lock, editing, shared-component,
+ * custom form and loop checks, for createFromPalette() and for the
+ * component list; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -80,9 +80,15 @@ function designer_inline_drop_test_run($setup, $cases)
 		// A node marked `inCf` sits in a custom form widget, whose <form> the
 		// server prints around the widget's tree.
 		. 'function _cfWidgetOf(n) { return (n && n.props && n.props.inCf) ? { sid: 1 } : null; }'
-		// What _paletteInsert() touches besides the drop rules.
+		// What _paletteInsert() touches besides the drop rules. Whether the
+		// operator may edit is `editable`; `asked` counts the questions that
+		// would show them a word why not.
 		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
 		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; }'
+		. 'function createNode(type, props, kids) { return N(type, props, kids); } function autoBalanceCols() {}'
+		. 'var editable = true; var asked = 0; function _sdCanEditNode() { return editable; } function _sdMayEdit() { asked++; return editable; }'
+		. 'function _sdIsTextSink(n) { return (n.type === "content" && ["paragraph", "heading"].indexOf(n.props.contentType) !== -1)'
+		. ' || ["p", "pre", "code", "h1", "h2", "h3", "h4", "h5", "h6"].indexOf(_semTag(n)) !== -1; }'
 		. 'function _trackRecentComp() {} function _renderRecentCompSection() {} var document = { getElementById: function () { return null; } };'
 		. substr($source, $from, $to - $from)
 		. substr($source, $insert_from, $insert_to - $insert_from)
@@ -351,7 +357,8 @@ function test_designer_inline_drop_depth_markup_and_hidden_input()
 // Double-click and the command palette insert ask canDrop() with the payload
 // a palette drag carries, so the item is judged by what it holds: a link
 // goes into a selected heading, a block holding links lands on the page and
-// not in a span inside a link, right after the link that holds the span.
+// not in a span inside a link, right after the link that holds the span, in
+// the container a drop onto the page gives a block.
 function test_designer_inline_drop_palette_insert_payload()
 {
 	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
@@ -360,14 +367,15 @@ function test_designer_inline_drop_palette_insert_payload()
 		. ' var inH3 = T.h3.children.length;'
 		. ' var link = _parentOf(T.spanInA);'
 		. ' selectedNode = T.spanInA; _paletteInsert("component", { componentType: "links-block" });'
-		. ' return [inH3, T.spanInA.children.length, root.children.length - before, root.children[root.children.indexOf(link) + 1] === selectedNode]; })()',
+		. ' var next = root.children[root.children.indexOf(link) + 1];'
+		. ' return [inH3, T.spanInA.children.length, root.children.length - before, next.type, next.children[0] === selectedNode]; })()',
 	));
 
 	if ($answer === null) {
 		return;
 	}
 
-	pg_assert_same(array(array(1, 0, 1, true)), $answer, 'a link into the selected h3; a block with links not into the selected span inside a link but onto the page, after that link');
+	pg_assert_same(array(array(1, 0, 1, 'container', true)), $answer, 'a link into the selected h3; a block with links not into the selected span inside a link but onto the page, after that link, in a container');
 
 	// The double-click insert sits in a click handler; no palette check may
 	// go back to the type-only payload.
@@ -394,6 +402,28 @@ function test_designer_inline_drop_dry_build_writes_no_styles()
 	$guarded = preg_match_all('/if \(!_sdPaletteDry\) _sdEnsureBlockStyles\(/', $body);
 	pg_assert_true($calls > 0, 'createFromPalette() writes block styles');
 	pg_assert_same($calls, $guarded, 'every block-style write in createFromPalette() is skipped during a dry build');
+}
+
+// A selected button or select takes inline content only, and so does not
+// pass a block to its children: a paragraph from the command palette lands
+// right after it, not in the button's span or the select's last option.
+function test_designer_inline_drop_palette_insert_inline_only_selection()
+{
+	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
+		'(function () { var btn = _parentOf(T.spanInButton);'
+		. ' selectedNode = btn; _paletteInsert("content", { contentType: "paragraph" });'
+		. ' var afterButton = root.children[root.children.indexOf(btn) + 1] === selectedNode;'
+		. ' var option = sem("option"); var select = sem("select", [sem("option"), option]); root.children.push(select);'
+		. ' selectedNode = select; _paletteInsert("content", { contentType: "paragraph" });'
+		. ' var afterSelect = root.children[root.children.indexOf(select) + 1] === selectedNode;'
+		. ' return [T.spanInButton.children.length, afterButton, option.children.length, afterSelect]; })()',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(array(0, true, 0, true)), $answer, 'the paragraph goes after the button and after the select, nothing into the span or the option');
 }
 
 // No form inside a form, at any depth: a block or an element carrying a
@@ -431,4 +461,22 @@ function test_designer_inline_drop_no_form_in_form()
 	}
 
 	pg_assert_same(array(false, false, false, false, false, false, false, true, true, true, true, true, array(1, 1, 2, true)), $answer, 'a form-carrying block, a palette form and a wrapper holding a form stay out of a form, a div in it and a custom form widget, its tree root too; the block goes beside the form, a field and a block without a form go in, a field moves within its form; the insert lands right after the form');
+}
+
+// The insert asks what a drop asks: when the operator may not edit the
+// place it would go, nothing is added and they are told why, once.
+function test_designer_inline_drop_palette_insert_may_edit()
+{
+	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
+		'(function () { editable = false; var before = root.children.length;'
+		. ' selectedNode = null; _paletteInsert("content", { contentType: "paragraph" });'
+		. ' var added = root.children.length - before; editable = true;'
+		. ' return [added, asked]; })()',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(array(0, 1)), $answer, 'nothing added; asked once');
 }

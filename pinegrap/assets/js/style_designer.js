@@ -14865,73 +14865,10 @@ const StyleDesigner = (function () {
         // Track original dropped node before any auto-wrapping so selection stays on what the user dragged
         var _origDroppedNode = n;
 
-        // 1. a row/col dropped straight onto root has to be wrapped in a container — BUT:
-        //    a widget inner tree's root is type='root' as well. EXEMPT the widget root from
-        //    auto-wrapping: a widget is already a constrained area and elements are meant to
-        //    go straight into it ("widget > col > card" rather than "widget > container > col > card").
-        //    _resolveSharedSid(target) > 0 means target is the cached tree root of a
-        //    shared_component (system widgets and shared components alike).
-        var _targetIsSharedRoot = (target.type === 'root') && _resolveSharedSid(target) > 0;
-        if (target.type === 'root' && !_targetIsSharedRoot) {
-            if (t === 'col') {
-                // col → container > row > col (user's col goes directly into row, no extra col-12 wrapper)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
-                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
-                ]);
-            } else if (t === 'row') {
-                // row → container > row (user's row goes directly into container)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
-            }
-            // Auto-wrap complex component explosions (pricing, hero, features, etc.) in a container
-            if (dragData.source === 'palette' && dragData.type === 'component' && n && n.type === 'semantic') {
-                var _noWrapCtypes = ['navbar',
-                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
-                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
-                                     'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
-                                     'cta-simple', 'cta-inline', 'cta-gradient',
-                                     'features-grid', 'features-alt', 'features-list',
-                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
-                                     'image-carousel', 'image-grid', 'image-masonry',
-                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
-                                     'stats-counter', 'stats-icons', 'stats-progress',
-                                     'team-grid', 'team-minimal', 'team-leadership',
-                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
-                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
-                                     'blog-grid', 'blog-featured', 'blog-list',
-                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
-                                     'compare-vs', 'compare-table', 'compare-side-by-side',
-                                     'contact-form', 'contact-info', 'contact-map',
-                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
-                                     'login-centered', 'login-split', 'login-minimal',
-                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
-                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
-                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
-                                     'breadcrumbs-with-header',
-                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
-                                     'steps-numbered', 'booking-cta', 'booking-split',
-                                     'hours-card', 'hours-location', 'locations-cards',
-                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
-                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
-                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
-                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
-                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
-                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
-                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
-                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                var _ct = (dragData.extra || {}).componentType || '';
-                if (_noWrapCtypes.indexOf(_ct) === -1) {
-                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
-                }
-            }
-        }
-
-        // 2. col → col: wrap the inner col in a new row
-        if (target.type === 'col' && (t === 'col' || n.type === 'col')) {
-            var wrapRow = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
-            autoBalanceCols(wrapRow);
-            n = wrapRow;
-        }
+        // 1. At the page root a col, a row or a palette block gets its
+        //    container; 2. a col dropped onto a col gets a row
+        //    (_sdWrapForParent(), shared with the palette insert).
+        n = _sdWrapForParent(target, n, dragData);
 
         // 3. container → container: reject
         if (target.type === 'container' && (t === 'container')) {
@@ -14939,7 +14876,7 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // 4. container → row: reddet
+        // 4. container → row: reject
         if (target.type === 'row' && (t === 'container')) {
             undoStack.pop();
             return;
@@ -39068,15 +39005,22 @@ const StyleDesigner = (function () {
     // Where a palette item added without a drag (a double-click, the command
     // palette) goes, for the drop payload `payload`: { parent, sibling,
     // after, sid } — the insertCtx shape _swInsertRef() takes — or null when
-    // not even the page root takes it. Into the selection when it holds the
-    // item; else into the last of its children that does (a row's column);
-    // else right after the selection, in the nearest ancestor that takes it,
-    // in the page tree or in the shared tree the selection lives in; else at
-    // the end of the page. `sid` is the shared component whose tree gets the
-    // item (0 for the page). A component or widget (a shared_ref payload)
-    // never goes into a system widget's own tree, where a loop row would
-    // print it once per record: it goes beside the widget's placement on
-    // the open page (_sdPlacementOnPage()).
+    // nothing on the way takes it. Into the selection when it holds the
+    // item; else into the last of its children that does (a row's column),
+    // unless the selection takes inline content only (a button, a link, a
+    // select, a heading, a paragraph): a span or an option in it would take
+    // a block canDrop() lets through there; else right after the selection,
+    // in the nearest ancestor that takes it, in the page tree or in the
+    // shared tree the selection lives in; else at the end of the page. `sid`
+    // is the shared component whose tree gets the item (0 for the page). A
+    // component or widget (a shared_ref payload) never goes into a system
+    // widget's own tree, where a loop row would print it once per record: it
+    // goes beside the widget's placement on the open page
+    // (_sdPlacementOnPage()).
+    // A place counts only when the operator may edit it, as handleDrop()
+    // asks _sdMayEdit() of its target: an editable place on the way is taken
+    // first, and when there is none, they are told why (outside their area,
+    // another person holding the page) and nothing is added.
     function _sdInsertSpot(payload) {
         if (!tree) return null;
         var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
@@ -39087,40 +39031,112 @@ const StyleDesigner = (function () {
                 sel = _sdPlacementOnPage(wsid) || tree;
             }
         }
-        if (canDrop(payload, sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
-        var kids = sel.children || [];
-        for (var i = kids.length - 1; i >= 0; i--) {
-            if (canDrop(payload, kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+        var kids = (_isInteractiveNode(sel) || _sdIsTextSink(sel)) ? [] : (sel.children || []);
+        function find(takes) {
+            if (takes(sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (takes(kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+            }
+            var child = sel;
+            for (var guard = 0; guard < 500; guard++) {
+                var up = _sdAnyParent(child);
+                if (!up || !up.parent) break;
+                if (takes(up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
+                child = up.parent;
+            }
+            return (sel !== tree && takes(tree)) ? { parent: tree, sid: 0 } : null;
         }
-        var child = sel;
-        for (var guard = 0; guard < 500; guard++) {
-            var up = _sdAnyParent(child);
-            if (!up || !up.parent) break;
-            if (canDrop(payload, up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
-            child = up.parent;
-        }
-        return (sel !== tree && canDrop(payload, tree)) ? { parent: tree, sid: 0 } : null;
+        var spot = find(function (n) { return canDrop(payload, n) && _sdCanEditNode(n); });
+        if (spot) return spot;
+        var refused = find(function (n) { return canDrop(payload, n); });
+        return (refused && _sdMayEdit(refused.parent)) ? refused : null;
     }
 
     // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
-    // last in the parent. A column that lands in a column goes into a new
-    // row there, as handleDrop() wraps a column dropped onto a column. A
-    // shared tree that gets it is saved with the next save, and the
-    // overview opens down to it.
-    function _sdInsertAt(spot, node) {
+    // last in the parent, wrapped as a drop of `payload` there would be
+    // (_sdWrapForParent()); a column that joins a row rebalances the row's
+    // columns, as after a drop. A shared tree that gets it is saved with the
+    // next save, and the overview opens down to it.
+    function _sdInsertAt(spot, node, payload) {
         if (!spot.parent.children) spot.parent.children = [];
         var kids = spot.parent.children;
-        var put = node;
-        if (node.type === 'col' && spot.parent.type === 'col') {
-            put = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [node]);
-            autoBalanceCols(put);
-        }
+        var put = _sdWrapForParent(spot.parent, node, payload);
         var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
         if (at === -1) kids.push(put);
         else kids.splice(spot.after ? at + 1 : at, 0, put);
+        if (spot.parent.type === 'row' && put.type === 'col') autoBalanceCols(spot.parent);
         if (spot.sid) _sharedDirty[spot.sid] = true;
         expandAncestorsAnywhere(node);
         return node;
+    }
+
+    // What goes into `parent` when `node` is placed there by a drop or an
+    // insert of `payload` (the drag payload; without one the node's own
+    // type counts): the Bootstrap structure rules both follow. At the page
+    // root a column comes in a new container > row, a row in a new
+    // container, and a ready-made block from the palette in a boxed
+    // container unless it is a full-width section. A shared component's
+    // tree root is left out: a widget is already a bounded area, so
+    // elements go straight into it. A column into a column comes in a new
+    // row there. Returns `node` itself when nothing wraps it.
+    function _sdWrapForParent(parent, node, payload) {
+        var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
+        var t = payload ? (map[payload.type] || payload.type) : node.type;
+        var n = node;
+        if (parent.type === 'root' && !(_sdSharedOwnerOf(parent) > 0)) {
+            if (t === 'col') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
+                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
+                ]);
+            } else if (t === 'row') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
+            }
+            if (payload && payload.source === 'palette' && payload.type === 'component' && n.type === 'semantic') {
+                var _noWrapCtypes = ['navbar',
+                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
+                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
+                                     'carousel', 'modal', 'offcanvas', 'dropdown',
+                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'cta-simple', 'cta-inline', 'cta-gradient',
+                                     'features-grid', 'features-alt', 'features-list',
+                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
+                                     'image-carousel', 'image-grid', 'image-masonry',
+                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
+                                     'stats-counter', 'stats-icons', 'stats-progress',
+                                     'team-grid', 'team-minimal', 'team-leadership',
+                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
+                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
+                                     'blog-grid', 'blog-featured', 'blog-list',
+                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
+                                     'compare-vs', 'compare-table', 'compare-side-by-side',
+                                     'contact-form', 'contact-info', 'contact-map',
+                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
+                                     'login-centered', 'login-split', 'login-minimal',
+                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
+                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
+                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
+                                     'breadcrumbs-with-header',
+                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
+                                     'steps-numbered', 'booking-cta', 'booking-split',
+                                     'hours-card', 'hours-location', 'locations-cards',
+                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
+                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
+                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
+                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
+                }
+            }
+        }
+        if (parent.type === 'col' && (t === 'col' || n.type === 'col')) {
+            n = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
+            autoBalanceCols(n);
+        }
+        return n;
     }
 
     // The placement of shared component `sid` that the open page shows: a
@@ -60365,7 +60381,7 @@ const StyleDesigner = (function () {
         saveState();
         var n = createFromPalette(type, extra || {});
         if (!n) return;
-        _sdInsertAt(spot, n);
+        _sdInsertAt(spot, n, _pd);
         selectedNode = n;
         render();
         _trackRecentComp(type, extra || {});
@@ -61701,7 +61717,7 @@ const StyleDesigner = (function () {
                 saveState();
                 var n = createFromPalette(type, extra);
                 if (!n) return;
-                _sdInsertAt(spot, n);
+                _sdInsertAt(spot, n, _pd);
                 selectedNode = n;
                 // Same rule as a drop: a control that lands inside a custom
                 // form widget is a field of it.

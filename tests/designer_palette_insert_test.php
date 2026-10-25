@@ -7,8 +7,10 @@
  * lands in the visual designer: into the selection when it holds the item,
  * else beside the selection in the nearest ancestor that takes it, in the
  * page tree or inside a widget; a component or widget never goes into a
- * system widget's own tree, but beside its placement on the open page.
- * _sdInsertSpot(), _sdInsertAt() and _sdPlacementOnPage() are cut out of
+ * system widget's own tree, but beside its placement on the open page; the
+ * place has to be one the operator may edit, and the item is wrapped as a
+ * drop there would wrap it. _sdInsertSpot(), _sdInsertAt(),
+ * _sdWrapForParent() and _sdPlacementOnPage() are cut out of
  * assets/js/style_designer.js and run under Node with stubs for what they
  * call; on a machine without Node the test is skipped.
  *
@@ -37,7 +39,10 @@ if (!defined('PG_TEST_RUNNER')) {
 //
 // canDrop() is a rule table: a node takes the payload types in its `acc`
 // list; a 'root' node takes everything unless it has `refuse`. Widgets 7
-// and 8 are system widgets, headers 5 and 9 plain shared components.
+// and 8 are system widgets, headers 5 and 9 plain shared components. A node
+// with `props.ro` may not be edited (_sdCanEditNode()); _sdMayEdit() notes
+// every node it is asked about in `nudged`. A `props.tag` of button, a or
+// select is interactive, one of p or h1 holds text only.
 function designer_palette_insert_test_run($steps)
 {
 	$out = array();
@@ -123,6 +128,12 @@ function expandAncestorsAnywhere(node) { expanded.push(node.id); }
 var balanced = [];
 function createNode(type, props, kids) { return N(type + '-new', type, [], kids, props); }
 function autoBalanceCols(row) { balanced.push(row.id); }
+var nudged = [];
+function _sdCanEditNode(node) { return !(node && node.props && node.props.ro); }
+function _sdMayEdit(node) { nudged.push(node.id); return _sdCanEditNode(node); }
+function _isInteractiveNode(node) { return ['button', 'a', 'select'].indexOf(node.props.tag) !== -1; }
+function _sdIsTextSink(node) { return ['p', 'h1'].indexOf(node.props.tag) !== -1; }
+function shape(n) { return n.type + (n.props.fluid === false ? '(boxed)' : '') + (n.children.length ? '>' + n.children.map(shape).join('+') : '') + (n.id.indexOf('-new') === -1 ? ':' + n.id : ''); }
 JS;
 
 	$script .= substr($source, $from, $to - $from) . <<<'JS'
@@ -305,7 +316,7 @@ function test_designer_palette_insert_widget_placement_on_page()
 
 // A column added beside a leaf in a column, or into a selected column,
 // goes into a new row there, as a column dropped onto a column does; a
-// column into a row stays as it is.
+// column into a row stays as it is, and the row's columns are balanced.
 function test_designer_palette_insert_col_in_col()
 {
 	$answer = designer_palette_insert_test_run(
@@ -319,6 +330,7 @@ function test_designer_palette_insert_col_in_col()
 		. 'selectedNode = find("r1");'
 		. '_sdInsertAt(_sdInsertSpot({ source: "palette", type: "col", extra: {} }), N("n2", "col"));'
 		. 'out.r1 = ids("r1");'
+		. 'out.balancedRow = balanced.slice();'
 		. 'var c2 = find("c2"); c2.acc.push("col"); selectedNode = c2;'
 		. '_sdInsertAt(_sdInsertSpot({ source: "palette", type: "col", extra: {} }), N("n3", "col"));'
 		. 'out.c2 = c2.children.map(function (c) { return c.type + ">" + c.children.map(function (k) { return k.id; }).join(); });'
@@ -334,6 +346,7 @@ function test_designer_palette_insert_col_in_col()
 	pg_assert_same(array('type' => 'row', 'kids' => array('n1')), $answer['row'], 'the new column inside that row');
 	pg_assert_same(array('row-new'), $answer['balanced'], 'the row is balanced');
 	pg_assert_same(array('c1', 'c2', 'n2'), $answer['r1'], 'a column into a row is not wrapped');
+	pg_assert_same(array('row-new', 'r1'), $answer['balancedRow'], 'the row that gets a column is balanced, as after a drop');
 	pg_assert_same(array('row>n3'), $answer['c2'], 'a selected column gets the new column in a new row');
 }
 
@@ -391,4 +404,100 @@ function test_designer_palette_insert_missing_sibling()
 	}
 
 	pg_assert_same(array('h1', 'ul1', 'p1', 'n1'), $answer, 'last in the parent');
+}
+
+// The page root takes a column, a row or a ready-made block the way a drop
+// there does: a column in a new container and row, a row in a new
+// container, a block in a boxed container unless it brings its own width.
+// The root of a widget's tree takes them as they are.
+function test_designer_palette_insert_root_wrap()
+{
+	$answer = designer_palette_insert_test_run(
+		'var out = {}; var last = function () { return tree.children[tree.children.length - 1]; };'
+		. 'var col = { source: "palette", type: "col", extra: {} };'
+		. 'selectedNode = null; _sdInsertAt(_sdInsertSpot(col), N("n1", "col"), col); out.none = shape(last());'
+		. 'selectedNode = find("foot"); var s = _sdInsertSpot(col); out.spot = s.parent.id + "/" + s.sibling.id;'
+		. '_sdInsertAt(s, N("n2", "col"), col); out.afterFoot = shape(tree.children[tree.children.indexOf(find("foot")) + 1]);'
+		. 'var row = { source: "palette", type: "row", extra: {} };'
+		. 'selectedNode = null; _sdInsertAt(_sdInsertSpot(row), N("n3", "row"), row); out.row = shape(last());'
+		. 'var card = { source: "palette", type: "component", extra: { componentType: "card" } };'
+		. 'selectedNode = null; _sdInsertAt(_sdInsertSpot(card), N("n4", "semantic"), card); out.card = shape(last());'
+		. 'var hero = { source: "palette", type: "component", extra: { componentType: "hero-centered" } };'
+		. 'selectedNode = null; _sdInsertAt(_sdInsertSpot(hero), N("n5", "semantic"), hero); out.hero = shape(last());'
+		. 'selectedNode = find("w8leaf"); _sdInsertAt(_sdInsertSpot(col), N("n6", "col"), col); out.widget = ids("w8root");'
+		. 'out.expanded = expanded;'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same('container>row>col:n1', $answer['none'], 'nothing selected: a column goes in a new container and row');
+	pg_assert_same('page/foot', $answer['spot'], 'a leaf in the page body: the page takes the column, after the leaf');
+	pg_assert_same('container>row>col:n2', $answer['afterFoot'], 'there too in a new container and row');
+	pg_assert_same('container>row:n3', $answer['row'], 'a row goes in a new container');
+	pg_assert_same('container(boxed)>semantic:n4', $answer['card'], 'a ready-made block goes in a boxed container');
+	pg_assert_same('semantic:n5', $answer['hero'], 'a full-width section goes in as it is');
+	pg_assert_same(array('w8leaf', 'n6'), $answer['widget'], 'a widget tree root takes the column as it is');
+	pg_assert_same(array('n1', 'n2', 'n3', 'n4', 'n5', 'n6'), $answer['expanded'], 'the overview opens down to the inserted node, not its wrapper');
+}
+
+// A selection that holds inline content only (a button, a select, a
+// heading) does not pass a block to its children: a span or an option in
+// it would take the block. The item goes right after the selection.
+function test_designer_palette_insert_inline_only_selection()
+{
+	$answer = designer_palette_insert_test_run(
+		'var out = {}; var s1 = find("s1");'
+		. 's1.children.push(N("btn", "semantic", [], [N("bspan", "semantic", ["p"])], { tag: "button" }));'
+		. 's1.children.push(N("sel", "semantic", [], [N("o1", "semantic", ["p"]), N("o2", "semantic", ["p"])], { tag: "select" }));'
+		. 's1.children.push(N("hd", "semantic", [], [N("hspan", "semantic", ["p"])], { tag: "h1" }));'
+		. 'out.button = spotOf("btn", "p");'
+		. 'out.select = spotOf("sel", "p");'
+		. 'out.heading = spotOf("hd", "p");'
+		. 'out.added = insert("btn", "p", "n1").kids;'
+		. 'out.span = ids("bspan");'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('parent' => 's1', 'sibling' => 'btn', 'after' => true, 'sid' => 0), $answer['button'], 'a button: after it, not into its span');
+	pg_assert_same(array('parent' => 's1', 'sibling' => 'sel', 'after' => true, 'sid' => 0), $answer['select'], 'a select: after it, not into its last option');
+	pg_assert_same(array('parent' => 's1', 'sibling' => 'hd', 'after' => true, 'sid' => 0), $answer['heading'], 'a heading: after it, not into its span');
+	pg_assert_same(array('h1', 'ul1', 'p1', 'btn', 'n1', 'sel', 'hd'), $answer['added'], 'placed right after the button');
+	pg_assert_same(array(), $answer['span'], 'the button\'s span is left alone');
+}
+
+// The insert asks what a drop asks (_sdMayEdit()): a place the operator may
+// not edit (outside their area, another person holding the page) gets
+// nothing and a word why. An editable place on the way is taken first, so
+// a row whose last column is locked to them passes the item to the first.
+function test_designer_palette_insert_may_edit()
+{
+	$answer = designer_palette_insert_test_run(
+		'var out = {};'
+		. '["card", "loop", "w7root", "page"].forEach(function (id) { find(id).props.ro = true; });'
+		. 'nudged = [];'
+		. 'out.refused = spotOf("ch", "p");'
+		. 'out.nudged = nudged.slice();'
+		. 'out.card = ids("card");'
+		. 'find("c2").props.ro = true; nudged = [];'
+		. 'out.row = spotOf("r1", "p");'
+		. 'out.rowNudged = nudged.slice();'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(null, $answer['refused'], 'nothing editable takes it: no spot');
+	pg_assert_same(array('card'), $answer['nudged'], 'the operator is told about the place it would have gone');
+	pg_assert_same(array('ch'), $answer['card'], 'the card is left alone');
+	pg_assert_same(array('parent' => 'c1', 'sibling' => null, 'after' => false, 'sid' => 0), $answer['row'], 'the editable column takes it');
+	pg_assert_same(array(), $answer['rowNudged'], 'without a word');
 }
