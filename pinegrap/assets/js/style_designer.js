@@ -14519,32 +14519,68 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // System widgets whose output is a <form> or holds one. The renderer
+    // prints a <form> around the widget's whole tree for the custom form,
+    // the member and account widgets (_pg_member_form_wrap()), the login
+    // region's sign-in form and the express order's host form; some print
+    // it in one state only (signed in or out, before a reset is sent), and
+    // each counts as always printing it. Account security's blocks are forms
+    // of their own, and a tree with no block bound as one is wrapped whole.
+    var _SD_FORM_WIDGET_TYPES = ['custom_form', 'login_form', 'login_region', 'forgot_password', 'registration',
+                                 'membership', 'logout', 'change_password', 'set_password', 'account_profile',
+                                 'email_preferences', 'address_book', 'account_security', 'express_order'];
+
+    // Does the tree of system widget `sid` sit in a <form> the server prints
+    // around it, which is not a node there? Account security is left out:
+    // its forms are its blocks, nodes _sdInForm() finds by walking up, and
+    // its whole-tree form is only the fallback for a tree with no bound
+    // block; a form dropped there to be bound is the way back to blocks.
+    function _sdWidgetPrintsForm(sid) {
+        var cfg = sid ? _cfCfgOf(sid) : null;
+        return !!cfg && cfg.regionType !== 'account_security' && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1;
+    }
+
     // Does the drag place a <form>: the dragged element, any element below
-    // it (a newsletter or login block), or a <form> written in a node's own
-    // markup? A block's top-level type says nothing about it, so the tree is
-    // walked. Kept on the payload like _sdDragCarriesControl().
+    // it (a newsletter or login block), a <form> written in a node's own
+    // markup, or a shared component or widget that brings one (a widget of
+    // a kind in _SD_FORM_WIDGET_TYPES, or a component whose cached tree
+    // holds one)? A block's top-level type says nothing about it, so the
+    // tree is walked. A new system widget has no tree yet and counts by its
+    // kind. Kept on the payload like _sdDragCarriesControl().
     function _sdDragCarriesForm(data) {
         if (!data) return false;
         if (typeof data._sdForm === 'boolean') return data._sdForm;
         var root = _sdDragTree(data);
+        var seen = {};
         var found = root
             ? (function walk(n) {
                 if (!n) return false;
                 if (_semTag(n) === 'form' || /<form[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+                if (n.type === 'shared_ref') {
+                    var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                    if (!sid || seen[sid]) return false;
+                    seen[sid] = true;
+                    var cfg = _cfCfgOf(sid);
+                    if (cfg && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1) return true;
+                    var cached = _sharedCache[sid];
+                    return !!(cached && cached.tree) && walk(cached.tree);
+                }
                 var kids = n.children || [];
                 for (var i = 0; i < kids.length; i++) {
                     if (walk(kids[i])) return true;
                 }
                 return false;
             })(root)
-            : _semTag({ type: data.type, props: data.extra || {} }) === 'form';
+            : (data.type === 'system_widget'
+                ? _SD_FORM_WIDGET_TYPES.indexOf(String((data.extra || {}).regionType || '')) !== -1
+                : _semTag({ type: data.type, props: data.extra || {} }) === 'form');
         try { data._sdForm = found; } catch (e) {}
         return found;
     }
 
-    // Is the target a <form>, or inside one at any depth? A custom form
-    // widget counts as one: the server prints the <form> around its tree,
-    // so it is not a node there.
+    // Is the target a <form>, or inside one at any depth? The tree of a
+    // system widget that prints a <form> around it (_sdWidgetPrintsForm())
+    // counts as one, its root too: that <form> is not a node there.
     function _sdInForm(target) {
         var n = target;
         for (var guard = 0; n && guard < 500; guard++) {
@@ -14552,7 +14588,7 @@ const StyleDesigner = (function () {
             var up = _sdAnyParent(n);
             n = up ? up.parent : null;
         }
-        return !!_cfWidgetOf(target);
+        return _sdWidgetPrintsForm(_isInsideSystemWidget(target));
     }
 
     function canDrop(data, target) {
@@ -21847,7 +21883,9 @@ const StyleDesigner = (function () {
                 el.addEventListener('dblclick', function () {
                     var label = this.dataset.label || _sdT('System Widget');
                     var rtype = this.dataset.regionType || '';
-                    var spot = _sdInsertSpot({ type: 'shared_ref' });
+                    // The payload a drag of this item carries: the widget's
+                    // kind tells canDrop() whether it brings a <form>.
+                    var spot = _sdInsertSpot({ source: 'palette', type: 'system_widget', extra: { label: label, regionType: rtype } });
                     if (!spot) return;
                     _createSystemWidgetNode({ label: label, regionType: rtype }, spot.parent,
                         spot.sibling ? { sibling: spot.sibling, after: spot.after } : null);

@@ -6,12 +6,13 @@
  * content goes: a link or a button goes back into a heading (<h3><a>…</a></h3>,
  * the accordion's <h2><button>) or a sentence, but never into another link or
  * a button at any depth, a label holds one control, block content stays out
- * of headings and paragraphs, no form goes inside a form at any depth, and
- * a ready-made palette block is judged by what it holds. canDrop() and its
- * helpers, and _paletteInsert(), are cut out of assets/js/style_designer.js
- * and run under Node with stubs for the lock, editing, shared-component,
- * custom form and loop checks, for createFromPalette() and for the
- * component list; on a machine without Node the test is skipped.
+ * of headings and paragraphs, no form goes inside a form at any depth (nor
+ * into a widget the server wraps in one), and a ready-made palette block is
+ * judged by what it holds. canDrop() and its helpers, and _paletteInsert(),
+ * are cut out of assets/js/style_designer.js and run under Node with stubs
+ * for the lock, editing, shared-component, system widget and loop checks,
+ * for createFromPalette() and for the component list; on a machine without
+ * Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -73,18 +74,21 @@ function designer_inline_drop_test_run($setup, $cases)
 		. ' if (type === "component" && extra.componentType === "links-block") return sem("section", [sem("div", [sem("h3", [con("link", { text: "Title", href: "#" })]), N("component", { componentType: "btn", text: "More", href: "#" })])]);'
 		. ' if (type === "component" && extra.componentType === "form-block") return sem("section", [sem("div", [sem("form", [sem("input", [], { _attrs: [{ name: "type", value: "email" }] })])])]);'
 		. ' if (type === "component") return N("component", { componentType: extra.componentType });'
+		. ' if (type === "shared_ref") return N("shared_ref", { sharedId: extra.sharedId });'
 		. ' return null; }'
 		// An atomic component that prints its own interactive markup, as the
 		// language switcher prints a dropdown button and links.
 		. 'var COMPONENTS = { language_switcher: { toHTML: function () { return "<div class=\\"dropdown\\"><button type=\\"button\\">EN</button><ul><li><a href=\\"#\\">English</a></li></ul></div>"; } } };'
-		// A node marked `inCf` sits in a custom form widget, whose <form> the
-		// server prints around the widget's tree.
-		. 'function _cfWidgetOf(n) { return (n && n.props && n.props.inCf) ? { sid: 1 } : null; }'
+		// A node marked `inWidget` sits in the tree of that system widget;
+		// WIDGETS holds each widget's config by its id. A shared component's
+		// tree, when a case needs one, goes into _sharedCache.
+		. 'var WIDGETS = {}; function _cfCfgOf(sid) { return WIDGETS[sid] || null; }'
+		. 'function _isInsideSystemWidget(n) { return (n && n.props && n.props.inWidget) || 0; }'
 		// What _paletteInsert() touches besides the drop rules. Whether the
 		// operator may edit is `editable`; `asked` counts the questions that
 		// would show them a word why not.
 		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
-		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; }'
+		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {}'
 		. 'function createNode(type, props, kids) { return N(type, props, kids); } function autoBalanceCols() {}'
 		. 'var editable = true; var asked = 0; function _sdCanEditNode() { return editable; } function _sdMayEdit() { asked++; return editable; }'
 		. 'function _sdIsTextSink(n) { return (n.type === "content" && ["paragraph", "heading"].indexOf(n.props.contentType) !== -1)'
@@ -436,7 +440,8 @@ function test_designer_inline_drop_no_form_in_form()
 	$setup = designer_inline_drop_test_page()
 		. 'T.inputInForm = sem("input", [], { _attrs: [{ name: "type", value: "email" }] });'
 		. 'T.divInForm = sem("div", [T.inputInForm]); T.form = sem("form", [T.divInForm]); T.formCol = sem("div", [T.form]);'
-		. 'T.cfDiv = sem("div", [], { inCf: true }); T.cfRoot = { _id: "cfroot", type: "root", props: { inCf: true }, children: [] };'
+		. 'WIDGETS[1] = { regionType: "custom_form" };'
+		. 'T.cfDiv = sem("div", [], { inWidget: 1 }); T.cfRoot = { _id: "cfroot", type: "root", props: { inWidget: 1 }, children: [] };'
 		. 'root.children.push(T.formCol, T.cfDiv);';
 	$block = 'pal("component", { componentType: "form-block" })';
 	$answer = designer_inline_drop_test_run($setup, array(
@@ -461,6 +466,71 @@ function test_designer_inline_drop_no_form_in_form()
 	}
 
 	pg_assert_same(array(false, false, false, false, false, false, false, true, true, true, true, true, array(1, 1, 2, true)), $answer, 'a form-carrying block, a palette form and a wrapper holding a form stay out of a form, a div in it and a custom form widget, its tree root too; the block goes beside the form, a field and a block without a form go in, a field moves within its form; the insert lands right after the form');
+}
+
+// The member and account widgets print a <form> around their tree as the
+// custom form does, so a block carrying a form stays out of them too.
+// Account security does not count: its blocks are its forms, and a form
+// dropped into it is how a block is made. The other way round, a widget
+// that brings a form, account security too, or a shared component whose
+// tree holds one, stays out of a form: from the palette, as a new widget
+// and when moved; an insert walks past the form.
+function test_designer_inline_drop_no_form_in_member_widget()
+{
+	$setup = designer_inline_drop_test_page()
+		. 'WIDGETS[2] = { regionType: "login_form" }; WIDGETS[3] = { regionType: "account_security" };'
+		. 'WIDGETS[5] = { regionType: "catalog_listing" };'
+		. '_sharedCache[6] = { tree: sem("section", [sem("div", [sem("form")])]) };'
+		. 'T.loginInput = sem("input", [], { inWidget: 2, _attrs: [{ name: "type", value: "email" }] });'
+		. 'T.loginDiv = sem("div", [T.loginInput], { inWidget: 2 });'
+		. 'T.loginRoot = { _id: "loginroot", type: "root", props: { inWidget: 2 }, children: [] };'
+		. 'T.secDiv = sem("div", [], { inWidget: 3 }); T.catDiv = sem("div", [], { inWidget: 5 });'
+		. 'T.inputInForm = sem("input", [], { _attrs: [{ name: "type", value: "email" }] });'
+		. 'T.divInForm = sem("div", [T.inputInForm]); T.form = sem("form", [T.divInForm]); T.formCol = sem("div", [T.form]);'
+		. 'root.children.push(T.loginDiv, T.secDiv, T.catDiv, T.formCol);';
+	$block = 'pal("component", { componentType: "form-block" })';
+	$answer = designer_inline_drop_test_run($setup, array(
+		array($block, 'loginDiv'),
+		array($block, 'loginRoot'),
+		array($block, 'secDiv'),
+		array('pal("semantic", { tag: "form" })', 'secDiv'),
+		array($block, 'catDiv'),
+		array('pal("cf_field", { cfType: "text" })', 'loginDiv'),
+		array('pal("shared_ref", { sharedId: 2 })', 'divInForm'),
+		array('pal("shared_ref", { sharedId: 3 })', 'divInForm'),
+		array('pal("shared_ref", { sharedId: 6 })', 'divInForm'),
+		array('pal("system_widget", { regionType: "login_form" })', 'divInForm'),
+		array('node(sem("div", [N("shared_ref", { sharedId: 2 })]))', 'divInForm'),
+		array('pal("shared_ref", { sharedId: 5 })', 'divInForm'),
+		array('pal("system_widget", { regionType: "catalog_listing" })', 'divInForm'),
+		array('pal("shared_ref", { sharedId: 2 })', 'div'),
+		'(function () { var before = root.children.length;'
+		. ' selectedNode = T.loginInput; _paletteInsert("component", { componentType: "form-block" });'
+		. ' return [T.loginDiv.children.length, root.children.length - before]; })()',
+		'(function () { selectedNode = T.inputInForm;'
+		. ' var a = _sdInsertSpot({ type: "shared_ref", source: "palette", extra: { sharedId: 2 } });'
+		. ' var b = _sdInsertSpot({ type: "system_widget", source: "palette", extra: { regionType: "login_form" } });'
+		. ' return [a.parent === T.formCol, a.sibling === T.form, b.parent === T.formCol, b.sibling === T.form]; })()',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(
+		array(false, false, true, true, true, true, false, false, false, false, false, true, true, true, array(1, 1), array(true, true, true, true)),
+		$answer,
+		'a form-carrying block stays out of a login widget, its tree root too; it and a form go into account security, and into a widget that prints no form; a field goes into the login widget; a widget or component that brings a form stays out of a form, new or moved, one that brings none goes in; the inserts land on the page and right after the form'
+	);
+
+	// The widget double-clicks sit in click handlers: each passes the
+	// payload its drag carries, so a new widget is judged by its kind.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$calls = preg_match_all('/_sdInsertSpot\(\{([^}]*)/', $source, $found);
+	pg_assert_true($calls >= 3, 'the widget double-clicks ask _sdInsertSpot() with a payload');
+	foreach ($found[1] as $payload) {
+		pg_assert_true(strpos($payload, "source: 'palette'") !== false && strpos($payload, 'extra') !== false, 'the double-click payload names its source and its extra: ' . $payload);
+	}
 }
 
 // The insert asks what a drop asks: when the operator may not edit the

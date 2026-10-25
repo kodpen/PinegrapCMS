@@ -19,7 +19,7 @@ description: Where a palette double-click or command palette insert lands: in th
 
 ## Why does it walk up?
 - The handlers used `selectedNode || tree`: a selection that refused the item sent it to the page root, so a paragraph for a card heading in a catalog widget left the widget. Since PR #1582 it lands after the heading, in the card, and the widget is saved. A page leaf gets it right after it too, as Paste does; a selected container still takes it last inside, so double-clicks still nest (`designer-gutter-overflow.md`).
-- A block holding a `<form>` walks past a form: `canDrop()` keeps a form out of a form and a custom form widget at any depth (`palette-component-rules.md`).
+- A block or widget bringing a `<form>` walks past a form and past a widget the server wraps in one (custom form, login, account widgets): `canDrop()` keeps a form out of both at any depth (`no-form-in-form.md`).
 
 ## Why do component and widget items stop at a system widget?
 - A widget tree's root, loop and cards take a `shared_ref`: the walk would put a widget in a loop row, printed once per record. For a `shared_ref` or `system_widget` payload a selection inside a system widget (`_isInsideSystemWidget()`) is replaced by the widget's placement on the open page (`_sdPlacementOnPage()`): the item lands right after the widget. A plain shared component (a header) is no boundary.
