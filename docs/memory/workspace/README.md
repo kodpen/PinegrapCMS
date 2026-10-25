@@ -54,6 +54,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
+- workspace-notes-import-keep.md: Google Keep notes from a Takeout zip (notes_keep.php, PR #1656): found in any zip, laid out in the stage as Markdown and attachments, untitled notes named by their first line
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note

@@ -2020,7 +2020,7 @@ function ws_notes_js_strings()
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),
-        'notes_import_intro'    => lang('Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault or a Notion, Joplin or Bear export, or Evernote exports (.enex). Notes exported from here are recognised and brought up to date.'),
+        'notes_import_intro'    => lang('Bring notes in from another app: Markdown (.md) or text (.txt) files, or a .zip of them, such as an Obsidian vault, a Notion, Joplin or Bear export or a Google Keep Takeout, or Evernote exports (.enex). Notes exported from here are recognised and brought up to date.'),
         'notes_import_pick'     => lang('Choose the files or drop them here'),
         'notes_import_limit'    => ws_js_template('Up to {var:1} MB', 1),
         'notes_import_too_many' => ws_js_template('Pick at most {var:1} files at a time, or put them in a .zip.', 1),
