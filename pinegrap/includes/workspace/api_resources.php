@@ -5370,6 +5370,15 @@ function ws_api_note_present($viewer, $note)
     );
 }
 
+// What the delete of a note answers.
+function ws_api_note_removal_schema()
+{
+    return array(
+        'id'      => 'integer',
+        'deleted' => 'boolean',
+    );
+}
+
 // What ws_api_note_present() returns.
 function ws_api_note_schema()
 {
@@ -5428,7 +5437,17 @@ function ws_api_notes_list($params)
         ? api_cursor_encode(ws_notes_position_pack($page['next']['group'], $page['next']['updated_at']), $page['next']['id'])
         : null;
 
-    api_ok_list($out, $limit, $next, $page['total']);
+    // The notes deleted since, on the first page of a changes listing: an
+    // app drops its copies of them.
+    $deleted = array();
+
+    if (($after === null) && isset($params['updated_since']) && ((int) $params['updated_since'] > 0)) {
+        foreach (ws_note_deletions_since($viewer, (int) $params['updated_since']) as $row) {
+            $deleted[] = array('id' => $row['id'], 'deleted_at' => api_time($row['deleted_at']));
+        }
+    }
+
+    api_ok_list($out, $limit, $next, $page['total'], array('deleted' => $deleted));
 }
 
 function ws_api_notes_get($params)
@@ -5505,6 +5524,35 @@ function ws_api_note_refused($result, $field = 'base')
     }
 
     api_fail_validation($result['error'], 'body');
+}
+
+function ws_api_notes_delete($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_notes_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $note = ws_api_note_or_404($viewer, $params['id']);
+
+    // The check the screen's delete makes, made first so that a dry run
+    // meets the same refusal.
+    $checked = ws_note_delete_check($viewer, $note);
+
+    if (!$checked['ok']) {
+        api_fail(403, 'forbidden', $checked['error']);
+    }
+
+    api_dry_run_stop('deleted', 'workspace_note', array('id' => (int) $note['id']));
+
+    $result = ws_note_delete($viewer, $note);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(array('id' => (int) $note['id'], 'deleted' => true));
 }
 
 function ws_api_notes_update($params)

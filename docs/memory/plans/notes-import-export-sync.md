@@ -1,6 +1,6 @@
 ---
 name: notes-import-export-sync
-description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex and Keep import, note revision done; N3b delete, N3c sources, HTML reader, later Notion/OneNote; slices, open questions
+description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex and Keep import, note revision and delete done; N3c sources, HTML reader, later Notion/OneNote; slices, open questions
 ---
 
 ## What is this plan?
@@ -18,7 +18,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex 
 - N2 Import, other formats: single `.html`, laid out in the stage the same way.
 - N3 Sync API: paging and `created_at` done (issue #511). The owner approved the three schema changes on 2026-10-25 (`ws_notes.revision`, `ws_note_deletions`, `ws_note_sources`), cut into slices of one PR each:
   - N3a revision — done (PR #1663, schema 11.0.84): `ws_notes.revision`, moved on by every write, in the object, sent back on update for 409 `changed_meanwhile` (memory docs/memory/workspace/workspace-notes-revision.md).
-  - N3b delete: `DELETE /workspace/notes/{id}` (owner, dry run, `ws_note_delete_check()` shared with the screen's delete), `ws_note_deletions` rows for the owner and the people it was shared with, kept about 30 days, and the deletions since `updated_since` in the list's answer.
+  - N3b delete — done (PR #1674, schema 11.0.85): `DELETE /workspace/notes/{id}` (owner, dry run, no MCP tool), `ws_note_deletions` for the owner, the people and the channels it was shared with, 30 days, `deleted` in the changes listing (memory docs/memory/workspace/workspace-notes-deletions.md).
   - N3c sources: `ws_note_sources` (user_id, provider, external_id, hash, note_id) written by the import, so a re-import of the same Keep, Evernote or Markdown note updates or skips its note instead of adding a second one.
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
 
@@ -29,4 +29,4 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex 
 4. Format priority (default: Markdown/zip → enex → Keep → HTML).
 
 ## Where to start?
-- N3b next, then N3c (each after the previous slice's merge), then the HTML reader (`notes_enex.php` and `notes_keep.php` are the pattern), then N4.
+- N3c next (after N3b's merge): `ws_note_sources` in a schema step of the open version (the next free Workspace label after 11.0.85), written where the import creates or updates a note (`ws_note_import_write()`), keyed by provider (keep, enex, markdown) and an id the file carries (Keep: the JSON name; Evernote: the note's guid if exported, else title+created; Markdown: front matter or path), then read in `ws_note_import_plan()` so a known note is "update" or "same". Then the HTML reader (`notes_enex.php` and `notes_keep.php` are the pattern), then N4.

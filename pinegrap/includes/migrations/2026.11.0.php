@@ -65,6 +65,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_links();        // 11.0.35
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
+	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 
 }
 
@@ -1703,6 +1704,32 @@ function upgrade_2026_11_0_workspace_note_revision() {
 	install_add_column('ws_notes', 'revision', "INT UNSIGNED NOT NULL DEFAULT 1");
 
 	install_note('Workspace: every note carries a revision, so an app that keeps notes in sync is told when a note changed after it was read.');
+
+}
+
+// Deleted Workspace notes (2026.11.0, 11.0.85; includes/workspace/notes.php).
+//
+// A note is deleted for good (ws_note_delete()). ws_note_deletions keeps for
+// 30 days which note went and for whom: a row for its owner and for each
+// person it was shared with (user_id), and one for each channel it was
+// shared in (channel_id, user_id 0). A sync client asks
+// GET /workspace/notes?updated_since= and drops the notes listed in deleted.
+function upgrade_2026_11_0_workspace_note_deletions() {
+
+	install_create_table('ws_note_deletions', "CREATE TABLE ws_note_deletions (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		note_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_by INT UNSIGNED NOT NULL DEFAULT 0,
+		deleted_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, deleted_at),
+		KEY idx_channel (channel_id, deleted_at),
+		KEY idx_deleted (deleted_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a deleted note is remembered for 30 days, so an app that keeps notes in sync removes it as well.');
 
 }
 
