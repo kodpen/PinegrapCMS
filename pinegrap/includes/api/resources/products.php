@@ -84,6 +84,9 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 		),
+		// The stars of the product's published reviews from verified
+		// purchases (GET /products/{id}/reviews), kept on the row.
+		'rating'          => api_product_rating($row),
 		// In the catalogue's Recycle Bin: off the shop and out of the listing,
 		// but still readable by id until the bin is emptied.
 		'recycled'        => (isset($row['recycled']) && ((int)$row['recycled'] === 1)),
@@ -93,6 +96,21 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		// engine. Nothing is calculated here; the findings are only carried on
 		// the single product endpoint, because they are a query per row.
 		'seo'             => api_seo_block('product', $id, $row, $with_issues)
+	);
+
+}
+
+// The product's rating as the object carries it: the average of its
+// published, starred reviews from verified purchases (two decimals) and how
+// many there are; average null while there is none. A site before 11.0.14
+// reads zeros (api_product_select()).
+function api_product_rating($row) {
+
+	$count = isset($row['rating_count']) ? max(0, (int)$row['rating_count']) : 0;
+
+	return array(
+		'average' => ($count > 0) ? round((float)$row['rating_avg'], 2) : null,
+		'count'   => $count
 	);
 
 }
@@ -227,6 +245,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (pg_reviews_ready() ? "products.rating_avg, products.rating_count," : "0 AS rating_avg, 0 AS rating_count,") . "
 			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
 			products.timestamp,
 			" . api_seo_columns('products.') . "
@@ -1673,6 +1692,40 @@ function api_products_price_history($params) {
 
 }
 
+// A product's reviews: its published comments, newest first, as GET /comments
+// lists them. Only the product's own (item_type product), as its rating
+// counts them; a group of options keeps its own under its id.
+function api_products_reviews($params) {
+
+	$id = (int)$params['id'];
+
+	if (api_row("SELECT id FROM products WHERE id = '" . $id . "' LIMIT 1") === null) {
+
+		api_fail_not_found(lang('Product'));
+
+	}
+
+	$list = array(
+		'item_type' => 'product',
+		'item_id'   => $id,
+		'status'    => 'published',
+		'limit'     => isset($params['limit']) ? (int)$params['limit'] : 50
+	);
+
+	foreach (array('verified', 'cursor') as $key) {
+
+		if (isset($params[$key])) {
+
+			$list[$key] = $params[$key];
+
+		}
+
+	}
+
+	api_comments_list($list);
+
+}
+
 // What api_price_history_entry_present() returns, declared for the OpenAPI
 // document.
 function api_price_history_entry_schema() {
@@ -1833,6 +1886,10 @@ function api_product_schema() {
 			'tracked'      => 'boolean',
 			'quantity'     => 'integer',
 			'out_of_stock' => 'boolean'
+		),
+		'rating'            => array(
+			'average' => 'number?',
+			'count'   => 'integer'
 		),
 		'recycled'        => 'boolean',
 		'updated_at'      => 'string?',

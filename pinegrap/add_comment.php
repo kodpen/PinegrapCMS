@@ -442,8 +442,9 @@ if ($parent_id === 0) {
 // anything is typed; this is the check that counts. Staff, who may edit the
 // page, write as the store and are not asked.
 $verified_order_id = 0;
+$is_product_review = pg_review_gate_applies($item_type, $item_id);
 
-if (pg_review_gate_applies($item_type, $item_id) && !check_edit_access($folder_id)) {
+if ($is_product_review && !check_edit_access($folder_id)) {
     $review = pg_review_eligibility((int) $user_id, $item_type, $item_id);
 
     if ($review['refusal'] !== '') {
@@ -648,6 +649,11 @@ $comment_id = mysqli_insert_id(db::$con);
 // A published review of a product changes its rating at once.
 if ($published == '1') {
     pg_review_comment_changed($item_type, $item_id);
+}
+
+// A review of a product, published or held, is announced as it is written.
+if ($is_product_review && ($comment_id > 0)) {
+    pg_announce('product.review.created', pg_review_created_event($comment_id, $item_type, $item_id, $rating, $verified_order_id, $published, $publish_date_and_time));
 }
 
 // If this comment was published then cancel any necessary scheduled comments,

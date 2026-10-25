@@ -303,6 +303,23 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'products.reviews',
+			'method'  => 'GET',
+			'path'    => '/products/{id}/reviews',
+			'scope'   => 'comments:read',
+			'handler' => 'api_products_reviews',
+			'returns' => array('list' => 'Comment'),
+			'summary' => 'The reviews of a product',
+			'description' => 'The published comments written about the product, newest first and cursor paged, as GET /comments?item_type=product&item_id={id}&status=published lists them. verified true: written by a customer who bought the product; only those with stars count in the product\'s rating (rating on GET /products/{id}). store_reply is the store\'s answer under a review. Reviews of a group of options are kept under the group: GET /comments?item_type=product_group&item_id=<group id>. A product in the Recycle Bin still answers. Announced as product.review.created when written.',
+			'params'  => array(
+				array('name' => 'id',       'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'verified', 'in' => 'query', 'type' => 'bool', 'description' => 'true: verified purchases only; false: the other comments.'),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
 		/* ----- Product groups ----------------------------------------------- */
 
 		array(
@@ -1505,6 +1522,22 @@ function api_schema() {
 			'summary' => 'One customer',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.wishlist',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/wishlist',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_wishlist',
+			'returns' => array('list' => 'WishlistItem'),
+			'summary' => 'A customer\'s favourites',
+			'description' => 'The products the customer saved with the heart of the shop\'s catalog, newest first, from the site accounts linked to this customer record. A visitor who is not signed in keeps a list under a browser cookie that names nobody; it joins the account, and this list, at the next sign-in. A product deleted since is gone from the list; one switched off or in the Recycle Bin stays with available false. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without the favourites table answers an empty list.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
 			)
 		),
 

@@ -66,6 +66,11 @@ function api_webhook_events() {
 		// either way, and a receiver that only heard of outright deletions
 		// would keep selling one the shop no longer offers.
 		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin (recycled: true)',
+		// A review of a product or of a group of options, as the visitor sends
+		// it from the page: published at once or held for moderation (status).
+		// Publishing it later, the store's reply and a removal are not
+		// announced; GET /products/{id}/reviews lists them.
+		'product.review.created' => 'A review of a product was written on its page (published or held for moderation; a later publication or the store\'s reply is not announced)',
 		// Every stock writer on the site announces it: the checkout and a
 		// local sale, the product screen and its list, a barcode scan, the
 		// bulk edit of selected products (pg_product_stock_changed()), as the

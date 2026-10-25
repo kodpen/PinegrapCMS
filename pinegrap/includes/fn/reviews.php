@@ -841,6 +841,35 @@ function pg_review_request_cancel($order_id)
 }
 
 /**
+ * What product.review.created carries: the comment, what it reviews, its
+ * stars, whether it is a verified purchase and whether it is published,
+ * held for moderation (pending) or scheduled, the states GET /comments
+ * names.
+ *
+ * @param int        $comment_id
+ * @param string     $item_type             'product' or 'product_group'
+ * @param int        $item_id
+ * @param int        $rating                0 for none
+ * @param int        $verified_order_id     0 for none
+ * @param string|int $published             comments.published
+ * @param string     $publish_date_and_time comments.publish_date_and_time
+ * @return array
+ */
+function pg_review_created_event($comment_id, $item_type, $item_id, $rating, $verified_order_id, $published, $publish_date_and_time)
+{
+    $scheduled = ((string) $publish_date_and_time !== '') && (strpos((string) $publish_date_and_time, '0000-00-00') !== 0);
+
+    return array(
+        'id'        => (int) $comment_id,
+        'item_type' => (string) $item_type,
+        'item_id'   => (int) $item_id,
+        'rating'    => ((int) $rating > 0) ? (int) $rating : null,
+        'verified'  => ((int) $verified_order_id > 0),
+        'status'    => ((string) $published === '1') ? 'published' : ($scheduled ? 'scheduled' : 'pending'),
+    );
+}
+
+/**
  * The SQL condition of Comment Moderation's verified filter.
  *
  * @param string $verified 'yes' (verified purchases), 'no' (everything else)
