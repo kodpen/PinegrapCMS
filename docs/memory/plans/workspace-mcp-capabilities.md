@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-capabilities
-description: Plan (2026-10-23, steps 1-2 done #1468, 4 built, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
+description: Plan (2026-10-23, steps 1-2 done #1468, 4 #1598, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -20,7 +20,7 @@ description: Plan (2026-10-23, steps 1-2 done #1468, 4 built, answers 1-2 given)
 1. No schema: a handler calling either guard takes `'mcp' => false` (the routine uses REST), never all of `ws_claude_api_routes()`: GET /workspace/channels/{id}/context has no guard, stays a tool, feeds slice 4. Test like `test_ws_api_own_words_routes_are_no_tools` (tests/workspace_api_test.php); update api/api-mcp-server.md.
 2. No schema: question 1 (b: `'mcp' => false`, same test).
 3. After 2 (else it applies its own proposal), no schema: new `workspace.changes.propose`, POST /workspace/channels/{id}/changes (+ task twin), workspace:write, key or OAuth, body as requests.answer: a `ws_ai_requests` row; `ws_message_send_check()`, `ws_changes_input()`, `api_dry_run_stop()`, the message, `ws_changes_store()`; the owner applies. The one proposal route for every plan (catalogue bulk drafts, `erp_quote` creates, scheduled change cards), none per kind. First `oauth:<oauth_clients.id>` (a key: `app:<id>`) joins plans/workspace-agent-handles.md's agent vocabulary; decide its question 5: `ws_api_writer_app_id()` shows one OAuth row for every client (ChatGPT, Cursor alike). Check `agent` readers (`ws_task_run_key()`, queues).
-4. Built: resources my-day, channel context, refs by their GET routes; prompts channel_summary, weekly_report with `pg_ai_prompt_rules()` (api/mcp-resources-prompts.md). Left: `…/channels/{id}/customer` after plans/workspace-crm-seams.md slice 2.
+4. PR #1598: resources my-day, channel context, refs by their GET routes; prompts channel_summary, weekly_report with `pg_ai_prompt_rules()` (api/mcp-resources-prompts.md). Left: `…/channels/{id}/customer` after plans/workspace-crm-seams.md slice 2.
 5. No schema: consent presets (Workspace, store, accounting, all) in includes/oauth/authorize.php.
 6. No schema, a PR each: tasks `due_time`, `remind_minutes`; channel customer on create/update (`ws_customer_input()`); forward (includes/workspace/forward.php); a small-file path (files.create is `'mcp' => false`).
 7. Scheduled actions as tools: plans/workspace-canvas-workflow-tables.md S1, S2.
