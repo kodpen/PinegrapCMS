@@ -32,4 +32,4 @@ description: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.p
 - `pg_stock_notify_forget_user()` (`delete_users.php`, `edit_user.php`) and `pg_stock_notify_forget_product()` (`pg_pb_delete_product()`): an id MySQL 5.7 hands out again never inherits requests.
 
 ## Where else is it?
-- Personal data export: section `stock_notify`, by account or address ([[personal-data-export]]). Next: plan steps 4b (item view field) and 4c (SMS).
+- Personal data export: section `stock_notify`, by account or address ([[personal-data-export]]). The item view's field: [[catalog-stock-notify-form]].

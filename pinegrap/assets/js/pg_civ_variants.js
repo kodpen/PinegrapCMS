@@ -264,18 +264,21 @@
                 });
             });
 
-            // 1b. Elements shown only with or only without a rating. When the
-            //     variants differ in rating the page carries both states
-            //     (data-pg-rating-flag); the one that does not fit the chosen
-            //     variant is hidden. rating_count is '' without a review.
-            if ('rating_count' in p) {
-                var rated = p.rating_count !== null && p.rating_count !== undefined && String(p.rating_count) !== '';
-                scope.querySelectorAll('[data-pg-rating-flag]').forEach(function (el) {
-                    var flag = el.getAttribute('data-pg-rating-flag');
-                    if (flag === 'has_rating') el.hidden = !rated;
-                    else if (flag === 'no_rating') el.hidden = rated;
-                });
-            }
+            // 1b. Elements shown only in one state of a flag the variants
+            //     differ in: with or without a rating (has_rating /
+            //     no_rating), or a product that can be asked for when back
+            //     in stock (can_notify). The page carries both states
+            //     (data-pg-variant-flag); the one that does not fit the
+            //     chosen variant is hidden. rating_count is '' without a
+            //     review; out_of_stock is '1' for a product that cannot be
+            //     bought for want of stock.
+            var rated = ('rating_count' in p) && p.rating_count !== null && p.rating_count !== undefined && String(p.rating_count) !== '';
+            scope.querySelectorAll('[data-pg-variant-flag]').forEach(function (el) {
+                var flag = el.getAttribute('data-pg-variant-flag');
+                if (flag === 'has_rating' && ('rating_count' in p)) el.hidden = !rated;
+                else if (flag === 'no_rating' && ('rating_count' in p)) el.hidden = rated;
+                else if (flag === 'can_notify' && ('out_of_stock' in p)) el.hidden = String(p.out_of_stock) !== '1';
+            });
 
             // 2. Refresh the carousel — rebuild slides + thumbnails from
             //    the new product's gallery. Walks all carousels inside
@@ -285,10 +288,16 @@
                 carousels.forEach(function (cw) { rebuildCarousel(cw, p.gallery); });
             }
 
-            // 3. Update product_id hidden input on the form.
+            // 3. Update product_id hidden input on the form, and on the
+            //    back-in-stock form printed after it (data-pg-stock-notify
+            //    names it), so a request is for the variant picked.
             if (form) {
                 var pidInp = form.querySelector('input[type="hidden"][name="product_id"]');
                 if (pidInp) pidInp.value = String(p.id);
+                var notifyId = form.getAttribute('data-pg-stock-notify');
+                var notifyForm = notifyId ? document.getElementById(notifyId) : null;
+                var notifyPid = notifyForm ? notifyForm.querySelector('input[name="product_id"]') : null;
+                if (notifyPid) notifyPid.value = String(p.id);
             }
 
             // 3b. Announce the product the form now shows, for the scripts

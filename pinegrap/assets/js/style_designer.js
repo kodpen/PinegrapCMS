@@ -37699,7 +37699,9 @@ const StyleDesigner = (function () {
         ],
         catalog_item_view: [
             ['has_rating', _sdT('The product has a rating from verified reviews')],
-            ['no_rating',  _sdT('The product has no rating yet')]
+            ['no_rating',  _sdT('The product has no rating yet')],
+            // Out of stock with no back order: the back-in-stock form shows.
+            ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]
         ],
         calendar_view: [
             ['has_navigation', _sdT('The view can be stepped through (monthly or weekly)')],
@@ -37951,6 +37953,7 @@ const StyleDesigner = (function () {
             if (region === 'catalog_item_view') {
                 aOpts.push(['add_to_cart', _sdT('Add to Cart (catalog_item_view)')]);
                 if (isRealButton) aOpts.push(['wishlist', _sdT('Favourite (heart)')]);
+                if (isRealButton) aOpts.push(['stock_notify', _sdT('Notify me when back in stock')]);
             }
             if (region === 'shopping_cart') {
                 aOpts.push(['cart_update',      _sdT('Update Cart (shopping_cart)')]);
@@ -38050,6 +38053,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['quantity',         _sdT('Quantity (quantity) — catalog_item_view')]);
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
+                vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -52719,6 +52723,27 @@ const StyleDesigner = (function () {
                                 text: _sdT('Add to Cart'), variant: 'primary', size: '', href: '#',
                                 _bindings: { action: 'add_to_cart' } }),
                             _sdWishlistHeart('wishlist')
+                        ]),
+                        // Back-in-stock form: shown only while the product
+                        // cannot be bought for want of stock (can_notify);
+                        // the address field (stock_notify_email) and the
+                        // button (stock_notify) post stock_notify.php.
+                        createNode('semantic', { tag: 'div', cssClass: 'mt-3',
+                            customName: _sdT('Back-in-stock notice'),
+                            _bindings: { eo_visible_if: 'can_notify' } }, [
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('Tell me when it is back in stock'), cssClass: 'form-label mb-1' }),
+                            createNode('semantic', { tag: 'div', cssClass: 'input-group',
+                                customName: _sdT('Notify-me Group') }, [
+                                createNode('semantic', { tag: 'input',
+                                    cssClass: 'form-control', customName: _sdT('E-mail address'),
+                                    _attrs: [{ name: 'placeholder', value: _sdT('Your e-mail address') },
+                                             { name: 'aria-label', value: _sdT('Your e-mail address') }],
+                                    _bindings: { value: 'stock_notify_email' } }),
+                                createNode('component', { componentType: 'btn',
+                                    text: _sdT('Notify me'), variant: 'outline-primary', size: '', href: '#',
+                                    _bindings: { action: 'stock_notify' } })
+                            ])
                         ])
                     ])
                 ]);
