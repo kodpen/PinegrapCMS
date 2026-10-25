@@ -1,6 +1,6 @@
 ---
 name: owner-rules
-description: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (no skills), language, the shelved mobile app and who edits which notes
+description: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
 ---
 
 ## Where does user documentation go?

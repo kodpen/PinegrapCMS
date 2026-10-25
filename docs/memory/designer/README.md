@@ -21,6 +21,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Mark the component a node lives in when a path writes the node without selecting it (`_sdSharedMarkEdited(node)`); never take a snapshot after a change, or Save skips it as unchanged (`shared-component-editor-cache.md`).
 - Add a new page-save dependency beyond the page's tree and settings to `_pgPageUnchanged()`, or Save skips the page as unchanged (`multi-page-designer-editor.md`).
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
+- Keep site output (palette components, widget and starter markup, design templates, the canvas) on Bootstrap 5.3.8 while the panel moves to 6; the `.claude/skills/bootstrap-*` skills never apply to it (`ui/bootstrap-6.md`).
 <!-- key-rules:end -->
 
 ## Files

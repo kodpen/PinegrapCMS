@@ -31,7 +31,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
-- bootstrap-6.md: Bootstrap 6 references for panel UI work: llms.txt and llms-full.txt, the four upstream skills in .claude/skills, the pinned alpha dist, and what changes at the switch
+- bootstrap-6.md: Bootstrap 6 references for panel UI work: llms.txt and llms-full.txt, the four upstream skills in .claude/skills, the dist copy, what moves and what changes at the switch
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.

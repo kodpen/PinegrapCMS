@@ -4,7 +4,7 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 ---
 
 ## What did the owner decide?
-- Full-width cards stacked in a single column look sprawling on a wide screen; edit screens must not keep repeating that. The design language (Bootstrap 5, cards, the toolbar) stays. Reference implementation: `product_builder.php` (adding and editing a product). ERP screens apply it by default (`erp/erp-screen-status-column-pattern.md`).
+- Full-width cards stacked in a single column look sprawling on a wide screen; edit screens must not keep repeating that. The design language (Bootstrap cards, the toolbar) stays; the Bootstrap version follows `docs/memory/plans/bootstrap-6-panel.md`. Reference implementation: `product_builder.php` (adding and editing a product). ERP screens apply it by default (`erp/erp-screen-status-column-pattern.md`).
 
 ## Which columns and classes?
 | Part | Classes | Holds |

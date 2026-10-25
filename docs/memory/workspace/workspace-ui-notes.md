@@ -9,7 +9,7 @@ description: Where the Workspace screens are drawn and styled, its tokens, colou
 
 ## Which class names look alike but are not?
 - `.ws-swatch` is the colour picker's button (`colorPicker()` in workspace.js; 1.75rem rounded square, flex-centred, `.ws-swatch-none` for "no colour"). The plan board's legend dots are `.ws-legend-swatch` with the `-ok/-full/-over/-away` modifiers (`startBoard()`). Until PR #519 the legend also used `.ws-swatch`, and its later rule made the picker's buttons 1.5rem circles with the "none" icon off centre.
-- `.ws-avatar` rules exist (~15346, ~15493) but `avatar()` in workspace.js adds no class to the `<img>` it returns; the avatar component is part of docs/memory/plans/workspace-friendly-ui.md.
+- `.ws-avatar` rules exist (~15346, ~15493) but `avatar()` in workspace.js adds no class to the `<img>` it returns; the avatar component becomes Bootstrap 6 Avatar (docs/memory/plans/bootstrap-6-components.md, step B9j).
 
 ## How is a channel's initial drawn in the rail?
 - `nav.php` shows up to eight pinned channels by their first letter through `pg_initials_upper()` (`includes/fn/contacts.php`), which turns `i` into `İ` and `ı` into `I` when the interface language is Turkish; `mb_strtoupper()` alone gave "I" for "iletişim" (fixed in #519). Initials for people come from `pg_initials()` the same way.

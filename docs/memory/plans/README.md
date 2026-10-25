@@ -13,10 +13,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
-- bootstrap-6-components.md: First-stage swaps of own panel widgets for native Bootstrap 6 components (Bootstrap 6 plan): targets, conditions found in research, what stays as it is
-- bootstrap-6-findings.md: Research of 2026-10-25 behind the Bootstrap 6 panel plan: what old browsers lose, work size, conflict hot spots, the visual editor split, third-party coupling
-- bootstrap-6-panel-steps.md: Steps B0-B12 of the Bootstrap 6 panel plan with dependencies and status; B0 in progress, the rest open; claim as [plan:bootstrap-6-panel-steps]
-- bootstrap-6-panel.md: Plan (approved 2026-10-25, step B0 in progress): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch; owner decisions, model, order
+- bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
+- bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
+- bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a in review, B0b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+- bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
+- bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
+- bootstrap-6-switch.md: Step B8 of plans/bootstrap-6-panel.md: rehearsal, hand fixes, the owner's check, merge and the bs6-switch tag, open PRs after it, memory rewritten with it
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
@@ -75,7 +77,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
 - workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 - workspace-flows.md: Plan (2026-10-24, F1-F2 done #1503 #1529, F3a #1551, F3b #1555, F7 #1578): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
-- workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
+- workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-2 done #1468, 3 in #1564, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
