@@ -28415,5 +28415,6 @@
     "Empty State": "Boş Durum",
     "You have not saved any products yet.": "Henüz hiç ürün kaydetmediniz.",
     "Saved Products": "Kayıtlı Ürünler",
-    "The products you saved.": "Kaydettiğiniz ürünler."
+    "The products you saved.": "Kaydettiğiniz ürünler.",
+    "comments: the index for a member's own comments follows in the next pass": "yorumlar: bir üyenin kendi yorumları için dizin bir sonraki geçişte eklenecek"
 }
