@@ -3857,6 +3857,7 @@ function output_menu($properties = false)
         case 'view_parasut_inbox.php':
         case 'view_returns.php':
         case 'view_return.php':
+        case 'add_return.php':
             $active_menu = 10;
             break;
         case 'view_order_reports.php':

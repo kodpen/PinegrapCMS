@@ -530,6 +530,33 @@ function pg_return_customer_rules($source, $options)
 }
 
 /**
+ * The customer's timing rule a delivery breaks today, if any, in the order
+ * pg_return_create_check() refuses a customer on them: its goods have not
+ * left (that is a cancellation, not a return), no date at all is known for
+ * it, or its withdrawal window has closed. Staff are not held to them; the
+ * panel's form (add_return.php) shows the same rule as a warning.
+ *
+ * @param array|null $state pg_return_delivery_state() of the delivery
+ * @return string '', not_sent, delivery_date_unknown or window_closed
+ */
+function pg_return_rule_breach($state)
+{
+    if (!is_array($state)) {
+        return '';
+    }
+
+    if (empty($state['goods_left'])) {
+        return 'not_sent';
+    }
+
+    if (!isset($state['window']) || !is_array($state['window'])) {
+        return 'delivery_date_unknown';
+    }
+
+    return empty($state['window']['open']) ? 'window_closed' : '';
+}
+
+/**
  * When the parcels of a delivery reached the recipient, from their shipment
  * rows (shipping_tracking_numbers.delivered_at, 2026.11.0).
  *
@@ -1221,18 +1248,19 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
     }
 
     if (pg_return_customer_rules($result['source'], $options)) {
+        $breach = pg_return_rule_breach($state);
 
-        if (!$state['goods_left']) {
+        if ($breach === 'not_sent') {
             return $refuse(lang('This delivery has not been sent yet. The order can be cancelled instead.'), 'not_sent');
         }
 
         // No date at all is known for the delivery: the deadline cannot be
         // worked out, so staff decide rather than the code guessing one.
-        if ($state['window'] === null) {
+        if ($breach === 'delivery_date_unknown') {
             return $refuse(lang('We cannot tell when this delivery arrived. Please contact us to return it.'), 'delivery_date_unknown');
         }
 
-        if (!$state['window']['open']) {
+        if ($breach === 'window_closed') {
             return $refuse(lang('The return period for this delivery has ended.'), 'window_closed');
         }
     }
@@ -2690,17 +2718,25 @@ function pg_return_user_names($user_ids)
 /**
  * The returns of an order as the panel's order screen lists them: each with
  * its status, when it was asked and how many items, linked to its screen.
+ * When staff may record a request for the order, the card links to the form
+ * (add_return.php), before the order has any return too. Links only: the card
+ * sits inside the order screen's own form.
  *
- * @param array $rows each: id, status, requested_at, items (pg_returns_of_order())
- * @return string HTML, or '' when the order has none
+ * @param array  $rows    each: id, status, requested_at, items (pg_returns_of_order())
+ * @param string $add_url the staff form for this order, or '' when it cannot
+ *                        take a return
+ * @return string HTML, or '' when the order has none and cannot take one
  */
-function pg_returns_panel_card_html($rows)
+function pg_returns_panel_card_html($rows, $add_url = '')
 {
-    if (!is_array($rows) || empty($rows)) {
+    $rows = is_array($rows) ? $rows : array();
+    $add_url = (string) $add_url;
+
+    if (empty($rows) && ($add_url === '')) {
         return '';
     }
 
-    $lines = '';
+    $lines = empty($rows) ? '<p class="small text-muted mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
 
     foreach ($rows as $row) {
         $quantity = 0;
@@ -2725,6 +2761,7 @@ function pg_returns_panel_card_html($rows)
                 </div>
                 <div class="card-body">
                     ' . $lines . '
+                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline-secondary mt-2" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 </div>
             </div>';
 }
@@ -2733,11 +2770,284 @@ function pg_returns_panel_card_html($rows)
  * The Returns card of the panel's order screen (view_order.php).
  *
  * @param int $order_id
- * @return string HTML, or '' when the order has no returns
+ * @return string HTML, or '' when the order has no returns and cannot take one
  */
 function pg_returns_panel_card($order_id)
 {
-    return pg_returns_panel_card_html(pg_returns_of_order($order_id));
+    $order_id = (int) $order_id;
+    $add_url = '';
+
+    // The lines are read only for a completed order.
+    if (($order_id > 0) && pg_returns_ready()) {
+        $status = (string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'");
+
+        if (in_array($status, array('complete', 'exported'), true) && pg_return_recordable($status, pg_return_order_lines($order_id))) {
+            $add_url = 'add_return.php?order_id=' . $order_id;
+        }
+    }
+
+    return pg_returns_panel_card_html(pg_returns_of_order($order_id), $add_url);
+}
+
+/* ---------------------------------------------------------------------------
+   A request staff record on the panel (add_return.php) for a customer who
+   asked by phone, by e-mail or in the shop: source panel, not held to the
+   customer's timing rules
+   --------------------------------------------------------------------------- */
+
+/**
+ * Can staff record a return for an order: it is complete or exported and a
+ * line sent to an address still has something left to return.
+ *
+ * @param string $status orders.status
+ * @param array  $lines  pg_return_order_lines() of the order
+ * @return bool
+ */
+function pg_return_recordable($status, $lines)
+{
+    if (!in_array((string) $status, array('complete', 'exported'), true)) {
+        return false;
+    }
+
+    foreach ((array) $lines as $line) {
+        if (isset($line['returnable']) && ((int) $line['returnable'] > 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The deliveries of an order the staff form lists: those with something left
+ * to return, each with its lines in order, the customer's timing rule it
+ * breaks today (shown as a warning, pg_return_rule_breach()) and when its
+ * return period ends against today (pg_return_timing()). A line of a delivery
+ * that is not the order's (no state) is left out.
+ *
+ * @param array  $lines  pg_return_order_lines() of the order
+ * @param array  $states ship_to_id => pg_return_delivery_state()
+ * @param string $today  Y-m-d
+ * @return array ship_to_id => ship_to_id, label (the recipient's name, else
+ *               #id), lines, left (what its lines have left), breach, timing,
+ *               state
+ */
+function pg_return_staff_deliveries($lines, $states, $today)
+{
+    $deliveries = array();
+
+    foreach ((array) $lines as $line) {
+        $ship_to_id = isset($line['ship_to_id']) ? (int) $line['ship_to_id'] : 0;
+
+        if (($ship_to_id <= 0) || !isset($states[$ship_to_id]) || !is_array($states[$ship_to_id])) {
+            continue;
+        }
+
+        if (!isset($deliveries[$ship_to_id])) {
+            $state = $states[$ship_to_id];
+            $name = isset($state['ship_to']['name']) ? trim((string) $state['ship_to']['name']) : '';
+
+            $deliveries[$ship_to_id] = array(
+                'ship_to_id' => $ship_to_id,
+                'label'      => ($name !== '') ? $name : '#' . $ship_to_id,
+                'lines'      => array(),
+                'left'       => 0,
+                'breach'     => pg_return_rule_breach($state),
+                'timing'     => pg_return_timing(isset($state['window']) ? $state['window'] : null, $today),
+                'state'      => $state,
+            );
+        }
+
+        $deliveries[$ship_to_id]['lines'][] = $line;
+        $deliveries[$ship_to_id]['left'] += max(0, (int) $line['returnable']);
+    }
+
+    foreach ($deliveries as $ship_to_id => $delivery) {
+        if ($delivery['left'] <= 0) {
+            unset($deliveries[$ship_to_id]);
+        }
+    }
+
+    return $deliveries;
+}
+
+/**
+ * The quantities the staff form posted for the lines of one delivery. Each
+ * line has its own box, qty_<order item id>: liveform refills a flat name
+ * after a refusal, never qty[<id>]. Only the delivery's own lines are read; a
+ * box that is missing or not one value counts as empty, which
+ * pg_return_check_lines() takes as 0.
+ *
+ * @param array $lines  pg_return_order_lines() of the delivery
+ * @param array $posted the posted fields
+ * @return array order item id => quantity as posted (text)
+ */
+function pg_return_staff_quantities($lines, $posted)
+{
+    $quantities = array();
+    $posted = is_array($posted) ? $posted : array();
+
+    foreach ((array) $lines as $line) {
+        $id = (int) $line['id'];
+        $value = isset($posted['qty_' . $id]) ? $posted['qty_' . $id] : null;
+        $quantities[$id] = is_scalar($value) ? (string) $value : '';
+    }
+
+    return $quantities;
+}
+
+/**
+ * The reasons as the options of a liveform select. Such a select takes its
+ * options as label => value and prints both as they are, so each label is
+ * escaped here and the reason's code is the value that is posted.
+ *
+ * @param string $empty_label the first option, which posts ''
+ * @return array escaped label => code
+ */
+function pg_return_reason_options($empty_label)
+{
+    $options = array(h((string) $empty_label) => '');
+
+    foreach (pg_return_reasons() as $code => $label) {
+        $options[h($label)] = $code;
+    }
+
+    return $options;
+}
+
+/**
+ * How the staff form answers a refusal of pg_return_create(), by its code
+ * (never by the sentence, which may be worded for the customer): what the
+ * form can fix goes back to it with the field marked; an order that is gone
+ * goes to the list, one that cannot take a return or tables that are not
+ * there yet to the order screen.
+ *
+ * @param string $code  pg_return_create()'s code
+ * @param string $error its sentence
+ * @return array to (form, order or list), field (reason, note or _error),
+ *               message (text, not yet escaped)
+ */
+function pg_return_staff_refusal($code, $error)
+{
+    switch ((string) $code) {
+        case 'order_missing':
+            return array('to' => 'list', 'field' => '_error', 'message' => (string) $error);
+        case 'order_not_returnable':
+        case 'not_installed':
+            return array('to' => 'order', 'field' => '_error', 'message' => (string) $error);
+        case 'reason_missing':
+            return array('to' => 'form', 'field' => 'reason', 'message' => lang('Choose a reason for the return.'));
+        case 'note_missing':
+            return array('to' => 'form', 'field' => 'note', 'message' => lang('Write the customer\'s reason when it is "Another reason".'));
+    }
+
+    // The lines, a busy order, a delivery that is not the order's, and
+    // anything else: back to the form with what was typed.
+    return array('to' => 'form', 'field' => '_error', 'message' => (string) $error);
+}
+
+/**
+ * The notice staff land on the new request with.
+ *
+ * @param array $recorded pg_return_staff_record()'s answer: repeat, mailed
+ *                        (null when no e-mail was asked for)
+ * @return string text, not yet escaped
+ */
+function pg_return_staff_notice($recorded)
+{
+    if (!empty($recorded['repeat'])) {
+        return lang('This request was already recorded a moment ago. Nothing else was done, and no e-mail was sent.');
+    }
+
+    if (!isset($recorded['mailed'])) {
+        return lang('The return request was recorded.');
+    }
+
+    return $recorded['mailed']
+        ? lang('The return request was recorded. The customer was told by e-mail.')
+        : lang('The return request was recorded, but the e-mail to the customer could not be sent.');
+}
+
+/**
+ * The order number staff typed to find an order: its digits, with a leading
+ * # and spaces allowed, as the order screens print it.
+ *
+ * @param mixed $value
+ * @return string the number without leading zeros, or '' when it is not one
+ */
+function pg_return_order_number_input($value)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $value = trim(ltrim(trim($value), '#'));
+
+    if (preg_match('/^\d{1,18}$/', $value) !== 1) {
+        return '';
+    }
+
+    return ltrim($value, '0');
+}
+
+/**
+ * Records a return request for a customer, made by staff on the panel, with
+ * what follows it: the audit trail line, the activity log line and, only when
+ * asked, the request-received e-mail to the customer. A failed e-mail never
+ * undoes the request.
+ *
+ * The request is pg_return_create()'s with source panel: staff are not held
+ * to the customer's timing rules, and the same form sent again by the same
+ * person within PG_RETURN_REPEAT_SECONDS answers with the request it repeats
+ * and nothing else follows (whatever the e-mail box said). pg_return_create()
+ * announces order.return.requested itself. No bell rings: the person who
+ * would be told is the one who recorded it.
+ *
+ * The caller has checked the person's commerce rights.
+ *
+ * @param int    $order_id
+ * @param int    $ship_to_id the delivery the goods came in
+ * @param array  $quantities order item id => quantity
+ * @param string $reason     a code of pg_return_reasons()
+ * @param string $note       the customer's words; needed for "other"
+ * @param array  $options    user_id (who recorded it), notify (true: e-mail
+ *                           the customer)
+ * @return array pg_return_create()'s answer (ok, error, id, repeat, field,
+ *               code) and mailed (true or false when the e-mail was asked
+ *               for, else null)
+ */
+function pg_return_staff_record($order_id, $ship_to_id, $quantities, $reason, $note, $options = array())
+{
+    $options = is_array($options) ? $options : array();
+    $user_id = isset($options['user_id']) ? max(0, (int) $options['user_id']) : 0;
+
+    $created = pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, array('source' => 'panel', 'user_id' => $user_id));
+
+    if (!$created['ok']) {
+        return array_merge($created, array('mailed' => null));
+    }
+
+    if ($created['repeat']) {
+        return array_merge($created, array('mailed' => null));
+    }
+
+    $id = (int) $created['id'];
+    $row = pg_return_load($id);
+    $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+
+    if ($order_number === '') {
+        $order_number = (string) (int) $order_id;
+    }
+
+    pg_audit('create', 'order_return', $id, array(), pg_return_audit_create_fields($row),
+        lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array($id, $order_number))));
+
+    log_activity(lang(array('string' => 'Return request {var:1} was recorded for order {var:2} from the panel.', 'vars' => array($id, $order_number))));
+
+    // The request stands whatever happens to the e-mail.
+    $mailed = !empty($options['notify']) ? pg_return_send_request_mail($id) : null;
+
+    return array_merge($created, array('mailed' => $mailed));
 }
 
 /* ---------------------------------------------------------------------------
