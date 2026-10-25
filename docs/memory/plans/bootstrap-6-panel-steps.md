@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-panel-steps
-description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a, B0b, B1a, B2a, B3a done; B1b, B2b, B3b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
@@ -10,7 +10,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B1b A screenshot script (sample records, light/dark, wide/phone; images never committed, shown on a private page the PR links): waits for open question 2 of the plan.
 - B2a The `pgUI` adapter (`assets/js/pg_ui.js`, `ui/pg-ui-adapter.md`) with `window.pgBootstrapReady`, loaded after Bootstrap's bundle. Done (#1677).
 - B2b and on: move the calls and listeners onto pgUI area by area (cold areas first; `check_bs6.php` counts what is left), fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
-- B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block.
+- B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block (`ui/panel-css-tokens.md`). B3a the block, the v5 `-rgb` uses and the accent role variables: done (#PR). B3b the neutral variables in backend.src.css. B3c the other panel stylesheets and inline style blocks.
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
