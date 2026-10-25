@@ -1506,12 +1506,59 @@ function workspace_flows_parity_read_limits()
 	return $out;
 }
 
-// The caps written as numbers in the code that checks an action, which no
-// WS_SCHEDULED_* constant names: a value kept to at most N (min(N, ...)), a
-// text or a list cut to its first N (..., 0, N)): "place min N", "place
-// first N". The places: the action's own check (action, ws_scheduled_input()),
-// each branch of a rule's check (rule kind) and of a step's (step kind), and
-// the ws_scheduled_* functions those call.
+// The caps written as numbers in one place of the code, in the order they
+// come, a repeat numbered: a value kept to at most N (min(N, ...)): "place
+// min N"; a text or a list cut to its first N (..., 0, N)): "place first N";
+// a text's length or a list's count compared with a number (mb_strlen(...)
+// > N, strlen(), count()): "place length > N", "place count > N", a number
+// written first turned round (N < count(...) is count > N). The comparison
+// is kept as written, since only the code around it tells a longest from a
+// shortest.
+function workspace_flows_parity_caps_in($place, $code)
+{
+	$measure = '\b(?<measure>mb_strlen|strlen|count)\s*(?<args>\((?:[^()]++|(?&args))*\))';
+	$turned = array('<' => '>', '>' => '<', '<=' => '>=', '>=' => '<=');
+	$found = array();
+
+	preg_match_all('/\bmin\(\s*(\d+)\s*,/', $code, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	foreach ($matches as $match) {
+		$found[$match[0][1]] = 'min ' . $match[1][0];
+	}
+
+	preg_match_all('/,\s*0\s*,\s*(\d+)\s*\)/', $code, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	foreach ($matches as $match) {
+		$found[$match[0][1]] = 'first ' . $match[1][0];
+	}
+
+	preg_match_all('/' . $measure . '\s*(?<operator><=|>=|<|>)\s*(?<number>\d+)/', $code, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	foreach ($matches as $match) {
+		$found[$match[0][1]] = (($match['measure'][0] === 'count') ? 'count ' : 'length ') . $match['operator'][0] . ' ' . $match['number'][0];
+	}
+
+	preg_match_all('/(?<![\w$.])(?<number>\d+)\s*(?<operator><=|>=|<|>)\s*' . $measure . '/', $code, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+
+	foreach ($matches as $match) {
+		$found[$match[0][1]] = (($match['measure'][0] === 'count') ? 'count ' : 'length ') . $turned[$match['operator'][0]] . ' ' . $match['number'][0];
+	}
+
+	ksort($found);
+	$keys = array();
+
+	foreach ($found as $cap) {
+		$keys[] = $place . ' ' . $cap;
+	}
+
+	return workspace_flows_parity_numbered($keys);
+}
+
+// The caps written as numbers (workspace_flows_parity_caps_in()) in the code
+// that checks an action, which no WS_SCHEDULED_* constant names. The places:
+// the action's own check (action, ws_scheduled_input()), each branch of a
+// rule's check (rule kind) and of a step's (step kind), and the
+// ws_scheduled_* functions those call.
 function workspace_flows_parity_read_caps()
 {
 	$checks = array('ws_scheduled_input', 'ws_scheduled_rule_input', 'ws_scheduled_action_input');
@@ -1544,14 +1591,7 @@ function workspace_flows_parity_read_caps()
 	$out = array();
 
 	foreach ($places as $place => $code) {
-		preg_match_all('/\bmin\(\s*(\d+)\s*,|,\s*0\s*,\s*(\d+)\s*\)/', $code, $caps, PREG_SET_ORDER);
-		$keys = array();
-
-		foreach ($caps as $cap) {
-			$keys[] = $place . ' ' . (($cap[1] !== '') ? 'min ' . $cap[1] : 'first ' . $cap[2]);
-		}
-
-		$out = array_merge($out, workspace_flows_parity_numbered($keys));
+		$out = array_merge($out, workspace_flows_parity_caps_in($place, $code));
 	}
 
 	return $out;
@@ -2341,6 +2381,7 @@ function workspace_flows_parity_table()
 		'caps' => array(
 			array(array('action first 160'), 3, 'the anchor: a name of at most 160 characters'),
 			array(array('action first 12'), 3, 'at most 12 rules: the trigger box and its condition boxes'),
+			array(array('action count > 1'), 'form', 'a site without the 5.85 chains takes one follow-up only (ws_scheduled_chains_ready()); Flows need far later tables (11.0.80), so no flow meets it'),
 			array(array('rule at min 720', 'rule at min 24', 'rule at min 52', 'rule at min 365'), 3, 'schedule trigger box: every at most 720 minutes, 24 hours, 52 weeks, 365 days, months or years'),
 			array(array('rule record first 500', 'rule record min 3650'), 3, 'condition box: a value of at most 500 characters; within at most 3650 days'),
 			array(array('step email first 250', 'step email first 20000'), 3, 'email box: subject 250, text 20000 characters'),
@@ -2352,6 +2393,7 @@ function workspace_flows_parity_table()
 			array(array('step report first 160', 'step report first 20'), 3, 'report box: title 160 characters, at most 20 counts'),
 			array(array('step trigger min 10080'), 3, 'delay box (F5): at most 10080 minutes (a week)'),
 			array(array('ws_scheduled_people() first 50'), 3, 'notify, task and task e-mail boxes: at most 50 people'),
+			array(array('ws_scheduled_url_input() length > 2000'), 3, 'webhook and web check boxes: an address of at most 2000 characters'),
 		),
 		'limit_uses' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_events_start'), 3, 'event trigger box: an event at depth 8 starts nothing'),
@@ -2643,4 +2685,16 @@ function test_workspace_flows_parity_default_argument_is_no_new_place()
 	pg_assert_same('20', workspace_flows_parity_first_argument('ws_scheduled_run', '20'), 'another batch');
 	pg_assert_same("'workspace.task.completed'", workspace_flows_parity_first_argument('ws_event', "'workspace.task.completed'"), 'an argument with no default');
 	pg_assert_same('(int) $id', workspace_flows_parity_first_argument('ws_scheduled_execute', "(int)\n\t\$id"), 'runs of whitespace made one');
+}
+
+// A cap written as a comparison of a text's length or a list's count with a
+// number is read, whichever side the number is on, besides min(N, ...) and
+// a cut to the first N.
+function test_workspace_flows_parity_caps_read_comparisons()
+{
+	pg_assert_same(array('x length > 2000'), workspace_flows_parity_caps_in('x', 'if (($url === \'\') || (mb_strlen($url) > 2000)) {'), 'mb_strlen(...) > N');
+	pg_assert_same(array('x length >= 301'), workspace_flows_parity_caps_in('x', 'if (strlen(trim((string) ($data[\'name\'] ?? \'\'))) >= 301) {'), 'strlen() around nested brackets');
+	pg_assert_same(array('x count > 50'), workspace_flows_parity_caps_in('x', 'if (50 < count($ids)) {'), 'a number first is turned round');
+	pg_assert_same(array('x min 720', 'x first 160', 'x count > 1', 'x first 160 #2'), workspace_flows_parity_caps_in('x', 'min(720, $a); mb_substr($n, 0, 160); if (count($given) > 1) {} mb_substr($m, 0, 160);'), 'every shape, a repeat numbered');
+	pg_assert_same(array(), workspace_flows_parity_caps_in('x', 'if (mb_strlen($body) > WS_MESSAGE_MAX) {} if (count($a) === 0) {}'), 'a constant or an equality is no cap written as a number');
 }
