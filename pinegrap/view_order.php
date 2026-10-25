@@ -53,8 +53,18 @@ if (isset($_POST['parasut_action'])) {
         }
 
         // Validate that a contact is linked before invoicing.
-        $parasut_order = db_item("SELECT contact_id, custom_field_1, custom_field_2, parasut_shipment_id FROM orders WHERE id = '$order_id'");
+        $parasut_order = db_item("SELECT status, contact_id, custom_field_1, custom_field_2, parasut_shipment_id FROM orders WHERE id = '$order_id'");
         $parasut_contact_id = $parasut_order['contact_id'] ?? '';
+
+        // Only a finished sale is invoiced or shipped. The buttons are drawn
+        // for no other status, so a post that gets here comes from a page
+        // opened before the order was cancelled; the writers refuse it too,
+        // and this says so before the buyer's details are asked about.
+        $parasut_status_refusal = parasut_order_status_refusal($parasut_order['status'] ?? '', ($parasut_action === 'e_irsaliye') ? 'shipment' : 'invoice');
+        if ($parasut_status_refusal !== '') {
+            $liveform->mark_error('_error', $parasut_status_refusal);
+            go($redirect);
+        }
 
         if (!$parasut_contact_id) {
             $liveform->mark_error('_error', lang('No contact is linked to this order. Please ensure billing information is complete.'));
@@ -251,6 +261,9 @@ if (!$_POST) {
     $ip_address = $row['ip_address'];
     $parasut_invoice_id  = $row['parasut_invoice_id']  ?? '';
     $parasut_shipment_id = $row['parasut_shipment_id'] ?? '';
+    // Set when Create Invoice saw the e-document's conversion finish (and by
+    // the spreadsheet export): the invoice badge says "Sent" only then.
+    $parasut_exported = !empty($row['parasut_exported']);
 
     $source = '';
 
@@ -2473,20 +2486,31 @@ if (!$_POST) {
         $has_shippable = ($shippable_count > 0);
         $is_mixed      = ($shippable_count > 0 && $non_shippable_count > 0);
 
+        // Only a finished sale gets the buttons (the ERP's billable statuses:
+        // complete, exported); the writers refuse any other status as well.
+        $parasut_billable = (parasut_order_status_refusal($status, 'invoice') === '');
+
+        // An order the ERP invoiced through its e-document provider: its
+        // invoice is that one, so Create Invoice is not offered, and the
+        // status row names it. E-Shipment judges its Paraşüt record as it
+        // judges the order's own invoice.
+        $parasut_erp_invoice = parasut_order_erp_invoice((int) $_GET['id']);
+
         // Show invoice status badge. The unsure mark a create with no answer
         // leaves (parasut_order_invoice_unsure()) is no invoice: it asks for
         // Paraşüt to be checked, and Create Invoice stays offered, since the
-        // press looks for the record there before it writes one.
+        // press looks for the record there before it writes one. "Sent" only
+        // for an e-document whose conversion was seen to finish.
         $parasut_invoice_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
         $parasut_invoice_sent = ($parasut_invoice_id !== '') && !$parasut_invoice_unsure;
-        $output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);
+        $output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true, $parasut_exported);
         $output_parasut_shipment_badge = '';
         if ($parasut_shipment_id !== '') {
             $output_parasut_shipment_badge = ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '">' . lang('Sent') . '</span>';
         }
 
         // Status rows shown inside the Order Information card.
-        $invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);
+        $invoice_row_badge  = parasut_order_invoice_row_badge($parasut_invoice_id, $parasut_exported, $parasut_erp_invoice);
         $shipment_row_badge = $parasut_shipment_id !== ''
             ? '<span class="badge bg-success">' . lang('Sent') . '</span>'
               . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '</small>'
@@ -2580,16 +2604,20 @@ if (!$_POST) {
                         ? h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.') . ' ' . lang('Pressed again, it looks for the invoice at Paraşüt first and writes one only if none is there.'))
                         : 'Paraşüt')) . '"';
 
-        $output_parasut_buttons = '
-        <div class="btn-group btn-group-sm flex-wrap">
+        $output_parasut_invoice_button = ($parasut_erp_invoice['state'] === 'none')
+            ? '
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_sent ? 'link-success' : ($parasut_invoice_unsure ? 'link-warning' : 'link-secondary')) . '"' . $output_parasut_invoice_action . '>
+                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_sent ? ($parasut_exported ? 'link-success' : 'link-warning') : ($parasut_invoice_unsure ? 'link-warning' : 'link-secondary')) . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
-            </button>
+            </button>'
+            : '';
+
+        $output_parasut_buttons = '
+        <div class="btn-group btn-group-sm flex-wrap">' . $output_parasut_invoice_button . '
             ' . $output_parasut_shipment_button . '
         </div>';
 
-        if ($parasut_in_erp) {
+        if ($parasut_in_erp || !$parasut_billable) {
             $output_parasut_buttons = '';
             $output_parasut_forms = '';
         }
