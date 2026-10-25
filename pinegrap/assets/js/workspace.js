@@ -7897,6 +7897,15 @@
                 });
             }
 
+            // A sales quote to the channel's customer: the quote editor on the
+            // current account the server found for it. The address comes
+            // with the channel, only for whoever may write ERP documents and
+            // only when the customer is or is tied to such an account.
+            if (channel.sales_quote_url) {
+                item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+                divider();
+            }
+
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {

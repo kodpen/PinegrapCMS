@@ -370,6 +370,105 @@ function ws_customer_channels($type, $id)
 }
 
 /**
+ * May the reader start a sales quote from a channel: the ERP right
+ * (manage_erp; staff hold it), and not the accountant's read-only right,
+ * which saves no ERP document (validate_erp_access() refuses the quote
+ * editor's form). The same people the quote chip's "Copy as a new sales
+ * quote" is offered to.
+ *
+ * @param array $viewer       ws_viewer()
+ * @param bool  $erp_readonly whether the reader holds the read-only right (USER_ERP_READONLY)
+ * @return bool
+ */
+function ws_sales_quote_may_start($viewer, $erp_readonly)
+{
+    return !empty($viewer['erp']) && !$erp_readonly;
+}
+
+/**
+ * The current account a new sales quote on a channel is written to: the
+ * channel's customer when it is an account a quote can go to, else the
+ * first such account tied to the customer through its contact
+ * (ws_customer_link_tokens() lists active accounts first). An account takes
+ * a quote when it is active (the quote editor lists no other) and not a
+ * supplier alone (its own screen offers no quote either).
+ *
+ * @param string  $type     the channel's customer kind (ws_channel_customer_of())
+ * @param int     $id       its record
+ * @param array[] $links    ws_customer_link_tokens() of that customer
+ * @param array[] $accounts erp_accounts rows (id, kind, status) of the accounts named, by id
+ * @return int 0 when there is none
+ */
+function ws_sales_quote_account_pick($type, $id, $links, $accounts)
+{
+    $candidates = array();
+
+    if (($type === 'erp_account') && ((int) $id > 0)) {
+        $candidates[] = (int) $id;
+    }
+
+    foreach ((array) $links as $link) {
+        if ((($link['type'] ?? '') === 'erp_account') && ((int) ($link['id'] ?? 0) > 0)) {
+            $candidates[] = (int) $link['id'];
+        }
+    }
+
+    foreach ($candidates as $account_id) {
+        $account = $accounts[$account_id] ?? null;
+
+        if (is_array($account) && ((string) ($account['status'] ?? '') === 'active') && ((string) ($account['kind'] ?? '') !== 'supplier')) {
+            return $account_id;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * The current account "New sales quote" opens the quote editor on for a
+ * channel (add_erp_quote.php?account_id=); 0 when the reader may not write
+ * quotes, when the quotes table is not there yet, or when the channel's
+ * customer is no such account and is tied to none. The right is asked
+ * before anything is read, so a reader without it never learns whether the
+ * customer has an account. An account is only looked for, never opened:
+ * erp_account_for_contact() would create one.
+ *
+ * @param array $viewer
+ * @param array $channel      a ws_channels row
+ * @param bool  $erp_readonly see ws_sales_quote_may_start()
+ * @return int
+ */
+function ws_channel_sales_quote_account($viewer, $channel, $erp_readonly)
+{
+    if (!ws_sales_quote_may_start($viewer, $erp_readonly)) {
+        return 0;
+    }
+
+    list($type, $id) = ws_channel_customer_of($channel);
+
+    if (($type === '') || !ws_erp_quotes_readable()) {
+        return 0;
+    }
+
+    $links = ws_customer_link_tokens($type, $id);
+    $ids = ($type === 'erp_account') ? array((int) $id) : array();
+
+    foreach ($links as $link) {
+        if ($link['type'] === 'erp_account') {
+            $ids[] = (int) $link['id'];
+        }
+    }
+
+    if (empty($ids)) {
+        return 0;
+    }
+
+    $accounts = (array) db_items("SELECT id, kind, status FROM erp_accounts WHERE id IN ('" . implode("','", array_unique($ids)) . "')", 'id');
+
+    return ws_sales_quote_account_pick($type, $id, $links, $accounts);
+}
+
+/**
  * The icon of a channel in the lists: the one it was given
  * (channel_icons.php), else the one its kind gives.
  *

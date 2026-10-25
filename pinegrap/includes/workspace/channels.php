@@ -201,6 +201,16 @@ function ws_channel_detail($viewer, $channel)
     // with the records tied to it.
     $brief['customer'] = ws_channel_customer_present($viewer, $channel);
 
+    // "New sales quote" in the channel's menu: the quote editor opened on
+    // the customer's current account, built here so the screen never names
+    // an account itself; empty for whoever may not write ERP documents. The
+    // reader is the signed-in person (ws_handle_action() builds the viewer
+    // from validate_user()), whose read-only ERP right the constant holds.
+    $quote_account_id = ws_channel_sales_quote_account($viewer, $channel, defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+    $brief['sales_quote_url'] = ($quote_account_id > 0)
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_quote.php?account_id=' . $quote_account_id
+        : '';
+
     $brief['department'] = null;
 
     if ((int) $channel['department_id'] > 0) {
