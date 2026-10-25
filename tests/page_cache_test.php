@@ -74,6 +74,7 @@ function test_page_cache_session_allowlist()
 		'token' => 'x', 'device_type' => 'desktop', 'visitor_id' => '5', 'http_referer' => 'https://example.com/',
 		'tracking_code' => 't', 'affiliate_code' => 'a', 'utm_source' => 's', 'utm_medium' => 'm',
 		'utm_campaign' => 'c', 'utm_term' => 't', 'utm_content' => 'c', 'cookie_id' => '9'))), 'tracking keys');
+	pg_assert_true(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'wishlist_cookie' => str_repeat('a', 64)))), 'a guest who saved a favourite');
 
 	pg_assert_false(pg_page_cache_session_anonymous(array('sessionusername' => 'erdal')), 'signed in');
 	pg_assert_false(pg_page_cache_session_anonymous(array('ecommerce' => array('order_id' => 4))), 'an order');
@@ -487,7 +488,7 @@ function test_page_cache_request_dirties()
 	pg_assert_false(pg_page_cache_request_dirties('OPTIONS', 'integration.php', false, true));
 	pg_assert_false(pg_page_cache_request_dirties('POST', 'submit_form.php', false, false), 'a visitor');
 
-	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php') as $script) {
+	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php', 'wishlist.php') as $script) {
 		pg_assert_false(pg_page_cache_request_dirties('POST', $script, true, false), $script);
 	}
 }
@@ -609,8 +610,8 @@ function test_page_cache_panel_and_mcp_wiring()
 	$tools = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 	$hook = strpos($tools, 'api_send_hook(function');
 	$dirty = strpos($tools, 'pg_page_cache_mcp_dirties($route[\'method\'], $split[\'dry_run\'], $status_code)');
-	$result = strpos($tools, 'pg_mcp_tool_result($id, $status_code, $body, $modern);');
-	pg_assert_true(($hook !== false) && ($dirty !== false) && ($result !== false) && ($hook < $dirty) && ($dirty < $result), 'in the send hook');
+	$answer = strpos($tools, 'call_user_func($answer, $status_code, $body);');
+	pg_assert_true(($hook !== false) && ($dirty !== false) && ($answer !== false) && ($hook < $dirty) && ($dirty < $answer), 'in the send hook, before the answer is written');
 }
 
 function test_page_cache_announce_dirties()

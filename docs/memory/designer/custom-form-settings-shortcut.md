@@ -6,7 +6,7 @@ description: Designer custom_form: "Form settings" shortcut from any node inside
 ## How does the operator reach a form's settings from the canvas?
 - A click on a form lands on a control or a wrapper inside the widget, never on the widget's `shared_ref`, and the form-level settings (notification, auto-reply) live only in the `shared_ref` panel (`propsSharedRef` → "Custom Form Settings"). Before PR #1207 they were reachable only from the page tree "[System] …" row (found on kodpen.com, 2026-10-21).
 - Now every node inside a custom_form widget (`_cfWidgetOf(node)`) gets a **"Form settings"** button on top of its panel (`_cfSettingsShortcut()`) and a `bi-ui-checks` button in its canvas toolbar (`tb._sdFill` in `buildNodeEl`).
-- Both call `_cfOpenFormSettings(sid)`: selects the widget's placement (`_cfRefOf(sid)`: the page tree first, then other shared component trees), opens the "Custom Form Settings" section if it was collapsed and scrolls to it.
+- Both call `_cfOpenFormSettings(sid)`: selects the widget's placement (`_cfRefOf(sid)`: the page tree first, then other shared component trees), opens the "Custom Form Settings" section if it was collapsed and scrolls to it. It is `_sdOpenWidgetSection(sid, 'sd-sw-cf-source')`; the comments widget's "Comment settings" shortcut opens its own section the same way ([[comments-widget-panel]]).
 
 ## What notification address does a new form start with?
 - The site's own address (`EMAIL_ADDRESS`, sent as `sdDesign.siteEmail` from `includes/designer_screen.php`). `_cfSeedNotifyAddress(sid)` writes it into the active page's `formSettings.notify_email`; the server then turns `administrator_email` on (`pg_cf_write_form_settings()`: a non-empty address means on).

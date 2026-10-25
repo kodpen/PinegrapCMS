@@ -4,9 +4,9 @@ description: How the Workspace writes site records: changes.php pipeline and cal
 ---
 
 ## Where are records written from the Workspace?
-- Only in `includes/workspace/changes.php`: catalogue `ws_change_types()` (per field: kind, limit, label, column), rights `ws_change_allowed()` (product, stock, order, product_group, offer need the `ecommerce` right), typing and diff `ws_changes_input()`, per-kind rules `ws_change_check()`, apply-time stale check `ws_change_apply_record_check()` (every `from` must still hold), writers `ws_change_write_<kind>()` called only through `ws_change_write()` (audit: `core/audit-trail-workspace.md`), rows in `ws_ai_changes` (pending → applying → applied / dismissed / stale / failed).
+- Only in `includes/workspace/changes.php`: catalogue `ws_change_types()` (per field: kind, limit, label, column), rights `ws_change_allowed()` (a kind's `right`, no ERP kind for `erp_readonly`: `erp/erp-readonly-accountant-right.md`), typing and diff `ws_changes_input()`, per-kind rules `ws_change_check()`, apply-time stale check `ws_change_apply_record_check()` (every `from` must still hold), writers `ws_change_write_<kind>()` called only through `ws_change_write()` (audit: `core/audit-trail-workspace.md`), rows in `ws_ai_changes` (pending → applying → applied / dismissed / stale / failed).
 - Callers: assistant proposals (ai.php, api_claude.php) and an application's (`workspace-change-proposals.md`), applied by the person who asked (`ws_ai_change_apply`, `POST /workspace/changes/{id}/apply`); AI bulk (bulk.php); the scheduled action "change" (`ws_scheduled_change()`: staff only, own log line). The record drawer: `workspace-quick-edit.md`.
-- Invoices, waybills, receipts, e-documents: tag-only; product images, barcode, attributes, zones: not reachable.
+- Invoices, waybills, receipts, e-documents: tag-only; product images, barcode, attributes, zones: unreachable.
 
 ## What does ws_change_check() refuse for the catalogue?
 - A product, its stock or a group in the Recycle Bin (`recycled = 1`) for update, add and remove — at proposal, apply and bulk time — with the product screens' sentence. Before #516 a proposal or scheduled change could switch a binned product back on (`ws_change_record()` ignores the bin state). Delete stays with `ws_change_delete_blocked()`. Test: `catalog_bin_test.php`.

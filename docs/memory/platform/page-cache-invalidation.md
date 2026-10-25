@@ -8,11 +8,11 @@ description: Which writes make every page the file cache keeps old (PR #1402): t
 - Raised directly: `pg_page_schedule_run()` when it moved a page; the settings save when the TTL changes; `pg_purge_caches()` (also sets the folder aside, "Page Cache").
 
 ## Which requests mark it?
-- `init.php` after `waf_run('init')`, `pg_page_cache_request_dirties()`: a non-GET/HEAD/OPTIONS request of a signed-in user or an `integration.php` client. Not `page_view.php`, `api.php`, `chat.php`, `software_update_check.php`, `workspace*`, `mcp.php`, OAuth: they poll or answer reads with POST.
+- `init.php` after `waf_run('init')`, `pg_page_cache_request_dirties()`: a non-GET/HEAD/OPTIONS request of a signed-in user or an `integration.php` client. Not `page_view.php`, `api.php`, `chat.php`, `software_update_check.php`, `workspace*`, `mcp.php`, OAuth: they poll or answer reads with POST; nor `wishlist.php`: a heart changes no stored page, its state is filled in by script.
 - `api.php`, `pg_panel_dispatch()` → `pg_page_cache_panel_dirties($action, $entry, $request)`: write rows of content, designer, commerce, shared component and explorer, but `add_to_cart` and the shipping lookups. Not the bare `write` flag: dashboard and notification polls are write rows too.
 - `designer`, `designer_file`, `shared_component` (`sub_action`) and `file_explorer` (`type`) carry reads, polls and writes on one row; they count only for a sub-action in the `dirty` list of `pg_page_cache_panel_sub_actions()`. The editor's presence heartbeat runs every 20 s, so the whole row would keep the cache empty while an editor is open.
 - `tests/page_cache_test.php` reads every top-level `case` of those handlers and fails while one is in neither list: a new sub-action is sorted on purpose.
-- `mcp.php`: every tool call is a POST. `pg_mcp_tool_call()`'s send hook asks `pg_page_cache_mcp_dirties()`: the route's method writes, not a dry run, answer 2xx. Most API resources (products, menus, forms, files) announce nothing or call `api_webhook_enqueue()` directly, so `pg_announce()` alone would miss them.
+- `mcp.php`: every tool call is a POST. The send hook of `pg_mcp_route_run()` (behind tool calls, resource reads and prompts) asks `pg_page_cache_mcp_dirties()`: the route's method writes, not a dry run, answer 2xx. Most API resources (products, menus, forms, files) announce nothing or call `api_webhook_enqueue()` directly, so `pg_announce()` alone would miss them.
 - `pg_announce()` of `page.*`, `product.*`, `product_group.*`, `file.*` (`pg_page_cache_announce_dirties()`): reaches the Workspace and any other announcer.
 - `submit_order.php` when a product sells out; not on every stock decrement, which would empty the cache with each sale.
 
