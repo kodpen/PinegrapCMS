@@ -4,7 +4,7 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 ---
 
 ## What went wrong? (#1544)
-- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no panel screen clears: the buttons were disabled, E-Shipment's read got 404, an invoice naming a deleted document got 404, unwritten. The order stayed refused.
+- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no screen cleared: the buttons were disabled; a read or an invoice naming it got 404. The order stayed refused.
 
 ## What does a press do with a stored id now?
 - Read first: `parasut_stored_record_check($type, $id, $get)` (GET `sales_invoices/{id}` or `shipment_documents/{id}`), judged by `parasut_stored_record_state($read, $type)`:
@@ -24,13 +24,14 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 | Create Invoice | `parasut_shipment_id` | cleared, invoice with shipment (Paraşüt's default) |
 | E-Shipment | own `parasut_shipment_id` | cleared, VKN/TCKN asked (the screen skips it once an id is kept), shipped anew |
 | E-Shipment | `parasut_invoice_id` | cleared (the link returns `gone`), document unlinked |
+| ERP send | `parasut_invoice_id` | cleared, the send goes on (erp-parasut-legacy-invoiced-order.md) |
 - `parasut_exported` stays: the Excel export sets it too.
 
 ## What does the order screen show?
 - On a finished sale both buttons stay pressable once sent (title kept); the confirm says the press asks Paraşüt first and creates anew only if it was deleted there. Each record left out comes back in the functions' `&$notices`; `view_order.php` passes `$parasut_notices` and shows each as a warning (`add_warning(h())`).
 
 ## How was it checked live? (demo company, 2026-10-24)
-- Dev order 443. E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or the read sent to company 999999999 (401): refused, ids kept. Records deleted; the demo back at its baseline.
+- Dev order 443. E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or company 999999999 (401): refused, ids kept.
 
 ## Tests
 - `tests/parasut_stale_ids_test.php`: the state, the read, the notices, the refusal words, the link's `gone`, the order of reads and writes, the guarded clear, the order screen.
