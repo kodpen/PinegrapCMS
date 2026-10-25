@@ -636,6 +636,10 @@ function send_comment_email_to_watchers($comment_id)
 
             comments.created_timestamp,
 
+            comments.created_user_id,
+
+            writer.user_email AS writer_email,
+
             page.page_name,
 
             page.page_type,
@@ -654,6 +658,8 @@ function send_comment_email_to_watchers($comment_id)
 
         LEFT JOIN page AS email_page ON page.comments_watcher_email_page_id = email_page.page_id
 
+        LEFT JOIN user AS writer ON comments.created_user_id = writer.user_id
+
         WHERE comments.id = '" . escape($comment_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
@@ -665,6 +671,8 @@ function send_comment_email_to_watchers($comment_id)
     $file_name = $row['file_name'];
     $file_size = $row['file_size'];
     $created_timestamp = $row['created_timestamp'];
+    $writer_user_id = $row['created_user_id'];
+    $writer_email = (string) $row['writer_email'];
     $page_name = $row['page_name'];
     $page_type = $row['page_type'];
     $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
@@ -681,6 +689,8 @@ function send_comment_email_to_watchers($comment_id)
     if ($email_page_id != '') {
         // get all watchers for this page and etc.
         $query = "SELECT
+
+                watchers.user_id,
 
                 watchers.email_address AS watcher_email_address,
 
@@ -749,15 +759,10 @@ function send_comment_email_to_watchers($comment_id)
         } else {
             $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
         }
-        // loop through all watchers in order to e-mail each one
-        foreach ($watchers as $watcher) {
-            // If this watcher is connected to a user, then use the user's e-mail address.
-            if ($watcher['user_email_address'] != '') {
-                $to = $watcher['user_email_address'];
-                // Otherwise the watcher is not connected to a user, so use the static e-mail address for the watcher.
-            } else {
-                $to = $watcher['watcher_email_address'];
-            }
+        // E-mail each watcher once, the comment's own writer excepted: the
+        // writer is often a watcher of the thread too, and is written to
+        // again when a moderator publishes their comment.
+        foreach (pg_comment_watcher_addresses($watchers, $writer_user_id, $writer_email) as $to) {
             email(array(
                 'to' => $to,
                 'from_name' => ORGANIZATION_NAME,

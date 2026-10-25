@@ -1180,7 +1180,7 @@ function test_comments_widget_mark_reply_boxes()
 	$box = $tree['children'][0];
 	pg_assert_false(isset($box['props']['_bindings']['eo_visible_if']), 'the box no longer waits for the flag');
 	$html = _render_tree_node($tree, 0, 0);
-	pg_assert_contains('<div class="alert" data-pg-comment-replying="" hidden="">', $html, 'hidden until a reply is chosen');
+	pg_assert_contains('<div class="alert d-none" data-pg-comment-replying="" hidden="">', $html, 'hidden until a reply is chosen, also past a display class');
 	pg_assert_contains('<strong data-pg-comment-reply-to-name=""', $html, 'the name the browser fills');
 	pg_assert_same('is_replying', $tree['children'][1]['props']['_bindings']['eo_visible_if'], 'a content node keeps the flag');
 	pg_assert_same('is_replying', $tree['children'][2]['children'][0]['props']['_bindings']['eo_visible_if'], 'the loop_area is left alone');
@@ -1239,8 +1239,8 @@ function test_comments_widget_control_bindings()
 		}
 	}
 	pg_assert_same('comment_reply', ($loop === null) ? '' : $loop['children'][0]['props']['_bindings']['action'], 'with its binding');
-	pg_assert_contains('<a href="/p?r=ab#software_add_comment" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel link</a>', $html, 'the cancel link, hidden until replying');
-	pg_assert_contains('<button type="button" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel button</button>', $html, 'a cancel button sends nothing');
+	pg_assert_contains('<a href="/p?r=ab#software_add_comment" class="d-none" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel link</a>', $html, 'the cancel link, hidden until replying');
+	pg_assert_contains('<button class="d-none" type="button" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel button</button>', $html, 'a cancel button sends nothing');
 	pg_assert_false(strpos($html, 'Cancel span'), 'cancel on what is no link or button');
 
 	$watcher = $build();
@@ -1248,7 +1248,7 @@ function test_comments_widget_control_bindings()
 	$watcher_html = _render_tree_node($watcher, 0, 0);
 	pg_assert_contains('<button type="submit">Stop</button>', $watcher_html, 'a watcher stops');
 	pg_assert_false(strpos($watcher_html, 'Notify me'), 'and is not asked again');
-	pg_assert_contains('data-pg-comment-replying="">Cancel link</a>', $watcher_html, 'the cancel link shows while replying');
+	pg_assert_contains('<a href="/p?r=ab#software_add_comment" data-pg-comment-reply-cancel="" data-pg-comment-replying="">Cancel link</a>', $watcher_html, 'the cancel link shows while replying');
 
 	$visitor = $build();
 	pg_comments_apply_control_bindings($visitor, comments_widget_test_controls());
@@ -1821,7 +1821,10 @@ function test_comments_widget_draw_replies()
 		$data['thread_flags'] = pg_comments_widget_thread_flags(comments_widget_test_facts(array('count' => 2)));
 		$data['thread_values']['__reply_to_name'] = '';
 		$idle = pg_comments_widget_draw(comments_widget_test_stamped_tree(), $data);
-		pg_assert_contains('<div class="alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small" data-pg-comment-replying="" hidden="">', $idle, 'not replying: the box waits, hidden');
+		// The starter's box carries d-flex, which beats Bootstrap's [hidden]:
+		// d-none comes after it.
+		pg_assert_contains('<div class="alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small d-none" data-pg-comment-replying="" hidden="">', $idle, 'not replying: the box waits, hidden');
+		pg_assert_contains('class="ms-auto d-none" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel</a>', $idle, 'and its way out');
 
 		$data['controls']['can_reply'] = false;
 		$data['rows'][0]['reply_ok'] = false;
@@ -2165,6 +2168,7 @@ function test_comments_widget_module_wiring()
 			pg_assert_contains($needle, $js, $file . ': ' . $needle);
 		}
 		pg_assert_true((bool) preg_match('/init_comment_forms\(\)[;,]\s*software\.init_comment_actions\(\)/', $js), $file . ': both run on ready');
+		pg_assert_true((bool) preg_match('/\[data-pg-comment-replying\]["\']\)\.prop\(["\']hidden["\'],\s*(id === \'0\'|"0"===e)\)\.toggleClass\(["\']d-none["\'],\s*(id === \'0\'|"0"===e)\)/', $js), $file . ': the reply box shows and hides past a display class');
 		pg_assert_contains('init_add_comment_publish', $js, $file . ': the classic form keeps its own');
 		// The message may be a textarea or a one-line input.
 		pg_assert_contains('.find(\'[name="message"]\')', $js, $file . ': the leave warning finds the message whatever its tag');

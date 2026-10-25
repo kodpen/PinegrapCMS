@@ -2140,6 +2140,20 @@ function pg_comments_drop_nested_forms(&$tree, $in_form = false)
 }
 
 /**
+ * Give a node the hidden attribute's class twin, d-none. Bootstrap's
+ * [hidden] rule loses to a display class such as d-flex (both !important,
+ * the utility later), and d-none comes after every other display utility.
+ * software.init_comment_actions() in frontend.js switches both together.
+ *
+ * @param array $node
+ * @return void
+ */
+function _pg_comments_hide_class(&$node)
+{
+    $node['props']['cssClass'] = _pg_unique_classes((isset($node['props']['cssClass']) && is_string($node['props']['cssClass']) ? $node['props']['cssClass'] : '') . ' d-none');
+}
+
+/**
  * Keep the "Replying to" box in the page for a visitor who may answer
  * comments, so a reply control can show it without a new request
  * (software.init_comment_actions() in frontend.js). A semantic node shown
@@ -2147,7 +2161,8 @@ function pg_comments_drop_nested_forms(&$tree, $in_form = false)
  * data-pg-comment-replying, and the hidden attribute while the visitor is
  * not replying ($replying); a semantic node bound to ^^__reply_to_name^^
  * gets data-pg-comment-reply-to-name, the name the browser writes in. Other
- * nodes keep the flag; the loop_area is not walked. Called only when the
+ * nodes keep the flag; the loop_area is not walked. A hidden box also gets
+ * d-none (_pg_comments_hide_class()). Called only when the
  * visitor may answer: otherwise is_replying is false and drops the box.
  *
  * @param array $tree
@@ -2174,6 +2189,7 @@ function pg_comments_mark_reply_boxes(&$tree, $replying)
 
             if (!$replying) {
                 $add['hidden'] = '';
+                _pg_comments_hide_class($child);
             }
 
             _pg_comments_set_attrs($child, array('data-pg-comment-replying' => 1, 'hidden' => 1), $add);
@@ -2448,6 +2464,7 @@ function _pg_comments_control_walk(&$node, $ctx, $form, &$wired)
 
             if (empty($ctx['replying'])) {
                 $data['hidden'] = '';
+                _pg_comments_hide_class($child);
             }
 
             if (_pg_comments_wire_link_or_button($child, $text('cancel_url'), false, $data)) {

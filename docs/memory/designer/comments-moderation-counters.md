@@ -25,7 +25,7 @@ description: Comment moderation on designed record pages: the stored row decides
 
 ## Who is mailed on a first publish?
 - The record's submitter when `pg_comment_submitter_mail_due()` is true: a record comment, the page's `comments_submitter_email_page_id` > 0, and the writer (`comments.created_user_id`) is not the submitter (`forms.user_id`). 0 is anonymous and never matches, as on `add_comment.php`.
-- Watchers as before (watcher e-mail page set). The API dry run's `emails` flag uses the same rule.
+- Watchers (watcher e-mail page set), the writer excepted ([[comments-watcher-mail]]). The API dry run's `emails` flag uses the same rule.
 - Changed on classic pages: approving the submitter's own held comment no longer mails them; a comment with item type '' writes no counter row.
 
 ## Who fixes the counters that went wrong before?
