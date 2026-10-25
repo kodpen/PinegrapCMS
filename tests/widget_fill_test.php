@@ -464,20 +464,19 @@ function test_widget_fill_php_js_parity()
 	$types = _widget_fill_js_literal($js, 'SW_TYPES');
 	preg_match_all("/\\{ type: '([a-z_]+)'/", $types, $t);
 	pg_assert_true(count($t[1]) >= 30, 'SW_TYPES is read');
-	// The shop kinds, and the kinds whose fill reads no format (the
-	// favourites list, the recent comments list): the editor offers them no
-	// Format row.
-	$part_two = array('catalog_listing', 'catalog_item_view', 'shopping_cart', 'express_order', 'order_view', 'wishlist', 'comments_recent');
+	// The kinds whose fill reads no format (the favourites list, the recent
+	// comments list): the editor offers them no Format row.
+	$part_two = array('wishlist', 'comments_recent');
 	$kinds = _widget_fill_js_literal($js, '_SD_FILTER_KINDS');
 	preg_match_all('/\b([a-z_]+): 1\b/', $kinds, $k);
 	$expected = array_values(array_diff($t[1], $part_two));
 	$listed = $k[1];
 	sort($expected);
 	sort($listed);
-	pg_assert_same($expected, $listed, 'every kind whose fill reads a format, the shop kinds and the kinds without a format aside');
+	pg_assert_same($expected, $listed, 'every kind whose fill reads a format');
 
 	$dates = _widget_fill_js_literal($js, 'SW_DATE_FIELD_TOKENS');
-	foreach (array('__event_date', '__event_start_date', '__event_end_date') as $token) {
+	foreach (array('__event_date', '__event_start_date', '__event_end_date', '__order_date', '__arrival_date', '__withdrawal_deadline') as $token) {
 		pg_assert_contains('out.' . $token . ' = true', $dates, $token . ' is a date');
 	}
 }
@@ -570,7 +569,7 @@ function test_widget_fill_editor_twins()
 		return;
 	}
 
-	pg_assert_same('', $answer['catalog'], 'catalog_listing waits for its fill');
+	pg_assert_contains('label="Format"', $answer['catalog'], 'catalog_listing reads a format');
 	pg_assert_contains('label="Date format"', $answer['calendarDate'], 'calendar dates take a date format');
 	pg_assert_contains('class="form-control form-control-sm mt-1 sd-sw-bindfmt"', $answer['calendarDate']);
 	pg_assert_contains('value="Y-m-d"', $answer['calendarDate']);
