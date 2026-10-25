@@ -481,21 +481,43 @@ function test_workspace_flow_runs_channel_is_frozen()
 
 // Who may read a run and who may cancel it: the flow's editors; the people
 // who may run the flow, or who started the run, while they read the channel
-// the run was started in.
+// the run was started in; and the starter of a run while they may run the
+// flow, whatever the channel, when the channel does not decide their own run
+// (a person share lets them run it, who may not read its home, or the run
+// has no channel: a flow with no home). Running the flow through its home
+// alone does not: a run started in a channel they were taken out of since
+// stays out of their sight. A view share reads no runs but the ones its
+// holder started.
 function test_workspace_flow_runs_access()
 {
 	pg_assert_same('edit', ws_flow_run_access_from('edit', false, false));
 	pg_assert_same('read', ws_flow_run_access_from('run', false, true));
 	pg_assert_same('', ws_flow_run_access_from('run', false, false), 'a reader of the flow\'s home now who does not read the channel the run was started in');
-	pg_assert_same('', ws_flow_run_access_from('run', true, false));
+	pg_assert_same('', ws_flow_run_access_from('run', true, false), 'the starter who runs the flow through its home, taken out of the run\'s channel since');
+	pg_assert_same('read', ws_flow_run_access_from('run', true, false, true), 'the starter, while a person share lets them run the flow or the run has no channel');
+	pg_assert_same('', ws_flow_run_access_from('run', false, false, true), 'somebody else\'s run');
+	pg_assert_same('', ws_flow_run_access_from('view', true, false, true), 'a view share runs nothing');
+	pg_assert_same('', ws_flow_run_access_from('', true, false, true), 'nor does a flow they no longer reach');
 	pg_assert_same('read', ws_flow_run_access_from('', true, true), 'the starter of a run of a paused flow');
 	pg_assert_same('', ws_flow_run_access_from('', true, false), 'a starter who no longer reads the run\'s channel');
 	pg_assert_same('', ws_flow_run_access_from('', false, true));
+	pg_assert_same('', ws_flow_run_access_from('view', false, true), 'a view share reads the graph, not the runs');
+	pg_assert_same('read', ws_flow_run_access_from('view', true, true), 'but the runs its holder started, in a channel they read');
+	pg_assert_same('', ws_flow_run_access_from('view', true, false));
 
 	pg_assert_true(ws_flow_run_cancel_allowed('edit', false), 'the flow\'s editor');
 	pg_assert_true(ws_flow_run_cancel_allowed('read', true), 'the run\'s starter');
 	pg_assert_false(ws_flow_run_cancel_allowed('read', false), 'another reader');
 	pg_assert_false(ws_flow_run_cancel_allowed('', true), 'nobody without access');
+
+	// The channel leaves a starter's own run alone only for a run with no
+	// channel or a person share that gives run; ws_flow_run_access() asks.
+	$own = ws_flow_runs_test_source('ws_flow_run_own_reach');
+
+	pg_assert_contains('ws_flow_run_channel_id($run) <= 0', $own, 'a run with no channel');
+	pg_assert_contains("ws_flow_share_reach(\$viewer, \$flow)['person']", $own, 'a share made to the person');
+	pg_assert_contains("ws_flow_access_rank('run')", $own, 'that lets them run the flow');
+	pg_assert_contains('ws_flow_run_own_reach($viewer, $flow, $run)', ws_flow_runs_test_source('ws_flow_run_access'));
 }
 
 // The statuses of runs and boxes, each within its VARCHAR(16) column.
@@ -657,10 +679,11 @@ function test_workspace_flow_runs_deleted_flow_stops()
 
 // A retried start answers the run its token started even when the flow was
 // paused, or its owner left, meanwhile: the token is looked up before those
-// refusals. A person who may no longer run the flow (it was paused) still
-// gets the run back while they read it, as GET /workspace/flow-runs/{id}
-// gives it to them; anybody else gets the 404 of a flow they cannot see,
-// never a refusal of the token's shape.
+// refusals. A person who may no longer run the flow (it was paused, or their
+// share was lowered to view) still gets the run back while they read it, as
+// GET /workspace/flow-runs/{id} gives it to them; anybody else gets the 404
+// of a flow they cannot see, or the 403 of a view share, never a refusal of
+// the token's shape.
 function test_workspace_flow_runs_token_answers_before_refusals()
 {
 	$check = ws_flow_runs_test_source('ws_flow_run_start_check');
@@ -671,6 +694,7 @@ function test_workspace_flow_runs_token_answers_before_refusals()
 
 	pg_assert_contains('ws_flow_run_for_token(', $check, 'the run a token started, without the right to run the flow');
 	pg_assert_true(strpos($check, 'ws_flow_run_for_token(') < strpos($check, 'That flow could not be found.'), 'before the 404');
+	pg_assert_true(strpos($check, 'ws_flow_run_for_token(') < strpos($check, 'You can look at this flow but not run it.'), 'and before a view share is refused');
 	pg_assert_true(strpos($check, 'ws_flow_access($viewer, $flow)') < strpos($check, 'The token of a run is'), 'the token\'s shape is judged only for a flow the person may run');
 
 	// Only a run the person reads comes back: the same gate as reading it.
