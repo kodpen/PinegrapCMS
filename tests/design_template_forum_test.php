@@ -2424,7 +2424,7 @@ function test_forum_recent_lists()
 		pg_assert_same(array('{{tab:topic}}', '{{tab:doc}}'), $cfg['recent_page_ids'], $key . ' reads the topic and guide pages');
 		$resolved = $cfg;
 		$resolved['recent_page_ids'] = array('11', '12');
-		pg_assert_same(array('show' => $want[1], 'page_ids' => array(11, 12), 'limit' => $want[2], 'order' => $want[3]), pg_comments_recent_options($resolved), $key . ' options');
+		pg_assert_same(array('show' => $want[1], 'page_ids' => array(11, 12), 'limit' => $want[2], 'order' => $want[3], 'filters' => array()), pg_comments_recent_options($resolved), $key . ' options');
 		pg_assert_false(isset($cfg['filters']) || isset($cfg['recent_filters']), $key . ': no record filters');
 
 		// The source pages: tab keys when the template opens, their ids once

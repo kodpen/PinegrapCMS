@@ -157,7 +157,7 @@ function test_comments_recent_options()
 		return;
 	}
 
-	pg_assert_same(array('show' => 'published', 'page_ids' => array(), 'limit' => 5, 'order' => 'newest'), pg_comments_recent_options(array()), 'defaults');
+	pg_assert_same(array('show' => 'published', 'page_ids' => array(), 'limit' => 5, 'order' => 'newest', 'filters' => array()), pg_comments_recent_options(array()), 'defaults');
 	pg_assert_same(pg_comments_recent_options(array()), pg_comments_recent_options('x'), 'not a config');
 
 	foreach (array('published', 'mine', 'pending') as $show) {
@@ -180,7 +180,14 @@ function test_comments_recent_options()
 	pg_assert_same(array(12, 7, 40, 41, 42), $ids, 'whole numbers above 0, each once, the first five');
 	pg_assert_same(array(), pg_comments_recent_options(array('recent_page_ids' => '12'))['page_ids'], 'not a list');
 	pg_assert_same(array(), pg_comments_recent_options(array('recent_page_ids' => array('{{tab:topic}}')))['page_ids'], 'a template reference left unresolved');
-	pg_assert_false(array_key_exists('filters', pg_comments_recent_options(array('filters' => array(array('field' => 'board'))))), 'no record filters in this mode');
+
+	// The list's record filters are its own key: a form list's 'filters'
+	// carried over by Change type is never read, so none applies unseen.
+	$board = array('field' => 'board', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'url parameter', 'dynamic_value_attribute' => 'board');
+	pg_assert_same(array(), pg_comments_recent_options(array('filters' => array($board)))['filters'], 'another kind\'s filters are not read');
+	pg_assert_same(array($board), pg_comments_recent_options(array('recent_filters' => array($board)))['filters'], 'the list\'s own filters');
+	pg_assert_same(array($board, array('field' => '')), pg_comments_recent_options(array('recent_filters' => array(3 => $board, 'x', null, 7 => array('field' => ''))))['filters'], 'rows only, in order, numbered again');
+	pg_assert_same(array(), pg_comments_recent_options(array('recent_filters' => 'board'))['filters'], 'not a list');
 }
 
 // -- which pages add comments ----------------------------------------------------
@@ -203,6 +210,8 @@ function comments_recent_test_facts($over = array())
 		'show' => 'published',
 		'signed_in' => false,
 		'sign_in_page' => false,
+		'list_filters' => false,
+		'sources' => 1,
 	);
 }
 
@@ -230,6 +239,9 @@ function test_comments_recent_source_decision_table()
 		'a page that sends a visitor to sign in' => array('record' => false, 'sign_in_page' => true),
 		'a page that sends a visitor to sign in, drawn in the background' => array('record' => false, 'sign_in_page' => true, 'signed_in' => false, 'personal' => false),
 		'a page that sends a visitor to sign in, for staff' => array('record' => false, 'sign_in_page' => true, 'staff' => true, 'show' => 'pending'),
+		'record filters on a page source' => array('record' => false, 'list_filters' => true),
+		'record filters over two pages' => array('list_filters' => true, 'sources' => 2),
+		'record filters with no page counted' => array('list_filters' => true, 'sources' => 0),
 	);
 	$reasons = array(
 		'missing' => 'missing',
@@ -249,6 +261,9 @@ function test_comments_recent_source_decision_table()
 		'a page that sends a visitor to sign in' => 'sign_in',
 		'a page that sends a visitor to sign in, drawn in the background' => 'sign_in',
 		'a page that sends a visitor to sign in, for staff' => 'sign_in',
+		'record filters on a page source' => 'filters',
+		'record filters over two pages' => 'filters',
+		'record filters with no page counted' => 'filters',
 	);
 
 	foreach ($refused as $name => $over) {
@@ -267,6 +282,9 @@ function test_comments_recent_source_decision_table()
 		'mine signed in' => array(array('show' => 'mine', 'signed_in' => true), 'record'),
 		'a page source with a form id left over' => array(array('record' => false, 'form_id' => 0), 'page'),
 		'a page that asks a visitor to sign in, for a signed-in member' => array(array('record' => false, 'sign_in_page' => true, 'signed_in' => true, 'personal' => true), 'page'),
+		'record filters on the one record source' => array(array('list_filters' => true), 'record'),
+		'two pages without record filters' => array(array('sources' => 2), 'record'),
+		'a page source over two pages without record filters' => array(array('record' => false, 'sources' => 2), 'page'),
 	);
 
 	foreach ($used as $name => $case) {
@@ -1290,7 +1308,14 @@ function test_comments_recent_wiring()
 	pg_assert_contains("UPDATE_SEARCH_INDEX", $recent, 'it prints nothing for the search index');
 	pg_assert_contains("'recent' => true", $recent, 'it draws as a list');
 	pg_assert_contains("'can_comment' => false", $recent, 'with no form');
-	pg_assert_false(strpos($module, "['filters']"), 'no record filters are read in this mode');
+	pg_assert_false(strpos($module, "\$cfg['filters']"), 'a form list\'s filters are never read in this mode');
+	pg_assert_contains("\$cfg['recent_filters']", comments_recent_test_php_body('pg_comments_recent_options'), 'the list\'s own key');
+	pg_assert_contains("pg_comments_recent_sources(\$options['page_ids'], \$options['show'], \$viewer, 'db_items', \$options['filters'])", $recent, 'the renderer hands the filters to the sources');
+	$sources = comments_recent_test_php_body('pg_comments_recent_sources');
+	pg_assert_contains("pg_sw_list_record_filter_clause(\$form_id, array('filters' => \$list_filters), \$view_cfg, \$page_id, pg_sw_filter_request())", $sources, 'the one record source\'s gate holds the list\'s filters after the view\'s');
+	pg_assert_contains("pg_sw_filters_compare_viewer(array_merge(pg_sw_record_view_filters(\$view_cfg), \$list_filters))", $sources, 'a list filter on the viewer counts as the view\'s would');
+	pg_assert_contains("'list_filters' => \$filtered", $sources, 'the decision knows the list is filtered');
+	pg_assert_contains("'sources' => count(\$ids)", $sources, 'and over how many pages');
 	pg_assert_false(strpos(comments_recent_test_php_body('pg_comments_recent_read'), 'count($records) >= $k'), 'no candidate record is dropped after it is read');
 
 	pg_assert_contains('pg_sw_widget_kind(', comments_recent_test_php_body('pg_comments_component_census'), 'the census records the kind');
