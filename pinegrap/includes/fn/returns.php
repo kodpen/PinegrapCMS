@@ -31,8 +31,9 @@
  * person's commerce rights. What is checked here is what the request says:
  * the order is complete, the delivery is the order's, the lines are the
  * delivery's and no more is asked for than is left on each line. A request
- * made by the customer must also come within the withdrawal window, after the
- * goods have left; staff may record one at any time.
+ * made by the customer, or by an app acting for the customer through the API
+ * (customer_rules), must also come within the withdrawal window, after the
+ * goods have left; staff, and an app by default, may record one at any time.
  *
  * Order totals, process_order_cancellation() and the ERP's own return
  * invoices are not touched here. A delivery that has not been sent is a
@@ -477,6 +478,55 @@ function pg_return_window($dates, $today)
         'deadline'  => $deadline,
         'open'      => (strcmp($today, $deadline) <= 0),
     );
+}
+
+/**
+ * Whether a return came in time, as the panel's side column and the external
+ * API's OrderReturn read it: the delivery's window (pg_return_window(), as the
+ * delivery is known today) and the request's own day. A delivery date learned
+ * later (a parcel marked delivered, a corrected date) moves the deadline and
+ * can change the answer; the request's day never moves.
+ *
+ * @param array|null $window        pg_return_window() of the return's delivery
+ * @param string     $requested_day Y-m-d of the request, or ''
+ * @return array|null delivered (Y-m-d), estimated (bool), deadline (Y-m-d,
+ *                    the last day in time), in_time (bool); null when no date
+ *                    is known for the delivery
+ */
+function pg_return_timing($window, $requested_day)
+{
+    if (!is_array($window) || !isset($window['delivered'], $window['deadline'])) {
+        return null;
+    }
+
+    $requested_day = pg_return_date($requested_day);
+
+    return array(
+        'delivered' => (string) $window['delivered'],
+        'estimated' => !empty($window['estimated']),
+        'deadline'  => (string) $window['deadline'],
+        'in_time'   => ($requested_day !== '') && (strcmp($requested_day, (string) $window['deadline']) <= 0),
+    );
+}
+
+/**
+ * Is a request held to the customer's timing rules: the goods have left, a
+ * date is known for the delivery and its withdrawal window is open? A
+ * customer's own request always is; one recorded through the external API
+ * only when the app asks (customer_rules, for an app acting for the
+ * customer); staff never are, they decide.
+ *
+ * @param string $source  customer, panel or api
+ * @param array  $options pg_return_create()'s, customer_rules (bool)
+ * @return bool
+ */
+function pg_return_customer_rules($source, $options)
+{
+    if ($source === 'customer') {
+        return true;
+    }
+
+    return ($source === 'api') && is_array($options) && isset($options['customer_rules']) && ($options['customer_rules'] === true);
 }
 
 /**
@@ -1074,14 +1124,16 @@ function pg_return_find_repeat($order_id, $ship_to_id, $source, $user_id, $reaso
 /**
  * Everything pg_return_create() checks before it writes, without writing or
  * taking the order's lock, in the same order and with the same refusals: the
- * reason and the note, the order and its status, the delivery, a customer's
- * timing, then the same form sent again and the lines. pg_return_create()
+ * reason and the note, the order and its status, the delivery, the same form
+ * sent again, then a customer's timing and the lines. pg_return_create()
  * runs it first; an external API rehearsal (X-Dry-Run) stops after it.
  *
  * The repeat and the lines are read again by pg_return_create() under the
  * lock, where they are final: another request may take the last units
- * meanwhile. A repeat is looked for before the lines, as there, because the
- * request it repeats may have taken every unit.
+ * meanwhile. A repeat is looked for before the timing and the lines, because
+ * the request it repeats was already accepted: its day may have ended since
+ * (a retry after midnight on the deadline day) and it may have taken every
+ * unit.
  *
  * A refusal names the request field it is about (ship_to_id, reason, note or
  * items; '' when it is about the order or the delivery's timing) and a code
@@ -1157,7 +1209,18 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
         return $refuse(lang('That delivery is not part of this order.'), 'delivery_not_in_order', 'ship_to_id');
     }
 
-    if ($result['source'] === 'customer') {
+    // The same form sent again answers with the request it repeats before
+    // the timing rules: that request was already accepted, and a retry that
+    // crosses midnight on the deadline day would otherwise be refused as late.
+    $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
+
+    if ($result['repeat'] > 0) {
+        $result['ok'] = true;
+
+        return $result;
+    }
+
+    if (pg_return_customer_rules($result['source'], $options)) {
 
         if (!$state['goods_left']) {
             return $refuse(lang('This delivery has not been sent yet. The order can be cancelled instead.'), 'not_sent');
@@ -1172,14 +1235,6 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
         if (!$state['window']['open']) {
             return $refuse(lang('The return period for this delivery has ended.'), 'window_closed');
         }
-    }
-
-    $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
-
-    if ($result['repeat'] > 0) {
-        $result['ok'] = true;
-
-        return $result;
     }
 
     $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
@@ -1223,9 +1278,11 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
  * @param string $reason     a code of pg_return_reasons()
  * @param string $note       the customer's words; needed for "other"
  * @param array  $options    source ('customer', 'panel' or 'api'; a customer
- *                           request must be in time), user_id (who asked),
- *                           time (unix time, defaults to now), today (Y-m-d,
- *                           defaults to today)
+ *                           request must be in time), customer_rules (true:
+ *                           an api request is held to the customer's timing
+ *                           rules too, pg_return_customer_rules()), user_id
+ *                           (who asked), time (unix time, defaults to now),
+ *                           today (Y-m-d, defaults to today)
  * @return array ok, error, id, repeat (true when the request was the same
  *               form sent again and id is the request it repeats), field and
  *               code (pg_return_create_check()'s, and busy when another
@@ -1392,7 +1449,9 @@ function pg_return_announce($event, $return, $extra = array())
  * @param int    $return_id
  * @param string $to
  * @param array  $options by ('customer' or staff), user_id, time, note,
- *                        carrier, carrier_code, tracking_number
+ *                        carrier, carrier_code, tracking_number, announce
+ *                        (false: the caller announces the move itself, after
+ *                        letting go of a lock it holds)
  * @return array ok, error, return (the row as it is now)
  */
 function pg_return_move($return_id, $to, $options = array())
@@ -1458,13 +1517,15 @@ function pg_return_move($return_id, $to, $options = array())
 
     $after = pg_return_load($return['id']);
 
-    // Approved and received are announced here, whoever made the move: one
-    // return's screen or a bulk approval (one event per request it
-    // approves). Refunded is not: pg_return_refund() moves the return there
+    // Approved and received are announced here only for a caller that does
+    // not announce them itself. pg_return_staff_move(), behind one return's
+    // screen and a bulk approval (one event per request it approves), passes
+    // announce => false and announces once it has let go of the order's
+    // lock. Refunded is not: pg_return_refund() moves the return there
     // before the payment service is asked and puts it back on a refusal, so
     // it announces the refund itself once the outcome stands. A rejection,
     // the parcel sent back and a closing are not announced.
-    if (in_array($to, array('approved', 'received'), true)) {
+    if (in_array($to, array('approved', 'received'), true) && (!isset($options['announce']) || ($options['announce'] !== false))) {
         pg_return_announce('order.return.' . $to, $after);
     }
 
@@ -2372,6 +2433,12 @@ function pg_return_audit_create_fields($row)
  * activity log line and, when the request was approved or rejected, the
  * customer's mail. A rejection needs a note: the customer is told why.
  *
+ * The move is made under the order's return lock, the one pg_return_create()
+ * and pg_return_refund() hold: a return cannot be closed while its refund
+ * waits on the payment service, which would leave the refund unkept, or a
+ * refusal unable to put the return back. A move made while the lock is busy
+ * is refused; the lock is let go before the audit line, the log and the mail.
+ *
  * The caller has checked the person's commerce rights.
  *
  * @param int    $return_id
@@ -2391,11 +2458,30 @@ function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
     }
 
     $before = pg_returns_ready() ? db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'") : null;
+    $lock = $before ? pg_return_lock_name($before['order_id']) : '';
 
-    $moved = pg_return_move($return_id, $to, array_merge($options, array('by' => 'staff', 'user_id' => (int) $user_id)));
+    if (($lock !== '') && ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1)) {
+        return array('ok' => false, 'error' => lang('Another return is being saved for this order. Try again in a moment.'), 'return' => null, 'mailed' => false);
+    }
+
+    if ($lock !== '') {
+        // Read again under the lock: a refund that held it may have moved it.
+        $before = db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'");
+    }
+
+    $moved = pg_return_move($return_id, $to, array_merge($options, array('by' => 'staff', 'user_id' => (int) $user_id, 'announce' => false)));
+
+    if ($lock !== '') {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+    }
 
     if (!$moved['ok']) {
         return array('ok' => false, 'error' => $moved['error'], 'return' => null, 'mailed' => false);
+    }
+
+    // Announced once the lock is let go, as pg_return_move() would have.
+    if (in_array($to, array('approved', 'received'), true)) {
+        pg_return_announce('order.return.' . $to, $moved['return']);
     }
 
     $after = $moved['return'];
@@ -3089,11 +3175,25 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
     $unclear = null;
+    $kept = pg_schema_has('order_returns', 'refund_method');
 
     if ($method === 'driver') {
         // A driver refund keeps only the service's own id of the refund: the
         // form's reference belongs to a refund made another way.
         $reference = '';
+
+        // While the service is asked, the return reads as a driver refund of
+        // this amount that is not confirmed yet: a reader in between, or a
+        // request that dies during the call, sees an unclear refund rather
+        // than a clear one of 0. The answer below overwrites it.
+        if ($kept) {
+            db("UPDATE order_returns
+                SET refund_amount = '" . (int) $amount . "',
+                    refund_method = 'driver',
+                    refund_reference = '',
+                    refund_unclear = 1
+                WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
+        }
 
         $order_row = db_item("SELECT * FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
         $order_lines = db_items(
@@ -3117,7 +3217,8 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
             log_activity($unclear['log']);
         } elseif (!$answer['success']) {
-            db("UPDATE order_returns SET status = 'received', refunded_at = 0
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0"
+                . ($kept ? ", refund_amount = 0, refund_method = '', refund_reference = '', refund_unclear = 0" : "") . "
                 WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
 
             $release();
@@ -3141,6 +3242,22 @@ function pg_return_refund($return_id, $options, $user_id = 0)
                 '" . e($reference) . "',
                 '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
                 NOW())");
+    }
+
+    // The refund is kept on the return (11.0.34): what order.return.refunded
+    // carries, for the panel and GET /orders/{id}/returns. Written under the
+    // order's lock, which staff moves take too (pg_return_staff_move()), so
+    // nobody closed the return meanwhile; refunded_at > 0 rather than the
+    // status, so a return closed after its refund keeps it all the same. A
+    // refusal went back to received above with nothing kept. Before the step
+    // adds the columns the refund works as it did.
+    if ($kept) {
+        db("UPDATE order_returns
+            SET refund_amount = '" . (int) $amount . "',
+                refund_method = '" . e($method) . "',
+                refund_reference = '" . e($reference) . "',
+                refund_unclear = '" . (($unclear !== null) ? 1 : 0) . "'
+            WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
     }
 
     $release();
@@ -3268,6 +3385,77 @@ function pg_return_refund_refused_line($return_id, $order_number, $amount, $serv
     return lang(array(
         'string' => 'Return request {var:1} of order {var:2}: {var:4} refused the refund of {var:3} ({var:5}). The return is back to received.',
         'vars'   => array((int) $return_id, (string) $order_number, pg_return_money_text($amount), (string) $service, ((string) $message !== '') ? (string) $message : lang('no message'))));
+}
+
+/**
+ * The refund of a return refunded before order_returns kept it (step
+ * 11.0.34), worked out from what pg_return_refund() wrote at the time.
+ *
+ * The audit line is exact for the amount and the method. Its reference is
+ * taken only when it is text: the line holds only what changed (a reference
+ * left empty is not in it), and the trail keeps a text that reads as JSON
+ * ("[12345]") decoded; otherwise the order_refunds row's own text, else ''.
+ * Whether the payment service gave a clear answer is only in the
+ * order_refunds note ("Return request #<id> (unconfirmed: ..."), written when
+ * money moved. With no audit line the order_refunds row gives the amount, the
+ * method (by its type) and the reference. A row belongs to the return only by
+ * its exact note: "Return request #1" must not take the refund of #12.
+ *
+ * @param array|null $audit_after the after-values of the return's refund
+ *                                audit line, decoded, or null
+ * @param array      $refund_rows order_refunds rows of the return's order
+ *                                (refund_type, amount_cents, transaction_id,
+ *                                notes)
+ * @param int        $return_id
+ * @return array|null amount, method (driver or manual), reference, unclear
+ *                    (0 or 1); null when neither source has it
+ */
+function pg_return_refund_backfill_values($audit_after, $refund_rows, $return_id)
+{
+    $note = 'Return request #' . (int) $return_id;
+    $row = null;
+    $unclear = 0;
+
+    foreach (is_array($refund_rows) ? $refund_rows : array() as $candidate) {
+        if (!is_array($candidate) || !isset($candidate['notes']) || !in_array((string) (isset($candidate['refund_type']) ? $candidate['refund_type'] : ''), array('return', 'return_manual'), true)) {
+            continue;
+        }
+
+        $notes = (string) $candidate['notes'];
+
+        if ($notes === $note) {
+            $row = $candidate;
+            break;
+        }
+
+        if (strpos($notes, $note . ' (unconfirmed') === 0) {
+            $row = $candidate;
+            $unclear = 1;
+            break;
+        }
+    }
+
+    $row_reference = (($row !== null) && isset($row['transaction_id'])) ? (string) $row['transaction_id'] : '';
+
+    if (is_array($audit_after) && isset($audit_after['refund_method']) && in_array((string) $audit_after['refund_method'], array('driver', 'manual'), true)) {
+        return array(
+            'amount'    => max(0, (int) (isset($audit_after['refund_amount']) ? $audit_after['refund_amount'] : 0)),
+            'method'    => (string) $audit_after['refund_method'],
+            'reference' => (isset($audit_after['refund_reference']) && is_string($audit_after['refund_reference'])) ? $audit_after['refund_reference'] : $row_reference,
+            'unclear'   => $unclear,
+        );
+    }
+
+    if ($row === null) {
+        return null;
+    }
+
+    return array(
+        'amount'    => max(0, (int) $row['amount_cents']),
+        'method'    => ((string) $row['refund_type'] === 'return') ? 'driver' : 'manual',
+        'reference' => $row_reference,
+        'unclear'   => $unclear,
+    );
 }
 
 /**
