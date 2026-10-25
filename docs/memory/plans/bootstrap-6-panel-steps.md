@@ -1,10 +1,10 @@
 ---
 name: bootstrap-6-panel-steps
-description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a in review, B0b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a done (#1643), B0b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- B0a References: the four skills, `ui/bootstrap-6.md`, the plan files. In review.
+- B0a References: the four skills, `ui/bootstrap-6.md`, the plan files. Done (#1643).
 - B0b `assets/lib/bootstrap-6` replaced by the npm 6.0.0-alpha.1 dist (CSS, bundle and standalone JS, maps; `document.txt` names the version). Nothing loads the folder yet.
 - B1 Tools. `tools/bs6_migrate.php`: the migration skill's rules as pure functions with `tests/bs6_migrate_test.php`; `--check`, `--files`, and `--diff <base>` converting only added lines; a second run must change nothing. `tools/check_bs6.php`: the skill's step 6 list plus `bootstrap.X` calls, jQuery `.modal()/.tooltip()/.popover()` and `*.bs.*` listeners outside `pgUI`; in php-checks.yml, CLAUDE.md and pre_push.sh, exit 0 until B8. The panel/site map, by function for shared files. A screenshot script (sample records, light/dark, wide/phone): images never committed, shown on a private page the PR links.
 - B2 `pgUI` adapter and `window.pgBootstrapReady`: dialog (with `build()` for JS-built dialogs), drawer, menu, tooltip, popover, toast, collapse, tab, `overlayHost()`, and `pgUI.on()` listening to both event names. Move calls and listeners onto it, fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
