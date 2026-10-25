@@ -1924,8 +1924,10 @@ function comments_widget_test_js_function($js, $name)
 
 // The canvas twin fades what the site leaves out for where it sits: reply
 // and share outside the comment, the thread's controls, small forms and
-// sections inside it, and a button that sends a small form outside that
-// form. Run under Node; skipped without it.
+// sections inside it, a button that sends a small form outside that form,
+// and a bound form or the watcher list inside any form, bound or not, as
+// pg_comments_drop_nested_forms() drops them. Run under Node; skipped
+// without it.
 function test_comments_widget_canvas_twin_fades_by_place()
 {
 	$out = array();
@@ -1967,7 +1969,16 @@ var tree = n('root', {}, [n('container', {}, [
     keep(sem('div', { section: 'comment_watchers' }, [], 'watchers outside')),
     sem('form', { action: 'comment_watch_form' }, [sem('div', {}, [keep(btn('comment_watch', 'watch in its form'))]), keep(btn('comment_close', 'close in the watch form'))]),
     sem('form', { action: 'comment_allow_new_form' }, [keep(btn('comment_reopen', 'reopen in its form'))]),
-    keep(btn('comment_unwatch', 'unwatch outside a form'))
+    keep(btn('comment_unwatch', 'unwatch outside a form')),
+    sem('form', {}, [sem('div', {}, [keep(sem('div', { section: 'comment_watchers' }, [], 'watchers in a plain form'))]),
+        keep(sem('form', { action: 'comment_watch_form' }, [], 'watch form in a plain form')),
+        keep(sem('div', { action: 'comment_watch_form' }, [], 'watch div in a plain form'))]),
+    keep(sem('form', { action: 'comment_form' }, [
+        keep(sem('div', { section: 'comment_watchers' }, [], 'watchers in the comment form')),
+        keep(sem('form', { action: 'comment_watch_form' }, [], 'watch form in the comment form')),
+        keep(sem('form', { action: 'comment_allow_new_form' }, [], 'staff form in the comment form'))
+    ], 'comment form')),
+    sem('form', { action: 'comment_watch_form' }, [keep(sem('form', { action: 'comment_form' }, [], 'comment form in the watch form'))])
 ])]);
 _sysWidgetRenderTreeRoot = tree;
 var cfg = { regionType: 'comments', per_page: 10 };
@@ -1997,7 +2008,12 @@ JS;
 	foreach (array('close in the watch form', 'unwatch outside a form') as $name) {
 		pg_assert_same('Off — works only inside its own form', $res[$name], $name);
 	}
-	foreach (array('reply inside', 'share inside', 'cancel outside', 'watchers outside', 'watch in its form', 'reopen in its form') as $name) {
+	foreach (array('watchers in a plain form', 'watch form in a plain form', 'watchers in the comment form', 'watch form in the comment form',
+		'staff form in the comment form', 'comment form in the watch form') as $name) {
+		pg_assert_same('Off — a form cannot sit inside another form', $res[$name], $name);
+	}
+	foreach (array('reply inside', 'share inside', 'cancel outside', 'watchers outside', 'watch in its form', 'reopen in its form',
+		'comment form', 'watch div in a plain form') as $name) {
 		pg_assert_same('', $res[$name], $name . ' is drawn');
 	}
 }
