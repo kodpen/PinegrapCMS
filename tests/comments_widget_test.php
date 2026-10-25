@@ -364,6 +364,24 @@ function test_comments_widget_view_urls()
 	pg_assert_same(array('all' => '/p?comments=all#software_comments', 'featured' => '/p#software_comments'), pg_comments_widget_view_urls('/p', 'x'), 'params that are not an array');
 }
 
+// The widget reads ?comment=, ?comments_page=, ?comments= and ?reply_to=,
+// its links write them and the redirect after a post adds comment= on every
+// page, so a list filter or a form control's address prefill may not take
+// its value from them. Every query parameter the module reads is checked.
+function test_comments_widget_params_reserved()
+{
+	foreach (array('comment', 'comments_page', 'comments', 'reply_to') as $name) {
+		pg_assert_same('', pg_sw_url_param_name($name), $name . ' is reserved');
+	}
+
+	preg_match_all('/\$_GET\[\'([a-z0-9_]+)\'\]/', comments_widget_test_source('includes/fn/widgets_comments.php'), $read);
+	pg_assert_true(count($read[1]) > 0, 'the module reads the address');
+
+	foreach (array_unique($read[1]) as $name) {
+		pg_assert_same('', pg_sw_url_param_name($name), $name . ', read by the widget, is reserved');
+	}
+}
+
 function comments_widget_test_facts($over = array())
 {
 	return $over + array(

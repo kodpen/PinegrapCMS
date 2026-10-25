@@ -48731,8 +48731,8 @@ const StyleDesigner = (function () {
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact'
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {

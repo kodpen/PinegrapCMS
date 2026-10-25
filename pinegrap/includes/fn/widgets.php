@@ -1015,9 +1015,11 @@ function pg_sw_should_count_record_view($seen, $method, $automated)
 // (t and a store a tracking or affiliate code in the session and a cookie,
 // o a special-offer code, rss/pdf/email/icalendar switch the output,
 // pg_lang the language, highlight marks text, send_to redirects), and the
-// widgets read the rest (page_number, query, r, ...). The names starting
-// with utm_ or pg_ are refused in pg_sw_url_param_name(). The editor keeps
-// a copy (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
+// widgets read the rest (page_number, query, r, ...; the comments widget
+// comments, comment, comments_page and reply_to, and add_comment.php's
+// redirect adds comment= to every page). The names starting with utm_ or
+// pg_ are refused in pg_sw_url_param_name(). The editor keeps a copy
+// (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
 // A designed form control's _cf.url_param obeys the same names.
 function pg_sw_url_param_reserved()
 {
@@ -1027,8 +1029,8 @@ function pg_sw_url_param_reserved()
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact',
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact',
     );
 }
 
