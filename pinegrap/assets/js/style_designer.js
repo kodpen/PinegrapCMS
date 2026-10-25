@@ -39013,7 +39013,8 @@ const StyleDesigner = (function () {
     // the end of the page. `sid` is the shared component whose tree gets the
     // item (0 for the page). A component or widget (a shared_ref payload)
     // never goes into a system widget's own tree, where a loop row would
-    // print it once per record: it goes beside the widget's placement.
+    // print it once per record: it goes beside the widget's placement on
+    // the open page (_sdPlacementOnPage()).
     function _sdInsertSpot(payload) {
         if (!tree) return null;
         var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
@@ -39021,7 +39022,7 @@ const StyleDesigner = (function () {
             var seen = {};
             for (var wsid = _isInsideSystemWidget(sel); wsid && !seen[wsid]; wsid = _isInsideSystemWidget(sel)) {
                 seen[wsid] = true;
-                sel = _cfRefOf(wsid) || tree;
+                sel = _sdPlacementOnPage(wsid) || tree;
             }
         }
         if (canDrop(payload, sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
@@ -39040,17 +39041,53 @@ const StyleDesigner = (function () {
     }
 
     // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
-    // last in the parent. A shared tree that gets it is saved with the next
-    // save, and the overview opens down to it.
+    // last in the parent. A column that lands in a column goes into a new
+    // row there, as handleDrop() wraps a column dropped onto a column. A
+    // shared tree that gets it is saved with the next save, and the
+    // overview opens down to it.
     function _sdInsertAt(spot, node) {
         if (!spot.parent.children) spot.parent.children = [];
         var kids = spot.parent.children;
+        var put = node;
+        if (node.type === 'col' && spot.parent.type === 'col') {
+            put = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [node]);
+            autoBalanceCols(put);
+        }
         var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
-        if (at === -1) kids.push(node);
-        else kids.splice(spot.after ? at + 1 : at, 0, node);
+        if (at === -1) kids.push(put);
+        else kids.splice(spot.after ? at + 1 : at, 0, put);
         if (spot.sid) _sharedDirty[spot.sid] = true;
         expandAncestorsAnywhere(node);
         return node;
+    }
+
+    // The placement of shared component `sid` that the open page shows: a
+    // shared_ref on the page tree itself first, else the first one inside a
+    // component placed on this page (a widget in the header). Cached trees
+    // of components that only other pages show are not looked at, so an
+    // insert never lands in another page's header. Null when the page does
+    // not show `sid`.
+    function _sdPlacementOnPage(sid) {
+        var direct = null, nested = null, seen = {};
+        (function walk(n, inShared) {
+            if (!n || direct) return;
+            if (n.type === 'shared_ref') {
+                var s = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (s === sid) {
+                    if (!inShared) direct = n;
+                    else if (!nested) nested = n;
+                    return;
+                }
+                var c = _sharedCache[s];
+                if (s && !seen[s] && c && c.tree) {
+                    seen[s] = true;
+                    walk(c.tree, true);
+                }
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(function (k) { walk(k, inShared); });
+        })(tree, false);
+        return direct || nested;
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the

@@ -7,9 +7,10 @@
  * lands in the visual designer: into the selection when it holds the item,
  * else beside the selection in the nearest ancestor that takes it, in the
  * page tree or inside a widget; a component or widget never goes into a
- * system widget's own tree. _sdInsertSpot() and _sdInsertAt() are cut out
- * of assets/js/style_designer.js and run under Node with stubs for what
- * they call; on a machine without Node the test is skipped.
+ * system widget's own tree, but beside its placement on the open page.
+ * _sdInsertSpot(), _sdInsertAt() and _sdPlacementOnPage() are cut out of
+ * assets/js/style_designer.js and run under Node with stubs for what they
+ * call; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,16 +25,19 @@ if (!defined('PG_TEST_RUNNER')) {
 // The two helpers over a fixture design, then `$steps`; the JSON they print,
 // or null without Node.
 //
-// Page:       page > s1 (section) > h1, ul1 > li1, p1
+// Page:       page > ref9 (placement of header 9)
+//                  > s1 (section) > h1, ul1 > li1, p1
 //                  > r1 (row) > c1, c2 (columns)
 //                  > ref7 (placement of widget 7), foot
 // Widget 7:   w7root > loop > card > ch (the card's heading)
 // Header 9:   h9root > nav > link, ref8 (placement of widget 8)
+// Header 5:   h5root > nav5 > ref8x (widget 8 again; header 5 is cached
+//             but sits on another page, not on this one)
 // Widget 8:   w8root > w8leaf
 //
 // canDrop() is a rule table: a node takes the payload types in its `acc`
 // list; a 'root' node takes everything unless it has `refuse`. Widgets 7
-// and 8 are system widgets, header 9 a plain shared component.
+// and 8 are system widgets, headers 5 and 9 plain shared components.
 function designer_palette_insert_test_run($steps)
 {
 	$out = array();
@@ -53,6 +57,7 @@ function designer_palette_insert_test_run($steps)
 function N(id, type, acc, kids, props) { return { id: id, type: type, acc: acc || [], children: kids || [], props: props || {} }; }
 function ref(id, sid) { return N(id, 'shared_ref', [], [], { sharedId: sid }); }
 var tree = N('page', 'root', [], [
+    ref('ref9', 9),
     N('s1', 'semantic', ['p', 'div', 'shared_ref'], [
         N('h1', 'semantic'),
         N('ul1', 'semantic', ['li'], [N('li1', 'semantic')]),
@@ -69,7 +74,8 @@ var _sharedCache = {
         ])
     ]) },
     8: { system: true, tree: N('w8root', 'root', [], [N('w8leaf', 'content')]) },
-    9: { tree: N('h9root', 'root', [], [N('nav', 'semantic', ['p', 'shared_ref'], [N('link', 'semantic'), ref('ref8', 8)])]) }
+    9: { tree: N('h9root', 'root', [], [N('nav', 'semantic', ['p', 'shared_ref'], [N('link', 'semantic'), ref('ref8', 8)])]) },
+    5: { tree: N('h5root', 'root', [], [N('nav5', 'semantic', ['p', 'shared_ref'], [ref('ref8x', 8)])]) }
 };
 var _sharedDirty = {};
 var selectedNode = null;
@@ -113,18 +119,10 @@ function _sdAnyParent(node) {
 }
 function _sdSharedOwnerOf(node) { return ownerSid(node); }
 function _isInsideSystemWidget(node) { var s = ownerSid(node); return (s && _sharedCache[s].system) ? s : 0; }
-function _cfRefOf(sid) {
-    var hit = null;
-    var walk = function (n) {
-        if (hit) return;
-        if (n.type === 'shared_ref') { if (n.props.sharedId === sid) hit = n; return; }
-        n.children.forEach(walk);
-    };
-    walk(tree);
-    for (var k in _sharedCache) { if (!hit && parseInt(k, 10) !== sid) walk(_sharedCache[k].tree); }
-    return hit;
-}
 function expandAncestorsAnywhere(node) { expanded.push(node.id); }
+var balanced = [];
+function createNode(type, props, kids) { return N(type + '-new', type, [], kids, props); }
+function autoBalanceCols(row) { balanced.push(row.id); }
 JS;
 
 	$script .= substr($source, $from, $to - $from) . <<<'JS'
@@ -174,7 +172,7 @@ function test_designer_palette_insert_nothing_selected()
 
 	pg_assert_same(array('parent' => 'page', 'sibling' => null, 'after' => false, 'sid' => 0), $answer['none'], 'nothing selected: into the page');
 	pg_assert_same('page', $answer['body'], 'the page body selected: into the page');
-	pg_assert_same(array('kids' => array('s1', 'r1', 'ref7', 'foot', 'n1'), 'dirty' => array(), 'expanded' => array('n1')), $answer['added'], 'last on the page, no shared tree marked');
+	pg_assert_same(array('kids' => array('ref9', 's1', 'r1', 'ref7', 'foot', 'n1'), 'dirty' => array(), 'expanded' => array('n1')), $answer['added'], 'last on the page, no shared tree marked');
 }
 
 // A selected container that takes the item gets it last, as before.
@@ -206,7 +204,7 @@ function test_designer_palette_insert_beside_leaf_in_widget()
 
 	pg_assert_same(array('parent' => 'card', 'sibling' => 'ch', 'after' => true, 'sid' => 7), $answer['spot'], 'beside the heading, in the card');
 	pg_assert_same(array('kids' => array('ch', 'n1'), 'dirty' => array('7'), 'expanded' => array('n1')), $answer['added'], 'after the heading; widget 7 is saved with the next save');
-	pg_assert_same(array('s1', 'r1', 'ref7', 'foot'), $answer['page'], 'the page itself is left alone');
+	pg_assert_same(array('ref9', 's1', 'r1', 'ref7', 'foot'), $answer['page'], 'the page itself is left alone');
 }
 
 // A leaf whose parent refuses the item (a div into a ul): the walk goes
@@ -239,7 +237,7 @@ function test_designer_palette_insert_after_selected_widget()
 	}
 
 	pg_assert_same(array('parent' => 'page', 'sibling' => 'ref7', 'after' => true, 'sid' => 0), $answer['spot'], 'beside the placement');
-	pg_assert_same(array('s1', 'r1', 'ref7', 'n1', 'foot'), $answer['added']['kids'], 'after it, before the next page element');
+	pg_assert_same(array('ref9', 's1', 'r1', 'ref7', 'n1', 'foot'), $answer['added']['kids'], 'after it, before the next page element');
 	pg_assert_same(array(), $answer['added']['dirty'], 'no shared tree marked');
 }
 
@@ -268,11 +266,75 @@ function test_designer_palette_insert_component_stops_at_widget()
 	pg_assert_same($after_ref7, $answer['leaf'], 'a leaf in the card: after the widget on the page');
 	pg_assert_same($after_ref7, $answer['card'], 'the card itself selected: the same');
 	pg_assert_same($after_ref7, $answer['newWidget'], 'a new system widget: the same');
-	pg_assert_same(array('s1', 'r1', 'ref7', 'n1', 'foot'), $answer['added']['kids'], 'placed after the widget');
+	pg_assert_same(array('ref9', 's1', 'r1', 'ref7', 'n1', 'foot'), $answer['added']['kids'], 'placed after the widget');
 	pg_assert_same(array(), $answer['added']['dirty'], 'the widget is not marked');
 	pg_assert_same(array('ch'), $answer['cardKids'], 'the card is left alone');
 	pg_assert_same(array('parent' => 'nav', 'sibling' => 'link', 'after' => true, 'sid' => 9), $answer['header'], 'in a plain shared component: beside the selection inside it');
-	pg_assert_same(array('parent' => 'nav', 'sibling' => 'ref8', 'after' => true, 'sid' => 9), $answer['nested'], 'a widget placed in a header: after its placement there');
+	pg_assert_same(array('parent' => 'nav', 'sibling' => 'ref8', 'after' => true, 'sid' => 9), $answer['nested'], 'a widget placed in a header on the page: after its placement there');
+}
+
+// The widget's placement comes from what the open page shows. Widget 8
+// sits in header 9 (on the page) and in header 5 (on another page, cached
+// first): the item goes into header 9, and header 5 is left alone. A
+// placement on the page itself wins over one inside a header; a widget the
+// page does not show at all sends the item to the end of the page.
+function test_designer_palette_insert_widget_placement_on_page()
+{
+	$answer = designer_palette_insert_test_run(
+		'var out = {};'
+		. 'out.header = spotOf("w8leaf", "shared_ref");'
+		. 'out.added = insert("w8leaf", "shared_ref", "n1");'
+		. 'out.otherHeader = ids("nav5");'
+		. 'tree.children.push(ref("ref8p", 8));'
+		. 'out.direct = spotOf("w8leaf", "shared_ref");'
+		. 'tree.children = tree.children.filter(function (c) { return c.id !== "ref9" && c.id !== "ref8p"; });'
+		. 'out.absent = spotOf("w8leaf", "shared_ref");'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('parent' => 'nav', 'sibling' => 'ref8', 'after' => true, 'sid' => 9), $answer['header'], 'the header on this page');
+	pg_assert_same(array('kids' => array('link', 'ref8', 'n1'), 'dirty' => array('9'), 'expanded' => array('n1')), $answer['added'], 'after the widget in header 9, which is saved');
+	pg_assert_same(array('ref8x'), $answer['otherHeader'], 'the header of the other page is left alone');
+	pg_assert_same(array('parent' => 'page', 'sibling' => 'ref8p', 'after' => true, 'sid' => 0), $answer['direct'], 'a placement on the page itself comes first');
+	pg_assert_same(array('parent' => 'page', 'sibling' => null, 'after' => false, 'sid' => 0), $answer['absent'], 'no placement on this page: the end of the page');
+}
+
+// A column added beside a leaf in a column, or into a selected column,
+// goes into a new row there, as a column dropped onto a column does; a
+// column into a row stays as it is.
+function test_designer_palette_insert_col_in_col()
+{
+	$answer = designer_palette_insert_test_run(
+		'var out = {};'
+		. 'var c1 = find("c1"); c1.acc.push("col"); c1.children.push(N("cp", "content"));'
+		. 'out.spot = spotOf("cp", "col");'
+		. '_sdInsertAt(_sdInsertSpot({ source: "palette", type: "col", extra: {} }), N("n1", "col"));'
+		. 'out.c1 = ids("c1");'
+		. 'out.row = { type: c1.children[1].type, kids: c1.children[1].children.map(function (c) { return c.id; }) };'
+		. 'out.balanced = balanced.slice();'
+		. 'selectedNode = find("r1");'
+		. '_sdInsertAt(_sdInsertSpot({ source: "palette", type: "col", extra: {} }), N("n2", "col"));'
+		. 'out.r1 = ids("r1");'
+		. 'var c2 = find("c2"); c2.acc.push("col"); selectedNode = c2;'
+		. '_sdInsertAt(_sdInsertSpot({ source: "palette", type: "col", extra: {} }), N("n3", "col"));'
+		. 'out.c2 = c2.children.map(function (c) { return c.type + ">" + c.children.map(function (k) { return k.id; }).join(); });'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('parent' => 'c1', 'sibling' => 'cp', 'after' => true, 'sid' => 0), $answer['spot'], 'the enclosing column takes it, after the leaf');
+	pg_assert_same(array('cp', 'row-new'), $answer['c1'], 'a new row after the leaf');
+	pg_assert_same(array('type' => 'row', 'kids' => array('n1')), $answer['row'], 'the new column inside that row');
+	pg_assert_same(array('row-new'), $answer['balanced'], 'the row is balanced');
+	pg_assert_same(array('c1', 'c2', 'n2'), $answer['r1'], 'a column into a row is not wrapped');
+	pg_assert_same(array('row>n3'), $answer['c2'], 'a selected column gets the new column in a new row');
 }
 
 // Nothing on the way up takes the item: the end of the page; when the page
@@ -294,7 +356,7 @@ function test_designer_palette_insert_nothing_accepts()
 	}
 
 	pg_assert_same(array('parent' => 'page', 'sibling' => null, 'after' => false, 'sid' => 0), $answer['spot'], 'the end of the page');
-	pg_assert_same(array('s1', 'r1', 'ref7', 'foot', 'n1'), $answer['added']['kids'], 'last on the page');
+	pg_assert_same(array('ref9', 's1', 'r1', 'ref7', 'foot', 'n1'), $answer['added']['kids'], 'last on the page');
 	pg_assert_same(null, $answer['refused'], 'nothing when the page refuses too');
 }
 

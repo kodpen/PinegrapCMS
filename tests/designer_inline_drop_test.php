@@ -77,7 +77,7 @@ function designer_inline_drop_test_run($setup, $cases)
 		. 'var COMPONENTS = { language_switcher: { toHTML: function () { return "<div class=\\"dropdown\\"><button type=\\"button\\">EN</button><ul><li><a href=\\"#\\">English</a></li></ul></div>"; } } };'
 		// What _paletteInsert() touches besides the drop rules.
 		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
-		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; } function _cfRefOf() { return null; }'
+		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; }'
 		. 'function _trackRecentComp() {} function _renderRecentCompSection() {} var document = { getElementById: function () { return null; } };'
 		. substr($source, $from, $to - $from)
 		. substr($source, $insert_from, $insert_to - $insert_from)
