@@ -155,19 +155,25 @@ function ws_customer_link_tokens($type, $id)
  * the reader may not see is left out of the ties; the customer itself stays,
  * named by its kind only.
  *
- * @param array  $viewer
- * @param string $type
- * @param int    $id
+ * @param array      $viewer
+ * @param string     $type
+ * @param int        $id
+ * @param array|null $links ws_customer_link_tokens() of the customer when the
+ *                          caller has read them already; null reads them
  * @return array|null customer (type, id, label, url, icon, kind, html), links (the same)
  */
-function ws_customer_present($viewer, $type, $id)
+function ws_customer_present($viewer, $type, $id, $links = null)
 {
     if (!in_array($type, ws_customer_types(), true) || ((int) $id <= 0)) {
         return null;
     }
 
     $own = array('sigil' => '#', 'type' => $type, 'id' => (int) $id);
-    $links = ws_customer_link_tokens($type, $id);
+
+    if (!is_array($links)) {
+        $links = ws_customer_link_tokens($type, $id);
+    }
+
     $refs = ws_refs_resolve($viewer, array_merge(array($own), $links));
     $kinds = array('contact' => lang('Contact'), 'user_account' => lang('User'), 'erp_account' => lang('Current account'));
 
@@ -218,11 +224,12 @@ function ws_customer_present($viewer, $type, $id)
  * since (the user now names another contact) is brought in step, so the
  * address book finds the channel under the right card.
  *
- * @param array $viewer
- * @param array $channel
+ * @param array      $viewer
+ * @param array      $channel
+ * @param array|null $links see ws_customer_present()
  * @return array|null see ws_customer_present()
  */
-function ws_channel_customer_present($viewer, $channel)
+function ws_channel_customer_present($viewer, $channel, $links = null)
 {
     list($type, $id) = ws_channel_customer_of($channel);
 
@@ -238,7 +245,7 @@ function ws_channel_customer_present($viewer, $channel)
         }
     }
 
-    return ws_customer_present($viewer, $type, $id);
+    return ws_customer_present($viewer, $type, $id, $links);
 }
 
 /**
@@ -367,6 +374,108 @@ function ws_customer_channels($type, $id)
     }
 
     return (array) db_items("SELECT * FROM ws_channels WHERE archived_at = 0 AND (" . implode(' OR ', $where) . ") ORDER BY last_message_at DESC LIMIT 50");
+}
+
+/**
+ * May the reader start a sales quote from a channel: the ERP right
+ * (manage_erp; staff hold it), and not the accountant's read-only right,
+ * which saves no ERP document (validate_erp_access() refuses the quote
+ * editor's form). The same people the quote chip's "Copy as a new sales
+ * quote" is offered to.
+ *
+ * @param array $viewer       ws_viewer()
+ * @param bool  $erp_readonly whether the reader holds the read-only right (USER_ERP_READONLY)
+ * @return bool
+ */
+function ws_sales_quote_may_start($viewer, $erp_readonly)
+{
+    return !empty($viewer['erp']) && !$erp_readonly;
+}
+
+/**
+ * The current account a new sales quote on a channel is written to: the
+ * channel's customer when it is an account a quote can go to, else the
+ * first such account tied to the customer through its contact
+ * (ws_customer_link_tokens() lists active accounts first). An account takes
+ * a quote when it is active (the quote editor lists no other) and not a
+ * supplier alone (its own screen offers no quote either).
+ *
+ * @param string  $type     the channel's customer kind (ws_channel_customer_of())
+ * @param int     $id       its record
+ * @param array[] $links    ws_customer_link_tokens() of that customer
+ * @param array[] $accounts erp_accounts rows (id, kind, status) of the accounts named, by id
+ * @return int 0 when there is none
+ */
+function ws_sales_quote_account_pick($type, $id, $links, $accounts)
+{
+    $candidates = array();
+
+    if (($type === 'erp_account') && ((int) $id > 0)) {
+        $candidates[] = (int) $id;
+    }
+
+    foreach ((array) $links as $link) {
+        if ((($link['type'] ?? '') === 'erp_account') && ((int) ($link['id'] ?? 0) > 0)) {
+            $candidates[] = (int) $link['id'];
+        }
+    }
+
+    foreach ($candidates as $account_id) {
+        $account = $accounts[$account_id] ?? null;
+
+        if (is_array($account) && ((string) ($account['status'] ?? '') === 'active') && ((string) ($account['kind'] ?? '') !== 'supplier')) {
+            return $account_id;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * The current account "New sales quote" opens the quote editor on for a
+ * channel (add_erp_quote.php?account_id=); 0 when the reader may not write
+ * quotes, when the quotes table is not there yet, or when the channel's
+ * customer is no such account and is tied to none. The right is asked
+ * before the lookup reads anything, so a reader without it never learns
+ * whether the customer has an account. An account is only looked for, never
+ * opened: erp_account_for_contact() would create one. The ties are the ones
+ * ws_channel_detail() read for the customer card, so they are not read
+ * twice.
+ *
+ * @param array   $viewer
+ * @param array   $channel      a ws_channels row
+ * @param bool    $erp_readonly see ws_sales_quote_may_start()
+ * @param array[] $links        ws_customer_link_tokens() of the channel's customer
+ * @return int
+ */
+function ws_channel_sales_quote_account($viewer, $channel, $erp_readonly, $links)
+{
+    if (!ws_sales_quote_may_start($viewer, $erp_readonly)) {
+        return 0;
+    }
+
+    list($type, $id) = ws_channel_customer_of($channel);
+
+    if (($type === '') || !ws_erp_quotes_readable()) {
+        return 0;
+    }
+
+    $links = (array) $links;
+    $ids = ($type === 'erp_account') ? array((int) $id) : array();
+
+    foreach ($links as $link) {
+        if ($link['type'] === 'erp_account') {
+            $ids[] = (int) $link['id'];
+        }
+    }
+
+    if (empty($ids)) {
+        return 0;
+    }
+
+    $accounts = (array) db_items("SELECT id, kind, status FROM erp_accounts WHERE id IN ('" . implode("','", array_unique($ids)) . "')", 'id');
+
+    return ws_sales_quote_account_pick($type, $id, $links, $accounts);
 }
 
 /**
