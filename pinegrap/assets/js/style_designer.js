@@ -11232,18 +11232,20 @@ const StyleDesigner = (function () {
     }
 
     // Where a node of the comments widget being drawn sits: inside its
-    // loop_area (the template of one comment), and the actions of the bound
-    // forms around it, the way _pg_comments_control_walk() and
-    // _pg_comments_row_walk() (widgets_comments.php) meet it.
+    // loop_area (the template of one comment), inside any form (inForm,
+    // bound or not, as pg_comments_drop_nested_forms() counts it), and the
+    // actions of the bound forms around it, the way _pg_comments_control_walk()
+    // and _pg_comments_row_walk() (widgets_comments.php) meet it.
     function _sdCommentsPlace(node) {
-        var place = { inComment: false, forms: [] };
+        var place = { inComment: false, inForm: false, forms: [] };
         var root = _sysWidgetRenderTreeRoot;
         var p = root ? findParent(node, root) : null;
         while (p) {
             if (p.type === 'loop_area') place.inComment = true;
             var pb = (p.props && p.props._bindings) || {};
-            if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form' && pb.action) {
-                place.forms.push(pb.action);
+            if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form') {
+                place.inForm = true;
+                if (pb.action) place.forms.push(pb.action);
             }
             p = findParent(p, root);
         }
@@ -11267,7 +11269,9 @@ const StyleDesigner = (function () {
     // every comment on one page. What the page leaves out for where it sits
     // fades too (_sdCommentsPlace()): reply and share outside the comment
     // (the loop_area), the thread's controls, small forms and sections
-    // inside it, a button that sends a small form outside that form.
+    // inside it, a button that sends a small form outside that form, and
+    // the comment form, a small form or the watcher list inside any form,
+    // which the page drops before it binds anything.
     // A list of recent comments (kind 'comments_recent') fades what that
     // mode switches off (_sdCommentsModeOff()), and a sharing control that is
     // neither a link nor a button; the page's comment settings are not its
@@ -11320,6 +11324,12 @@ const StyleDesigner = (function () {
         if (['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'].indexOf(b.action) !== -1 && !isButton) {
             return _sdT('Off — only a button sends this form');
         }
+        // A form inside another form is broken markup the browser ends at
+        // the first </form>: pg_comments_drop_nested_forms() leaves out a
+        // bound form and the watcher list (which holds forms) below any form.
+        var nests = (tag === 'form' && ['comment_form', 'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1) ||
+            b.section === 'comment_watchers';
+        if (nests && _sdCommentsPlace(node).inForm) return _sdT('Off — a form cannot sit inside another form');
         // Reply and share answer one comment; the thread's controls, small
         // forms and sections have no place in one; a button sends only the
         // form it is in.
@@ -50182,8 +50192,8 @@ const StyleDesigner = (function () {
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact'
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {

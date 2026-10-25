@@ -58,17 +58,23 @@ define('WS_NOTE_IMPORT_SECONDS', 8);
 
 /**
  * The largest upload: WS_NOTE_IMPORT_UPLOAD_MAX, or what the server takes
- * when that is less.
+ * when that is less. Loose files travel in one request, so post_max_size
+ * less the multipart envelope (request_max) bounds the total just as
+ * upload_max_filesize bounds one file.
  *
+ * @param array|null $limits pg_upload_limits(); null reads it
  * @return int bytes
  */
-function ws_note_import_upload_max()
+function ws_note_import_upload_max($limits = null)
 {
     $max = WS_NOTE_IMPORT_UPLOAD_MAX;
 
-    if (function_exists('pg_upload_limits')) {
+    if (($limits === null) && function_exists('pg_upload_limits')) {
         $limits = pg_upload_limits();
-        $server = (int) ($limits['file_max'] ?? 0);
+    }
+
+    foreach (array('file_max', 'request_max') as $key) {
+        $server = (int) ($limits[$key] ?? 0);
 
         if (($server > 0) && ($server < $max)) {
             $max = $server;
@@ -76,6 +82,18 @@ function ws_note_import_upload_max()
     }
 
     return $max;
+}
+
+/**
+ * The kinds of file one upload may carry, by extension. The stage refuses
+ * any other; the screen gets the list with its config and leaves such a
+ * file out before anything is sent.
+ *
+ * @return string[]
+ */
+function ws_note_import_extensions()
+{
+    return array('md', 'markdown', 'txt', 'zip', 'enex');
 }
 
 /**
@@ -383,16 +401,53 @@ function ws_note_import_load($viewer, $token)
 }
 
 /**
+ * What to tell the person about a file PHP did not take in whole: the
+ * sentences add_file.php says for the same codes, naming the file.
+ *
+ * @param string $name     the file's name as it was sent
+ * @param int    $error    PHP's upload error code
+ * @param int    $file_max bytes, the largest single file the server takes
+ * @return string '' for UPLOAD_ERR_OK
+ */
+function ws_note_import_upload_error($name, $error, $file_max)
+{
+    $error = (int) $error;
+
+    if ($error === UPLOAD_ERR_OK) {
+        return '';
+    }
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars'   => array($name, convert_bytes_to_string($file_max, 1))));
+    }
+
+    if ($error === UPLOAD_ERR_PARTIAL) {
+        return lang(array(
+            'string' => '{var:1} only arrived in part, so it was not saved. Please try again.',
+            'vars'   => array($name)));
+    }
+
+    return lang(array(
+        'string' => 'The server could not accept {var:1}. Please try again.',
+        'vars'   => array($name)));
+}
+
+/**
  * Stages an upload: one .zip, Markdown and text files, or Evernote exports,
  * moved under data/temp with the list of what they hold. An Evernote export
  * is laid out as note and attachment files right away (notes_enex.php);
  * nothing is written as a note yet.
  *
- * @param array $viewer
- * @param array $files the upload, one entry a file: name, tmp_name, size, error
+ * @param array  $viewer
+ * @param array  $files the upload, one entry a file: name, tmp_name, size, error
+ * @param string $token the stage's name when the caller made it already
+ *                      (the endpoint keeps it in the session before the
+ *                      files are read); '' makes one
  * @return array ok, error, token
  */
-function ws_note_import_stage($viewer, $files)
+function ws_note_import_stage($viewer, $files, $token = '')
 {
     // A failed step below is logged with error_get_last(); nothing from
     // before the upload may stand in for it.
@@ -404,7 +459,9 @@ function ws_note_import_stage($viewer, $files)
         return array('ok' => false, 'error' => $error, 'token' => '');
     };
 
-    $max = ws_note_import_upload_max();
+    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+    $file_max = (int) ($limits['file_max'] ?? 0);
+    $max = ws_note_import_upload_max($limits);
     $too_large = lang(array('string' => 'The upload is larger than {var:1} MB.', 'vars' => max(1, (int) floor($max / 1048576))));
     $choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).');
     $total = 0;
@@ -416,19 +473,40 @@ function ws_note_import_stage($viewer, $files)
     }
 
     foreach ($files as $file) {
+        $name = (string) ($file['name'] ?? '');
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
-        if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
-            return $fail($too_large);
+        // A part with no file in it (only a hand-made request sends one)
+        // is no file at all: the answer to an empty upload, and nothing
+        // for the error log.
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            return $fail($choose);
         }
 
-        if (($error !== UPLOAD_ERR_OK) || !is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
-            return $fail(lang('The file could not be read.'));
+        // A temporary file that is not an upload of this request is a
+        // server fault: logged, and answered as a file the server could not
+        // accept.
+        if (($error === UPLOAD_ERR_OK) && !is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
+            ws_note_import_log_failure('receiving an uploaded file', 'its temporary file is not an upload of this request');
+
+            return $fail(ws_note_import_upload_error($name, UPLOAD_ERR_CANT_WRITE, $file_max));
         }
 
-        $extension = strtolower((string) pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+        // A part PHP could not store is the server's fault: the error log
+        // gets its code. A file over the limit or cut short (a cancelled
+        // upload ends that way) is the person's to fix, and the answer
+        // names it.
+        if (!in_array($error, array(UPLOAD_ERR_OK, UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE, UPLOAD_ERR_PARTIAL), true)) {
+            ws_note_import_log_failure('receiving an uploaded file', 'PHP upload error ' . $error);
+        }
 
-        if (!in_array($extension, array('md', 'markdown', 'txt', 'zip', 'enex'), true)) {
+        if ($error !== UPLOAD_ERR_OK) {
+            return $fail(ws_note_import_upload_error($name, $error, $file_max));
+        }
+
+        $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+
+        if (!in_array($extension, ws_note_import_extensions(), true)) {
             return $fail($choose);
         }
 
@@ -457,7 +535,10 @@ function ws_note_import_stage($viewer, $files)
         return $fail(lang('This server cannot open zip files (the PHP zip extension is missing). Upload the Markdown files themselves instead.'));
     }
 
-    $token = bin2hex(random_bytes(16));
+    if ($token === '') {
+        $token = bin2hex(random_bytes(16));
+    }
+
     $dir = ws_note_import_stage_dir($token);
 
     if (($dir === '') || !@mkdir($dir, 0755)) {

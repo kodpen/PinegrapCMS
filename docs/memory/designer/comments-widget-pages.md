@@ -24,6 +24,9 @@ description: Pages and permalinks of the comments widget: per_page units, ?comme
 - `pg_comment_return_url($path, $id, $featured)`: add_comment.php's redirect after a post. It rebuilds send_to's query (parse_str, http_build_query: arrays get numbered keys) without `reply_to`, `comments_page`, `comment`, with `comments=all` while featured comments exist, then `comment=<id>`; every page, classic ones included.
 - The classic comments block ignores `comment=`.
 
+## May a designer read these parameters?
+- No: `comments`, `comment`, `comments_page` and `reply_to` are in `pg_sw_url_param_reserved()` and its editor twin `_SW_URL_PARAM_RESERVED`, so a list filter or a form control's `_cf.url_param` cannot take its value from them (the redirect adds `comment=` on every page). A test checks every `$_GET` name the module reads.
+
 ## How was it checked?
 - `tests/comments_widget_test.php` (paginate, page param, URL builders, fragment, draw), `tests/comment_links_test.php` (both helpers, wiring of the four files).
 - Sandbox, MariaDB, PHP 8.3 (2026-10-24): threaded and flat per_page 10 with 13 units; `?comment=` on page 2 and of a capped reply, `?comments_page=` winning; flat featured filter left by `?comment=`; fallback links after the comments; redirect after posts on a widget and a classic photo gallery page; administrator and watcher mails. Submitter and scheduled-publish mails, panel links: source tests only.

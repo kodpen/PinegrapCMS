@@ -9,10 +9,12 @@ description: Which Workspace API writes the person must make themselves: ws_api_
 ## Which answers must be the person's own? (`ws_api_person_only()`)
 - The person's answer or preference: read receipt, read mark, approval, applying or setting aside a proposed change, vote, a channel's notify level, pinning a channel and its order, joining or leaving a discussion, closing a poll. An application key gets 403; an OAuth connection is accepted, since it acts for the person who approved it. These refusals say "signed in on a device".
 - Over REST only for the decisions on a card: approvals decide, changes apply and dismiss carry `'mcp' => false` (owner decision 2026-10-24), so an assistant never decides in the person's name or applies its own proposal (`test_ws_api_card_decisions_are_no_tools`). Read marks and the read receipt stay tools.
+- Starting and cancelling a flow run carry `'mcp' => false` and refuse `ws_api_is_assistant()` (Claude's routine calls REST with its key); an integration's key is accepted (`test_ws_api_flow_runs_writes_are_no_tools`).
 
 ## Which writes need the team devices session? (`ws_api_own_words_only()`)
 - Changing or deleting the person's own words (edit, delete, delete for me), and anything opened in their name that later runs as their word or that only they may change: a scheduled message, a poll (`ws_poll_edit()` takes only the person's own message), a pin (`ws_api_pin_target()`), publishing a flow (drafting is open to both: `workspace-flows-store.md`). Both an application key and an OAuth connection are refused (#371, #375): a connection writes as the application, so what it set up would later read as the person's word.
 - Key and OAuth may still list and cancel the owner's scheduled messages.
+- A published flow moved to another home channel is refused to both by `ws_api_flow_home_move_gate()`, inside the draft change, which stays a tool: the gate checks `ws_api_device_writes_as_person()` itself, not through `ws_api_own_words_only()`.
 - Such a route, whether it calls the gate itself or through a helper, carries `'mcp' => false`: an MCP client always comes through an OAuth connection and would get 403 on every call (`test_ws_api_own_words_routes_are_no_tools`).
 - Its refusal reads "Only the person's own team devices session (POST /auth/login) can …; an application key or an OAuth connection …", never "signed in on a device", because an OAuth connection is a device row too (`test_ws_api_own_words_refusals_name_the_team_devices_session`).
 
