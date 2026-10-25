@@ -8,7 +8,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Eve
 
 ## What exists today (2026-10-19)?
 - `ws_notes` (user_id, title, body, pinned, source_*, channel_id, folder_id, updated_by, created_at, updated_at), shares in `ws_note_shares`, 30 versions in `ws_note_versions`, attachments in a `Workspace/Notes/Note N` folder linked as `[name](url)`. `WS_NOTE_MAX` 60000 chars, `WS_NOTE_LIMIT` 2000 notes a person. Hard delete; no notebooks, tags or external ids.
-- Body is a Markdown subset drawn only by `ws_render_body()` (bold, `_italic_`, strike, code, links, GFM tables with `=` formulas, checklists, fences, `::: Title` blocks); headings, lists, quotes and inline images are not drawn. No Markdown library in the code base.
+- Body is a Markdown subset drawn only by `ws_render_body()` (bold, `_italic_`, strike, code, links, GFM tables with `=` formulas, checklists, fences, `::: Title` blocks, one level of lists and quotes); headings and inline images are not drawn. No Markdown library in the code base.
 - Screen `startNotes()` (workspace.js): export, print and import buttons (N1, N2); no templates.
 - API: `GET/POST /workspace/notes`, `GET/POST|PATCH /workspace/notes/{id}` (dry run, Idempotency-Key, `base` → 409), versions routes; generic `workspace:read/write` scopes; the list is paged with `created_at` in the object (issue #511, docs/memory/workspace/workspace-notes.md); no delete, no deletion records. All note routes are MCP tools.
 - Precedents: ERP import (`erp_accounts_import.php`: upload → map/preview → result, staged in `data/temp`, 5 MB), calendar token feed (`ws_calendar_feeds`), OAuth 2.1 server (`oauth.php`, PKCE).
@@ -23,7 +23,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Eve
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
 
 ## What is still open?
-1. Headings and lists: imports flatten them (headings bold lines, every item `- `); whether `ws_render_body()` later draws them for notes only is still open.
+1. Headings: imports make them bold lines; whether `ws_render_body()` later draws them for notes only is still open. Lists and quotes are drawn (one level; nested items flatten).
 2. Schema for N3: owner approval; N1/N2 ship without it.
 3. A read-only token feed like the calendar's (default: no; sync clients use OAuth 2.1 + REST).
 4. Format priority (default: Markdown/zip → enex → Keep → HTML).

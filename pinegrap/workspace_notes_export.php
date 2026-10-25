@@ -153,6 +153,8 @@ echo '<!DOCTYPE html>
   .body a { color: #0a58ca; text-decoration: none; }
   .body .ws-chip { display: inline-block; padding: 0 .35em; border: 1px solid #d0d7de; border-radius: .35em; background: #f6f8fa; color: inherit; }
   .body .ws-chip i { display: none; }
+  .body ul, .body ol { margin: .5rem 0; padding-left: 1.5rem; }
+  .body blockquote { margin: .5rem 0; padding-left: .8rem; border-left: 3px solid #d0d7de; color: #57606a; }
   .body .ws-checklist { list-style: none; padding-left: 0; margin: .5rem 0; }
   .body .ws-check label { display: inline-flex; gap: .45em; align-items: baseline; }
   .body .ws-checked .ws-check-text { text-decoration: line-through; color: #6b7280; }

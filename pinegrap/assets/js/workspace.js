@@ -2664,8 +2664,9 @@
                 return editor.markup() !== baseline;
             },
             // Buttons under the box (PGWsEditor.toolbar()): people, records,
-            // emoji and, where the text may hold one, a checklist. Callers
-            // add their own (save, cancel) to the row it answers.
+            // emoji, the lists and the quote and, where the text may hold
+            // one, a checklist. Callers add their own (save, cancel) to the
+            // row it answers.
             tools: function (withList) {
                 var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
@@ -2681,7 +2682,7 @@
                     emojiPicker(box.left, box.bottom + 4, function (picked) { editor.insertText(picked); });
                 });
 
-                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['checklist'] : []), { className: 'ws-note-actions' });
+                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji, 'bullets', 'numbers', 'quote'].concat(withList ? ['checklist'] : []), { className: 'ws-note-actions' });
             }
         };
 
@@ -11192,11 +11193,12 @@
             });
             parts.push(command);
 
-            // Bold, italic, strikethrough, undo and redo of the box itself
-            // (PGWsEditor.toolbar()); the stylesheet leaves them out where
-            // the row has no room for them, the bar over a selection still
-            // formats there.
-            parts.push(['bold', 'italic', 'strike'], ['undo', 'redo']);
+            // Bold, italic, strikethrough, the lists and the quote, undo and
+            // redo of the box itself (PGWsEditor.toolbar()); the stylesheet
+            // leaves them out where the row has no room for them (the lists
+            // first), the bar over a selection still formats there and "- ",
+            // "1. ", "> " typed at the start of a line still make a list.
+            parts.push(['bold', 'italic', 'strike'], { items: ['bullets', 'numbers', 'quote'], className: 'ws-composer-lists' }, ['undo', 'redo']);
 
             parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
@@ -21346,6 +21348,7 @@
             return window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike'],
+                ['bullets', 'numbers', 'quote'],
                 blocks,
                 tags,
                 [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]

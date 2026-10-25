@@ -45,6 +45,20 @@ body.pg-approval {
   overflow-wrap: anywhere;
 }
 
+/* Lists and quotes of the request's message (ws_guest_render()). */
+.pg-approval-details ul,
+.pg-approval-details ol {
+  margin: .15rem 0 .35rem;
+  padding-left: 1.4rem;
+}
+
+.pg-approval-details blockquote {
+  margin: .15rem 0 .35rem;
+  padding-left: .7rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
 .pg-approval-buttons {
   display: flex;
   flex-wrap: wrap;

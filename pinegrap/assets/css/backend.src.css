@@ -11696,6 +11696,31 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   color: var(--bs-secondary-color);
 }
 
+/* Lists and quotes written in a text (ws_text_blocks_html(): <ul>, <ol> and
+   <blockquote> without a class, so never the checklist), and the same in
+   the writing box (assets/js/workspace_editor.js). */
+.ws-msg-body > ul:not([class]),
+.ws-msg-body > ol:not([class]),
+.ws-summary-view > ul:not([class]),
+.ws-summary-view > ol:not([class]),
+.ws-rich > ul,
+.ws-rich > ol {
+  margin: .1rem 0 .25rem;
+  padding-left: 1.4rem;
+}
+.ws-msg-body > blockquote:not([class]),
+.ws-summary-view > blockquote:not([class]),
+.ws-rich > blockquote {
+  margin: .1rem 0 .25rem;
+  padding: .05rem 0 .05rem .7rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+.ws-msg-body li + li,
+.ws-rich li + li {
+  margin-top: .05rem;
+}
+
 /* A poll in the conversation. */
 .ws-poll {
   max-width: 34rem;
@@ -12074,8 +12099,10 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
 .ws-item-add {
   margin-top: .4rem;
 }
+/* Wraps where a narrow drawer has no room for the tools and the buttons. */
 .ws-note-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .25rem;
   margin-top: .35rem;
@@ -12884,12 +12911,14 @@ a.ws-chip:hover {
   font-size: .72rem;
   color: var(--bs-secondary-color);
 }
-/* The composer's own marks and steps (PGWsEditor.toolbar()): two small
+/* The composer's own marks, lists and steps (PGWsEditor.toolbar()): small
    groups after the inserts. Where the row is too narrow for them (a phone,
    the discussion panel, a narrow window) they are left out and the row
-   stays as it was; the bar over a selection still formats there. The widest
+   stays as it was; the bar over a selection still formats there, and "- ",
+   "1. ", "> " typed at the start of a line still make a list. The widest
    row (Turkish "Gönder" with the scheduled-send clock beside it) needs about
-   33rem with them; the cut-off leaves a margin for wider system fonts. */
+   33rem with the marks and steps, about 40rem with the lists too, which go
+   first; each cut-off leaves a margin for wider system fonts. */
 .ws-composer-tools {
   container-type: inline-size;
 }
@@ -12903,6 +12932,11 @@ a.ws-chip:hover {
 }
 @container (max-width: 34rem) {
   .ws-composer-format {
+    display: none;
+  }
+}
+@container (max-width: 41rem) {
+  .ws-composer-format.ws-composer-lists {
     display: none;
   }
 }

@@ -4,8 +4,8 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 ---
 
 ## What builds the row under a writing box?
-- `PGWsEditor.toolbar(editor, items, options)` (`assets/js/workspace_editor.js`). Items in order: tool names (`undo redo bold italic strike code link checklist table calc codeblock`), nodes the caller made (attach, emoji, voice, send), arrays for groups (`options.groupClass`). Options: `className`, `label` (aria-label), `insertLabel`, `scope` (table and calculation windows).
-- Users: `composer()` (`ws-composer-tools`; B I S, undo redo as two `ws-composer-format` groups after `/`), the notes `toolbar()` (`ws-nb-tools`), `richField().tools()` (`ws-note-actions`). The templates form (`workspace_templates.js`) draws its own row.
+- `PGWsEditor.toolbar(editor, items, options)` (`assets/js/workspace_editor.js`). Items in order: tool names (`undo redo bold italic strike code link bullets numbers quote checklist table calc codeblock`; lists: workspace-editor-lists.md), nodes the caller made (attach, emoji, voice, send), arrays or `{ items, className }` for groups (`options.groupClass`). Options: `className`, `label` (aria-label), `insertLabel`, `scope` (table and calculation windows).
+- Users: `composer()` (`ws-composer-tools`; B I S, lists, undo redo as `ws-composer-format` groups after `/`), the notes `toolbar()` (`ws-nb-tools`), `richField().tools()` (`ws-note-actions`). The templates form draws its own row.
 - `role="toolbar"` with a name; arrows, Home, End move between buttons (also ones appended later); mousedown is prevented on the row so the text keeps focus and selection; undo, redo off with nothing to undo; marks carry `aria-pressed`.
 
 ## How is a mark made?
@@ -21,10 +21,10 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 - `watch(fn)` / `notify()`: on history changes and `selectionchange`, once a frame; `formatState()` reads the selection, or the caret kept when left.
 
 ## Where are the labels?
-- `tool_*` keys in `ws_editor_js_strings()` (`includes/workspace/screen.php`); existing tr.json keys reused (Undo, Redo, Bold, Italic with their shortcut, Checklist, Table, Calculation, Code block), six added (Strikethrough, Code, Link with theirs; Text, Message, Note tools). On a Mac the title shows ⌘, `aria-keyshortcuts` says Meta. The notes' `notes_bold` ... `notes_redo` keys are gone.
+- `tool_*` keys in `ws_editor_js_strings()` (`includes/workspace/screen.php`), tr.json keys: Undo, Redo, Bold, Italic, Strikethrough, Code, Link with their shortcut; the lists; Checklist, Table, Calculation, Code block; Text, Message, Note tools. On a Mac the title shows ⌘, `aria-keyshortcuts` says Meta.
 
 ## What does it look like?
-- Ghost icon buttons as before. The composer's two groups are hidden below 768px and when its row is under 34rem (container query; the widest row needs 33rem); the hint ends in an ellipsis. Pressed is the selection bar's accent tint; a disabled ghost button has no frame.
+- Ghost icon buttons as before. The composer's groups are hidden below 768px and when its row is under 34rem (container query; the widest row needs 33rem), the lists under 41rem; the hint ends in an ellipsis. Pressed is the selection bar's accent tint; a disabled ghost button has no frame.
 
 ## How was it checked?
 - Headless Chromium on `workspace.min.js`, stubbed `api.php`: channel composer, notes (also phone size), approval box: marks, pressed, focus, undo/redo, shortcuts, waiting marks, composed words (CDP `Input.imeSetComposition`), backward selections, links, cells, Enter sends, autosave, no `execCommand`, widths 760-1400px. Not on Safari, Firefox, a phone or a running site.

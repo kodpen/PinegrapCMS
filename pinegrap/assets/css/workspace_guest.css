@@ -521,6 +521,21 @@ body.pg-guest {
   color: var(--bs-secondary-color);
 }
 
+/* Lists and quotes written in a message (render.php, ws_text_blocks_html():
+   no class, so never the checklist). */
+.pg-guest-body ul:not([class]),
+.pg-guest-body ol:not([class]) {
+  margin: .1rem 0 .25rem;
+  padding-left: 1.4rem;
+}
+
+.pg-guest-body blockquote:not([class]) {
+  margin: .1rem 0 .25rem;
+  padding: .05rem 0 .05rem .7rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
 .ws-code {
   max-width: 100%;
   margin: .25rem 0 .35rem;

@@ -11,9 +11,11 @@
  * the escaped text. No HTML the author wrote can reach the page, and a tag is
  * drawn with what this reader may see of the record behind it.
  *
- * Two kinds of line make blocks of their own: a table written the way
- * Markdown writes one (a header row, a row of dashes, the rows) and a
- * checklist item ("- [ ] item"). Everything in a cell or an item is drawn as
+ * Some lines make blocks of their own: a table written the way Markdown
+ * writes one (a header row, a row of dashes, the rows), a checklist item
+ * ("- [ ] item"), and in the running text a list item ("- item", "1. item")
+ * or a quoted line ("> line"), drawn as <ul>, <ol> and <blockquote> with no
+ * attribute (ws_text_blocks()). Everything in a cell or an item is drawn as
  * the rest of the text is.
  *
  * @author      Erdal Güral (Kodpen)
@@ -230,6 +232,190 @@ function ws_table_alignments($line)
 }
 
 /**
+ * One line as an item of a list or a line of a quote: "- " or "* " (a
+ * bulleted item), a number and ". " (a numbered one), "> " or a lone ">"
+ * (a quote). A checklist item ("- [ ] ") and a rule ("* * *") are none of
+ * them. The writing box's twin is listLine() in
+ * assets/js/workspace_editor.js.
+ *
+ * @param string $line
+ * @return array|null kind (bullet | number | quote), number (0 unless
+ *                    numbered), text (the words after the mark)
+ */
+function ws_list_line($line)
+{
+    $line = (string) $line;
+
+    if (preg_match('/^[ \t]*>(?:[ \t]+(.*))?$/u', $line, $match)) {
+        return array('kind' => 'quote', 'number' => 0, 'text' => rtrim((string) ($match[1] ?? '')));
+    }
+
+    if (preg_match('/^[ \t]*[-*][ \t]\[[ xX]\](?:[ \t]|$)/', $line) || preg_match('/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/', $line)) {
+        return null;
+    }
+
+    if (preg_match('/^[ \t]*[-*][ \t]+(\S.*)$/u', $line, $match)) {
+        return array('kind' => 'bullet', 'number' => 0, 'text' => rtrim($match[1]));
+    }
+
+    if (preg_match('/^[ \t]*([0-9]{1,3})\.[ \t]+(\S.*)$/u', $line, $match)) {
+        return array('kind' => 'number', 'number' => (int) $match[1], 'text' => rtrim($match[2]));
+    }
+
+    return null;
+}
+
+/**
+ * The lines of a piece of running text grouped into what they are drawn
+ * as: text, a bulleted list, a numbered list or a quote.
+ *
+ * One level: an indented item is an item like the others. A numbered list
+ * starts at a line "1. " and goes on with every numbered line after it,
+ * whatever its number; a number that starts no list stays text, so a reader
+ * never sees a number other than the one written (an <ol> carries no
+ * start). Empty lines between two items of a list keep it one list, as
+ * Markdown's loose lists; between two lines of a quote they end it. The
+ * writing box's twin is parseBlocks() in assets/js/workspace_editor.js.
+ *
+ * @param string[] $lines
+ * @return array[] kind (text | bullet | number | quote), lines (each line
+ *                 of text as written; each item or quoted line without
+ *                 its mark)
+ */
+function ws_text_blocks($lines)
+{
+    $lines = array_values((array) $lines);
+    $count = count($lines);
+    $out = array();
+
+    for ($i = 0; $i < $count; $i++) {
+        $item = ws_list_line($lines[$i]);
+        $kind = $item ? $item['kind'] : 'text';
+
+        if (($kind === 'number') && ($item['number'] !== 1)) {
+            $kind = 'text';
+        }
+
+        if ($kind === 'text') {
+            $last = count($out) - 1;
+
+            if (($last >= 0) && ($out[$last]['kind'] === 'text')) {
+                $out[$last]['lines'][] = (string) $lines[$i];
+            } else {
+                $out[] = array('kind' => 'text', 'lines' => array((string) $lines[$i]));
+            }
+
+            continue;
+        }
+
+        $block = array('kind' => $kind, 'lines' => array($item['text']));
+
+        while (($i + 1) < $count) {
+            $next = ws_list_line($lines[$i + 1]);
+
+            if ($next && ($next['kind'] === $kind)) {
+                $block['lines'][] = $next['text'];
+                $i++;
+                continue;
+            }
+
+            // Empty lines between two items of the same list.
+            $skip = $i + 1;
+
+            while (($kind !== 'quote') && ($skip < $count) && (trim((string) $lines[$skip]) === '')) {
+                $skip++;
+            }
+
+            $after = (($skip > $i + 1) && ($skip < $count)) ? ws_list_line($lines[$skip]) : null;
+
+            if ($after && ($after['kind'] === $kind)) {
+                $i = $skip - 1;
+                continue;
+            }
+
+            break;
+        }
+
+        $out[] = $block;
+    }
+
+    return $out;
+}
+
+/**
+ * Running text as HTML with its lists and quotes drawn as <ul>, <ol>, <li>
+ * and <blockquote>, none of them with an attribute. Every word in them is
+ * the author's, drawn by the callbacks, which escape it first.
+ *
+ * @param string   $text
+ * @param callable $run    function (string $text): string, a run of text
+ * @param callable $inline function (string $text): string, an item, or the
+ *                         lines of a quote
+ * @return string
+ */
+function ws_text_blocks_html($text, $run, $inline)
+{
+    $html = '';
+
+    foreach (ws_text_blocks(preg_split('/\r\n|\r|\n/', (string) $text)) as $block) {
+        if ($block['kind'] === 'text') {
+            $html .= $run(implode("\n", $block['lines']));
+            continue;
+        }
+
+        if ($block['kind'] === 'quote') {
+            $quoted = trim(implode("\n", $block['lines']), "\n");
+            $html .= ($quoted !== '') ? '<blockquote>' . $inline($quoted) . '</blockquote>' : '';
+            continue;
+        }
+
+        $tag = ($block['kind'] === 'number') ? 'ol' : 'ul';
+        $html .= '<' . $tag . '>';
+
+        foreach ($block['lines'] as $line) {
+            $html .= '<li>' . $inline($line) . '</li>';
+        }
+
+        $html .= '</' . $tag . '>';
+    }
+
+    return $html;
+}
+
+/**
+ * The lists and quotes ws_text_blocks_html() drew, back as the lines a
+ * plain text writes them as ("- item", "1. item", "> line"); everything
+ * else as it was. Reads only that function's own markup.
+ *
+ * @param string $html
+ * @return string
+ */
+function ws_html_blocks_text($html)
+{
+    // \x03 marks where a block starts and ends; marks that meet are one
+    // line break.
+    $html = preg_replace_callback('#<(ul|ol)>(.*?)</\1>#s', function ($list) {
+        $items = array();
+
+        if (preg_match_all('#<li>(.*?)</li>#s', $list[2], $found)) {
+            foreach ($found[1] as $index => $item) {
+                $items[] = (($list[1] === 'ol') ? ($index + 1) . '. ' : '- ') . $item;
+            }
+        }
+
+        return "\x03" . implode("\n", $items) . "\x03";
+    }, (string) $html);
+
+    $html = preg_replace_callback('#<blockquote>(.*?)</blockquote>#s', function ($quote) {
+        return "\x03" . implode("\n", array_map(function ($line) {
+            return '> ' . $line;
+        }, preg_split('#<br\s*/?>\n?#', $quote[1]))) . "\x03";
+    }, $html);
+
+    return preg_replace("/\x03+/", "\n", $html);
+}
+
+/**
  * Running text as HTML: what ws_render_inline() draws, with the result of
  * every line that ends with "=" after it (includes/workspace/calc.php).
  *
@@ -287,7 +473,8 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
     $cards = function_exists('ws_form_cards_html') ? ws_form_cards_html($body, $refs) : '';
 
     // Running text only - nearly every message - is drawn in one piece.
-    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)) {
+    // A list item or a quoted line (ws_list_line()) needs the long way.
+    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s|[-*][ \t]+\S|1\.[ \t]+\S|>(?:[ \t]|$))/m', $body)) {
         return ws_render_text($body, $refs) . $cards;
     }
 
@@ -311,13 +498,23 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
     $row_pattern = '/^\s*\|.*\|\s*$/';
     $check_pattern = '/^\s*[-*]\s\[( |x|X)\]\s+(.+)$/u';
 
+    // The running text between two blocks, its lists and quotes drawn as
+    // such (ws_text_blocks_html()).
     $flush = function () use (&$text, &$html, $refs) {
         $chunk = trim(implode("\n", $text), "\n");
         $text = array();
 
-        if (trim($chunk) !== '') {
-            $html .= '<div class="ws-text">' . ws_render_text($chunk, $refs) . '</div>';
+        if (trim($chunk) === '') {
+            return;
         }
+
+        $html .= ws_text_blocks_html($chunk, function ($run) use ($refs) {
+            $run = trim($run, "\n");
+
+            return (trim($run) !== '') ? '<div class="ws-text">' . ws_render_text($run, $refs) . '</div>' : '';
+        }, function ($words) use ($refs) {
+            return ws_render_text($words, $refs);
+        });
     };
 
     // A title right above a block ("::: Title", includes/workspace/blocks.php)
@@ -471,12 +668,14 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
 }
 
 /**
- * A stored text as plain words, tags spelled out, for an excerpt, a device
- * banner or an e-mail line.
+ * A stored text as plain words, tags spelled out, for what an assistant or
+ * the API reads (text), an excerpt, a device banner or an e-mail line.
+ * Running text folds into one line; each item of a list and each line of a
+ * quote keeps a line of its own ("- item", "1. item", "> line"), so a list
+ * still reads as one. ws_plain_excerpt() folds those too.
  *
  * @param array  $viewer
  * @param string $body
- * @param int    $length
  * @param array|null $refs resolved already, to spare the queries
  * @return string
  */
@@ -506,12 +705,40 @@ function ws_plain_text($viewer, $body, $refs = null)
     $text = preg_replace('/^\s*:::\s+(.+)$/mu', '$1:', $text);
     $text = preg_replace('#\[([^\]\n]{1,300})\]\(((?:https?://|mailto:)[^\s()<>"]{1,1000})\)#i', '$1', $text);
     $text = preg_replace('/(?<![\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])/u', '$1', $text);
+    $text = str_replace(array('**', '`', '~~'), '', $text);
 
-    return trim(preg_replace('/\s+/u', ' ', str_replace(array('**', '`', '~~'), '', $text)));
+    // A list or a quote (ws_text_blocks()): an item or a quoted line a line,
+    // numbered as a reader sees it; the rest folds as before.
+    $pieces = array();
+
+    foreach (ws_text_blocks(preg_split('/\r\n|\r|\n/', $text)) as $block) {
+        if ($block['kind'] === 'text') {
+            $pieces[] = implode(' ', $block['lines']);
+            continue;
+        }
+
+        foreach ($block['lines'] as $index => $line) {
+            if (trim($line) !== '') {
+                $pieces[] = (($block['kind'] === 'number') ? ($index + 1) . '. ' : (($block['kind'] === 'quote') ? '> ' : '- ')) . $line;
+            }
+        }
+    }
+
+    $lines = array();
+
+    foreach ($pieces as $piece) {
+        $piece = trim(preg_replace('/\s+/u', ' ', $piece));
+
+        if ($piece !== '') {
+            $lines[] = $piece;
+        }
+    }
+
+    return implode("\n", $lines);
 }
 
 /**
- * The plain words cut to a length.
+ * The plain words on one line, cut to a length: a list reads "- a - b".
  *
  * @param array  $viewer
  * @param string $body
@@ -520,7 +747,7 @@ function ws_plain_text($viewer, $body, $refs = null)
  */
 function ws_plain_excerpt($viewer, $body, $length = 120)
 {
-    $text = ws_plain_text($viewer, $body);
+    $text = trim(preg_replace('/\s+/u', ' ', ws_plain_text($viewer, $body)));
 
     if (mb_strlen($text) > $length) {
         $text = rtrim(mb_substr($text, 0, $length - 1)) . '…';
