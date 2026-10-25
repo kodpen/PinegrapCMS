@@ -2280,6 +2280,17 @@ function test_forum_reply_widgets()
 		// moderators' open-or-close form, the page links, the watcher list.
 		$cancel = _test_forum_bound_items($tree, 'action', 'comment_reply_cancel');
 		pg_assert_true(count($cancel) === 1 && !$cancel[0][4] && in_array('is_replying', $cancel[0][1], true), $key . ': cancel, while replying');
+		// The Replying to box waits in the page with the hidden attribute
+		// for the browser to show it; a display utility (!important, after
+		// Bootstrap's [hidden] rule) would keep it on screen, empty.
+		foreach (_test_forum_widget_items($tree) as $item) {
+			if (_test_forum_flag($item[0]) !== 'is_replying' && !in_array('is_replying', $item[1], true)) {
+				continue;
+			}
+			foreach (_test_forum_classes($item[0]) as $c) {
+				pg_assert_same(0, preg_match('/^d-(none|inline|inline-block|block|grid|inline-grid|table|table-row|table-cell|flex|inline-flex)$/', $c), $key . ': no display utility in the Replying to box: ' . $c);
+			}
+		}
 		$small_forms = array(
 			'comment_watch_form' => array('comment_watch' => $thread['follow'], 'comment_unwatch' => $thread['unfollow']),
 			'comment_allow_new_form' => array('comment_close' => $thread['close'], 'comment_reopen' => $thread['reopen']),
