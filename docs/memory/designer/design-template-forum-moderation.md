@@ -30,4 +30,4 @@ description: Forum template moderators: dashboard counts and lists, topics desk,
 ## What must not change?
 - The fields status, board, kind, pinned, announcement, section, featured and doc_order, and their options: lists filter on these words and fail closed. Office fields keep "Hide from the visitor (staff only)".
 - A board, section or status is renamed in the visual editor together with the pages' links; then publish and set the new word on the old records.
-- Site search is rebuilt daily; Update Search Index (manager and above) takes a hidden topic out at once. Moderators sign with their user name: give them names members may see.
+- Site search is rebuilt daily; Update Search Index (manager and above) takes a hidden topic out at once. Moderators sign with the name box, prefilled from their profile ([[designed-page-comment-names]]).

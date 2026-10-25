@@ -779,8 +779,15 @@ function ws_api_flow_runs_start($params)
 
     ws_api_flows_ready();
 
-    $flow = ws_api_flow_or_404($viewer, $params['id']);
     $data = array_key_exists('token', $params) ? array('token' => (string) $params['token']) : array();
+
+    // A start retried with its token after the flow was paused: the person
+    // may no longer run the flow, but the run the token started is answered
+    // to them while they may read it, as before the pause, so the flow is
+    // taken as it is and the start check below answers that run. Any other
+    // flow they may not run is a 404, as always.
+    $retried = (ws_flow_for($viewer, (int) $params['id'], 'run') === null) ? ws_flow_run_for_token($viewer, (int) $params['id'], $data['token'] ?? '') : null;
+    $flow = $retried ? $retried['flow'] : ws_api_flow_or_404($viewer, $params['id']);
 
     // The checks ws_flow_run_start() makes, made first so that a dry run
     // meets the same refusals.
