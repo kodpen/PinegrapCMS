@@ -50,7 +50,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.
 - file-placement-rules.md: Where new PHP files go (root only for URL-called files, else includes/), the gate constant each include starts with, root files that stay, file-integrity scope.
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
-- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, mail_queue, backup, consent, privacy, audit, privacy_export, reviews, comments, widgets_comments*) and where each is described.
+- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to comments, widgets_comments*, wishlist) and the memory file that describes each.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - form-double-opt-in.md: Double opt-in for custom forms that add to a contact group (11.0.27): the switch, the signed stateless link, confirm_subscription.php, consent_log pending/granted, the global opt-out
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
