@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W14 part 1 #1602): legacy-layout power in system widgets by one finish pass: conditions, rows, lists, fields
+description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W14 part 1 #1602, W14 part 2 #1701): legacy-layout power in system widgets by one finish pass: conditions, rows, lists, fields
 ---
 
 ## What is built, and why?
@@ -30,7 +30,7 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
 - W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 Lists in the editor. W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
-- W14 part 1 done (#1602): typed fill, filters outside the shop kinds ([[widget-fill-filters]]); a format on an href binding is ignored. Part 2: the shop kinds, default text.
+- W14 part 1 done (#1602): typed fill, filters outside the shop kinds ([[widget-fill-filters]]); a format on an href binding is ignored. Part 2 done (#1701): the shop kinds, order view dates. Left: default text (owner question in #1701), the variant switch's raw values.
 - W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
