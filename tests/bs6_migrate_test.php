@@ -225,6 +225,7 @@ function test_bs6_scope_kind()
 		'assets/lib/bootstrap-6/js/bootstrap.js' => 'vendor',
 		'includes/dompdf/src/Dompdf.php' => 'vendor',
 		'assets/js/workspace.min.js' => 'vendor',
+		'assets/js/pg_ui.js' => 'adapter',
 		'images/logo.png' => 'other',
 	);
 
