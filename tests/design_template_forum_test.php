@@ -11,11 +11,15 @@
  * pages, the one vocabulary of boards, kinds, statuses, sections and tags,
  * the sample topics and guides, the archives read from the address
  * (?board=, ?tag=, ?member=, ?section=), the links that carry a record's
- * value, the unanswered lists, the replies and the other comments, the
- * e-mail pages, the template's own CSS, its landmarks and headings, its
- * Turkish words and the installer preview. Pure: the template file is read
- * as the template loader reads it, and the trees are walked, with no
- * database.
+ * value, the unanswered lists, the replies and the feedback drawn by the
+ * Comments widget (the threads of the topic and guide pages, the lists of
+ * recent replies on the home page, in My topics and on the moderators'
+ * dashboard, and the comment e-mails), the comments block the desk, inbox
+ * and report pages keep, the e-mail pages, the template's own CSS, its
+ * landmarks and headings, its Turkish words and the installer preview.
+ * Pure: the template file is read as the template loader reads it, the
+ * trees are walked and the comments widgets are drawn by the renderer's own
+ * steps, with no database.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -356,6 +360,248 @@ function _test_forum_loop_parent($tree)
 	return $find($tree);
 }
 
+// -- the comments widgets ------------------------------------------------------
+
+// Every node of a widget tree with what is around it: list of array(node,
+// the flags of its ancestors, their action bindings, their tags, whether it
+// sits in the loop area).
+function _test_forum_widget_items($node, $flags = array(), $actions = array(), $tags = array(), $in_loop = false)
+{
+	$out = array();
+	if (!is_array($node)) {
+		return $out;
+	}
+	$out[] = array($node, $flags, $actions, $tags, $in_loop);
+	if (_test_forum_flag($node) !== '') {
+		$flags[] = _test_forum_flag($node);
+	}
+	if (isset($node['props']['_bindings']['action']) && is_string($node['props']['_bindings']['action'])) {
+		$actions[] = $node['props']['_bindings']['action'];
+	}
+	if (_test_forum_tag($node) !== '') {
+		$tags[] = _test_forum_tag($node);
+	}
+	$in_loop = $in_loop || (isset($node['type']) && $node['type'] === 'loop_area');
+	if (!empty($node['children']) && is_array($node['children'])) {
+		foreach ($node['children'] as $child) {
+			$out = array_merge($out, _test_forum_widget_items($child, $flags, $actions, $tags, $in_loop));
+		}
+	}
+	return $out;
+}
+
+// The items of a widget tree whose binding $kind is $value.
+function _test_forum_bound_items($tree, $kind, $value)
+{
+	$out = array();
+	foreach (_test_forum_widget_items($tree) as $item) {
+		if (isset($item[0]['props']['_bindings'][$kind]) && $item[0]['props']['_bindings'][$kind] === $value) {
+			$out[] = $item;
+		}
+	}
+	return $out;
+}
+
+// The two threads: where each sits, its options and its words.
+function _test_forum_threads()
+{
+	return array(
+		'topic_replies' => array(
+			'page' => 'topic',
+			'view' => 'topic_view',
+			'options' => array('order' => 'oldest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 2, 'per_page' => 20),
+			'rating' => false,
+			'featured' => lang('Best answer'),
+			'empty' => lang('No replies yet. Be the first to answer.'),
+			'heading' => lang('Write a reply'),
+			'sign_in' => lang('Sign in to reply.'),
+			'submit' => lang('Post reply'),
+			'watch_box' => lang('Follow this topic: e-mail me its new replies.'),
+			'follow' => lang('Follow this topic'),
+			'unfollow' => lang('Stop following this topic'),
+			'close' => lang('Stop new replies'),
+			'reopen' => lang('Allow new replies'),
+		),
+		'doc_feedback' => array(
+			'page' => 'doc',
+			'view' => 'doc_view',
+			'options' => array('order' => 'newest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 1, 'per_page' => 10),
+			'rating' => true,
+			'featured' => lang('Featured'),
+			'empty' => lang('No feedback yet. Tell the next reader whether this guide helped you.'),
+			'heading' => lang('Rate this guide'),
+			'sign_in' => lang('Sign in to rate this guide.'),
+			'submit' => lang('Send feedback'),
+			'watch_box' => lang('Follow this guide: e-mail me its new feedback.'),
+			'follow' => lang('Follow this guide'),
+			'unfollow' => lang('Stop following this guide'),
+			'close' => lang('Stop new feedback'),
+			'reopen' => lang('Allow new feedback'),
+		),
+	);
+}
+
+// The three lists of recent replies: page, what they show, how many, in
+// which order.
+function _test_forum_recent_lists()
+{
+	return array(
+		'home_latest_replies' => array('home', 'published', 5, 'newest'),
+		'my_replies' => array('my_topics', 'mine', 10, 'newest'),
+		'staff_replies_waiting' => array('staff', 'pending', 10, 'oldest'),
+	);
+}
+
+// Draws a comments widget tree for a visitor, by the renderer's own steps
+// (_render_system_widget_comments()), with a session of its own that is put
+// back after.
+function _test_forum_draw_thread($tree, $data)
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+	pg_comments_drop_mode_bindings($tree, 'thread');
+	_pg_inject_messages_node($tree, 'add_comment');
+	pg_comments_stamp_form_messages($tree);
+	$html = pg_comments_widget_draw($tree, $data);
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+	return $html;
+}
+
+// What the renderer hands a thread's draw: the visitor ('member', 'staff'
+// or 'out', signed out on a page that asks to sign in), the thread's rows in
+// the widget's order and layout (pg_comments_widget_order()) and its words.
+// Rows: comment 5 first (the oldest top-level comment), then comment 1, the
+// featured answer, with a chain of replies under it, each answering the one
+// before (2 answers 1, 3 answers 2, 4 answers 3).
+function _test_forum_thread_data($key, $who)
+{
+	$thread = _test_forum_threads()[$key];
+	$cfg = _test_forum_tpl()['widgets'][$key]['config'];
+	$member = ($who !== 'out');
+	$staff = ($who === 'staff');
+	$raw = array(
+		array('id' => '5', 'parent_id' => '0', 'published' => '1', 'featured' => '0', 'name' => 'Sam Whitaker', 'message' => 'An older answer'),
+		array('id' => '1', 'parent_id' => '0', 'published' => '1', 'featured' => '1', 'name' => 'Priya Raman', 'message' => 'The answer that solved it'),
+		array('id' => '2', 'parent_id' => '1', 'published' => '1', 'featured' => '0', 'name' => 'Jordan Lee', 'message' => 'Thanks, that worked'),
+		array('id' => '3', 'parent_id' => '2', 'published' => '1', 'featured' => '0', 'name' => 'Marcus Bell', 'message' => 'Glad to hear it'),
+		array('id' => '4', 'parent_id' => '3', 'published' => '1', 'featured' => '0', 'name' => 'Elena Ortiz', 'message' => 'Same here'),
+	);
+	$by_id = array();
+	foreach ($raw as $r) {
+		$by_id[(int) $r['id']] = $r;
+	}
+	$facts = array(
+		'allow_new' => true,
+		'signed_in' => $member,
+		'require_login' => true,
+		'count' => count($raw),
+		'featured_mode' => 'first',
+		'has_featured' => true,
+		'staff' => $staff,
+		'name_mode' => $staff ? 'typed' : 'fixed',
+		'rating_on' => $thread['rating'],
+		'files_on' => false,
+		'watching_on' => true,
+		'pages' => 1,
+		'manage_watchers' => $staff,
+	);
+	$flags = pg_comments_widget_thread_flags($facts);
+	$state = array('is_staff' => $staff, 'sees_pending' => $staff, 'own_ids' => array(), 'rating_on' => $thread['rating'], 'badge_label' => '');
+	$rows = array();
+	foreach (pg_comments_widget_order($raw, $cfg) as $entry) {
+		$id = $entry['id'];
+		$parent = ($entry['parent_id'] > 0) ? $by_id[$entry['parent_id']] : null;
+		$rows[] = array(
+			'id' => $id,
+			'flags' => pg_comments_widget_row_flags($entry['row'], $entry['featured'], $state,
+				array('depth' => $entry['depth'], 'quoted' => $entry['quoted'], 'replies' => $entry['replies'])),
+			'values' => array(
+				'__comment_id' => (string) $id,
+				'__comment_anchor' => 'c-' . $id,
+				'__comment_name' => $entry['row']['name'],
+				'__comment_staff_name' => $staff ? 'user' . $id : '',
+				'__comment_message_html' => $entry['row']['message'],
+				'__comment_date' => '2 hours ago',
+				'__comment_badge' => '',
+				'__comment_status' => '',
+				'__comment_edit_url' => $staff ? '/software/edit_comment.php?id=' . $id : '',
+				'__comment_url' => '/topic?r=abc&comment=' . $id . '#c-' . $id,
+				'__comment_reply_url' => $member ? '/topic?r=abc&reply_to=' . $id . '#software_add_comment' : '',
+				'__comment_parent_id' => $parent ? (string) $parent['id'] : '',
+				'__comment_parent_name' => $parent ? $parent['name'] : '',
+				'__comment_parent_url' => $parent ? '#c-' . $parent['id'] : '',
+				'__comment_quote' => ($parent && $entry['quoted']) ? 'Quoting ' . $parent['message'] : '',
+				'__comment_depth' => (string) $entry['depth'],
+				'__comment_reply_count' => (string) $entry['replies'],
+			),
+			'datetime' => '',
+			'depth' => $entry['depth'],
+			'reply_ok' => $member,
+		);
+	}
+	$sections = array('comment_captcha' => '', 'comment_rating_input' => '', 'comment_publish' => '', 'comment_watchers' => '', 'comment_pagination' => '');
+	if ($thread['rating'] && $flags['can_comment']) {
+		$sections['comment_rating_input'] = pg_comments_rating_input_html(5);
+	}
+	if ($staff) {
+		$sections['comment_publish'] = '<div class="pg-test-publish">Publish now</div>';
+		$sections['comment_watchers'] = '<div class="pg-comment-watchers">The list</div>';
+	}
+
+	return array(
+		'widget_id' => 7,
+		'thread_flags' => $flags,
+		'thread_values' => array(
+			'__comments_title' => '5 replies',
+			'__comments_count' => '5',
+			'__comments_label' => 'Reply',
+			'__comments_label_plural' => 'Replies',
+			'__comments_intro' => 'Be kind.',
+			'__comments_closed_message' => 'Closed for now.',
+			'__comments_show_all_url' => '',
+			'__comments_show_featured_url' => '',
+			'__login_url' => $flags['must_sign_in'] ? '/login?send_to=%2Ftopic%23software_add_comment' : '',
+			'__comment_author_name' => ($member && !$staff) ? 'Casey Morgan' : '',
+			'__reply_to_name' => '',
+			'__watcher_count_text' => '2 people get an e-mail when a reply is added.',
+		),
+		'rows' => $rows,
+		'form' => array(
+			'can_comment' => $flags['can_comment'],
+			'action_url' => '/software/add_comment.php',
+			'hidden_html' => $flags['can_comment'] ? pg_comments_form_hidden_html('', '/topic', 5, 'submitted_form', 3, 0) : '',
+			'multipart' => false,
+			'label_slot' => 'pg_comment_form_label',
+			'watcher_checked' => true,
+			'publish_default' => $staff ? 'now' : '',
+			'state' => array('files_on' => false, 'watcher_box' => ($member && !$staff), 'name_mode' => $facts['name_mode'],
+				'rating_on' => $thread['rating'], 'captcha_on' => false, 'can_publish' => $staff),
+		),
+		'controls' => array(
+			'can_reply' => $member,
+			'replying' => false,
+			'cancel_url' => '/topic?r=abc#software_add_comment',
+			'share_copied' => 'Link copied.',
+			'share_prompt' => 'Copy the link to this comment:',
+			'can_watch' => $flags['is_watching'] || $flags['not_watching'],
+			'is_watcher' => false,
+			'watch_action_url' => '/software/add_or_remove_watcher.php',
+			'watch_hidden_html' => pg_comments_small_form_hidden_html('', '/topic', 5, 'submitted_form', 3, 'add'),
+			'is_staff' => $staff,
+			'allow_new' => true,
+			'allow_action_url' => '/software/allow_or_disallow_new_comments.php',
+			'allow_hidden_html' => pg_comments_small_form_hidden_html('', '/topic', 5, 'submitted_form', 3, 'disallow'),
+		),
+		'sections' => $sections,
+		'slots' => array('pg_comment_form_message' => '', 'pg_comment_form_name' => '', 'pg_comment_form_name_options' => '', 'pg_comment_form_label' => 'reply'),
+		'edit_chips' => $staff,
+	);
+}
+
 // -- forms and views -----------------------------------------------------------
 
 // The form widget each form page owns: its {{tab:}} => the widget's key.
@@ -557,6 +803,9 @@ function test_forum_template_loads()
 	}
 	pg_assert_same(lang('Community Forum & Docs'), $tpl['name'], 'name');
 	pg_assert_same(1, preg_match('/^\d+\.\d+\.\d+$/', $tpl['version']), 'version x.y.z');
+	// 1.1.0: replies and feedback on the Comments widget, the lists of
+	// recent replies and the comment e-mails drawn by it.
+	pg_assert_same('1.1.0', $tpl['version'], 'version 1.1.0');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -867,7 +1116,8 @@ function test_forum_my_topics_lists_followed_topics()
 	$json = json_encode($pages['my_topics']['tree'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	pg_assert_contains(json_encode(lang('Topics you follow'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'its heading');
 	pg_assert_contains('"aria-labelledby","value":"pf-followed"', $json, 'the section is named by its heading');
-	pg_assert_contains(json_encode(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'the card says followed topics appear here');
+	pg_assert_contains(json_encode(lang('To follow someone else\'s topic, choose Follow this topic under its replies, or tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'the card says how to follow a topic and that followed topics appear here');
+	pg_assert_contains(json_encode(lang('The topics you started, the topics you follow and your latest replies.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'the lead names the member\'s replies too');
 }
 
 // -- 5. the forms --------------------------------------------------------------
@@ -1736,19 +1986,20 @@ function test_forum_private_fields_stay_private()
 
 // Replies, feedback, messages and notes are comments of their record pages:
 // each label a singular noun (the platform puts it in plural and into
-// sentences), signed in, placed as a comments block in the page's own tree
-// right under its record, and headed by the record view while it shows a
-// record.
+// sentences), signed in, placed right under the page's record and headed by
+// the record view while it shows a record. The topic and guide pages draw
+// theirs with the Comments widget; the desk, the inbox and the report page
+// keep the comments block. Every page keeps its own comment settings.
 function test_forum_comments()
 {
 	$tpl = _test_forum_tpl();
 	$pages = _test_forum_pages();
 	$want = array(
-		'topic' => array(lang('reply'), 'topic_view', lang('Replies')),
-		'doc' => array(lang('Feedback'), 'doc_view', lang('Feedback')),
-		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators')),
-		'conversation' => array(lang('Message'), 'conversation', lang('Replies')),
-		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes')),
+		'topic' => array(lang('reply'), 'topic_view', lang('Replies'), 'topic_replies'),
+		'doc' => array(lang('Feedback'), 'doc_view', lang('Feedback'), 'doc_feedback'),
+		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators'), ''),
+		'conversation' => array(lang('Message'), 'conversation', lang('Replies'), ''),
+		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes'), ''),
 	);
 	$tr = _test_forum_tr();
 	$found = array();
@@ -1759,15 +2010,24 @@ function test_forum_comments()
 		$found[] = $key;
 		$c = $p['comments'];
 		pg_assert_true(isset($want[$key]), $key . ' takes comments');
+		if (!isset($want[$key])) {
+			continue;
+		}
 		pg_assert_same($want[$key][0], $c['label'], $key . ' comment label');
 		pg_assert_true(isset($tr[$c['label']]), $key . ' label has a Turkish value');
 		pg_assert_same(true, $c['login'], $key . ' comments need sign-in');
 		pg_assert_same(true, $c['allow_new'], $key . ' takes new comments');
 		pg_assert_same(true, $c['show_date'], $key . ' dates them');
+		// The keys the editor's export writes: no attachments, and the name
+		// comes from the profile (no choice of name).
+		pg_assert_true(array_key_exists('attachments', $c) && $c['attachments'] === false, $key . ' takes no attachments');
+		pg_assert_true(array_key_exists('select_name', $c) && $c['select_name'] === false, $key . ' lets nobody choose a name');
+		$settings = pg_design_template_page_comments($c, array());
+		pg_assert_same(array(0, 0), array($settings['pg_comments_attachments'], $settings['pg_comments_select_name']), $key . ': both off in the page settings');
 
-		// The comments block sits in the page's own tree, right after the
-		// record view, never inside a widget.
+		// What the page places, in order: widgets, comments blocks.
 		$order = array();
+		$blocks = 0;
 		foreach (_test_forum_nodes($p['tree']) as $n) {
 			if (isset($n['type'], $n['props']['templateWidget']) && $n['type'] === 'shared_ref') {
 				$order[] = $n['props']['templateWidget'];
@@ -1776,10 +2036,40 @@ function test_forum_comments()
 				$order[] = '#comments';
 			}
 		}
-		$at = array_search('#comments', $order, true);
-		pg_assert_true($at !== false, $key . ' places a comments block');
-		pg_assert_same($want[$key][1], $at > 0 ? $order[$at - 1] : null, $key . ': the comments come right under the record');
-		pg_assert_same(1, count(array_keys($order, '#comments', true)), $key . ': one comments block');
+		foreach (_test_forum_nodes(_test_forum_resolve($p['tree'])) as $n) {
+			$blocks += (isset($n['props']['regionType']) && $n['props']['regionType'] === 'comments_block') ? 1 : 0;
+		}
+		$threads = array();
+		foreach ($order as $placed) {
+			if ($placed !== '#comments' && isset($tpl['widgets'][$placed]['config']['regionType']) && $tpl['widgets'][$placed]['config']['regionType'] === 'comments') {
+				$threads[] = $placed;
+			}
+		}
+		if ($want[$key][3] !== '') {
+			// The Comments widget, right under the record, and no block.
+			pg_assert_same(0, $blocks, $key . ': no comments block anywhere');
+			pg_assert_same(array($want[$key][3]), $threads, $key . ': one Comments widget');
+			$at = array_search($want[$key][3], $order, true);
+			pg_assert_same($want[$key][1], ($at !== false && $at > 0) ? $order[$at - 1] : null, $key . ': the widget comes right under the record');
+			if (isset($tpl['widgets'][$want[$key][3]])) {
+				pg_assert_same('comments', pg_sw_widget_kind($tpl['widgets'][$want[$key][3]]['config']), $key . ': a thread, not a list');
+			}
+			// The words over the form and in place of it while closed.
+			foreach (array('message' => 'pg_comments_message', 'closed_message' => 'pg_comments_closed_message') as $word => $setting) {
+				$text = isset($c[$word]) ? (string) $c[$word] : '';
+				pg_assert_true($text !== '' && mb_strlen($text, 'UTF-8') <= 255, $key . ' ' . $word . ' is set and fits its column');
+				pg_assert_true(isset($tr[$text]) && $tr[$text] !== '', $key . ' ' . $word . ' has a Turkish value');
+				pg_assert_same($text, $settings[$setting], $key . ' ' . $word . ' reaches the page settings');
+			}
+		} else {
+			// The comments block, right under the record.
+			$at = array_search('#comments', $order, true);
+			pg_assert_true($at !== false, $key . ' places a comments block');
+			pg_assert_same($want[$key][1], ($at !== false && $at > 0) ? $order[$at - 1] : null, $key . ': the comments come right under the record');
+			pg_assert_same(1, count(array_keys($order, '#comments', true)), $key . ': one comments block');
+			pg_assert_same(1, $blocks, $key . ': and no other');
+			pg_assert_same(array(), $threads, $key . ': no Comments widget');
+		}
 
 		// The heading over them leaves with a missing record.
 		$headed = false;
@@ -1801,9 +2091,13 @@ function test_forum_comments()
 	pg_assert_true(trim($c['email_subject']) !== '', 'the reply e-mail has a subject');
 	pg_assert_false(isset($c['notify_email']), 'replies do not mail the moderators');
 	pg_assert_true(empty($c['rating']), 'replies take no rating');
+	pg_assert_same(lang('Your reply is signed with the name in your profile and appears at once.'), isset($c['message']) ? $c['message'] : null, 'the line over the reply form');
+	pg_assert_same(lang('This topic takes no new replies.'), isset($c['closed_message']) ? $c['closed_message'] : null, 'a closed topic says so');
 	// Feedback: a rating, held for the moderators, who hear of it.
 	$c = $pages['doc']['comments'];
 	pg_assert_same(array(true, false, '{{site_email}}', '{{tab:email_reply}}'), array($c['rating'], $c['auto_publish'], $c['notify_email'], $c['email_page']), 'feedback is rated and held');
+	pg_assert_same(lang('Your feedback is signed with the name in your profile. A moderator reads it before it appears.'), isset($c['message']) ? $c['message'] : null, 'the line over the feedback form');
+	pg_assert_same(lang('This guide takes no new feedback.'), isset($c['closed_message']) ? $c['closed_message'] : null, 'a closed guide says so');
 	// The desk: messages mailed to the author and the moderators.
 	$c = $pages['doc_submission']['comments'];
 	pg_assert_same(array(true, '{{site_email}}', '{{tab:email_doc_message}}'), array($c['auto_publish'], $c['notify_email'], $c['email_page']), 'the desk\'s messages');
@@ -1823,15 +2117,23 @@ function test_forum_topic_page()
 	$order = array();
 	foreach (_test_forum_nodes($pages['topic']['tree']) as $n) {
 		if (isset($n['type'], $n['props']['templateWidget']) && $n['type'] === 'shared_ref' && isset($tpl['widgets'][$n['props']['templateWidget']])
-			&& $tpl['widgets'][$n['props']['templateWidget']]['config']['regionType'] === 'form_item_view') {
+			&& in_array($tpl['widgets'][$n['props']['templateWidget']]['config']['regionType'], array('form_item_view', 'comments'), true)) {
 			$order[] = $n['props']['templateWidget'];
 		}
 		if (isset($n['props']['regionType']) && $n['props']['regionType'] === 'comments_block') {
 			$order[] = '#comments';
 		}
 	}
-	pg_assert_same(array('topic_view', '#comments', 'topic_aside'), $order, 'the topic, its replies, then the column about it');
+	pg_assert_same(array('topic_view', 'topic_replies', 'topic_aside'), $order, 'the topic, its replies, then the column about it');
 	pg_assert_false(isset($tpl['widgets']['topic_aside']['config']['title_field']), 'only the first view names the page');
+	// The replies sit in the main column's own box, left out of a print.
+	$box = null;
+	foreach (_test_forum_nodes_in_context($pages['topic']['tree']) as $item) {
+		if (isset($item[0]['props']['templateWidget']) && $item[0]['props']['templateWidget'] === 'topic_replies') {
+			$box = $item[1];
+		}
+	}
+	pg_assert_true(is_array($box) && in_array('pf-replies', $box, true) && in_array('d-print-none', $box, true), 'the replies sit in .pf-replies, out of a print');
 
 	// The column: the facts, a way to the board, Report a post with the
 	// topic's address, and the guidelines; with no topic, ways to find one.
@@ -1856,6 +2158,570 @@ function test_forum_topic_page()
 	foreach (array('"kind"', '"status"', '"title"', '"submitter_name"', '"body"', '"attachment"', '"tags"', '"__edit_url"', '"can_edit"') as $token) {
 		pg_assert_contains($token, $json, 'the topic binds ' . $token);
 	}
+}
+
+// The threads of the topic and guide pages: Comments widgets of their own,
+// in the template's layout, with the options a forum needs (replies under
+// the post they answer, the best answer first, pages of permalinks), the
+// add-comment form, the watch box and the moderators' controls, each control
+// bound where the renderer wires it.
+function test_forum_reply_widgets()
+{
+	$tpl = _test_forum_tpl();
+	foreach (_test_forum_threads() as $key => $thread) {
+		pg_assert_true(isset($tpl['widgets'][$key]), $key . ' exists');
+		if (!isset($tpl['widgets'][$key])) {
+			continue;
+		}
+		$w = $tpl['widgets'][$key];
+		$cfg = $w['config'];
+		pg_assert_same($thread['page'], $w['page'], $key . ' page');
+		pg_assert_same(lang('comments'), $w['slug'], $key . ' slug');
+		pg_assert_true(is_array($w['tree']), $key . ' ships its tree, not the starter');
+		pg_assert_same('comments', $cfg['regionType'], $key . ' is a comments widget');
+		pg_assert_false(isset($cfg['mode']), $key . ' has no mode: a thread');
+		pg_assert_same('comments', pg_sw_widget_kind($cfg), $key . ' kind');
+		pg_assert_same($thread['options'], pg_comments_widget_options($cfg), $key . ' options');
+		foreach (array('max_depth', 'per_page') as $number) {
+			pg_assert_same($thread['options'][$number], $cfg[$number], $key . ' ' . $number . ' is a whole number, as the editor writes it');
+		}
+		$tree = $w['tree'];
+		if (!is_array($tree)) {
+			continue;
+		}
+
+		// One add-comment form, its Messages node first.
+		$forms = _test_forum_bound_items($tree, 'action', 'comment_form');
+		pg_assert_same(1, count($forms), $key . ': one comment form');
+		if (count($forms) !== 1) {
+			continue;
+		}
+		$form = $forms[0][0];
+		pg_assert_same('form', _test_forum_tag($form), $key . ': the form is a form');
+		pg_assert_same('can_comment', _test_forum_flag($form), $key . ': drawn for who may comment');
+		pg_assert_false($forms[0][4], $key . ': the form is outside the loop');
+		$first = isset($form['children'][0]) ? $form['children'][0] : null;
+		pg_assert_same(array('content', 'messages'), array(isset($first['type']) ? $first['type'] : null, isset($first['props']['contentType']) ? $first['props']['contentType'] : null), $key . ': the form\'s Messages node comes first');
+
+		// Its controls, each on its tag, inside the form, named by its label.
+		$ids = array();
+		foreach (_test_forum_nodes($form) as $n) {
+			if (!empty($n['props']['id'])) {
+				$ids[$n['props']['id']] = $n;
+			}
+		}
+		foreach (array('comment_message' => 'textarea', 'comment_name' => 'input', 'comment_name_type' => 'select', 'comment_file' => 'input', 'comment_watcher' => 'input') as $value => $tag) {
+			$items = _test_forum_bound_items($tree, 'value', $value);
+			pg_assert_same(1, count($items), $key . ' binds ' . $value . ' once');
+			if (count($items) !== 1) {
+				continue;
+			}
+			$control = $items[0][0];
+			pg_assert_same($tag, _test_forum_tag($control), $key . ' ' . $value . ' is a ' . $tag);
+			pg_assert_true(in_array('comment_form', $items[0][2], true), $key . ' ' . $value . ' is in the form');
+			$id = isset($control['props']['id']) ? $control['props']['id'] : '';
+			pg_assert_true($id !== '', $key . ' ' . $value . ' has an id');
+			$labelled = false;
+			foreach (_test_forum_nodes($form) as $n) {
+				if (_test_forum_tag($n) === 'label' && (_test_forum_attrs($n)['for'] ?? '') === $id) {
+					$labelled = true;
+				}
+			}
+			pg_assert_true($labelled, $key . ' ' . $value . ' has its label');
+		}
+		$watcher = _test_forum_bound_items($tree, 'value', 'comment_watcher');
+		if ($watcher) {
+			pg_assert_same('checkbox', _test_forum_attrs($watcher[0][0])['type'] ?? '', $key . ': the watch box is a check box');
+			pg_assert_true(in_array('watching_on', $watcher[0][1], true), $key . ': the watch box shows while watching is on');
+		}
+		foreach (array('comment_name' => 'name_is_typed', 'comment_name_type' => 'name_is_chosen', 'comment_file' => 'files_on') as $value => $flag) {
+			$items = _test_forum_bound_items($tree, 'value', $value);
+			pg_assert_true($items && in_array($flag, $items[0][1], true), $key . ' ' . $value . ' shows when ' . $flag);
+		}
+		pg_assert_contains(json_encode($thread['watch_box'], JSON_UNESCAPED_UNICODE), json_encode($form, JSON_UNESCAPED_UNICODE), $key . ': the watch box says what following does');
+		foreach (array('comment_captcha', 'comment_publish', 'comment_rating_input') as $section) {
+			$items = _test_forum_bound_items($tree, 'section', $section);
+			$want = ($section === 'comment_rating_input') ? ($thread['rating'] ? 1 : 0) : 1;
+			pg_assert_same($want, count($items), $key . ' places ' . $section . ' ' . $want . ' time(s)');
+			foreach ($items as $item) {
+				pg_assert_true(in_array('comment_form', $item[2], true), $key . ' ' . $section . ' is in the form');
+			}
+		}
+		$submit = _test_forum_bound_items($tree, 'action', 'comment_submit');
+		pg_assert_same(1, count($submit), $key . ': one send button');
+		if ($submit) {
+			pg_assert_same(array('semantic', 'button'), array($submit[0][0]['type'], _test_forum_tag($submit[0][0])), $key . ': it is a button');
+			pg_assert_true(in_array('comment_form', $submit[0][2], true), $key . ': in the form');
+			pg_assert_same($thread['submit'], $submit[0][0]['props']['text'], $key . ': its words');
+		}
+
+		// In each comment: reply and share on links, Edit for the
+		// moderators, the message, the quote of the post it answers.
+		foreach (array('comment_reply' => lang('Reply'), 'comment_share' => lang('Share')) as $action => $text) {
+			$items = _test_forum_bound_items($tree, 'action', $action);
+			pg_assert_same(1, count($items), $key . ' places ' . $action . ' once');
+			if ($items) {
+				pg_assert_true($items[0][4], $key . ' ' . $action . ' is in the comment');
+				pg_assert_same(array('content', 'link'), array($items[0][0]['type'], $items[0][0]['props']['contentType'] ?? ''), $key . ' ' . $action . ' is a link');
+				pg_assert_same($text, $items[0][0]['props']['text'], $key . ' ' . $action . ' words');
+			}
+		}
+		$edit = _test_forum_bound_items($tree, 'href', '__comment_edit_url');
+		pg_assert_true(count($edit) === 1 && $edit[0][4] && (_test_forum_flag($edit[0][0]) === 'comment_can_edit' || in_array('comment_can_edit', $edit[0][1], true)), $key . ': Edit for whoever may edit, in the comment');
+		$message = _test_forum_bound_items($tree, 'text', '__comment_message_html');
+		pg_assert_true(count($message) === 1 && $message[0][4], $key . ': the message in the comment');
+		$quote = _test_forum_bound_items($tree, 'text', '__comment_quote');
+		pg_assert_true(count($quote) === 1 && $quote[0][4] && in_array('comment_has_quote', $quote[0][1], true), $key . ': the quote, shown when the comment quotes one');
+		$featured = 0;
+		foreach (_test_forum_widget_items($tree) as $item) {
+			if (_test_forum_flag($item[0]) === 'comment_is_featured') {
+				$featured++;
+				pg_assert_contains(json_encode($thread['featured'], JSON_UNESCAPED_UNICODE), json_encode($item[0], JSON_UNESCAPED_UNICODE), $key . ': the featured mark says ' . $thread['featured']);
+			}
+		}
+		pg_assert_same(1, $featured, $key . ': one featured mark');
+
+		// Around the comments: cancel while replying, the watch form, the
+		// moderators' open-or-close form, the page links, the watcher list.
+		$cancel = _test_forum_bound_items($tree, 'action', 'comment_reply_cancel');
+		pg_assert_true(count($cancel) === 1 && !$cancel[0][4] && in_array('is_replying', $cancel[0][1], true), $key . ': cancel, while replying');
+		$small_forms = array(
+			'comment_watch_form' => array('comment_watch' => $thread['follow'], 'comment_unwatch' => $thread['unfollow']),
+			'comment_allow_new_form' => array('comment_close' => $thread['close'], 'comment_reopen' => $thread['reopen']),
+		);
+		foreach ($small_forms as $action => $buttons) {
+			$items = _test_forum_bound_items($tree, 'action', $action);
+			pg_assert_true(count($items) === 1 && !$items[0][4] && _test_forum_tag($items[0][0]) === 'form', $key . ': ' . $action . ' outside the comments');
+			foreach ($buttons as $button => $text) {
+				$b = _test_forum_bound_items($tree, 'action', $button);
+				pg_assert_true(count($b) === 1 && _test_forum_tag($b[0][0]) === 'button' && in_array($action, $b[0][2], true), $key . ': ' . $button . ' is a button of ' . $action);
+				pg_assert_same($text, $b ? $b[0][0]['props']['text'] : null, $key . ' ' . $button . ' words');
+			}
+		}
+		$staff = _test_forum_bound_items($tree, 'action', 'comment_allow_new_form');
+		pg_assert_true($staff && in_array('is_staff', $staff[0][1], true), $key . ': the open-or-close form is the moderators\'');
+		foreach (array('comment_pagination', 'comment_watchers') as $section) {
+			$items = _test_forum_bound_items($tree, 'section', $section);
+			pg_assert_true(count($items) === 1 && !$items[0][4] && !in_array('comment_form', $items[0][2], true), $key . ' places ' . $section . ' outside the comments and the form');
+		}
+
+		// One comment's card: an article of its own, drawn for every comment.
+		$found = _test_forum_loop_parent($tree);
+		pg_assert_true($found !== null && count($found[1]['children']) === 1, $key . ': one card repeats');
+		if ($found !== null && $found[1]['children']) {
+			$card = $found[1]['children'][0];
+			pg_assert_same('article', _test_forum_tag($card), $key . ': the card is an article');
+			pg_assert_true(in_array('pf-reply', _test_forum_classes($card), true), $key . ': the card is a .pf-reply');
+			pg_assert_same('', _test_forum_flag($card), $key . ': the card carries no flag');
+		}
+		foreach (_test_forum_nodes($tree) as $n) {
+			foreach (_test_forum_classes($n) as $c) {
+				pg_assert_false(strpos($c, 'btn-outline-') === 0, $key . ': no outlined button: ' . $c);
+			}
+			pg_assert_false(isset($n['props']['href']) && $n['props']['href'] === '#software_add_comment', $key . ': no fixed link to the form');
+		}
+		pg_assert_contains(json_encode($thread['empty'], JSON_UNESCAPED_UNICODE), json_encode($tree, JSON_UNESCAPED_UNICODE), $key . ': says so while there is none');
+		pg_assert_contains(json_encode($thread['sign_in'], JSON_UNESCAPED_UNICODE), json_encode($tree, JSON_UNESCAPED_UNICODE), $key . ': asks to sign in');
+		pg_assert_contains(json_encode($thread['heading'], JSON_UNESCAPED_UNICODE), json_encode($tree, JSON_UNESCAPED_UNICODE), $key . ': heads its form');
+	}
+}
+
+// The threads drawn as the renderer draws them, for a member, a visitor who
+// is not signed in and a moderator: the replies under the post they answer,
+// the deepest one quoting it, the best answer first, the form, the watch box
+// and the moderators' controls.
+function test_forum_reply_widgets_draw()
+{
+	$tpl = _test_forum_tpl();
+	foreach (_test_forum_threads() as $key => $thread) {
+		if (!isset($tpl['widgets'][$key]) || !is_array($tpl['widgets'][$key]['tree'])) {
+			pg_assert_true(false, $key . ' is drawn');
+			continue;
+		}
+		$tree = $tpl['widgets'][$key]['tree'];
+
+		$data = _test_forum_thread_data($key, 'member');
+		$html = _test_forum_draw_thread($tree, $data);
+		pg_assert_contains('<form id="software_add_comment"', $html, $key . ': the member\'s form');
+		pg_assert_contains('name="message"', $html, $key . ': the message box');
+		pg_assert_contains('name="page_id" value="5"', $html, $key . ': the hidden fields');
+		pg_assert_contains('id="c-1" data-pg-comment-depth="0"', $html, $key . ': the answer at the top level');
+		pg_assert_contains('id="c-2" data-pg-comment-depth="1"', $html, $key . ': a reply under it');
+		$replies = 0;
+		$quoted = 0;
+		foreach ($data['rows'] as $row) {
+			$replies += ($row['depth'] > 0) ? 1 : 0;
+			$quoted += $row['flags']['comment_has_quote'] ? 1 : 0;
+		}
+		pg_assert_same($thread['options']['max_depth'], max(array_column($data['rows'], 'depth')), $key . ': no reply deeper than ' . $thread['options']['max_depth']);
+		pg_assert_true($quoted >= 1, $key . ': a reply at the cap quotes the post it answers');
+		pg_assert_same($replies, substr_count($html, 'pf-reply-rule'), $key . ': the rule marks each reply, and no top-level comment');
+		pg_assert_same($quoted, substr_count($html, h(lang('In reply to'))), $key . ': a reply at the cap names the post it answers');
+		pg_assert_same($quoted, substr_count($html, 'Quoting '), $key . ': with its words');
+		pg_assert_true(strpos($html, 'id="c-1"') < strpos($html, 'id="c-5"'), $key . ': the best answer before the older post');
+		pg_assert_same(1, substr_count($html, '>' . h($thread['featured']) . '<'), $key . ': ' . $thread['featured'] . ' on the best answer only');
+		pg_assert_contains('data-pg-comment-reply="1"', $html, $key . ': Reply on the answer');
+		pg_assert_same(count($data['rows']), substr_count($html, 'data-pg-comment-share=""'), $key . ': Share on every post');
+		pg_assert_contains('id="software_watcher"', $html, $key . ': the watch form');
+		pg_assert_contains(h($thread['follow']), $html, $key . ': Follow');
+		pg_assert_false(strpos($html, h($thread['unfollow'])), $key . ': not Stop following, for who does not follow');
+		pg_assert_contains(h($thread['watch_box']), $html, $key . ': the box under the form');
+		pg_assert_false(strpos($html, 'software_allow_or_disallow_new_comments'), $key . ': no moderators\' form for a member');
+		pg_assert_false(strpos($html, 'edit_comment.php'), $key . ': no Edit for a member');
+		pg_assert_contains(h(lang('Posting as')), $html, $key . ': the member posts under the profile\'s name');
+		pg_assert_contains('Casey Morgan', $html, $key . ': which the form shows');
+		pg_assert_same($thread['rating'], strpos($html, 'name="rating"') !== false, $key . ': stars ' . ($thread['rating'] ? 'asked' : 'not asked'));
+		pg_assert_false(strpos($html, '^^'), $key . ': no token left');
+
+		$out = _test_forum_draw_thread($tree, _test_forum_thread_data($key, 'out'));
+		pg_assert_false(strpos($out, '<form'), $key . ': no form until signed in');
+		pg_assert_contains(h($thread['sign_in']), $out, $key . ': asks to sign in');
+		pg_assert_same(1, preg_match('#<a\b[^>]*href="/login\?send_to=%2Ftopic%23software_add_comment"[^>]*>#', $out, $m), $key . ': the sign-in link');
+		pg_assert_contains('rel="nofollow"', isset($m[0]) ? $m[0] : '', $key . ': which search engines do not follow');
+		pg_assert_false(strpos($out, 'data-pg-comment-reply='), $key . ': no Reply for a visitor');
+		pg_assert_same(5, substr_count($out, 'data-pg-comment-share=""'), $key . ': Share still works');
+		pg_assert_false(strpos($out, '^^'), $key . ': no token left');
+
+		$staff = _test_forum_draw_thread($tree, _test_forum_thread_data($key, 'staff'));
+		pg_assert_contains('id="software_allow_or_disallow_new_comments"', $staff, $key . ': the moderators\' form');
+		pg_assert_contains(h($thread['close']), $staff, $key . ': ' . $thread['close']);
+		pg_assert_false(strpos($staff, h($thread['reopen'])), $key . ': not ' . $thread['reopen'] . ' while open');
+		pg_assert_contains('href="/software/edit_comment.php?id=1"', $staff, $key . ': Edit on each post');
+		pg_assert_false(strpos($staff, 'pg-edit-chip'), $key . ': no second pencil beside the design\'s Edit');
+		pg_assert_contains('>user1<', $staff, $key . ': the account behind the post');
+		pg_assert_contains('Publish now', $staff, $key . ': the publish options');
+		pg_assert_contains('The list', $staff, $key . ': the watcher list');
+		pg_assert_false(strpos($staff, '^^'), $key . ': no token left');
+	}
+}
+
+// The lists of recent replies: the home page's published ones, the member's
+// own on My topics and the ones awaiting approval on the dashboard, each
+// reading the topic and guide pages, in a layout with nothing a list does
+// not draw.
+function test_forum_recent_lists()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	$off = pg_comments_mode_off_bindings('recent');
+	foreach (_test_forum_recent_lists() as $key => $want) {
+		pg_assert_true(isset($tpl['widgets'][$key]), $key . ' exists');
+		if (!isset($tpl['widgets'][$key])) {
+			continue;
+		}
+		$w = $tpl['widgets'][$key];
+		$cfg = $w['config'];
+		pg_assert_same('comments_recent', pg_sw_widget_kind($cfg), $key . ' is a list of recent comments');
+		pg_assert_same($want[0], $w['page'], $key . ' page');
+		pg_assert_same(lang('recent-comments'), $w['slug'], $key . ' slug');
+		pg_assert_true(is_array($w['tree']), $key . ' ships its tree, not the starter');
+		pg_assert_same(array('{{tab:topic}}', '{{tab:doc}}'), $cfg['recent_page_ids'], $key . ' reads the topic and guide pages');
+		$resolved = $cfg;
+		$resolved['recent_page_ids'] = array('11', '12');
+		pg_assert_same(array('show' => $want[1], 'page_ids' => array(11, 12), 'limit' => $want[2], 'order' => $want[3]), pg_comments_recent_options($resolved), $key . ' options');
+		pg_assert_false(isset($cfg['filters']) || isset($cfg['recent_filters']), $key . ': no record filters');
+
+		// The source pages: tab keys when the template opens, their ids once
+		// published.
+		$filled = _pg_tpl_fill($cfg, array('tabs' => array('topic' => 'tplx_topic', 'doc' => 'tplx_doc')));
+		pg_assert_same(array('tab:tplx_topic', 'tab:tplx_doc'), $filled['recent_page_ids'], $key . ': the editor\'s tabs when the template opens');
+		require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+		$published = pg_designer_resolve_tab_values($filled, array('tplx_topic' => 31, 'tplx_doc' => 32));
+		pg_assert_same(array(31, 32), pg_comments_recent_options($published)['page_ids'], $key . ': their ids once published');
+
+		$tree = $w['tree'];
+		if (!is_array($tree)) {
+			continue;
+		}
+		foreach (_test_forum_widget_items($tree) as $item) {
+			$n = $item[0];
+			pg_assert_false(isset($n['props']['contentType']) && $n['props']['contentType'] === 'messages', $key . ': no Messages node');
+			pg_assert_false(in_array(_test_forum_tag($n), array('form', 'input', 'select', 'textarea', 'button'), true), $key . ': no form or control');
+			$b = isset($n['props']['_bindings']) && is_array($n['props']['_bindings']) ? $n['props']['_bindings'] : array();
+			foreach (array('text', 'href', 'src') as $prop) {
+				pg_assert_false(isset($b[$prop]) && in_array($b[$prop], $off['tokens'], true), $key . ': no thread token: ' . (isset($b[$prop]) ? $b[$prop] : ''));
+			}
+			pg_assert_false(isset($b['action']) && in_array($b['action'], $off['actions'], true), $key . ': no thread control');
+			pg_assert_false(isset($b['section']) && in_array($b['section'], $off['sections'], true), $key . ': no thread section');
+			pg_assert_false(isset($b['value']), $key . ': no form value');
+			pg_assert_false(isset($b['eo_visible_if']) && in_array($b['eo_visible_if'], $off['flags'], true), $key . ': no thread flag: ' . (isset($b['eo_visible_if']) ? $b['eo_visible_if'] : ''));
+		}
+		$titles = 0;
+		foreach (_test_forum_bound_items($tree, 'href', '__comment_url') as $item) {
+			if (isset($item[0]['props']['_bindings']['text']) && $item[0]['props']['_bindings']['text'] === '__comment_thread_title') {
+				$titles += $item[4] ? 1 : 0;
+			}
+		}
+		pg_assert_same(1, $titles, $key . ': each reply links its topic or guide, at the reply');
+		pg_assert_same(1, count(_test_forum_bound_items($tree, 'text', '__comment_name')), $key . ': who wrote it');
+		pg_assert_same(1, count(_test_forum_bound_items($tree, 'text', '__comment_excerpt')), $key . ': the start of its words');
+		$edit = _test_forum_bound_items($tree, 'href', '__comment_edit_url');
+		if ($key === 'staff_replies_waiting') {
+			pg_assert_true(count($edit) === 1 && $edit[0][4] && (_test_forum_flag($edit[0][0]) === 'comment_can_edit' || in_array('comment_can_edit', $edit[0][1], true)), $key . ': Publish or edit, for whoever may edit');
+		} else {
+			pg_assert_same(0, count($edit), $key . ': no Edit link');
+		}
+		$status = _test_forum_bound_items($tree, 'text', '__comment_status');
+		pg_assert_same(($key === 'home_latest_replies') ? 0 : 1, count($status), $key . ': the status of a reply awaiting approval');
+		$empty = 0;
+		foreach (_test_forum_widget_items($tree) as $item) {
+			$empty += (_test_forum_flag($item[0]) === 'no_comments' && !$item[4]) ? 1 : 0;
+		}
+		pg_assert_same(1, $empty, $key . ': says so while there is none');
+
+		// Placed on its page.
+		pg_assert_true(in_array($key, _test_forum_placed(_test_forum_resolve($pages[$want[0]]['tree'])), true), $key . ' is placed on ' . $want[0]);
+	}
+	pg_assert_same('registration', $pages['my_topics']['folder'], 'My replies is a members\' page');
+	pg_assert_same('private', $pages['staff']['folder'], 'the replies awaiting approval are the moderators\'');
+	foreach (array('topic', 'doc') as $source) {
+		pg_assert_true(isset($pages[$source]['comments']), $source . ' takes comments');
+	}
+
+	// On the dashboard: a section of its own and its jump link.
+	$json = json_encode($pages['staff']['tree'], JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"href":"#replies-waiting"', $json, 'the dashboard\'s jump list leads to it');
+	$section = null;
+	foreach (_test_forum_nodes_in_context($pages['staff']['tree']) as $item) {
+		if (isset($item[0]['props']['templateWidget']) && $item[0]['props']['templateWidget'] === 'staff_replies_waiting') {
+			$section = $item;
+		}
+	}
+	$ids = array();
+	foreach (_test_forum_nodes($pages['staff']['tree']) as $n) {
+		if (!empty($n['props']['id']) && $n['props']['id'] === 'replies-waiting') {
+			$ids[] = $n;
+		}
+	}
+	pg_assert_same(1, count($ids), 'the dashboard\'s section replies-waiting');
+	pg_assert_true($section !== null && $ids && strpos(json_encode($ids[0]), '"templateWidget":"staff_replies_waiting"') !== false, 'holds the list');
+	pg_assert_contains(json_encode(lang('Replies awaiting approval'), JSON_UNESCAPED_UNICODE), json_encode($ids ? $ids[0] : null, JSON_UNESCAPED_UNICODE), 'under its heading');
+	$desk = 0;
+	foreach (_test_forum_nodes($pages['staff']['tree']) as $n) {
+		$desk += (_test_forum_tag($n) === 'section' && isset(_test_forum_attrs($n)['aria-labelledby']) && strpos(_test_forum_attrs($n)['aria-labelledby'], 'pf-') === 0
+			&& substr(_test_forum_attrs($n)['aria-labelledby'], -6) === '-title' && !empty($n['props']['id']) && $n['props']['id'] !== 'how-moderation-works') ? 1 : 0;
+	}
+	pg_assert_same(8, $desk, 'eight lists on the dashboard\'s desk');
+
+	// On My topics: the section named by its heading, after the followed
+	// topics.
+	$json = json_encode($pages['my_topics']['tree'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('"aria-labelledby","value":"pf-my-replies"', $json, 'My replies is named by its heading');
+	pg_assert_contains('"id":"pf-my-replies"', $json, 'which is there');
+	pg_assert_contains(json_encode(lang('Your replies'), JSON_UNESCAPED_UNICODE), $json, 'its heading');
+	$placed = _test_forum_placed(_test_forum_resolve($pages['my_topics']['tree']));
+	pg_assert_true(array_search('my_topics_followed', $placed, true) < array_search('my_replies', $placed, true), 'after the topics the member follows');
+
+	// On the home page: a card in the side column.
+	$card = null;
+	foreach (_test_forum_nodes_in_context($pages['home']['tree']) as $item) {
+		if (isset($item[0]['props']['templateWidget']) && $item[0]['props']['templateWidget'] === 'home_latest_replies') {
+			$card = $item[1];
+		}
+	}
+	pg_assert_true(is_array($card) && in_array('pf-card', $card, true), 'Latest replies sits in a card');
+	pg_assert_contains(json_encode(lang('Latest replies'), JSON_UNESCAPED_UNICODE), json_encode($pages['home']['tree'], JSON_UNESCAPED_UNICODE), 'under its heading');
+}
+
+// The comment e-mails: the reply e-mail and the guide message e-mail place a
+// Comments widget that draws the comment the e-mail names in the template's
+// layout, its View or Reply link bound to the comment, before the System
+// region that keeps the fixed markup for an e-mail the widget does not draw.
+function test_forum_email_comment()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	pg_assert_true(isset($tpl['widgets']['email_comment']), 'the e-mail comment widget exists');
+	if (!isset($tpl['widgets']['email_comment'])) {
+		return;
+	}
+	$w = $tpl['widgets']['email_comment'];
+	pg_assert_same('email_reply', $w['page'], 'its page');
+	pg_assert_same(lang('comments'), $w['slug'], 'its slug');
+	pg_assert_same('comments', pg_sw_widget_kind($w['config']), 'a thread widget, drawn for one comment');
+	pg_assert_same(array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0), pg_comments_widget_options($w['config']), 'its options');
+	pg_assert_true(is_array($w['tree']), 'it ships its tree');
+	if (!is_array($w['tree'])) {
+		return;
+	}
+	foreach (_test_forum_nodes($w['tree']) as $n) {
+		pg_assert_false(isset($n['props']['contentType']) && $n['props']['contentType'] === 'messages', 'no Messages node in an e-mail');
+		pg_assert_false(in_array(_test_forum_tag($n), array('form', 'input', 'select', 'textarea', 'button'), true), 'no form, field or button');
+		pg_assert_false(isset($n['props']['_bindings']['action']), 'no control');
+	}
+	foreach (array('email_reply', 'email_doc_message') as $key) {
+		$order = array();
+		foreach (_test_forum_nodes($pages[$key]['tree']) as $n) {
+			if (isset($n['type'], $n['props']['templateWidget']) && $n['type'] === 'shared_ref') {
+				$order[] = $n['props']['templateWidget'];
+			}
+			if (isset($n['type'], $n['props']['regionType']) && $n['type'] === 'region') {
+				$order[] = '#' . $n['props']['regionType'];
+			}
+		}
+		$at = array_search('#system', $order, true);
+		pg_assert_true($at !== false, $key . ' keeps its System region');
+		pg_assert_same('email_comment', ($at !== false && $at > 0) ? $order[$at - 1] : null, $key . ': the widget right before it');
+	}
+
+	// Drawn as an e-mail draws it (_pg_comments_widget_email()): the comment,
+	// the post it answers and an absolute link to it.
+	$page = array(
+		'page_id' => '5', 'page_name' => 'topic', 'page_folder' => '1', 'page_type' => 'standard', 'comments' => '1', 'comments_label' => 'reply',
+		'comments_message' => '', 'comments_rating' => '0', 'comments_allow_new_comments' => '1', 'comments_disallow_new_comment_message' => '',
+		'comments_automatic_publish' => '1', 'comments_allow_user_to_select_name' => '0', 'comments_require_login_to_comment' => '1',
+		'comments_allow_file_attachments' => '0', 'comments_show_submitted_date_and_time' => '1', 'comments_administrator_email_to_email_address' => '',
+		'comments_administrator_email_conditional_administrators' => '0', 'comments_submitter_email_page_id' => '9', 'comments_watcher_email_page_id' => '9',
+		'comments_watchers_managed_by_submitter' => '0',
+	);
+	$comment = array(
+		'id' => '12', 'page_id' => '5', 'item_type' => 'submitted_form', 'item_id' => '3', 'name' => 'Jordan Lee', 'message' => 'That fixed it, thank you.',
+		'file_name' => null, 'file_size' => null, 'published' => '1', 'publish_date_and_time' => '0000-00-00 00:00:00', 'publish_cancel' => '0',
+		'featured' => '0', 'rating' => '0', 'verified_order_id' => '0', 'seller_reply' => '', 'seller_reply_at' => '0', 'username' => 'jordan',
+		'user_role' => '3', 'user_id' => '4', 'user_badge' => '0', 'user_badge_label' => '', 'created_timestamp' => '1761300000', 'parent_id' => '9',
+	);
+	$parent = array_merge($comment, array('id' => '9', 'name' => 'Priya Raman', 'message' => 'Turn sync off and on again.', 'parent_id' => '0'));
+	pg_assert_true(pg_comments_email_decision($comment, $page, 9), 'the topic\'s e-mail page draws its comment');
+	$draw = function ($tree) use ($comment, $parent, $page, $w) {
+		$saved = isset($_SESSION) ? $_SESSION : null;
+		$_SESSION = array();
+		$ctx = pg_sw_render_context(array('email' => true, 'page_id' => 9, 'comment_id' => 12));
+		$data = pg_comments_email_draw_data($comment, $parent, $page, $w['config'], array(
+			'widget_id' => 4,
+			'allow_new' => true,
+			'reply_ok' => true,
+			'base' => 'https://example.com/topic',
+			'query' => '?r=abc',
+			'site' => 'https://example.com/',
+			'dates' => array('date' => 'the date', 'seller_reply_date' => ''),
+			'badge_label' => '',
+		));
+		pg_comments_email_strip($tree);
+		pg_comments_drop_mode_bindings($tree, 'thread');
+		$html = pg_comments_widget_draw($tree, $data);
+		pg_sw_render_context($ctx);
+		if ($saved === null) {
+			unset($_SESSION);
+		} else {
+			$_SESSION = $saved;
+		}
+		return array($html, $data['rows'][0]['values']['__comment_url']);
+	};
+	list($html, $url) = $draw($w['tree']);
+	pg_assert_same('https://example.com/topic?r=abc&comments=all&comment=12#c-12', $url, 'the comment\'s address');
+	pg_assert_same(1, substr_count($html, ' id="c-12"'), 'the comment, once');
+	pg_assert_contains('href="' . h($url) . '"', $html, 'View or Reply opens it');
+	pg_assert_contains(h(lang('View or Reply')), $html, 'its words');
+	pg_assert_contains('Turn sync off and on again.', $html, 'the post it answers');
+	pg_assert_contains('Priya Raman', $html, 'who wrote that one');
+	pg_assert_contains('That fixed it, thank you.', $html, 'the comment\'s words');
+	pg_assert_contains('the date', $html, 'its date');
+	pg_assert_false(strpos($html, '<form'), 'no form');
+	pg_assert_false(strpos($html, '^^'), 'no token left');
+	pg_assert_true(pg_comments_email_drew($html, 12, $url), 'the e-mail takes the widget\'s comment');
+
+	// Without the link to the comment the e-mail keeps its fixed markup,
+	// with its own View or Reply link.
+	$bare = $w['tree'];
+	$found = _test_forum_loop_parent($bare);
+	$links = 0;
+	foreach (_test_forum_bound_items($bare, 'href', '__comment_url') as $item) {
+		$links += $item[4] ? 1 : 0;
+		pg_assert_true($item[1] === array() && _test_forum_flag($item[0]) === '', 'no flag over the link to the comment');
+	}
+	pg_assert_same(1, $links, 'one link to the comment, in the comment');
+	$strip = function (&$node) use (&$strip) {
+		if (empty($node['children']) || !is_array($node['children'])) {
+			return;
+		}
+		$kept = array();
+		foreach ($node['children'] as $child) {
+			if (strpos(json_encode($child), '"href":"__comment_url"') !== false && strpos(json_encode($child), 'loop_area') === false) {
+				continue;
+			}
+			$strip($child);
+			$kept[] = $child;
+		}
+		$node['children'] = $kept;
+	};
+	$strip($bare);
+	list($without) = $draw($bare);
+	pg_assert_contains(' id="c-12"', $without, 'the comment without its link');
+	pg_assert_false(pg_comments_email_drew($without, 12, $url), 'is not taken: the fixed markup goes out');
+	pg_assert_true($found !== null, 'the card repeats in a loop');
+}
+
+// Every flag a comments widget of the template shows a part for is one its
+// mode sets: a flag the mode leaves out is off, so the part would never show
+// (fail closed).
+function test_forum_widget_flags_fit_their_mode()
+{
+	$tpl = _test_forum_tpl();
+	$row = array_keys(pg_comments_widget_row_flags(array('id' => '1'), false, array()));
+	$thread = array_merge(array_keys(pg_comments_widget_thread_flags(array())), $row);
+	$recent = array_merge(array_keys(pg_comments_recent_flags(array())), $row, array_keys(pg_comments_recent_row_flags('page')));
+	$off = array('comments' => pg_comments_mode_off_bindings('thread')['flags'], 'comments_recent' => pg_comments_mode_off_bindings('recent')['flags']);
+	$checked = array();
+	foreach ($tpl['widgets'] as $key => $w) {
+		if (!isset($w['config']['regionType']) || $w['config']['regionType'] !== 'comments') {
+			continue;
+		}
+		$kind = pg_sw_widget_kind($w['config']);
+		pg_assert_true(is_array($w['tree']), $key . ' ships its tree');
+		if (!is_array($w['tree'])) {
+			continue;
+		}
+		$checked[$key] = $kind;
+		foreach (_test_forum_nodes($w['tree']) as $n) {
+			$flag = _test_forum_flag($n);
+			if ($flag === '') {
+				continue;
+			}
+			pg_assert_true(in_array($flag, ($kind === 'comments_recent') ? $recent : $thread, true), $key . ': ' . $flag . ' is a flag of its mode');
+			pg_assert_false(in_array($flag, $off[$kind], true), $key . ': ' . $flag . ' is not left out by its mode');
+		}
+	}
+	ksort($checked);
+	pg_assert_same(array('doc_feedback' => 'comments', 'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent',
+		'my_replies' => 'comments_recent', 'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the six comments widgets');
+}
+
+// What the FAQ says about replies: how to follow a topic, how a best answer
+// is shown, where feedback waits, how to answer one reply or point at it.
+function test_forum_faq_on_replies()
+{
+	$pages = _test_forum_pages();
+	$answers = array();
+	$groups = array();
+	$walk = function ($node, $group) use (&$walk, &$answers, &$groups) {
+		if (!is_array($node)) {
+			return;
+		}
+		if (isset($node['props']['_label']) && $node['props']['_label'] === lang('Posting and Replying')) {
+			$group = 'posting';
+		}
+		if (!empty($node['props']['id']) && preg_match('/^pf-faq-(\d+)$/', $node['props']['id'], $m)) {
+			$texts = array();
+			foreach (_test_forum_nodes($node) as $n) {
+				if (isset($n['props']['contentType']) && $n['props']['contentType'] === 'paragraph') {
+					$texts[] = $n['props']['text'];
+				}
+			}
+			$answers[(int) $m[1]] = implode(' ', $texts);
+			$groups[(int) $m[1]] = $group;
+		}
+		foreach (!empty($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+			$walk($child, $group);
+		}
+	};
+	$walk($pages['faq']['tree'], '');
+	pg_assert_same(lang('Yes: every reply to a topic you started comes to you by e-mail. To follow another topic, choose Follow this topic under its replies, or tick the box under the reply form when you reply: its new replies then come to you too.'), $answers[3] ?? null, 'question 3: following a topic');
+	pg_assert_same(lang('The question of the topic has an answer. When a reply solves your question, say so in a reply: a moderator marks the topic as solved and shows that reply first, as the best answer.'), $answers[5] ?? null, 'question 5: the best answer');
+	pg_assert_same(lang('Feedback on guides appears once a moderator has read it. Until then you find it under Your replies in My topics, marked Awaiting approval. Questions get the quickest answer as a topic in the forum.'), $answers[12] ?? null, 'question 12: feedback waiting');
+	pg_assert_same(lang('Choose Reply under it: your answer goes right under it, and deep in a thread it quotes it. Share copies a link that opens the topic at that reply: paste it in a reply, or in a report to the moderators.'), $answers[13] ?? null, 'question 13: answering one reply');
+	pg_assert_same('posting', $groups[13] ?? null, 'question 13 is about posting and replying');
+	pg_assert_contains(json_encode(lang('How do I answer one reply, or point someone to it?'), JSON_UNESCAPED_UNICODE), json_encode($pages['faq']['tree'], JSON_UNESCAPED_UNICODE), 'its question');
+	pg_assert_same(13, count($answers), 'thirteen questions');
 }
 
 // -- 16. installer preview ----------------------------------------------------
@@ -1884,6 +2750,16 @@ function test_forum_preview_html()
 	pg_assert_contains(h(lang('How can we help?')), $html, 'home has its h1');
 	pg_assert_contains(h(lang('Forum')), pg_design_template_preview_html('pinegrap-forum', 'forum'), 'the forum has its h1');
 	pg_assert_contains(h(lang('Boards')), pg_design_template_preview_html('pinegrap-forum', 'board'), 'the board page has its h1');
+	// The Comments widgets ship their trees: home keeps its Latest replies
+	// and the e-mails their comment card in the preview, which leaves out a
+	// page with a widget the editor builds.
+	pg_assert_contains(h(lang('Latest replies')), $html, 'home has its latest replies');
+	pg_assert_contains('pf-compact', $html, 'drawn as a short list');
+	pg_assert_same(11, count(pg_design_template_email_pages($tpl)), 'the eleven e-mails stay in the preview');
+	pg_assert_contains(h(lang('View or Reply')), pg_design_template_preview_html('pinegrap-forum', 'email_reply'), 'the reply e-mail shows its comment card');
+	pg_assert_contains(h(lang('View or Reply')), pg_design_template_preview_html('pinegrap-forum', 'email_doc_message'), 'so does the guide message e-mail');
+	$kinds = pg_design_template_starter_kinds($tpl, true);
+	pg_assert_false(in_array('comments', $kinds, true) || in_array('comments_recent', $kinds, true), 'no comments widget is left to the editor\'s starter');
 
 	foreach (array_keys(pg_design_template_email_pages($tpl)) as $key) {
 		$html = pg_design_template_preview_html('pinegrap-forum', $key);
@@ -1981,6 +2857,15 @@ function test_forum_css()
 		pg_assert_same(1, preg_match('/' . preg_quote($raised, '/') . '\{[^}]*position:relative;z-index:2/', $plain), $raised . ' is raised over the row\'s link');
 	}
 	pg_assert_contains('.pf-replies .alert a:not(.btn){color:var(--bs-alert-link-color)}', $own, 'notice links in the replies are readable');
+	// A reply: its rule, its body, a deeper reply's indent and the 44px
+	// targets of its Reply, Share and Edit links.
+	foreach (array('pf-reply', 'pf-reply-rule', 'pf-reply-body', 'pf-reply-actions') as $c) {
+		pg_assert_true(isset($used[$c]), $c . ' is used');
+		pg_assert_same(1, preg_match('/(^|\n)\.' . preg_quote($c, '/') . '\{/', $own), $c . ' has a rule of its own');
+	}
+	pg_assert_contains('.pf-reply[data-pg-comment-depth="2"]{', $own, 'a reply two deep is indented by the depth the server writes');
+	pg_assert_contains('@media (min-width:768px){.pf-reply[data-pg-comment-depth="2"]{', $own, 'more from md');
+	pg_assert_same(1, preg_match('/\.pf-reply-actions a\{[^}]*min-height:2\.75rem/', $own), 'a reply\'s links are 44px targets');
 	pg_assert_contains('.pf-topic.pg-edit-host,', $own, 'a row with the moderators\' pencil makes room for it');
 	// A guide card's pencil goes into the column around it: the card makes
 	// room for it too.
@@ -2326,7 +3211,7 @@ function test_forum_search_sections()
 		pg_assert_true(isset($marked[$id]), 'the search section #' . $id . ' is placed');
 	}
 	pg_assert_same('contact', isset($marked['contact-details']) ? $marked['contact-details'] : null, 'the contact details are found by their layer name');
-	for ($n = 1; $n <= 12; $n++) {
+	for ($n = 1; $n <= 13; $n++) {
 		pg_assert_same('faq', isset($marked['pf-faq-' . $n . '-item']) ? $marked['pf-faq-' . $n . '-item'] : null, 'question ' . $n . ' of the FAQ is a search section');
 	}
 	pg_assert_same('home', $marked['boards'], 'the boards of the front page');
@@ -2346,7 +3231,7 @@ function test_forum_moderation()
 	$staff = _test_forum_resolve($pages['staff']['tree']);
 	$placed = _test_forum_placed($staff);
 	foreach (array('staff_count_open', 'staff_count_unanswered', 'staff_count_solved', 'staff_count_hidden', 'staff_count_reports', 'staff_count_guides',
-		'staff_reports_waiting', 'staff_guides_waiting', 'staff_new_topics', 'staff_unanswered', 'staff_popular', 'staff_solved', 'staff_hidden') as $key) {
+		'staff_reports_waiting', 'staff_guides_waiting', 'staff_replies_waiting', 'staff_new_topics', 'staff_unanswered', 'staff_popular', 'staff_solved', 'staff_hidden') as $key) {
 		pg_assert_true(in_array($key, $placed, true), 'the dashboard places ' . $key);
 	}
 	$w = $tpl['widgets'];
@@ -2408,7 +3293,8 @@ function test_forum_moderation()
 	pg_assert_true(strlen($note) > 2000, 'the note is found');
 	foreach (array('private', 'registration', 'public', 'Content and Forms', 'Reach the data submitted through forms', 'Users',
 		'Hidden', 'Solved', 'Pinned', 'Announcement', 'Comments', 'doc_order', 'two digits', 'Update Search Index', 'profile',
-		'first and last name', 'Member', 'name box', 'My Profile', 'Hide from the visitor (staff only)') as $words) {
+		'first and last name', 'Member', 'name box', 'My Profile', 'Hide from the visitor (staff only)', 'Featured', 'Stop new replies',
+		'Latest replies', 'Replies awaiting approval') as $words) {
 		pg_assert_contains($words, $note, 'the note says ' . $words);
 	}
 	// A member's reply is signed with the profile's name, never the login
@@ -2430,7 +3316,7 @@ function test_forum_moderation()
 			$turkish .= ' ' . $tr[$n['props']['text']];
 		}
 	}
-	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users', 'My Profile') as $label) {
+	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users', 'My Profile', 'Featured') as $label) {
 		pg_assert_true(isset($tr[$label]) && mb_stripos($turkish, $tr[$label], 0, 'UTF-8') !== false, 'the Turkish note says ' . (isset($tr[$label]) ? $tr[$label] : $label));
 	}
 }
@@ -2494,7 +3380,20 @@ function test_forum_turkish()
 			pg_assert_same(0, preg_match('/(^|[^a-zçğıöşü])rehber/iu', preg_replace('/personel rehber/iu', '', $value)), 'the team list is no guide: ' . $key);
 		}
 	}
-	pg_assert_false(in_array('Reply', $literals, true), 'no lang(\'Reply\'): its Turkish is a verb');
+	// lang('Reply') is a verb in Turkish (Yanıtla): only the link that
+	// answers a post says it, never a comment label (the platform would
+	// print "Yanıtla ekle").
+	$verbs = 0;
+	foreach (_test_forum_all_nodes() as $n) {
+		if (isset($n['props']['text']) && $n['props']['text'] === lang('Reply')) {
+			$verbs++;
+			pg_assert_same('comment_reply', isset($n['props']['_bindings']['action']) ? $n['props']['_bindings']['action'] : null, 'Reply answers a post');
+		}
+	}
+	pg_assert_true($verbs >= 2, 'the reply links say Reply');
+	foreach (_test_forum_pages() as $key => $p) {
+		pg_assert_false(isset($p['comments']['label']) && $p['comments']['label'] === lang('Reply'), $key . ': no comment label is the verb');
+	}
 
 	$seen = array();
 	foreach (_test_forum_pages() as $key => $p) {
