@@ -1096,11 +1096,22 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             return '';
         };
 
+    // Each render runs inside its widget's scope, in which a node with a
+    // value condition is drawn between markers; the finish pass resolves
+    // them on the widget's own output (widgets_finish.php).
     return preg_replace_callback(
         '/<!--pg-system-widget:(\d+)-->/',
-        function ($m) use ($render, $email) {
-            $out = $render($m);
-            return $email ? $out : pg_img_responsive_html(pg_img_fluid_alias($out));
+        function ($m) use ($render, $email, $configs) {
+            $sid   = (int)$m[1];
+            $kind  = (isset($configs[$sid]['regionType']) && is_string($configs[$sid]['regionType'])) ? $configs[$sid]['regionType'] : '';
+            $scope = pg_sw_finish_open(array('sid' => $sid, 'kind' => $kind, 'email' => $email));
+            try {
+                $out = $render($m);
+            } finally {
+                pg_sw_finish_close();
+            }
+            if ($email) return pg_sw_finish_widget_html($out, $scope);
+            return pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));
         },
         $html
     );
@@ -4430,6 +4441,24 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     if (!empty($node['props']['smartActive'])) {
         $node['props']['smartActive'] = false;
         return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
+    }
+
+    // A value condition (_bindings.show_if, _bindParams.show_if) is wiring,
+    // never a prop. Inside a widget render the node is drawn between the
+    // markers the finish pass keeps or cuts (widgets_finish.php); one that
+    // cannot be evaluated draws nothing. Outside a widget the node draws as
+    // it is, so no saved page body ever holds a marker.
+    if (isset($node['props']['_bindings']['show_if'])) {
+        $cond = pg_sw_cond_spec($node['props']);
+        unset($node['props']['_bindings']['show_if']);
+        if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
+            unset($node['props']['_bindParams']['show_if']);
+        }
+        if ($cond !== null && pg_sw_finish_active()
+            && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+            if ($cond === false) return '';
+            return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $cond);
+        }
     }
 
     $pad = str_repeat('    ', $indent);
