@@ -57,6 +57,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-conversion-pack.md: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, rating tokens, wishlist core, heart, Favourites page done): back-in-stock, bundles later
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
+- tr-json-split.md: Plan (2026-10-25, not started): split includes/local/tr.json into sorted shard files so two PRs adding keys stop conflicting; tools to add and resolve keys; loader, readers and check_lang
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
