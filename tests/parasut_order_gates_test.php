@@ -126,16 +126,16 @@ function test_parasut_order_gates_erp_invoice_record()
 {
 	$rows = parasut_order_gates_test_erp_rows();
 
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041'), parasut_order_erp_invoice_record($rows['parasut']));
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358662', 'number' => 'SF2026000042'), parasut_order_erp_invoice_record($rows['parasut column only']));
-	pg_assert_same(array('state' => 'unsure', 'id' => '', 'number' => 'SF2026000043'), parasut_order_erp_invoice_record($rows['unsure']));
-	pg_assert_same(array('state' => 'other', 'id' => '', 'number' => 'SF2026000044'), parasut_order_erp_invoice_record($rows['other']));
-	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => ''), parasut_order_erp_invoice_record($rows['paper']));
-	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => ''), parasut_order_erp_invoice_record(null));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041', 'edoc_status' => 'accepted'), parasut_order_erp_invoice_record($rows['parasut']));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358662', 'number' => 'SF2026000042', 'edoc_status' => 'created'), parasut_order_erp_invoice_record($rows['parasut column only']));
+	pg_assert_same(array('state' => 'unsure', 'id' => '', 'number' => 'SF2026000043', 'edoc_status' => 'error'), parasut_order_erp_invoice_record($rows['unsure']));
+	pg_assert_same(array('state' => 'other', 'id' => '', 'number' => 'SF2026000044', 'edoc_status' => 'sent'), parasut_order_erp_invoice_record($rows['other']));
+	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => ''), parasut_order_erp_invoice_record($rows['paper']));
+	pg_assert_same(array('state' => 'none', 'id' => '', 'number' => '', 'edoc_status' => ''), parasut_order_erp_invoice_record(null));
 
 	// The record the provider named wins over a mark a later send left.
 	$resent = array_merge($rows['parasut'], array('parasut_invoice_id' => '?2026-10-20:1074160067'));
-	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041'), parasut_order_erp_invoice_record($resent));
+	pg_assert_same(array('state' => 'parasut', 'id' => '1104358636', 'number' => 'SF2026000041', 'edoc_status' => 'accepted'), parasut_order_erp_invoice_record($resent));
 }
 
 // The order's ERP invoice is read as the ERP reads it: its one sales
@@ -145,7 +145,7 @@ function test_parasut_order_gates_erp_invoice_reads_the_orders_sales_invoice()
 	$body = parasut_order_gates_test_source('parasut_order_erp_invoice');
 
 	pg_assert_contains("waf_table_has_column('erp_invoices', 'edoc_external_id')", $body);
-	pg_assert_contains("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id FROM erp_invoices", $body);
+	pg_assert_contains("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id, edoc_status FROM erp_invoices", $body);
 	pg_assert_contains("WHERE order_id = '\" . (int) \$order_id . \"' AND direction = 'sales' AND doc_type = 'invoice'", $body);
 	pg_assert_contains("AND status <> 'cancelled'", $body);
 	pg_assert_contains('return parasut_order_erp_invoice_record(', $body);
