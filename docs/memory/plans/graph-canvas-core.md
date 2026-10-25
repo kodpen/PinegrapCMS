@@ -33,4 +33,4 @@ description: Plan (2026-10-24, not started, answers open): a reusable box-and-ar
 4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`, or `_sdT()` in a new file → `lang()`: the scan reads style_designer.js only, and the core is the designer's first bundle.
 
 ## Where to start?
-- Slice 1 once #1551 and #1555 merge; claim this plan file first. Read workspace/workspace-flows-canvas.md.
+- Slice 1 (#1551, #1555 are in); claim with a draft PR. Read workspace/workspace-flows-canvas.md.

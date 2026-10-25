@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23, 1 done #1554, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+description: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -12,14 +12,14 @@ description: Plan (2026-10-23, 1 done #1554, answers open): one toolbar for all 
 - `ws_render_body()` (`includes/workspace/render.php`, escape first) draws bold, italic, strike, code, links, tables, checklists, fences, `::: Title`; headings, lists, quotes, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
 
 ## What is proposed? (not approved yet)
-- New tools go into `PGWsEditor.toolbar()` as item names and into `format()` / `applyMark()`. Vanilla JS, then `php tools/build_js.php`.
+- New tools: item names in `PGWsEditor.toolbar()`, then `format()` / `applyMark()`; `php tools/build_js.php`.
 - New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php` (proposed), red first.
 - Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
 - Saved replies live here, not in the CRM seams plan (proposed).
 
 ## Slices
 1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. PR #1554.
-2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `.
+2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `. Two PRs, 2a server, 2b editor: plans/workspace-composer-lists.md (an unmerged branch, 9 findings).
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
 4. Highlight `==x==` (import keeps it; not read by `ws_calc_inline()`), autoformat (one Ctrl+Z undoes, IME guard, off switch), no schema.
 5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
@@ -39,4 +39,4 @@ description: Plan (2026-10-23, 1 done #1554, answers open): one toolbar for all 
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Slice 2 with the render test; a list or quote button is a new `TOOLS` entry in workspace_editor.js.
+- Step 2a: plans/workspace-composer-lists.md.

@@ -10,10 +10,10 @@ description: Plan (2026-10-24, slice 0 #1590, answers 1-3 given): scheduled acti
 - includes/workspace/scheduled.php: a "when", conditions, one of 12 steps, up to 5 follow-ups on 4 outcomes, chains, tokens; runs as its creator; any staff edits or runs it. Every key and rule: plans/workspace-flows-scheduled-parity.md.
 - Scheduled messages (kind `message`, any member) share the table, ?view=scheduled (a tab for staff), the rail slot.
 - `ws_scheduled_run()` / `ws_scheduled_due()` also drive approval expiry, read receipts, watch lines and the flow runner (#1551).
-- No API route (S1, S2 of plans/workspace-canvas-workflow-tables.md).
-- `ws_scheduled_rule_input()` takes a day that does not exist into March (date 2027-02-29, until 2026-02-31); pinned, not fixed.
-- ?view=scheduled (scheduled_message inbox line) shows staff actions, not Messages; not fixed.
-- Flows: manual, task, end boxes; the owner edits while staff, home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days; runs start at depth 0; `flow_id` unread.
+- No API route (canvas plan S1, S2).
+- `ws_scheduled_rule_input()` takes a day that does not exist into March (2027-02-29, until 2026-02-31), pinned in tests/workspace_scheduled_test.php: own fix.
+- ?view=scheduled (scheduled_message line) shows staff actions, not Messages: slice 1.
+- Flows: manual, task, end boxes; the owner edits, staff and home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days, start at depth 0; `flow_id` unread.
 
 ## What is proposed? (not approved yet)
 - Actions run on `ws_scheduled_execute()` until converted; nothing retires before the parity test says a box covers it; no route is removed, driver names stay.
@@ -33,7 +33,7 @@ description: Plan (2026-10-24, slice 0 #1590, answers 1-3 given): scheduled acti
 3. Who edits and runs a moved action: (a) any staff, as today (F7 shares first), (b) owner only → a.
 4. Card, note strip, decision reply → kept where written.
 5. History of a converted action: (a) kept: a flow run writes its outcome to the anchor's `ws_scheduled_runs` row, boxes go at 30 days, (b) `ws_flow_runs_sweep()` skips converted flows, (c) 30 days → a.
-6. Slice 1 before F4 → yes, after #1555 merges.
+6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- Slice 1. Read workspace/README.md.
+- Slice 1, or the date fix first. Read workspace/README.md.
