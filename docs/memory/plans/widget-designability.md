@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24, in progress; done: W1 #1592, W14 part 1): legacy-layout power in system widgets via one finish pass: conditions, row position, nested lists, record fields, formats, placement
+description: Plan (2026-10-24, in progress; done: W1 #1592, W14 part 1 #1602): legacy-layout power in system widgets via one finish pass: conditions, row position, nested lists, record fields, formats, placement
 ---
 
 ## What is built, and why?
@@ -31,7 +31,7 @@ Before W4: a cut required control (custom_form, registration, express_order) sti
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
 - W6 Lists engine + form field values and attachments. W7 Lists in the editor. W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, paging list and tokens, own page parameter, offset. W13 Calendar grid.
-- W14 part 1 done: typed fill, filters outside the shop kinds ([[widget-fill-filters]]). Part 2: the shop kinds, default text.
+- W14 part 1 done (#1602): typed fill, filters outside the shop kinds ([[widget-fill-filters]]). Part 2: the shop kinds, default text.
 - W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.

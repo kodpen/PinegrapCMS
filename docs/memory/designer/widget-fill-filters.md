@@ -1,6 +1,6 @@
 ---
 name: widget-fill-filters
-description: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates.
+description: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
 ---
 
 ## What can a bound value's format be?
