@@ -1895,12 +1895,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
         // The card of this product's rating state (has_rating / no_rating).
         $rendered = ($rating['__rating_count'] !== '') ? $loop_template_rated : $loop_template;
-        // Replace longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^'.
-        $keys = array_keys($values);
-        usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-        foreach ($keys as $k) {
-            $rendered = str_replace('^^' . $k . '^^', (string)$values[$k], $rendered);
-        }
+        // Longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^';
+        // a format after a token is read (pg_sw_fill_longest()).
+        $rendered = pg_sw_fill_longest($rendered, $values);
         // Not swept here: the page-level tokens (breadcrumb, group tree, filter
         // chips) are resolved further down, and a designer may put one inside
         // the loop_area. Sweeping now would delete it before it was filled.
@@ -2563,11 +2560,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
                 $g_rendered = $loop_template_group;
                 // Longest keys first so '__short_description' is replaced before '__description'.
-                $g_keys = array_keys($g_values);
-                usort($g_keys, function ($a, $b) { return strlen($b) - strlen($a); });
-                foreach ($g_keys as $k) {
-                    $g_rendered = str_replace('^^' . $k . '^^', (string)$g_values[$k], $g_rendered);
-                }
+                $g_rendered = pg_sw_fill_longest($g_rendered, $g_values);
                 // Product-only tokens (inventory, mpn, gallery, …) have no answer
                 // on a group row, and page-level tokens are not resolved yet.
                 // Both are handled by the single sweep after the page pass.
@@ -2921,16 +2914,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
     $page_tokens = pg_sw_escape_token_values($page_tokens);
-    foreach ($page_tokens as $k => $v) {
-        $body = str_replace('^^' . $k . '^^', $v, $body);
-    }
+    // In the map's order, as always; a format after a token is read.
+    $body = _pg_catalog_fill_page_tokens($body, $page_tokens);
     // Everything the loops and this pass could answer has been answered; what
     // is left is unanswered. This is the loop halves' only sweep.
     $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
-        foreach ($page_tokens as $k => $v) {
-            $static_html = str_replace('^^' . $k . '^^', $v, $static_html);
-        }
+        $static_html = _pg_catalog_fill_page_tokens($static_html, $page_tokens);
         // The loop halves are swept where they are built; the static surround
         // was not, so an identifier misspelled in a header printed itself.
         $static_html = pg_sw_sweep_tokens($static_html);
@@ -2941,6 +2931,19 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $_pg_assets = _pg_widget_layout_css_once();  // price-block + discount-hide + variant-states CSS
     if ($static_html === '') return $_pg_assets . $body;
     return $_pg_assets . str_replace('<!--pg-loop-slot-->', $body, $static_html);
+}
+
+// Fill the listing's page-level tokens (breadcrumb, group tree, filters) in
+// the map's order, as they always were; a template with a format after a
+// token goes through the typed pass (pg_sw_fill_typed()), which reads it.
+function _pg_catalog_fill_page_tokens($html, $page_tokens)
+{
+    if (!is_string($html) || $html === '') return $html;
+    if (strpos($html, '^^%%') !== false) return pg_sw_fill_typed($html, $page_tokens);
+    foreach ($page_tokens as $k => $v) {
+        $html = str_replace('^^' . $k . '^^', $v, $html);
+    }
+    return $html;
 }
 
 // ============================================================================
@@ -5760,15 +5763,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // ── Apply tokens to template + static_html (single render, NO loop) ──
     // Longest keys first so '^^__out_of_stock_message^^' is replaced before
     // '^^__out_of_stock^^' (prefix-safe replacement order).
-    $rendered = $loop_template;
-    $static   = $static_html;
-    $keys = array_keys($values);
-    usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($keys as $k) {
-        $tok = '^^' . $k . '^^';
-        $rendered = str_replace($tok, (string)$values[$k], $rendered);
-        if ($static !== '') $static = str_replace($tok, (string)$values[$k], $static);
-    }
+    // A format after a token is read (pg_sw_fill_longest()).
+    $rendered = pg_sw_fill_longest($loop_template, $values);
+    $static   = pg_sw_fill_longest($static_html, $values);
     // Strip any remaining unresolved tokens (matches form_item_view convention).
     $rendered = pg_sw_sweep_tokens($rendered);
     if ($static !== '') $static = pg_sw_sweep_tokens($static);

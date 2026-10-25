@@ -36125,6 +36125,10 @@ const StyleDesigner = (function () {
         out.__event_date = true;
         out.__event_start_date = true;
         out.__event_end_date = true;
+        // Order view: typed by _pg_sw_order_view_dates().
+        out.__order_date = true;
+        out.__arrival_date = true;
+        out.__withdrawal_deadline = true;
         return out;
     })();
 
@@ -36152,15 +36156,14 @@ const StyleDesigner = (function () {
     // The widget kinds whose fill reads a text format. An allow-list: in a
     // fill that replaces ^^token^^ alone the format would print after the
     // value, so a kind offers the Format row only once its fill reads it.
-    // The shop kinds (catalog, catalog detail, cart, express order, order
-    // view) are not read yet.
     var _SD_FILTER_KINDS = {
         form_list_view: 1, form_item_view: 1, my_account: 1, login_form: 1, login_region: 1,
         cart_link: 1, forgot_password: 1, search_results: 1, registration: 1, membership: 1,
         custom_form: 1, calendar_view: 1, calendar_event_view: 1, account_profile: 1,
         change_password: 1, set_password: 1, email_preferences: 1, address_book: 1,
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
-        language_switcher: 1, comments: 1
+        language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
+        shopping_cart: 1, express_order: 1, order_view: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
