@@ -2322,6 +2322,21 @@ function mp_trendyol_order_stage($remote_status) {
 
 }
 
+// Whether a package or line id may go into a status call: one to eighteen
+// digits, no leading zero.
+//
+// A line id is sent as a JSON number, and (int) of a longer string can pass
+// PHP_INT_MAX (nineteen digits on a 64-bit build), where it saturates and a
+// different line id would be sent; the package id is held to the same length,
+// theirs being ten digits today. A leading zero is dropped by (int), so
+// "0123" would go out as line 123, and a package id of "0" or "0123" names a
+// package Trendyol never gave out.
+function mp_trendyol_id_fits($id) {
+
+	return is_string($id) && (preg_match('/^[1-9][0-9]{0,17}$/', $id) === 1);
+
+}
+
 // Accept a package: Created becomes Picking.
 //
 // Their status service takes the package id in the path and each line with its
@@ -2333,15 +2348,12 @@ function mp_trendyol_order_stage($remote_status) {
 // Their answer to a successful update has no documented body, so any 2xx is
 // success here, whatever it carries.
 //
-// Ids are at most eighteen digits. A line id is sent as a JSON number, and
-// (int) of a longer string can pass PHP_INT_MAX (nineteen digits on a 64-bit
-// build), where it saturates and a different line id would be sent; the
-// package id is held to the same length, theirs being ten digits today.
+// Ids are checked with mp_trendyol_id_fits().
 function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $transport = null) {
 
 	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
 
-	if (preg_match('/^[0-9]{1,18}$/', $package_id) !== 1) {
+	if (!mp_trendyol_id_fits($package_id)) {
 
 		return mp_error(lang('That order has no package number to accept.'));
 
@@ -2361,7 +2373,7 @@ function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $tra
 
 		$line_id = isset($line['remote_line_id']) ? trim((string)$line['remote_line_id']) : '';
 
-		if (!isset($wanted[$line_id]) || preg_match('/^[0-9]{1,18}$/', $line_id) !== 1) {
+		if (!isset($wanted[$line_id]) || !mp_trendyol_id_fits($line_id)) {
 
 			continue;
 
@@ -2408,12 +2420,13 @@ function mp_trendyol_approve_lines($account, $line_ids, $package = array(), $tra
 // here to give.) Their answer to a successful call has no documented body, so
 // any 2xx is success.
 //
-// The package id is held to eighteen digits, as for accepting a package.
+// The package id is checked with mp_trendyol_id_fits(), as for accepting a
+// package.
 function mp_trendyol_ship_package($account, $package, $tracking_url, $transport = null) {
 
 	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
 
-	if (preg_match('/^[0-9]{1,18}$/', $package_id) !== 1) {
+	if (!mp_trendyol_id_fits($package_id)) {
 
 		return mp_error(lang('That order has no package number to ship.'));
 

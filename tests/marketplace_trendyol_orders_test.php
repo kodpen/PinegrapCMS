@@ -800,6 +800,48 @@ function test_marketplace_trendyol_orders_approve_holds_ids_to_eighteen_digits()
 	pg_assert_same('{"lines":[{"lineId":999999999999999999,"quantity":2}],"params":{},"status":"Picking"}', $calls[0]['options']['body']);
 }
 
+// One to eighteen digits and no leading zero: (int) drops a leading zero, so
+// "0123" would go out as line 123.
+function test_marketplace_trendyol_orders_id_fits()
+{
+	foreach (array('1', '3330111111', '123456789012345678') as $id) {
+		pg_assert_true(mp_trendyol_id_fits($id), $id);
+	}
+
+	foreach (array('', '0', '00', '0123', '1234567890123456789', '-1', '+1', ' 1', '1 ', '1.0', '1e3', 'abc', '../1') as $id) {
+		pg_assert_false(mp_trendyol_id_fits($id), '"' . $id . '"');
+	}
+
+	foreach (array(null, 1, 1.0, true, array('1')) as $value) {
+		pg_assert_false(mp_trendyol_id_fits($value), 'only a string is an id');
+	}
+}
+
+function test_marketplace_trendyol_orders_approve_refuses_a_leading_zero()
+{
+	$calls = array();
+	$transport = trendyol_orders_test_fixed_transport(200, '', $calls);
+
+	$package = array(
+		'remote_package_id' => '3330111111',
+		'lines'             => array(array('remote_line_id' => '0123', 'quantity' => 1)),
+	);
+
+	$result = mp_trendyol_approve_lines(trendyol_orders_test_account(), array('0123'), $package, $transport);
+
+	pg_assert_false($result['ok'], 'line 0123 would go out as line 123');
+	pg_assert_contains('no lines to accept', $result['error']);
+
+	$package = array('remote_package_id' => '03330111111', 'lines' => array(array('remote_line_id' => '123', 'quantity' => 1)));
+
+	$result = mp_trendyol_approve_lines(trendyol_orders_test_account(), array('123'), $package, $transport);
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('no package number', $result['error']);
+
+	pg_assert_same(0, count($calls), 'nothing was sent');
+}
+
 function test_marketplace_trendyol_orders_approve_passes_their_refusal_on()
 {
 	$calls = array();

@@ -1,16 +1,10 @@
 ---
 name: marketplace-trendyol-remaining-design
-description: Design of the open Trendyol steps (hardening, schema, 2b-ii, 5a-5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
+description: Design of the open Trendyol steps (schema, 2b-ii, 5a-5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
 ---
 
 ## What is this?
 - A build of every open step of `marketplace-trendyol-hepsiburada.md` was finished and tested on 2026-10-24 (branch `feature/trendyol-remaining-steps`, 9 commits, never pushed). These are its decisions, so a session rebuilding a step follows them. None of these names exist on development yet.
-
-## A. Hardening?
-- A wrong or missing webhook key (401) counts with the firewall through `api_offence()`.
-- Registering the webhook reads the account again before the call; the button disables itself without changing its label.
-- A new `mp_trendyol_id_fits()` checks ids for approve_lines and ship_package, and also refuses a leading zero.
-- Old accounts with `pull_orders=1`: a memory line, no data step.
 
 ## B. Schema? (owner asked for it; recheck the label)
 - Step `upgrade_2026_11_0_marketplace_columns()`, label 11.0.34 (free on 2026-10-24): `marketplace_product_map.commission` DECIMAL(6,2) NULL and `invoice_sent` INT UNSIGNED DEFAULT 0 on the imported order's map row. Name the marketplace columns for the `[SCHEME]` line in the PR body (the merging session writes it). Code checks the columns first (`mp_commission_ready()`, `mp_invoice_sent_ready()`).

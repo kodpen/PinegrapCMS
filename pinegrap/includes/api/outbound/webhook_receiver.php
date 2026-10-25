@@ -71,6 +71,12 @@ function mp_webhook_receive() {
 
 	if ($status !== 0) {
 
+		if ($status === 401) {
+
+			mp_webhook_offence();
+
+		}
+
 		mp_webhook_answer($status, array('ok' => false));
 
 	}
@@ -134,6 +140,33 @@ function mp_webhook_receive() {
 	// way says nothing about that. Clearing the error here would hide a
 	// refused key from the screen while every stock push failed on it.
 	mp_webhook_answer(200, array_merge(array('ok' => true), $counts));
+
+}
+
+// Tell the firewall that this address presented a wrong key.
+//
+// The weight the API gives a wrong secret (api_offence() in
+// includes/api/auth.php, which this request does not load), so a run of
+// guesses earns the firewall's automatic ban; the address is outside the
+// firewall's limit for sign-in scripts, like the API. Its monitoring mode is
+// honoured, and a firewall that is not loaded is not a reason to fail.
+//
+// Only a wrong or missing key counts. A delivery refused before the key is
+// looked at - a paused account, import switched off, a webhook removed here -
+// comes from the marketplace's own servers with the key they were given, and
+// banning them would also stop the deliveries of the account's current
+// webhook.
+function mp_webhook_offence() {
+
+	if (!function_exists('waf_register_offence')
+		|| !function_exists('waf_client_ip')
+		|| !function_exists('waf_mode')) {
+
+		return;
+
+	}
+
+	waf_register_offence(waf_client_ip(), 5, (waf_mode() === 'block'));
 
 }
 
@@ -254,6 +287,22 @@ function mp_webhook_register_problem($account) {
 	}
 
 	return '';
+
+}
+
+// The name of the lock one account's webhook is registered or removed under.
+//
+// Two presses of Register (or two tabs) that both found no webhook would each
+// register one at the marketplace; the second id and key overwrite the first,
+// and the first webhook keeps delivering with a key refused here. A removal
+// running beside a registration writes the credentials it read before, and
+// can drop the new webhook's id. GET_LOCK names belong to the whole database
+// server, so the name carries the database.
+function mp_webhook_lock_name($account_id) {
+
+	$database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string)db_value("SELECT DATABASE()");
+
+	return 'pg_mp_webhook_' . md5($database) . '_' . (int)$account_id;
 
 }
 

@@ -9,7 +9,7 @@ description: Trendyol order packages: v2/orders pull, 14-day window and page cap
 - Docs read 2026-10-24 (orders page modified 2026-10-07).
 
 ## How far does one pull read?
-- Window: start `max(cursor − 300 s, now − 14 days + 1 h)`, end now, epoch ms. Two weeks is their maximum: an account paused longer loses older packages (Trendyol keeps a month; its seller panel shows them). A first pull reads a week. A new account starts with import on (as n11) and pulls once active; one saved between #1240 and #1452 has it off until switched on.
+- Window: start `max(cursor − 300 s, now − 14 days + 1 h)`, end now, epoch ms. Two weeks is their maximum: an account paused longer loses older packages (Trendyol keeps a month; its seller panel shows them). A first pull reads a week. A new account starts with import on (as n11) and pulls once active, and so does one saved before #1240 (the column's 1; no data step); one saved between #1240 and #1452 has it off until switched on.
 - 20 requests a pass; when 20 full pages do not pass the cursor, on up to 10,000 entries new to the pass (their window; page 49 is their last). Paging, `read_to` and `complete` as n11 (`n11-api-facts.md`, PR #1459). Every entry moves the cursor, skipped ones too.
 - `orders/stream` (cursor, three months) is the way out if a window ever holds more than 10,000.
 

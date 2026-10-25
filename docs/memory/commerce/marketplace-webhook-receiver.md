@@ -9,7 +9,7 @@ description: marketplace_webhook.php: what calls it and what it imports, its che
 - The account's `last_success`/`last_error` are not touched: they answer whether this site reaches the marketplace, and clearing the error would hide a refused key.
 
 ## What does it answer?
-- 405 not POST; 404 no account; 403 account paused, import off, connector without `webhook_packages`, or no `webhook_id` in the credentials (a webhook removed here is refused whatever key it presents; Remove also drops the key and every registration makes a new one, so it stays refused after a later registration, PR #1453); 401 key missing or wrong, or none stored (no activity-log line; the firewall's global rate limit covers guessing a 32-byte key); 413 over 4 MiB; 400 not JSON; else 200 `{"ok":true,"imported","skipped","failed"}`.
+- 405 not POST; 404 no account; 403 account paused, import off, connector without `webhook_packages`, or no `webhook_id` in the credentials (a webhook removed here is refused whatever key it presents; Remove also drops the key and every registration makes a new one, so it stays refused after a later registration, PR #1453); 401 key missing or wrong, or none stored (no activity-log line; counted with the firewall like a wrong API secret, `mp_webhook_offence()`, PR #1675); 413 over 4 MiB; 400 not JSON; else 200 `{"ok":true,"imported","skipped","failed"}`.
 - A package that fails to import (a line no product matches) is still 200: the map row keeps the reason and "Try again" re-reads it. A non-2xx makes Trendyol retry every 5 minutes and switch the webhook off.
 - The key (`mp_webhook_presented_key($server)`): `x-api-key`, else `PHP_AUTH_PW`, else Basic in `HTTP_AUTHORIZATION` / `REDIRECT_HTTP_AUTHORIZATION`; `hash_equals()` with `credentials['webhook_key']`.
 
@@ -18,6 +18,10 @@ description: marketplace_webhook.php: what calls it and what it imports, its che
 
 ## Why is it in the firewall's API list?
 - `waf_is_api_request()` names it: no browser agent, key in a header. It skips the bot policy, the country gate and the sensitive limit; the global rate limit applies. A JSON body is not in `$_POST`, so signature scanning does not read it.
+
+## What does the firewall count, and what can go wrong with it?
+- Only the 401: five in ten minutes earn the automatic ban (block mode, auto-ban on). Refusals before the key (403) come from the marketplace's own servers and are not counted.
+- A webhook left alive over there after a new registration presents the old key and is counted; if it delivers often, the marketplace's address is banned and the current webhook's deliveries with it. Allow-list that address in the firewall if it happens.
 
 ## What is unverified?
 - No live delivery yet: whether a query string in the URL is taken, the exact create answer, how fast a passive webhook is reported.

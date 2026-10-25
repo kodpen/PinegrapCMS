@@ -149,7 +149,7 @@ function test_marketplace_trendyol_shipping_refuses_before_any_call()
 	$transport = trendyol_shipping_test_transport(200, '', $calls);
 	$link = 'https://kargotakip.araskargo.com.tr/mainpage.aspx?code=1';
 
-	foreach (array('', 'abc', '../3330111111', '1234567890123456789') as $package_id) {
+	foreach (array('', 'abc', '../3330111111', '1234567890123456789', '0', '03330111111') as $package_id) {
 		$result = mp_trendyol_ship_package(trendyol_shipping_test_account(), trendyol_shipping_test_package($package_id), $link, $transport);
 
 		pg_assert_false($result['ok'], 'package ' . $package_id);

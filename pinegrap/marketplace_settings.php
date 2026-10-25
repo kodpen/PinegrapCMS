@@ -697,9 +697,34 @@ if ($_POST) {
 
 		$provider_name = mp_provider_name($account['provider']);
 
-		$problem = mp_can($account['provider'], 'register_webhook')
-			? mp_webhook_register_problem($account)
-			: lang(array('string' => '{var:1} cannot do this.', 'vars' => array($provider_name)));
+		// One registration or removal per account at a time
+		// (mp_webhook_lock_name()), and the account read again under the lock:
+		// a registration that finished after this request first read it is
+		// seen, and refused as already there. A press while another is still
+		// running is refused rather than queued.
+		$lock = mp_webhook_lock_name($account_id);
+
+		if ((int)db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") !== 1) {
+
+			$problem = lang('The webhook of this account is being changed right now. Look again in a moment.');
+
+		} else {
+
+			$account = mp_account($account_id);
+
+			$problem = !$account
+				? lang('That marketplace account no longer exists.')
+				: (mp_can($account['provider'], 'register_webhook')
+					? mp_webhook_register_problem($account)
+					: lang(array('string' => '{var:1} cannot do this.', 'vars' => array($provider_name))));
+
+			if ($problem !== '') {
+
+				db("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+			}
+
+		}
 
 		if ($problem !== '') {
 
@@ -744,6 +769,8 @@ if ($_POST) {
 
 			}
 
+			db("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
 		}
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-webhook');
@@ -754,7 +781,24 @@ if ($_POST) {
 
 	if ($action === 'webhook_remove' && $account) {
 
-		if (!mp_can($account['provider'], 'remove_webhook')) {
+		// Under the registration's lock, with the account read again, for the
+		// same reason: credentials read before a registration finished would
+		// write its webhook's id away.
+		$lock = mp_webhook_lock_name($account_id);
+
+		$locked = ((int)db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") === 1);
+
+		$account = $locked ? mp_account($account_id) : null;
+
+		if (!$locked) {
+
+			$liveform->add_warning(h(lang('The webhook of this account is being changed right now. Look again in a moment.')));
+
+		} elseif (!$account) {
+
+			$liveform->add_error(lang('That marketplace account no longer exists.'));
+
+		} elseif (!mp_can($account['provider'], 'remove_webhook')) {
 
 			$liveform->add_warning(h(lang(array(
 				'string' => '{var:1} cannot do this.',
@@ -791,6 +835,12 @@ if ($_POST) {
 				)));
 
 			}
+
+		}
+
+		if ($locked) {
+
+			db("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
 		}
 
@@ -1629,6 +1679,8 @@ if ($selected) {
 
 			$webhook_action = 'webhook_remove';
 
+			$webhook_onsubmit = '';
+
 			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-danger"
 						onclick="return confirm(' . h(json_encode(lang('Remove the webhook?'))) . ')">
 						<i class="bi bi-x-lg me-1"></i>' . lang('Remove webhook') . '</button>';
@@ -1642,6 +1694,12 @@ if ($selected) {
 
 			$webhook_action = 'webhook_register';
 
+			// Registering waits on the marketplace, longer than the panel's
+			// three-second guard against a second submit, so the button stays
+			// disabled until the answer reloads the screen. Its label stays as
+			// it is; it has no name, so nothing is dropped from the request.
+			$webhook_onsubmit = ' onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;"';
+
 			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-secondary">
 						<i class="bi bi-broadcast me-1"></i>' . lang('Register webhook') . '</button>';
 
@@ -1651,7 +1709,7 @@ if ($selected) {
 			<div class="d-flex align-items-center flex-wrap gap-2 small px-2 pb-3 mb-3 border-bottom" id="mp-webhook">
 				<i class="bi bi-broadcast"></i>
 				<div class="flex-grow-1">' . $webhook_text . '</div>
-				<form method="post" action="marketplace_settings.php" class="d-inline">
+				<form method="post" action="marketplace_settings.php" class="d-inline"' . $webhook_onsubmit . '>
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="' . $webhook_action . '">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
