@@ -306,14 +306,24 @@ function pg_mcp_resource_refusal($uri, $status_code, $body, $modern) {
 
 }
 
-// A read's result: one text item, the route's JSON body, under the uri as the
-// client sent it.
+// A read's result: one text item, the route's JSON body (pg_mcp_json_encode(),
+// a broken byte written as U+FFFD), under the uri as the client sent it. null
+// when the body cannot be JSON at all, so it is never passed off as an empty
+// resource.
 function pg_mcp_resource_contents($uri, $body) {
+
+	$text = pg_mcp_json_encode($body);
+
+	if ($text === null) {
+
+		return null;
+
+	}
 
 	return array('contents' => array(array(
 		'uri'      => (string)$uri,
 		'mimeType' => 'application/json',
-		'text'     => (string)json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+		'text'     => $text
 	)));
 
 }
@@ -349,13 +359,22 @@ function pg_mcp_resource_target($params, $routes, $modern) {
 
 // What resources/read answers once the route has: array('result' => the
 // contents) on a 2xx, array('error' => ...) for a refusal or a failure
-// (pg_mcp_resource_refusal()). A read is never cached for longer than the
-// answer itself: what it holds changes with every message.
+// (pg_mcp_resource_refusal()), a 2xx body that cannot be JSON included, as
+// the REST answer turns it into a 500. A read is never cached for longer than
+// the answer itself: what it holds changes with every message.
 function pg_mcp_resource_answer($uri, $status_code, $body, $modern) {
 
 	if (($status_code >= 200) && ($status_code < 300)) {
 
-		return array('result' => pg_mcp_cache_hints(pg_mcp_resource_contents($uri, $body), 0, $modern));
+		$contents = pg_mcp_resource_contents($uri, $body);
+
+		if ($contents === null) {
+
+			return array('error' => pg_mcp_resource_refusal($uri, 500, null, $modern));
+
+		}
+
+		return array('result' => pg_mcp_cache_hints($contents, 0, $modern));
 
 	}
 

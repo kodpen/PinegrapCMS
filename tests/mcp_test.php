@@ -174,3 +174,54 @@ function test_mcp_dry_run_reads_as_the_header_does()
 		pg_assert_same(null, pg_mcp_arguments(mcp_test_route(), array('dry_run' => $value))['dry_run'], var_export($value, true) . ' is neither, so the call is refused');
 	}
 }
+
+// A string that is not UTF-8 as an answer's JSON writes it: U+FFFD in its
+// place on PHP 7.2+, the string alone as null on PHP 7.1, the rest kept.
+function mcp_test_broken_byte_json($key)
+{
+	return defined('JSON_INVALID_UTF8_SUBSTITUTE') ? '"' . $key . '":"x' . "\u{FFFD}" . 'y"' : '"' . $key . '":null';
+}
+
+// The encoder of every MCP answer follows api_json_encode(): a broken byte
+// keeps the rest of the value, a value JSON cannot hold at all is null.
+function test_mcp_json_encode_keeps_what_it_can()
+{
+	pg_assert_same('{"name":"Çağla/Ünal","n":[1,2]}', pg_mcp_json_encode(array('name' => 'Çağla/Ünal', 'n' => array(1, 2))), 'unescaped unicode and slashes');
+	pg_assert_same('{' . mcp_test_broken_byte_json('note') . ',"ok":"fine"}', pg_mcp_json_encode(array('note' => "x\xFFy", 'ok' => 'fine')), 'a broken byte keeps the rest');
+	pg_assert_same(null, pg_mcp_json_encode(array('n' => INF)), 'INF cannot be JSON');
+	pg_assert_same(null, pg_mcp_json_encode(array('n' => NAN)), 'nor NAN');
+}
+
+// tools/call once its route has answered: the body as text and as
+// structuredContent, a refusal with isError; a body that cannot be JSON is an
+// internal error, never a result whose text is empty.
+function test_mcp_tool_answer()
+{
+	$answer = pg_mcp_tool_answer(200, array('note' => "x\xFFy", 'ok' => 'fine'));
+
+	pg_assert_same('{' . mcp_test_broken_byte_json('note') . ',"ok":"fine"}', $answer['result']['content'][0]['text'], 'a broken byte keeps the rest of the text');
+	pg_assert_same(false, $answer['result']['isError']);
+	pg_assert_same(array('note' => "x\xFFy", 'ok' => 'fine'), $answer['result']['structuredContent'], 'the body as the route gave it; the payload encoder settles its bytes');
+
+	$refusal = pg_mcp_tool_answer(404, array('error' => array('code' => 'not_found')));
+
+	pg_assert_same(true, $refusal['result']['isError'], 'a refusal is a result with isError');
+	pg_assert_same('{"error":{"code":"not_found"}}', $refusal['result']['content'][0]['text']);
+
+	pg_assert_same(array('result' => array('content' => array(array('type' => 'text', 'text' => '[1,2]')), 'isError' => false)), pg_mcp_tool_answer(200, array(1, 2)), 'a list is no structuredContent');
+
+	foreach (array(INF, NAN) as $value) {
+		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error')), pg_mcp_tool_answer(200, array('n' => $value)), 'a body JSON cannot hold');
+	}
+}
+
+// What pg_mcp_send() writes is never an empty body: a broken byte anywhere
+// in the payload is replaced, and a payload JSON cannot hold becomes an
+// internal error under the request's id (null when the id is the trouble).
+function test_mcp_payload_json_is_never_empty()
+{
+	pg_assert_same('{"jsonrpc":"2.0","id":1,"result":{"structuredContent":{' . mcp_test_broken_byte_json('note') . '}}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 1, 'result' => array('structuredContent' => array('note' => "x\xFFy")))));
+	pg_assert_same('{"jsonrpc":"2.0","id":7,"error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 7, 'result' => array('n' => INF))));
+	pg_assert_same('{"jsonrpc":"2.0","id":"a","error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 'a', 'result' => array('n' => NAN))), 'a string id');
+	pg_assert_same('{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => INF, 'result' => array())), 'an id JSON cannot hold (1e999 decodes as INF)');
+}

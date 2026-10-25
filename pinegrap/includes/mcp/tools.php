@@ -418,14 +418,25 @@ function pg_mcp_route_run($route, $arguments, $answer) {
 
 }
 
-// The handler's answer as a CallToolResult. The JSON goes as text, which
-// every client shows to its model, and as structuredContent for the clients
-// that read it.
-function pg_mcp_tool_result($id, $status_code, $body, $modern) {
+// The handler's answer as a CallToolResult: array('result' => ...) for
+// pg_mcp_answer(). The JSON goes as text (pg_mcp_json_encode(), a broken byte
+// written as U+FFFD), which every client shows to its model, and as
+// structuredContent for the clients that read it. A body that cannot be JSON
+// at all is an internal error, as the REST answer turns it into a 500, never
+// a result whose text is empty.
+function pg_mcp_tool_answer($status_code, $body) {
+
+	$text = pg_mcp_json_encode($body);
+
+	if ($text === null) {
+
+		return array('error' => array('code' => -32603, 'message' => 'Internal error'));
+
+	}
 
 	$result = array(
 		'content' => array(
-			array('type' => 'text', 'text' => (string)json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+			array('type' => 'text', 'text' => $text)
 		),
 		'isError' => ($status_code < 200) || ($status_code >= 300)
 	);
@@ -436,6 +447,12 @@ function pg_mcp_tool_result($id, $status_code, $body, $modern) {
 
 	}
 
-	pg_mcp_result($id, $result, $modern);
+	return array('result' => $result);
+
+}
+
+function pg_mcp_tool_result($id, $status_code, $body, $modern) {
+
+	pg_mcp_answer($id, pg_mcp_tool_answer($status_code, $body), $modern);
 
 }

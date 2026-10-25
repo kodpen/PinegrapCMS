@@ -578,3 +578,46 @@ function test_mcp_prompts_weekly_report_messages()
 	pg_assert_false(strpos($without, 'channels/9') !== false, 'a channel context the caller cannot read is not named');
 	pg_assert_false(strpos($without, 'workspace_channels_context') !== false, 'nor its tool');
 }
+
+// A string that is not UTF-8 as a read writes it: U+FFFD in its place on PHP
+// 7.2+, the string alone as null on PHP 7.1; the rest of the body stays.
+function mcp_resources_test_broken_byte_json($key, $before, $after)
+{
+	return defined('JSON_INVALID_UTF8_SUBSTITUTE') ? '"' . $key . '":"' . $before . "\u{FFFD}" . $after . '"' : '"' . $key . '":null';
+}
+
+// A broken byte in the route's body keeps the rest of the read, as the REST
+// answer does (api_json_encode()), never an empty resource.
+function test_mcp_resources_contents_keep_a_broken_byte()
+{
+	$contents = pg_mcp_resource_contents('pinegrap://workspace/my-day', array('note' => "x\xFFy", 'ok' => 'fine'));
+
+	pg_assert_same('{' . mcp_resources_test_broken_byte_json('note', 'x', 'y') . ',"ok":"fine"}', $contents['contents'][0]['text']);
+}
+
+// A body JSON cannot hold at all (INF, NAN) is an internal error, never a
+// successful read whose text is empty, which a client could not tell from a
+// real answer.
+function test_mcp_resources_read_answer_that_cannot_be_json()
+{
+	$uri = 'pinegrap://workspace/my-day';
+
+	pg_assert_same(null, pg_mcp_resource_contents($uri, array('n' => INF)), 'no contents');
+
+	foreach (array(true, false) as $modern) {
+		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error', 'data' => array('uri' => $uri))), pg_mcp_resource_answer($uri, 200, array('n' => NAN), $modern), 'an internal error in either generation');
+	}
+}
+
+// channel_summary embeds a context with a broken byte, the rest of it read;
+// one that cannot be JSON is not embedded, so the prompt names the resource
+// to read instead of attaching an empty one.
+function test_mcp_prompts_embed_keeps_a_broken_byte()
+{
+	$uri = 'pinegrap://workspace/channels/12/context';
+
+	$embedded = pg_mcp_prompt_embedded($uri, 200, array('channel' => array('id' => 12, 'name' => "Sat\xC4")));
+
+	pg_assert_same('{"channel":{"id":12,' . mcp_resources_test_broken_byte_json('name', 'Sat', '') . '}}', $embedded['text']);
+	pg_assert_same(null, pg_mcp_prompt_embedded($uri, 200, array('channel' => array('id' => 12, 'score' => INF))), 'nothing embedded');
+}

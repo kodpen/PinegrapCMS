@@ -211,11 +211,59 @@ function pg_mcp_send($http_status, $payload) {
 
 	if ($payload !== null) {
 
-		echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		echo pg_mcp_payload_json($payload);
 
 	}
 
 	exit();
+
+}
+
+// A value as the JSON an MCP answer carries, by the rules of api_json_encode()
+// (includes/api/response.php, which loads only behind PG_API_ENTRY): a byte
+// that is not UTF-8 becomes U+FFFD and the rest of the value stays; PHP 7.1,
+// which cannot substitute, writes the broken string alone as null. null when
+// the value cannot be JSON at all (INF, NAN), for the caller to answer an
+// error: a bare json_encode() returns false there, which casts to an empty
+// text a client cannot tell from a real, empty answer.
+function pg_mcp_json_encode($value) {
+
+	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+	if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+
+		$flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+
+	}
+
+	$json = json_encode($value, $flags);
+
+	if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
+
+		$json = json_encode($value, $flags | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+	}
+
+	return is_string($json) ? $json : null;
+
+}
+
+// The body pg_mcp_send() writes, never empty: a payload JSON cannot hold
+// becomes an internal error under the request's id, or under null when the
+// id is what cannot be written (a client's 1e999 decodes as INF).
+function pg_mcp_payload_json($payload) {
+
+	$json = pg_mcp_json_encode($payload);
+
+	if ($json !== null) {
+
+		return $json;
+
+	}
+
+	$id = (is_array($payload) && isset($payload['id']) && (pg_mcp_json_encode($payload['id']) !== null)) ? $payload['id'] : null;
+
+	return (string)pg_mcp_json_encode(array('jsonrpc' => '2.0', 'id' => $id, 'error' => array('code' => -32603, 'message' => 'Internal error')));
 
 }
 
@@ -272,10 +320,10 @@ function pg_mcp_error($id, $code, $message, $data = null, $http_status = 400) {
 }
 
 // Writes an answer built without side effects (pg_mcp_list_answer(),
-// pg_mcp_resource_target(), pg_mcp_resource_answer()): array('result' => ...)
-// or array('error' => array('code', 'message', 'data' when there is one)).
-// Such an error is about the request's params, so it travels with HTTP 200 in
-// both generations, as the tools' do.
+// pg_mcp_resource_target(), pg_mcp_resource_answer(), pg_mcp_tool_answer()):
+// array('result' => ...) or array('error' => array('code', 'message', 'data'
+// when there is one)). Such an error is about the request it answers, so it
+// travels with HTTP 200 in both generations, as the tools' do.
 function pg_mcp_answer($id, $answer, $modern) {
 
 	if (isset($answer['error'])) {
