@@ -698,6 +698,22 @@ function test_workspace_flow_runs_adopted_task_is_looked_at_at_once()
 	pg_assert_contains("addcslashes(\$marker, '\\\\%_')", $find, 'a backslash in the line is no escape');
 }
 
+// A run cancelled while its task box is on its way opens no task: the box
+// looks at the run again right before it opens one. A task opened at the
+// very moment of the cancel is still written on its box (skipped by the
+// cancel, or failed as stopped half way), so the run shows the task it
+// opened; a box made ready again for its retry is left alone, its retry
+// finds that task itself.
+function test_workspace_flow_runs_cancel_meets_a_task_box_at_work()
+{
+	$task = ws_flow_runs_test_source('ws_flow_step_task');
+	$open = strpos($task, 'ws_flow_run_open(');
+
+	pg_assert_true(($open !== false) && ($open < strpos($task, 'ws_task_create(')), 'the run is looked at before the task is opened');
+	pg_assert_true((bool) preg_match("/SET effect = 'task:[^;]*AND effect = ''[^;]*AND status IN \\('skipped', 'failed'\\)/s", $task), 'the task written on a box that ended meanwhile');
+	pg_assert_true(strpos($task, "status IN ('skipped', 'failed')") > strpos($task, "status = 'waiting'"), 'when the box could not be made to wait');
+}
+
 // The boxes of a run as the walk reads them: one entry per box, the row
 // read last standing for it (a later pass of the box), its status and
 // outcome kept as they are.

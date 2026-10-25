@@ -1690,7 +1690,9 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
  * on a stale box waits again instead of opening a second task. A box tried
  * again after its request died first looks for the task its first try
  * opened, and looks at it at once when it finds it: the task may have been
- * finished meanwhile, and the event that said so woke no box.
+ * finished meanwhile, and the event that said so woke no box. A run
+ * cancelled while the box was on its way opens no task; one cancelled while
+ * the task was being opened keeps its id on the box.
  *
  * @param array $run
  * @param array $flow
@@ -1712,6 +1714,16 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
     if (!$adopted) {
         $people = ws_flow_step_task_people($owner, $config, $run, $channel ? (int) $channel['department_id'] : 0);
+
+        // The run as it is now, read again right before anything is opened:
+        // a run cancelled since ws_flow_step_run() looked at it opens no
+        // task. The cancel skipped this box already; this leaves it so.
+        $current = ws_flow_run((int) $run['id']);
+
+        if (!$current || !ws_flow_run_open($current['status'])) {
+            ws_flow_step_settle($step, 'running', 'skipped', '', lang('Not reached in this run.'));
+            return;
+        }
 
         $made = ws_task_create($owner, array(
             'title'         => $title,
@@ -1747,7 +1759,18 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         // later in the same request is kept for it.
         ws_events_awaited(true);
         ws_flow_run_refresh((int) $run['id']);
+
+        return;
     }
+
+    // The box ended while its task was being opened: the run was cancelled
+    // at that very moment, or the box was given up as stopped half way. It
+    // still names the task it opened, which stays as it is, so the run shows
+    // it. A box made ready again for its retry is left alone: the retry
+    // finds this task itself (ws_flow_step_task_find()), and a box holding
+    // it would hide it from that search.
+    db("UPDATE ws_flow_run_steps SET effect = 'task:" . $task_id . "'
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '' AND status IN ('skipped', 'failed')");
 }
 
 /**
@@ -1928,7 +1951,9 @@ function ws_flow_run_cancel_check($viewer, $run)
  * Cancels a run: the run ends cancelled and its open boxes are skipped. The
  * tasks it opened stay as they are: a person decides what becomes of them.
  * A box another request is carrying out at this moment finds the run over
- * and leaves it so.
+ * and leaves it so; a task box looks again right before it opens its task,
+ * and a task opened at that very moment is still written on its box
+ * (ws_flow_step_task()), though this answer could not name it.
  *
  * @param array $viewer
  * @param array $run
