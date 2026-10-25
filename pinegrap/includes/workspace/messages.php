@@ -217,6 +217,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // The answers MCP agents gave, kept in their askers' names
         // (mcp_agent.php).
         'agents'     => function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map($ids) : array(),
+        // The proposals of applications whose words these are
+        // (proposals.php).
+        'proposals'  => function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -259,6 +262,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
 
     if ($row['sender_kind'] === 'app') {
         $sender = ws_app_sender((int) $row['sender_id']);
+
+        // A proposal an OAuth connection made is shown under the client's
+        // own name (proposals.php): every client writes through one
+        // application.
+        if (isset($extra['proposals'][$id]) && function_exists('ws_proposal_sender')) {
+            $sender = ws_proposal_sender($sender, $extra['proposals'][$id]);
+        }
     }
 
     // The guest of a room (guests.php).

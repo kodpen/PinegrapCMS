@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, wishlist core done): designer tokens, heart, Favourites page next; back-in-stock, bundles later
+description: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, rating tokens, wishlist core done): heart, Favourites page next; back-in-stock, bundles later
 ---
 
 ## Why?
@@ -17,10 +17,11 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 1. Schema 11.0.14 (PR #698) `upgrade_2026_11_0_conversion_pack()`: comments/products columns, `wishlist_items`, `stock_notify`, `order_review_request` in both action enums.
 2a. (PR #698) Review gate (comment form, `add_comment.php`), "Verified purchase" badge, rating refreshed on writes and daily, `aggregateRating` in legacy detail markup, store reply (moderation, under the review) (`includes/fn/reviews.php`).
 2b. (PR #1316) `order_review_request` e-mail once per order when an account's order ships, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
+2c (tokens). (PR #1560) `__rating_avg`, `__rating_count`, `has_rating`/`no_rating` in the catalog widgets (`designer/catalog-rating-tokens.md`).
 3a. (PR #1583) Wishlist core: owners, visitor cookie, `wishlist.php`, merge at sign-in, privacy export, trim (`commerce/wishlist.md`).
 
 ## What remains?
-2c. Designer: `__rating_avg`, `__rating_count`, `__reviews` tokens and a review form on designer product pages (comments are page-level there), then aggregateRating in `_pg_build_product_jsonld()` (M).
+2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
 3b. Heart in catalog widgets, state from `wishlist.php?action=state` (S–M).
 3c. Favourites widget and page, My Account link (M).
 4. Back-in-stock capture + listener + templates (S–M).
@@ -32,4 +33,4 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 - Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
-- Step 2c, 3b or 3c; read `commerce/product-reviews-verified.md` or `commerce/wishlist.md`.
+- Step 3b or 3c; read `commerce/wishlist.md`.
