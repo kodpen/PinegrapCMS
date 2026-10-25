@@ -338,11 +338,13 @@ function pg_sw_finish_row_marks($nonce)
 // Whether a list's row template ($children, the loop_area's children)
 // should be drawn between row marks: only inside a widget render, and only
 // when a node of it names a position token, in a binding (a condition
-// too), a text or custom HTML. A template without one draws as before.
+// too), a text or custom HTML. A template without one draws as before. The
+// tokens in a list inside the rows (a loop_area with props.source) number
+// that list's rows, not these (widgets_lists.php), so they do not count.
 function pg_sw_finish_uses_positions($children)
 {
     if (!pg_sw_finish_active() || !is_array($children) || !$children) return false;
-    $json = json_encode($children);
+    $json = json_encode(pg_sw_list_unsourced($children));
     return is_string($json) && (bool)preg_match('/__loop_(?:index|count|is_first|is_last|is_odd|is_even)\b/', $json);
 }
 
@@ -426,22 +428,29 @@ function pg_sw_finish_positions($html, $nonce)
     return ($out === null) ? $html : $out;
 }
 
-// The finish pass of one widget's markup. Its stages, in order:
+// The finish pass of one widget's markup. What the renderer published for
+// its lists is taken first, so nothing outlives the pass. Its stages, in
+// order:
 //   1. row positions (pg_sw_finish_positions()), first, so a condition on
 //      a position token reads its row's value;
-//   2. conditions (pg_sw_finish_resolve());
-//   3. when a span was cut, pg-hide-if-empty again in the kinds whose
-//      renderer honours it, on the elements around a cut point only, so a
-//      row whose value left and a box whose last row left go with it, and
-//      an element no cut touched is judged as the renderer judged it;
-//   4. every marker, carrier and cut point of this request still standing
+//   2. lists inside a record (pg_sw_lists_expand(), widgets_lists.php),
+//      drawn from the published rows, each row with its own positions, so
+//      a condition in a list's row reads that row;
+//   3. conditions (pg_sw_finish_resolve());
+//   4. when a span was cut or a list came out empty, pg-hide-if-empty again
+//      in the kinds whose renderer honours it, on the elements around a cut
+//      point only, so a row whose value left and a box whose last row left
+//      go with it, and an element no cut touched is judged as the renderer
+//      judged it;
+//   5. every marker, carrier and cut point of this request still standing
 //      taken out;
-//   5. each record's edit pencil put in the first element the record kept
+//   6. each record's edit pencil put in the first element the record kept
 //      (pg_sw_finish_place_chips()), then any pencil marker left taken out.
 // Markup that holds neither a marker of this request nor a position token
 // comes back as it was; markup without a marker ends after stage 1.
 function pg_sw_finish_widget_html($html, $scope)
 {
+    $published = pg_sw_list_take($scope);
     if (!is_string($html) || $html === '') return $html;
     $nonce = pg_sw_marker_nonce();
     if (strpos($html, $nonce) === false && strpos($html, '^^__loop_') === false) return $html;
@@ -450,6 +459,7 @@ function pg_sw_finish_widget_html($html, $scope)
     if (strpos($html, $nonce) === false) return $html;
 
     $cut  = false;
+    $html = pg_sw_lists_expand($html, $nonce, $scope, $published, $cut);
     $html = pg_sw_finish_resolve($html, $nonce, $cut);
 
     $kind = (is_array($scope) && isset($scope['kind'])) ? pg_sw_finish_kind($scope['kind']) : '';
