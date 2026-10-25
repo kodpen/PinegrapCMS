@@ -5,12 +5,12 @@ description: The comments system widget (regionType comments): whose thread it s
 
 ## What is it and where does it live?
 - Kind `comments` (`includes/fn/widgets_comments.php`, `SW_TYPES`, `pg_sw_type_labels()`): a page's thread and add-comment form ([[comments-widget-form]]) in the design's layout, shared by every page placing it; comments and `comments_*` settings stay the page's ([[comment-thread-rules]]).
-- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured top-level comments pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). Panel: [[comments-widget-panel]].
+- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured roots pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). Panel: [[comments-widget-panel]].
 
 ## Which thread does a page show?
 - The drawn page's (`pg_sw_render_context()['page_id']`). A top-level form_item_view widget (`pg_sw_record_comment_context()`): that record's thread, posted as `submitted_form`. Else the page's own: read as every comment on the page (null thread, as the classic block), posted as `''` / 0.
 - Left to the classic block, unclaimed: `form item view` pages, catalog, catalog detail and calendar event view pages without a record widget ([[comments-widget-hand-off]]).
-- Prints nothing (page claimed): comments off, a record not shown (hidden or none), a form_item_view below the top level (`pg_comments_page_nested_record()`: one query a level, 8 levels, 500 rows), a second comments widget.
+- Prints nothing (page claimed): comments off, a record not shown (hidden or none), a form_item_view below the top level (`pg_comments_page_nested_record()`), a second comments widget.
 - The search index reads a visitor's view: published only, no form, not staff.
 
 ## Which tokens and flags does it give?
@@ -18,7 +18,7 @@ description: The comments system widget (regionType comments): whose thread it s
 - Flags: 23 thread (`pg_comments_widget_thread_flags()`, `is_email` in a comment e-mail: [[comments-widget-email]]), 14 row (`pg_comments_widget_row_flags()`); the loop gets row + thread flags. Watch box, watcher list, staff form: [[comments-widget-watch-staff]].
 
 ## How is it escaped?
-- Once: `pg_comments_widget_escape()` = `pg_sw_escape_token_values()` (raw: `__comment_message_html`, `__comment_stars_html`, `__comment_seller_reply_html`, defused) then every `^` as `&#94;`; filled in one `strtr()` pass. `__comment_datetime` is formatted (`pg_sw_apply_tokens()`) before visitor text goes in.
+- Once: `pg_comments_widget_escape()` = `pg_sw_escape_token_values()` (raw: `__comment_message_html`, `__comment_stars_html`, `__comment_seller_reply_html`, defused) then every `^` as `&#94;`; filled in one `strtr()` pass. `__comment_datetime` is formatted before visitor text goes in (`pg_sw_apply_tokens()`; e-mail: `pg_comments_email_fill_datetime()`).
 - Row root gets `id="c-<id>"` after `pg_sw_uniquify_row_ids()`, and `pg_comments_row_anchor_links()` takes the row suffix off `href="#c-<n>…"`, so a link to `#^^__comment_anchor^^` reaches it. Output starts with `<a id="software_comments">`.
 
 ## Where is the default layout?

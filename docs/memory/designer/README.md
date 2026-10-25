@@ -38,7 +38,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
 - comments-widget-canvas.md: The comments widget on the canvas and in the Preview: visitor states, the thread flag twin, hide versus fade, sample comments, the Preview's page, ?r=, unsaved settings, anonymous background renders
 - comments-widget-conversion.md: Fixed comments block to the Comments widget and back (which widget is the design's, also on tabs not opened yet; featured filter on a new one), templates shipping the kind
-- comments-widget-email.md: The comments widget on a comment e-mail page: the one comment mail.php names, when the fixed markup stays, absolute links and dates, no forms, the E-mail canvas state, save warnings
+- comments-widget-email-design.md: Designing the comments widget for a comment e-mail page: the E-mail canvas state, the link to the comment the card must keep, the canvas note without it, mail-safe styles, save warnings
+- comments-widget-email.md: The comments widget on a comment e-mail page: the one comment mail.php names, when the fixed markup stays, absolute links and dates in the site's zone, no forms
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
 - comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel

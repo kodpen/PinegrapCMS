@@ -11,6 +11,7 @@ description: Save warnings about a page's comments not drawn (block plus widget,
 
 ## What does a comment e-mail page get?
 - Only `widgets`: its widget draws the comment an e-mail names, whatever its own comments switch, block or record widget ([[comments-widget-email]]). Fact `email_page`: `pg_comments_is_email_page($page_id)`, one count of the pages naming it as their submitter or watcher e-mail page, asked only once the census finds a widget (not for every save); 0 for a page not saved yet, so a new e-mail page gets `off` once.
+- No warning for a widget whose card has no link to the comment (every e-mail then sends the fixed markup): the canvas's E-mail state leaves it out with a note ([[comments-widget-email-design]]).
 
 ## How was it checked?
 - `tests/comments_widget_designer_test.php`: tree census, census facts, warning codes and texts (e-mail page on the pure codes, no database), the save wiring and the order of the e-mail page check.
