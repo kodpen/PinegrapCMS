@@ -2433,8 +2433,12 @@ function parasut_stale_kept_action($missing, $kept, $default_product, $resent)
  * screen told (parasut_stale_kept_notice()), and the create sent once
  * more; what that try answers is the outcome, a second such 404 included.
  * Paraşüt writes nothing on that 404, so the record is not written twice.
- * A create that names the default product/service refuses in words naming
- * the setting, which is not forgotten.
+ * When $forget cannot ready the create, nothing goes again: the notice
+ * says so, and $forget's reason is the refusal. The resend starts PHP's
+ * time limit afresh (erp_edoc_parasut_allow_time()): it repeats the try's
+ * requests under Paraşüt's rate limit, and on Windows the limit counts
+ * that wait. A create that names the default product/service refuses in
+ * words naming the setting, which is not forgotten.
  *
  * @param callable $send             function (): array with 'answer' => the answer of the request
  *                                   that decides the try (null when none went) and 'kept' => what
@@ -2463,12 +2467,20 @@ function parasut_send_once_more($send, $default_product, $forget)
             return array('sent' => $sent, 'notices' => $notices, 'refusal' => '');
         }
 
-        $notices[] = parasut_stale_kept_notice($missing['type'], $missing['id']);
         $refusal = (string) call_user_func($forget, (string) $missing['type'], (string) $missing['id']);
+        $notices[] = parasut_stale_kept_notice($missing['type'], $missing['id'], $refusal === '');
 
         if ($refusal !== '') {
             return array('sent' => $sent, 'notices' => $notices, 'refusal' => $refusal);
         }
+
+        // The helper is the driver's; E-Shipment loads the driver only when
+        // it looks a buyer card up.
+        if (!function_exists('erp_edoc_parasut_allow_time')) {
+            _parasut_order_invoice_load();
+        }
+
+        erp_edoc_parasut_allow_time();
 
         $sent = (array) call_user_func($send);
     }
@@ -2476,31 +2488,41 @@ function parasut_send_once_more($send, $default_product, $forget)
 
 /**
  * What the order screen and the ERP say about a kept id Paraşüt no longer
- * holds: that it was forgotten and the create tried once more without it,
- * not how that try went (the outcome says so).
+ * holds: that it was forgotten, and whether the create was tried once more
+ * without it; not how that try went (the outcome says so). When the create
+ * could not be readied again, the refusal beside the notice says why.
  *
- * @param string $type  'Product', 'Warehouse', 'Contact' or 'ShipmentDocument'
+ * @param string $type   'Product', 'Warehouse', 'Contact' or 'ShipmentDocument'
  * @param string $id
+ * @param bool   $tried  The create was sent once more without the id
  * @return string  '' for another type
  */
-function parasut_stale_kept_notice($type, $id)
+function parasut_stale_kept_notice($type, $id, $tried = true)
 {
     $vars = array((string) $id);
 
     if ($type === 'Product') {
-        return lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars));
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
     }
 
     if ($type === 'Warehouse') {
-        return lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars));
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
     }
 
     if ($type === 'Contact') {
-        return lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars));
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
     }
 
     if ($type === 'ShipmentDocument') {
-        return lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten and Pinegrap tried once more without it, as an ordinary invoice of the order with the shipment included.', 'vars' => $vars));
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten and Pinegrap tried once more without it, as an ordinary invoice of the order with the shipment included.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten, but the invoice could not be sent once more without it.', 'vars' => $vars));
     }
 
     return '';
@@ -2509,7 +2531,9 @@ function parasut_stale_kept_notice($type, $id)
 /**
  * The refusal of a create Paraşüt answered as not holding the default
  * product/service, which the operator typed on the settings card and
- * which is never cleared.
+ * which is never cleared. An invoice names it for a line without a card of
+ * its own; E-Shipment names it only through a product whose own card is
+ * that id, which goes on a new card once the setting holds another id.
  *
  * @param string $id
  * @return string
@@ -2517,7 +2541,7 @@ function parasut_stale_kept_notice($type, $id)
 function parasut_default_product_gone_refusal($id)
 {
     return lang(array(
-        'string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
+        'string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
         'vars' => array((string) $id),
     ));
 }
@@ -3218,8 +3242,11 @@ function parasut_create_shipment($order_id, &$notices = array())
     // that it no longer holds one (404, nothing written: deleted there, or
     // the shop moved to another Paraşüt company), the id is forgotten and
     // the try made once more (parasut_send_once_more()): the card opened
-    // again, the first warehouse fetched again. The product read of the
-    // stock step counts too: it comes before any document is written.
+    // again, the first warehouse fetched again. The stock step's product
+    // read and inflow seed count too: they come before the shipment
+    // document. An inflow an earlier line seeded in the first try is not
+    // seeded again: that product now has stock movements, and
+    // parasut_ensure_product_stock_tracking() returns before seeding.
     $skip_warehouse = '';
     $send = function () use ($order_id, $token, $invoice_link, &$order, &$skip_warehouse) {
         // What this try takes from what Pinegrap keeps rather than asks
@@ -3391,7 +3418,9 @@ function parasut_create_shipment($order_id, &$notices = array())
 
     // The default product/service is a setting, never forgotten: a product
     // card that is that id refuses in words naming it, as in Create Invoice
-    // and the ERP driver.
+    // and the ERP driver. No shipment line goes on the default; once the
+    // setting holds another id, that product's card is forgotten and a new
+    // one opened like any other kept card.
     $default_product = defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '';
     $sent = parasut_send_once_more($send, $default_product, function ($type, $id) use ($order_id, &$order, &$skip_warehouse) {
         _parasut_forget_kept_id($type, $id, $order_id);
