@@ -37,4 +37,4 @@ description: Plan (1-19 and 3b done; 20 deferred): comments as a designable syst
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Nothing open: slices 1-19 are merged (#1461-#1620). Slice 20 (product and event threads) waits for the owner, after the forum template moves to the widget (design-template-forum-leftovers D). When 20 is dropped or built, move the lasting decisions to designer/ and delete this plan.
+- Nothing open: slices 1-19 are merged (#1461-#1620). Slice 20 (product and event threads) waits for the owner; the forum template is on the widget since 1.1.0 (#1658). When 20 is dropped or built, move the lasting decisions to designer/ and delete this plan.

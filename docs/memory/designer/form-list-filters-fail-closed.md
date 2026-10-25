@@ -20,7 +20,7 @@ description: A form list filter on a missing field or unknown operator shows no 
 - A blank row (no field) counts nowhere.
 
 ## What does the editor show?
-- `_swFormListFiltersHtml()` (lists and record views): besides the "(incompatible — choose again)" option, a row whose field is not in the form (once the fields are loaded) or whose operator is unknown gets an amber line saying no record is shown and what to choose again.
+- `_swFormListFiltersHtml()` (lists, record views, recent comments lists): besides the "(incompatible — choose again)" option, a row whose field is not in the form (once the fields are loaded) or whose operator is unknown gets an amber line saying no record is shown and what to choose again.
 
 ## What is unchanged?
 - Classic list views (`get_form_list_view.php`); no schema change.

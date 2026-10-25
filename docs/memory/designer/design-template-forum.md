@@ -5,7 +5,7 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 
 ## What does it ship?
 - 55 pages: home, forum, board, topic, tag, member, unanswered, docs, docs_section, doc, search, guidelines, FAQ, about, contact, legal, error, sign-in; members' new_topic, doc_new, report, my_topics, my_docs, doc_submission, account, inbox; moderators' pages ([[design-template-forum-moderation]]); 11 e-mails.
-- Version 1.1.0 (1.0.1: replies on the fixed comments block; 1.0.0: no followed topics, user names in the staff note). Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
+- Version 1.2.0 (1.1.0: no board replies list; 1.0.1: replies on the fixed comments block; 1.0.0: no followed topics, user names in the staff note). Order 90, `minimal` + `aurora` (a pair of its own), `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]. Tests: `tests/design_template_forum_test.php`. General features only.
 
 ## What do the forms hold?
 - Forum Topics (`new_topic`): board (category role), kind (Question or Discussion), title, body (rich), tags, attachment (`public` folder), guidelines box. Office: status Open/Solved/Closed/Hidden, pinned, announcement (No/Yes), staff_note.

@@ -1,6 +1,6 @@
 ---
 name: comments-widget-recent
-description: The Comments widget's recent mode (kind comments_recent): what a list shows, options, what it never does, tokens and flags, checks
+description: The Comments widget's recent mode (kind comments_recent): what a list shows, options, record filters, what it never does, tokens and flags, checks
 ---
 
 ## What is it?
@@ -9,7 +9,7 @@ description: The Comments widget's recent mode (kind comments_recent): what a li
 
 ## Which options does it read?
 - `pg_comments_recent_options()`: `recent_show` published (default) | mine | pending; `recent_page_ids` ints > 0, each once, first five (`tab:x`, 0, signs, fractions dropped); `recent_limit` 5 | 10 | 20 | 50; `recent_order` newest | oldest (mine, pending).
-- No record filters: a `filters` key carried from another kind is never read; a later filter option needs its own key (`recent_filters`) or it applies unseen. The thread's options stay for the way back.
+- `recent_filters` (#1679): rows as a form list stores them, held after the view's own filters to the list's one record source (`pg_sw_list_record_filter_clause()`; an address value such as `?board=` from the page that shows the list, left out when absent). A filtered list over a page's own thread or more than one page draws nothing (decision `filters`, [[comments-widget-recent-gates]]). A `filters` key carried from another kind is never read, so none applies unseen. The thread's options stay for the way back.
 
 ## What does it never do?
 - Claim a thread, read a liveform, print a form, token, CAPTCHA, `#software_comments` or `id="c-<id>"`; Messages node `comments_recent`. Nothing in an e-mail or for the search index; a background render (Preview, SEO) is anonymous.
