@@ -46,6 +46,41 @@ function _widget_cond_panel_js_function($source, $name)
 	return ($to === false) ? '' : substr($source, $from, $to + 7 - $from);
 }
 
+// The editor lists the server's operators, in its order, with the same
+// "takes a value" flag.
+function test_widget_condition_panel_ops_match_the_server()
+{
+	$block = _widget_cond_panel_js_var(_widget_cond_panel_js(), 'SW_COND_OPS');
+	pg_assert_true($block !== '', 'SW_COND_OPS is found');
+	preg_match_all("/\['([a-z_]+)',\s*_sdT\('[^']+'\),\s*(true|false)\]/", $block, $m, PREG_SET_ORDER);
+	$js = array();
+	foreach ($m as $row) {
+		$js[$row[1]] = ($row[2] === 'true');
+	}
+	$php = array();
+	foreach (pg_sw_cond_ops() as $op => $spec) {
+		$php[$op] = $spec['operand'];
+	}
+	pg_assert_same($php, $js);
+}
+
+// The editor refuses the tokens the server refuses.
+function test_widget_condition_panel_refused_tokens_match_the_server()
+{
+	$block = _widget_cond_panel_js_var(_widget_cond_panel_js(), 'SW_COND_DENY');
+	pg_assert_true($block !== '', 'SW_COND_DENY is found');
+	preg_match_all("/'(__[a-z0-9_]+)'/", $block, $m);
+	pg_assert_same(pg_sw_cond_denied_tokens(), $m[1]);
+}
+
+// A palette named SW_*TOKEN* is read as offered tokens by
+// tools/check_bindings.php; the condition lists must not be.
+function test_widget_condition_panel_lists_are_not_palettes()
+{
+	$js = _widget_cond_panel_js();
+	pg_assert_true(!preg_match('/var SW_COND[A-Z_]*TOKEN/', $js), 'no SW_COND*TOKEN* name');
+}
+
 function _widget_cond_panel_input($required, $attr_name = 'required')
 {
 	$attrs = array(array('name' => 'type', 'value' => 'text'));
@@ -143,4 +178,119 @@ function test_widget_condition_render_translates_before_it_reads()
 	$tr = strpos($block, 'pg_tr_condition_props(');
 	$spec = strpos($block, 'pg_sw_cond_spec(');
 	pg_assert_true($tr !== false && $spec !== false && $tr < $spec, 'translated before it is read');
+}
+
+// Runs a script against the editor's condition helpers under Node; null
+// when Node is not installed.
+function _widget_cond_panel_run_js($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return null;
+	}
+
+	$js = _widget_cond_panel_js();
+	$cut = _widget_cond_panel_js_var($js, 'SW_COND_OPS') . _widget_cond_panel_js_var($js, 'SW_COND_DENY');
+	foreach (array('_sdT', '_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondTokenOptions', '_sdCondWrite', '_sdCondSentence', '_sdNodeSetBinding') as $name) {
+		$fn = _widget_cond_panel_js_function($js, $name);
+		pg_assert_true($fn !== '', $name . ' is found');
+		$cut .= $fn;
+	}
+
+	$stubs = "var _sharedDirty = {};\n"
+		. "var SW_DATE_FIELD_TOKENS = {};\n"
+		. "function _sdIsFilterChain() { return false; }\n"
+		. "var INSIDE = 7, KIND = 'catalog_item_view';\n"
+		. "function _isInsideSystemWidget(n) { return INSIDE; }\n"
+		. "function _getSystemWidgetRegionType(n) { return KIND; }\n"
+		. "function _swBindTokenOptions(n) { return [{ token: '__name', label: 'Product name' }, { token: '__price_block_html', label: 'Price block' }, { token: '__variant_picker', label: 'Variants' }, { token: '__link_label', label: 'View' }, { token: '__inventory_quantity', label: 'Stock quantity' }]; }\n"
+		. "function _swBindLabel(type, token) { var l = { __name: 'Product name', __inventory_quantity: 'Stock quantity' }; return l[token] || token; }\n";
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return null;
+	file_put_contents($file, $stubs . $cut . "\n" . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$answer = json_decode($printed, true);
+	pg_assert_true(is_array($answer), 'Node printed JSON: ' . (($printed === '') ? '(nothing)' : $printed));
+	return $answer;
+}
+
+// The editor's token rule equals the server's on the same tokens.
+function test_widget_condition_panel_token_rule_matches_the_server()
+{
+	$tokens = array('__name', '__price_block_html', '__PRICE_BLOCK_HTML', '__variant_picker', '__edit_url',
+		'__comment_edit_url', '__empty_message', '__page_link', '__page_link_2', '__link_label', '__link_label_10',
+		'__link_labels', '__filter_chips', '__loop_is_first', 'title', '');
+	$answer = _widget_cond_panel_run_js('console.log(JSON.stringify(' . json_encode($tokens) . '.map(function (t) { return _sdCondTokenAllowed(t); })));');
+	if ($answer === null) {
+		return;
+	}
+	$php = array();
+	foreach ($tokens as $t) {
+		$php[] = pg_sw_cond_token_allowed($t);
+	}
+	pg_assert_same($php, $answer);
+}
+
+// The token choice drops refused tokens; the writer keeps the binding and
+// its operator and value in step, clears both together, and leaves other
+// bindings and parameters alone; the canvas sentence names the choice.
+function test_widget_condition_panel_choice_writer_and_sentence()
+{
+	$script = <<<'JS'
+var answer = {};
+answer.options = _sdCondTokenOptions({ type: 'content', props: {} }).map(function (o) { return o.token; });
+var n = { type: 'content', props: { _bindings: { text: '__name' }, _bindParams: { text: { a: 1 } } } };
+_sdCondWrite(n, '__inventory_quantity', 'gt', '0');
+answer.set = JSON.parse(JSON.stringify(n.props));
+answer.sentence = _sdCondSentence(n);
+_sdCondWrite(n, '__inventory_quantity', 'not_empty', '5');
+answer.noValue = JSON.parse(JSON.stringify(n.props._bindParams.show_if));
+answer.sentenceNoValue = _sdCondSentence(n);
+_sdCondWrite(n, '', 'eq', 'x');
+answer.cleared = JSON.parse(JSON.stringify(n.props));
+var m = { type: 'content', props: {} };
+_sdCondWrite(m, '__name', 'eq', 'Chair');
+_sdCondWrite(m, '', 'eq', '');
+answer.emptied = JSON.parse(JSON.stringify(m.props));
+var r = { type: 'content', props: {} };
+_sdCondWrite(r, '__name', 'nope', 'x');
+answer.unknownOp = r.props._bindParams.show_if;
+answer.dirty = Object.keys(_sharedDirty);
+answer.required = [
+    _sdCondHoldsRequired({ type: 'semantic', props: { tag: 'input', _attrs: [{ name: 'required', value: '' }] }, children: [] }),
+    _sdCondHoldsRequired({ type: 'semantic', props: { tag: 'div' }, children: [{ type: 'semantic', props: { tag: 'select', _attrs: [{ name: 'Required', value: 'required' }] }, children: [] }] }),
+    _sdCondHoldsRequired({ type: 'semantic', props: { tag: 'div' }, children: [{ type: 'semantic', props: { tag: 'input', _attrs: [{ name: 'type', value: 'text' }] }, children: [] }] })
+];
+answer.op = _sdCondOp('multiple_of');
+answer.noOp = _sdCondOp('nope');
+console.log(JSON.stringify(answer));
+JS;
+	$a = _widget_cond_panel_run_js($script);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_same(array('__name', '__inventory_quantity'), $a['options']);
+	pg_assert_same(array('text' => '__name', 'show_if' => '__inventory_quantity'), $a['set']['_bindings']);
+	pg_assert_same(array('text' => array('a' => 1), 'show_if' => array('op' => 'gt', 'value' => '0')), $a['set']['_bindParams']);
+	pg_assert_same('Only when: Stock quantity is greater than 0', $a['sentence']);
+	pg_assert_same(array('op' => 'not_empty'), $a['noValue']);
+	pg_assert_same('Only when: Stock quantity is not empty', $a['sentenceNoValue']);
+	pg_assert_same(array('_bindings' => array('text' => '__name'), '_bindParams' => array('text' => array('a' => 1))), $a['cleared']);
+	pg_assert_same(array(), $a['emptied']);
+	pg_assert_same(array('op' => 'not_empty'), $a['unknownOp']);
+	pg_assert_same(array('7'), $a['dirty']);
+	pg_assert_same(array(true, true, false), $a['required']);
+	pg_assert_same(array('multiple_of', 'is a multiple of', true), $a['op']);
+	pg_assert_same(null, $a['noOp']);
 }

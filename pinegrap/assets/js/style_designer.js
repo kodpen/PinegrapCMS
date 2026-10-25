@@ -6446,6 +6446,11 @@ const StyleDesigner = (function () {
         // A faded wrapper already says it; its children are not faded twice.
         '.sd-wrap.sd-binding-off .sd-wrap.sd-binding-off { opacity:1; filter:none; }',
         '.sd-wrap.sd-binding-off .sd-wrap.sd-binding-off::after { display:none; }',
+        // A value condition's chip (_sdCondSentence()): top left, opposite
+        // the switched-off chip; hidden while the element's text is edited.
+        '.sd-wrap.sd-cond { position:relative; }',
+        '.sd-wrap.sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
+        '.sd-wrap.sd-cond:has([contenteditable="true"])::before { display:none; }',
         // Repeated template row(s) — dashed-outline treatment via inset box-shadow
         // on the cells (a <tr> itself can\'t take a visible border reliably
         // across browsers when cells have their own backgrounds).
@@ -6557,6 +6562,7 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-fx-flat.sd-binding-off > ' + _SD_FX_EL + ' { opacity:.42; filter:grayscale(1); }',
         '.sd-wrap.sd-fx-flat.sd-binding-off.sd-selected > ' + _SD_FX_EL + ' { opacity:.75; filter:none; }',
         '.sd-wrap.sd-fx-flat.sd-binding-off::after { display:none; }',
+        '.sd-wrap.sd-fx-flat.sd-cond::before { display:none; }',
     ];
 
     // The canvas stylesheet for this design: everything for a Bootstrap design,
@@ -12345,6 +12351,13 @@ const StyleDesigner = (function () {
                 wrapper.setAttribute('data-sd-binding-off', '1');
                 wrapper.setAttribute('data-sd-off-reason', _commentsOff);
             }
+        }
+
+        // A value condition (Bind Data, "Show only when a value…") is named
+        // on the element; the page and Preview decide it.
+        if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
+            wrapper.classList.add('sd-cond');
+            wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -29709,6 +29722,11 @@ const StyleDesigner = (function () {
         for (var i = 0; i < keys.length; i++) {
             if (typeof p[keys[i]] === 'string' && p[keys[i]].trim() !== '') return true;
         }
+        // A value condition's compared text with words in it (the server
+        // decides exactly: pg_sw_cond_operand_is_words()).
+        var cp = p._bindParams && p._bindParams.show_if;
+        if (p._bindings && p._bindings.show_if && cp && /^(eq|neq|contains|not_contains|starts)$/.test(String(cp.op || '')) &&
+            /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/.test(String(cp.value || ''))) return true;
         if (Array.isArray(p._attrs)) {
             return p._attrs.some(function (a) {
                 return a && /^(alt|title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
@@ -29748,6 +29766,7 @@ const StyleDesigner = (function () {
             headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
             _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
+        if (field.indexOf('_cond:') === 0) return _sdT('Condition: compared with');
         // An attribute of a text or of stored HTML (pg_tr_node_texts(),
         // pg_tr_field_segments()): "<field>@<attribute>#n".
         var at = field.indexOf('@');
@@ -36194,6 +36213,154 @@ const StyleDesigner = (function () {
             '<select class="form-select form-select-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
     }
 
+    // The operators of the "Show only when a value…" row, in the server's
+    // order (pg_sw_cond_ops() in includes/fn/widgets_conditions.php;
+    // tests/widget_condition_panel_test.php keeps the two equal):
+    // [operator, label, whether it takes a value]. Neither list name holds
+    // TOKEN: tools/check_bindings.php reads SW_*TOKEN* lists as palettes.
+    var SW_COND_OPS = [
+        ['not_empty',    _sdT('is not empty'),              false],
+        ['empty',        _sdT('is empty'),                  false],
+        ['eq',           _sdT('is equal to'),               true],
+        ['neq',          _sdT('is not equal to'),           true],
+        ['contains',     _sdT('contains the text'),         true],
+        ['not_contains', _sdT('does not contain the text'), true],
+        ['starts',       _sdT('starts with the text'),      true],
+        ['gt',           _sdT('is greater than'),           true],
+        ['gte',          _sdT('is at least'),               true],
+        ['lt',           _sdT('is less than'),              true],
+        ['lte',          _sdT('is at most'),                true],
+        ['multiple_of',  _sdT('is a multiple of'),          true]
+    ];
+
+    // The tokens a condition may not read, as the server refuses them
+    // (pg_sw_cond_denied_tokens()); every *_html token and the numbered
+    // __page_link_N / __link_label_N go too (_sdCondTokenAllowed()).
+    var SW_COND_DENY = [
+        '__variant_picker',
+        '__filter_chips',
+        '__filters_button',
+        '__filters_offcanvas',
+        '__clear_filters_button',
+        '__edit_url',
+        '__comment_edit_url',
+        '__empty_message',
+        '__page_link',
+        '__link_label'
+    ];
+
+    // Whether a condition may read `token` (pg_sw_cond_token_allowed()).
+    function _sdCondTokenAllowed(token) {
+        var t = String(token == null ? '' : token).toLowerCase();
+        if (t === '') return false;
+        if (/_html$/.test(t)) return false;
+        if (SW_COND_DENY.indexOf(t) !== -1) return false;
+        return !/^__(page_link|link_label)_\d+$/.test(t);
+    }
+
+    // The SW_COND_OPS entry of `op`, or null.
+    function _sdCondOp(op) {
+        for (var i = 0; i < SW_COND_OPS.length; i++) {
+            if (SW_COND_OPS[i][0] === op) return SW_COND_OPS[i];
+        }
+        return null;
+    }
+
+    // Whether `node` is, or holds, a form control marked required. The site
+    // draws such a node whatever its condition says, so the form stays
+    // sendable (pg_sw_cond_holds_required()); the panel offers none there.
+    function _sdCondHoldsRequired(node) {
+        if (!node) return false;
+        var attrs = node.props && node.props._attrs;
+        if (Array.isArray(attrs) && attrs.some(function (a) { return a && String(a.name || '').toLowerCase() === 'required'; })) return true;
+        return Array.isArray(node.children) && node.children.some(_sdCondHoldsRequired);
+    }
+
+    // The tokens the condition row offers `node`: its Bind Data tokens
+    // (_swBindTokenOptions(), the row position group inside a list
+    // included) that a condition may read.
+    function _sdCondTokenOptions(node) {
+        return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+    }
+
+    // Writes the condition of `node`: the token as its show_if binding, the
+    // operator and value in _bindParams.show_if. No token clears both; an
+    // operator that takes no value keeps none; an unknown operator reads as
+    // "is not empty". The caller records the undo step and redraws.
+    function _sdCondWrite(node, token, op, value) {
+        if (!node || !node.props) return;
+        var p = node.props;
+        _sdNodeSetBinding(node, 'show_if', token || '');
+        if (!token) {
+            if (p._bindParams && typeof p._bindParams === 'object') {
+                delete p._bindParams.show_if;
+                if (Object.keys(p._bindParams).length === 0) delete p._bindParams;
+            }
+            return;
+        }
+        var entry = _sdCondOp(op) || _sdCondOp('not_empty');
+        var params = { op: entry[0] };
+        if (entry[2]) params.value = (value == null) ? '' : String(value);
+        if (!p._bindParams || typeof p._bindParams !== 'object') p._bindParams = {};
+        p._bindParams.show_if = params;
+    }
+
+    // The canvas chip of a node with a condition: "Only when: <value's
+    // name> <operator> <compared text>", the three as numbered parts so a
+    // language can order them. The canvas does not evaluate it; the page
+    // and Preview do.
+    function _sdCondSentence(node) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (!b.show_if) return '';
+        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
+        var entry = _sdCondOp(params.op || 'not_empty');
+        var value = (entry && entry[2]) ? (params.value == null ? '' : String(params.value)) : '';
+        return _sdT('Only when: {var:1} {var:2} {var:3}', [
+            _swBindLabel(_getSystemWidgetRegionType(node), b.show_if),
+            entry ? entry[1] : String(params.op),
+            value
+        ]).replace(/\s+/g, ' ').trim();
+    }
+
+    // The "Show only when a value…" row of Bind Data, on any element of a
+    // system widget but its root and its loops: the value, the operator,
+    // the compared text. Beside the flag row above, which some kinds have;
+    // when both are set both must pass.
+    function _sdConditionRows(node) {
+        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
+        var label = esc(_sdT('Show only when a value…'));
+        var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
+        var cur = (node.props._bindings && node.props._bindings.show_if) || '';
+        var required = _sdCondHoldsRequired(node);
+        if (required && !cur) {
+            return row(label, note(_sdT('A required form field cannot be hidden by a condition: the form could not be sent.')));
+        }
+        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
+        var entry = _sdCondOp(params.op || 'not_empty');
+        var tokOpts = '<option value="">' + esc(_sdT('Always')) + '</option>';
+        var found = false;
+        _sdCondTokenOptions(node).forEach(function (o) {
+            if (o.token === cur) found = true;
+            tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+        });
+        if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
+        var html = '<select class="form-select form-select-sm sd-sw-cond-token" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
+        if (cur) {
+            var opOpts = '';
+            SW_COND_OPS.forEach(function (o) {
+                opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            });
+            html += '<select class="form-select form-select-sm mt-1 sd-sw-cond-op" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
+                '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" value="' + esc(params.value == null ? '' : String(params.value)) + '"' +
+                    ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+        }
+        html += note(required
+            ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
+            : _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.'));
+        return row(label, html);
+    }
+
     // Catalog token palette (regionType='catalog_listing'). Grouped by purpose
     // so the binding dropdown stays scannable even with 30+ tokens. Token names
     // mirror the keys produced by _render_system_widget_catalog_listing in PHP.
@@ -38090,7 +38257,7 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node) + _sdFormatRows(node);
+        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -39482,6 +39649,47 @@ const StyleDesigner = (function () {
                 var p = selectedNode && selectedNode.props;
                 var stored = _sdParseFilter(p && p._bindFormats ? p._bindFormats.text : '');
                 if (stored && stored.arg !== null && this.value !== String(stored.arg)) this.value = stored.arg;
+            });
+        }
+
+        // The "Show only when a value…" row (_sdConditionRows()). A new value
+        // to test redraws the panel (the operator and value boxes come or go);
+        // the operator and the compared text change in place, so typing keeps
+        // the focus. One undo step for each choice and for each word typed.
+        var condTok = document.querySelector('.sd-sw-cond-token');
+        var condOp  = document.querySelector('.sd-sw-cond-op');
+        var condVal = document.querySelector('.sd-sw-cond-value');
+        var _sdCondNow = function () {
+            var p = (selectedNode && selectedNode.props) || {};
+            var c = (p._bindParams && p._bindParams.show_if) || {};
+            return { token: (p._bindings && p._bindings.show_if) || '', op: c.op || 'not_empty' };
+        };
+        if (condTok) {
+            condTok.addEventListener('change', function () {
+                if (!selectedNode) return;
+                saveState();
+                _sdCondWrite(selectedNode, this.value, _sdCondNow().op, condVal ? condVal.value : '');
+                renderCanvas();
+                if (typeof renderProperties === 'function') renderProperties();
+            });
+        }
+        if (condOp) {
+            condOp.addEventListener('change', function () {
+                if (!selectedNode) return;
+                saveState();
+                _sdCondWrite(selectedNode, _sdCondNow().token, this.value, condVal ? condVal.value : '');
+                var entry = _sdCondOp(this.value);
+                if (condVal) condVal.style.display = (entry && entry[2]) ? '' : 'none';
+                renderCanvas();
+            });
+        }
+        if (condVal) {
+            condVal.addEventListener('input', function () {
+                if (!selectedNode) return;
+                saveState(_sdEditRun('cond:value'));
+                var now = _sdCondNow();
+                _sdCondWrite(selectedNode, now.token, now.op, this.value);
+                renderCanvas();
             });
         }
 

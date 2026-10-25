@@ -778,6 +778,7 @@
     "invoices": "faturalar",
     "ip, ip block, block, allow, allow list, blocked email, banned": "ip, ip block, block, allow, allow list, blocked email, banned, ip engel, izin listesi, eposta engel, yasakli",
     "is": "eşittir",
+    "is a multiple of": "katı",
     "is archived": "Arşivde olduğu",
     "is at least": "en az",
     "is at most": "en fazla",
