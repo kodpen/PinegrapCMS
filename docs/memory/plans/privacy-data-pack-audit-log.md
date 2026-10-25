@@ -25,7 +25,7 @@ description: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #1383,
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
 - A deleted order or user keeps its whole row in `audit_log.before_json`: anonymise it in step 4 or keep it for the trail's retention?
 - Keep order e-mail for refund disputes after erasure? Keep the hashed token and the PSP reference only; refunds use the PSP reference.
-- Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #TBD) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
+- Which step writes cookie and `contract` consent rows? `sms-and-iys.md` step 4 (PR #1581) added the e-mail marketing writers (`core/consent-log-writers.md`); the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
 - Step 4. Erasure reuses `pg_privacy_export_find()`; `core/personal-data-export.md` lists where a person's data lives. Read `core/consent-log-and-audit-trail.md` and `core/audit-trail-writers.md` first. The plan's `[NEW]` line is in (export); step 4 widens it, no second line.

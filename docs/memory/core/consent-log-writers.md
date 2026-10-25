@@ -1,10 +1,10 @@
 ---
 name: consent-log-writers
-description: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form), when a row is written, what stays unrecorded (PR #TBD)
+description: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form), when a row is written, what stays unrecorded (PR #1581)
 ---
 
 ## What is recorded?
-- A person's own answer to a marketing question they were shown (PR #TBD). Staff, API, import, Workspace, job and marketplace writers add none. Channel `email` only (no SMS consent field exists): purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. The opt-in writes themselves are unchanged.
+- A person's own answer to a marketing question they were shown (PR #1581). Staff, API, import, Workspace, job and marketplace writers add none. Channel `email` only (no SMS consent field exists): purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. The opt-in writes themselves are unchanged.
 
 ## When is a row written?
 - `pg_consent_log_answers()` (`includes/fn/privacy.php`) reads the person's rows once and writes only the answers that differ from the last recorded one (`pg_consent_log_changes()`; none or `pending` counts as no answer). A re-sent form, a second one-click POST or a save that only changed the address writes nothing. The baseline is the log, never `contacts.opt_in`.
