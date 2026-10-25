@@ -35,6 +35,12 @@ if ($pg_proto_frame) {
     // shows, and nothing the page does may land in their session.
     define('PG_NO_SESSION', true);
 
+    // The frame's address is bound to the browser the viewer made it for
+    // (pg_proto_frame_bind()): the session cookie's value is kept for that
+    // comparison only. The page's own scripts can read the address, never
+    // this cookie.
+    $pg_proto_client = (isset($_COOKIE[session_name()]) && is_string($_COOKIE[session_name()])) ? $_COOKIE[session_name()] : '';
+
     // Nor anything their browser holds: the remember-me token would sign
     // them in all the same (initialize_user()), and a consent, currency or
     // device choice would make the page theirs rather than a first visit.
@@ -71,10 +77,17 @@ if ($pg_proto_frame) {
     header('X-Frame-Options: SAMEORIGIN');
 
     $parsed = pg_proto_frame_parse($_GET);
-    $state = pg_proto_frame_state($parsed, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', time());
+    $state = pg_proto_frame_state($parsed, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', time(), $pg_proto_client);
 
     if ($state === 'expired') {
         pg_proto_frame_refuse(lang('This prototype view has expired. Reload the page to draw it again.'), 403);
+    }
+
+    // A genuine address asked for by another browser, or by this one after
+    // its session changed (signed out, signed in again): refused, and not
+    // counted as a forgery.
+    if ($state === 'unbound') {
+        pg_proto_frame_refuse(lang('This prototype view was made for another browser session. Reload the page to draw it again.'), 403);
     }
 
     if ($state !== 'ok') {
@@ -275,9 +288,12 @@ if ($pg_proto_start['id'] > 0) {
     if ($pg_proto_signature === '') {
         $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
     } else {
+        // Bound to this browser's session: the frame request carries its
+        // cookie, a copy of the address read elsewhere does not.
         $pg_proto_frame_url = pg_proto_frame_url(
             $pg_proto_viewer,
-            pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record),
+            pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
+                pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)),
             $pg_proto_anchor
         );
     }

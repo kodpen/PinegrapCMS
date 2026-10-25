@@ -528,8 +528,9 @@ function test_prototype_frame_parse_takes_plain_numbers_only()
 function test_prototype_frame_query_round_trips_through_parse_and_state()
 {
 	// The address the viewer writes is the one the frame reads back: the
-	// frame branch is picked by frame=1 alone, and every signed part comes
-	// back as it was signed, escapes and multibyte text included.
+	// frame branch is picked by frame=1 alone, and every signed part and
+	// the binding come back as they were made, escapes and multibyte text
+	// included.
 	$cases = array(
 		array('a b/c', 'r+1'),
 		array('ürün/x%y&z=1', 'ab#12'),
@@ -540,12 +541,13 @@ function test_prototype_frame_query_round_trips_through_parse_and_state()
 	foreach ($cases as $case) {
 		list($sub, $record) = $case;
 		$signature = pg_proto_frame_sign(7, 12, 3, 1000900, 'k', $sub, $record);
-		$query = pg_proto_frame_query(7, 12, 3, 1000900, $signature, $sub, $record);
+		$query = pg_proto_frame_query(7, 12, 3, 1000900, $signature, $sub, $record, pg_proto_frame_bind($signature, 'session-a', 'k'));
 		parse_str($query, $get);
 
 		pg_assert_same('1', $get['frame'], $query);
 		$parsed = pg_proto_frame_parse($get);
-		pg_assert_same('ok', pg_proto_frame_state($parsed, 'k', 1000000), $query);
+		pg_assert_same('ok', pg_proto_frame_state($parsed, 'k', 1000000, 'session-a'), $query);
+		pg_assert_same('unbound', pg_proto_frame_state($parsed, 'k', 1000000, 'session-b'), $query);
 		pg_assert_same($sub, $parsed['sub'], $query);
 		pg_assert_same($record, $parsed['r'], $query);
 	}
@@ -554,6 +556,54 @@ function test_prototype_frame_query_round_trips_through_parse_and_state()
 	parse_str(pg_proto_frame_query(7, 12, 3, 1000900, pg_proto_frame_sign(7, 12, 3, 1000900, 'k')), $get);
 	pg_assert_false(isset($get['sub']));
 	pg_assert_false(isset($get['r']));
+}
+
+function test_prototype_frame_address_opens_only_in_the_browser_it_was_made_for()
+{
+	// The page's own scripts run in the frame and can read its address (a
+	// tag pasted into the design reports it to its vendor), so the address
+	// alone opens nothing: it is bound to the session of the browser the
+	// viewer made it for.
+	$sig = pg_proto_frame_sign(7, 12, 3, 1000900, 'k');
+	$bind = pg_proto_frame_bind($sig, 'session-a', 'k');
+	$get = array('s' => '7', 'p' => '12', 'u' => '3', 'e' => '1000900', 'sig' => $sig, 'b' => $bind);
+
+	pg_assert_true(preg_match('/^[0-9a-f]{64}$/', $bind) === 1);
+	pg_assert_same('ok', pg_proto_frame_state(pg_proto_frame_parse($get), 'k', 1000000, 'session-a'));
+
+	// Another browser, a browser with no session, an address without its
+	// binding or with a malformed one: refused as a real address asked for
+	// in the wrong place, never as a forged one.
+	pg_assert_same('unbound', pg_proto_frame_state(pg_proto_frame_parse($get), 'k', 1000000, 'session-b'));
+	pg_assert_same('unbound', pg_proto_frame_state(pg_proto_frame_parse($get), 'k', 1000000, ''));
+
+	$without = $get;
+	unset($without['b']);
+	pg_assert_same('unbound', pg_proto_frame_state(pg_proto_frame_parse($without), 'k', 1000000, 'session-a'));
+
+	$malformed = $get;
+	$malformed['b'] = 'zz';
+	pg_assert_same('unbound', pg_proto_frame_state(pg_proto_frame_parse($malformed), 'k', 1000000, 'session-a'));
+
+	$other = $get;
+	$other['b'] = pg_proto_frame_bind($sig, 'session-b', 'k');
+	pg_assert_same('unbound', pg_proto_frame_state(pg_proto_frame_parse($other), 'k', 1000000, 'session-a'));
+
+	// A changed address stays invalid and an old one expired, whatever
+	// the binding.
+	$forged = $get;
+	$forged['p'] = '13';
+	pg_assert_same('invalid', pg_proto_frame_state(pg_proto_frame_parse($forged), 'k', 1000000, 'session-a'));
+	pg_assert_same('expired', pg_proto_frame_state(pg_proto_frame_parse($get), 'k', 1000901, 'session-a'));
+
+	// The binding is a MAC of its own: not the signature, one per browser
+	// and per address, none without a key, a signature or a session.
+	pg_assert_false($bind === $sig);
+	pg_assert_false($bind === pg_proto_frame_bind($sig, 'session-b', 'k'));
+	pg_assert_false($bind === pg_proto_frame_bind(pg_proto_frame_sign(7, 13, 3, 1000900, 'k'), 'session-a', 'k'));
+	pg_assert_same('', pg_proto_frame_bind($sig, '', 'k'));
+	pg_assert_same('', pg_proto_frame_bind('', 'session-a', 'k'));
+	pg_assert_same('', pg_proto_frame_bind($sig, 'session-a', ''));
 }
 
 function test_prototype_viewer_admits_roles_zero_to_two_only()
@@ -584,6 +634,13 @@ function test_prototype_php_gates_the_viewer_and_the_frame()
 	pg_assert_contains('pg_proto_viewer_role_allowed(', $source);
 	// A forged frame address is written to the firewall log and counted.
 	pg_assert_contains('pg_proto_frame_offence();', $source);
+	// The frame address is bound to the viewer's browser: the viewer binds
+	// it to its session, the frame keeps that session cookie's value before
+	// every cookie is dropped, and a real address asked for by another
+	// browser is refused before a forged one is counted.
+	pg_assert_contains('pg_proto_frame_bind(', $source);
+	pg_assert_true(strpos($source, 'session_name()') < strpos($source, '$_COOKIE = array();'));
+	pg_assert_true((strpos($source, "'unbound'") !== false) && (strpos($source, "'unbound'") < strpos($source, 'pg_proto_frame_offence();')));
 	// Drawn as a background render with no page cache, never through
 	// get_page.php's private gate.
 	pg_assert_contains('pg_seo_rendering(true);', $source);

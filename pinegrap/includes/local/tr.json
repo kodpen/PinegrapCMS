@@ -28287,5 +28287,6 @@
     "prototype of design ({var:1}) was viewed": "tasarım ({var:1}) prototipi görüntülendi",
     "The prototype cannot be drawn because the site has no encryption key.": "Sitenin şifreleme anahtarı olmadığı için prototip çizilemiyor.",
     "Preview as prototype": "Prototip olarak önizle",
-    "scheduled to go live": "yayına alınması planlandı"
+    "scheduled to go live": "yayına alınması planlandı",
+    "This prototype view was made for another browser session. Reload the page to draw it again.": "Bu prototip görünümü başka bir tarayıcı oturumu için oluşturuldu. Yeniden çizmek için sayfayı yenileyin."
 }
