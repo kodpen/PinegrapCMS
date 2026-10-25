@@ -690,7 +690,7 @@ function test_forum_public_views_carry_live_rules()
 	$want = array('home_count_topics', 'home_count_solved', 'home_count_guides', 'home_announcements', 'home_latest', 'home_unanswered',
 		'home_popular', 'home_guides', 'forum_count', 'forum_pinned', 'forum_topics', 'board_head', 'board_pinned', 'board_topics',
 		'tag_topics', 'member_topics', 'unanswered_topics', 'docs_count', 'docs_featured', 'docs_latest', 'docs_all', 'section_guides',
-		'topic_view', 'topic_aside', 'doc_view', 'my_topics_started', 'my_docs_list', 'my_docs_live');
+		'topic_view', 'topic_aside', 'doc_view', 'my_topics_started', 'my_topics_followed', 'my_docs_list', 'my_docs_live');
 	foreach (array_keys(_test_forum_boards()) as $board) {
 		$want[] = 'board_count_' . $board;
 	}
@@ -800,7 +800,8 @@ function test_forum_private_views()
 
 	// The members' own lists: their own records only, never every record
 	// for whoever may edit the form.
-	$own = array('my_topics_started' => array(true, false), 'my_docs_list' => array(true, false), 'my_docs_live' => array(true, false));
+	$own = array('my_topics_started' => array(true, false), 'my_topics_followed' => array(false, true),
+		'my_docs_list' => array(true, false), 'my_docs_live' => array(true, false));
 	foreach ($own as $key => $want) {
 		$cfg = $w[$key]['config'];
 		pg_assert_true(!empty($cfg['viewer_filter']), $key . ' lists the viewer\'s own');
@@ -824,13 +825,49 @@ function test_forum_private_views()
 		if (!empty($cfg['viewer_filter'])) {
 			pg_assert_same('registration', $folder, $key . ': a viewer\'s own list is on a members\' page');
 		}
-		// The watcher filter finds a legacy form item view page only, never
-		// the designed topic page: a list of followed topics would always be
-		// empty.
-		if (_test_forum_form_of($cfg) === 'topic_form' && !empty($cfg['viewer_filter'])) {
-			pg_assert_true(empty($cfg['viewer_filter_watcher']), $key . ': no list of followed topics');
+		// A list of followed topics reads the followers of its detail page:
+		// the topic page, whose record view shows the topics' form
+		// (pg_sw_list_watcher_page_id()). Any other page has none of them.
+		// The watcher audience is on unless the config switches it off, as
+		// the renderer reads it.
+		if (_test_forum_form_of($cfg) === 'topic_form' && !empty($cfg['viewer_filter'])
+			&& (!isset($cfg['viewer_filter_watcher']) || !empty($cfg['viewer_filter_watcher']))) {
+			pg_assert_same('{{tab:topic}}', $cfg['detail_page_id'], $key . ': followers of the topic page');
 		}
 	}
+}
+
+// My topics lists the live topics the member follows: the ones under whose
+// reply form they ticked the box, by the follower kept on the topic page,
+// never the ones they started (the list above) and never every topic for a
+// moderator. The most recently active first; it does not page, the list of
+// started topics does. The side card says the followed topics appear here.
+function test_forum_my_topics_lists_followed_topics()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	$cfg = $tpl['widgets']['my_topics_followed']['config'];
+	pg_assert_same('my_topics', $tpl['widgets']['my_topics_followed']['page'], 'on My topics');
+	pg_assert_same('form_list_view', $cfg['regionType'], 'a form list');
+	pg_assert_same('{{tab:new_topic}}', $cfg['custom_form_page_id'], 'of the Forum Topics form');
+	pg_assert_same('{{tab:topic}}', $cfg['detail_page_id'], 'followers of the topic page, its rows open it');
+	pg_assert_same(array(true, false, true, false),
+		array($cfg['viewer_filter'], $cfg['viewer_filter_submitter'], $cfg['viewer_filter_watcher'], $cfg['viewer_filter_editor']),
+		'the viewer filter on the watcher alone');
+	pg_assert_same(array(_test_forum_topic_live()), $cfg['filters'], 'the live rule and nothing else');
+	pg_assert_same(array('newest_activity_date_and_time', 'DESC'), array($cfg['order_by_field'], $cfg['order_by_direction']), 'the most recently active first');
+	pg_assert_same($cfg['items_per_page'], $cfg['max_results'], 'it does not page');
+	pg_assert_true($cfg['max_results'] > 0, 'a fixed number');
+	pg_assert_true(isset($cfg['empty_message']) && $cfg['empty_message'] !== '', 'says how to follow a topic when empty');
+
+	$placed = _test_forum_placed(_test_forum_resolve($pages['my_topics']['tree']));
+	pg_assert_true(in_array('my_topics_followed', $placed, true), 'placed on My topics');
+	pg_assert_true(array_search('my_topics_started', $placed, true) < array_search('my_topics_followed', $placed, true), 'after the topics the member started');
+
+	$json = json_encode($pages['my_topics']['tree'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains(json_encode(lang('Topics you follow'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'its heading');
+	pg_assert_contains('"aria-labelledby","value":"pf-followed"', $json, 'the section is named by its heading');
+	pg_assert_contains(json_encode(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $json, 'the card says followed topics appear here');
 }
 
 // -- 5. the forms --------------------------------------------------------------
@@ -1500,6 +1537,9 @@ function test_forum_archives()
 	}
 	pg_assert_same(false, $pages['member']['sitemap'], 'member pages come from the lists, not the sitemap');
 	pg_assert_contains(json_encode(lang('The name on a topic comes from the profile of the member who started it.')), json_encode($pages['member']['tree']), 'the member page says where names come from');
+	// A member's reply is signed with the profile's name when it is written
+	// (pg_comment_member_name()), so the FAQ names replies beside topics.
+	pg_assert_contains(json_encode(lang('The name on your topics and replies comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name, and your next replies are signed with it.')), json_encode($pages['faq']['tree']), 'the FAQ says replies carry the profile name');
 
 	// A section's guides in reading order.
 	$cfg = $tpl['widgets']['section_guides']['config'];
@@ -2367,9 +2407,14 @@ function test_forum_moderation()
 	}
 	pg_assert_true(strlen($note) > 2000, 'the note is found');
 	foreach (array('private', 'registration', 'public', 'Content and Forms', 'Reach the data submitted through forms', 'Users',
-		'Hidden', 'Solved', 'Pinned', 'Announcement', 'Comments', 'doc_order', 'two digits', 'Update Search Index', 'user name', 'profile',
-		'Hide from the visitor (staff only)') as $words) {
+		'Hidden', 'Solved', 'Pinned', 'Announcement', 'Comments', 'doc_order', 'two digits', 'Update Search Index', 'profile',
+		'first and last name', 'Member', 'name box', 'My Profile', 'Hide from the visitor (staff only)') as $words) {
 		pg_assert_contains($words, $note, 'the note says ' . $words);
+	}
+	// A member's reply is signed with the profile's name, never the login
+	// user name (pg_comment_member_name()); the note says no other.
+	foreach (array('user name', 'username') as $words) {
+		pg_assert_false(stripos($note, $words) !== false, 'the note does not say ' . $words);
 	}
 	// Every field the note says never to rename is a field of a form.
 	pg_assert_same(1, preg_match('/fields named ([a-z_, ]+) or ([a-z_]+), nor/', $note, $m), 'the note names the fields');
@@ -2385,7 +2430,7 @@ function test_forum_moderation()
 			$turkish .= ' ' . $tr[$n['props']['text']];
 		}
 	}
-	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users') as $label) {
+	foreach (array('Content and Forms', 'Reach the data submitted through forms', 'Update Search Index', 'Comments', 'Users', 'My Profile') as $label) {
 		pg_assert_true(isset($tr[$label]) && mb_stripos($turkish, $tr[$label], 0, 'UTF-8') !== false, 'the Turkish note says ' . (isset($tr[$label]) ? $tr[$label] : $label));
 	}
 }

@@ -14,6 +14,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 - plans/workspace-catalog-create.md: products and product groups from the Workspace, bulk drafts, variant sets.
 - plans/workspace-canvas-workflow-tables.md: workflow tables, board view, scheduled-actions API.
 - plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).
+- plans/workspace-flows-scheduled-merge.md: scheduled actions into Flows, no feature lost; plans/graph-canvas-core.md: one canvas core for Flows and the designer.
 - plans/workspace-composer-tools.md, plans/workspace-slash-commands.md, plans/workspace-voice-messages.md, plans/workspace-channel-icons.md, plans/workspace-mcp-connectors.md, plans/workspace-assistant-key-setup.md.
 - Shared names and single owners: plans/workspace-growth-terms.md. Neighbours: plans/workspace-agent-handles.md, ai-agent-prompts.md, workspace-phase3-leftovers.md, privacy-data-pack-audit-log.md, workspace-friendly-ui.md.
 
