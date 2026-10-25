@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-panel-steps
-description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+description: Steps B0-B12 of plans/bootstrap-6-panel.md, dependencies, status: B0a, B0b, B1a, B2a, B5 done (PR numbers per step), the rest open; claim as [plan:bootstrap-6-panel] B<n>
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
@@ -12,7 +12,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B2b and on: move the calls and listeners onto pgUI area by area (cold areas first; `check_bs6.php` counts what is left), fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
 - B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block.
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
-- B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node.
+- B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node. Done (#1698): `ui/form-time-24-hour.md`, `ui/password-strength-js.md`.
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
 
