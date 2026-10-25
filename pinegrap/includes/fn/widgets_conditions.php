@@ -195,26 +195,47 @@ function pg_sw_cond_fold($s)
     return str_replace(array("\xCC\x87", "\xC4\xB1"), array('', 'i'), mb_strtolower((string)$s, 'UTF-8'));
 }
 
-// The number a value shows, or null when it shows none. Amounts are read
-// the way the site writes them: an optional minus first (pg_format_money()
-// puts it before the symbol: '-₺12,50'), an optional unit, the figure, an
-// optional unit or percent sign after it (pg_visitor_money(): '€12,50
-// EUR'). A unit is a currency sign, an all-capital three-letter code (EUR,
-// TRY), TL, or one or two capitals with a dollar sign (US$, R$); any other
-// word makes the value text, so 'Kat 2' is no 2. The figure must be
-// grouped as amounts are (pg_sw_cond_figure_ok()), so a dotted date is
-// text too. pg_parse_amount() reads it, taking 1.234,56 and 1,234.56; a
-// single separator with three digits after it (1.500) follows the site
-// language.
-function pg_sw_cond_number($s)
+// The amount a value shows: array('number' => float, 'units' => the units
+// written before and after the figure), or null when it shows none. Amounts
+// are read the way the site writes them: an optional minus first
+// (pg_format_money() puts it before the symbol: '-₺12,50'), an optional
+// unit, the figure, an optional unit or percent sign after it
+// (pg_visitor_money(): '€12,50 EUR'). A unit is a currency sign, an
+// all-capital three-letter code (EUR, TRY), TL, or one or two capitals with
+// a dollar sign (US$, R$); any other word makes the value text, so 'Kat 2'
+// is no 2. The figure must be grouped as amounts are
+// (pg_sw_cond_figure_ok()), so a dotted date is text too. pg_parse_amount()
+// reads it, taking 1.234,56 and 1,234.56; a single separator with three
+// digits after it (1.500) follows the site language.
+function pg_sw_cond_amount($s)
 {
     $s = pg_sw_cond_plain($s);
     if ($s === '') return null;
-    $unit = '(?:\p{Sc}|[A-Z]{1,2}\$|[A-Z]{3}|TL)';
-    $re   = '/^(-?) ?(?:' . $unit . ' ?)?([0-9]+(?:[., ][0-9]+)*) ?(?:' . $unit . '|%)?$/u';
-    if (!preg_match($re, $s, $m) || !pg_sw_cond_figure_ok($m[2])) return null;
-    $number = pg_parse_amount($m[2]);
-    return ($m[1] === '-') ? -$number : $number;
+    $unit = '\p{Sc}|[A-Z]{1,2}\$|[A-Z]{3}|TL';
+    $re   = '/^(-?) ?(?:(' . $unit . ') ?)?([0-9]+(?:[., ][0-9]+)*) ?(' . $unit . '|%)?$/u';
+    if (!preg_match($re, $s, $m) || !pg_sw_cond_figure_ok($m[3])) return null;
+    $number = pg_parse_amount($m[3]);
+    $units  = array();
+    if ($m[2] !== '') $units[] = $m[2];
+    if (isset($m[4]) && $m[4] !== '') $units[] = $m[4];
+    return array('number' => ($m[1] === '-') ? -$number : $number, 'units' => $units);
+}
+
+// The number a value shows (pg_sw_cond_amount()), or null.
+function pg_sw_cond_number($s)
+{
+    $amount = pg_sw_cond_amount($s);
+    return ($amount === null) ? null : $amount['number'];
+}
+
+// Whether eq and neq compare two values as numbers: both are amounts, and
+// at most one carries a unit or the two share one. 'KAT 2' and 'ODA 2'
+// compare as text; '€12,50 EUR' and '12,5' as numbers.
+function pg_sw_cond_comparable($a, $b)
+{
+    if ($a === null || $b === null) return false;
+    if (!$a['units'] || !$b['units']) return true;
+    return (bool)array_intersect($a['units'], $b['units']);
 }
 
 // Whether a figure (digits with one separator between groups: '.', ',' or
@@ -264,7 +285,8 @@ function pg_sw_cond_is_whole($n)
 // The test. $value is the text a carrier holds (pg_sw_cond_text()), $operand
 // the text the operator typed.
 //   empty, not_empty            the text
-//   eq, neq                     numbers when both sides are numbers, else folded text
+//   eq, neq                     numbers when both sides are amounts of one
+//                               unit (pg_sw_cond_comparable()), else folded text
 //   contains, not_contains,     folded text
 //   starts
 //   gt, gte, lt, lte            numbers only: false when either side is not one
@@ -282,10 +304,10 @@ function pg_sw_cond_eval($op, $value, $operand)
             return $value === '';
         case 'eq':
         case 'neq':
-            $a = pg_sw_cond_number($value);
-            $b = pg_sw_cond_number($operand);
-            $same = ($a !== null && $b !== null)
-                ? (abs($a - $b) < 0.000001)
+            $a = pg_sw_cond_amount($value);
+            $b = pg_sw_cond_amount($operand);
+            $same = pg_sw_cond_comparable($a, $b)
+                ? (abs($a['number'] - $b['number']) < 0.000001)
                 : (pg_sw_cond_fold($value) === pg_sw_cond_fold($operand));
             return ($op === 'eq') ? $same : !$same;
         case 'contains':

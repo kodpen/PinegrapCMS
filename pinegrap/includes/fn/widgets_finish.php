@@ -97,8 +97,8 @@ function pg_sw_finish_scope()
 
 // $html (a node drawn inside a widget) between the markers of the
 // condition $spec (pg_sw_cond_spec()), with the carrier of its token after
-// the node: pg_sw_add_edit_chip() and the row id passes skip only leading
-// comments, so a row's first element stays first.
+// the node: the row id passes skip only leading comments, so a row's first
+// element stays first.
 function pg_sw_finish_wrap($html, $spec)
 {
     static $seq = 0;
@@ -155,14 +155,13 @@ function _pg_sw_finish_is_field_value($html)
     return (bool)preg_match('/\bclass="[^"]*\bpg-field-value\b[^"]*"/i', $m[0]);
 }
 
-// Where the span numbered $n whose body starts at $from closes: array(offset
-// of its close marker, offset just past it), or null when it never does. A
-// span of the same number inside it (a row template placed in a copy of
-// itself, a reply in its comment) is counted, so the pairs match.
-function _pg_sw_finish_span_end($html, $nonce, $n, $from)
+// Where the pair whose body starts at $from closes: array(offset of its
+// close marker, offset just past it), or null when it never does. $open is
+// the start of the open marker (up to its number), $close the whole close
+// marker. A pair of the same number inside it (a row template placed in a
+// copy of itself, a reply in its comment) is counted, so the pairs match.
+function _pg_sw_finish_pair_end($html, $open, $close, $from)
 {
-    $open  = '<!--pg-if:' . $nonce . ':' . $n . ':';
-    $close = '<!--/pg-if:' . $nonce . ':' . $n . '-->';
     $depth = 1;
     while (($c = strpos($html, $close, $from)) !== false) {
         $o = strpos($html, $open, $from);
@@ -199,7 +198,7 @@ function pg_sw_finish_resolve($html, $nonce, &$cut)
         $after = $head_end + 3;
         $head  = substr($html, $at + strlen($open), $head_end - $at - strlen($open));
         $end   = preg_match('/^(\d+):([a-z_]+):([A-Za-z0-9_\-]*)$/', $head, $h)
-            ? _pg_sw_finish_span_end($html, $nonce, $h[1], $after) : null;
+            ? _pg_sw_finish_pair_end($html, $open . $h[1] . ':', '<!--/pg-if:' . $nonce . ':' . $h[1] . '-->', $after) : null;
         if ($end === null) {
             $out .= substr($html, $pos, $after - $pos);
             $pos  = $after;
@@ -256,6 +255,68 @@ function pg_sw_finish_strip_carriers($html, $nonce = null)
     return $out . substr($html, $pos);
 }
 
+// Whether a record holds a value condition of this request, so its edit
+// pencil waits for the pass (pg_sw_add_edit_chip()).
+function pg_sw_finish_holds_condition($html)
+{
+    return is_string($html) && strpos($html, '<!--pg-if:' . pg_sw_marker_nonce() . ':') !== false;
+}
+
+// A record's edit pencil, kept for the pass: the record between two pencil
+// markers, the open one carrying the pencil's address, title and tone (JSON,
+// URL-safe base64). Put in at once, the pencil lands in the record's first
+// element, which a condition may cut or the pg-hide-if-empty rerun drop with
+// the pencil inside, and a box would count it as content. null when the
+// values cannot be written.
+function pg_sw_finish_defer_chip($html, $url, $title, $tone)
+{
+    static $seq = 0;
+    $json = json_encode(array((string)$url, (string)$title, (string)$tone));
+    if (!is_string($json)) return null;
+    $n     = ++$seq;
+    $nonce = pg_sw_marker_nonce();
+    return '<!--pg-chip:' . $nonce . ':' . $n . ':' . rtrim(strtr(base64_encode($json), '+/', '-_'), '=') . '-->'
+         . $html
+         . '<!--/pg-chip:' . $nonce . ':' . $n . '-->';
+}
+
+// Every pencil kept for the pass put in the first element its record kept,
+// by the rules of pg_sw_insert_edit_chip() (none when that element cannot
+// hold one or the record kept nothing), its markers taken out. A record in
+// a record (a reply in its comment) gets its own. A marker without its pair
+// is left for the strip stage.
+function pg_sw_finish_place_chips($html, $nonce)
+{
+    $open = '<!--pg-chip:' . $nonce . ':';
+    if (!is_string($html) || strpos($html, $open) === false) return $html;
+
+    $out = '';
+    $pos = 0;
+    while (($at = strpos($html, $open, $pos)) !== false) {
+        $head_end = strpos($html, '-->', $at);
+        if ($head_end === false) break;
+        $after = $head_end + 3;
+        $head  = substr($html, $at + strlen($open), $head_end - $at - strlen($open));
+        $end   = preg_match('/^(\d+):([A-Za-z0-9_\-]*)$/', $head, $h)
+            ? _pg_sw_finish_pair_end($html, $open . $h[1] . ':', '<!--/pg-chip:' . $nonce . ':' . $h[1] . '-->', $after) : null;
+        if ($end === null) {
+            $out .= substr($html, $pos, $after - $pos);
+            $pos  = $after;
+            continue;
+        }
+
+        $out   .= substr($html, $pos, $at - $pos);
+        $record = pg_sw_finish_place_chips(substr($html, $after, $end[0] - $after), $nonce);
+        $chip   = json_decode(_pg_sw_finish_operand($h[2]), true);
+        if (is_array($chip) && count($chip) === 3 && is_string($chip[0]) && is_string($chip[1]) && is_string($chip[2])) {
+            $record = pg_sw_insert_edit_chip($record, $chip[0], $chip[1], $chip[2]);
+        }
+        $out .= $record;
+        $pos  = $end[1];
+    }
+    return $out . substr($html, $pos);
+}
+
 // The finish pass of one widget's markup. Its stages, in order:
 //   1. conditions (pg_sw_finish_resolve());
 //   2. when a span was cut, pg-hide-if-empty again in the kinds whose
@@ -263,7 +324,9 @@ function pg_sw_finish_strip_carriers($html, $nonce = null)
 //      row whose value left and a box whose last row left go with it, and
 //      an element no cut touched is judged as the renderer judged it;
 //   3. every marker, carrier and cut point of this request still standing
-//      taken out.
+//      taken out;
+//   4. each record's edit pencil put in the first element the record kept
+//      (pg_sw_finish_place_chips()), then any pencil marker left taken out.
 // Markup that holds no marker of this request comes back as it was.
 function pg_sw_finish_widget_html($html, $scope)
 {
@@ -282,5 +345,9 @@ function pg_sw_finish_widget_html($html, $scope)
     $html = pg_sw_finish_strip_carriers($html, $nonce);
     $html = str_replace(array(pg_sw_finish_cut_shell($nonce), pg_sw_finish_cut_mark($nonce)), '', $html);
     $out  = preg_replace('/<!--\/?pg-(?:if|cv):' . preg_quote($nonce, '/') . ':[^>]*?-->/', '', $html);
+    if ($out !== null) $html = $out;
+
+    $html = pg_sw_finish_place_chips($html, $nonce);
+    $out  = preg_replace('/<!--\/?pg-chip:' . preg_quote($nonce, '/') . ':[^>]*?-->/', '', $html);
     return ($out === null) ? $html : $out;
 }

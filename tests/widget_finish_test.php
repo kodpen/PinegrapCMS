@@ -384,8 +384,153 @@ function test_widget_finish_edit_chip_finds_first_element()
 {
 	$row = pg_sw_finish_wrap('<div class="card">^^__d^^</div>', _widget_finish_spec('__d'));
 	$out = pg_sw_add_edit_chip(str_replace('^^__d^^', 'x', $row), '/edit?id=1', 'Edit', 'page');
-	pg_assert_contains('<div class="card pg-edit-host"', $out);
 	pg_assert_same('<div class="card pg-edit-host"', substr(pg_sw_finish_widget_html($out, array('kind' => 'catalog_listing')), 0, 30));
+}
+
+function _widget_finish_chips($html)
+{
+	return substr_count($html, 'class="pg-edit-chip ');
+}
+
+// Whether the pencil to $href is the first child of an element with tag
+// $host that carries pg-edit-host.
+function _widget_finish_chip_in($html, $host, $href)
+{
+	return (bool)preg_match('#<' . $host . '\b[^>]*\bclass="[^"]*\bpg-edit-host"[^>]*><a class="pg-edit-chip [^"]*" href="' . preg_quote($href, '#') . '"#', $html);
+}
+
+// The form item view's order: fill, pg-hide-if-empty, the pencil on the
+// record's first element, then the pass. A condition that cuts the
+// starter's first "label: value" row takes the row away, not the pencil:
+// the pencil goes in the first element the record keeps.
+function test_widget_finish_edit_chip_survives_a_cut_first_row()
+{
+	$row = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'mb-3 pg-hide-if-empty'), 'children' => array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Section', 'cssClass' => 'small mb-0'), 'children' => array()),
+		_widget_finish_node('section', 'section', array('op' => 'eq', 'value' => 'kültür'), 'mb-0 pg-field-value'),
+	));
+	$title = array('type' => 'content', 'props' => array('contentType' => 'heading', 'tag' => 'h2', 'text' => 'T', '_bindings' => array('text' => 'title')), 'children' => array());
+	$href  = '/pinegrap/edit_submitted_form.php?id=1';
+
+	foreach (array('Kültür' => 'div', 'Yemek' => 'h2') as $section => $host) {
+		$html = _widget_finish_in_scope('form_item_view', function () use ($row, $title, $section, $href) {
+			$tpl  = _render_tree_node($row) . _render_tree_node($title);
+			$html = pg_sw_hide_empty_fields(pg_sw_sweep_tokens(_pg_sw_fill_tokens($tpl, array('section' => $section, 'title' => 'A title'))));
+			return pg_sw_add_edit_chip($html, $href, 'Edit the record', 'forms');
+		});
+		$out = pg_sw_finish_widget_html($html, array('kind' => 'form_item_view'));
+		pg_assert_same(1, _widget_finish_chips($out), $section . ': one pencil');
+		pg_assert_true(_widget_finish_chip_in($out, $host, $href), $section . ': in the first element kept');
+		pg_assert_contains('A title', $out, $section);
+		_widget_finish_no_markers($out, $section);
+		pg_assert_same(false, strpos($out, 'pg-chip:'), $section . ': no pencil marker left');
+	}
+	pg_assert_same(false, strpos($out, '>Section</p>'), 'the cut row went');
+}
+
+// A catalog card whose first element (a badge) is cut keeps its pencil on
+// the next element; a card whose badge stays has it in the badge, as
+// before; a record cut whole takes its pencil with it, never handing it to
+// the next record.
+function test_widget_finish_edit_chip_catalog_cut_first_element()
+{
+	$tpl = pg_sw_finish_wrap('<span class="badge">^^__d^^</span>', _widget_finish_spec('__d', 'gt', '0'))
+		. '<div class="card">^^__name^^</div>';
+	$whole = pg_sw_finish_wrap('<div class="card">^^__name^^</div>', _widget_finish_spec('__d', 'gt', '0'));
+	$rows  = '';
+	foreach (array(array($tpl, '0', 'Chair'), array($tpl, '10%', 'Desk'), array($whole, '0', 'Lamp'), array($whole, '5', 'Shelf')) as $i => $r) {
+		$record = strtr($r[0], array('^^__d^^' => $r[1], '^^__name^^' => $r[2]));
+		$rows  .= pg_sw_add_edit_chip($record, '/edit_product.php?id=' . ($i + 1), 'Edit the product', 'ecommerce');
+	}
+	$out = pg_sw_finish_widget_html($rows, array('kind' => 'catalog_listing'));
+
+	pg_assert_same(3, _widget_finish_chips($out), 'one pencil per record left');
+	pg_assert_true(_widget_finish_chip_in($out, 'div', '/edit_product.php?id=1'), 'badge cut: the card');
+	pg_assert_true(_widget_finish_chip_in($out, 'span', '/edit_product.php?id=2'), 'badge kept: the badge');
+	pg_assert_same(false, strpos($out, 'id=3"'), 'the record cut whole has none');
+	pg_assert_same(false, strpos($out, 'Lamp'));
+	pg_assert_true(_widget_finish_chip_in($out, 'div', '/edit_product.php?id=4'), 'the next record keeps its own');
+	pg_assert_same(1, substr_count($out, '<div class="card pg-edit-host"><a class="pg-edit-chip pg-edit-chip-ecommerce" href="/edit_product.php?id=4"'), 'and only its own');
+	_widget_finish_no_markers($out);
+}
+
+// A box whose rows were all cut goes in the pg-hide-if-empty rerun; the
+// pencil does not keep it standing as if it were content.
+function test_widget_finish_edit_chip_does_not_keep_an_empty_box()
+{
+	$tpl = '<div class="card pg-hide-if-empty">'
+		. pg_sw_finish_wrap('<p>^^__a^^</p>', _widget_finish_spec('__a', 'gt', '5'))
+		. '</div><p class="foot">^^title^^</p>';
+	$html = pg_sw_hide_empty_fields(strtr($tpl, array('^^__a^^' => '1', '^^title^^' => 'T')));
+	$out  = pg_sw_finish_widget_html(pg_sw_add_edit_chip($html, '/e?id=7', 'Edit the record', 'forms'), array('kind' => 'form_list_view'));
+	pg_assert_same(false, strpos($out, 'class="card'), 'the emptied box went');
+	pg_assert_same(1, _widget_finish_chips($out));
+	pg_assert_true(_widget_finish_chip_in($out, 'p', '/e?id=7'), 'the pencil is on the element the record kept');
+}
+
+// Once its conditions are resolved, a record whose first element cannot
+// hold a pencil (a link) or that kept nothing gets none, as
+// pg_sw_add_edit_chip() decides for any record.
+function test_widget_finish_edit_chip_follows_the_insert_rules()
+{
+	$scope = array('kind' => 'catalog_listing');
+	$tpl   = pg_sw_finish_wrap('<div>^^__a^^</div>', _widget_finish_spec('__a')) . '<a href="/p">^^__b^^</a>';
+	$out   = pg_sw_finish_widget_html(pg_sw_add_edit_chip(strtr($tpl, array('^^__a^^' => '', '^^__b^^' => 'B')), '/e?id=1', 'Edit', 'page'), $scope);
+	pg_assert_same('<a href="/p">B</a>', $out, 'a link cannot hold one');
+
+	$tpl = pg_sw_finish_wrap('<div>^^__a^^</div>', _widget_finish_spec('__a'));
+	$out = pg_sw_finish_widget_html(' ' . pg_sw_add_edit_chip(strtr($tpl, array('^^__a^^' => '')), '/e?id=1', 'Edit', 'page') . ' ', $scope);
+	pg_assert_same('  ', $out, 'a record that kept nothing');
+}
+
+// The pencil of a record with no condition goes in at once, as outside a
+// widget; a kept record gets the same markup either way.
+function test_widget_finish_edit_chip_unchanged_without_a_cut()
+{
+	$wrapped = pg_sw_finish_wrap('<b>x</b>', _widget_finish_spec('__a'));
+	pg_assert_true(pg_sw_finish_holds_condition($wrapped));
+	pg_assert_false(pg_sw_finish_holds_condition('<b>x</b><!--pg-if:0000000000000000:1:not_empty:-->'), 'another nonce');
+	pg_assert_same(0, strpos(pg_sw_finish_defer_chip('<b>x</b>', '/e', 'E', 'page'), '<!--pg-chip:' . pg_sw_marker_nonce() . ':'));
+	pg_assert_same('<b>x</b>', pg_sw_finish_place_chips('<b>x</b>', pg_sw_marker_nonce()));
+
+	$plain = '<div class="card">x</div>';
+	$out   = _widget_finish_in_scope('catalog_listing', function () use ($plain) {
+		return pg_sw_add_edit_chip($plain, '/e?id=1', 'Edit', 'ecommerce');
+	});
+	pg_assert_same(0, strpos($out, '<div class="card pg-edit-host"><a class="pg-edit-chip '), 'no condition: at once');
+
+	$tpl    = '<div class="card">' . pg_sw_finish_wrap('<b>^^__a^^</b>', _widget_finish_spec('__a')) . '</div>';
+	$record = strtr($tpl, array('^^__a^^' => 'A'));
+	$scope  = array('kind' => 'form_list_view');
+	pg_assert_same(
+		pg_sw_add_edit_chip(pg_sw_finish_widget_html($record, $scope), '/e?id=1', 'Edit "it"', 'forms'),
+		pg_sw_finish_widget_html(pg_sw_add_edit_chip($record, '/e?id=1', 'Edit "it"', 'forms'), $scope),
+		'kept: the same markup'
+	);
+}
+
+// A record inside a record (a reply in its comment): each keeps its own
+// pencil in its own first element kept.
+function test_widget_finish_edit_chip_nested_records()
+{
+	$tpl = pg_sw_finish_wrap('<b>^^__flag^^</b>', _widget_finish_spec('__flag')) . '<div class="body">^^__text^^[replies]</div>';
+	$record = function ($text, $replies, $id) use ($tpl) {
+		return pg_sw_add_edit_chip(strtr($tpl, array('^^__flag^^' => '', '^^__text^^' => $text, '[replies]' => $replies)), '/c?id=' . $id, 'Edit the comment', 'page');
+	};
+	$out = pg_sw_finish_widget_html($record('P', $record('R', '', 2), 1), array('kind' => 'comments'));
+	pg_assert_same(2, _widget_finish_chips($out));
+	pg_assert_same(1, preg_match('#^<div class="body pg-edit-host"><a class="pg-edit-chip pg-edit-chip-page" href="/c\?id=1".*?</a>P<div class="body pg-edit-host"><a class="pg-edit-chip pg-edit-chip-page" href="/c\?id=2".*?</a>R</div></div>$#s', $out));
+}
+
+// A pencil marker without its pair is taken out; a forged one in a value
+// (another nonce) stays text.
+function test_widget_finish_edit_chip_marker_leftovers()
+{
+	$nonce = pg_sw_marker_nonce();
+	pg_assert_same('<p>a</p>', pg_sw_finish_widget_html('<!--pg-chip:' . $nonce . ':999:e30--><p>a</p>', array('kind' => 'catalog_listing')));
+	pg_assert_same('<p>a</p>', pg_sw_finish_widget_html('<p>a</p><!--/pg-chip:' . $nonce . ':998-->', array('kind' => 'catalog_listing')));
+	$forged = '<!--pg-chip:0000000000000000:1:e30--><p>a</p><!--/pg-chip:0000000000000000:1-->';
+	pg_assert_same($forged, pg_sw_finish_widget_html($forged, array('kind' => 'catalog_listing')));
 }
 
 // The hooks: the dispatcher's callback finishes both the e-mail and the page

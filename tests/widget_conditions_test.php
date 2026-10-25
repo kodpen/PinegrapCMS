@@ -108,6 +108,30 @@ function test_widget_conditions_money_formats()
 	pg_assert_same(1234567.89, pg_sw_cond_number('1.234.567,89'));
 }
 
+// An amount keeps the units written beside its figure. eq and neq compare
+// two amounts as numbers only when at most one side carries a unit or both
+// share one, so an all-capital label beside the same figure is still text.
+function test_widget_conditions_units()
+{
+	pg_assert_same(array('number' => 12.5, 'units' => array('€', 'EUR')), pg_sw_cond_amount('€12,50 EUR'));
+	pg_assert_same(array('number' => -12.5, 'units' => array('₺')), pg_sw_cond_amount('-₺12,50'));
+	pg_assert_same(array('number' => 10.0, 'units' => array('%')), pg_sw_cond_amount('10%'));
+	pg_assert_same(array('number' => 2.0, 'units' => array('KAT')), pg_sw_cond_amount('KAT 2'));
+	pg_assert_same(array('number' => 12.5, 'units' => array()), pg_sw_cond_amount('12,5'));
+	pg_assert_same(null, pg_sw_cond_amount('Kat 2'));
+	pg_assert_same(2.0, pg_sw_cond_number('KAT 2'), 'the number alone');
+	pg_assert_true(pg_sw_cond_comparable(pg_sw_cond_amount('₺5'), pg_sw_cond_amount('5')));
+	pg_assert_true(pg_sw_cond_comparable(pg_sw_cond_amount('€5 EUR'), pg_sw_cond_amount('5 EUR')));
+	pg_assert_false(pg_sw_cond_comparable(pg_sw_cond_amount('₺5'), pg_sw_cond_amount('5 TL')), 'units are compared as written');
+	pg_assert_false(pg_sw_cond_comparable(pg_sw_cond_amount('5'), null));
+
+	pg_assert_false(pg_sw_cond_eval('eq', 'KAT 2', 'ODA 2'), 'two labels');
+	pg_assert_true(pg_sw_cond_eval('eq', 'KAT 2', 'kat 2'), 'the same label as text');
+	pg_assert_true(pg_sw_cond_eval('eq', '€12,50 EUR', '12,5 EUR'), 'a shared unit');
+	pg_assert_true(pg_sw_cond_eval('eq', '12,50 TL', '12.5'), 'a bare operand');
+	pg_assert_true(pg_sw_cond_eval('gt', '12 USD', '11 EUR'), 'gt reads the numbers');
+}
+
 // Only a currency sign, an all-capital three-letter code, TL or a code
 // written with a dollar sign stands beside a figure; a word does not.
 function test_widget_conditions_words_are_not_codes()

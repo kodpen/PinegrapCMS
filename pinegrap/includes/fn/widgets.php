@@ -8347,6 +8347,27 @@ function pg_sw_edit_chip_css_inject($html)
 }
 
 /**
+ * Put an edit chip in the first element of a rendered record
+ * (pg_sw_insert_edit_chip()). A record that holds a value condition gets it
+ * from the widget's finish pass instead, in the first element the record
+ * keeps once its conditions are resolved (pg_sw_finish_defer_chip()): put
+ * in at once, it went with an element a condition cut.
+ *
+ * @param string $html  one record's markup
+ * @param string $url   the edit screen
+ * @param string $title what the chip says to a screen reader and on hover
+ * @param string $tone  page | ecommerce | forms | calendar
+ */
+function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
+{
+    if ($url !== '' && pg_sw_finish_holds_condition($html)) {
+        $deferred = pg_sw_finish_defer_chip($html, $url, $title, $tone);
+        if ($deferred !== null) return $deferred;
+    }
+    return pg_sw_insert_edit_chip($html, $url, $title, $tone);
+}
+
+/**
  * Put an edit chip in the first element of a rendered record and mark that
  * element as its host. A record whose first element cannot hold one - a
  * void element, a table row, a link or button (a link in a link is not
@@ -8368,7 +8389,7 @@ function pg_sw_edit_chip_css_inject($html)
  * @param string $title what the chip says to a screen reader and on hover
  * @param string $tone  page | ecommerce | forms | calendar
  */
-function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
+function pg_sw_insert_edit_chip($html, $url, $title, $tone = 'page')
 {
     if ($url === '' || !preg_match('/^(\s*(?:<!--.*?-->\s*)*)<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/s', (string)$html, $m)) {
         return $html;

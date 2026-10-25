@@ -37,7 +37,7 @@ Before W4: a cut required control (custom_form, registration, express_order) sti
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
-- Claim `[plan:widget-designability] Wn`. W4 after #1567 and #1560; `widgets_catalog.php` after #1476; calendar after #1553; form list after #1545.
+- Claim `[plan:widget-designability] Wn`. W4 after #1567 and #1560; `widgets_catalog.php` after #1560 and #1584; a new kind (#1585) reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
 - W3, then W4; W2's code is independent (it needs only this file).

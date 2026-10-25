@@ -1,6 +1,6 @@
 ---
 name: widget-finish-pass
-description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, cut points, the pg-hide-if-empty rerun and the strip stage (#NNNN).
+description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, cut points, the pg-hide-if-empty rerun, the edit pencil and the strip stage (#NNNN).
 ---
 
 ## Where does the pass run?
@@ -10,7 +10,7 @@ description: The finish pass every system widget render goes through: scope, mar
 ## How does a value reach the pass?
 - `_render_tree_node()` writes a node with a condition ([[widget-conditions]]) as `<!--pg-if:NONCE:N:OP:B64-->` node `<!--pg-cv:NONCE:N-->^^token^^<!--/pg-cv:NONCE:N-->` `<!--/pg-if:NONCE:N-->` (operand: URL-safe base64).
 - The renderer's own fill writes the carrier (`pg_sw_apply_tokens()`, `strtr()`, `str_replace()`), so each row copy carries its row's value. The carrier is swept before it is read: an unfilled token reads as empty.
-- The carrier comes after the node: the edit pencil and the row id passes skip only leading comments.
+- The carrier comes after the node: the row id passes skip only leading comments.
 - `pg_sw_has_content()` strips carriers, so pg-hide-if-empty measures only what the visitor sees.
 
 ## Why a nonce?
@@ -27,7 +27,12 @@ description: The finish pass every system widget render goes through: scope, mar
 1. Conditions (`pg_sw_finish_resolve()`).
 2. After a cut, in form_list_view, form_item_view and comments: `pg_sw_hide_empty_fields($html, $cut_mark)`, which judges only the pg-hide-if-empty elements that hold a cut point and leaves the point where one goes, so the box around it is judged in turn. An element no cut touched (the static part of a form list, which the renderer never judges) stays as the renderer left it.
 3. Every carrier, cut point, empty value element and marker of this request still standing removed.
+4. Each record's edit pencil put in (below), then pencil markers left removed.
 - Markup without the nonce comes back untouched. A row-position stage is to run before the conditions (W3).
+
+## Why does the edit pencil wait for the pass?
+- Renderers put the pencil in a record's first element before the pass. When that element was cut, or the rerun dropped the row holding it, the pencil went too; in a pg-hide-if-empty box it counted as content and kept the box.
+- `pg_sw_add_edit_chip()` on a record holding a condition marker writes the record between `<!--pg-chip:NONCE:N:B64-->` … `<!--/pg-chip:NONCE:N-->` (address, title, tone as JSON). Stage 4 (`pg_sw_finish_place_chips()`) puts it in the first element the record kept, by `pg_sw_insert_edit_chip()`'s rules: none if that element cannot hold one or nothing is left; a record cut whole takes it along. A record without a condition gets it at once, as before.
 
 ## What is still open?
 - A plain shared component inside a widget is expanded outside any scope: its `show_if` is ignored (page-level conditions, W18).
