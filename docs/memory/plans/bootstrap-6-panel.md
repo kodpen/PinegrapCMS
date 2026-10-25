@@ -13,6 +13,8 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 - The switch keeps today's look; the redesign comes after. The component swaps he named belong to the first stage.
 - A separate branch is allowed; the model was left to this plan.
 - jquery-multiselect-checkbox stays. edit_offer and the installer move to Stepper. Avatars move to v6 Avatar with theme colours. The password meter follows "Require Strong Password" (`config.strong_password`).
+- Parallel steps are allowed: steps without a dependency on each other (`bootstrap-6-panel-steps.md`) may be claimed by different sessions at once, one draft PR per step; two sessions never hold the same files.
+- Screenshot rounds may run an instance (`tools/setup_sandbox.sh`): B1b, the rehearsals of B8 and the form-adorn pilot (`workflow/sandbox-and-environment.md`). B1b waits on no open question.
 
 ## What is the model?
 - No long-lived branch: measured conflict rates rule it out (`bootstrap-6-findings.md`).
@@ -25,6 +27,4 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 - Claim with a draft PR titled `[plan:bootstrap-6-panel] B<n> — <topic>`; steps and status: `bootstrap-6-panel-steps.md`.
 
 ## What is still open?
-1. Parallel sessions on independent steps: not assigned by the owner yet (CLAUDE.md).
-2. Running instances for screenshot rounds (B1b, B8, the form-adorn pilot): an exception to `workflow/sandbox-and-environment.md` the owner must allow.
-3. Moving to a later 6.0 prerelease: when, and who decides.
+1. Moving to a later 6.0 prerelease: when, and who decides.

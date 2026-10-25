@@ -13,7 +13,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - Never edit `changelog.txt` (name the `[NEW]` line or `[SCHEME]` item in the PR body), add translation keys only with `php tools/tr_add.php` (sorted shards in `includes/local/tr/`, never edited by hand), and only append to the open migration file and `init.php`; merge `origin/development` once before the PR goes up (`working-mode.md`, `git-branches-and-shared-files.md`).
 - Keep PHP 7.1 working: raising the minimum is the owner's call, and a library may never raise it as a side effect (`project-overview.md`).
 - Guard a newer PHP API (`function_exists()`, `PHP_VERSION_ID`) and mark it with `phpcs:ignore` naming the guard; never add a baseline entry for it (`static-analysis.md`).
-- Set up a running instance (`tools/setup_sandbox.sh`) only to reproduce a runtime error, and say in the PR what could not be verified (`sandbox-and-environment.md`).
+- Set up a running instance (`tools/setup_sandbox.sh`) only to reproduce a runtime error or for the Bootstrap 6 plan's screenshot rounds, and say in the PR what could not be verified (`sandbox-and-environment.md`).
 - Keep area rules in memory only (folder README key rules and topic files, no `.claude/skills`); settle a README conflict with `php tools/memory_index.php` and merge only the key-rules block by hand, never by deleting the README (`owner-rules.md`, `memory-index-key-rules.md`).
 <!-- key-rules:end -->
 
