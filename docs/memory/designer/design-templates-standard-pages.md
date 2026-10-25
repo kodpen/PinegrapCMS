@@ -18,7 +18,7 @@ description: What every design template carries: account, inbox, staff and blog 
 ## How are e-mail pages built?
 - E-mail pages are template pages too (a private folder, no sitemap, no search): a form's `notify_page_id` / `confirm_page_id`, a page's `comments` array (`email_page`, `email_subject`, `notify_email`), checkout cfg `order_receipt_email_page_id`; the staff address is `{{site_email}}`.
 - Every template also carries the account e-mails (#1250): pages `email_account_welcome` / `email_password_reset` with an `account_email` widget whose tree is open (not `starter`, no flag); `registration` cfg `welcome_email_page_id` + `welcome_email_subject`, `forgot_password` cfg `reset_email_page_id` + `reset_email_subject` (`lang()`). The reset button's href must be bound to `__set_password_url`: a body without the link is not sent as designed. An inline colour keeps its fallback inside `var()` (`var(--bs-primary,#hex)`); a bare `var(--x)` leaves the button transparent in a client that blocks the CSS link (account-email-pages.md).
-- A widget on an e-mail page takes its record or order from `pg_sw_render_context()` (there is no URL to read); the Messages node stays empty in an e-mail.
+- A widget on an e-mail page takes its record or order from `pg_sw_render_context()` (there is no URL to read); the Messages node stays empty in an e-mail. A comments widget on a page's submitter or watcher e-mail page draws the comment the e-mail names there, else the System region keeps the fixed comment markup ([[comments-widget-email]]).
 
 ## Which settings keys are right?
 - Check every key against the `$cfg[...]` the renderer reads: the cart uses `next_page_id_with_shipping` / `next_page_id_without_shipping`, not `next_page_id`.
