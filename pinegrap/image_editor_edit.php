@@ -349,7 +349,7 @@ if (!$_POST)
                     $("input[name=image_file]").val(DATA);
                 }
             );
-            $("#confirm_modal.modal").modal("toggle");
+            pgUI.dialog.toggle("#confirm_modal");
         });
         </script>
         <div class="modal fade" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">

@@ -3,8 +3,8 @@
  *
  * Generic code editor dialog.
  *
- * A single Bootstrap 5 modal instance is created lazily on first use and
- * reused for every call. The caller supplies an initial value, a language,
+ * A single dialog is created lazily on first use and reused for every
+ * call. The caller supplies an initial value, a language,
  * a title, and save/cancel callbacks. The editor inside is the facade's
  * (window.PgCodeEditor, assets/js/pg_code_editor.js), whose engine is
  * fetched on the first open.
@@ -26,7 +26,7 @@
  *
  * Dependencies:
  *   - assets/js/pg_code_editor.js (PgCodeEditor) on the page
- *   - Bootstrap 5 JS (bootstrap.Modal)
+ *   - pgUI (assets/js/pg_ui.js), Bootstrap's JavaScript behind it
  *
  * Labels are read from window.PgCodeModalLabels when the including screen
  * emits that map; otherwise the English text is shown.
@@ -39,7 +39,6 @@
 (function () {
     'use strict';
 
-    var _modal     = null;   // Bootstrap Modal instance
     var _modalEl   = null;   // the <div> root
     var _host      = null;   // the editor's host inside the body
     var _editor    = null;   // PgCodeEditor instance
@@ -96,11 +95,11 @@
             try {
                 if (typeof _opts.onSave === 'function') _opts.onSave(v);
             } finally {
-                _modal.hide();
+                pgUI.dialog.hide(_modalEl);
             }
         });
 
-        _modalEl.addEventListener('hidden.bs.modal', function () {
+        pgUI.dialog.on(_modalEl, 'hidden', function () {
             if (!_didSave && _opts && typeof _opts.onCancel === 'function') {
                 try { _opts.onCancel(); } catch (e) {}
             }
@@ -162,8 +161,7 @@
         // hands its content on to a next step rather than storing it.
         _saveBtn.textContent = opts.saveLabel || _t('Save');
 
-        if (!_modal) _modal = new bootstrap.Modal(_modalEl, { backdrop: 'static', keyboard: true });
-        _modal.show();
+        pgUI.dialog.show(_modalEl, { backdrop: 'static', keyboard: true });
 
         // The editor is built once the modal is visible, so it measures a
         // real box; the engine may still be on its way for the first open.
@@ -188,12 +186,11 @@
             setTimeout(function () { if (_editor && !opts.readonly) _editor.focus(); }, 50);
         };
         var onShown = function () {
-            _modalEl.removeEventListener('shown.bs.modal', onShown);
             PgCodeEditor.load().then(mount, function (err) {
                 if (call !== _opening) return;
                 _host.textContent = (err && err.message) ? err.message : 'The code editor could not be loaded.';
             });
         };
-        _modalEl.addEventListener('shown.bs.modal', onShown);
+        pgUI.dialog.on(_modalEl, 'shown', onShown, { once: true });
     };
 })();

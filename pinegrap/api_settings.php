@@ -2030,9 +2030,10 @@ echo '
 
 	var API_BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
 
+	// This runs while the page is parsed; Bootstrap is reached through pgUI
+	// only when a row is opened, so a Bootstrap that loads later (6 is a
+	// deferred module) is in place by then.
 	var drawerElement = document.getElementById("api_drawer");
-
-	var drawer = new bootstrap.Offcanvas(drawerElement);
 
 	function setRadio(name, value) {
 		var chosen = document.querySelector("#api_drawer [name=\'" + name + "\'][value=\'" + value + "\']");
@@ -2221,19 +2222,19 @@ echo '
 		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
 		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
-		if (firstTab) { bootstrap.Tab.getOrCreateInstance(firstTab).show(); }
+		if (firstTab) { pgUI.tab.show(firstTab); }
 
 		document.getElementById("d_delete_ask").classList.remove("d-none");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
 
-		drawer.show();
+		pgUI.drawer.show(drawerElement);
 	}
 
-	drawerElement.addEventListener("show.bs.offcanvas", function () {
+	pgUI.drawer.on(drawerElement, "show", function () {
 		document.body.classList.add("api-drawer-open");
 	});
 
-	drawerElement.addEventListener("hidden.bs.offcanvas", function () {
+	pgUI.drawer.on(drawerElement, "hidden", function () {
 		document.body.classList.remove("api-drawer-open");
 	});
 
