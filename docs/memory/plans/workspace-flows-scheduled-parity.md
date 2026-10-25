@@ -1,13 +1,11 @@
 ---
 name: workspace-flows-scheduled-parity
-description: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule, the slice that keeps it, how its test reads keys without a database
+description: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 ---
 
 ## How does the test read keys?
-- tests/workspace_flows_parity_test.php: `workspace_flows_parity_table()`, a reader per group. Keys behind a probe come from source (tests/helpers/source_reader.php), the screen's from workspace.js.
-- A source reader throws on a shape it does not model (a new condition, any other write, a key worked out by code); a JS line only made dead (`false &&`) passes.
-- A place (call, label) is keyed by the functions it is in, a repeat numbered (`#2`).
-- Workdays cases of `ws_scheduled_next_run()`: own process, stub `ws_day_off()`.
+- workspace/workspace-flows-parity-test.md: `workspace_flows_parity_table()`, a reader per group; keys behind a probe come from source (tests/helpers/source_reader.php), the screen's from workspace.js.
+- A JS line only made dead (`false &&`) passes.
 
 ## Which rows? (merge slice)
 - Action (1-3): name, rules, action, follow (on, do), channel_id or note_id; a 5.81 then_action as a done follow-up; the form's request, what each route takes.
