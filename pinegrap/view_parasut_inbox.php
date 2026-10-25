@@ -213,6 +213,26 @@ function _parasut_type_badge($type) {
 }
 
 // ------------------------------------------------------------------
+// Grand total note helper
+// ------------------------------------------------------------------
+// What Paraşüt took off the grand total (net_total): the VAT withheld and
+// the income tax withheld (stopaj), one muted line each under the figure,
+// so a total below the amount before VAT plus the VAT reads right.
+function _parasut_total_notes($totals) {
+    $notes = [
+        'withheld'        => lang('VAT withholding'),
+        'withholding_tax' => lang('Withholding tax'),
+    ];
+    $out = '';
+    foreach ($notes as $key => $label) {
+        if ($totals[$key] > 0) {
+            $out .= '<div class="small text-muted">' . h($label) . ' ' . pg_format_number($totals[$key], 2) . '</div>';
+        }
+    }
+    return $out;
+}
+
+// ------------------------------------------------------------------
 // Tab content: Incoming invoices
 // ------------------------------------------------------------------
 $output_tab_content = '';
@@ -234,6 +254,7 @@ if ($tab === 'incoming') {
             $before_vat = pg_format_number($totals['before_vat'], 2);
             $vat        = pg_format_number($totals['vat'], 2);
             $withheld   = ($totals['withheld'] > 0) ? pg_format_number($totals['withheld'], 2) : '';
+            $withholding_tax = ($totals['withholding_tax'] > 0) ? pg_format_number($totals['withholding_tax'], 2) : '';
             $total      = pg_format_number($totals['total'], 2);
             $item_type  = $attr['item_type']  ?? '';
             $status     = $attr['payment_status'] ?? ($attr['status'] ?? '');
@@ -247,7 +268,7 @@ if ($tab === 'incoming') {
                 <td class="align-middle">' . h($contact_name) . '</td>
                 <td class="align-middle">' . _parasut_type_badge($item_type) . '</td>
                 <td class="align-middle text-end">' . $before_vat . '</td>
-                <td class="align-middle text-end">' . $total . '</td>
+                <td class="align-middle text-end">' . $total . _parasut_total_notes($totals) . '</td>
                 <td class="align-middle">' . _parasut_status_badge($status) . '</td>
                 <td class="align-middle text-end">
                     <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -261,6 +282,7 @@ if ($tab === 'incoming') {
                         data-before-vat="' . $before_vat . '"
                         data-vat="' . $vat . '"
                         data-withheld="' . $withheld . '"
+                        data-withholding-tax="' . $withholding_tax . '"
                         data-total="' . $total . '"
                         data-desc="' . h($description) . '">
                         <i class="bi bi-eye"></i>
@@ -317,6 +339,7 @@ if ($tab === 'outgoing') {
             $before_vat  = pg_format_number($totals['before_vat'], 2);
             $vat         = pg_format_number($totals['vat'], 2);
             $withheld    = ($totals['withheld'] > 0) ? pg_format_number($totals['withheld'], 2) : '';
+            $withholding_tax = ($totals['withholding_tax'] > 0) ? pg_format_number($totals['withholding_tax'], 2) : '';
             $total       = pg_format_number($totals['total'], 2);
             $item_type   = $attr['item_type']   ?? '';
             $status      = $attr['payment_status'] ?? ($attr['status'] ?? '');
@@ -329,7 +352,7 @@ if ($tab === 'outgoing') {
                 <td class="align-middle">' . h($contact_name) . '</td>
                 <td class="align-middle">' . _parasut_type_badge($item_type) . '</td>
                 <td class="align-middle text-end">' . $before_vat . '</td>
-                <td class="align-middle text-end">' . $total . '</td>
+                <td class="align-middle text-end">' . $total . _parasut_total_notes($totals) . '</td>
                 <td class="align-middle">' . _parasut_status_badge($status) . '</td>
                 <td class="align-middle text-end">
                     <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -343,6 +366,7 @@ if ($tab === 'outgoing') {
                         data-before-vat="' . $before_vat . '"
                         data-vat="' . $vat . '"
                         data-withheld="' . $withheld . '"
+                        data-withholding-tax="' . $withholding_tax . '"
                         data-total="' . $total . '"
                         data-desc="' . h($description) . '">
                         <i class="bi bi-eye"></i>
@@ -463,6 +487,7 @@ $output_detail_modal = '
                     <tr><td class="text-muted">' . lang('Total before VAT') . '</td><td id="modal-before-vat"></td></tr>
                     <tr><td class="text-muted">' . lang('VAT') . '</td><td id="modal-vat"></td></tr>
                     <tr id="modal-withheld-row"><td class="text-muted">' . lang('VAT withholding') . '</td><td id="modal-withheld"></td></tr>
+                    <tr id="modal-withholding-tax-row"><td class="text-muted">' . lang('Withholding tax') . '</td><td id="modal-withholding-tax"></td></tr>
                     <tr><td class="text-muted">' . lang('Grand total (incl. VAT)') . '</td><td id="modal-total"></td></tr>
                     <tr id="modal-desc-row"><td class="text-muted">' . lang('Description') . '</td><td id="modal-desc"></td></tr>
                     <tr><td class="text-muted">' . lang('Parasut ID') . '</td><td id="modal-id" class="font-monospace small text-muted"></td></tr>
@@ -490,10 +515,14 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("modal-vat").textContent     = btn.dataset.vat     || "—";
         document.getElementById("modal-total").textContent   = btn.dataset.total   || "—";
         document.getElementById("modal-id").textContent      = btn.dataset.billId  || "—";
-        // The VAT withheld is shown only on a record that has some.
+        // The VAT and the income tax withheld are shown only on a record
+        // that has some.
         var withheld = btn.dataset.withheld || "";
         document.getElementById("modal-withheld").textContent = withheld;
         document.getElementById("modal-withheld-row").style.display = withheld ? "" : "none";
+        var withholdingTax = btn.dataset.withholdingTax || "";
+        document.getElementById("modal-withholding-tax").textContent = withholdingTax;
+        document.getElementById("modal-withholding-tax-row").style.display = withholdingTax ? "" : "none";
         var desc = btn.dataset.desc || "";
         document.getElementById("modal-desc").textContent    = desc;
         document.getElementById("modal-desc-row").style.display = desc ? "" : "none";

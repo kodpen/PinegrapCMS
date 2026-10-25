@@ -28060,5 +28060,6 @@
     "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",
     "On {var:1}": "{var:1} üzerinde",
     "Total before VAT": "KDV hariç toplam",
-    "Grand total (incl. VAT)": "Genel toplam (KDV dahil)"
+    "Grand total (incl. VAT)": "Genel toplam (KDV dahil)",
+    "Withholding tax": "Stopaj"
 }

@@ -15,17 +15,18 @@ description: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read
 - Probed on the demo company (2026-10-24): `[gte]` / `[lte]` 400 on both lists, `[gteq]` / `[lteq]` 200.
 
 ## Which totals do the lists and the detail show? (#PR)
-- `parasut_inbox_totals()`: "Total before VAT" = `before_taxes_total`, "Grand total (incl. VAT)" = `net_total` (Paraşüt's "Genel Toplam", after the VAT withheld); the detail adds VAT (`total_vat`) and, when not zero, VAT withholding (`total_vat_withholding`).
-- Live sale (demo, 2026-10-24): 2 x 100 less 10 % at 20 %, 50 at 10 %, 20 off the invoice → `gross_total` 250.0 (before any discount), `total_discount` 20.0 (lines only), `total_invoice_discount` 20.0, `before_taxes_total` 210.0, `total_vat` 37.44, `net_total` 247.44. A record without `before_taxes_total` gets gross − both discounts.
-- Until #PR the columns were "Net" (`net_total`) and "Gross" (`gross_total`), in Turkish "KDV Hariç" 247,44 and "KDV Dahil" 250,00: the grand total called pre-VAT, the pre-discount subtotal called VAT included. The keys `'Net'` ("KDV Hariç", erp-translation-traps.md) and `'Gross'` ("KDV Dahil") are left as they are.
+- `parasut_inbox_totals()`: "Total before VAT" = `before_taxes_total` ("Vergiler Hariç Toplam": before ÖTV/ÖİV too); "Grand total (incl. VAT)" = `net_total` ("Genel Toplam": VAT, ÖTV, ÖİV on; VAT withheld and stopaj `withholding` off, each noted under it). The detail adds VAT, not ÖTV/ÖİV.
+- Live, sales invoices only (demo, 2026-10-24): gross 250.0, lines −20.0, invoice −20.0 → before 210.0, VAT 37.44, net 247.44. Gross 280.0, lines −25.0 (`total_discount`), invoice −15.0 → before 240.0; ÖTV 2.35, ÖİV 2.35, VAT 43.53, withheld 2.36, stopaj 48.0 → net 237.87.
+- Purchase bills: swagger.json only, no bill read live. No `before_taxes_total`, no `withholding` (only `withholding_rate`), so the Incoming tab always takes `gross_total` − `total_discount` − `total_invoice_discount` (= `before_taxes_total` on both sales; net − taxes is short by the stopaj), or `net_total` − `total_vat` for a bill without lines (`is_detailed` false: its only amounts). No stopaj note. Check on the first real bill.
+- Until #PR: "Net" (`net_total`, "KDV Hariç") and "Gross" (`gross_total`, "KDV Dahil"); those keys stay (erp-translation-traps.md).
 
 ## Which numbers does the VKN/TCKN tab refuse? (#PR)
-- Paraşüt answers `filter[vkn]` on any value (9 digits, a bad check digit, `abc`) with 200 and an empty list, the answer of a valid number nobody registered, so the tab said "not registered, issue an e-archive" for a mistyped VKN of an e-invoice user.
-- `parasut_check_einvoice_address()` now reads it as `erp_edoc_taxpayer_lookup()` does: digits only (a space or dash is dropped), 10 or 11 of them, `erp_edoc_tax_number_valid($n, true)` (the final consumer's 11 ones pass; the ERP bootstrap is loaded when missing). Otherwise `refused` with the ERP's sentences, no request; the screen marks the field.
+- Paraşüt answers `filter[vkn]` on any value (9 digits, a bad check digit, `abc`) with 200 and an empty list, as for a valid unregistered number, so a mistyped VKN of an e-invoice user read "not registered, issue an e-archive".
+- `parasut_check_einvoice_address()` reads it as `erp_edoc_taxpayer_lookup()` does: digits only (spaces, dashes dropped), 10 or 11 of them, `erp_edoc_tax_number_valid($n, true)` (the final consumer's 11 ones pass; the ERP bootstrap is loaded when missing). Otherwise `refused` with the ERP's sentences, no request; the screen marks the field.
 
 ## What is Paraşüt's own doing?
-- `GET purchase_bills` is flaky on Paraşüt's side: the same request answered 200 in 0.1 s, then 500 after 30 s, then timed out (2026-10-24); `GET expenditures` answered 500. A 5xx or a timeout there is the provider; a 4xx naming a parameter is this code.
+- `GET purchase_bills` is flaky on Paraşüt's side: the same request answered 200, then 500 after 30 s, then timed out (2026-10-24); `GET expenditures` answered 500. A 5xx or a timeout there is the provider; a 4xx naming a parameter is this code.
 
 ## Tests
 - `tests/parasut_test.php`: the query keys, a date left out, both lists built with the helper.
-- `tests/parasut_inbox_test.php`: the totals (plain, withholding, live discounted sale), the refusals without a request (injected request), the digits asked, the screen's keys.
+- `tests/parasut_inbox_test.php`: the totals (plain, withholding, both live sales, a bill with and without lines), the refusals without a request, the digits asked, the screen's keys.

@@ -2605,33 +2605,49 @@ function parasut_check_einvoice_address($vkn, $request = null)
 
 /**
  * The totals of a Paraşüt sales invoice or purchase bill as the e-invoice
- * inbox shows them. net_total is what Paraşüt calls "Genel Toplam": VAT
- * included, after the VAT withheld. gross_total is the subtotal before the
- * line and invoice discounts; before_taxes_total is what the discounts leave
- * before VAT, and a record that carries no before_taxes_total gets it from
- * the subtotal less both discounts.
+ * inbox shows them. net_total is what Paraşüt calls "Genel Toplam": VAT,
+ * excise duty and communications tax added, the VAT withheld
+ * (total_vat_withholding) and the income tax withheld (withholding, stopaj)
+ * taken off. before_taxes_total is what the line and invoice discounts leave
+ * before any tax.
+ *
+ * Paraşüt's API definition lists before_taxes_total and the stopaj amount
+ * (withholding) for sales invoices only; a purchase bill carries neither.
+ * A bill therefore gets the figure from gross_total (the subtotal before
+ * any discount) less total_discount (the line discounts alone) and
+ * total_invoice_discount, which on a sales invoice gives before_taxes_total
+ * to the kurus. net_total less the taxes would not: the stopaj is taken off
+ * net_total too, and a bill gives only its rate. A bill entered without
+ * lines (is_detailed false) has net_total and total_vat as its amounts, so
+ * it gets the one less the other.
  *
  * @param array $attributes  data.attributes of the record
- * @return array ['before_vat' => float, 'vat' => float, 'withheld' => float, 'total' => float]
+ * @return array ['before_vat' => float, 'vat' => float, 'withheld' => float the VAT withheld,
+ *                'withholding_tax' => float the stopaj (0 on a purchase bill), 'total' => float]
  */
 function parasut_inbox_totals($attributes)
 {
     $attributes = (array) $attributes;
-    $amount = function ($key) use ($attributes) {
-        return (isset($attributes[$key]) && is_numeric($attributes[$key])) ? (float) $attributes[$key] : 0.0;
+    // Each amount in kurus, so a figure taken from several is not off by a
+    // float's last digit.
+    $kurus = function ($key) use ($attributes) {
+        return (isset($attributes[$key]) && is_numeric($attributes[$key])) ? (int) round(((float) $attributes[$key]) * 100) : 0;
     };
 
     if (isset($attributes['before_taxes_total']) && is_numeric($attributes['before_taxes_total'])) {
-        $before_vat = $amount('before_taxes_total');
+        $before_vat = $kurus('before_taxes_total');
+    } elseif (($attributes['is_detailed'] ?? null) === false) {
+        $before_vat = $kurus('net_total') - $kurus('total_vat');
     } else {
-        $before_vat = $amount('gross_total') - $amount('total_discount') - $amount('total_invoice_discount');
+        $before_vat = $kurus('gross_total') - $kurus('total_discount') - $kurus('total_invoice_discount');
     }
 
     return [
-        'before_vat' => round($before_vat, 2),
-        'vat' => round($amount('total_vat'), 2),
-        'withheld' => round($amount('total_vat_withholding'), 2),
-        'total' => round($amount('net_total'), 2),
+        'before_vat' => $before_vat / 100.0,
+        'vat' => $kurus('total_vat') / 100.0,
+        'withheld' => $kurus('total_vat_withholding') / 100.0,
+        'withholding_tax' => $kurus('withholding') / 100.0,
+        'total' => $kurus('net_total') / 100.0,
     ];
 }
 
