@@ -220,6 +220,8 @@ $people = pg_return_user_names(array($return['requested_by'], $return['decided_b
 // status this page shows. The status is printed from the row, never through
 // the liveform: a refused post keeps its fields in the session, and a status
 // filled back from there would send the stale one again on the next click.
+// autocomplete="off" is outside the HTML spec on a hidden input, but it stops
+// Firefox from restoring a status saved before a reload.
 $form_keys = get_token_field() . '
                         <input type="hidden" name="id" value="' . $return_id . '">
                         <input type="hidden" name="status_was" value="' . h($status) . '" autocomplete="off">';

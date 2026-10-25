@@ -127,6 +127,7 @@ function test_returns_stale_move_screen_sends_the_shown_status()
 	}
 
 	pg_assert_true($forms > 0, 'the screen\'s forms were found');
+	pg_assert_same(preg_match_all('/<form\b/i', $screen), $forms, 'every form on the screen was checked: one opened another way fails here');
 
 	$keys = strpos($screen, '$form_keys = get_token_field()');
 	$keys_source = ($keys === false) ? '' : substr($screen, $keys, (int) strpos($screen, ';', $keys) - $keys);

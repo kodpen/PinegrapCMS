@@ -1,10 +1,10 @@
 ---
 name: order-returns-stale-moves
-description: A staff move posts the status its page showed (status_was) and is refused under the return lock if it moved (#1611): the refused-refund close, why the lock alone failed, who passes it
+description: A staff move posts the status its page showed (status_was) and is refused under the return lock if it moved (PR #1612): the refused-refund close, why the lock alone failed, who passes it
 ---
 
 ## Why does a staff move carry the status its page showed?
-- Before (issue #1611): `view_return.php` read the row again and checked only `pg_return_staff_actions(<status now>)`, so a move from a page that showed another status went through. A driver refund in flight shows `refunded` with a Close button; the service refused, the return went back to `received`, and Close closed it. Closed with `received_at > 0` still holds the goods (`pg_return_holds_goods()`), the reminder job reads only shipped/received: the money never went back and nobody was told.
+- Before (PR #1612): `view_return.php` read the row again and checked only `pg_return_staff_actions(<status now>)`, so a move from a page that showed another status went through. A driver refund in flight shows `refunded` with a Close button; the service refused, the return went back to `received`, and Close closed it. Closed with `received_at > 0` still holds the goods (`pg_return_holds_goods()`), the reminder job reads only shipped/received: the money never went back and nobody was told.
 - Only close (from 5 statuses) and received (from approved or shipped) could act on an unseen state; every other move has one starting status, so `pg_return_can_move()` and the conditional UPDATE already refused it.
 
 ## Where is it checked, and why twice?
@@ -24,6 +24,7 @@ description: A staff move posts the status its page showed (status_was) and is r
 ## What does a form drawn before the field get?
 - Refused once, works after the reload: a tab opened before the deploy is the stalest page there is (unlike `balance_was`, gift-card-balance-edit.md, where a form without the field writes as before).
 - The field is printed from the row with `h()`, never through the liveform: a refused post keeps its fields in the session, and a filled-back status would refuse every later click.
+- Its `autocomplete="off"` is outside the HTML spec on a hidden input, but stops Firefox from restoring a status saved before a reload; keep it.
 
 ## Tests and sandbox?
 - `tests/returns_stale_move_test.php`: the comparison, its place in `pg_return_move()` and under the lock, every form's field, the refund's received check.
