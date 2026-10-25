@@ -968,3 +968,23 @@ function pg_contact_display_name($first_name, $last_name, $nickname = '')
 
     return $name;
 }
+
+/**
+ * The contacts a person with the user role (3) may open, as SQL: those filed
+ * in a contact group given to them (users_contact_groups_xref), the rule of
+ * validate_contact_access() written as one condition. A contact in no group,
+ * or only in groups given to others, is outside. Shared by the external API
+ * (api_customer_owner_filter()) and the Workspace's record changes
+ * (ws_change_allowed(), ws_bulk_match()); from the manager role up every
+ * contact is open and the callers add no condition.
+ *
+ * @param int    $user_id user.user_id of the person
+ * @param string $column  the contact id column of the caller's query
+ * @return string
+ */
+function pg_contact_owner_sql($user_id, $column)
+{
+    return $column . " IN (SELECT contacts_contact_groups_xref.contact_id FROM contacts_contact_groups_xref"
+        . " INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id"
+        . " WHERE users_contact_groups_xref.user_id = '" . (int) $user_id . "')";
+}

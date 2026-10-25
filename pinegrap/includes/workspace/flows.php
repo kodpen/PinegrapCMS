@@ -23,11 +23,13 @@
  * lists what stops it from being published; both are pure. A draft may hold
  * problems, a published version never does.
  *
- * Staff in the team build flows (ws_can_schedule()) and a flow is its owner's
- * alone, as a note is: being an administrator gives no view of somebody
- * else's flow. A live flow with a home channel may be run by the people who
- * read that channel. Site members never reach a flow. Publishing is the
- * person's own decision, since a published flow later acts in their name.
+ * Staff in the team build flows (ws_can_schedule()) and a flow is its owner's,
+ * as a note is: being an administrator gives no view of somebody else's
+ * flow. A live flow with a home channel may be run by the people who read
+ * that channel, and its owner may share it with colleagues and channels
+ * (includes/workspace/flow_shares.php). Site members never reach a flow.
+ * Publishing is the person's own decision, since a published flow later acts
+ * in its owner's name.
  *
  * The canvas that draws a flow is workspace_flows.php with
  * assets/js/workspace_flow.js. Its runs are carried out by
@@ -595,15 +597,21 @@ function ws_flow_version($version_id)
 }
 
 /**
- * What the person may do with a flow:
- *   edit  its owner, staff in the team (ws_can_schedule()); running it too
- *   run   a live flow whose home channel (public or private) they read
- *   ''    nothing: somebody else's flow without a home channel they read,
- *         however high their role, and every deleted flow
+ * What the person may do with a flow (ws_flow_access_level() decides from
+ * what is gathered here):
+ *   edit  its owner, staff in the team (ws_can_schedule()); a colleague on
+ *         the staff it is shared with at edit, who changes the draft but
+ *         does not publish it (ws_flow_publish_check()); running it too
+ *   run   a live flow whose home channel (public or private) they read; a
+ *         person it is shared with at run, or at edit while not on the staff
+ *   view  a person it is shared with at view; a channel share in a channel
+ *         they read
+ *   ''    nothing: somebody else's flow that reaches them in none of these
+ *         ways, however high their role, and every deleted flow
  *
  * @param array      $viewer
  * @param array|null $flow
- * @return string edit | run | ''
+ * @return string edit | run | view | ''
  */
 function ws_flow_access($viewer, $flow)
 {
@@ -611,19 +619,33 @@ function ws_flow_access($viewer, $flow)
         return '';
     }
 
-    if (((int) $flow['owner_id'] === (int) $viewer['id']) && ws_can_schedule($viewer)) {
+    $owner = ((int) $flow['owner_id'] === (int) $viewer['id']);
+    $staff = ws_can_schedule($viewer);
+
+    if ($owner && $staff) {
         return 'edit';
     }
 
-    if (((string) $flow['status'] === 'live') && ((int) $flow['channel_id'] > 0)) {
-        $channel = ws_channel($flow['channel_id']);
+    $home = false;
 
-        if ($channel && in_array((string) $channel['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $channel)) {
-            return 'run';
-        }
+    // A public or private home channel the person reads, asked once a
+    // request per channel: a list asks it for every flow or run.
+    if (((string) $flow['status'] === 'live') && ((int) $flow['channel_id'] > 0)) {
+        $home = ws_flow_channel_readable($viewer, (int) $flow['channel_id']);
     }
 
-    return '';
+    // Read only for a flow with an id: ws_flows_nav_visible() asks about a
+    // home channel alone.
+    $reach = ((int) ($flow['id'] ?? 0) > 0) ? ws_flow_share_reach($viewer, $flow) : array('person' => '', 'channel' => false);
+
+    return ws_flow_access_level(array(
+        'owner'   => $owner,
+        'staff'   => $staff,
+        'status'  => (string) $flow['status'],
+        'home'    => $home,
+        'person'  => $reach['person'],
+        'channel' => $reach['channel'],
+    ));
 }
 
 /**
@@ -631,16 +653,15 @@ function ws_flow_access($viewer, $flow)
  *
  * @param array  $viewer
  * @param int    $id
- * @param string $need run | edit
+ * @param string $need view | run | edit
  * @return array|null the row, with access
  */
-function ws_flow_for($viewer, $id, $need = 'run')
+function ws_flow_for($viewer, $id, $need = 'view')
 {
     $flow = ws_flow($id);
     $access = ws_flow_access($viewer, $flow);
-    $rank = array('' => 0, 'run' => 1, 'edit' => 2);
 
-    if (($access === '') || ($rank[$access] < $rank[$need])) {
+    if (($access === '') || (ws_flow_access_rank($access) < ws_flow_access_rank($need))) {
         return null;
     }
 
@@ -650,8 +671,9 @@ function ws_flow_for($viewer, $id, $need = 'run')
 }
 
 /**
- * The flows the person reaches, the latest changed first: their own, and the
- * live flows of others whose home channel they read. Drafts are not read.
+ * The flows the person reaches, the latest changed first: their own, the
+ * live flows of others whose home channel they read, and the flows shared
+ * with them or in a channel they read. Drafts are not read.
  *
  * @param array  $viewer
  * @param string $scope all | mine | shared
@@ -663,11 +685,22 @@ function ws_flows_list($viewer, $scope = 'all')
         return array();
     }
 
+    // A flow shared in any channel is read, and ws_flow_access() keeps the
+    // ones whose channel the person reads.
+    $shared = ws_flow_shares_ready()
+        ? " OR id IN (SELECT flow_id FROM ws_flow_shares
+            WHERE (target_type = 'user' AND target_id = '" . (int) $viewer['id'] . "') OR target_type = 'channel')"
+        : '';
+
     $rows = (array) db_items("SELECT id, owner_id, channel_id, name, status, draft_rev, version_id, updated_by, created_at, updated_at, binned_at
         FROM ws_flows
-        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0))
+        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0)" . $shared . ")
         ORDER BY updated_at DESC, id DESC
         LIMIT 1000");
+
+    ws_flow_share_rows_prime(array_map(function ($row) {
+        return (int) $row['id'];
+    }, $rows));
 
     $out = array();
 
@@ -743,6 +776,7 @@ function ws_flow_save_check($viewer, $data, $flow = null)
             return ws_flow_refusal(lang(array('string' => 'You can keep at most {var:1} flows.', 'vars' => WS_FLOW_MAX_PER_OWNER)));
         }
     } else {
+        // Its owner, or a colleague on the staff it is shared with at edit.
         if (ws_flow_access($viewer, $flow) !== 'edit') {
             return ws_flow_refusal(lang('Only the owner of a flow can change it.'), 403);
         }
@@ -765,6 +799,12 @@ function ws_flow_save_check($viewer, $data, $flow = null)
     }
 
     if (array_key_exists('channel_id', $data) && (($flow === null) || ((int) $data['channel_id'] !== (int) $flow['channel_id']))) {
+        // The home decides who may run the flow, as a share does: a person
+        // the flow is shared with at edit changes the graph, not the home.
+        if (($flow !== null) && ((int) $flow['owner_id'] !== (int) $viewer['id'])) {
+            return ws_flow_refusal(lang('Only the owner of a flow can move it to another home channel.'), 403, 'channel_id');
+        }
+
         $channel_id = max(0, (int) $data['channel_id']);
 
         if ($channel_id > 0) {
@@ -868,10 +908,15 @@ function ws_flow_save($viewer, $data, $flow = null)
 }
 
 /**
- * Whether the person may publish the flow's draft: theirs to change, no
- * problem left in it, and every task box with people on it giving work only
- * to people they may give it to (ws_task_create_check()). A box with a rule
- * is resolved when the run opens its task.
+ * Whether the person may publish the flow's draft: its owner, while it is
+ * theirs to change (ws_flow_share_manager()), no problem left in it, and
+ * every task box with people on it giving work only to people they may give
+ * it to (ws_task_create_check()). A box with a rule is resolved when the run
+ * opens its task. A colleague the flow is shared with at edit saves the
+ * draft but does not publish it: a published flow opens its tasks in the
+ * owner's name, with the owner's rights (an assign rule resolved through
+ * them, the home channel they post in), so what it runs is the owner's
+ * decision, as publishing is the person's own in the API.
  *
  * @param array $viewer
  * @param array $flow
@@ -884,7 +929,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (ws_flow_access($viewer, $flow) !== 'edit') {
+    if (!ws_flow_share_manager($viewer, $flow)) {
         return ws_flow_refusal(lang('Only the owner of a flow can publish it.'), 403);
     }
 
@@ -972,7 +1017,9 @@ function ws_flow_publish($viewer, $flow, $data = array())
 }
 
 /**
- * Whether the person may pause the flow: theirs, and live.
+ * Whether the person may pause the flow: theirs to change, and live. A
+ * colleague shared at edit may pause it too: a pause only stops new runs,
+ * and the owner makes it live again by publishing.
  *
  * @param array $viewer
  * @param array $flow
@@ -1024,8 +1071,9 @@ function ws_flow_pause($viewer, $flow)
 }
 
 /**
- * Whether the person may delete the flow: theirs to change. Its open runs do
- * not hold it back: they end with it.
+ * Whether the person may delete the flow: its owner, while it is theirs to
+ * change; a person it is shared with at edit may not. Its open runs do not
+ * hold it back: they end with it.
  *
  * @param array $viewer
  * @param array $flow
@@ -1037,7 +1085,7 @@ function ws_flow_bin_check($viewer, $flow)
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (ws_flow_access($viewer, $flow) !== 'edit') {
+    if (!ws_flow_share_manager($viewer, $flow)) {
         return ws_flow_refusal(lang('Only the owner of a flow can delete it.'), 403);
     }
 
@@ -1100,8 +1148,9 @@ function ws_flow_graph_present($graph)
 }
 
 /**
- * Does the Workspace show Flows to this person? Staff, who build them, and
- * anybody who may run the live flow of a channel they read.
+ * Does the Workspace show Flows to this person? Staff, who build them,
+ * anybody who may run the live flow of a channel they read, and anybody a
+ * flow is shared with, themselves or in a channel they read.
  *
  * @param array $viewer
  * @return bool
@@ -1130,6 +1179,18 @@ function ws_flows_nav_visible($viewer)
                 LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
                 WHERE f.status = 'live' AND f.channel_id > 0
                     AND (c.kind = 'public' OR (c.kind = 'private' AND m.user_id IS NOT NULL))
+                LIMIT 1");
+        }
+
+        // A flow shared with the person, or in a public channel or a private
+        // one they are in (ws_flow_share_reach() asks the same per flow).
+        if (!$visible && ws_flow_shares_ready()) {
+            $visible = (bool) db_value("SELECT 1 FROM ws_flow_shares s
+                JOIN ws_flows f ON f.id = s.flow_id AND f.status <> 'binned'
+                LEFT JOIN ws_channels c ON s.target_type = 'channel' AND c.id = s.target_id
+                LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
+                WHERE (s.target_type = 'user' AND s.target_id = '" . (int) $viewer['id'] . "')
+                    OR (s.target_type = 'channel' AND (c.kind = 'public' OR (c.kind = 'private' AND m.user_id IS NOT NULL)))
                 LIMIT 1");
         }
 
@@ -1201,8 +1262,24 @@ function ws_flow_brief($viewer, $flow, $n)
 }
 
 /**
- * A flow opened on the screen: its owner gets the draft and what stops it
- * from being published, whoever may run it the live graph only.
+ * Whether the person reads a flow's draft: whoever may change it, and
+ * whoever else reaches a flow never published (shared with them before it
+ * was), read-only. Once a version is published, the others read that.
+ *
+ * @param string $access ws_flow_access()
+ * @param int    $version_id the flow's live version, 0 for none
+ * @return bool
+ */
+function ws_flow_draft_readable($access, $version_id)
+{
+    return ($access === 'edit') || (($access !== '') && ((int) $version_id <= 0));
+}
+
+/**
+ * A flow opened on the screen: whoever may change it gets the draft and what
+ * stops it from being published, whoever else reaches it the live graph (the
+ * draft of a flow never published, read-only). manage says whether the
+ * person manages its shares (its owner).
  *
  * @param array $viewer
  * @param array $flow ws_flow_for()
@@ -1212,14 +1289,17 @@ function ws_flow_detail($viewer, $flow)
 {
     $version = ws_flow_version($flow['version_id']);
     $live = is_array($version) ? ws_flow_graph_of($version) : null;
-    $draft = ((string) $flow['access'] === 'edit') ? ws_flow_graph_of($flow) : null;
+    $edit = ((string) $flow['access'] === 'edit');
+    $draft = ws_flow_draft_readable((string) $flow['access'], is_array($version) ? (int) $version['id'] : 0) ? ws_flow_graph_of($flow) : null;
 
     return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0) + array(
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live) : null,
-        'problems' => ($draft !== null) ? ws_flow_problems($draft) : array(),
+        'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
         // The draft holds something its live version does not.
-        'changed'  => ($draft !== null) && (($live === null) || ($draft !== $live)),
+        'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),
+        'manage'   => ws_flow_share_manager($viewer, $flow),
+        'owner_id' => (int) $flow['owner_id'],
     );
 }
 
@@ -1246,10 +1326,10 @@ function ws_flow_js_strings()
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
         'fl_new'              => lang('New flow'),
         'fl_list_mine'        => lang('My flows'),
-        'fl_list_shared'      => lang('Flows of my channels'),
+        'fl_list_shared'      => lang('Shared with me and my channels'),
         'fl_none'             => lang('No flows yet.'),
         'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
-        'fl_none_run'         => lang('No flows yet. A published flow of a channel you read appears here.'),
+        'fl_none_run'         => lang('No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.'),
         'fl_not_ready'        => lang('The database has to be updated first.'),
         'fl_status_draft'     => lang('Draft'),
         'fl_status_live'      => ws_js_template('Live · v{var:1}', 1),
@@ -1268,6 +1348,7 @@ function ws_flow_js_strings()
         'fl_publish_ask'      => ws_js_template('Publish this draft as version {var:1}? Whoever may run the flow runs this version from now on; runs already started keep theirs.', 1),
         'fl_publish_do'       => ws_js_template('Publish version {var:1}', 1),
         'fl_published'        => ws_js_template('Published as version {var:1}.', 1),
+        'fl_publish_owner'    => lang('Only the owner publishes this flow; your changes are kept in its draft.'),
         'fl_pause'            => lang('Pause'),
         'fl_paused'           => lang('The flow is paused. Publishing it again makes it live.'),
         'fl_more'             => lang('More actions'),
@@ -1343,6 +1424,76 @@ function ws_flow_js_strings()
         'fl_key_zoom'         => lang('+ and −: zoom; 0: fit everything on the screen'),
         'fl_key_pan'          => lang('Space and drag, or drag the empty canvas: move the view; Ctrl and the wheel: zoom'),
         'fl_key_escape'       => lang('Esc: clear the selection'),
+        // The runs of a flow, shown on the canvas (flow_runs.php).
+        'fl_run'              => lang('Run'),
+        'fl_run_help'         => lang('Run the live version of this flow'),
+        'fl_run_ask'          => ws_js_template('Run “{var:1}” now? Version {var:2} starts, and its first tasks open at once in the name of the owner of the flow.', 2),
+        'fl_run_do'           => lang('Start the run'),
+        'fl_run_started'      => lang('The run has started.'),
+        'fl_run_again'        => lang('This run had started already.'),
+        'fl_runs'             => lang('Flow runs'),
+        'fl_runs_title'       => lang('Runs of this flow'),
+        'fl_runs_none'        => lang('This flow has not run yet.'),
+        'fl_runs_more'        => lang('Show older runs'),
+        'fl_runs_failed'      => lang('The runs could not be loaded.'),
+        'fl_run_name'         => ws_js_template('Run {var:1}', 1),
+        'fl_run_version'      => ws_js_template('Version {var:1}', 1),
+        'fl_run_by'           => ws_js_template('Started by {var:1}', 1),
+        'fl_run_at'           => ws_js_template('Started at {var:1}', 1),
+        'fl_run_ended'        => ws_js_template('Ended at {var:1}', 1),
+        'fl_run_open'         => lang('Still going'),
+        'fl_run_shown'        => ws_js_template('Run {var:1} of version {var:2} is shown as it went. Nothing can be changed while it is open.', 2),
+        'fl_run_close'        => lang('Close the run'),
+        'fl_run_lost'         => lang('The run is no longer followed; it is shown as it was last read.'),
+        'fl_run_unreached'    => lang('The run could not be read just now; it will be tried again shortly.'),
+        'fl_run_all'          => lang('All runs'),
+        'fl_run_cancel'       => lang('Cancel the run'),
+        'fl_run_cancel_ask'   => lang('Cancel this run? Its open boxes are skipped; the tasks it opened stay as they are.'),
+        'fl_run_cancelled'    => lang('The run was cancelled.'),
+        'fl_run_task'         => lang('Open the task'),
+        'fl_run_task_of'      => ws_js_template('Open the task of {var:1}', 1),
+        'fl_run_result'       => lang('Result'),
+        'fl_run_pick'         => lang('Select a box to see how it went in this run.'),
+        'fl_run_boxes'        => lang('The boxes of this run'),
+        'fl_run_pair'         => ws_js_template('{var:1}: {var:2}', 2),
+        'fl_run_running'      => lang('Running'),
+        'fl_run_waiting'      => lang('Waiting'),
+        'fl_run_done'         => lang('Done'),
+        'fl_run_failed'       => lang('Failed'),
+        'fl_run_cancelled_state' => lang('Cancelled'),
+        'fl_step_ready'       => lang('Ready'),
+        'fl_step_running'     => lang('Running'),
+        'fl_step_waiting'     => lang('Waiting'),
+        'fl_step_done'        => lang('Done'),
+        'fl_step_failed'      => lang('Failed'),
+        'fl_step_skipped'     => lang('Skipped'),
+        'fl_step_none'        => lang('Not reached yet'),
+        // A flow shared with the team (flow_shares.php).
+        'fl_level_view'       => lang('Can view'),
+        'fl_level_run'        => lang('Can run'),
+        'fl_level_edit'       => lang('Can edit'),
+        'fl_share'            => lang('Share'),
+        'fl_shared_with'      => lang('Who it is shared with'),
+        'fl_share_title'      => ws_js_template('Share “{var:1}”', 1),
+        'fl_share_help'       => lang('A colleague may look at the flow, run it once it is live, or change its draft with you, which you publish; changing it needs staff in the team, and for anybody else it acts as running. The people who read a channel may look at it. A run always acts with your rights.'),
+        'fl_share_read_help'  => lang('Only the owner of the flow shares it.'),
+        'fl_share_list'       => lang('Shared with'),
+        'fl_share_none'       => lang('Not shared with anybody yet.'),
+        'fl_share_owner'      => lang('Owner'),
+        'fl_share_people'     => lang('People'),
+        'fl_share_channel'    => lang('Channel'),
+        'fl_share_level'      => lang('Level'),
+        'fl_share_as_run'     => lang('Acts as running: not staff in the team'),
+        'fl_share_hidden'     => lang('A channel you do not read'),
+        'fl_share_gone'       => lang('No longer in the team'),
+        'fl_share_pick'       => lang('Pick at least one colleague.'),
+        'fl_share_remove'     => ws_js_template('Stop sharing with {var:1}', 1),
+        'fl_share_added'      => ws_js_template('Shared with {var:1}.', 1),
+        'fl_share_changed'    => ws_js_template('{var:1}: {var:2}', 2),
+        'fl_share_removed'    => ws_js_template('No longer shared with {var:1}.', 1),
+        'fl_share_close'      => lang('Close'),
+        'fl_home_owner_only'  => lang('Only the owner of a flow can move it to another home channel.'),
+        'fl_home_none_other'  => lang('No channel'),
     );
 }
 

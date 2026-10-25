@@ -535,6 +535,22 @@ function ws_flow_result_pack($text, $data = array())
 }
 
 /**
+ * A moment of a run or a box as its answers carry it: ISO 8601 in UTC, null
+ * for none (0). The same text api_time() writes; the presenters of a run
+ * (api_flows.php) answer the canvas's panel actions too, where the external
+ * API's response helpers are not loaded.
+ *
+ * @param int|string $unix
+ * @return string|null
+ */
+function ws_flow_time($unix)
+{
+    $unix = (int) $unix;
+
+    return ($unix > 0) ? gmdate('Y-m-d\TH:i:s\Z', $unix) : null;
+}
+
+/**
  * The sentence of a box's result; a result kept as plain text is that text.
  *
  * @param mixed $stored
@@ -675,19 +691,28 @@ function ws_flow_run_channel_id($run)
  * the channel the run was started in (ws_flow_run_channel_id()):
  *   edit  the flow is theirs to change: they read and cancel its runs
  *   read  they read the run's channel, and may run the flow or started this
- *         run (a run of a flow paused since)
+ *         run (a run of a flow paused since); or they started it and may
+ *         still run the flow while $own_run says the channel does not
+ *         count (a person share lets them run it, who may not read its
+ *         home, or the run has no channel: a flow with no home)
  *   ''    nothing: a run started in a channel they do not read stays out of
- *         their sight, even when the flow's home is now one they read
+ *         their sight, even when the flow's home is now one they read and
+ *         they started it; a view share reads the flow, not its runs
  *
  * @param string $flow_access      ws_flow_access()
  * @param bool   $is_starter       they started the run
  * @param bool   $channel_readable they read the channel the run was started in
+ * @param bool   $own_run          the run has no channel, or a person share gives them run (ws_flow_run_own_reach())
  * @return string edit | read | ''
  */
-function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable)
+function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable, $own_run = false)
 {
     if ($flow_access === 'edit') {
         return 'edit';
+    }
+
+    if ($is_starter && $own_run && ($flow_access === 'run')) {
+        return 'read';
     }
 
     return ($channel_readable && (($flow_access === 'run') || $is_starter)) ? 'read' : '';
@@ -777,8 +802,9 @@ function ws_flow_run_graph($run)
 
 /**
  * Does the person read the channel the run was started in (a public or
- * private one)? Read once a request per person and channel: a listing asks
- * it for every run, and most of a flow's runs share one channel.
+ * private one)? Read once a request per person and channel
+ * (ws_flow_channel_readable()): a listing asks it for every run, and most of
+ * a flow's runs share one channel.
  *
  * @param array $viewer
  * @param array $run
@@ -786,22 +812,7 @@ function ws_flow_run_graph($run)
  */
 function ws_flow_run_channel_readable($viewer, $run)
 {
-    static $seen = array();
-
-    $channel_id = ws_flow_run_channel_id($run);
-
-    if ($channel_id <= 0) {
-        return false;
-    }
-
-    $key = (int) $viewer['id'] . ':' . $channel_id;
-
-    if (!isset($seen[$key])) {
-        $channel = ws_channel($channel_id);
-        $seen[$key] = $channel && in_array((string) $channel['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $channel);
-    }
-
-    return $seen[$key];
+    return ws_flow_channel_readable($viewer, ws_flow_run_channel_id($run));
 }
 
 /**
@@ -821,12 +832,38 @@ function ws_flow_run_access($viewer, $flow, $run)
 
     $flow_access = ws_flow_access($viewer, $flow);
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
+    $own_run = $starter && ($flow_access === 'run') && ws_flow_run_own_reach($viewer, $flow, $run);
 
-    if (($flow_access === 'edit') || (($flow_access === '') && !$starter)) {
-        return ws_flow_run_access_from($flow_access, $starter, false);
+    // Decided without the run's channel: an editor, the starter whose own
+    // run the channel does not decide, and anybody else who may not run it.
+    if (($flow_access === 'edit') || $own_run || (!$starter && ($flow_access !== 'run'))) {
+        return ws_flow_run_access_from($flow_access, $starter, false, $own_run);
     }
 
     return ws_flow_run_access_from($flow_access, $starter, ws_flow_run_channel_readable($viewer, $run));
+}
+
+/**
+ * Does the channel leave a starter's own run alone? When the run has none
+ * (its flow had no home), or when a share made to the person lets them run
+ * the flow: they may not read its home, and their run is theirs to follow.
+ * Running it through the home alone does not: a run started in a channel
+ * they were taken out of since stays out of their sight.
+ *
+ * @param array $viewer
+ * @param array $flow
+ * @param array $run
+ * @return bool
+ */
+function ws_flow_run_own_reach($viewer, $flow, $run)
+{
+    if (ws_flow_run_channel_id($run) <= 0) {
+        return true;
+    }
+
+    $person = (string) ws_flow_share_reach($viewer, $flow)['person'];
+
+    return ($person !== '') && (ws_flow_access_rank(ws_flow_share_gives('user', $person, ws_can_schedule($viewer))) >= ws_flow_access_rank('run'));
 }
 
 /**
@@ -947,9 +984,11 @@ function ws_flow_run_for_token($viewer, $flow_id, $token)
  * already used for this flow is no refusal: it names the run it started, and
  * is looked up before the other refusals, so a start retried after the flow
  * was paused or its owner left still answers the run it started. A person
- * who may no longer run the flow (it was paused) gets that run back while
- * they may read it (ws_flow_run_for_token()); anybody else gets the 404 of a
- * flow they cannot see, never a refusal of the token's shape.
+ * who may no longer run the flow (it was paused, or their share was lowered
+ * to view) gets that run back while they may read it
+ * (ws_flow_run_for_token()); anybody else gets the 404 of a flow they cannot
+ * see, or the 403 of a flow shared with them at view, never a refusal of the
+ * token's shape.
  *
  * @param array      $viewer
  * @param array|null $flow
@@ -984,10 +1023,20 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
 
     $access = ws_flow_access($viewer, $flow);
 
-    if ($access === '') {
+    // Somebody who may not run the flow, or no longer may (it was paused, or
+    // their share was lowered to view), gets the run their token started
+    // while they may read it. Otherwise a flow they do not reach is a 404,
+    // and a flow shared at view is looked at, not run.
+    if (($access === '') || ($access === 'view')) {
         $retried = is_array($flow) ? ws_flow_run_for_token($viewer, (int) $flow['id'], $token) : null;
 
-        return $retried ? $found($retried, ws_flow_start_key($token)) : ws_flow_refusal(lang('That flow could not be found.'), 404);
+        if ($retried) {
+            return $found($retried, ws_flow_start_key($token));
+        }
+
+        return ($access === 'view')
+            ? ws_flow_refusal(lang('You can look at this flow but not run it.'), 403)
+            : ws_flow_refusal(lang('That flow could not be found.'), 404);
     }
 
     if (($token !== '') && ($token !== null) && !ws_flow_start_token_valid($token)) {

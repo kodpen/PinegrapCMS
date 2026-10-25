@@ -168,7 +168,7 @@ function test_ws_api_own_words_routes_are_no_tools()
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
 		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create',
-		'workspace.flows.publish') as $id) {
+		'workspace.flows.publish', 'workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
 		pg_assert_contains($id, $gated);
 	}
 }
@@ -252,6 +252,189 @@ function test_ws_api_card_decisions_are_no_tools()
 
 	foreach (array('workspace.approvals.list', 'workspace.approvals.create', 'workspace.changes.list') as $id) {
 		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' stays a tool');
+	}
+}
+
+// An AI app or an integration may propose a record change instead of writing
+// it: one route in a channel and its twin on a task, both MCP tools under
+// workspace:write that take the same changes as an assistant's answer,
+// rehearse, and are marked as writes that only add (a card), not as
+// destructive ones.
+function test_ws_api_change_proposals_are_tools()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$answer = null;
+
+	foreach ($routes['workspace.claude.requests.answer']['params'] as $param) {
+		if ($param['name'] === 'changes') {
+			$answer = $param;
+		}
+	}
+
+	foreach (array('workspace.changes.propose' => '/workspace/channels/{id}/changes', 'workspace.tasks.changes.propose' => '/workspace/tasks/{id}/changes') as $id => $path) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		$route = $routes[$id];
+
+		pg_assert_same('POST', $route['method'], $id);
+		pg_assert_same($path, $route['path'], $id);
+		pg_assert_same('workspace:write', $route['scope'], $id . ' asks workspace:write');
+		pg_assert_false(isset($route['mcp']) && ($route['mcp'] === false), $id . ' carries no \'mcp\' => false');
+		pg_assert_true(pg_mcp_route_is_offered($route), $id . ' is an MCP tool');
+		pg_assert_true(!empty($route['dry_run']), $id . ' rehearses');
+		pg_assert_same('WorkspaceProposal', $route['returns'], $id);
+		pg_assert_same(201, $route['status'] ?? null, $id . ' answers 201');
+
+		$tool = pg_mcp_tool_from_route($route);
+		$properties = (array) $tool['inputSchema']['properties'];
+
+		pg_assert_same(str_replace('.', '_', $id), $tool['name'], $id);
+		pg_assert_same('boolean', $properties['dry_run']['type'] ?? null, $id . ': the tool takes dry_run');
+		pg_assert_contains('text', $tool['inputSchema']['required'], $id);
+		pg_assert_contains('changes', $tool['inputSchema']['required'], $id);
+		pg_assert_false($tool['annotations']['readOnlyHint'], $id . ' writes');
+		pg_assert_false($tool['annotations']['destructiveHint'], $id . ' only adds a card');
+
+		// The same changes as an assistant's answer, by the same limit.
+		$changes = null;
+
+		foreach ($route['params'] as $param) {
+			if ($param['name'] === 'changes') {
+				$changes = $param;
+			}
+		}
+
+		pg_assert_same($answer['of'], $changes['of'], $id . ' takes the answer\'s changes');
+		pg_assert_same(WS_CHANGES_PER_ANSWER, $changes['max_items'], $id . ' takes as many as an answer');
+
+		// What a model reads: it proposes, the person applies, nothing is
+		// written to a record by the call.
+		$text = $tool['description'];
+
+		pg_assert_contains('this only proposes, the person applies', $text, $id);
+		pg_assert_contains('Nothing is written to a record here', $text, $id);
+		pg_assert_contains('join this same endpoint', $text, $id . ' says new kinds come here');
+	}
+
+	// A caller with workspace:write only is offered both.
+	$scopes = array('workspace:read', 'workspace:write');
+
+	foreach (array('workspace.changes.propose', 'workspace.tasks.changes.propose') as $id) {
+		pg_assert_true(api_has_scope($scopes, $routes[$id]['scope']), $id . ' is listed for workspace:write');
+	}
+}
+
+// A proposal writes no record and applies nothing: its handlers and the
+// write they end in neither call a writer nor take a card; its request row is
+// written answered under the application's agent, so no assistant's queue
+// takes it; and the caller is gated as an application.
+function test_ws_api_change_proposals_never_write_records()
+{
+	foreach (array('ws_api_changes_propose', 'ws_api_task_changes_propose', 'ws_proposal_store', 'ws_api_proposal_rows') as $function) {
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($function));
+
+		foreach (array('ws_change_apply(', 'ws_change_write(', 'ws_bulk_start(', 'ws_change_dismiss(') as $write) {
+			pg_assert_false(strpos($source, $write) !== false, $function . ' calls no ' . $write);
+		}
+	}
+
+	pg_assert_contains('ws_changes_input(', ws_api_test_handler_source('ws_api_proposal_rows'), 'the changes are checked as an answer\'s');
+	pg_assert_contains('ws_changes_store(', ws_api_test_handler_source('ws_proposal_store'), 'and kept as an answer\'s');
+
+	$store = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_proposal_store'));
+
+	pg_assert_contains("'answered'", $store, 'written answered: no queue takes it');
+	pg_assert_contains("e(\$agent)", $store, 'under the application\'s agent');
+
+	foreach (array('ws_api_changes_propose', 'ws_api_task_changes_propose') as $handler) {
+		pg_assert_contains('ws_api_proposal_agent(', ws_api_test_handler_source($handler), $handler . ' takes keys and connections only');
+		pg_assert_contains('ws_api_proposal_scopes(', ws_api_test_handler_source($handler), $handler . ' asks the read scope of each kind');
+	}
+
+	pg_assert_contains('ws_api_is_assistant(', ws_api_test_handler_source('ws_api_proposal_agent'), 'an assistant proposes in its answer');
+	pg_assert_contains("api_require_scope('tasks:read')", ws_api_test_handler_source('ws_api_task_changes_propose'), 'the task is seen under tasks:read');
+
+	// A user account is read by no API scope: refused before any record is
+	// read, so neither its e-mail nor a refusal about its role comes back.
+	pg_assert_contains('ws_proposal_closed_change(', ws_api_test_handler_source('ws_api_proposal_scopes'), 'a kind no application proposes is refused first');
+
+	// The refusals ws_changes_input() gives speak of a proposal, not of the
+	// person who asked an assistant.
+	pg_assert_contains('(int) $task_id, true)', ws_api_test_handler_source('ws_api_proposal_rows'), 'the changes are checked as a proposal\'s');
+	pg_assert_contains('ws_bulk_input($asker, $bulk, $for_proposal)', ws_api_test_handler_source('ws_changes_input'), 'and so are many records at once');
+
+	// Requests sent at the same moment all passed the hourly count before
+	// any was written: the count is made again under a lock of the
+	// application and the person, then the row is written, before its
+	// message goes out.
+	$at = array();
+	$steps = array('GET_LOCK(', 'ws_proposal_limited(', 'INSERT INTO ws_ai_requests', 'ws_message_send(');
+
+	foreach ($steps as $step) {
+		$at[$step] = strpos($store, $step);
+		pg_assert_true($at[$step] !== false, 'ws_proposal_store: ' . $step);
+	}
+
+	for ($i = 1; $i < count($steps); $i++) {
+		pg_assert_true($at[$steps[$i - 1]] < $at[$steps[$i]], 'ws_proposal_store: ' . $steps[$i - 1] . ' before ' . $steps[$i]);
+	}
+
+	// On a task a proposal waits for the run under way to end, so the bell
+	// at the run's end names the run, not a proposal written meanwhile.
+	pg_assert_contains('ws_task_delegation_open_run(', ws_api_test_handler_source('ws_api_task_changes_propose'), 'no proposal while an assistant works on the task');
+
+	// A proposal is no earlier answer an assistant gave on the task: nobody
+	// asked for it, so the next run is not told somebody did.
+	pg_assert_contains("ws_proposal_where('', false)", ws_api_test_handler_source('ws_task_delegation_earlier'), 'proposals are left out of a run\'s earlier work');
+	pg_assert_contains('ws_task_delegation_open_row(', ws_api_test_handler_source('ws_task_delegation_detail'), 'the drawer carries on the open run, not the newest row');
+}
+
+// A change an application proposed is applied or set aside by the person
+// alone, on the card or from their team devices session: an OAuth connection
+// is a device row too and passes ws_api_person_only(), so without this it
+// could apply the card it wrote itself, writing the record with workspace
+// scopes and no write scope of its kind. A change an assistant proposed
+// keeps the REST decision of an OAuth connection.
+function test_ws_api_proposals_are_decided_by_the_person()
+{
+	$gate = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_proposal_decision_gate'));
+
+	pg_assert_contains('ws_change_proposal_agent(', $gate, 'only a change an application proposed');
+	pg_assert_contains('ws_api_own_words_only(', $gate, 'needs the team devices session');
+
+	foreach (array('ws_api_changes_apply', 'ws_api_changes_dismiss') as $handler) {
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($handler));
+		$found = strpos($source, 'ws_api_proposal_decision_gate(');
+
+		pg_assert_true($found !== false, $handler . ' gates an application\'s proposal');
+		pg_assert_true(($found !== false) && ($found > strpos($source, 'ws_api_change_or_404(')) && ($found < strpos($source, 'api_dry_run_stop(')), $handler . ': after the change is found, before the rehearsal stops');
+		pg_assert_contains('ws_api_person_only(', $source, $handler . ' still refuses an application key');
+	}
+
+	// The connection a proposal was made through is the very device row the
+	// gate refuses; the person's own team devices session passes.
+	$connection = array('id' => 40, 'oauth_client_id' => 5);
+
+	pg_assert_same('oauth:5', ws_proposal_caller_key($connection, 9), 'the connection proposes as oauth:5');
+	pg_assert_false(ws_api_device_writes_as_person($connection), 'and cannot apply or set aside what oauth:5 proposed');
+	pg_assert_false(ws_api_device_writes_as_person(array('id' => 41, 'oauth_client_id' => 6)), 'nor can another connection');
+	pg_assert_false(ws_api_device_writes_as_person(null), 'nor an application key');
+	pg_assert_true(ws_api_device_writes_as_person(array('id' => 42, 'oauth_client_id' => 0)), 'the person\'s team devices session can');
+
+	// The route texts promise no more than this.
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.changes.apply', 'workspace.changes.dismiss') as $id) {
+		pg_assert_contains('team devices session', $routes[$id]['description'], $id . ' says who decides an application\'s proposal');
 	}
 }
 
@@ -358,20 +541,64 @@ function test_ws_api_flow_home_of_a_published_flow_is_moved_by_the_person()
 	pg_assert_true(strpos($gate, 'OAuth connection') !== false);
 }
 
-// The application Claude works through reads the flows and the runs it
-// reaches only through a channel where Claude may be asked; what the owner
-// of its key owns stays readable, as their notes do.
+// The application Claude works through reaches somebody else's flow only
+// along a way it may take: shared with its key owner in person (as a note
+// is), shared in a channel they read where Claude may be asked, or live with
+// such a channel as its home; and somebody else's run only when it was
+// started in such a channel. What the owner of its key owns stays readable.
+// Ownership decides, not the access: a colleague shared at edit has edit
+// access to a flow that is not theirs.
 function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
 {
-	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list', 'ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
-		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable(') !== false, $handler . ' asks where Claude may be asked');
+	$none = array('owner' => false, 'person' => false, 'channel' => false, 'home' => false);
+
+	pg_assert_false(ws_api_flow_claude_reaches($none), 'no way at all');
+
+	foreach (array('owner', 'person', 'channel', 'home') as $way) {
+		pg_assert_true(ws_api_flow_claude_reaches(array($way => true) + $none), $way);
 	}
 
-	$reachable = ws_api_test_handler_source('ws_api_flow_reachable');
+	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable($viewer, ') !== false, $handler . ' asks where Claude may be asked');
+	}
 
-	pg_assert_true(strpos($reachable, 'ws_api_is_claude()') !== false);
-	pg_assert_true(strpos($reachable, "'edit'") !== false, 'the key owner\'s own flows');
-	pg_assert_true(strpos($reachable, 'ws_claude_channel_allowed(') !== false);
+	foreach (array('ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_run_reachable($viewer, ') !== false, $handler . ' asks where the run was started');
+	}
+
+	$strip = function ($source) {
+		return (string) preg_replace('~^\s*(//|\*|/\*).*$~m', '', $source);
+	};
+
+	foreach (array('ws_api_flow_reachable', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_is_claude()') !== false, $name . ' asks about Claude');
+		pg_assert_true(strpos($source, "(int) \$flow['owner_id'] === (int) \$viewer['id']") !== false, $name . ': the key owner\'s own flows');
+		pg_assert_true(strpos($source, "'edit'") === false, $name . ': not edit access, which a share gives too');
+	}
+
+	$reachable = $strip(ws_api_test_handler_source('ws_api_flow_reachable'));
+
+	pg_assert_true(strpos($reachable, 'ws_flow_share_rows(') !== false, 'the shares are read');
+	pg_assert_true(strpos($reachable, 'ws_api_flow_claude_channel($viewer, (int) $share[\'target_id\'])') !== false, 'a share channel counts only where Claude may be asked');
+	pg_assert_true(strpos($reachable, "(string) \$flow['status'] === 'live'") !== false, 'the home counts for a live flow');
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'ws_claude_channel_allowed(') !== false);
+
+	// Both lists ask this for every row, so a channel is read once a
+	// request: whether the person reads it (ws_flow_channel_readable()) and
+	// whether Claude may be asked there (ws_api_flow_claude_allowed()).
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'static $') !== false, 'kept for the request');
+
+	foreach (array('ws_api_flow_claude_channel', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_flow_claude_allowed(') !== false, $name . ' asks whether Claude may be asked there');
+		pg_assert_true(strpos($source, 'ws_channel(') === false, $name . ' reads no channel row itself');
+	}
+
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_channel')), 'ws_flow_channel_readable(') !== false, 'a channel the key owner reads');
+	pg_assert_false(ws_api_flow_claude_allowed(0), 'no channel');
 }
 
 // A run opens tasks in the flow owner's name: starting and cancelling one
@@ -410,6 +637,125 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 	pg_assert_same(array(201, 200), $routes['workspace.flow_runs.start']['status']);
 	pg_assert_same('/workspace/flows/{id}/runs', $routes['workspace.flow_runs.start']['path']);
 	pg_assert_same('/workspace/flow-runs/{id}/cancel', $routes['workspace.flow_runs.cancel']['path']);
+}
+
+// Who sees a flow is widened only by the person: sharing and taking a share
+// back are REST writes from their team devices session that rehearse,
+// offered to no MCP client as a tool and refused to the application an
+// assistant works through; reading the shares stays a tool. A share answers 201 when it is new, 200 when its level
+// changed; the removal addressed as a POST is the same handler.
+function test_ws_api_flow_shares_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expected = array(
+		'workspace.flow_shares.list'        => array('GET', '/workspace/flows/{id}/shares', 'workspace:read'),
+		'workspace.flow_shares.set'         => array('POST', '/workspace/flows/{id}/shares', 'workspace:write'),
+		'workspace.flow_shares.delete'      => array('DELETE', '/workspace/flows/{id}/shares/{share_id}', 'workspace:write'),
+		'workspace.flow_shares.delete_post' => array('POST', '/workspace/flows/{id}/shares/{share_id}/delete', 'workspace:write'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope']), $id . ' method, path, scope');
+	}
+
+	if (count(array_intersect_key($routes, $expected)) !== count($expected)) {
+		return;
+	}
+
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.flow_shares.list']), 'reading the shares is a tool');
+	pg_assert_same('WorkspaceFlowShare', $routes['workspace.flow_shares.list']['returns']['list'] ?? null);
+
+	foreach (array('workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_same('WorkspaceFlowShare', $routes[$id]['returns']);
+
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($routes[$id]['handler']));
+
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
+		pg_assert_true(strpos($source, 'ws_api_as_owner(') > strpos($source, 'api_dry_run_stop('), $id . ' writes in the owner\'s name after the rehearsal');
+
+		// An application key or an OAuth connection may not widen who
+		// starts the flow or changes its draft, as it may not move a
+		// published flow's home.
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') !== false, $id . ' asks for the team devices session');
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') < strpos($source, 'api_dry_run_stop('), $id . ' before the rehearsal');
+		pg_assert_true(strpos($source, 'team devices session (POST /auth/login)') !== false, $id . ': the refusal names it');
+	}
+
+	// The shares Claude's application is shown leave out the channels where
+	// Claude may not be asked, as the channel listing does.
+	foreach (array('ws_api_flow_shares_list', 'ws_api_flow_share_answer', 'ws_api_flow_shares_delete') as $name) {
+		$source = ws_api_test_handler_source($name);
+
+		pg_assert_true(strpos($source, 'ws_api_flow_shares_seen($viewer, $flow)') !== false, $name . ' lists the shares the application may see');
+		pg_assert_true(strpos($source, 'ws_flow_shares_list(') === false, $name . ' never the store\'s list as it is');
+	}
+
+	$seen = ws_api_test_handler_source('ws_api_flow_shares_seen');
+
+	pg_assert_true(strpos($seen, 'ws_api_is_claude()') !== false);
+	pg_assert_true(strpos($seen, 'ws_claude_channel_allowed(') !== false);
+
+	pg_assert_same(array(201, 200), $routes['workspace.flow_shares.set']['status']);
+	pg_assert_same($routes['workspace.flow_shares.delete']['handler'], $routes['workspace.flow_shares.delete_post']['handler']);
+
+	$params = array();
+
+	foreach ($routes['workspace.flow_shares.set']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('user', 'channel'), $params['target_type']['values'] ?? null, 'a person or a channel');
+	pg_assert_same(array('view', 'run', 'edit'), $params['level']['values'] ?? null, 'the three levels');
+	pg_assert_true(!empty($params['target_type']['required']) && !empty($params['target_id']['required']), 'what is shared with is required');
+}
+
+// A share's fields are read as ws_flow_share_set() takes them: the kind and
+// the level as text, the id as a number, a view when no level is sent.
+function test_ws_api_flow_share_input()
+{
+	pg_assert_same(array('target_type' => '', 'target_id' => 0, 'level' => 'view'), ws_api_flow_share_input(array()), 'nothing sent');
+	pg_assert_same(array('target_type' => 'user', 'target_id' => 12, 'level' => 'run'), ws_api_flow_share_input(array('target_type' => 'user', 'target_id' => '12', 'level' => 'run')), 'the id as a number');
+	pg_assert_same(array('target_type' => 'channel', 'target_id' => 3, 'level' => 'view'), ws_api_flow_share_input(array('target_type' => 'channel', 'target_id' => 3)));
+}
+
+// A flow as the API answers it to a person shared at view or run: the live
+// graph of a published flow and no draft, and the draft of a flow never
+// published, read-only, without what stops it from being published (the
+// editors' alone, read with the record kinds, which need a database).
+function test_ws_api_flow_present_gives_the_draft_to_its_readers()
+{
+	$draft = json_encode(ws_flow_graph_empty());
+	$flow = array('id' => 9, 'name' => 'Onboarding', 'status' => 'live', 'owner_id' => 2, 'channel_id' => 3, 'draft_rev' => 4, 'draft' => $draft, 'created_at' => 1700000000, 'updated_at' => 1700000000);
+	$version = array('id' => 7, 'n' => 2, 'published_by' => 2, 'published_at' => 1700000000, 'graph' => $draft);
+
+	foreach (array('view', 'run') as $access) {
+		$shared = ws_api_flow_present($flow + array('access' => $access), $version, true);
+
+		pg_assert_same(null, $shared['draft'], $access . ': no draft of a published flow');
+		pg_assert_same(null, $shared['problems'], $access . ': no problems');
+		pg_assert_true(is_array($shared['graph']), $access . ': the live graph');
+
+		$unpublished = ws_api_flow_present(array('status' => 'draft') + $flow + array('access' => $access), null, true);
+
+		pg_assert_true(is_array($unpublished['draft']), $access . ': the draft of a flow never published');
+		pg_assert_same(null, $unpublished['problems'], $access . ': without its problems');
+		pg_assert_same(null, $unpublished['graph']);
+	}
 }
 
 // A start retried with its token after the flow was paused answers the run
@@ -1832,8 +2178,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_notes_update'         => array('ws_note_save_check(', 'api_dry_run_stop(', 'ws_note_save('),
 		'ws_api_plan_items_create'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
 		'ws_api_plan_items_update'    => array('ws_event_save_check(', 'api_dry_run_stop(', 'ws_event_save('),
-		'ws_api_changes_apply'        => array('ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
-		'ws_api_changes_dismiss'      => array('ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
+		'ws_api_changes_apply'        => array('ws_api_proposal_decision_gate(', 'ws_change_apply_check(', 'ws_change_apply_record_check(', 'api_dry_run_stop(', 'ws_change_apply('),
+		'ws_api_changes_dismiss'      => array('ws_api_proposal_decision_gate(', 'ws_change_dismiss_check(', 'api_dry_run_stop(', 'ws_change_dismiss('),
 		'ws_api_flows_create'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
 		'ws_api_flows_update'         => array('ws_flow_save_check(', 'api_dry_run_stop(', 'ws_flow_save('),
 		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
@@ -1841,7 +2187,11 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
+		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
+		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
+		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
+		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);
@@ -1874,4 +2224,27 @@ function test_ws_api_rehearsal_stops_before_the_write()
 	}
 
 	pg_assert_true(strpos($answer, 'ws_message_send_check(') < strpos($answer, 'ws_message_send($place[\'writer\']'), 'the answer in a channel is checked as a message first');
+}
+
+// A decision that records an applied change says who proposed it in its
+// claude_change, by the agent GET /workspace/changes lists the change under:
+// an application's proposal is never credited to Claude.
+function test_ws_api_decision_change_names_its_agent()
+{
+	$row = array(
+		'id' => 70, 'channel_id' => 3, 'kind' => 'decision', 'body' => 'Price changed.', 'sender_kind' => 'user', 'sender_id' => 4,
+		'marked_by' => 0, 'locked' => 1, 'file_id' => 0, 'file_name' => '', 'tl_at' => 1800000000, 'created_at' => 1800000000,
+	);
+	$people = array(4 => array('name' => 'Erdal'));
+	$change = array('type' => 'product', 'type_label' => 'Product', 'action' => 'update', 'record_id' => 12);
+
+	foreach (array('oauth:5', 'app:12', 'ai', 'claude') as $agent) {
+		$decision = ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change + array('agent_key' => $agent)));
+
+		pg_assert_same($agent, $decision['claude_change']['agent'] ?? null, $agent . ' is named');
+	}
+
+	pg_assert_same('claude', ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change))['claude_change']['agent'] ?? null, 'a change with no agent is Claude\'s');
+	pg_assert_same('string', ws_api_decision_change_schema()['agent'] ?? null, 'the field is declared');
+	pg_assert_contains('ws_change_agent_key(', ws_api_test_handler_source('ws_timeline_claude_changes'), 'the agent is the one GET /workspace/changes gives');
 }
