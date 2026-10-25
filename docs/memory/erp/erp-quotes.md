@@ -1,6 +1,6 @@
 ---
 name: erp-quotes
-description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing with the invoice template, turning into an invoice draft, signature evidence, expiry notice.
+description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.
 ---
 
 ## Why do quotes have a table of their own? (`includes/erp/quotes.php`, `erp_quotes`, 2026.4.4 step 4.92)
@@ -24,3 +24,8 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 
 ## When is a quote about to run out announced?
 - Hourly, once per quote (`erp_quotes.expiry_notified_at`): erp-alerts.md.
+
+## How is a quote tagged in the Workspace?
+- Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`), as the quote screens; read over the API and by the assistants with `erp:read`.
+- The chip: number, account, total in the quote's own currency (`erp_money_out_currency()`, as the quote screens; `ws_money_out()` would print the visitor's currency), state (`erp_quote_state()`); it opens edit_erp_quote.php, which draws the Workspace button. refs.php loads quotes.php and money.php alone (`ws_erp_quotes_readable()`), not the bootstrap. The invoice chip still prints through `ws_money_out()`.
+- Its menu's "Copy as a new sales quote" opens add_erp_quote.php `?copy=<id>`, offered to whoever may write ERP documents (not `manage_erp_readonly`). Tag-only: the Workspace writes no quote.
