@@ -5,7 +5,8 @@ description: What the e-mail consent log writers leave unrecorded or record unas
 
 ## What writes no row?
 - Question not shown: social sign-up (0), contacts created with DEFAULT 1 (forms, profile, `pg_contact_quick_save()`, affiliate), retrieve-order resets, a checkout that hid the box, a widget without the control. POS sales are staff writes.
-- A checkout while staff are ghosting, and a signed-in buyer whose card is not updated: the contact keeps its old `opt_in`, so the log does too.
+- A checkout while staff are ghosting: the order's contact (or a new one) takes the staff member's answer, and the log adds no row, so it can differ from `contacts.opt_in`. Nothing in the tree sets `$_SESSION['software']['ghost']` today.
+- A signed-in buyer whose card is not updated: the contact keeps its old `opt_in`, so the log does too.
 
 ## Which refusals were never asked?
 - A custom layout that leaves the box out: registration or membership entrance (counted as asked for every post without `pg_widget_id`), billing information or express order (`opt_in_displayed` is printed by the server, not the layout). Its post looks like an unticked box, so 0 is stored and a `refused` row written. The system layouts and the shipped custom layouts draw the box. The same for a designed custom form widget that no longer draws its `opt_in` field (the field still saves, empty).
