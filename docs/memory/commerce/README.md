@@ -77,6 +77,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - order-returns-api.md: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, where the refund's amount and method are
+- order-returns-classic-view.md: Returns in the classic My Account order view: listed for the owner whatever the switch, form and moves while it is on, the answer via liveform order_receipt, Bootstrap 3 markup
 - order-returns-customer.md: Customer side of returns in My Account's order view: the switch, __returns / __return_form and flags, order_return.php, messages, mail, bell, the block for older layouts, the hourly limit
 - order-returns-events.md: The order.return.* webhooks (requested, approved, received, refunded): payload, where each is announced and why refunded is not from the move, what is not announced, the Workspace trigger
 - order-returns-panel.md: Panel side of returns (PR #808): list and bulk approve, one return's moves, pg_return_staff_move() (audit, log, mail), decision mails, suggested return carrier and code

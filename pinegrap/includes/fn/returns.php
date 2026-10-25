@@ -40,8 +40,9 @@
  * cancellation, not a return.
  *
  * The customer's side is the order view widget of My Account (the tokens
- * __return_form and __returns, includes/fn/widgets.php) and the endpoint it
- * posts to (order_return.php), behind ECOMMERCE_ORDER_RETURNS_ALLOWED. A
+ * __return_form and __returns, includes/fn/widgets.php), the classic order
+ * view (get_view_order_screen_content.php) and the endpoint both post to
+ * (order_return.php), behind ECOMMERCE_ORDER_RETURNS_ALLOWED. A
  * request mails the customer and rings the staff's bell.
  *
  * @author      Erdal Güral (Kodpen)
@@ -1936,6 +1937,132 @@ function pg_return_block_html($list_html, $form_html)
         . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Returns')) . '</h6></div>'
         . '<div class="card-body">' . $list_html . $form_html . '</div>'
         . '</div></div>';
+}
+
+/**
+ * A date as the classic order view prints it: the site's long date, as plain
+ * text. get_absolute_time() wraps its answer in a <time> element unless it is
+ * asked for plain text, and the builders escape the dates they are given, so
+ * the element would show as text.
+ *
+ * @param string $ymd Y-m-d
+ * @return string '' when the value is not a date
+ */
+function pg_return_classic_date($ymd)
+{
+    $date = pg_return_date($ymd);
+
+    if ($date === '') {
+        return '';
+    }
+
+    return get_absolute_time(array('timestamp' => strtotime($date), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
+}
+
+/**
+ * The returns block of the classic order view (a page of type "view order",
+ * get_view_order_screen_content.php): a heading and a data area, the way that
+ * page draws its billing and payment sections, around the list and the form
+ * the order view widget uses. No card and no .container: a classic theme may
+ * ship Bootstrap 3, which has no card, and its .container has a fixed width.
+ * Bootstrap 3 has no border and spacing utilities either, so the one rule the
+ * list needs to keep its requests apart comes with the block.
+ *
+ * @param string $list_html pg_returns_list_html()
+ * @param string $form_html pg_return_form_html()
+ * @return string HTML, or '' when both are empty
+ */
+function pg_return_classic_block_html($list_html, $form_html)
+{
+    if (((string) $list_html === '') && ((string) $form_html === '')) {
+        return '';
+    }
+
+    return '<div class="returns heading" style="margin-top: 15px">' . h(lang('Returns')) . '</div>'
+        . '<div class="returns data pg-ov-returns-classic" style="margin-bottom: 15px">'
+        . '<style>.pg-ov-returns-classic .pg-ov-return { border: 1px solid rgba(128, 128, 128, .35); border-radius: 4px; padding: 15px; margin-bottom: 15px; }</style>'
+        . $list_html . $form_html . '</div>';
+}
+
+/**
+ * Whether the classic order view shows returns at all: only to the signed-in
+ * account that owns the order, the rule order_return.php applies (USER_ID,
+ * not the user name the page looks its viewer up by), and never in a page
+ * drawn as an e-mail.
+ *
+ * @param int|string $viewer_id     USER_ID ('' when signed out)
+ * @param int|string $order_user_id orders.user_id (0 for a guest order)
+ * @param bool       $in_email      pg_sw_render_context()'s 'email'
+ * @return bool
+ */
+function pg_return_classic_visible($viewer_id, $order_user_id, $in_email)
+{
+    $viewer_id = (int) $viewer_id;
+
+    return ($viewer_id > 0) && ((int) $order_user_id === $viewer_id) && !$in_email;
+}
+
+/**
+ * The classic order view's block from pg_return_customer_view()'s answer.
+ * The returns are listed whatever the setting, so a return staff or an app
+ * recorded is visible too; the form and the customer's moves (withdraw, "I
+ * have sent it") only while the setting is on.
+ *
+ * @param array $view pg_return_customer_view()
+ * @param array $form as pg_return_form_html() takes it
+ * @return string HTML, or ''
+ */
+function pg_return_classic_view_html($view, $form)
+{
+    if (!is_array($view)) {
+        return '';
+    }
+
+    $enabled = !empty($view['enabled']);
+    $returns = array();
+
+    foreach ((array) (isset($view['returns']) ? $view['returns'] : array()) as $return) {
+        if (!$enabled) {
+            $return['can_withdraw'] = false;
+            $return['can_mark_sent'] = false;
+        }
+
+        $returns[] = $return;
+    }
+
+    $deliveries = ($enabled && !empty($view['can_request']) && isset($view['deliveries'])) ? $view['deliveries'] : array();
+
+    return pg_return_classic_block_html(pg_returns_list_html($returns, $form), pg_return_form_html($deliveries, $form));
+}
+
+/**
+ * The returns block of the classic order view, read from the database. The
+ * caller has checked pg_return_classic_visible().
+ *
+ * @param int    $order_id
+ * @param string $send_to the page's own path, where order_return.php sends
+ *                        the customer back with its answer
+ * @return string HTML, or ''
+ */
+function pg_return_classic_block($order_id, $send_to)
+{
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+        return '';
+    }
+
+    $view = pg_return_customer_view($order_id, 'pg_return_classic_date');
+
+    if (!$view['has_returns'] && !$view['can_request']) {
+        return '';
+    }
+
+    // The builders escape the action and send_to, so both go in raw.
+    return pg_return_classic_view_html($view, array(
+        'action'   => PATH . SOFTWARE_DIRECTORY . '/order_return.php',
+        'send_to'  => (string) $send_to,
+        'token'    => get_token_field(),
+        'order_id' => (int) $order_id,
+    ));
 }
 
 /**

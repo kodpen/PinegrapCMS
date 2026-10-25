@@ -398,6 +398,117 @@ function test_returns_badge_class()
 	pg_assert_contains('text-bg-secondary', pg_return_badge_class('unknown'));
 }
 
+// The order view widget's block for older layouts keeps its card shell.
+function test_returns_block_html()
+{
+	pg_assert_same('', pg_return_block_html('', ''), 'nothing to show');
+
+	$html = pg_return_block_html('<p>L</p>', '<p>F</p>');
+	pg_assert_same(0, strpos($html, '<div class="container pb-4 pg-ov-returns-block"><div class="card">'), 'card shell');
+	pg_assert_contains('<p>L</p><p>F</p>', $html, 'list, then form');
+}
+
+// The classic order view prints a long date as plain text: the builders
+// escape the dates, so a <time> element would show as text.
+function test_returns_classic_date()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	if (!defined('TIME_FORMAT')) {
+		define('TIME_FORMAT', 'twenty_four_hours');
+	}
+
+	$text = pg_return_classic_date('2026-11-08');
+	pg_assert_same(get_absolute_time(array('timestamp' => strtotime('2026-11-08'), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text')), $text, 'the long date');
+	pg_assert_contains('2026', $text, 'year');
+	pg_assert_false(strpos($text, '<') !== false, 'no markup');
+	pg_assert_same('', pg_return_classic_date(''), 'empty');
+	pg_assert_same('', pg_return_classic_date('x'), 'not a date');
+	pg_assert_same('', pg_return_classic_date('0000-00-00'), 'no date');
+	pg_assert_same('', pg_return_classic_date(null), 'null');
+}
+
+// The classic block uses the page's own heading and data markup, without the
+// widget's card or a nested container.
+function test_returns_classic_block_html()
+{
+	pg_assert_same('', pg_return_classic_block_html('', ''), 'nothing to show');
+
+	$html = pg_return_classic_block_html('<p>L</p>', '<p>F</p>');
+	pg_assert_same(0, strpos($html, '<div class="returns heading" style="margin-top: 15px">' . h(lang('Returns')) . '</div>'), 'heading first');
+	pg_assert_contains('<div class="returns data pg-ov-returns-classic"', $html, 'data area');
+	pg_assert_contains('<style>.pg-ov-returns-classic .pg-ov-return {', $html, 'the requests kept apart, inside the block only');
+	pg_assert_contains('<p>L</p><p>F</p></div>', $html, 'list, then form');
+	pg_assert_false(strpos($html, 'card') !== false, 'no card');
+	pg_assert_false(strpos($html, 'container') !== false, 'no container');
+
+	pg_assert_contains('<p>F</p>', pg_return_classic_block_html('', '<p>F</p>'), 'form alone');
+	pg_assert_contains('<p>L</p>', pg_return_classic_block_html('<p>L</p>', ''), 'list alone');
+}
+
+// Only the signed-in account that owns the order sees returns there, and
+// never in a page drawn as an e-mail.
+function test_returns_classic_visible()
+{
+	pg_assert_true(pg_return_classic_visible(9001, '9001', false), 'owner');
+	pg_assert_true(pg_return_classic_visible('9001', 9001, false), 'owner, id as text');
+	pg_assert_false(pg_return_classic_visible(9001, '9002', false), 'another account');
+	pg_assert_false(pg_return_classic_visible(9001, '9001', true), 'e-mail');
+	pg_assert_false(pg_return_classic_visible('', '0', false), 'signed out, guest order');
+	pg_assert_false(pg_return_classic_visible(0, 0, false), 'no account at all');
+	pg_assert_false(pg_return_classic_visible(9001, null, false), 'order without owner');
+}
+
+// The classic block from pg_return_customer_view()'s answer: the list
+// whenever there are returns, the form and the moves only while the setting
+// is on.
+function test_returns_classic_view_html()
+{
+	$requested = array(
+		'id' => 5, 'status' => 'requested', 'status_label' => 'Return requested',
+		'requested' => '19 October 2026', 'lines' => array(array('name' => 'Mug <XL>', 'quantity' => 2)),
+		'reason_label' => 'It arrived damaged', 'customer_note' => '', 'decision_note' => '',
+		'carrier' => '', 'carrier_code' => '', 'tracking_number' => '', 'refund_deadline' => '',
+		'can_withdraw' => true, 'can_mark_sent' => false,
+	);
+	$approved = array_merge($requested, array('id' => 6, 'status' => 'approved', 'status_label' => 'Return approved',
+		'carrier' => 'Yurtiçi Kargo', 'carrier_code' => 'IADE77', 'can_withdraw' => false, 'can_mark_sent' => true));
+	$delivery = array(
+		'ship_to_id' => 31, 'label' => 'Jane Cooper', 'deadline' => '2 November 2026',
+		'lines' => array(array('id' => 11, 'name' => 'Mug', 'quantity' => 3, 'returnable' => 2)),
+	);
+
+	// Switched on: the list with the customer's moves, and the form.
+	$html = pg_return_classic_view_html(array('enabled' => true, 'returns' => array($requested, $approved),
+		'deliveries' => array($delivery), 'can_request' => true, 'has_returns' => true), returns_test_form());
+	pg_assert_same(0, strpos($html, '<div class="returns heading"'), 'classic block');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'line, escaped');
+	pg_assert_contains('name="action" value="withdraw"', $html, 'withdraw');
+	pg_assert_contains('name="action" value="shipped"', $html, 'sent');
+	pg_assert_contains('name="action" value="request"', $html, 'request form');
+	pg_assert_contains('value="/e?order_id=7&amp;x=&quot;1&quot;"', $html, 'send_to is escaped');
+	pg_assert_same(3, substr_count($html, '<input type="hidden" name="token" value="abc">'), 'a CSRF field in each form');
+
+	// Switched off: the list stays, read-only.
+	$html = pg_return_classic_view_html(array('enabled' => false, 'returns' => array($requested, $approved),
+		'deliveries' => array($delivery), 'can_request' => true, 'has_returns' => true), returns_test_form());
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'list while off');
+	pg_assert_contains('IADE77', $html, 'return code while off');
+	pg_assert_same(0, substr_count($html, '<form '), 'no form and no moves while off');
+
+	// Switched on, nothing returned yet: only the form.
+	$html = pg_return_classic_view_html(array('enabled' => true, 'returns' => array(),
+		'deliveries' => array($delivery), 'can_request' => true, 'has_returns' => false), returns_test_form());
+	pg_assert_same(1, substr_count($html, '<form '), 'the form alone');
+	pg_assert_false(strpos($html, 'pg-ov-returns"') !== false, 'no list');
+
+	pg_assert_same('', pg_return_classic_view_html(array('enabled' => true, 'returns' => array(),
+		'deliveries' => array(), 'can_request' => false, 'has_returns' => false), returns_test_form()), 'nothing to show');
+	pg_assert_same('', pg_return_classic_view_html(null, returns_test_form()), 'no view');
+}
+
 // The customer's mail repeats what they asked for, escaped.
 function test_returns_request_mail_body()
 {
