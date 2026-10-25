@@ -38,6 +38,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 
 function test_ws_api_routes_reach_a_handler()
 {
@@ -327,6 +328,102 @@ function test_ws_api_flows_are_drafted_by_tools_and_published_by_the_person()
 	pg_assert_same($routes['workspace.flows.delete']['handler'], $routes['workspace.flows.delete_post']['handler']);
 	pg_assert_same(array('PATCH'), $routes['workspace.flows.update']['also_accepts']);
 	pg_assert_same(201, $routes['workspace.flows.create']['status']);
+}
+
+// The home channel of a published flow decides, at once, who may start it
+// and whose channel its new runs open their tasks in: a draft change may
+// make it from any caller, but moving a published flow's home is the
+// person's own, from their team devices session, as publishing is. The
+// change stays a tool for drafts; the gate comes before the rehearsal and
+// its refusal names the team devices session.
+function test_ws_api_flow_home_of_a_published_flow_is_moved_by_the_person()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$update = ws_api_test_handler_source($routes['workspace.flows.update']['handler']);
+
+	pg_assert_true(strpos($update, 'ws_api_flow_home_move_gate(') !== false, 'the change asks the gate');
+	pg_assert_true(strpos($update, 'ws_api_flow_home_move_gate(') < strpos($update, 'api_dry_run_stop('), 'before the rehearsal');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.flows.update']), 'drafting stays a tool');
+
+	$gate = ws_api_test_handler_source('ws_api_flow_home_move_gate');
+
+	pg_assert_true(strpos($gate, "(int) \$flow['version_id'] <= 0") !== false, 'a flow never published is left alone');
+	pg_assert_true(strpos($gate, 'ws_api_device_writes_as_person(') !== false, 'the team devices session');
+	pg_assert_true(strpos($gate, 'team devices session (POST /auth/login)') !== false, 'the refusal names it');
+	pg_assert_true(strpos($gate, 'OAuth connection') !== false);
+}
+
+// The application Claude works through reads the flows and the runs it
+// reaches only through a channel where Claude may be asked; what the owner
+// of its key owns stays readable, as their notes do.
+function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
+{
+	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list', 'ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable(') !== false, $handler . ' asks where Claude may be asked');
+	}
+
+	$reachable = ws_api_test_handler_source('ws_api_flow_reachable');
+
+	pg_assert_true(strpos($reachable, 'ws_api_is_claude()') !== false);
+	pg_assert_true(strpos($reachable, "'edit'") !== false, 'the key owner\'s own flows');
+	pg_assert_true(strpos($reachable, 'ws_claude_channel_allowed(') !== false);
+}
+
+// A run opens tasks in the flow owner's name: starting and cancelling one
+// are REST calls an application key may make, offered to no MCP client as a
+// tool until an AI app can ask the person first, and refused to the
+// application an assistant works through; reading runs stays a tool.
+// A start answers 201, or 200 for the run the same token started.
+function test_ws_api_flow_runs_writes_are_no_tools()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.flow_runs.start', 'workspace.flow_runs.cancel') as $id) {
+		pg_assert_same('POST', $routes[$id]['method'], $id . ' is a REST write');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_false(strpos(ws_api_test_handler_source($routes[$id]['handler']), 'ws_api_own_words_only(') !== false, $id . ' takes an application key');
+
+		// An assistant's application is refused on the server too: it is
+		// not offered as a tool, but Claude's routine calls REST with its key.
+		$source = ws_api_test_handler_source($routes[$id]['handler']);
+
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
+	}
+
+	foreach (array('workspace.flow_runs.list', 'workspace.flow_runs.get') as $id) {
+		pg_assert_same('GET', $routes[$id]['method']);
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' is a tool');
+	}
+
+	pg_assert_same(array(201, 200), $routes['workspace.flow_runs.start']['status']);
+	pg_assert_same('/workspace/flows/{id}/runs', $routes['workspace.flow_runs.start']['path']);
+	pg_assert_same('/workspace/flow-runs/{id}/cancel', $routes['workspace.flow_runs.cancel']['path']);
+}
+
+// A start retried with its token after the flow was paused answers the run
+// the token started to whoever still reads it, as before the pause: the
+// handler asks for that run before it answers 404 for a flow the person may
+// no longer run, and the start check decides the rest.
+function test_ws_api_flow_run_start_retried_after_a_pause()
+{
+	$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_flow_runs_start'));
+	$token = strpos($source, 'ws_flow_run_for_token(');
+
+	pg_assert_true($token !== false, 'the run the token started is looked for');
+	pg_assert_true($token < strpos($source, 'ws_api_flow_or_404('), 'before the flow is refused');
+	pg_assert_true(strpos($source, 'ws_api_flow_or_404(') < strpos($source, 'ws_flow_run_start_check('), 'the start check decides after both');
 }
 
 // The list reads changed messages with changed_since, a moment.
@@ -704,6 +801,19 @@ function test_ws_api_search_record_scopes_name_known_kinds()
 	}
 
 	pg_assert_false(array_key_exists('user_account', ws_api_search_record_scopes()), 'no scope reads user accounts');
+
+	// A sales quote is found with the scope the ERP's own quote routes read
+	// it with, so the search is no way round them.
+	$quote_routes = 0;
+
+	foreach (erp_api_routes() as $route) {
+		if (in_array($route['id'], array('erp.quotes.list', 'erp.quotes.get'), true)) {
+			$quote_routes++;
+			pg_assert_same($route['scope'], ws_api_search_record_scopes()['erp_quote'] ?? null, 'a sales quote is searched with the scope of ' . $route['id']);
+		}
+	}
+
+	pg_assert_same(2, $quote_routes, 'the ERP\'s quote routes were read');
 }
 
 // A person signed in on their own device writes in their own name; an
@@ -1729,6 +1839,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
 		'ws_api_flows_pause'          => array('ws_flow_pause_check(', 'api_dry_run_stop(', 'ws_flow_pause('),
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
+		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
+		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),

@@ -68,9 +68,12 @@ function test_comments_widget_page_hand_off_wiring()
 {
 	$page = comments_widget_test_source('get_page_content.php');
 
-	$context = strpos($page, 'pg_sw_render_context(array(');
+	// The widget pass sets its own context ($pg_sw_prev_ctx); the context set
+	// for the whole render before it carries only the e-mail flag.
+	$pass = strpos($page, '$pg_sw_prev_ctx = ');
+	$context = ($pass === false) ? false : strpos($page, 'pg_sw_render_context(array(', $pass);
 	$close = ($context === false) ? false : strpos($page, ';', $context);
-	pg_assert_true(($context !== false) && ($close !== false), 'the context is set');
+	pg_assert_true(($context !== false) && ($close !== false), 'the widget pass sets the context');
 	if (($context !== false) && ($close !== false)) {
 		pg_assert_contains("'page_id' => (int)\$page_id", substr($page, $context, $close - $context), 'the drawn page goes into the context');
 	}
@@ -359,6 +362,24 @@ function test_comments_widget_view_urls()
 	pg_assert_same('/p#software_comments', $bare['featured'], 'no ? at all');
 
 	pg_assert_same(array('all' => '/p?comments=all#software_comments', 'featured' => '/p#software_comments'), pg_comments_widget_view_urls('/p', 'x'), 'params that are not an array');
+}
+
+// The widget reads ?comment=, ?comments_page=, ?comments= and ?reply_to=,
+// its links write them and the redirect after a post adds comment= on every
+// page, so a list filter or a form control's address prefill may not take
+// its value from them. Every query parameter the module reads is checked.
+function test_comments_widget_params_reserved()
+{
+	foreach (array('comment', 'comments_page', 'comments', 'reply_to') as $name) {
+		pg_assert_same('', pg_sw_url_param_name($name), $name . ' is reserved');
+	}
+
+	preg_match_all('/\$_GET\[\'([a-z0-9_]+)\'\]/', comments_widget_test_source('includes/fn/widgets_comments.php'), $read);
+	pg_assert_true(count($read[1]) > 0, 'the module reads the address');
+
+	foreach (array_unique($read[1]) as $name) {
+		pg_assert_same('', pg_sw_url_param_name($name), $name . ', read by the widget, is reserved');
+	}
 }
 
 function comments_widget_test_facts($over = array())
@@ -1903,8 +1924,10 @@ function comments_widget_test_js_function($js, $name)
 
 // The canvas twin fades what the site leaves out for where it sits: reply
 // and share outside the comment, the thread's controls, small forms and
-// sections inside it, and a button that sends a small form outside that
-// form. Run under Node; skipped without it.
+// sections inside it, a button that sends a small form outside that form,
+// and a bound form or the watcher list inside any form, bound or not, as
+// pg_comments_drop_nested_forms() drops them. Run under Node; skipped
+// without it.
 function test_comments_widget_canvas_twin_fades_by_place()
 {
 	$out = array();
@@ -1946,7 +1969,16 @@ var tree = n('root', {}, [n('container', {}, [
     keep(sem('div', { section: 'comment_watchers' }, [], 'watchers outside')),
     sem('form', { action: 'comment_watch_form' }, [sem('div', {}, [keep(btn('comment_watch', 'watch in its form'))]), keep(btn('comment_close', 'close in the watch form'))]),
     sem('form', { action: 'comment_allow_new_form' }, [keep(btn('comment_reopen', 'reopen in its form'))]),
-    keep(btn('comment_unwatch', 'unwatch outside a form'))
+    keep(btn('comment_unwatch', 'unwatch outside a form')),
+    sem('form', {}, [sem('div', {}, [keep(sem('div', { section: 'comment_watchers' }, [], 'watchers in a plain form'))]),
+        keep(sem('form', { action: 'comment_watch_form' }, [], 'watch form in a plain form')),
+        keep(sem('div', { action: 'comment_watch_form' }, [], 'watch div in a plain form'))]),
+    keep(sem('form', { action: 'comment_form' }, [
+        keep(sem('div', { section: 'comment_watchers' }, [], 'watchers in the comment form')),
+        keep(sem('form', { action: 'comment_watch_form' }, [], 'watch form in the comment form')),
+        keep(sem('form', { action: 'comment_allow_new_form' }, [], 'staff form in the comment form'))
+    ], 'comment form')),
+    sem('form', { action: 'comment_watch_form' }, [keep(sem('form', { action: 'comment_form' }, [], 'comment form in the watch form'))])
 ])]);
 _sysWidgetRenderTreeRoot = tree;
 var cfg = { regionType: 'comments', per_page: 10 };
@@ -1976,7 +2008,12 @@ JS;
 	foreach (array('close in the watch form', 'unwatch outside a form') as $name) {
 		pg_assert_same('Off — works only inside its own form', $res[$name], $name);
 	}
-	foreach (array('reply inside', 'share inside', 'cancel outside', 'watchers outside', 'watch in its form', 'reopen in its form') as $name) {
+	foreach (array('watchers in a plain form', 'watch form in a plain form', 'watchers in the comment form', 'watch form in the comment form',
+		'staff form in the comment form', 'comment form in the watch form') as $name) {
+		pg_assert_same('Off — a form cannot sit inside another form', $res[$name], $name);
+	}
+	foreach (array('reply inside', 'share inside', 'cancel outside', 'watchers outside', 'watch in its form', 'reopen in its form',
+		'comment form', 'watch div in a plain form') as $name) {
 		pg_assert_same('', $res[$name], $name . ' is drawn');
 	}
 }
@@ -2122,5 +2159,152 @@ function test_comments_widget_module_wiring()
 	}
 	foreach (array("['comment_watch_form'", "['comment_allow_new_form'", "['comment_reply'", "['comment_share'", "['comment_reply_cancel'", "['comment_watchers'", "['comment_pagination'") as $needle) {
 		pg_assert_contains($needle, $designer_js, 'the panel offers ' . $needle);
+	}
+}
+
+// The object member $head opens (up to and including its '{'), through the
+// '}' that closes it; braces inside quoted strings and comments are
+// skipped. '' when it is not found.
+function comments_widget_test_js_member($js, $head)
+{
+	$start = strpos($js, $head);
+
+	if ($start === false) {
+		return '';
+	}
+
+	$depth = 0;
+	$quote = '';
+	$length = strlen($js);
+
+	for ($i = $start + strlen($head) - 1; $i < $length; $i++) {
+		$c = $js[$i];
+
+		if ($quote !== '') {
+			if ($c === '\\') {
+				$i++;
+			} elseif ($c === $quote) {
+				$quote = '';
+			}
+			continue;
+		}
+
+		if (($c === '/') && (substr($js, $i, 2) === '//')) {
+			$end = strpos($js, "\n", $i);
+			$i = ($end === false) ? $length : $end;
+		} elseif (($c === '/') && (substr($js, $i, 2) === '/*')) {
+			$end = strpos($js, '*/', $i + 2);
+			$i = ($end === false) ? $length : $end + 1;
+		} elseif (($c === '\'') || ($c === '"')) {
+			$quote = $c;
+		} elseif ($c === '{') {
+			$depth++;
+		} elseif (($c === '}') && (--$depth === 0)) {
+			return substr($js, $start, $i - $start + 1);
+		}
+	}
+
+	return '';
+}
+
+// The watch form, the staff's open-or-close form and the watcher list's
+// forms lock their submit buttons once sent, so a double click posts once
+// (add_or_remove_watcher.php answers a repeated watch or unwatch with an
+// error page), and a page restored from the back/forward cache unlocks
+// them. software.init_comment_actions() of both frontend files runs under
+// Node against a stand-in for jQuery; skipped without Node.
+function test_comments_widget_small_forms_lock_on_submit()
+{
+	pg_assert_contains('<div class="pg-comment-watchers">', pg_comments_watchers_html(array('action_url' => '/w')), 'the watcher list\'s hook');
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+
+	$script = <<<'JS'
+var calls = [], bound = [];
+var document = { createElement: function () { return {}; } }, window = {}, navigator = {};
+function software_$(target) {
+    return {
+        on: function (event, selector, handler) {
+            if (typeof selector === 'function') { handler = selector; selector = ''; }
+            bound.push({ target: target === document ? 'document' : (target === window ? 'window' : String(target)), event: event, selector: selector, handler: handler });
+            return this;
+        },
+        find: function (selector) {
+            var from = (target && target.form) ? target.form : String(target);
+            return { prop: function (name, value) { calls.push([from, selector, name, value]); return this; } };
+        },
+        prop: function (name, value) { calls.push([String(target), '', name, value]); return this; },
+        first: function () { return this; }
+    };
+}
+var software = {};
+software.init_comment_actions = INIT;
+software.init_comment_actions();
+software.init_comment_actions();
+var res = { bound: bound.map(function (b) { return [b.target, b.event, b.selector]; }) };
+bound.forEach(function (b) {
+    if (b.target === 'document' && b.event === 'submit') {
+        calls = [];
+        b.handler.call({ form: 'the posted form' });
+        res.submit = calls;
+    }
+    if (b.target === 'window' && b.event === 'pageshow') {
+        calls = [];
+        b.handler({ originalEvent: { persisted: false } });
+        res.fresh = calls;
+        calls = [];
+        b.handler({ originalEvent: { persisted: true } });
+        res.restored = calls;
+    }
+});
+process.stdout.write(JSON.stringify(res));
+JS;
+
+	foreach (array('frontend.src.js' => 'init_comment_actions: function() {', 'frontend.min.js' => 'init_comment_actions:function(){') as $file => $head) {
+		$member = comments_widget_test_js_member(comments_widget_test_source($file), $head);
+		pg_assert_true($member !== '', $file . ': init_comment_actions found');
+		if ($member === '') {
+			continue;
+		}
+
+		$tmp = tempnam(sys_get_temp_dir(), 'pgcw');
+		file_put_contents($tmp, str_replace('INIT', 'function' . substr($member, strpos($member, '(')), $script));
+		$out = array();
+		exec('node ' . escapeshellarg($tmp) . ' 2>&1', $out, $code);
+		unlink($tmp);
+		pg_assert_same(0, $code, $file . ': the Node script runs: ' . implode("\n", array_slice($out, 0, 5)));
+		$res = json_decode(implode("\n", $out), true);
+		pg_assert_true(is_array($res) && isset($res['submit'], $res['fresh'], $res['restored']), $file . ': a submit and a pageshow handler');
+		if (!is_array($res) || !isset($res['submit'], $res['fresh'], $res['restored'])) {
+			continue;
+		}
+
+		$submit = array();
+		foreach ($res['bound'] as $row) {
+			if (($row[0] === 'document') && ($row[1] === 'submit')) {
+				$submit = array_map('trim', explode(',', $row[2]));
+			}
+		}
+		foreach (array('form#software_watcher', 'form#software_allow_or_disallow_new_comments', '.pg-comment-watchers form') as $hook) {
+			pg_assert_true(in_array($hook, $submit, true), $file . ': the submit lock covers ' . $hook);
+		}
+		pg_assert_same(1, count(array_filter($res['bound'], function ($row) {
+			return $row[1] === 'submit';
+		})), $file . ': bound once');
+
+		pg_assert_same(1, count($res['submit']), $file . ': one change on submit');
+		pg_assert_same(array('the posted form', 'disabled', true), array($res['submit'][0][0], $res['submit'][0][2], $res['submit'][0][3]), $file . ': the sent form\'s buttons locked');
+		pg_assert_contains('button[type="submit"]', $res['submit'][0][1], $file . ': its submit buttons');
+
+		pg_assert_same(array(), $res['fresh'], $file . ': a page loaded afresh is left alone');
+		pg_assert_true(count($res['restored']) > 0, $file . ': a restored page is unlocked');
+		foreach ($res['restored'] as $call) {
+			pg_assert_same(array('disabled', false), array($call[2], $call[3]), $file . ': unlocked');
+		}
 	}
 }
