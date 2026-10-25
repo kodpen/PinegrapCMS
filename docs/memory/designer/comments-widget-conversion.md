@@ -16,7 +16,7 @@ description: Fixed comments block to the Comments widget and back (which widget 
 - None: a row is made from the starter (`_buildStarterTree('comments')`), named `<design>-comments-widget` (`_swAutoName(..., { designWide: true })`, honoured by `_swBelongsToDesign()`), with `featured: 'filter'` (only the featured comments until Show all, as the block). A reused widget keeps its shared options; the toast says so unless it filters.
 
 ## Can a template ship the kind?
-- Yes: `'config' => array('regionType' => 'comments', ...)`, `'tree' => 'starter'` opens with the kind's starter (`pg_design_template_starter_kinds()`, `StyleDesigner.starterTree()`; `'mode' => 'recent'` the list's); `'featured' => 'filter'` behaves as the block.
+- Yes: `'config' => array('regionType' => 'comments', ...)`, `'tree' => 'starter'` or an explicit tree (the forum: [[design-template-forum-replies]]); a starter opens with the kind's starter (`pg_design_template_starter_kinds()`, `StyleDesigner.starterTree()`; `'mode' => 'recent'` the list's); `'featured' => 'filter'` behaves as the block.
 
 ## What is left open?
 - Reuse never forces `filter` (it would change other pages); a page-only look is "Make a copy for this page".

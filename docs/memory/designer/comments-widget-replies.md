@@ -19,7 +19,7 @@ description: Replies in the comments widget: order units, quotes, reply/cancel/s
 
 ## Which comment does the form answer?
 - `pg_comment_reply_to()` on the add_comment state's `parent_id` when the state is in session (a refused post keeps it, a refused parent empties it), else on `?reply_to=`; only with `can_comment` and `pg_comment_replies_ready()` (before 11.0.31: no reply control, no quote).
-- While the visitor may answer, a semantic `is_replying` box stays with `data-pg-comment-replying` and `hidden` (`pg_comments_mark_reply_boxes()`) for the script; a content node keeps the flag rule. `[hidden]` relies on Bootstrap's reboot beating a display class.
+- While the visitor may answer, a semantic `is_replying` box stays with `data-pg-comment-replying` and `hidden` (`pg_comments_mark_reply_boxes()`) for the script; a content node keeps the flag rule. A `d-*` class beats Bootstrap's `[hidden]`: the starter's `d-flex` box shows, empty.
 - Starter: Reply Indent (`comment_is_reply`), Quote, Comment Actions (Reply, Share links), and Replying To with Cancel after the form's Messages.
 
 ## How was it checked?
