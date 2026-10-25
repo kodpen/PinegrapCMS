@@ -21,6 +21,23 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// A new key pair for $arguments. OpenSSL reads a configuration file before it
+// makes a key, and a Windows PHP ships none, so the call is tried once more
+// with the file the software ships for that case (includes/openssl.cnf), as
+// pg_push_create_vapid_keys() does. The Apple sign-in code itself only reads
+// a pasted key and signs with it, which needs no configuration file.
+function signin_test_pkey_new($arguments)
+{
+	$key = @openssl_pkey_new($arguments);
+
+	if (!$key) {
+		$arguments['config'] = PG_FUNCTIONS_DIR . '/includes/openssl.cnf';
+		$key = openssl_pkey_new($arguments);
+	}
+
+	return array('key' => $key, 'arguments' => $arguments);
+}
+
 // A fresh P-256 key, as the .p8 file Apple hands out holds one: PKCS#8
 // (BEGIN PRIVATE KEY) around the SEC1 key with its curve and public point.
 // The DER is put together here because openssl_pkey_export() writes an EC
@@ -29,7 +46,8 @@ if (!defined('PG_TEST_RUNNER')) {
 // body under the PKCS#8 label, where a SEC1 body cannot be read.
 function signin_test_ec_key()
 {
-	$key = openssl_pkey_new(array('private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'));
+	$new = signin_test_pkey_new(array('private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'));
+	$key = $new['key'];
 	$details = openssl_pkey_get_details($key);
 	$curve = "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07";
 	$point = "\x04" . str_pad($details['ec']['x'], 32, "\x00", STR_PAD_LEFT) . str_pad($details['ec']['y'], 32, "\x00", STR_PAD_LEFT);
@@ -167,9 +185,11 @@ function test_signin_apple_key_problem_wants_a_p256_key()
 	pg_assert_same('', pg_signin_apple_key_problem($key['pem']), 'P-256');
 	pg_assert_true(pg_signin_apple_key_problem('MIGTAgEAMBMG') !== '', 'not a key');
 
-	$rsa = openssl_pkey_new(array('private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048));
+	// The export reads the configuration file too, so it is handed the one the
+	// key was made with.
+	$rsa = signin_test_pkey_new(array('private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048));
 	$rsa_pem = '';
-	openssl_pkey_export($rsa, $rsa_pem);
+	openssl_pkey_export($rsa['key'], $rsa_pem, null, $rsa['arguments']);
 
 	pg_assert_true(pg_signin_apple_key_problem($rsa_pem) !== '', 'RSA');
 }
