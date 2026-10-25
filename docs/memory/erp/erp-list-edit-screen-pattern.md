@@ -20,6 +20,6 @@ description: How ERP list and add/edit screens are built (table.chart, separate 
 
 ## How is a list filtered?
 - With a select in `#button_bar`: `pg_filter_select($name, $options, $current, $opts)` (docs/memory/ui/page-button-bar.md), each option with its count in the text ("Open (3)"); other query values (the search) ride along through `keep`. No button-group filters.
-- Before a new label key, read its `tr.json` value: `Net` is "KDV Hariç", `From` / `To` are "Şundan" / "Şuna" (erp-translation-traps.md).
+- Before a new label key, read its value in `includes/local/tr/`: `Net` is "KDV Hariç", `From` / `To` are "Şundan" / "Şuna" (erp-translation-traps.md).
 
 Related: docs/memory/erp/erp-screen-status-column-pattern.md

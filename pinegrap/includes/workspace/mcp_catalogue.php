@@ -18,7 +18,7 @@
  * an initialize (200 without a credential, or 401 with an OAuth challenge
  * the site can register at), an icon class that exists in
  * assets/fonts/bootstrap-icons, an alias that is free of
- * ws_mcp_reserved_aliases(), and the description in tr.json.
+ * ws_mcp_reserved_aliases(), and the description's Turkish text (php tools/tr_add.php).
  * tests/workspace_mcp_test.php checks the rows.
  *
  * A server outside the catalogue is added from its address: the probe asks it
