@@ -534,6 +534,11 @@ function ws_customer_js_strings()
         'cust_help'       => lang('A contact, a user or a current account. The records tied to it are shown with it: a user and a current account are tied to a customer through their contact.'),
         'cust_links'      => lang('Tied to it'),
         'cust_links_none' => lang('Nothing is tied to it yet.'),
+        'cust_orders'     => lang('Orders'),
+        'cust_balance'    => lang('Balance'),
+        'cust_quotes'     => lang('Open sales quotes'),
+        'cust_forms'      => lang('Form submissions'),
+        'cust_empty'      => lang('Nothing to show for this customer yet.'),
     );
 }
 
@@ -930,6 +935,122 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
     }
 
     return $out;
+}
+
+/**
+ * The customer card on a channel's Summary tab: who the customer is and where
+ * they stand, read for the reader exactly as the API's summary is (the same
+ * names, sections and rights), laid out for the panel.
+ *
+ * @param array $viewer
+ * @param array $channel a ws_channels row the reader may read
+ * @return array|null see ws_customer_card_build(); null for a channel about
+ *                    nobody, or a customer gone since
+ */
+function ws_customer_card($viewer, $channel)
+{
+    $identity = ws_customer_identity($viewer, $channel);
+
+    if (!is_array($identity)) {
+        return null;
+    }
+
+    return ws_customer_card_build($identity, ws_customer_summary($viewer, $channel, $identity), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/');
+}
+
+/**
+ * The card laid out from the identity and the summary: each row gets the
+ * screen its tag links to (a section is only there when the reader holds its
+ * right, a form only when its folder is open to them) and its days written
+ * out; amounts and their text pass through. The ids the summary reads by
+ * (contact_id, user_ids, erp_account_ids) are left behind: they are never
+ * shown.
+ *
+ * @param array  $identity ws_customer_identity()
+ * @param array  $summary  ws_customer_summary()
+ * @param string $base     the panel's address, ending in /
+ * @return array customer, links (ws_customer_identity_item() each), sections:
+ *               the summary's sections with url, date_text, status_label or
+ *               valid_until_text added per row
+ */
+function ws_customer_card_build($identity, $summary, $base)
+{
+    $sections = array();
+
+    if (isset($summary['orders'])) {
+        $latest = array();
+
+        foreach ((array) $summary['orders']['latest'] as $row) {
+            $latest[] = array_merge($row, array(
+                'url'       => $base . 'view_order.php?id=' . (int) $row['id'],
+                'date_text' => ws_customer_date_text($row['placed_at'] ?? 0),
+            ));
+        }
+
+        $sections['orders'] = array('count' => (int) $summary['orders']['count'], 'latest' => $latest);
+    }
+
+    if (isset($summary['erp_accounts'])) {
+        foreach ((array) $summary['erp_accounts'] as $row) {
+            $sections['erp_accounts'][] = array_merge($row, array(
+                'url'          => $base . 'edit_erp_account.php?id=' . (int) $row['id'],
+                'status_label' => (($row['status'] ?? '') === 'passive') ? lang('Passive') : '',
+            ));
+        }
+    }
+
+    if (isset($summary['sales_quotes'])) {
+        $latest = array();
+
+        foreach ((array) $summary['sales_quotes']['latest'] as $row) {
+            $until = ws_customer_date_text($row['valid_until'] ?? '');
+
+            $latest[] = array_merge($row, array(
+                'number'           => ((string) ($row['number'] ?? '') !== '') ? (string) $row['number'] : '#' . (int) $row['id'],
+                'url'              => $base . 'edit_erp_quote.php?id=' . (int) $row['id'],
+                'valid_until_text' => ($until !== '') ? lang(array('string' => 'Valid until {var:1}', 'vars' => array($until))) : '',
+            ));
+        }
+
+        $sections['sales_quotes'] = array('count' => (int) $summary['sales_quotes']['count'], 'latest' => $latest);
+    }
+
+    if (isset($summary['forms'])) {
+        foreach ((array) $summary['forms'] as $row) {
+            $sections['forms'][] = array_merge($row, array(
+                'url'          => $base . 'edit_submitted_form.php?id=' . (int) $row['id'],
+                'date_text'    => ws_customer_date_text($row['submitted_at'] ?? 0),
+                'status_label' => empty($row['complete']) ? lang('Incomplete') : '',
+            ));
+        }
+    }
+
+    return array(
+        'customer' => $identity['customer'],
+        'links'    => $identity['links'],
+        'sections' => $sections,
+    );
+}
+
+/**
+ * A day as the card writes it, d.m.Y as the tags write one: from a moment (in
+ * the site's zone) or from a Y-m-d day as a date column keeps it (taken as it
+ * is, never moved by a zone).
+ *
+ * @param int|string $value a Unix time or Y-m-d
+ * @return string '' for no day
+ */
+function ws_customer_date_text($value)
+{
+    if (is_int($value) || ctype_digit((string) $value)) {
+        return ((int) $value > 0) ? date('d.m.Y', (int) $value) : '';
+    }
+
+    if (preg_match('~^(\d{4})-(\d{2})-(\d{2})$~', (string) $value, $parts) && ((string) $value > '0000-00-00')) {
+        return $parts[3] . '.' . $parts[2] . '.' . $parts[1];
+    }
+
+    return '';
 }
 
 /**

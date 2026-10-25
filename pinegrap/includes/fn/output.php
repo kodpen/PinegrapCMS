@@ -6203,6 +6203,7 @@ function pg_js_bundles()
             'assets/js/workspace_acks.js',
             'assets/js/workspace_status.js',
             'assets/js/workspace_voice.js',
+            'assets/js/workspace_customer.js',
             'assets/js/workspace.js',
         ),
         'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),

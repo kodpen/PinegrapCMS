@@ -13717,6 +13717,12 @@
                 pane.appendChild(edit);
             }
 
+            // The customer the channel is about and where they stand, loaded
+            // when the tab is opened (workspace_customer.js).
+            if (window.PGWsCustomer && channel.customer) {
+                pane.appendChild(window.PGWsCustomer.card(channel, partHelpers()));
+            }
+
             // The time spent on the channel's tasks, loaded when the tab is
             // opened (workspace_task_time.js).
             if (window.PGWsTaskTime && CFG.task_time && CFG.task_time.ready) {

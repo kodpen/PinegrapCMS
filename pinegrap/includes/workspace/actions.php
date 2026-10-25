@@ -2102,6 +2102,17 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('customer' => ws_customer_present($viewer, $type, (int) ($request['id'] ?? 0))));
 
+        // The customer of a channel and where they stand, for the card on its
+        // Summary tab: the API's customer summary, read for the same reader.
+        case 'ws_channel_customer':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array('card' => ws_customer_card($viewer, $channel)));
+
         case 'ws_channel_members_add':
             $channel = ws_action_channel($viewer, $request, 'post');
 
