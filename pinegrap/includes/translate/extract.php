@@ -108,6 +108,14 @@ function pg_tr_node_fields($type, $props)
         $add('_labelExpand', 'text');
     }
 
+    // The text a value condition compares with (_bindParams.show_if.value)
+    // when it is words: the value it is compared with is drawn in the page's
+    // language, so the compared text is read in it too
+    // (pg_tr_condition_props()).
+    if (function_exists('pg_sw_cond_operand_is_words') && pg_sw_cond_operand_is_words($props)) {
+        $fields[] = array('_cond:show_if', 'text');
+    }
+
     // Attributes with words in them, on any node. A submit, button or reset
     // input's value is its label; any other value (a text input's, a
     // <button>'s) is what the form posts (pg_tr_input_value_is_label()).
@@ -197,6 +205,13 @@ function pg_tr_field_get($props, $field)
         return '';
     }
 
+    if (strpos($field, '_cond:') === 0) {
+        $name = substr($field, 6);
+
+        return (isset($props['_bindParams'][$name]['value']) && is_scalar($props['_bindParams'][$name]['value']))
+            ? (string) $props['_bindParams'][$name]['value'] : '';
+    }
+
     return isset($props[$field]) ? (string) $props[$field] : '';
 }
 
@@ -214,6 +229,16 @@ function pg_tr_field_set(&$props, $field, $value)
                     $props['_attrs'][$i]['value'] = $value;
                 }
             }
+        }
+
+        return;
+    }
+
+    if (strpos($field, '_cond:') === 0) {
+        $name = substr($field, 6);
+
+        if (isset($props['_bindParams'][$name]) && is_array($props['_bindParams'][$name])) {
+            $props['_bindParams'][$name]['value'] = $value;
         }
 
         return;

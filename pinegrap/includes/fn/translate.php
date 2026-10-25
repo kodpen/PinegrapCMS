@@ -736,6 +736,39 @@ function pg_tr_props($props, $type)
 }
 
 /**
+ * A node's props with the text its value condition compares with read in
+ * the current language (the "_cond:" fields of pg_tr_node_fields()). The
+ * renderer asks for it before it reads the condition, then drops the
+ * condition, so its other texts go through pg_tr_props() once as before.
+ *
+ * @param array  $props
+ * @param string $type
+ * @return array
+ */
+function pg_tr_condition_props($props, $type)
+{
+    if (!pg_tr_active()) {
+        return $props;
+    }
+
+    foreach (pg_tr_node_fields($type, $props) as $spec) {
+        if (strpos($spec[0], '_cond:') !== 0) {
+            continue;
+        }
+
+        pg_tr_load();
+        $raw = pg_tr_field_get($props, $spec[0]);
+        $translated = pg_tr_render_text($raw, $spec[1]);
+
+        if ($translated !== $raw) {
+            pg_tr_field_set($props, $spec[0], $translated);
+        }
+    }
+
+    return $props;
+}
+
+/**
  * One text in the current language, or the text itself when there is no
  * translation (or no translation context).
  *
