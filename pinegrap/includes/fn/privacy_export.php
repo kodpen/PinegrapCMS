@@ -56,6 +56,7 @@ function pg_privacy_export_sections()
         'signatures'         => lang('Signatures'),
         'comments'           => lang('Comments and reviews'),
         'watchers'           => lang('Watched items'),
+        'wishlist'           => lang('Favourites'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -593,7 +594,7 @@ function pg_privacy_export_summary_html(array $document)
     $documents = $rows_of('erp_documents');
 
     if ($documents) {
-        $kinds = array('invoice' => lang('Invoice'), 'quote' => lang('Price quote'), 'waybill' => lang('Delivery Note'));
+        $kinds = array('invoice' => lang('Invoice'), 'quote' => lang('Sales quote'), 'waybill' => lang('Delivery Note'));
 
         $html .= '<h2>' . h(lang('Accounting documents')) . '</h2><table><tr><th>' . h(lang('Type')) . '</th><th>' . h(lang('Document number')) . '</th><th>' . h(lang('Date')) . '</th><th class="num">' . h(lang('Total')) . '</th></tr>';
 
@@ -908,6 +909,20 @@ function pg_privacy_export_collect(array $found)
     ));
 
     $sections['watchers'] = _pg_privacy_export_select("SELECT * FROM watchers WHERE " . $watch_where . " ORDER BY id", ($watch_where !== '') ? array(1) : array());
+
+    // Favourites, with the product's SKU and name. A visitor's list before
+    // signing in is kept under a cookie key that names nobody; it joins the
+    // account at sign-in (pg_wishlist_merge()) and is found from then on.
+    if (pg_wishlist_ready()) {
+        $sections['wishlist'] = _pg_privacy_export_select(
+            "SELECT wishlist_items.id, wishlist_items.user_id, wishlist_items.product_id, products.name AS product_sku, products.short_description AS product_name, wishlist_items.added_at
+            FROM wishlist_items
+            LEFT JOIN products ON products.id = wishlist_items.product_id
+            WHERE " . _pg_privacy_export_in('wishlist_items.user_id', $user_ids) . "
+            ORDER BY wishlist_items.id",
+            $user_ids
+        );
+    }
 
     $campaign_where = _pg_privacy_export_any(array(
         _pg_privacy_export_in('r.contact_id', $contact_ids),
