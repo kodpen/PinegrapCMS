@@ -1,2 +1,8 @@
 # Shell scripts must keep LF endings: the sandbox runs them with bash.
 *.sh text eol=lf
+
+# Language files must keep LF endings on every checkout, core.autocrlf=true
+# included: tools/check_lang.php and the tests compare each shard byte for
+# byte with the form tools/tr_add.php writes (docs/memory/core/lang-files.md).
+pinegrap/includes/local/*.json text eol=lf
+pinegrap/includes/local/*/*.json text eol=lf
