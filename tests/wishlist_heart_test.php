@@ -534,6 +534,8 @@ replies.push({ status: 200, data: { ids: [9], token: 'T0k', signed_in: false } }
 w.start().then(function () {
 	out.state_call = calls[0];
 	out.after_state = { a: look(a), c: look(c), d: look(d) };
+	var box = doc.getElementById('pg-wishlist-status');
+	out.box_at_start = box ? { text: box.textContent, role: box.getAttribute('role') } : null;
 
 	// A click on the icon inside the heart saves the product.
 	replies.push({ status: 200, data: { product_id: 7, on: true } });
@@ -597,6 +599,7 @@ JS;
 	pg_assert_same(array('id' => '7', 'pressed' => 'false', 'cls' => 'btn', 'icon' => 'bi bi-heart', 'hidden' => null), $r['after_state']['a'], 'not saved, shown');
 	pg_assert_same(array('id' => '9', 'pressed' => 'true', 'cls' => 'btn active', 'icon' => 'bi bi-heart-fill', 'hidden' => null), $r['after_state']['c'], 'saved, filled');
 	pg_assert_same('1', $r['after_state']['d']['hidden'], 'a heart without a product stays hidden');
+	pg_assert_same(array('text' => '', 'role' => 'status'), $r['box_at_start'], 'the status line is on the page, empty, before its first message');
 
 	pg_assert_true($r['prevented'], 'the click is the heart\'s');
 	pg_assert_same(array('a' => 'true', 'b' => 'true', 'e' => 'true'), $r['optimistic'], 'every heart of the product at once');

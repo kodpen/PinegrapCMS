@@ -130,18 +130,26 @@
             });
         }
 
-        // Read out to a screen reader: a polite status line, visually hidden.
-        function announce(text) {
-            if (!text || !doc.body) return;
+        // The polite status line a refusal is read out in, visually hidden;
+        // null without a body. start() puts it on the page empty: screen
+        // readers read out a change to a live region already there, and
+        // often skip one that arrives with its words.
+        function statusBox() {
             var box = doc.getElementById(STATUS_ID);
-            if (!box) {
-                box = doc.createElement('div');
-                box.setAttribute('id', STATUS_ID);
-                box.setAttribute('class', 'visually-hidden');
-                box.setAttribute('role', 'status');
-                box.setAttribute('aria-live', 'polite');
-                doc.body.appendChild(box);
-            }
+            if (box || !doc.body) return box;
+            box = doc.createElement('div');
+            box.setAttribute('id', STATUS_ID);
+            box.setAttribute('class', 'visually-hidden');
+            box.setAttribute('role', 'status');
+            box.setAttribute('aria-live', 'polite');
+            doc.body.appendChild(box);
+            return box;
+        }
+
+        // Read out to a screen reader.
+        function announce(text) {
+            var box = text ? statusBox() : null;
+            if (!box) return;
             box.textContent = '';
             box.textContent = text;
         }
@@ -259,6 +267,7 @@
 
         function start() {
             if (!hearts().length || !config.url) return Promise.resolve(false);
+            statusBox();
             doc.addEventListener('click', onClick);
             doc.addEventListener('pg-civ-product-change', onProductChange);
             var view = env.window;
