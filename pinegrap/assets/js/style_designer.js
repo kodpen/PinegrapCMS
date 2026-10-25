@@ -50828,9 +50828,45 @@ const StyleDesigner = (function () {
         return html;
     }
 
-    // The Bind Data option a widget token stands for, named as the binding
-    // dropdown of a `type` widget names it. Panel hints point at the option
-    // the designer picks, not at the token behind it.
+    // The row position tokens of every widget kind's list, filled by the
+    // site's finish pass in each copy of the row template
+    // (pg_sw_finish_position_values() in includes/fn/widgets_finish.php;
+    // tests/widget_loop_position_test.php keeps the two lists equal).
+    // Offered only inside the list's loop (_swInMainLoop()).
+    var SW_LOOP_POSITION_TOKEN_GROUPS = [
+        { label: _sdT('Position in the list'), tokens: [
+            ['__loop_index',    _sdT('Row number')],
+            ['__loop_count',    _sdT('Rows on this page')],
+            ['__loop_is_first', _sdT('First row (1 or empty)')],
+            ['__loop_is_last',  _sdT('Last row (1 or empty)')],
+            ['__loop_is_odd',   _sdT('Odd row (1 or empty)')],
+            ['__loop_is_even',  _sdT('Even row (1 or empty)')]
+        ]}
+    ];
+
+    // Whether `node` is in the row template of its widget's list: the first
+    // loop_area on its way up, before a recipient_loop_area (express order's
+    // recipients number themselves with __recipient_index) or the widget's
+    // root. The loop_area itself is not inside its loop.
+    function _swInMainLoop(node) {
+        var cur = node;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            var up = _sdAnyParent(cur);
+            if (!up || !up.parent) return false;
+            if (up.parent.type === 'loop_area') return true;
+            if (up.parent.type === 'recipient_loop_area') return false;
+            cur = up.parent;
+        }
+        return false;
+    }
+
+    // The label of a row position token, or '' for any other token.
+    function _swPositionLabel(token) {
+        var tokens = SW_LOOP_POSITION_TOKEN_GROUPS[0].tokens;
+        for (var i = 0; i < tokens.length; i++) if (tokens[i][0] === token) return tokens[i][1];
+        return '';
+    }
+
     // The token palette (groups of [token, label]) of a widget type whose
     // tokens are fixed. The two form views have none: their tokens are the
     // form's fields (_swBindTokenOptions()).
@@ -50862,6 +50898,7 @@ const StyleDesigner = (function () {
     // the form's fields, their labels when the detail view shows labels, and
     // the built-in fields. The panel's branches draw these same tables; a
     // form whose fields are not cached yet is fetched and answers empty now.
+    // Inside the list's loop the row position tokens follow, in every kind.
     function _swBindTokenOptions(node) {
         var type = _getSystemWidgetRegionType(node);
         if (!type) return [];
@@ -50881,15 +50918,26 @@ const StyleDesigner = (function () {
                 if (_swStandardYields(o[0], fields)) return;
                 out.push({ token: o[0], label: _swBindLabel(type, o[0]) });
             });
-            return out;
+        } else {
+            _swBindTokenGroups(type).forEach(function (g) {
+                g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
+            });
         }
-        _swBindTokenGroups(type).forEach(function (g) {
-            g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
-        });
+        if (_swInMainLoop(node)) {
+            SW_LOOP_POSITION_TOKEN_GROUPS.forEach(function (g) {
+                g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
+            });
+        }
         return out;
     }
 
+    // The Bind Data option a widget token stands for, named as the binding
+    // dropdown of a `type` widget names it. Panel hints point at the option
+    // the designer picks, not at the token behind it. A row position token
+    // has the same name in every kind.
     function _swBindLabel(type, token) {
+        var position = _swPositionLabel(token);
+        if (position) return position;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
             // Names the settings once gave these values (see _bindAlias).
