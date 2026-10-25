@@ -371,13 +371,18 @@ function test_parasut_stale_ids_create_shipment_forgets_a_deleted_invoice()
 
 // The clear touches only the two id columns, and only while the column
 // still holds the id that was read: a press beside this one may have
-// written a new record's id meanwhile.
+// written a new record's id meanwhile. A sales invoice that is gone takes
+// its e-document's confirmation with it, so the invoice that replaces it is
+// not shown as "Sent" before its own conversion is seen to finish.
 function test_parasut_stale_ids_forget_record_clears_only_the_id_it_read()
 {
 	$body = parasut_stale_ids_test_source('_parasut_order_forget_record');
 
 	pg_assert_contains("if (!in_array(\$column, array('parasut_invoice_id', 'parasut_shipment_id'), true)) {", $body);
-	pg_assert_contains("db(\"UPDATE orders SET \" . \$column . \" = '' WHERE id = '\" . escape(\$order_id) . \"' AND TRIM(\" . \$column . \") = '\" . escape(trim((string) \$id)) . \"'\");", $body);
+	pg_assert_contains("\$set = \$column . \" = ''\";", $body);
+	pg_assert_contains("if (\$column === 'parasut_invoice_id') {", $body);
+	pg_assert_contains("\$set .= ', parasut_exported = 0';", $body);
+	pg_assert_contains("db(\"UPDATE orders SET \" . \$set . \" WHERE id = '\" . escape(\$order_id) . \"' AND TRIM(\" . \$column . \") = '\" . escape(trim((string) \$id)) . \"'\");", $body);
 }
 
 // The order screen offers both buttons again on an order that keeps an id
