@@ -17,4 +17,4 @@ description: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as 
 - The workspace CSS runs from the `/* ── Workspace ── */` marker to the `/* ── /Workspace ── */` marker at the end of the file; the feature add-ons (status, templates, time, links, delegation, approvals, acks) are inside it.
 
 ## What is next?
-- The avatar component and presence dot (U2), empty states and skeletons (U4), motion (U5), density (U6): docs/memory/plans/workspace-friendly-ui.md.
+- Empty states and skeletons (U4), motion (U5), density (U6): docs/memory/plans/workspace-friendly-ui.md. The avatar component and presence dot: Bootstrap 6 Avatar, step B9j in docs/memory/plans/bootstrap-6-components.md.

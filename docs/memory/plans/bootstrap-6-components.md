@@ -1,0 +1,22 @@
+---
+name: bootstrap-6-components
+description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
+---
+
+## Which swaps did the owner ask for?
+- B9a tagin to Chips (26 sites): the named input stays the posted store. Chips posts nothing and auto-inits only on DOMContentLoaded: AJAX settings cards init through `pgInitInjected()`. Fill silently (no dirty mark); the remove button's hard-coded "Remove" label comes from `lang()`.
+- B9b select2 to Combobox (27): the native `<select>` stays the posted store (`name[]`, liveform, `required`). No remote search (google_product_category needs an own fetch layer), no new entries, no clear (add an empty item). ERP account choice re-rates taxes: a native `change` must fire.
+- B9c Datepicker (31 date, 11 date and time, 8 time-only sites): init from JS with our own parse and format of the site date format (`isoToDisplay`/`displayToIso` in offer_editor.js), locale from the panel language, Monday first for tr; never the data API or `new Date()` parsing. Date and time: Datepicker plus `<input type="time">` composed into the original field. Time-only: `<input type="time">` only after B5, or 17:00 is stored as 00:00. ACL expiry pickers in drawers open inline.
+- B9d OTP: mfa.php gets the 6-digit code plus a recovery-code mode (XXXX-XXXX), no auto-submit (5 attempts per 10 minutes); developer_lock gets one masked slot per `DEVELOPER_PIN` digit and keeps submit-on-complete. The site profile code field stays v5.
+- B9e Range with value bubble: editor inspector (3), label editor; candidates image quality % and disk alert %. Never the palette's site Range.
+- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first.
+- B9g Stepper: edit_offer, the installer, ERP import. v6 colours only `.active` items, so edit_offer marks every item `.active` plus `theme-success` (done) or `theme-danger` (todo), with `grid-auto-rows: auto` and a minmax(0,1fr) content column. The workspace automation flow keeps the `.pg-step` CSS. Rewrite `ui/step-rail.md`.
+- B9h `.hover-lift` on 4 elements, tokens set to today's 1-2 px.
+- B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.
+- B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Slice U2 of `workspace-friendly-ui.md`.
+
+## What did research add (B9k, not owner decisions)?
+- Only where screenshots show no change, else in B11: own theme tokens and focus ring to v6 tokens, `.btn-ghost` (285) to `.btn-text.theme-secondary`, own toasts to Toast, `.pg-chip` to `.chip`, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`, `.ws-cb-progress-bar` to `.progress`.
+
+## What stays as it is?
+- jquery-multiselect-checkbox (owner decision), number +/- buttons, empty states, callouts, segmented controls, the settings progress line, the glass widget theme, own show/hide bindings.

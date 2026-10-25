@@ -1,6 +1,6 @@
 ---
 name: workspace-friendly-ui
-description: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
+description: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions
 ---
 
 ## What is this plan?
@@ -17,7 +17,7 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, ava
 
 ## What are the slices?
 - U1 Tokens and shape — done (PR #531, memory docs/memory/workspace/workspace-ui-scale.md): the token scale, every radius on it, keyboard-only focus rings, rounder drawers, home cards and context menus, the composer's shadows, dark nav tones. The accent RGB stays typed beside the hex (CSS cannot derive it); the two sit together.
-- U2 Avatar component: `avatar()` gets `.ws-avatar` and size classes, an initials fallback drawn client-side when no URL, a presence dot (data already in the member list), tones that work in dark mode.
+- U2 Avatar component: moved to the Bootstrap 6 panel plan (owner decision 2026-10-25), step B9j after the switch: v6 Avatar with text initials, theme colours and a presence dot (`bootstrap-6-components.md`). Claim it as `[plan:bootstrap-6-panel] B9j`, not here.
 - U3 Channel identity: the channel colour on the header icon and a thin colour stripe; group colour chips in the sidebar section titles.
 - U4 Empty states and loading: friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
 - U5 Motion: send-button pop, reaction bounce, new-message slide-in, all inside `@media (prefers-reduced-motion: no-preference)`.
@@ -26,7 +26,7 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, ava
 ## What is still open?
 1. How far "cute" goes: rounder + softer + illustrations (default) or also a rounded display font (Google Fonts are not loaded in the panel today; a self-hosted font adds weight).
 2. Whether U6 is wanted at all.
-3. Whether the owner wants a screenshot round on dev.pinegrap.com after U1 before U2-U5 start (recommended: yes, U1 sets the tone).
+3. Whether the owner wants a screenshot round on dev.pinegrap.com after U1 before U3-U5 start (recommended: yes, U1 sets the tone).
 
 ## Where to start?
-- U2 and U4 next (they use the tokens), then U3, U5, U6 in any order. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
+- U4 next (it uses the tokens), then U3, U5, U6 in any order; U2 waits for B9j of the Bootstrap 6 plan. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
