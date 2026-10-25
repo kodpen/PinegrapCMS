@@ -1,9 +1,9 @@
 ---
 name: erp-parasut-legacy-invoiced-order
-description: The ERP send of an order the legacy Create Invoice already invoiced at Paraşüt: the unsure mark refuses unread, a record id is read first, and only a deleted record lets the send go on (#PR)
+description: The ERP send of an order the legacy Create Invoice already invoiced at Paraşüt: the unsure mark refuses unread, a record id is read first, and only a deleted record lets the send go on (#1629)
 ---
 
-## What went wrong? (#PR)
+## What went wrong? (#1629)
 - The order screen's Create Invoice writes `orders.parasut_invoice_id` (a record id, or the unsure mark `?` after a create with no answer), never `erp_invoices`. Its buttons give way once the ERP and a provider are on (erp-parasut-legacy-order-buttons.md); the ERP's order card then offers its invoice and e-document.
 - `send_invoice` read only the order's number, date and shipment document, so such an order's ERP invoice went as a second `sales_invoices` and was converted: two invoices and e-documents at GİB for one sale, the receivable doubled, stock out twice when no shipment document was named.
 - Each e-document send goes through `erp_edoc_invoice_send()`: the order card's step, the invoice screen (Send, move the date and send), the list's bulk Send. The automatic invoice sends none (erp-auto-invoice.md).
