@@ -1,0 +1,291 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Workspace - the external API's side of a channel's customer: who the
+ * customer is and where they stand (GET /workspace/channels/{id}/customer).
+ *
+ * The summary is built in customer.php beside this file, for the panel and
+ * the API alike, with the rights of whoever reads it. Here the reader is the
+ * owner of the application - or, for Claude's application, the person who
+ * asked it in a channel its owner is not in, as the channel context reads it
+ * (ws_api_assistant_channel_reader()) - narrowed to the key's scopes: a
+ * section is read only with the scope the API reads that kind of record with
+ * elsewhere, so a key reaches no order, balance or form through a channel
+ * that it could not read over its own endpoints.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL') && !defined('PG_INIT_LOADED')) {
+    exit;
+}
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/**
+ * The scope each right of the reader the summary reads is narrowed to: the
+ * one the external API reads that kind of record with (ws_api_search_record_scopes(),
+ * which the assistants follow too).
+ *
+ * @return array ws_viewer() right => scope
+ */
+function ws_api_customer_scopes()
+{
+    return array(
+        'ecommerce' => 'orders:read',
+        'contacts'  => 'customers:read',
+        'erp'       => 'erp:read',
+        'erp_cash'  => 'erp_cash:read',
+        'forms'     => 'forms:read',
+    );
+}
+
+/**
+ * The reader narrowed to the key's scopes: a right stays only where the key
+ * holds its scope. A scope never opens what the person may not see. The
+ * rights the summary does not read are left as they are.
+ *
+ * @param array    $viewer ws_viewer()
+ * @param string[] $scopes the key's scopes (api_current_scopes())
+ * @return array
+ */
+function ws_api_customer_viewer($viewer, $scopes)
+{
+    foreach (ws_api_customer_scopes() as $right => $scope) {
+        $viewer[$right] = !empty($viewer[$right]) && api_has_scope($scopes, $scope);
+    }
+
+    return $viewer;
+}
+
+function ws_api_channel_customer($params)
+{
+    list($viewer, $channel) = ws_api_assistant_channel_reader($params['id']);
+
+    $viewer = ws_api_customer_viewer($viewer, api_current_scopes());
+    $identity = ws_customer_identity($viewer, $channel);
+    $summary = is_array($identity) ? ws_customer_summary($viewer, $channel, $identity) : array();
+
+    api_ok(ws_api_channel_customer_present($channel, $identity, $summary, URL_SCHEME . HOSTNAME_SETTING));
+}
+
+/**
+ * The answer: the customer and its ties, and a section for each part of the
+ * summary the reader may see and that holds something, null otherwise.
+ *
+ * @param array      $channel  a ws_channels row
+ * @param array|null $identity ws_customer_identity()
+ * @param array      $summary  ws_customer_summary()
+ * @param string     $origin   scheme and host the panel's addresses are made whole with
+ * @return array
+ */
+function ws_api_channel_customer_present($channel, $identity, $summary, $origin)
+{
+    $record = function ($item) use ($origin) {
+        return ws_api_customer_record_present($item, $origin);
+    };
+
+    return array(
+        'channel_id'   => (int) $channel['id'],
+        'customer'     => is_array($identity) ? $record($identity['customer']) : null,
+        'links'        => is_array($identity) ? array_map($record, (array) $identity['links']) : array(),
+        'orders'       => isset($summary['orders']) ? ws_api_customer_orders_present($summary['orders']) : null,
+        'erp_accounts' => isset($summary['erp_accounts']) ? array_map('ws_api_customer_account_present', $summary['erp_accounts']) : null,
+        'sales_quotes' => isset($summary['sales_quotes']) ? ws_api_customer_quotes_present($summary['sales_quotes']) : null,
+        'forms'        => isset($summary['forms']) ? array_map('ws_api_customer_form_present', $summary['forms']) : null,
+    );
+}
+
+// What ws_api_channel_customer_present() returns.
+function ws_api_channel_customer_schema()
+{
+    return array(
+        'channel_id'   => 'integer',
+        'customer'     => 'WorkspaceCustomerRecord?',
+        'links'        => 'WorkspaceCustomerRecord[]',
+        'orders'       => 'WorkspaceCustomerOrders?',
+        'erp_accounts' => 'WorkspaceCustomerAccount[]?',
+        'sales_quotes' => 'WorkspaceCustomerQuotes?',
+        'forms'        => 'WorkspaceCustomerForm[]?',
+    );
+}
+
+/**
+ * The customer, or a record tied to it.
+ *
+ * @param array  $item   ws_customer_identity_item()
+ * @param string $origin see ws_api_channel_customer_present()
+ * @return array
+ */
+function ws_api_customer_record_present($item, $origin)
+{
+    $url = (string) ($item['url'] ?? '');
+
+    return array(
+        'type'   => (string) $item['type'],
+        'id'     => (int) $item['id'],
+        'kind'   => (string) $item['kind'],
+        'label'  => (string) $item['label'],
+        'detail' => (string) $item['detail'],
+        'known'  => (bool) $item['known'],
+        'url'    => ($url !== '') ? ws_api_inbox_url($url, $origin) : null,
+    );
+}
+
+// What ws_api_customer_record_present() returns.
+function ws_api_customer_record_schema()
+{
+    return array(
+        'type'   => 'string',
+        'id'     => 'integer',
+        'kind'   => 'string',
+        'label'  => 'string',
+        'detail' => 'string',
+        'known'  => 'boolean',
+        'url'    => 'string?',
+    );
+}
+
+function ws_api_customer_orders_present($section)
+{
+    return array(
+        'count'  => (int) $section['count'],
+        'latest' => array_map('ws_api_customer_order_present', (array) $section['latest']),
+    );
+}
+
+// What ws_api_customer_orders_present() returns.
+function ws_api_customer_orders_schema()
+{
+    return array(
+        'count'  => 'integer',
+        'latest' => 'WorkspaceCustomerOrder[]',
+    );
+}
+
+function ws_api_customer_order_present($row)
+{
+    return array(
+        'id'           => (int) $row['id'],
+        'number'       => (string) $row['number'],
+        'status'       => (string) $row['status'],
+        'status_label' => (string) $row['status_label'],
+        'total'        => api_money($row['total']),
+        'total_text'   => (string) $row['total_text'],
+        'placed_at'    => api_time($row['placed_at']),
+    );
+}
+
+// What ws_api_customer_order_present() returns.
+function ws_api_customer_order_schema()
+{
+    return array(
+        'id'           => 'integer',
+        'number'       => 'string',
+        'status'       => 'string',
+        'status_label' => 'string',
+        'total'        => 'integer',
+        'total_text'   => 'string',
+        'placed_at'    => 'string?',
+    );
+}
+
+function ws_api_customer_account_present($row)
+{
+    return array(
+        'id'           => (int) $row['id'],
+        'title'        => (string) $row['title'],
+        'status'       => (string) $row['status'],
+        'balance'      => api_money($row['balance']),
+        'balance_text' => (string) $row['balance_text'],
+    );
+}
+
+// What ws_api_customer_account_present() returns.
+function ws_api_customer_account_schema()
+{
+    return array(
+        'id'           => 'integer',
+        'title'        => 'string',
+        'status'       => 'string',
+        'balance'      => 'integer',
+        'balance_text' => 'string',
+    );
+}
+
+function ws_api_customer_quotes_present($section)
+{
+    return array(
+        'count'  => (int) $section['count'],
+        'latest' => array_map('ws_api_customer_quote_present', (array) $section['latest']),
+    );
+}
+
+// What ws_api_customer_quotes_present() returns.
+function ws_api_customer_quotes_schema()
+{
+    return array(
+        'count'  => 'integer',
+        'latest' => 'WorkspaceCustomerQuote[]',
+    );
+}
+
+function ws_api_customer_quote_present($row)
+{
+    return array(
+        'id'            => (int) $row['id'],
+        'number'        => (string) $row['number'],
+        'account_id'    => (int) $row['account_id'],
+        'account_title' => (string) $row['account_title'],
+        'issue_date'    => (string) $row['issue_date'],
+        'valid_until'   => ((string) $row['valid_until'] !== '') ? (string) $row['valid_until'] : null,
+        'currency'      => (string) $row['currency'],
+        'total'         => api_money($row['total']),
+        'total_text'    => (string) $row['total_text'],
+    );
+}
+
+// What ws_api_customer_quote_present() returns.
+function ws_api_customer_quote_schema()
+{
+    return array(
+        'id'            => 'integer',
+        'number'        => 'string',
+        'account_id'    => 'integer',
+        'account_title' => 'string',
+        'issue_date'    => 'string',
+        'valid_until'   => 'string?',
+        'currency'      => 'string',
+        'total'         => 'integer',
+        'total_text'    => 'string',
+    );
+}
+
+function ws_api_customer_form_present($row)
+{
+    return array(
+        'id'             => (int) $row['id'],
+        'name'           => (string) $row['name'],
+        'reference_code' => (string) $row['reference_code'],
+        'complete'       => (bool) $row['complete'],
+        'submitted_at'   => api_time($row['submitted_at']),
+    );
+}
+
+// What ws_api_customer_form_present() returns.
+function ws_api_customer_form_schema()
+{
+    return array(
+        'id'             => 'integer',
+        'name'           => 'string',
+        'reference_code' => 'string',
+        'complete'       => 'boolean',
+        'submitted_at'   => 'string?',
+    );
+}

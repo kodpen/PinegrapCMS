@@ -262,6 +262,28 @@ function ws_money_out($minor)
 }
 
 /**
+ * May this reader edit the folder a file, a page or a form lives in? Asked
+ * of the reader, not of whoever is signed in: an API owner reads too. Staff
+ * edit every folder; anybody else the ones they were given.
+ *
+ * @param array $viewer
+ * @param int   $folder_id
+ * @return bool
+ */
+function ws_viewer_folder_open($viewer, $folder_id)
+{
+    if ((int) $viewer['role'] < 3) {
+        return true;
+    }
+
+    if (function_exists('pg_folder_edit_access')) {
+        return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
+    }
+
+    return function_exists('check_edit_access') && check_edit_access($folder_id);
+}
+
+/**
  * Whether sales quotes can be read: the ERP is on and its quotes table is
  * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
  * and the money helpers (erp_money_out_currency()) alone rather than the
@@ -329,18 +351,8 @@ function ws_refs_resolve($viewer, $tokens)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
-    // May this reader edit the folder a file, a page or a form lives in? Asked
-    // of the reader, not of whoever is signed in: an API owner reads too.
     $folder_open = function ($folder_id) use ($viewer) {
-        if ($viewer['role'] < 3) {
-            return true;
-        }
-
-        if (function_exists('pg_folder_edit_access')) {
-            return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
-        }
-
-        return function_exists('check_edit_access') && check_edit_access($folder_id);
+        return ws_viewer_folder_open($viewer, $folder_id);
     };
 
     $date_out = function ($value) {

@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23, step 1 test in #1512, step 2 built, answer 4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -14,7 +14,7 @@ description: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: c
 ## Slices
 Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right.
 1. Record-kind registry `ws_record_kinds()` (proposed, refs.php): per kind tag, change kind, audit table, customer flag; drift test on `ws_record_type_keys()`, `ws_change_types()` (plans/workspace-catalog-create.md 1a source reader), `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_customer_types()`, `pg_audit_tables()` (lists stay). Test #1512; no registry.
-2. Summary: `ws_customer_identity()`, `ws_customer_summary()` (new): last orders, `erp_accounts.balance`, open sales quotes (`erp_quote_rows()`, ERP right), cart quotes (ecommerce right) as separate rows, last submissions; `GET /workspace/channels/{id}/customer` (new, `ws_can_read_channel()`); later MCP resource `pinegrap://workspace/channels/{id}/customer` (MCP plan).
+2. Built (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
 3. Panel: channel customer section shows it [2].
 4. History: `ws_customer_history()` (new): read-only union: orders, invoices, sales and cart quotes, submissions, `ws_record_refs()` per tied record; route [2].
 5. Follow-ups: owns `ws_followup_task_open()` (proposed: tagged task, channel or person, `ws_task_reminder_set()`) for "Remind me about this customer" [3], Sales quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md item 4).
@@ -28,7 +28,9 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
 2. Merge (7): (a) re-point orders, forms, email_recipients, ws_channels, ws_refs, cart quotes, ERP account (`erp_account_link_contact()`; refuse if both have one), keep `consent_log` (proof), (b) warn only, (c) a plus `consent_log` → a.
 3. History (4): (a) union read, (b) activity table → a.
-4. Summary route (2): (a) per channel, (b) per record → a.
+
+## Which are answered?
+- 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- Slice 1, then 2 (read core/personal-data-export.md).
+- Slice 3: the channel's customer section reads `ws_customer_summary()` through a panel action; then 4.
