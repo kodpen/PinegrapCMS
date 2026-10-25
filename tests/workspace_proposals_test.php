@@ -9,7 +9,11 @@
  * agent the API lists a change under, the read scopes the kinds a body
  * names are asked with and the kind no application proposes, how an
  * application's name is cleaned and shown, and which run on a task the
- * drawer carries on when a proposal came after it.
+ * drawer carries on when a proposal came after it. Also the hourly limit
+ * (the lock it is counted under, how long a refused call waits), how a
+ * proposal is drawn in a task's drawer, the name every slice of a bulk
+ * change and a mention carry, and the contacts a person with the user role
+ * may be proposed changes to.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,7 +25,12 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/customers.php');
 require_once(__DIR__ . '/helpers/source_reader.php');
 
 // The code of a loaded function without its comments, so a check of what
@@ -366,4 +375,24 @@ function test_ws_inbox_mention_names_the_proposing_client()
 	pg_assert_true($mention !== '', 'the mention is described');
 	pg_assert_contains('ws_proposals_by_reply(', $mention, 'the proposal behind the message is looked up');
 	pg_assert_contains('ws_proposal_sender(', $mention, 'and its sender drawn as on the channel screen');
+}
+
+// A person with the user role (3) reaches the contacts filed in a group
+// given to them, on the contacts screens and in the external API; a change
+// proposed to them, on its own or in bulk, reaches no other contact.
+function test_ws_contact_changes_follow_the_user_role_rule()
+{
+	pg_assert_same(api_customer_owner_filter(array('id' => 119, 'role' => 3)), pg_contact_owner_sql(119, 'contacts.id'), 'one rule with the API');
+
+	$sql = pg_contact_owner_sql('x', 't.id');
+
+	pg_assert_same(0, strpos($sql, 't.id IN ('), 'on the column given');
+	pg_assert_contains("user_id = '0'", $sql, 'an id that is not a number reaches nobody\'s groups');
+
+	pg_assert_contains('pg_contact_owner_sql(', pg_test_ws_proposals_code('ws_change_allowed'), 'one contact');
+	pg_assert_contains('pg_contact_owner_sql(', pg_test_ws_proposals_code('ws_bulk_match'), 'the contacts a bulk change reaches');
+
+	foreach (array('ws_bulk_input', 'ws_bulk_start') as $function) {
+		pg_assert_true(preg_match('/ws_bulk_match\\(\\s*\\$spec\\s*,\\s*\\$/', pg_test_ws_proposals_code($function)) === 1, $function . ' matches for the person');
+	}
 }

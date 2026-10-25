@@ -1245,6 +1245,16 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
         return !empty($viewer['member']);
     }
 
+    // A contact, for the user role: one filed in a contact group given to
+    // the person, as on the contacts screens and in the external API
+    // (pg_contact_owner_sql()). An id outside and an id of no contact are
+    // refused alike, so a refusal tells nothing about a contact out of reach.
+    if (($type === 'contact') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
+        return (bool) db_value("SELECT 1 FROM contacts
+            WHERE contacts.id = '" . (int) $record_id . "' AND " . pg_contact_owner_sql((int) $viewer['id'], 'contacts.id') . "
+            LIMIT 1");
+    }
+
     // An event: in one of the person's calendars.
     if (($type === 'calendar_event') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
         foreach ((array) db_values("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int) $record_id . "'") as $calendar_id) {

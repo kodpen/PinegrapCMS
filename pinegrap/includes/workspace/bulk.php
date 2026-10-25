@@ -124,10 +124,14 @@ function ws_bulk_operations()
  * The ids a bulk change reaches as the records are now, in their order, at
  * most WS_BULK_MAX (and, for the card, the number there are).
  *
- * @param array $spec checked by ws_bulk_input()
+ * @param array      $spec   checked by ws_bulk_input()
+ * @param array|null $viewer the person who applies it: with the user role,
+ *                           only the contacts they may open are reached, so
+ *                           neither the count nor the sample on the card
+ *                           tells of the others
  * @return array ids, total
  */
-function ws_bulk_match($spec)
+function ws_bulk_match($spec, $viewer = null)
 {
     $types = ws_change_types();
     $type = $types[$spec['type']];
@@ -143,6 +147,12 @@ function ws_bulk_match($spec)
 
     if ($spec['type'] === 'page') {
         $where[] = '1 = 1' . (function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('t.page_folder') : '');
+    }
+
+    // A contact, for the user role: one filed in a group given to the
+    // person (ws_change_allowed()).
+    if (($spec['type'] === 'contact') && is_array($viewer) && ((int) ($viewer['role'] ?? 0) >= 3)) {
+        $where[] = pg_contact_owner_sql((int) $viewer['id'], 't.' . $key);
     }
 
     // A file of a design belongs to the design, not to the site's files.
@@ -404,7 +414,7 @@ function ws_bulk_input($asker, $bulk, $for_proposal = false)
         }
     }
 
-    $match = ws_bulk_match($spec);
+    $match = ws_bulk_match($spec, $asker);
 
     if (empty($match['ids'])) {
         return $fail(lang('No record matches. Say so in the answer instead of proposing it.'));
@@ -632,7 +642,7 @@ function ws_bulk_start($viewer, $change)
         return array('ok' => false, 'error' => lang('Deleting records in bulk is switched off in the Workspace Settings.'));
     }
 
-    $match = ws_bulk_match($spec);
+    $match = ws_bulk_match($spec, $viewer);
 
     $state['ids'] = $match['ids'];
     $state['total'] = count($match['ids']);
