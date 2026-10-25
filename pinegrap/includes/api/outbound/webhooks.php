@@ -91,7 +91,7 @@ function api_webhook_events() {
 		'contact_group.members_changed' => 'Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)',
 		'page.created'         => 'A page was created (not duplicated or imported pages)',
 		'page.updated'         => 'A page was changed through the API',
-		'product_group.created' => 'A product group was created through the API',
+		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',
 		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
 		// Uploads from the panel's file screen and writes through the API alike.
