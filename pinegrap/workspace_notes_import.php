@@ -142,20 +142,28 @@ if ($step === 'upload') {
 
     if ($earlier !== '') {
         ws_note_import_remove(ws_note_import_stage_dir($earlier));
-        unset($_SESSION['software']['ws_notes_import']);
     }
 
-    $staged = ws_note_import_stage($viewer, ws_notes_import_files($_FILES['files'] ?? null));
+    // The new stage's name is kept before the files are staged and read,
+    // and the session let go: laying out an Evernote export or reading a
+    // large zip takes a while, and every other request of this person
+    // waits on the session's lock meanwhile. A stage that then fails
+    // leaves a name with no folder, which the later steps answer as
+    // expired.
+    $upload_token = bin2hex(random_bytes(16));
+    $_SESSION['software']['ws_notes_import'] = $upload_token;
+
+    session_write_close();
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(300);
+    }
+
+    $staged = ws_note_import_stage($viewer, ws_notes_import_files($_FILES['files'] ?? null), $upload_token);
 
     if (!$staged['ok']) {
         ws_notes_import_refuse($staged['error']);
     }
-
-    $_SESSION['software']['ws_notes_import'] = $staged['token'];
-
-    // Reading a large zip takes a while; the session need not wait for it.
-    session_write_close();
-    @set_time_limit(300);
 
     $stage = ws_note_import_plan($viewer, ws_note_import_load($viewer, $staged['token']));
 
@@ -230,7 +238,9 @@ if (!$stage) {
     ws_notes_import_refuse(lang('The upload has expired. Start again.'));
 }
 
-@set_time_limit(120);
+if (function_exists('set_time_limit')) {
+    @set_time_limit(120);
+}
 
 if ($step === 'import') {
     $progress = ws_note_import_batch($viewer, $stage, (string) ($request['mode'] ?? 'update'), (array) ($request['skip'] ?? array()));
