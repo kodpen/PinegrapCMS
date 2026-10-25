@@ -18,7 +18,7 @@ description: The order screen's Paraşüt Create Invoice and E-Shipment on one o
   - `shipment_included` true: refused. The goods left stock with the invoice; Paraşüt also refuses to link such an invoice (422 "İrsaliyeli faturalar ile irsaliye ilişkilendirilemez."). A separate e-waybill needs the invoice issued without shipment.
   - 404 naming the invoice as not found (deleted on Paraşüt's screen): no invoice; the document goes unlinked and the id is cleared (erp-parasut-legacy-stale-ids.md). Any other 404 (`No route matches.`) is no answer.
   - The unsure mark `?` (erp-parasut-legacy-invoice.md) or a read that fails or does not say: refused, nothing guessed. Create Invoice settles the mark first.
-- No invoice of its own: the Paraşüt record of the order's ERP invoice is judged the same way (#PR, erp-parasut-legacy-order-gates.md); with none, E-Shipment goes as before.
+- No invoice of its own: the Paraşüt record of the order's ERP invoice is judged the same way (#1628, erp-parasut-legacy-order-gates.md); with none, E-Shipment goes as before.
 
 ## Which record carries the link?
 - A shipment document cannot be linked afterwards: `PUT shipment_documents/{id}` with `relationships.invoices` answers 200 and links nothing. So the record written second names the first: the invoice in POST `sales_invoices`, the document in POST `shipment_documents`.

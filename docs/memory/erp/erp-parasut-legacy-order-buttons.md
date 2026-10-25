@@ -9,7 +9,7 @@ description: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): 
 ## When are they not drawn?
 - When `parasut_order_documents_in_erp()`: the ERP is on and an e-document provider is active (`erp_edoc_providers.is_active`). The order's invoice is then the ERP's ("Invoice and delivery documents" card); both on one order put the same sale into Paraşüt twice (#639). A post from a page opened before is refused, pointing to the card; a sent order keeps its status.
 - Without the ERP, or with the ERP and no provider (paper invoices), the buttons work. The orders list's Paraşüt Excel export is not affected.
-- Nor for an order not complete or exported, nor Create Invoice for one the ERP invoiced via a provider: erp-parasut-legacy-order-gates.md (#PR).
+- Nor for an order not complete or exported, nor Create Invoice for one the ERP invoiced via a provider: erp-parasut-legacy-order-gates.md (#1628).
 
 ## What do the buttons do on an order already sent?
 - Each reads the record its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) names: refused while Paraşüt holds it, left out if deleted there (#1544, erp-parasut-legacy-stale-ids.md). The mark `?` is no id (erp-parasut-legacy-invoice.md). The invoice id stays once the sales invoice exists, even if its e-document failed or is converting: finish it in Paraşüt. Before #1084 each press raised another invoice and e-document (#759); before #1407 another outgoing `shipment_documents` (stock out twice). Both on one order (#1506): erp-parasut-legacy-invoice-shipment.md.
