@@ -249,6 +249,68 @@ function test_ws_task_delegation_open_row()
 	pg_assert_same(null, ws_task_delegation_open_row(array()));
 }
 
+// Calls sent at the same moment are counted and written under one lock per
+// application and person: the lock's name is the same for the same
+// application, person and database, differs for any other, and fits the 64
+// characters MySQL takes.
+function test_ws_proposal_lock_name()
+{
+	$name = ws_proposal_lock_name('shop@localhost', 'oauth:5', 12);
+
+	pg_assert_same($name, ws_proposal_lock_name('shop@localhost', 'oauth:5', 12), 'the same for the same calls');
+	pg_assert_true(strlen($name) <= 64, 'within the length of a GET_LOCK name');
+	pg_assert_true(strlen(ws_proposal_lock_name(str_repeat('d', 200), 'oauth:4294967295', 4294967295)) <= 64, 'whatever the database is called');
+	pg_assert_false($name === ws_proposal_lock_name('shop@localhost', 'oauth:6', 12), 'another client');
+	pg_assert_false($name === ws_proposal_lock_name('shop@localhost', 'app:5', 12), 'a key of the same number');
+	pg_assert_false($name === ws_proposal_lock_name('shop@localhost', 'oauth:5', 13), 'another person');
+	pg_assert_false($name === ws_proposal_lock_name('other@localhost', 'oauth:5', 12), 'another site on the same server');
+}
+
+// The limit is checked and the row written under that lock, and nothing is
+// counted again after the insert: of a burst, exactly the calls over the
+// limit are refused, never one that fitted.
+function test_ws_proposal_store_counts_under_the_lock()
+{
+	$code = pg_test_ws_proposals_code('ws_proposal_store');
+	$lock = strpos($code, 'GET_LOCK(');
+	$limited = strpos($code, 'ws_proposal_limited(');
+	$insert = strpos($code, 'INSERT INTO ws_ai_requests');
+	$release = ($insert === false) ? false : strpos($code, 'RELEASE_LOCK(', $insert);
+
+	pg_assert_true($lock !== false, 'a lock is taken');
+	pg_assert_true(($limited !== false) && ($limited > $lock), 'the limit is checked under it');
+	pg_assert_true(($insert !== false) && ($insert > $limited), 'then the row is written');
+	pg_assert_true($release !== false, 'and the lock is let go once it is');
+	pg_assert_false(($insert !== false) && (strpos($code, 'ws_proposal_count(', $insert) !== false), 'nothing is counted again after the insert');
+}
+
+// The hour slides: a refused call waits until the oldest proposal still
+// counted leaves it, at least a second, at most the hour.
+function test_ws_proposal_wait()
+{
+	$now = 1800000000;
+
+	pg_assert_same(60, ws_proposal_wait($now - 3540, $now), 'the oldest was made 59 minutes ago');
+	pg_assert_same(3600, ws_proposal_wait($now, $now), 'the oldest was made now');
+	pg_assert_same(1, ws_proposal_wait($now - 3600, $now), 'the oldest is leaving now');
+	pg_assert_same(1, ws_proposal_wait($now - 7200, $now), 'never less than a second');
+	pg_assert_same(3600, ws_proposal_wait($now + 300, $now), 'a clock ahead of this one: the hour');
+	pg_assert_same(3600, ws_proposal_wait(0, $now), 'none found: the hour');
+}
+
+// The refusal says how long to wait in its words too: over MCP the
+// Retry-After header rides on a tool result clients do not read.
+function test_ws_proposal_limit_text_says_how_long()
+{
+	$text = ws_proposal_limit_text(75);
+
+	pg_assert_contains('75', $text, 'the seconds');
+	pg_assert_contains((string) WS_PROPOSALS_PER_HOUR, $text, 'the limit');
+
+	pg_assert_true(preg_match("/'string'\\s*=>\\s*'((?:[^'\\\\]|\\\\.)*)'/", pg_test_ws_proposals_code('ws_proposal_limit_text'), $match) === 1, 'the sentence is found');
+	pg_assert_true(lang(array('string' => stripslashes($match[1] ?? ''), 'language' => 'tr', 'if_known' => true)) !== null, 'and known in tr.json');
+}
+
 // A proposal on a task is no run anybody asked for: the drawer marks it, and
 // draws the person it waits for, with no "asked" line and no instruction.
 function test_ws_task_run_is_proposal()

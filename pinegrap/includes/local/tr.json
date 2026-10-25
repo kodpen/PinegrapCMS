@@ -28168,7 +28168,6 @@
     "The proposal could not be saved.": "Öneri kaydedilemedi.",
     "An assistant proposes changes in its answer to the request it works on.": "Bir asistan değişiklikleri, üzerinde çalıştığı isteğe verdiği yanıtta önerir.",
     "Changes are proposed by an application, with its key or through an OAuth connection; signed in on your own device, change the record yourself.": "Değişiklikleri bir uygulama, kendi anahtarıyla ya da bir OAuth bağlantısı üzerinden önerir; kendi cihazınızda oturum açtıysanız kaydı kendiniz değiştirin.",
-    "This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.": "Bu uygulama son bir saatte bu kişi için {var:1} öneride bulundu. Daha fazlasını önermeden önce bekleyin.",
     "changes names at least one change.": "changes en az bir değişiklik içermeli.",
     "{var:1} change(s) proposed in #{var:2}": "#{var:2} kanalında {var:1} değişiklik önerildi",
     "{var:1} change(s) proposed on task {var:2}": "{var:2} görevinde {var:1} değişiklik önerildi",
@@ -28184,5 +28183,7 @@
     "Only the person's own team devices session (POST /auth/login) can apply or set aside a change an application proposed; an application key or an OAuth connection cannot, whichever application proposed it.": "Bir uygulamanın önerdiği değişikliği yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) uygulayabilir ya da bir kenara bırakabilir; uygulama anahtarı ya da OAuth bağlantısı, öneriyi hangi uygulama yapmış olursa olsun, bunu yapamaz.",
     "The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.": "Bu önerinin yapıldığı kişi bu türde bir kaydı ({var:1}) değiştiremez, bu yüzden önerilemez.",
     "Applied when {var:1}, to whom {var:2} proposed it, approves": "{var:2} bunu {var:1} için önerdi; {var:1} onaylayınca uygulanır",
-    "Proposed for {var:1}, {var:2}": "{var:1} için önerildi, {var:2}"
+    "Proposed for {var:1}, {var:2}": "{var:1} için önerildi, {var:2}",
+    "This application has made {var:1} proposals for this person in the last hour. Try again in {var:2} seconds.": "Bu uygulama son bir saatte bu kişi için {var:1} öneride bulundu. {var:2} saniye sonra tekrar deneyin.",
+    "Another proposal of this application for this person is being saved. Try again in a moment.": "Bu uygulamanın bu kişi için başka bir önerisi kaydediliyor. Birazdan tekrar deneyin."
 }

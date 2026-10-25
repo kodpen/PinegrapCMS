@@ -67,7 +67,7 @@ function ws_api_changes_param($applier, $required = false)
  */
 function ws_proposal_api_routes()
 {
-    $what = 'Nothing is written to a record here: this only proposes, the person applies, and the application never applies or sets aside a change itself (that is done on the card, or from the person\'s own team devices session: POST /workspace/changes/{id}/apply and /dismiss answer 403 to an application key and to every OAuth connection for a change an application proposed). Each change is checked as its card will be: the person must be allowed to change that kind of record and that record, the fields are laid against what the record holds now (the card shows from and to), and a change that alters nothing or cannot be made refuses the call with 422 naming changes[i] and why, so the call can be sent again with that change fixed or left out; nothing is kept from a refused call. The application must also hold the scope the kind of record is read with elsewhere in the API (orders:read for an order, products:read for a product or its stock, customers:read for a contact...), or the answer is 403 insufficient_scope. A user account (type user) is read by no API scope, so no application proposes a change to one: 403 forbidden naming changes[i]. Every kind of record the Workspace changes is taken here; kinds added later (sales quotes, product variants, many new records at once) join this same endpoint. At most ' . WS_CHANGES_PER_ANSWER . ' changes in a call and ' . WS_PROPOSALS_PER_HOUR . ' proposals an hour for one person from one application (429 rate_limited, Retry-After). Proposed with an application key or through an OAuth connection (agent app:<application id> or oauth:<client id>, as GET /workspace/changes lists them); a team devices session changes the record itself and is refused with 403, as are the applications Claude and Pinegrap AI work through, which propose in their answers. Each change answers with status pending until the person applies it (applied), sets it aside (dismissed), or the record changes first (stale).';
+    $what = 'Nothing is written to a record here: this only proposes, the person applies, and the application never applies or sets aside a change itself (that is done on the card, or from the person\'s own team devices session: POST /workspace/changes/{id}/apply and /dismiss answer 403 to an application key and to every OAuth connection for a change an application proposed). Each change is checked as its card will be: the person must be allowed to change that kind of record and that record, the fields are laid against what the record holds now (the card shows from and to), and a change that alters nothing or cannot be made refuses the call with 422 naming changes[i] and why, so the call can be sent again with that change fixed or left out; nothing is kept from a refused call. The application must also hold the scope the kind of record is read with elsewhere in the API (orders:read for an order, products:read for a product or its stock, customers:read for a contact...), or the answer is 403 insufficient_scope. A user account (type user) is read by no API scope, so no application proposes a change to one: 403 forbidden naming changes[i]. Every kind of record the Workspace changes is taken here; kinds added later (sales quotes, product variants, many new records at once) join this same endpoint. At most ' . WS_CHANGES_PER_ANSWER . ' changes in a call and ' . WS_PROPOSALS_PER_HOUR . ' proposals an hour for one person from one application (429 rate_limited; Retry-After and the message say in how many seconds a place frees). Proposed with an application key or through an OAuth connection (agent app:<application id> or oauth:<client id>, as GET /workspace/changes lists them); a team devices session changes the record itself and is refused with 403, as are the applications Claude and Pinegrap AI work through, which propose in their answers. Each change answers with status pending until the person applies it (applied), sets it aside (dismissed), or the record changes first (stale).';
 
     return array(
 
@@ -164,16 +164,25 @@ function ws_api_proposal_scopes($changes)
 function ws_api_proposal_limit($agent, $viewer)
 {
     if (ws_proposal_limited($agent, (int) $viewer['id'])) {
-        ws_api_proposal_limit_fail();
+        $wait = ws_proposal_retry_after($agent, (int) $viewer['id']);
+
+        ws_api_proposal_limit_fail($wait, ws_proposal_limit_text($wait));
     }
 }
 
-// The answer ws_api_proposal_limit() gives, also when the limit was reached
-// by requests sent at the same moment (ws_proposal_store()).
-function ws_api_proposal_limit_fail()
+/**
+ * The 429 of the hourly limit, also when it was reached by calls sent at the
+ * same moment or another proposal for the person was being written
+ * (ws_proposal_store()). Retry-After is when a place frees, not the whole
+ * hour.
+ *
+ * @param int    $retry_after seconds
+ * @param string $message
+ */
+function ws_api_proposal_limit_fail($retry_after, $message)
 {
-    api_extra_headers('Retry-After', '3600');
-    api_fail(429, 'rate_limited', lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.', 'vars' => WS_PROPOSALS_PER_HOUR)));
+    api_extra_headers('Retry-After', (string) max(1, (int) $retry_after));
+    api_fail(429, 'rate_limited', $message);
 }
 
 /**
@@ -184,7 +193,7 @@ function ws_api_proposal_limit_fail()
 function ws_api_proposal_store_failed($result)
 {
     if (!empty($result['limited'])) {
-        ws_api_proposal_limit_fail();
+        ws_api_proposal_limit_fail((int) ($result['retry_after'] ?? 3600), (string) $result['error']);
     }
 
     api_fail_validation($result['error'], 'text');

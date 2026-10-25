@@ -368,16 +368,20 @@ function test_ws_api_change_proposals_never_write_records()
 	pg_assert_contains('ws_bulk_input($asker, $bulk, $for_proposal)', ws_api_test_handler_source('ws_changes_input'), 'and so are many records at once');
 
 	// Requests sent at the same moment all passed the hourly count before
-	// any was written: the row is counted again once it is in, before its
+	// any was written: the count is made again under a lock of the
+	// application and the person, then the row is written, before its
 	// message goes out.
 	$at = array();
+	$steps = array('GET_LOCK(', 'ws_proposal_limited(', 'INSERT INTO ws_ai_requests', 'ws_message_send(');
 
-	foreach (array('INSERT INTO ws_ai_requests', 'ws_proposal_count(', 'ws_message_send(') as $step) {
+	foreach ($steps as $step) {
 		$at[$step] = strpos($store, $step);
 		pg_assert_true($at[$step] !== false, 'ws_proposal_store: ' . $step);
 	}
 
-	pg_assert_true(($at['INSERT INTO ws_ai_requests'] < $at['ws_proposal_count(']) && ($at['ws_proposal_count('] < $at['ws_message_send(']), 'counted again after the insert, before the message');
+	for ($i = 1; $i < count($steps); $i++) {
+		pg_assert_true($at[$steps[$i - 1]] < $at[$steps[$i]], 'ws_proposal_store: ' . $steps[$i - 1] . ' before ' . $steps[$i]);
+	}
 
 	// On a task a proposal waits for the run under way to end, so the bell
 	// at the run's end names the run, not a proposal written meanwhile.

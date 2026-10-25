@@ -460,6 +460,20 @@ function ws_proposal_request_state($row)
 }
 
 /**
+ * The proposals this application made for this person in the hour before
+ * now, as SQL over ws_ai_requests.
+ *
+ * @param string $agent
+ * @param int    $user_id
+ * @param int    $now
+ * @return string
+ */
+function ws_proposal_window_where($agent, $user_id, $now)
+{
+    return "agent = '" . e($agent) . "' AND requested_by = '" . (int) $user_id . "' AND created_at > '" . ((int) $now - 3600) . "'";
+}
+
+/**
  * How many proposals this application made for this person in the last
  * hour.
  *
@@ -469,8 +483,72 @@ function ws_proposal_request_state($row)
  */
 function ws_proposal_count($agent, $user_id)
 {
-    return (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE agent = '" . e($agent) . "' AND requested_by = '" . (int) $user_id . "' AND created_at > '" . (time() - 3600) . "'");
+    return (int) db_value("SELECT COUNT(*) FROM ws_ai_requests WHERE " . ws_proposal_window_where($agent, $user_id, time()));
+}
+
+/**
+ * How long a refused call waits before this application may propose for
+ * this person again: the hour slides, so a place frees when the oldest
+ * proposal still counted leaves it.
+ *
+ * @param int $oldest created_at of that proposal, 0 when none was found
+ * @param int $now
+ * @return int seconds, from 1 to 3600
+ */
+function ws_proposal_wait($oldest, $now)
+{
+    if ((int) $oldest <= 0) {
+        return 3600;
+    }
+
+    return max(1, min(3600, (int) $oldest + 3600 - (int) $now));
+}
+
+/**
+ * How long until this application may propose for this person again
+ * (ws_proposal_wait()). Of more proposals than the limit (made before the
+ * count was locked), the one whose leaving brings the count under it.
+ *
+ * @param string $agent
+ * @param int    $user_id
+ * @return int seconds
+ */
+function ws_proposal_retry_after($agent, $user_id)
+{
+    $now = time();
+    $where = ws_proposal_window_where($agent, $user_id, $now);
+    $over = max(0, (int) db_value("SELECT COUNT(*) FROM ws_ai_requests WHERE " . $where) - WS_PROPOSALS_PER_HOUR);
+    $oldest = (int) db_value("SELECT created_at FROM ws_ai_requests WHERE " . $where . " ORDER BY created_at ASC, id ASC LIMIT " . $over . ", 1");
+
+    return ws_proposal_wait($oldest, $now);
+}
+
+/**
+ * The refusal of the hourly limit, with the seconds to wait: over MCP the
+ * Retry-After header rides on a tool result, which a client does not read.
+ *
+ * @param int $seconds ws_proposal_retry_after()
+ * @return string
+ */
+function ws_proposal_limit_text($seconds)
+{
+    return lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Try again in {var:2} seconds.', 'vars' => array(WS_PROPOSALS_PER_HOUR, max(1, (int) $seconds))));
+}
+
+/**
+ * The name of the lock a proposal of this application for this person is
+ * counted and written under (ws_proposal_store()). GET_LOCK names belong to
+ * the whole database server, so the name carries the database; the hash
+ * keeps it within the 64 characters MySQL takes.
+ *
+ * @param string $database the database's name and host
+ * @param string $agent
+ * @param int    $user_id
+ * @return string
+ */
+function ws_proposal_lock_name($database, $agent, $user_id)
+{
+    return 'pg_ws_proposal_' . md5((string) $database . '|' . (string) $agent . '|' . (int) $user_id);
 }
 
 /**
@@ -499,7 +577,9 @@ function ws_proposal_limited($agent, $user_id)
  * @param string $text   the words, checked
  * @param array  $rows   ws_changes_input() rows
  * @param int    $app_id the application the message is written as
- * @return array ok, error, limited (the hourly limit was reached meanwhile),
+ * @return array ok, error, limited (the hourly limit was reached meanwhile,
+ *               or another proposal of the application for the person was
+ *               being written), retry_after (seconds, with limited),
  *               request_id, message_id (0 on a task)
  */
 function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
@@ -508,12 +588,31 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
     $task = $channel ? null : (isset($place['task']) ? $place['task'] : null);
     $now = time();
 
-    $fail = function ($error, $limited = false) {
-        return array('ok' => false, 'error' => $error, 'limited' => $limited, 'request_id' => 0, 'message_id' => 0);
+    $fail = function ($error, $retry_after = 0) {
+        return array('ok' => false, 'error' => $error, 'limited' => ($retry_after > 0), 'retry_after' => (int) $retry_after, 'request_id' => 0, 'message_id' => 0);
     };
 
     if (!$channel && !$task) {
         return $fail(lang('Invalid request.'));
+    }
+
+    // The limit is checked and the row written under one lock per
+    // application and person: of calls sent at the same moment, which all
+    // passed the caller's ws_proposal_limited(), exactly those over the
+    // limit are refused here, and none that fitted.
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+    $lock = ws_proposal_lock_name($database, $agent, (int) $viewer['id']);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return $fail(lang('Another proposal of this application for this person is being saved. Try again in a moment.'), 5);
+    }
+
+    if (ws_proposal_limited($agent, (int) $viewer['id'])) {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+        $wait = ws_proposal_retry_after($agent, (int) $viewer['id']);
+
+        return $fail(ws_proposal_limit_text($wait), $wait);
     }
 
     // Written answered: no queue takes it, and its cards need it from the
@@ -531,17 +630,10 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
 
     $request_id = (int) mysqli_insert_id(db::$con);
 
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
     if ($request_id <= 0) {
         return $fail(lang('The proposal could not be saved.'));
-    }
-
-    // Counted again with this row in: requests sent at the same moment all
-    // passed ws_proposal_limited() before any of them was written, so one
-    // that went over the limit is taken back here, before anything is sent.
-    if (ws_proposal_count($agent, (int) $viewer['id']) > WS_PROPOSALS_PER_HOUR) {
-        db("DELETE FROM ws_ai_requests WHERE id = '" . $request_id . "'");
-
-        return $fail(lang(array('string' => 'This application has made {var:1} proposals for this person in the last hour. Wait before proposing more.', 'vars' => WS_PROPOSALS_PER_HOUR)), true);
     }
 
     $message_id = 0;
