@@ -211,6 +211,39 @@ function test_workspace_notes_keep_stage_reads_a_takeout()
 	workspace_notes_keep_test_remove($dir, $archive);
 }
 
+function test_workspace_notes_keep_stage_caps_the_bytes_it_copies()
+{
+	$picture = random_bytes(3000);
+
+	// One picture named three times: each name would copy it out again.
+	list($dir, $archive, $entries) = workspace_notes_keep_test_zip(array(
+		'Takeout/Keep/Pictures.json' => workspace_notes_keep_test_json(array(
+			'title'       => 'Pictures',
+			'textContent' => '',
+			'attachments' => array(
+				array('filePath' => 'p.png', 'mimetype' => 'image/png'),
+				array('filePath' => 'p.png', 'mimetype' => 'image/png'),
+				array('filePath' => 'p.png', 'mimetype' => 'image/png'),
+			),
+		)),
+		'Takeout/Keep/p.png' => $picture,
+	));
+
+	$read = ws_note_keep_stage($dir, $archive, $entries, 7000);
+
+	pg_assert_true($read['ok'], 'read: ' . $read['error']);
+	pg_assert_same(4, count($read['entries']), 'the note and its three pictures');
+
+	$stage = array('dir' => $dir, 'zip' => false, 'entries' => $read['entries']);
+
+	pg_assert_same($picture, ws_note_import_read($stage, 1, 3000), 'the first copy');
+	pg_assert_same($picture, ws_note_import_read($stage, 2, 3000), 'the second, still under the ceiling');
+	pg_assert_false(ws_note_import_read($stage, 3, 3000), 'the third would pass the ceiling: counted, not copied');
+	pg_assert_same(3, count(glob($dir . '/files/*')), 'two pictures and the note on disk');
+
+	workspace_notes_keep_test_remove($dir, $archive);
+}
+
 function test_workspace_notes_keep_stage_leaves_other_zips()
 {
 	list($dir, $archive, $entries) = workspace_notes_keep_test_zip(array(

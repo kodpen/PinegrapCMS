@@ -275,14 +275,20 @@ function ws_note_keep_attachment($lookup, $dir, $path)
  * upload. A zip without a Keep note is left alone (keep false) and read as
  * an upload of Markdown files; one with Keep notes is read for them only.
  *
- * @param string     $dir     the stage folder (its files/ is made here)
- * @param ZipArchive $archive the uploaded zip, open
- * @param array      $entries the zip's entries as ws_note_import_stage()
- *                            lists them: name, size, time, index
+ * Attachments are copied out of the zip only up to $bytes_max in all, the
+ * bytes one import may link: a small zip can name one large, well packed
+ * picture any number of times, and each name would copy it out again.
+ *
+ * @param string     $dir       the stage folder (its files/ is made here)
+ * @param ZipArchive $archive   the uploaded zip, open
+ * @param array      $entries   the zip's entries as ws_note_import_stage()
+ *                              lists them: name, size, time, index
+ * @param int|null   $bytes_max attachment bytes copied in all; null for
+ *                              WS_NOTE_IMPORT_FILES_BYTES
  * @return array keep, ok, error, entries (as ws_note_import_stage() keeps
  *               them; an attachment's row carries a fifth value, 1)
  */
-function ws_note_keep_stage($dir, $archive, $entries)
+function ws_note_keep_stage($dir, $archive, $entries, $bytes_max = null)
 {
     $out = array('keep' => false, 'ok' => false, 'error' => '', 'entries' => array());
     $lookup = array('path' => array(), 'lower' => array(), 'stem' => array());
@@ -324,13 +330,15 @@ function ws_note_keep_stage($dir, $archive, $entries)
     }
 
     $context = array(
-        'dir'      => $dir,
-        'next'     => 0,
-        'notes'    => 0,
-        'taken'    => array(),
-        'entries'  => array(),
-        'file_max' => function_exists('ws_upload_max_bytes') ? ws_upload_max_bytes() : 20971520,
-        'error'    => '',
+        'dir'       => $dir,
+        'next'      => 0,
+        'notes'     => 0,
+        'taken'     => array(),
+        'entries'   => array(),
+        'file_max'  => function_exists('ws_upload_max_bytes') ? ws_upload_max_bytes() : 20971520,
+        'bytes'     => 0,
+        'bytes_max' => ($bytes_max !== null) ? (int) $bytes_max : WS_NOTE_IMPORT_FILES_BYTES,
+        'error'     => '',
     );
 
     foreach ($notes as $pair) {
@@ -397,7 +405,9 @@ function ws_note_keep_add($archive, $lookup, $row, $note, &$context)
             continue;
         }
 
-        if ((int) $source[1] > $context['file_max']) {
+        // Past what a note keeps, or past what the whole import may copy:
+        // counted only.
+        if (((int) $source[1] > $context['file_max']) || (($context['bytes'] + (int) $source[1]) > $context['bytes_max'])) {
             $rows[] = array($folder . $file_name, (int) $source[1], $time, $context['next']++, 1);
             continue;
         }
@@ -418,6 +428,7 @@ function ws_note_keep_add($archive, $lookup, $row, $note, &$context)
             return false;
         }
 
+        $context['bytes'] += strlen($bytes);
         $rows[] = array($folder . $file_name, strlen($bytes), $time, $file_number, 1);
     }
 

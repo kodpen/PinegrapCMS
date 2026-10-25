@@ -15,6 +15,7 @@ description: Google Keep notes from a Takeout zip (notes_keep.php, PR #1656): fo
 
 ## What happens to the pictures?
 - Each attachment is copied out of the zip to `attachments/<n>/<name>` (a row with a fifth value `1`, never read as a note) and linked at the end of the text. The path beside the note is tried, then in any case, then a file of the same name with another extension (Takeout names a picture `.jpeg` in the note and `.jpg` in the zip). One the zip lacks keeps its link, which the preview reports as missing; one past `ws_upload_max_bytes()` is counted only, so its link becomes words at import, as for a zip.
+- All attachments together are copied only up to `WS_NOTE_IMPORT_FILES_BYTES` (512 MB, the bytes one import may link); the rest are counted only. Without that ceiling a zip of a few KB naming one well-packed picture thousands of times filled the disk, each name copying it out again (found in the merge review of #1656).
 
 ## Where are the tests?
-- tests/workspace_notes_keep_test.php: times, the Keep shape, titles, the body, a Takeout zip read into a stage, a zip without Keep notes left alone, a zip of binned notes refused. The hook in `ws_note_import_stage()` needs a real upload and is not unit-tested.
+- tests/workspace_notes_keep_test.php: times, the Keep shape, titles, the body, a Takeout zip read into a stage, a zip without Keep notes left alone, a zip of binned notes refused, the byte ceiling on copied attachments. The hook in `ws_note_import_stage()` needs a real upload and is not unit-tested.
