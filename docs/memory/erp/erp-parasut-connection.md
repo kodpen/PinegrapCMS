@@ -17,9 +17,9 @@ description: How Pinegrap connects to Paraşüt (authorization code or password 
 - The token endpoint gets the client as HTTP Basic and in the body; grants carry `redirect_uri` = `PARASUT_REDIRECT_URI`.
 
 ## What is the owner stamp?
-- `_parasut_token_owner()`: md5(company|client id|user name) for a password token, md5(company|client id|) for a code token (#PR): the user name box serves the password grant only. Before, Connect stamped with the `PARASUT_USERNAME` read before Save wrote the box: Save with a code, or a later user name change, orphaned the token.
+- `_parasut_token_owner()`: md5(company|client id|user name) for a password token, md5(company|client id|) for a code token (#1599): the user name box serves the password grant only. Before, Connect stamped with the `PARASUT_USERNAME` read before Save wrote the box: Save with a code, or a later user name change, orphaned the token.
 - Older code tokens: one stamped with an empty box has the new stamp; one stamped with a user name is read while that name stays saved, and the next renewal or `parasut_token_forget()` restamps it. No upgrade step.
-- On a store connected by code, a user name and password saved under Advanced no longer replace the code token: it keeps renewing, and the password grant runs only when a refresh fails. Before #PR, saving another user name orphaned it and the password grant took over.
+- On a store connected by code, a user name and password saved under Advanced no longer replace the code token: it keeps renewing, and the password grant runs only when a refresh fails. Before #1599, saving another user name orphaned it and the password grant took over.
 
 ## What happens when the refresh token dies?
 - Paraşüt rotates the refresh token: every refresh answers a new one and retires the old (API documentation; access token lives 2 h). The new one is saved over the old. A request that renewed in parallel leaves the other holding a retired token, so `invalid_grant` first re-reads the cache and uses one another request has just stored.
