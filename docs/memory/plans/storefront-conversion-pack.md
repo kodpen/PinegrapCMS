@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 2a. (PR #698) Review gate (comment form, `add_comment.php`), "Verified purchase" badge, rating refreshed on writes and daily, `aggregateRating` in legacy detail markup, store reply (moderation, under the review) (`includes/fn/reviews.php`).
 2b. (PR #1316) `order_review_request` e-mail once per order when an account's order ships, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
 3a. (PR #1583) Wishlist core: owners, visitor cookie, `wishlist.php`, merge at sign-in, privacy export, trim (`commerce/wishlist.md`).
-3c. (PR #TBD) Favourites widget and page, My Account link (`designer/wishlist-widget.md`).
+3c. (PR #1585) Favourites widget and page, My Account link (`designer/wishlist-widget.md`).
 
 ## What remains?
 2c. Designer: `__rating_avg`, `__rating_count`, `__reviews` tokens and a review form on designer product pages (comments are page-level there), then aggregateRating in `_pg_build_product_jsonld()` (M).
