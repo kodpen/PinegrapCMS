@@ -3298,10 +3298,16 @@ function pg_comments_widget_draw($tree, $data)
         $html = _pg_sw_resolve_visibility($loop_tpl, $comments_row_flags + $comments_thread_flags + $internal);
 
         // The date takes the design's format the way a record's date field
-        // does, before any visitor text is in the markup.
+        // does, before any visitor text is in the markup. An e-mail fills
+        // it itself: the record rules would write a relative time, and the
+        // signed-in sender's own time zone, into mail read later elsewhere.
         if (($datetime !== '') && (strpos($html, '^^__comment_datetime^^') !== false)) {
-            $html = pg_sw_apply_tokens($html, array('__comment_datetime' => $datetime), array(), array(),
-                array('__comment_datetime' => array('label' => '', 'sql' => '', 'type' => 'date and time', 'join' => array())));
+            if (!empty($comments_thread_flags['is_email'])) {
+                $html = pg_comments_email_fill_datetime($html, $datetime);
+            } else {
+                $html = pg_sw_apply_tokens($html, array('__comment_datetime' => $datetime), array(), array(),
+                    array('__comment_datetime' => array('label' => '', 'sql' => '', 'type' => 'date and time', 'join' => array())));
+            }
         }
 
         $html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, pg_comments_widget_escape($values + $thread_values)));
@@ -3623,6 +3629,51 @@ function pg_comments_email_row_values($row, $flags, $site_base, $dates)
 }
 
 /**
+ * Fill every ^^__comment_datetime^^ of a comment e-mail's row markup with
+ * the comment's time ($datetime, 'Y-m-d H:i:s' in the site's zone), escaped
+ * as the token escape writes a value. Pure but for the translation of the
+ * default format.
+ *
+ * The design's %%format%% is kept, written with date() in the site's time
+ * zone; no format and the 'relative' one take the default display shape
+ * (pg_sw_default_date_format()). The record date rules
+ * (prepare_form_data_for_output()) are not used: they would freeze a
+ * relative time at sending ("a moment ago" once the e-mail is read later)
+ * and, for a signed-in sender with a zone of their own, write the tooltip
+ * and any zone format (T, e) in the sender's zone, not the recipients'
+ * site's. A $datetime that does not read as a time leaves the markup alone
+ * for the token sweep.
+ *
+ * @param mixed $html
+ * @param mixed $datetime
+ * @return mixed the markup, or $html when it is not a string
+ */
+function pg_comments_email_fill_datetime($html, $datetime)
+{
+    if (!is_string($html) || !is_string($datetime) || ($datetime === '')) {
+        return $html;
+    }
+
+    $timestamp = strtotime($datetime);
+
+    if ($timestamp === false) {
+        return $html;
+    }
+
+    return preg_replace_callback('/\^\^__comment_datetime\^\^(?:%%(.*?)%%)?/', function ($match) use ($timestamp) {
+        // A format typed into the rich-text editor may carry HTML entities,
+        // which date() would read as format characters.
+        $format = isset($match[1]) ? unhtmlspecialchars($match[1]) : '';
+
+        if (($format === '') || ($format === 'relative')) {
+            $format = pg_sw_default_date_format('date and time');
+        }
+
+        return h(date($format, $timestamp));
+    }, $html);
+}
+
+/**
  * Whether the e-mail branch leaves a node out of the widget's tree: a
  * semantic form, input, select, textarea or button, a button component
  * drawn as a button or an input, a node shown only while the form answers
@@ -3763,7 +3814,8 @@ function _pg_comments_email_strip_walk(&$node, $depth)
  * reply_ok (pg_comments_email_reply_ok()), base and query
  * (pg_comments_email_link_values()), site (the site's absolute address),
  * dates (pg_comments_email_row_values()), badge_label (the site's).
- * ^^__comment_datetime^^ is always given: the comment's time.
+ * ^^__comment_datetime^^ is always given: the comment's time, which the
+ * draw writes with pg_comments_email_fill_datetime() (flag is_email).
  *
  * @param mixed $comment the comment's row
  * @param mixed $parent  the answered comment's row, or null

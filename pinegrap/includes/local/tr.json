@@ -28263,5 +28263,6 @@
     "The page \"{var:1}\" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.": "\"{var:1}\" sayfası bir Form Öğesi Görünümü widget'ını başka bir bileşenin içine yerleştiriyor: Yorumlar widget'ı orada hiçbir şey göstermez. Form Öğesi Görünümü'nü doğrudan sayfaya yerleştirin.",
     "Comments are off for the page \"{var:1}\": its Comments widget draws nothing. Turn them on in the widget's comment settings.": "\"{var:1}\" sayfasında yorumlar kapalı: Yorumlar widget'ı hiçbir şey göstermez. Widget'ın yorum ayarlarından açın.",
     "Shown while new comments are off. Leave it empty to show no message.": "Yeni yorumlar kapalıyken gösterilir. Boş bırakırsanız mesaj gösterilmez.",
-    "Drawn in a comment e-mail": "Bir yorum e-postasında gösteriliyor"
+    "Drawn in a comment e-mail": "Bir yorum e-postasında gösteriliyor",
+    "E-mails send the fixed comment markup instead: the comment card needs a link to the comment that every comment shows, such as the Share link.": "E-postalar bunun yerine sabit yorum içeriğini gönderir: yorum kartında her yorumda görünen, yoruma giden bir bağlantı olmalı (örneğin Paylaş bağlantısı)."
 }

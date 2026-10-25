@@ -11039,6 +11039,7 @@ const StyleDesigner = (function () {
                 // Sample comments after the card (canvas only), drawn while
                 // the widget's settings and tree are the ones read.
                 _sdAppendCommentSamples(doc, inner, cached, _sysCfg);
+                _sdAppendCommentsEmailNote(doc, inner, cached, _sysCfg);
                 _sysWidgetRenderCfg = _prevCfg;
                 _sysWidgetRenderTreeRoot = _prevRoot;
                 // Real records after the card being designed (canvas only).
@@ -11491,14 +11492,110 @@ const StyleDesigner = (function () {
         return b.action === 'comment_reply_cancel';
     }
 
+    // Whether a comment e-mail draws its comment from a comments widget's
+    // tree. The server's e-mail branch keeps its draw only when the comment
+    // carries a link to itself (pg_comments_email_drew(),
+    // widgets_comments.php); otherwise the widget prints nothing and the
+    // e-mail keeps its fixed comment markup. `flags` are the e-mail's
+    // thread flags.
+    // - The card is the first loop area left after what the e-mail strips
+    //   (_sdCommentsEmailDrops()); with none, or an empty one, the server
+    //   draws its default card, which has the Share link.
+    // - The card is lost below a box whose flag is false in an e-mail (the
+    //   comment's own flags are not known there), a comments section, or
+    //   the share, reply, watch or open-or-close control.
+    // - In the card a link to the comment is the Share control drawn as a
+    //   link (a link, an <a>, a button component drawn as a link), a link
+    //   whose address is bound to __comment_url or reads
+    //   ^^__comment_url^^, or a content node's markup with
+    //   href="^^__comment_url^^". It does not count below what the e-mail
+    //   strips, a comments section, another control or small form, or a
+    //   flag an e-mail's comment may lack: every comment flag but
+    //   comment_is_root, whatever the comment, as the canvas cannot know it.
+    // tests/comments_widget_email_test.php compares it with the server's
+    // draw, case by case.
+    function _sdCommentsEmailDrawsComment(root, flags) {
+        flags = flags || {};
+        var token = '^^__comment_url^^';
+        var sections = ['comment_captcha', 'comment_rating_input', 'comment_publish', 'comment_watchers', 'comment_pagination'];
+        var pathControls = ['comment_share', 'comment_reply', 'comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'];
+        var cardControls = ['comment_reply', 'comment_reply_cancel', 'comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen',
+            'comment_watch_form', 'comment_allow_new_form'];
+        var str = function (v) { return (typeof v === 'string') ? v : ''; };
+        var propsOf = function (n) {
+            return (n.props && typeof n.props === 'object' && !Array.isArray(n.props)) ? n.props : {};
+        };
+        var bindingsOf = function (n) {
+            var b = propsOf(n)._bindings;
+            return (b && typeof b === 'object' && !Array.isArray(b)) ? b : {};
+        };
+        // A flag the e-mail's thread flags hold decides; in the card,
+        // comment_is_root holds for every e-mail's comment; any other flag
+        // leaves the node out.
+        var flagOn = function (f, inCard) {
+            if (!f) return true;
+            if (Object.prototype.hasOwnProperty.call(flags, f)) return !!flags[f];
+            return inCard && f === 'comment_is_root';
+        };
+        var linkLike = function (n) {
+            var p = propsOf(n);
+            if (n.type === 'content') return p.contentType === 'link';
+            if (n.type === 'semantic') return str(p.tag).toLowerCase() === 'a';
+            return n.type === 'component' && p.componentType === 'btn';
+        };
+        // The node itself reaches the comment's permalink. A bound address
+        // wins over a typed one, and a format written after it
+        // (_bindFormats) leaves the token unanswered, as _apply_bindings()
+        // writes it.
+        var linksHere = function (n) {
+            var p = propsOf(n);
+            var b = bindingsOf(n);
+            if (b.action === 'comment_share') return linkLike(n);
+            if (linkLike(n)) {
+                var bound = str(b.href).replace(/[^a-z0-9_\-]/gi, '');
+                var formats = (p._bindFormats && typeof p._bindFormats === 'object') ? p._bindFormats : {};
+                var format = str(formats.href).replace(/[^A-Za-z0-9 \/.:,\-]/g, '');
+                if (bound !== '' ? (bound === '__comment_url' && format === '') : (p.href === token)) return true;
+            }
+            return n.type === 'content' && (str(p.text).indexOf('href="' + token + '"') !== -1 || str(p.html).indexOf('href="' + token + '"') !== -1);
+        };
+        var cardLinks = function (n) {
+            if (!n || typeof n !== 'object' || _sdCommentsEmailDrops(n)) return false;
+            var b = bindingsOf(n);
+            if (!flagOn(str(b.eo_visible_if), true)) return false;
+            if (sections.indexOf(b.section) !== -1 || cardControls.indexOf(b.action) !== -1) return false;
+            if (linksHere(n)) return true;
+            if (b.action === 'comment_share') return false;
+            return Array.isArray(n.children) && n.children.some(cardLinks);
+        };
+        var found = null;
+        (function walk(n, trail) {
+            if (found || !n || typeof n !== 'object' || _sdCommentsEmailDrops(n)) return;
+            if (n.type === 'loop_area') { found = { loop: n, path: trail }; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, trail.concat([n])); });
+        })(root, []);
+        if (!found || !Array.isArray(found.loop.children) || !found.loop.children.length) return true;
+        // The tree's root draws whatever its own flag; the loop area's flag
+        // is not read either.
+        var reached = found.path.slice(1).every(function (n) {
+            var b = bindingsOf(n);
+            return flagOn(str(b.eo_visible_if), false) && sections.indexOf(b.section) === -1 && pathControls.indexOf(b.action) === -1;
+        });
+        return reached && found.loop.children.some(cardLinks);
+    }
+
     // Whether the canvas leaves a node of a comments widget out of the state
     // it draws: the loop area (the comment card) without comments, a node
     // shown only when a thread flag is false, and in the e-mail state what
-    // the e-mail strips. A comment's own flags hide a node only in a sample
-    // comment (_sdCommentSample); the card shows every part of a comment.
+    // the e-mail strips, or the whole widget when an e-mail draws no
+    // comment from it (_sdCommentsEmailDrawsComment(): the e-mail keeps its
+    // fixed markup; _sdAppendCommentsEmailNote() says so). A comment's own
+    // flags hide a node only in a sample comment (_sdCommentSample); the
+    // card shows every part of a comment.
     function _sdCommentsFlagOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return false;
         var flags = _sdCommentsCanvasFlags(cfg);
+        if (flags.is_email && node.type === 'root' && node === _sysWidgetRenderTreeRoot && !_sdCommentsEmailDrawsComment(node, flags)) return true;
         if (flags.is_email && _sdCommentsEmailDrops(node)) return true;
         if (node.type === 'loop_area') return !flags.has_comments;
         var f = (node.props && node.props._bindings) ? node.props._bindings.eo_visible_if : '';
@@ -11513,8 +11610,8 @@ const StyleDesigner = (function () {
     // The state that shows a node of the widget's tree: the one drawn when it
     // does, else the first that does, else the one drawn. Read from the
     // thread flags on the way from the root to the node (the loop area needs
-    // comments; the e-mail state, nothing it strips); a node outside the tree
-    // keeps the state.
+    // comments; the e-mail state, nothing it strips and a tree an e-mail
+    // draws its comment from); a node outside the tree keeps the state.
     function _sdCommentsStateFor(root, target, cfg) {
         var current = _sdCommentsCanvasState;
         var path = null;
@@ -11533,7 +11630,7 @@ const StyleDesigner = (function () {
         });
         var shows = function (state) {
             var flags = _sdCommentsThreadFlags(_sdCommentsCanvasFacts(state, cfg));
-            if (flags.is_email && path.some(function (n) { return _sdCommentsEmailDrops(n); })) return false;
+            if (flags.is_email && (path.some(function (n) { return _sdCommentsEmailDrops(n); }) || !_sdCommentsEmailDrawsComment(root, flags))) return false;
             return need.every(function (f) { return !Object.prototype.hasOwnProperty.call(flags, f) || flags[f]; });
         };
         if (shows(current)) return current;
@@ -11677,6 +11774,20 @@ const StyleDesigner = (function () {
             note.textContent = '· ' + _sdT('{var} sample comments after the card', samples.length);
             band.appendChild(note);
         }
+    }
+
+    // In the e-mail state, a widget an e-mail draws no comment from
+    // (_sdCommentsEmailDrawsComment()) is left out, as the e-mail leaves it
+    // out; this note takes its place and says what the card needs. Editor
+    // chrome only (sd-system-empty-hint: the canvas checks skip it).
+    function _sdAppendCommentsEmailNote(doc, inner, cached, cfg) {
+        if (!cfg || cfg.regionType !== 'comments' || !cached || !cached.tree) return;
+        var thread = _sdCommentsCanvasFlags(cfg);
+        if (!thread.is_email || _sdCommentsEmailDrawsComment(cached.tree, thread)) return;
+        var note = doc.createElement('div');
+        note.className = 'sd-system-empty-hint sd-comments-email-note';
+        note.textContent = _sdT('E-mails send the fixed comment markup instead: the comment card needs a link to the comment that every comment shows, such as the Share link.');
+        inner.appendChild(note);
     }
 
     // The page's own words in a comments widget's tokens, read live from the

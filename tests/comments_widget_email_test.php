@@ -657,6 +657,229 @@ function test_comments_widget_email_draw_without_the_comment()
 	pg_assert_false(pg_comments_email_drew($html, 12, $url), 'a share button is no link to the comment');
 }
 
+// The default tree with $node added at the end of the comment card's body,
+// or with the card's Share link taken out first ($share false).
+function comments_widget_email_test_card($node, $share = true)
+{
+	$tree = pg_comments_default_tree();
+	$body = &$tree['children'][0]['children'][1]['children'][0]['children'][0]['children'][1]['children'][0]['children'];
+
+	if (!$share) {
+		array_pop($body[count($body) - 1]['children']);
+	}
+
+	if ($node !== null) {
+		$body[] = $node;
+	}
+
+	unset($body);
+
+	return $tree;
+}
+
+// The default tree with the comment list moved into a box with $props.
+function comments_widget_email_test_list_in($props)
+{
+	$tree = pg_comments_default_tree();
+	$tree['children'][0]['children'][1] = array('type' => 'semantic', 'props' => $props, 'children' => array($tree['children'][0]['children'][1]));
+
+	return $tree;
+}
+
+// The canvas's e-mail state draws the widget only when the e-mail would
+// draw the comment from it: _sdCommentsEmailDrawsComment() in
+// style_designer.js answers what the server's draw (strip, draw, drew)
+// answers, for the ways a design links to the comment and the boxes, flags,
+// sections and controls that take a link or the list away. A flag a comment
+// may lack (here comment_has_quote, on a comment that quotes none) never
+// counts on the canvas, which cannot know the comment.
+function test_comments_widget_email_draws_comment_twin()
+{
+	if (!comments_widget_email_test_has(array('pg_comments_email_drew', 'comments_widget_designer_test_node'))) {
+		return;
+	}
+
+	$n = function ($type, $props, $children = array()) {
+		return array('type' => $type, 'props' => $props, 'children' => $children);
+	};
+	$share = $n('semantic', array('tag' => 'a', 'text' => 'Link', '_bindings' => array('action' => 'comment_share')));
+	$box = function ($bindings, $child = null) use ($n, $share) {
+		return $n('semantic', array('tag' => 'div', '_bindings' => $bindings), array(($child === null) ? $share : $child));
+	};
+	$markup = '<a href="^^__comment_url^^">it</a>';
+	$no_loop = pg_comments_default_tree();
+	array_splice($no_loop['children'][0]['children'], 1, 1);
+	$empty_loop = pg_comments_default_tree();
+	$empty_loop['children'][0]['children'][1]['children'][0]['children'] = array();
+	$loop_flag = pg_comments_default_tree();
+	$loop_flag['children'][0]['children'][1]['children'][0]['props']['_bindings'] = array('eo_visible_if' => 'is_signed_in');
+
+	$cases = array(
+		'starter' => array(pg_comments_default_tree(), true),
+		'no share link' => array(comments_widget_email_test_card(null, false), false),
+		'share as a button' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'button', 'text' => 'x', '_bindings' => array('action' => 'comment_share'))), false), false),
+		'share as a button component' => array(comments_widget_email_test_card($n('component', array('componentType' => 'btn', 'btnElement' => 'button', '_bindings' => array('action' => 'comment_share'))), false), false),
+		'share as a link component' => array(comments_widget_email_test_card($n('component', array('componentType' => 'btn', 'btnElement' => 'a', '_bindings' => array('action' => 'comment_share'))), false), true),
+		'share as a link' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', '_bindings' => array('action' => 'comment_share'))), false), true),
+		'share on a div' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'div', 'text' => 'x', '_bindings' => array('action' => 'comment_share'))), false), false),
+		'<a> bound to the address' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_url'))), false), true),
+		'<a> bound with a format' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_url'), '_bindFormats' => array('href' => 'Y'))), false), false),
+		'link reading the address' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', 'href' => '^^__comment_url^^')), false), true),
+		'link reading it, bound elsewhere' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', 'href' => '^^__comment_url^^', '_bindings' => array('href' => '__comment_parent_url'))), false), false),
+		'button component bound to it' => array(comments_widget_email_test_card($n('component', array('componentType' => 'btn', 'text' => 'x', '_bindings' => array('href' => '__comment_url'))), false), true),
+		'<a> with a space before it' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', 'href' => ' ^^__comment_url^^')), false), false),
+		'div bound to it' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'div', 'text' => 'x', '_bindings' => array('href' => '__comment_url'))), false), false),
+		'picture with it' => array(comments_widget_email_test_card($n('content', array('contentType' => 'image', 'src' => 'a.png', 'href' => '^^__comment_url^^')), false), false),
+		'custom HTML' => array(comments_widget_email_test_card($n('content', array('contentType' => 'custom_html', 'html' => $markup)), false), true),
+		'custom HTML, single quotes' => array(comments_widget_email_test_card($n('content', array('contentType' => 'custom_html', 'html' => "<a href='^^__comment_url^^'>it</a>")), false), false),
+		'heading words' => array(comments_widget_email_test_card($n('content', array('contentType' => 'heading', 'tag' => 'h3', 'text' => 'See ' . $markup)), false), true),
+		'bound heading words' => array(comments_widget_email_test_card($n('content', array('contentType' => 'heading', 'tag' => 'h3', 'text' => $markup, '_bindings' => array('text' => '__comment_name'))), false), true),
+		'semantic paragraph words' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'p', 'text' => 'See ' . $markup)), false), false),
+		'share under is_signed_in' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'is_signed_in')), false), false),
+		'share under has_comments' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'has_comments')), false), true),
+		'share under is_email' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'is_email')), false), true),
+		'share under comment_is_root' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'comment_is_root')), false), true),
+		'share under comment_is_reply' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'comment_is_reply')), false), false),
+		'share under comment_has_rating' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'comment_has_rating')), false), false),
+		'share under comment_has_quote' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'comment_has_quote')), false), false, true),
+		'share under an unknown flag' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'whatever')), false), false),
+		'share in a comments section' => array(comments_widget_email_test_card($box(array('section' => 'comment_pagination')), false), false),
+		'share in another section' => array(comments_widget_email_test_card($box(array('section' => 'foo')), false), true),
+		'share in the watch form' => array(comments_widget_email_test_card($box(array('action' => 'comment_watch_form')), false), false),
+		'share in the staff form' => array(comments_widget_email_test_card($box(array('action' => 'comment_allow_new_form')), false), false),
+		'share in a watch control' => array(comments_widget_email_test_card($box(array('action' => 'comment_unwatch')), false), false),
+		'share in the reply control' => array(comments_widget_email_test_card($box(array('action' => 'comment_reply')), false), false),
+		'share in a div posting comments' => array(comments_widget_email_test_card($box(array('action' => 'comment_form')), false), true),
+		'share in a form' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'form'), array($share)), false), false),
+		'share in the replying box' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'is_replying')), false), false),
+		'list under is_signed_in' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'is_signed_in'))), false),
+		'list under has_comments' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'has_comments'))), true),
+		'list under comment_is_root' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'comment_is_root'))), false),
+		'list in a comments section' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('section' => 'comment_captcha'))), false),
+		'list in another section' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('section' => 'foo'))), true),
+		'list in a watch control' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('action' => 'comment_watch'))), false),
+		'list in the share control' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('action' => 'comment_share'))), false),
+		'list in the watch form' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('action' => 'comment_watch_form'))), true),
+		'list in a form: the default card' => array(comments_widget_email_test_list_in(array('tag' => 'form')), true),
+		'a flag on the loop area itself' => array($loop_flag, true),
+		'no loop area: the default card' => array($no_loop, true),
+		'an empty loop area: the default card' => array($empty_loop, true),
+	);
+
+	$data = comments_widget_email_test_data();
+	$plain = comments_widget_email_test_data(array('parent' => null));
+	$trees = array();
+
+	foreach ($cases as $name => $case) {
+		$trees[$name] = $case[0];
+	}
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment'),
+		'var trees = ' . json_encode($trees) . ";\nvar flags = " . json_encode($data['thread_flags']) . ";\nvar out = {};\n"
+		. "Object.keys(trees).forEach(function (k) { out[k] = _sdCommentsEmailDrawsComment(trees[k], flags); });\n"
+		. "process.stdout.write(JSON.stringify(out));\n");
+	if ($res === null) {
+		return;
+	}
+
+	foreach ($cases as $name => $case) {
+		$use = empty($case[2]) ? $data : $plain;
+		list($html) = comments_widget_email_test_drawn($case[0], $use);
+		pg_assert_same($case[1], pg_comments_email_drew($html, 12, $use['rows'][0]['values']['__comment_url']), 'the server: ' . $name);
+		pg_assert_same($case[1], isset($res[$name]) ? $res[$name] : null, 'the canvas: ' . $name);
+	}
+
+	list($quoted) = comments_widget_email_test_drawn($cases['share under comment_has_quote'][0], $data);
+	pg_assert_true(pg_comments_email_drew($quoted, 12, $data['rows'][0]['values']['__comment_url']), 'a comment that quotes one does draw it: the flag depends on the comment');
+}
+
+// ^^__comment_datetime^^ in an e-mail: the comment's time in the site's
+// zone, in the design's format; without one, or with the relative one, in
+// the default display shape. "3 hours ago" is wrong once the e-mail is read.
+function test_comments_widget_email_fill_datetime()
+{
+	if (!comments_widget_email_test_has('pg_comments_email_fill_datetime')) {
+		return;
+	}
+
+	$at = '2025-10-24 05:00:00';
+	$ts = strtotime($at);
+	$default = h(date(pg_sw_default_date_format('date and time'), $ts));
+
+	pg_assert_same('<span>' . $default . '</span>', pg_comments_email_fill_datetime('<span>^^__comment_datetime^^%%relative%%</span>', $at), 'the relative format gives the default shape');
+	pg_assert_same('<span>' . $default . '</span>', pg_comments_email_fill_datetime('<span>^^__comment_datetime^^</span>', $at), 'no format, the default shape');
+	pg_assert_same('<b>' . h(date('Y-m-d H:i T', $ts)) . '</b>', pg_comments_email_fill_datetime('<b>^^__comment_datetime^^%%Y-m-d H:i T%%</b>', $at), 'the design\'s format, in the site\'s zone');
+	pg_assert_same('24.10.2025 &amp; 05:00', pg_comments_email_fill_datetime('^^__comment_datetime^^%%d.m.Y &amp; H:i%%', $at), 'a format the editor stored with entities, escaped once');
+	pg_assert_same('<time datetime="' . h(date('c', $ts)) . '">' . $default . '</time>',
+		pg_comments_email_fill_datetime('<time datetime="^^__comment_datetime^^%%c%%">^^__comment_datetime^^%%relative%%</time>', $at), 'every slot, an attribute too');
+	pg_assert_same('^^__comment_name^^ ^^__comment_date^^ ^^__comment_datetimes^^', pg_comments_email_fill_datetime('^^__comment_name^^ ^^__comment_date^^ ^^__comment_datetimes^^', $at), 'other tokens stay');
+	pg_assert_same('^^__comment_datetime^^%%relative%%', pg_comments_email_fill_datetime('^^__comment_datetime^^%%relative%%', ''), 'no time: left to the sweep');
+	pg_assert_same('^^__comment_datetime^^', pg_comments_email_fill_datetime('^^__comment_datetime^^', 'not a time'), 'a time that does not read: left to the sweep');
+	pg_assert_same(null, pg_comments_email_fill_datetime(null, $at), 'no markup');
+	pg_assert_false(strpos(pg_comments_email_fill_datetime('^^__comment_datetime^^%%relative%%', date('Y-m-d H:i:s')), '<time'), 'no relative time tag');
+
+	$draw = comments_widget_email_test_php_body('pg_comments_widget_draw');
+	$email = strpos($draw, "if (!empty(\$comments_thread_flags['is_email']))");
+	$fill = strpos($draw, 'pg_comments_email_fill_datetime(');
+	$tokens = strpos($draw, 'pg_sw_apply_tokens(');
+	pg_assert_true(($email !== false) && ($fill !== false) && ($tokens !== false) && ($email < $fill) && ($fill < $tokens), 'an e-mail\'s draw fills the time itself, a page\'s through the record date rules');
+}
+
+// The sender's request may be signed in with a zone of its own (a moderator
+// publishing in edit_comment.php, a member posting a reply): the comment's
+// time still reads in the site's zone, never as a relative time with the
+// sender's zone in its tooltip. Drawn in a PHP process of its own, which
+// defines who is signed in.
+function test_comments_widget_email_datetime_ignores_the_sender()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcwemail');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('USER_LOGGED_IN', true);\n"
+		. "define('USER_TIMEZONE', 'Asia/Tokyo');\n"
+		. "define('DATE_FORMAT', 'month_day');\n"
+		. "define('TIME_FORMAT', 'twelve_hours');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. 'require ' . var_export(__FILE__, true) . ";\n"
+		. "date_default_timezone_set('America/Chicago');\n"
+		. "\$span = function (\$format) { return array('type' => 'semantic', 'props' => array('tag' => 'span', 'cssClass' => 'when-' . strlen(\$format), 'text' => 'when', '_bindings' => array('text' => '__comment_datetime'), '_bindFormats' => array('text' => \$format)), 'children' => array()); };\n"
+		. "\$tree = comments_widget_email_test_card(\$span('relative'));\n"
+		. "\$body = &\$tree['children'][0]['children'][1]['children'][0]['children'][0]['children'][1]['children'][0]['children'];\n"
+		. "\$body[] = \$span('M j Y g:i A T');\n"
+		. "unset(\$body);\n"
+		. "\$data = comments_widget_email_test_data();\n"
+		. "list(\$html) = comments_widget_email_test_drawn(\$tree, \$data);\n"
+		. "echo json_encode(array('html' => \$html, 'drew' => pg_comments_email_drew(\$html, 12, \$data['rows'][0]['values']['__comment_url']), 'default' => h(date(pg_sw_default_date_format('date and time'), 1761300000))));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	pg_assert_contains('<span class="when-8" data-pg-bind="text:comment_datetime">' . $res['default'] . '</span>', $res['html'], 'the relative format writes the time in the default shape');
+	pg_assert_contains('<span class="when-13" data-pg-bind="text:comment_datetime">Oct 24 2025 5:00 AM CDT</span>', $res['html'], 'a format with the zone: the site\'s');
+	pg_assert_false(strpos($res['html'], '<time'), 'no relative time tag');
+	pg_assert_false(strpos($res['html'], 'JST'), 'nothing in the sender\'s zone');
+	pg_assert_false(strpos($res['html'], '7:00 PM'), 'not the sender\'s hour');
+	pg_assert_true($res['drew'], 'the comment is still drawn with its link');
+}
+
 // The check itself: the row's anchor and an escaped link to the permalink.
 function test_comments_widget_email_drew()
 {

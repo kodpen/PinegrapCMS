@@ -752,6 +752,7 @@ var _cmt = { pg_comments: '1', pg_comments_rating: '1', pg_comments_select_name:
 function _getCmtVal(k) { return _cmt[k] || ''; }
 var _sdCommentsCanvasState = 'comments';
 var _sdCommentSample = null;
+var _sysWidgetRenderTreeRoot = null;
 function n(type, props, kids, name) { props = props || {}; props.customName = name; return { type: type, props: props, children: kids || [] }; }
 function flag(f, kids, name) { return n('semantic', { tag: 'div', _bindings: { eo_visible_if: f } }, kids, name); }
 var named = {};
@@ -761,7 +762,8 @@ var loop = keep(n('loop_area', {}, [n('semantic', { tag: 'div' }, [
     keep(flag('comment_has_quote', [], 'quote')),
     keep(flag('is_staff', [], 'staff name')),
     keep(n('semantic', { tag: 'div' }, [], 'card text')),
-    keep(n('semantic', { tag: 'button' }, [], 'card button'))
+    keep(n('semantic', { tag: 'button' }, [], 'card button')),
+    keep(n('semantic', { tag: 'a', _bindings: { action: 'comment_share' } }, [], 'share'))
 ], 'card')], 'loop'));
 var tree = n('root', {}, [n('container', {}, [
     keep(flag('has_comments', [], 'heading')),
@@ -830,14 +832,42 @@ out.pick = {
     card_text_in_email: pick('email', named['card text']),
     card_button: pick('comments', named['card button'])
 };
+// The same widget without the Share link: an e-mail draws nothing from it
+// (_sdCommentsEmailDrawsComment()), so the e-mail state leaves the whole
+// widget out, as the e-mail does, and a node picked there opens another
+// state.
+var shareAt = loop.children[0].children.indexOf(named['share']);
+loop.children[0].children.splice(shareAt, 1);
+var emptied = function (state, root) { _sdCommentsCanvasState = state; _sysWidgetRenderTreeRoot = root; return _sdCommentsFlagOff(tree, cfg); };
+out.no_link = {
+    root_in_email: emptied('email', tree),
+    root_in_comments: emptied('comments', tree),
+    root_not_drawn: emptied('email', null),
+    card_text_in_email: (function () { _sdCommentsCanvasState = 'email'; _sysWidgetRenderTreeRoot = tree; return _sdCommentsFlagOff(named['card text'], cfg); })(),
+    pick_card_text: pick('email', named['card text']),
+    pick_heading: pick('email', named['heading'])
+};
+loop.children[0].children.splice(shareAt, 0, named['share']);
+out.with_link = { root_in_email: emptied('email', tree), pick_card_text: pick('email', named['card text']) };
+_sysWidgetRenderTreeRoot = null;
 JS;
 
 	$res = comments_widget_designer_test_node(
-		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsEmailDrops', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
+		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsEmailDrops',
+			'_sdCommentsEmailDrawsComment', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
 	}
+
+	pg_assert_true($res['no_link']['root_in_email'], 'a card without a link to the comment: the e-mail state leaves the widget out');
+	pg_assert_false($res['no_link']['root_in_comments'], 'the other states draw it');
+	pg_assert_false($res['no_link']['root_not_drawn'], 'only the widget being drawn');
+	pg_assert_false($res['no_link']['card_text_in_email'], 'its nodes keep their own flags (the widget around them is out)');
+	pg_assert_same('comments', $res['no_link']['pick_card_text'], 'a node picked in the e-mail state opens a state that draws it');
+	pg_assert_same('comments', $res['no_link']['pick_heading'], 'outside the card too');
+	pg_assert_false($res['with_link']['root_in_email'], 'with the Share link the e-mail state draws the widget');
+	pg_assert_same('email', $res['with_link']['pick_card_text'], 'and keeps the e-mail state');
 
 	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff', 'email'), $res['states'], 'the states in order');
 
@@ -968,6 +998,18 @@ function test_comments_widget_designer_email_drops_twin()
 	pg_assert_contains('_sdCommentsEmailDrops', comments_widget_designer_test_js_function($js, '_sdCommentsStateFor'), 'and a node it hides opens another state');
 	pg_assert_true((bool) preg_match("/\\['is_email',\\s+_sdT\\('Drawn in a comment e-mail'\\)\\]/", $js), 'the designer offers is_email');
 	pg_assert_contains("['email', _sdT('E-mail')]", comments_widget_designer_test_js_function($js, '_sdCommentsCanvasStates'), 'the e-mail state has a chip');
+
+	// A widget an e-mail draws no comment from is left out in the e-mail
+	// state, with a note in its place drawn after the widget's tree.
+	pg_assert_contains('_sdCommentsEmailDrawsComment(node, flags)', comments_widget_designer_test_js_function($js, '_sdCommentsFlagOff'), 'the e-mail state leaves such a widget out');
+	pg_assert_contains('_sdCommentsEmailDrawsComment(root, flags)', comments_widget_designer_test_js_function($js, '_sdCommentsStateFor'), 'and a node of it opens another state');
+	$note = comments_widget_designer_test_js_function($js, '_sdAppendCommentsEmailNote');
+	pg_assert_contains('_sdCommentsEmailDrawsComment(cached.tree, thread)', $note, 'the note asks the same question');
+	pg_assert_contains("_sdT('E-mails send the fixed comment markup instead: the comment card needs a link to the comment that every comment shows, such as the Share link.')", $note, 'and says what to do');
+	pg_assert_contains('sd-system-empty-hint', $note, 'editor chrome the canvas checks skip');
+	$drawn = strpos($js, '_sdAppendCommentSamples(doc, inner, cached, _sysCfg);');
+	$noted = strpos($js, '_sdAppendCommentsEmailNote(doc, inner, cached, _sysCfg);');
+	pg_assert_true(($drawn !== false) && ($noted !== false) && ($drawn < $noted) && ($noted - $drawn < 200), 'drawn right after the widget');
 
 	// A node a state leaves out stays out inside a flex row: the state-off
 	// rule outweighs the rules that make a wrapper see-through there
