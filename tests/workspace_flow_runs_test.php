@@ -589,7 +589,10 @@ function test_workspace_flow_runs_drivers()
 // box is settled only after its run was marked running, so a run whose next
 // boxes were never written reads running, untouched, and is walked again
 // (ws_flow_runs_heal()), its start box written first when the run has none.
-// The gate of the jobs sees such a run.
+// The gate of the jobs sees such a run. A walk that read the boxes just
+// before one of them ended may still write waiting over that mark; such a
+// run has a box that ended at or after its last write, which the heal looks
+// for among the waiting runs too.
 function test_workspace_flow_runs_half_way_runs_are_walked_again()
 {
 	$settle = ws_flow_runs_test_source('ws_flow_step_settle');
@@ -614,6 +617,17 @@ function test_workspace_flow_runs_half_way_runs_are_walked_again()
 	pg_assert_true(strpos($advance, 'ws_flow_runs_heal(') < strpos($advance, 'ws_flow_step_claim('), 'before the claims');
 
 	pg_assert_contains("FROM ws_flow_runs WHERE status = 'running' AND updated_at < '", ws_flow_runs_test_source('ws_flow_due'));
+
+	// The moment a walk writes is taken before it reads the boxes, so a box
+	// that ends after that read always ended at or after the run's write.
+	$refresh = ws_flow_runs_test_source('ws_flow_run_refresh');
+
+	pg_assert_true(strpos($refresh, '$now = time()') < strpos($refresh, 'ws_flow_run_steps('), 'the moment before the read');
+
+	// A waiting run untouched for WS_FLOW_LOCK with such a box is walked
+	// again, and every run walked is marked looked at, waiting or running.
+	pg_assert_true((bool) preg_match("/status = 'waiting'[^;]*EXISTS \\(SELECT 1 FROM ws_flow_run_steps[^;]*status IN \\('done', 'failed', 'skipped'\\)[^;]*finished_at >= ws_flow_runs\\.updated_at/s", $heal), 'a waiting run with a box ended since its last write');
+	pg_assert_true((bool) preg_match("/UPDATE ws_flow_runs SET updated_at = [^;]*status IN \\('running', 'waiting'\\)/s", $heal), 'looked at, whichever it reads');
 }
 
 // A run of a flow deleted meanwhile opens nothing more: its box is let go

@@ -1087,6 +1087,11 @@ function ws_flow_run_refresh($run_id)
     }
 
     $graph = ws_flow_run_graph($run);
+
+    // Taken before the boxes are read: a box another request settles after
+    // this read ends at or after the run's updated_at written below, which
+    // is how ws_flow_runs_heal() knows a waiting state written from boxes
+    // read too early.
     $now = time();
     $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
     $walk = ws_flow_walk($graph, $steps);
@@ -1200,7 +1205,10 @@ function ws_flow_step_claim($step)
  * leaves a run that reads running and is touched by nobody: a running run is
  * always touched within WS_FLOW_LOCK (its boxes are claimed, or stop half
  * way and are taken care of), so ws_flow_runs_heal() knows such a run by its
- * age and walks it again. An ended run stays as it is.
+ * age and walks it again. A walk of another request that read the boxes
+ * before this box settled may still write waiting over this mark; the run
+ * then has a box that ended at or after its last write, which the heal looks
+ * for too. An ended run stays as it is.
  *
  * @param int $run_id
  */
@@ -1240,13 +1248,24 @@ function ws_flow_step_settle($step, $from, $status, $outcome, $text, $data = arr
 }
 
 /**
- * Runs that read running but nobody touched for WS_FLOW_LOCK seconds
- * (ws_flow_run_touch()): a request died after it settled a box and before it
- * wrote the boxes after it, or after it wrote the run and before its start
- * box. Nothing else would look at such a run again. Each is walked again
- * (ws_flow_run_refresh()), a run without a single box getting its start box
- * first; a run that still reads running then (its boxes are ready, and the
- * claims take them) is left for another WS_FLOW_LOCK.
+ * Runs a request left half walked, which nothing else would look at again:
+ * - running, but nobody touched them for WS_FLOW_LOCK seconds
+ *   (ws_flow_run_touch()): a request died after it settled a box and before
+ *   it wrote the boxes after it, or after it wrote the run and before its
+ *   start box;
+ * - waiting, untouched as long, with a box that ended at or after the run's
+ *   last write: a walk that read the boxes just before that box ended wrote
+ *   waiting over the mark the box's request had made, and that request died
+ *   before it wrote what comes after the box. A run that only waits for its
+ *   tasks matches only when its last box ended in the second of that write;
+ *   it is walked once, to no effect, and then marked looked at.
+ * Each is walked again (ws_flow_run_refresh()), a run without a single box
+ * getting its start box first, and marked looked at: a run that still reads
+ * running then (its boxes are ready, and the claims take them) is left for
+ * another WS_FLOW_LOCK. ws_flow_due() sees the running ones only, since
+ * every open screen asks it and waiting runs are many; a waiting one is
+ * found on the runner's next pass (workspace_recurring_job.php runs it on
+ * every tick, and any box or action that is due starts one too).
  *
  * @param int $run_id only this run, 0 for all
  * @return int how many runs were walked again
@@ -1255,12 +1274,21 @@ function ws_flow_runs_heal($run_id = 0)
 {
     $now = time();
     $healed = 0;
+    $only = ((int) $run_id > 0) ? " AND id = '" . (int) $run_id . "'" : '';
 
-    foreach ((array) db_items("SELECT * FROM ws_flow_runs
-        WHERE status = 'running' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'"
-        . (((int) $run_id > 0) ? " AND id = '" . (int) $run_id . "'" : '') . "
-        ORDER BY updated_at LIMIT 10") as $run) {
+    $runs = array_merge(
+        (array) db_items("SELECT * FROM ws_flow_runs
+            WHERE status = 'running' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'" . $only . "
+            ORDER BY updated_at LIMIT 10"),
+        (array) db_items("SELECT * FROM ws_flow_runs
+            WHERE status = 'waiting' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'" . $only . "
+            AND EXISTS (SELECT 1 FROM ws_flow_run_steps
+                WHERE ws_flow_run_steps.run_id = ws_flow_runs.id AND ws_flow_run_steps.status IN ('done', 'failed', 'skipped')
+                AND ws_flow_run_steps.finished_at >= ws_flow_runs.updated_at)
+            ORDER BY updated_at LIMIT 10")
+    );
 
+    foreach ($runs as $run) {
         if (!db_value("SELECT id FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "' LIMIT 1")) {
             $trigger = ws_flow_trigger_node(ws_flow_run_graph($run));
 
@@ -1278,8 +1306,10 @@ function ws_flow_runs_heal($run_id = 0)
 
         ws_flow_run_refresh((int) $run['id']);
 
+        // Only when nobody wrote the run meanwhile: the walk's own write, or
+        // another request's, carries its own moment.
         db("UPDATE ws_flow_runs SET updated_at = '" . $now . "'
-            WHERE id = '" . (int) $run['id'] . "' AND status = 'running' AND updated_at = '" . (int) $run['updated_at'] . "'");
+            WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting') AND updated_at = '" . (int) $run['updated_at'] . "'");
 
         $healed++;
     }
