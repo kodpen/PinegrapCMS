@@ -1371,8 +1371,9 @@ $pages[] = $sign_page('profile', lang('my-profile'), lang('My Profile'), 'profil
 $pages[] = $sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password', 'registration');
 $pages[] = $sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences', 'registration');
 $pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book', 'registration'), array('requires' => 'ecommerce'));
-// Favourites: open to every visitor, signed in or not.
-$pages[] = array_merge($sign_page('favourites', lang('favourites'), lang('Favourites'), 'wishlist'), array('requires' => 'ecommerce'));
+// Favourites: open to every visitor, signed in or not. noindex like the
+// cart: each visitor sees only their own list, a crawler the empty state.
+$pages[] = array_merge($sign_page('favourites', lang('favourites'), lang('Favourites'), 'wishlist'), array('requires' => 'ecommerce', 'noindex' => true));
 
 // The inbox: the member's conversations (for the staff, everybody's), and
 // the conversation page, where both sides answer as comments.

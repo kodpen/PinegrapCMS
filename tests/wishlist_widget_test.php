@@ -594,6 +594,9 @@ function test_wishlist_widget_templates()
 		pg_assert_same('public', isset($page['folder']) ? $page['folder'] : '', $id . ' open to visitors');
 		pg_assert_same('ecommerce', isset($page['requires']) ? $page['requires'] : '', $id . ' a shop page');
 		pg_assert_same(false, isset($page['sitemap']) ? $page['sitemap'] : null, $id . ' not in the sitemap');
+		// A per-visitor list like the cart: every page's footer links to it,
+		// and a crawler would only ever see its empty state.
+		pg_assert_same(true, isset($page['noindex']) ? $page['noindex'] : null, $id . ' noindex like the cart');
 
 		$widget = null;
 		$widget_key = '';
