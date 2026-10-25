@@ -19,11 +19,11 @@ description: Workspace change catalogue text limits must fit their columns (non-
 - The same as before, only at the column's width: `ws_change_value()` cuts a `text`, `long` or `email` value to the limit, and refuses a `keywords` list (page search keywords) that joins longer than it. A `code` must have exactly its length.
 - The drawer follows on its own: `ws_quick_edit_field_meta()` hands the limit on as `max_length` (input `maxLength` in `assets/js/workspace.js`). Claude's `change_types` route (`ws_api_claude_change_types()`) and the AI bulk prompt read the same limit.
 
-## How does the drawer draw a long field of 255 or less?
-- As one line, as the product's short description already was, unless its value holds a line break (`saValueInput()`): then a textarea. The API and proposals store a `long` value's line breaks; a one-line input dropped them, so saving any other field of a group or an event sent its short description back without them, and the toast and decision named a change nobody made.
+## How does the drawer draw a long field of 255 or less, or a text field?
+- As one line, unless its value holds a line break (`saValueInput()`): then a textarea. A one-line input drops it (API or proposal `long` values; product and group `meta_description`, `text` 255, from the panel textarea), so saving any other field sent the value back flattened or glued, and the toast and decision named a change nobody made.
 
 ## What keeps them in line?
 - `tests/workspace_change_limits_test.php` reads the catalogue from source (`pg_test_ws_change_types()`, `tests/helpers/source_reader.php`) and the tables from `data/backups/english_default/sql.sql` (checking `turkish_default` agrees), then asserts every text field with a column has a written-out limit no wider than that column. The six limits above are also checked by value.
 - Tables an upgrade step creates (`erp_accounts`, `ws_channels`, `ws_tasks`, `ws_task_notes`, `ws_notes`) are not in the setup SQL: their text columns' widths are written out from the step (`workspace_change_limits_test_upgrade_columns()`), and the channel summary is listed as the one wider on purpose. Columns the setup SQL lacks (`products.vat_exemption_code`, `contacts.tax_number`, `contacts.tax_office`, `orders.notes`, `files.content`) are listed with the reason. A new field, or a stale entry, fails the test.
-- It also runs `saValueInput()` under node (skipped without node) for the line-break rule.
+- It also runs `saValueInput()` under node (skipped without node) for the line-break rule, `long` and `text`.
 - Widening a column instead is a schema step (owner's call); the limit then moves with it in the same change. The external API's limits follow the same rule: `api/api-text-field-limits.md`.

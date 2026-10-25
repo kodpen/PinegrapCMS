@@ -416,6 +416,47 @@ function test_workspace_change_limits_a_short_long_field_keeps_its_line_breaks()
 	}
 }
 
+// A text field is drawn as one line, unless its value already holds a line
+// break: a panel textarea stores one in a product's or a group's meta
+// description, a one-line input drops it, and a drawer save of any other
+// field would send the value back glued together as a change.
+function test_workspace_change_limits_a_text_field_keeps_its_line_breaks()
+{
+	$text = array('kind' => 'text', 'limit' => array('max_length' => 255));
+	$cases = array(
+		'one line'          => array($text, 'Line one. Line two.', 'INPUT', 'Line one. Line two.'),
+		'empty'             => array($text, null, 'INPUT', ''),
+		'a line feed'       => array($text, "Line one.\nLine two.", 'TEXTAREA', "Line one.\nLine two."),
+		'a carriage return' => array($text, "Line one.\r\nLine two.", 'TEXTAREA', "Line one.\r\nLine two."),
+		'no limit'          => array(array('kind' => 'text'), "Line one.\nLine two.", 'TEXTAREA', "Line one.\nLine two."),
+		'an e-mail'         => array(array('kind' => 'email', 'limit' => array('max_length' => 100)), "a@example.com\n", 'INPUT', "a@example.com\n"),
+	);
+	$input = array();
+
+	foreach ($cases as $case) {
+		$input[] = array($case[0], $case[1]);
+	}
+
+	$result = workspace_change_limits_test_value_input(
+		'var cases = ' . json_encode($input) . ";\n"
+		. 'console.log(JSON.stringify(cases.map(function (c) { var i = saValueInput(c[0], c[1]); return [i.tagName, i.value]; })));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	if (!pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran')) {
+		return;
+	}
+
+	$i = 0;
+
+	foreach ($cases as $label => $case) {
+		pg_assert_same(array($case[2], $case[3]), $result[$i++] ?? null, $label);
+	}
+}
+
 // The six limits that were once wider than their columns, by value, so a
 // wider column has to be a deliberate change here as well.
 function test_workspace_change_limits_once_wider_than_their_columns()

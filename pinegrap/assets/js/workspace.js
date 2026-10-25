@@ -14513,10 +14513,12 @@
             input.rows = 3;
             input.placeholder = t('qe_lines_help');
             input.value = Array.isArray(value) ? value.join('\n') : (value || '');
-        } else if (meta.kind === 'long' && (!(limit && limit.max_length && limit.max_length <= 255)
-            || /[\r\n]/.test(value === undefined || value === null ? '' : String(value)))) {
-            // A long field of 255 characters or less is one line, unless its value
-            // already holds a line break: a one-line input drops it, and saving any
+        } else if ((meta.kind === 'long' && !(limit && limit.max_length && limit.max_length <= 255))
+            || ((meta.kind === 'long' || meta.kind === 'text')
+                && /[\r\n]/.test(value === undefined || value === null ? '' : String(value)))) {
+            // A text field, or a long field of 255 characters or less, is one line,
+            // unless its value already holds a line break (a panel textarea stores
+            // one in a meta description): a one-line input drops it, and saving any
             // other field of the record would send the value back without it.
             input = el('textarea', 'form-control form-control-sm');
             input.rows = 3;
