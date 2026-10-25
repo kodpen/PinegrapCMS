@@ -3662,20 +3662,21 @@ const StyleDesigner = (function () {
     }
 
     // Where `nodes`, pasted through the paste event, go, as { parent, index }.
-    // The selection decides. `aimed`, the node the paste landed on, counts
-    // only when nothing is selected: in the designer document the paste
-    // lands wherever the text caret was left, and a click on a locked
-    // Overview row leaves it in that row's label for good. Into the
-    // selection when it is something that holds children and the drop rules
-    // let every pasted node in (_sdPasteFits()) — "I selected this area and
-    // pasted into it" — and beside it otherwise, because a paragraph cannot
-    // contain a section. Beside means in the tree the node lives in: the
-    // page's, or the shared component's or system widget's own tree
-    // (_sdAnyParent()). The in-memory paste (context menu, Ctrl+V without
-    // the system clipboard) has its own spot, _sdPasteTarget(): always
-    // beside the selection, with no index.
-    function _sdPasteSpot(aimed, nodes) {
-        var sel = selectedNode || aimed;
+    // The selection decides, and nothing selected means the end of the page.
+    // The node the paste landed on does not count: a click on a canvas
+    // element or an Overview row selects it, so with nothing selected that
+    // node is only where the text caret was left (the first element after a
+    // re-render, a locked Overview row's label). Into the selection when it
+    // is something that holds children and the drop rules let every pasted
+    // node in (_sdPasteFits()) — "I selected this area and pasted into it" —
+    // and beside it otherwise, because a paragraph cannot contain a section.
+    // Beside means in the tree the node lives in: the page's, or the shared
+    // component's or system widget's own tree (_sdAnyParent()). The
+    // in-memory paste (context menu, Ctrl+V without the system clipboard)
+    // has its own spot, _sdPasteTarget(): always beside the selection, with
+    // no index.
+    function _sdPasteSpot(nodes) {
+        var sel = selectedNode;
         if (!sel || sel === tree) return { parent: tree, index: (tree.children || []).length };
         var holds = (sel.type === 'root' || sel.type === 'container' || sel.type === 'row' ||
                      sel.type === 'col' || sel.type === 'loop_area' || sel.type === 'recipient_loop_area');
@@ -3700,20 +3701,26 @@ const StyleDesigner = (function () {
     // (canDrop()): nothing into a locked element, only columns into a row,
     // only items into a list. A copy is a new node, so the lock flag it
     // carries from the copied node does not stop it as it stops moving that
-    // node. A column goes beside a selected column, not into it.
+    // node. A column goes beside a selected column, not into it. A copy of
+    // the target itself (the clipboard keeps the copied node's _id) goes
+    // beside it: Ctrl+C, Ctrl+V on a section duplicates it, as the
+    // context-menu Paste and Ctrl+D do, instead of nesting it in itself.
+    // Ids repeat across pages and shared trees, so a copy from elsewhere
+    // with the same id also goes beside, where the in-memory paste puts it.
     function _sdPasteFits(nodes, target) {
         return nodes.every(function (n) {
             if (!n || !n.props) return false;
+            if (n._id && n._id === target._id) return false;
             if (n.type === 'col' && target.type === 'col') return false;
             var probe = n.props._locked ? Object.assign({}, n, { props: Object.assign({}, n.props, { _locked: false }) }) : n;
             return canDrop({ source: 'node', type: n.type, node: probe }, target);
         });
     }
 
-    function _sdPasteNodes(nodes, aimed) {
+    function _sdPasteNodes(nodes) {
         if (!nodes || !nodes.length) return;
         saveState();
-        var spot = _sdPasteSpot(aimed, nodes);
+        var spot = _sdPasteSpot(nodes);
         var last = null;
         nodes.forEach(function (n, i) {
             var clone = cloneTree(n);
@@ -3758,7 +3765,7 @@ const StyleDesigner = (function () {
     // selection is still the heading - and the heading is a text sink, so the
     // markup arrived as escaped text. Where the paste landed decides whether
     // markup becomes text; where a pasted block goes is the selection's
-    // (_sdPasteSpot()), and this node only answers when nothing is selected.
+    // alone (_sdPasteSpot()).
     function _sdNodeFromEventTarget(t) {
         if (!t || !t.closest) return null;
         var el = t.closest('[data-sd-id]');
@@ -3820,9 +3827,8 @@ const StyleDesigner = (function () {
             e.preventDefault();
             var payload = null;
             try { payload = JSON.parse(plain.slice(_SD_CLIP_TAG.length)); } catch (_) { payload = null; }
-            var aimedOwn = _sdNodeFromEventTarget(t);
-            if (Array.isArray(payload) && payload.length) _sdPasteNodes(payload, aimedOwn);
-            else if (clipboardNodes && clipboardNodes.length) _sdPasteNodes(clipboardNodes, aimedOwn);
+            if (Array.isArray(payload) && payload.length) _sdPasteNodes(payload);
+            else if (clipboardNodes && clipboardNodes.length) _sdPasteNodes(clipboardNodes);
             return;
         }
 
@@ -3858,7 +3864,7 @@ const StyleDesigner = (function () {
                 return;
             }
             _backfillIds({ type: 'root', props: {}, children: kids });
-            _sdPasteNodes(kids, aimed);
+            _sdPasteNodes(kids);
             sdToast('<strong>' + kids.length + '</strong> ' +
                     esc(_sdT('element(s) pasted.')), 'success', 4000);
             if (Array.isArray(res.warnings) && res.warnings.length) {

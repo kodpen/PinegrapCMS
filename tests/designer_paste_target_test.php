@@ -10,10 +10,10 @@
  * event's (into or beside, with an index), a pasted block goes first in the
  * parent. The scan below reads the file under Node and lists the names
  * declared twice in one scope; _sdPasteSpot(), _sdPasteFits(),
- * _sdPasteNodes() and _sdPasteTarget() are cut out of the file with the drop
- * rules (canDrop() and the lock and shared-tree helpers it asks) and run with
- * a page tree and a widget's tree. On a machine without Node the tests are
- * skipped.
+ * _sdPasteNodes(), _sdPasteTarget() and the paste event's handler are cut
+ * out of the file with the drop rules (canDrop() and the lock and
+ * shared-tree helpers it asks) and run with a page tree and a widget's tree.
+ * On a machine without Node the tests are skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -267,7 +267,10 @@ function test_designer_paste_target_function_names_are_declared_once()
 // component 7 (a widget's own tree) is `W`: heading WH and div WD (with
 // WD1). Pasted nodes: paragraphs X and Y, a column COL, a list item LIX and
 // LX, a paragraph copied from a locked one. `ids(list)` names the nodes of
-// a list, a pasted copy by its text.
+// a list, a pasted copy by its text or tag. `paste(text, aim)` sends a paste
+// event with `text` on the clipboard that lands on the canvas element
+// (`{ sd: id }`) or the Overview row (`{ nid: id }`) of a node, the way the
+// caret left in it does; `own(nodes)` is the clipboard after a copy here.
 function designer_paste_target_test_run($cases)
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
@@ -277,7 +280,8 @@ function designer_paste_target_test_run($cases)
 	// declaration replaces the first here exactly as it does in the editor.
 	$names = array('findParent', '_findParentInShared', '_sdAnyParent', '_sdPasteTarget', '_sdPasteSpot', '_sdPasteFits', '_sdPasteNodes',
 		'isLockedEffective', 'hasLockedAncestor', 'lockedAncestorOf', 'isDescendantOf', '_nodeInTree', '_resolveSharedSid',
-		'_sdSharedOwnerOf', 'collectSharedIds', '_sdDragSharedIds', '_sdSharedChildIds', '_sdSharedReaches', '_subtreeContainsLoopArea');
+		'_sdSharedOwnerOf', 'collectSharedIds', '_sdDragSharedIds', '_sdSharedChildIds', '_sdSharedReaches', '_subtreeContainsLoopArea',
+		'_sdHandlePaste', '_sdNodeFromEventTarget', '_sdFindNodeForEl', 'findNodeById', '_sdIsTextSink', '_sdPasteAsText', '_sdLooksLikeMarkup');
 
 	foreach ($names as $name) {
 		$offset = 0;
@@ -295,6 +299,7 @@ function designer_paste_target_test_run($cases)
 	}
 
 	pg_assert_true((bool) preg_match('/\n    var _SD_TEXT_SINK_TAGS = [^\n]+\n/', $source, $match), 'the designer lists its text elements');
+	pg_assert_true((bool) preg_match('/\n    var _SD_CLIP_TAG = [^\n]+\n/', $source, $tag), 'the designer marks its own nodes on the clipboard');
 
 	// canDrop() with the helpers it is written next to.
 	$from = strpos($source, '// ── Semantic HTML validation helpers');
@@ -308,7 +313,11 @@ function designer_paste_target_test_run($cases)
 		. 'function cloneTree(n) { return JSON.parse(JSON.stringify(n)); }'
 		. 'function expandAncestors() {} function render() {} function _parentIndexFor() { return null; }'
 		. 'var dragData = null, _lockedIndex = null; function createFromPalette() { return null; }'
-		. $match[0] . $code
+		. 'var _collab = { mayEdit: true }, clipboardNodes = [], posts = 0; function _sdReadOnlyNudge() {}'
+		. 'function _sdT(s) { return s; } function sdToast() {} function _backfillIds() {}'
+		. 'function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }'
+		. 'function _pgApiPost() { posts++; return { then: function () { return { catch: function () {} }; } }; }'
+		. $match[0] . $tag[0] . $code
 		. 'function N(id, type, props, kids) { return { _id: id, type: type, props: props || {}, children: kids || [] }; }'
 		. 'function txt(id, text) { return N(id, "content", { contentType: "paragraph", text: text }); }'
 		. 'var A = N("A", "content", { contentType: "heading", tag: "h2", text: "A" }), B = txt("B", "B"), C1 = txt("C1", "C1"),'
@@ -324,9 +333,18 @@ function designer_paste_target_test_run($cases)
 		. '_sharedCache[7] = { tree: W };'
 		. 'var X = txt("X", "X"), Y = txt("Y", "Y"), COL = N("COL", "col", { cssClass: "col", text: "COL" }),'
 		. ' LIX = N("LIX", "semantic", { tag: "li", text: "LIX" }), LX = N("LX", "content", { contentType: "paragraph", text: "LX", _locked: true });'
-		. 'function ids(list) { return list.map(function (k) { return k._id.indexOf("sd_") === 0 ? "+" + k.props.text : k._id; }).join(","); }'
+		. 'function ids(list) { return list.map(function (k) { return k._id.indexOf("sd_") === 0 ? "+" + (k.props.text || k.props.tag) : k._id; }).join(","); }'
 		. 'function spot(s) { return s.parent._id + (s.index !== undefined ? "@" + s.index : "") + (s.sid !== undefined ? "#" + s.sid : ""); }'
 		. 'function sel(node) { selectedNode = node; return true; }'
+		. 'function own(nodes) { return _SD_CLIP_TAG + JSON.stringify(nodes); }'
+		. 'function paste(text, aim) {'
+		. ' var el = function (id) { return id ? { getAttribute: function () { return id; } } : null; };'
+		. ' var target = { tagName: "SPAN", isContentEditable: false, closest: function (q) {'
+		. '  return q === "[data-sd-id]" ? el(aim && aim.sd) : (q === "[data-nid]" ? el(aim && aim.nid) : null); } };'
+		. ' var stopped = false;'
+		. ' _sdHandlePaste({ target: target, preventDefault: function () { stopped = true; },'
+		. '  clipboardData: { getData: function (type) { return type === "text/plain" ? text : ""; } } });'
+		. ' return stopped; }'
 		. 'console.log(JSON.stringify([' . implode(',', array_map(function ($c) {
 			return '(' . $c . ')';
 		}, $cases)) . ']));';
@@ -336,29 +354,28 @@ function designer_paste_target_test_run($cases)
 
 // The paste event's spot: into the selection when it holds children, beside
 // it when it does not — in the page tree or in the widget's own tree — and
-// at the end of the page when nothing is selected. The selection decides;
-// the node the paste landed on only when nothing is selected, so a caret
-// left in another element (a locked Overview row's label) does not move the
-// paste there.
+// at the end of the page when nothing is selected. A copy of the selected
+// node itself goes right after it (Ctrl+C, Ctrl+V duplicates), also when it
+// is one of several copied nodes; a copy of an ancestor still goes into the
+// selected area.
 function test_designer_paste_target_paste_event_spot()
 {
 	$answer = designer_paste_target_test_run(array(
-		'sel(B), spot(_sdPasteSpot(null, [X]))',
-		'sel(C), spot(_sdPasteSpot(null, [X]))',
-		'sel(Q), spot(_sdPasteSpot(null, [X]))',
-		'sel(IMG), spot(_sdPasteSpot(null, [X]))',
-		'sel(S), spot(_sdPasteSpot(null, [X]))',
-		'sel(null), spot(_sdPasteSpot(null, [X]))',
-		'sel(tree), spot(_sdPasteSpot(null, [X]))',
-		'sel(WH), spot(_sdPasteSpot(null, [X]))',
-		'sel(WD), spot(_sdPasteSpot(null, [X]))',
-		'sel(B), spot(_sdPasteSpot(C, [X]))',
-		'sel(B), spot(_sdPasteSpot(L, [X]))',
-		'sel(C), spot(_sdPasteSpot(WH, [X]))',
-		'sel(tree), spot(_sdPasteSpot(L1, [X]))',
-		'sel(null), spot(_sdPasteSpot(C, [X]))',
-		'sel(null), spot(_sdPasteSpot(WH, [X]))',
-		'sel(txt("gone", "gone")), spot(_sdPasteSpot(null, [X]))',
+		'sel(B), spot(_sdPasteSpot([X]))',
+		'sel(C), spot(_sdPasteSpot([X]))',
+		'sel(Q), spot(_sdPasteSpot([X]))',
+		'sel(IMG), spot(_sdPasteSpot([X]))',
+		'sel(S), spot(_sdPasteSpot([X]))',
+		'sel(null), spot(_sdPasteSpot([X]))',
+		'sel(tree), spot(_sdPasteSpot([X]))',
+		'sel(WH), spot(_sdPasteSpot([X]))',
+		'sel(WD), spot(_sdPasteSpot([X]))',
+		'sel(txt("gone", "gone")), spot(_sdPasteSpot([X]))',
+		'sel(C), spot(_sdPasteSpot([cloneTree(C)]))',
+		'sel(S), spot(_sdPasteSpot([cloneTree(S)]))',
+		'sel(WD), spot(_sdPasteSpot([cloneTree(WD)]))',
+		'sel(C), spot(_sdPasteSpot([cloneTree(B), cloneTree(C)]))',
+		'sel(C), spot(_sdPasteSpot([cloneTree(S)]))',
 	));
 
 	if ($answer === null) {
@@ -369,10 +386,10 @@ function test_designer_paste_target_paste_event_spot()
 		'S@2', 'C@1', 'S@4', 'S@5', 'S@6',
 		'root@4', 'root@4',
 		'wroot@1', 'WD@1',
-		'S@2', 'S@2', 'C@1', 'root@4',
-		'C@1', 'wroot@1',
 		'root@4',
-	), $answer, 'beside paragraph B, a <p> and an image; into div C and the section; at the end of the page with nothing or the page selected; beside the widget heading and into the widget div; the selection before an aimed node elsewhere (div C, the locked div, the widget heading, a node in the locked div); the aimed node with nothing selected; a node in no tree goes at the end of the page');
+		'S@3', 'root@1', 'wroot@2', 'S@3',
+		'C@1',
+	), $answer, 'beside paragraph B, a <p> and an image; into div C and the section; at the end of the page with nothing or the page selected; beside the widget heading and into the widget div; a node in no tree goes at the end of the page; a copy of div C, of the section and of the widget div right after the original; B and C copied together beside C; a copy of the section into div C');
 }
 
 // The drop rules keep a paste out of a selection that may not hold it: it
@@ -383,15 +400,15 @@ function test_designer_paste_target_paste_event_spot()
 function test_designer_paste_target_paste_event_spot_follows_drop_rules()
 {
 	$answer = designer_paste_target_test_run(array(
-		'sel(L), spot(_sdPasteSpot(null, [X]))',
-		'sel(R), spot(_sdPasteSpot(null, [X]))',
-		'sel(R), spot(_sdPasteSpot(null, [COL]))',
-		'sel(K1), spot(_sdPasteSpot(null, [X]))',
-		'sel(K1), spot(_sdPasteSpot(null, [COL]))',
-		'sel(U), spot(_sdPasteSpot(null, [X]))',
-		'sel(U), spot(_sdPasteSpot(null, [LIX]))',
-		'sel(C), spot(_sdPasteSpot(null, [X, COL]))',
-		'sel(C), spot(_sdPasteSpot(null, [LX]))',
+		'sel(L), spot(_sdPasteSpot([X]))',
+		'sel(R), spot(_sdPasteSpot([X]))',
+		'sel(R), spot(_sdPasteSpot([COL]))',
+		'sel(K1), spot(_sdPasteSpot([X]))',
+		'sel(K1), spot(_sdPasteSpot([COL]))',
+		'sel(U), spot(_sdPasteSpot([X]))',
+		'sel(U), spot(_sdPasteSpot([LIX]))',
+		'sel(C), spot(_sdPasteSpot([X, COL]))',
+		'sel(C), spot(_sdPasteSpot([LX]))',
 		'ids(L.children) + " " + ids(R.children) + " " + ids(U.children)',
 	));
 
@@ -420,8 +437,9 @@ function test_designer_paste_target_paste_event_places_blocks()
 		'sel(null), (_sdPasteNodes([X]), ids(tree.children))',
 		'sel(WH), (_sdPasteNodes([X]), ids(W.children) + " dirty=" + JSON.stringify(_sharedDirty))',
 		'sel(WD), (_sdPasteNodes([Y]), ids(WD.children))',
-		'sel(L), (_sdPasteNodes([Y], L1), ids(tree.children) + " L=" + ids(L.children))',
-		'sel(A), (_sdPasteNodes([Y], L), ids(S.children))',
+		'sel(L), (_sdPasteNodes([Y]), ids(tree.children) + " L=" + ids(L.children))',
+		'sel(A), (_sdPasteNodes([Y]), ids(S.children))',
+		'sel(C), (_sdPasteNodes([cloneTree(C)]), ids(S.children) + " C=" + ids(C.children))',
 		'saves',
 	));
 
@@ -437,8 +455,44 @@ function test_designer_paste_target_paste_event_places_blocks()
 		'WD1,+Y',
 		'S,K,L,+Y,U,+X L=L1',
 		'A,+Y,B,+X,+Y,C,Q,IMG,D',
-		7,
-	), $answer, 'X and Y right after B in order, one save, Y selected; X last in div C; X at the end of the page; X right after the widget heading, the widget marked for saving; Y last in the widget div; Y beside the locked div, not into it, whatever the caret is in; Y beside the selected heading A, not where a stale caret was; one history step per paste');
+		'A,+Y,B,+X,+Y,C,+div,Q,IMG,D C=C1,+X',
+		8,
+	), $answer, 'X and Y right after B in order, one save, Y selected; X last in div C; X at the end of the page; X right after the widget heading, the widget marked for saving; Y last in the widget div; Y beside the locked div, not into it; Y beside the selected heading A; a copy of div C right after it, not into it; one history step per paste');
+}
+
+// The paste event itself: our nodes off the system clipboard go by the
+// selection, wherever the caret was left — on a locked Overview row, on the
+// first element of a re-rendered canvas — and to the end of the page when
+// nothing is selected (after Ctrl+Z, after Escape). Markup aimed at a
+// paragraph still becomes that paragraph's text: the aimed node decides
+// what markup is, not where a block goes.
+function test_designer_paste_target_paste_event_goes_by_selection()
+{
+	$answer = designer_paste_target_test_run(array(
+		'sel(null), paste(own([X]), { nid: "L1" }) + " " + ids(tree.children) + " L=" + ids(L.children)',
+		'sel(null), paste(own([Y]), { sd: "A" }) + " " + ids(tree.children) + " S=" + ids(S.children)',
+		'sel(B), paste(own([X]), { nid: "L1" }) + " " + ids(S.children) + " L=" + ids(L.children)',
+		'sel(WH), paste(own([Y]), { sd: "A" }) + " " + ids(W.children) + " S=" + ids(S.children)',
+		'sel(C), paste(own([C]), { nid: "C" }) + " " + ids(S.children) + " C=" + ids(C.children)',
+		'sel(C), paste("<b>D</b>", { sd: "D" }) + " " + D.props.text + " C=" + ids(C.children) + " posts=" + posts',
+		'sel(null), paste("<div>new</div>", { nid: "L" }) + " posts=" + posts + " L=" + ids(L.children)',
+		'saves',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'true S,K,L,U,+X L=L1',
+		'true S,K,L,U,+X,+Y S=A,B,C,Q,IMG,D',
+		'true A,B,+X,C,Q,IMG,D L=L1',
+		'true WH,+Y,WD S=A,B,+X,C,Q,IMG,D',
+		'true A,B,+X,C,+div,Q,IMG,D C=C1',
+		'true &lt;b&gt;D&lt;/b&gt; C=C1 posts=0',
+		'true posts=1 L=L1',
+		6,
+	), $answer, 'nothing selected, the caret on the locked div\'s row or on heading A: the end of the page; B or the widget heading selected: right after it, not into the locked div or beside A; a copy of the selected div C right after C; markup aimed at paragraph D becomes its text; markup goes to the server to become nodes; one history step per paste');
 }
 
 // The in-memory paste (context menu, Ctrl+V without the system clipboard)
