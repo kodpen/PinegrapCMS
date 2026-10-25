@@ -20,7 +20,9 @@
  * prototype.php?frame=1&... is that frame. It runs with no session and no
  * cookie, admitted by the signed address the viewer made (design, page,
  * item, expiry; and the person, whose role is read again on every frame, or
- * the link by its id, which must still open on every frame), and draws the
+ * the link by its id, which must still open on every frame) and bound to the
+ * session of the browser it was made for (b=, compared with the session
+ * cookie; for a share link the session the link was opened in), and draws the
  * draft as a background render: what a signed-out visitor would get once the
  * page is published, with no status code, redirect, page cache copy, visitor
  * statistics, Analytics tag or record view count of its own. Its links are
@@ -60,6 +62,12 @@ if ($pg_proto_frame) {
     // shows, and nothing the page does may land in their session.
     define('PG_NO_SESSION', true);
 
+    // The frame's address is bound to the browser the viewer made it for
+    // (pg_proto_frame_bind()): the session cookie's value is kept for that
+    // comparison only. The page's own scripts can read the address, never
+    // this cookie.
+    $pg_proto_client = (isset($_COOKIE[session_name()]) && is_string($_COOKIE[session_name()])) ? $_COOKIE[session_name()] : '';
+
     // Nor anything their browser holds: the remember-me token would sign
     // them in all the same (initialize_user()), and a consent, currency or
     // device choice would make the page theirs rather than a first visit.
@@ -98,17 +106,30 @@ if ($pg_proto_frame) {
 
     $pg_proto_now = time();
 
+    // Either address opens only with the session cookie it was bound to
+    // (pg_proto_frame_bind()): a person's to the panel session that drew the
+    // viewer, a share link's to the session the link was opened in, signed
+    // in or not (the one pg_proto_link_session_mark() writes to).
     if (isset($_GET['l'])) {
         // Made for a share link, named by its id: the link must still open.
         $parsed = pg_proto_link_frame_parse($_GET);
-        $state = pg_proto_link_frame_state($parsed, $pg_proto_key, $pg_proto_now);
+        $state = pg_proto_link_frame_state($parsed, $pg_proto_key, $pg_proto_now, $pg_proto_client);
     } else {
         $parsed = pg_proto_frame_parse($_GET);
-        $state = pg_proto_frame_state($parsed, $pg_proto_key, $pg_proto_now);
+        $state = pg_proto_frame_state($parsed, $pg_proto_key, $pg_proto_now, $pg_proto_client);
     }
+
+    unset($pg_proto_client);
 
     if ($state === 'expired') {
         pg_proto_frame_refuse(lang('This prototype view has expired. Reload the page to draw it again.'), 403);
+    }
+
+    // A genuine address asked for by another browser, or by this one after
+    // its session changed (signed out, signed in again): refused, and not
+    // counted as a forgery.
+    if ($state === 'unbound') {
+        pg_proto_frame_refuse(lang('This prototype view was made for another browser session. Reload the page to draw it again.'), 403);
     }
 
     if ($state !== 'ok') {
@@ -353,9 +374,12 @@ if (!$pg_proto_link_mode) {
         if ($pg_proto_signature === '') {
             $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
         } else {
+            // Bound to this browser's session: the frame request carries its
+            // cookie, a copy of the address read elsewhere does not.
             $pg_proto_frame_url = pg_proto_frame_url(
                 $pg_proto_viewer,
-                pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record),
+                pg_proto_frame_query($pg_proto_style_id, $pg_proto_start['id'], $user['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
+                    pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)),
                 $pg_proto_anchor
             );
         }
@@ -564,9 +588,13 @@ $pg_proto_signature = pg_proto_link_frame_sign($pg_proto_link['style_id'], $pg_p
 if ($pg_proto_signature === '') {
     $pg_proto_error = lang('The prototype cannot be drawn because the site has no encryption key.');
 } else {
+    // Bound to the session this browser opened the link in, signed in or
+    // not: the frame request carries its cookie, a copy of the address read
+    // off the page (the design's scripts can) does not.
     $pg_proto_frame_url = pg_proto_frame_url(
         $pg_proto_viewer,
-        pg_proto_link_frame_query($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record),
+        pg_proto_link_frame_query($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record,
+            pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)),
         $pg_proto_anchor
     );
 }

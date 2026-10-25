@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19, in progress: schema, verified reviews, rating, store reply, review request e-mail done): designer tokens or wishlist next, back-in-stock, bundles later
+description: Plan (approved 2026-10-19, in progress: schema, verified reviews, rating, store reply, review request e-mail, rating tokens done): wishlist next, back-in-stock, bundles later
 ---
 
 ## Why?
@@ -12,15 +12,16 @@ description: Plan (approved 2026-10-19, in progress: schema, verified reviews, r
 - (c) Back in stock: table `stock_notify` (product_id, e-mail or user_id, phone, created_at, sent_at); "Notify me" on out-of-stock items in the widget layer; site writers fire `inventory.changed` (not imports, ERP counts) — a listener sends e-mail (and SMS via `sms-and-iys.md`) once per row and marks it sent.
 - (d) Bundles (later phase, own slice set): a `bundle` product whose lines are other products with fixed quantities; stock derived from components; price fixed or discounted sum; cart and order lines keep component references for ERP stock moves. Not before (a)–(c).
 - Nothing changes in express-order totals; bundle pricing enters as a normal line price.
-- Added in 2a: an unpaid bank transfer is not bought; one review per purchase; only verified reviews count (28/B(6)); aggregateRating only where the reviews show with stars: `docs/memory/commerce/product-reviews-verified.md`.
+- Added in 2a: purchase, review and aggregateRating rules in `commerce/product-reviews-verified.md`.
 
 ## What is done?
 1. Schema 11.0.14 (PR #698) `upgrade_2026_11_0_conversion_pack()`: comments and products columns, `wishlist_items`, `stock_notify`, `order_review_request` in both campaign action enums.
 2a. (PR #698) Review gate in the comment form and `add_comment.php`, "Verified purchase" badge, rating refresh on every write path plus a daily pass, `aggregateRating` in the legacy catalog detail markup, the store's reply in Comment Moderation and under the review, verified marker in the list (`includes/fn/reviews.php`, `tests/reviews_test.php`).
 2b. (PR #1316) `order_review_request` profile: once per order when an account's order ships, links to review forms, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
+2c (tokens). (PR #1560) `__rating_avg`, `__rating_count`, `has_rating`/`no_rating` in the catalog widgets (`designer/catalog-rating-tokens.md`).
 
 ## What remains?
-2c. Designer: `__rating_avg`, `__rating_count`, `__reviews` tokens and a review form on designer product pages (comments are page-level there), then aggregateRating in `_pg_build_product_jsonld()` (M).
+2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
 3. Wishlist widget tokens, account page, merge logic (M).
 4. Back-in-stock capture + listener + templates (S–M).
 5. API: `/products/{id}/reviews`, `/customers/{id}/wishlist`, webhook `product.review.created`, `verified` on comments (S).
@@ -31,4 +32,4 @@ description: Plan (approved 2026-10-19, in progress: schema, verified reviews, r
 - Featured comments are shown first by default; 28/B(4) asks for an objective order. Change that for product reviews?
 
 ## Where to start?
-- Step 2c or 3; read `commerce/product-reviews-verified.md`.
+- Step 3; read `commerce/product-reviews-verified.md`.

@@ -5,7 +5,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 
 ## Which screens are there?
 - `view_returns.php` (Orders menu › Returns): newest request first, at most `PG_RETURN_PANEL_LIMIT` (1000) rows; status filter `pg_filter_select()`, default `open` (requested, approved, shipped, received: `pg_return_open_statuses()`), one status or `all`, kept in `$_SESSION['software']['ecommerce']['view_returns']`. Only `requested` rows have a checkbox; **Approve Selected** (`bulk=approve`, POST to itself) runs `pg_returns_bulk_approve()`.
-- `view_return.php?id=`: lines, reason, both notes, the forms of `pg_return_staff_actions()` (every staff move but `refunded`, which has its own card: commerce/order-returns-refund.md); side column with the stamps and who, order, customer, parcels, delivery date (known or estimated), withdrawal deadline and whether the request came in time, refund due date.
+- `view_return.php?id=`: lines, reason, both notes, the forms of `pg_return_staff_actions()` (every staff move but `refunded`, which has its own card: commerce/order-returns-refund.md); side column with the stamps and who, order, customer, parcels, delivery date (known or estimated), withdrawal deadline and whether the request came in time (`pg_return_timing()`, which `OrderReturn.withdrawal` reads too: order-returns-api-timing.md), refund due date.
 - Gate on both: `validate_user()` + `validate_ecommerce_access()` + `ECOMMERCE`. POSTs check the token; a refusal keeps what was typed (`add_fields_to_session()` only then).
 - Order screen: `pg_returns_panel_card()` under Legal Documents. Bell/push row `order_return` opens `view_return.php?id=<form_id>`.
 

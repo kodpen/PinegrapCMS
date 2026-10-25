@@ -12906,12 +12906,13 @@ const StyleDesigner = (function () {
         return !!(tok && Object.prototype.hasOwnProperty.call(_SD_HTML_PREVIEW_TOKENS, tok));
     }
 
-    // Numeric / count tokens — return a small integer instead of lorem.
+    // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
         '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
-        '__inventory_quantity': '12', '__item_inventory_quantity': '12'
+        '__inventory_quantity': '12', '__item_inventory_quantity': '12',
+        '__rating_avg': '4.6', '__rating_count': '12'
     };
 
     // Boolean / flag-shaped tokens — empty string (collapses :empty styles).
@@ -34806,6 +34807,12 @@ const StyleDesigner = (function () {
             ['__reward_points', _sdT('Reward points')],
             ['__seo_score',     _sdT('SEO score')]
         ]},
+        // Empty while the product has no verified, starred review; the
+        // "Show only when" flags has_rating / no_rating follow the same count.
+        { label: _sdT('Reviews'), tokens: [
+            ['__rating_avg',    _sdT('Average rating (verified reviews)')],
+            ['__rating_count',  _sdT('Number of verified reviews')]
+        ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
             ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
@@ -34947,6 +34954,10 @@ const StyleDesigner = (function () {
         { label: _sdT('Reward & SEO'), tokens: [
             ['__reward_points', _sdT('Reward points')],
             ['__seo_score',     _sdT('SEO score')]
+        ]},
+        { label: _sdT('Reviews'), tokens: [
+            ['__rating_avg',    _sdT('Average rating (verified reviews)')],
+            ['__rating_count',  _sdT('Number of verified reviews')]
         ]},
         { label: _sdT('Variant Picker (select-type group)'), tokens: [
             ['__variant_picker',    _sdT('Variant pickers (HTML — Color/Size/...)')],
@@ -36126,6 +36137,16 @@ const StyleDesigner = (function () {
             ['has_query',   _sdT('Something was searched')],
             ['has_results', _sdT('The search found results')],
             ['no_results',  _sdT('The search found nothing')]
+        ],
+        // The rating of the card's product (listing) or of the product shown
+        // (detail): verified, starred reviews, as __rating_count counts them.
+        catalog_listing: [
+            ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
+            ['no_rating',  _sdT('Row: the product has no rating yet')]
+        ],
+        catalog_item_view: [
+            ['has_rating', _sdT('The product has a rating from verified reviews')],
+            ['no_rating',  _sdT('The product has no rating yet')]
         ],
         calendar_view: [
             ['has_navigation', _sdT('The view can be stepped through (monthly or weekly)')],

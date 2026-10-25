@@ -699,7 +699,9 @@ if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 }
 
 // Workspace scheduled actions whose time has come, and the starts one action
-// gave another (includes/workspace/scheduled.php).
+// gave another (includes/workspace/scheduled.php), and the boxes of the
+// flows' runs that are due, with a job's longer time budget
+// (includes/workspace/flow_runs.php).
 //
 // Run on every tick rather than left to the workspace's own scheduled job:
 // that one waits for its turn in the dispatcher's rotation below, so an action
@@ -719,7 +721,7 @@ if (
     require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
 
     if (ws_enabled() && function_exists('ws_scheduled_due') && ws_scheduled_due()) {
-        ws_scheduled_run();
+        ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
 }

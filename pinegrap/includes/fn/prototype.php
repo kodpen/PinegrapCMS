@@ -9,12 +9,14 @@
  * design's name, its draft pages, a hotspots switch, close) around a
  * sandboxed frame. The frame is a second request with no session and no
  * cookie at all, admitted by a short-lived signed address the first one
- * made: there is no signed-in person in it whose rights could decide what a
- * list or a widget shows, so the draft is drawn exactly as a signed-out
- * visitor would get it once it is published. Every link of the drawn page is
- * resolved (includes/fn/link_resolve.php) and rewritten here: to another
- * draft of the design it stays in the prototype, to a page on the site it
- * opens that page in a new tab, to nothing it is marked and goes nowhere.
+ * made and bound to the browser it made it for (the session cookie is
+ * compared, no session is started): there is no signed-in person in it
+ * whose rights could decide what a list or a widget shows, so the draft is
+ * drawn exactly as a signed-out visitor would get it once it is published.
+ * Every link of the drawn page is resolved (includes/fn/link_resolve.php)
+ * and rewritten here: to another draft of the design it stays in the
+ * prototype, to a page on the site it opens that page in a new tab, to
+ * nothing it is marked and goes nowhere.
  *
  * Loaded by prototype.php only (and by the tests).
  *
@@ -130,6 +132,35 @@ function pg_proto_frame_sign($style_id, $page_id, $user_id, $expires, $key, $sub
 }
 
 /**
+ * What binds a frame address to the browser the viewer made it for: a MAC of
+ * the address's signature and that browser's session id, sent as b=. The
+ * page's own scripts run in the frame and can read its address (a tag pasted
+ * into the design reports it to its vendor), so the address must open
+ * nothing without the session cookie it was made for, which those scripts
+ * cannot read. A MAC of its own rather than a part of the signature: an
+ * address asked for by another browser, or by the same one after its
+ * session changed, is refused without being counted as a forgery
+ * (pg_proto_frame_state() answers 'unbound', not 'invalid').
+ *
+ * @param string $signature pg_proto_frame_sign()
+ * @param string $client    the viewer's session id
+ * @param string $key       ENCRYPTION_KEY
+ * @return string 64 hex characters, '' when any part is missing
+ */
+function pg_proto_frame_bind($signature, $client, $key)
+{
+    $signature = (string) $signature;
+    $client = (string) $client;
+    $key = (string) $key;
+
+    if (($signature === '') || ($client === '') || ($key === '')) {
+        return '';
+    }
+
+    return hash_hmac('sha256', 'prototype-bind:' . $signature . ':' . $client, $key);
+}
+
+/**
  * The frame's address: the viewer, the signed query and the section the
  * frame scrolls to. A fragment never reaches the server, so it is no part of
  * the signature.
@@ -215,9 +246,10 @@ function pg_proto_split_language($item, $languages)
 /**
  * The query string of a frame address, without the leading "?".
  *
+ * @param string $bind pg_proto_frame_bind(), '' for none
  * @return string
  */
-function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signature, $sub = '', $record = '')
+function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signature, $sub = '', $record = '', $bind = '')
 {
     $query = 'frame=1'
         . '&s=' . (int) $style_id
@@ -225,6 +257,10 @@ function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signatur
         . '&u=' . (int) $user_id
         . '&e=' . (int) $expires
         . '&sig=' . rawurlencode((string) $signature);
+
+    if ((string) $bind !== '') {
+        $query .= '&b=' . rawurlencode((string) $bind);
+    }
 
     if ((string) $sub !== '') {
         $query .= '&sub=' . rawurlencode((string) $sub);
@@ -241,10 +277,12 @@ function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signatur
  * Reads a frame address from the request. Design, page, person and expiry
  * are plain positive whole numbers written as such; the signature is 64
  * lower-case hex characters. Anything else is no address. The record code
- * and the sub-address are optional and dropped when they are not plain text.
+ * and the sub-address are optional and dropped when they are not plain text;
+ * a binding that is not 64 hex characters is read as none (an address that
+ * is not bound, not a forged one).
  *
  * @param mixed $source $_GET
- * @return array|null s, p, u, e (int), sig, sub, r (string)
+ * @return array|null s, p, u, e (int), sig, sub, r, b (string)
  */
 function pg_proto_frame_parse($source)
 {
@@ -274,20 +312,26 @@ function pg_proto_frame_parse($source)
     $parsed['sub'] = pg_proto_clean_text(isset($source['sub']) ? $source['sub'] : '', 255);
     $parsed['r'] = pg_proto_clean_text(isset($source['r']) ? $source['r'] : '', 100);
 
+    $bind = isset($source['b']) ? $source['b'] : '';
+    $parsed['b'] = (is_string($bind) && (preg_match('/^[0-9a-f]{64}$/', $bind) === 1)) ? $bind : '';
+
     return $parsed;
 }
 
 /**
  * What a frame address can do now: 'ok'; 'invalid' (not parsed, no key, a
  * signature that does not match, or an expiry further ahead than the viewer
- * ever sets); 'expired'.
+ * ever sets); 'expired'; 'unbound' (a valid address that is not bound to the
+ * browser asking for it, pg_proto_frame_bind()).
  *
- * @param array|null $parsed pg_proto_frame_parse()
- * @param string     $key
- * @param int        $now
+ * @param array|null  $parsed pg_proto_frame_parse()
+ * @param string      $key
+ * @param int         $now
+ * @param string|null $client the asking browser's session cookie ('' for
+ *                            none); null checks the signature alone
  * @return string
  */
-function pg_proto_frame_state($parsed, $key, $now)
+function pg_proto_frame_state($parsed, $key, $now, $client = null)
 {
     if (!is_array($parsed) || !isset($parsed['s'], $parsed['p'], $parsed['u'], $parsed['e'], $parsed['sig'])) {
         return 'invalid';
@@ -306,6 +350,16 @@ function pg_proto_frame_state($parsed, $key, $now)
 
     if ((int) $parsed['e'] < (int) $now) {
         return 'expired';
+    }
+
+    // Checked last: only an address that is genuine and in time can be
+    // refused as asked for in the wrong browser.
+    if ($client !== null) {
+        $bind = pg_proto_frame_bind($parsed['sig'], $client, $key);
+
+        if (($bind === '') || !isset($parsed['b']) || !hash_equals($bind, (string) $parsed['b'])) {
+            return 'unbound';
+        }
     }
 
     return 'ok';
@@ -648,11 +702,29 @@ function pg_proto_html_parts($html)
 }
 
 /**
+ * Every tag of a piece of markup, read the way a browser tokenizes it:
+ * group 1 is the name as written ("/name" for an end tag), group 2 what
+ * follows up to the ">" that ends the tag. A quote opens a quoted value only
+ * after "=", and a quoted value runs to its own closing quote, so a "<a"
+ * written inside another tag's attribute value (a popover's content, a
+ * custom element's setting) is part of that tag and never read as a link.
+ * Every repeat is possessive: markup that does not close cannot make the
+ * match backtrack.
+ *
+ * @return string a preg pattern
+ */
+function pg_proto_tag_pattern()
+{
+    return '~<(/?[a-z][^\s/>]*+)((?:[\s/]++|(?:=[^\s/>=]*+|[^\s/>=]++)(?:\s*+=\s*+(?:"[^"]*+"|\'[^\']*+\'|[^\s"\'>][^\s>]*+)?)?)*+)>~i';
+}
+
+/**
  * The attributes of one start tag, in order: name (lower case), value
  * (decoded; null for an attribute written without one) and the text it was
  * written as.
  *
- * @param string $inner the tag without "<a" and ">"
+ * @param string $inner the tag without "<", its name and ">" (group 2 of
+ *                      pg_proto_tag_pattern())
  * @return array[]
  */
 function pg_proto_tag_attributes($inner)
@@ -703,12 +775,16 @@ function pg_proto_html_hrefs($html)
             continue;
         }
 
-        if (!preg_match_all('~<a(\s(?:[^>"\']|"[^"]*"|\'[^\']*\')*)>~i', $part, $tags)) {
+        if (!preg_match_all(pg_proto_tag_pattern(), $part, $tags, PREG_SET_ORDER)) {
             continue;
         }
 
-        foreach ($tags[1] as $inner) {
-            foreach (pg_proto_tag_attributes($inner) as $attribute) {
+        foreach ($tags as $tag) {
+            if (strtolower($tag[1]) !== 'a') {
+                continue;
+            }
+
+            foreach (pg_proto_tag_attributes(isset($tag[2]) ? $tag[2] : '') as $attribute) {
                 if (($attribute['name'] === 'href') && ($attribute['value'] !== null)) {
                     $hrefs[] = $attribute['value'];
                     break;
@@ -741,6 +817,12 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
     }
 
     $rewrite_tag = function ($match) use ($classify, $strings) {
+        // Only a link is rewritten; every other tag is matched so that what
+        // its attribute values hold is never taken for a link.
+        if ((strtolower($match[1]) !== 'a') || !isset($match[2]) || (trim($match[2]) === '')) {
+            return $match[0];
+        }
+
         $attributes = pg_proto_tag_attributes($match[2]);
         $href = null;
 
@@ -847,7 +929,7 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
             continue;
         }
 
-        $rewritten = preg_replace_callback('~<(a)(\s(?:[^>"\']|"[^"]*"|\'[^\']*\')*)>~i', $rewrite_tag, $part);
+        $rewritten = preg_replace_callback(pg_proto_tag_pattern(), $rewrite_tag, $part);
 
         if ($rewritten !== null) {
             $parts[$index] = $rewritten;

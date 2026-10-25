@@ -326,6 +326,52 @@ function test_prototype_links_frame_signature_refuses_changes_and_the_person_mod
 	pg_assert_same(null, pg_proto_link_frame_parse($source));
 }
 
+function test_prototype_links_frame_opens_only_in_the_session_that_opened_the_link()
+{
+	// A link's frame runs the design's scripts as a person's does, and its
+	// holder may be signed out: the address is bound to the session the
+	// link was opened in, which every viewer request has.
+	$now = 1900000000;
+	$key = 'site-key';
+	$expires = $now + 600;
+	$signature = pg_proto_link_frame_sign(7, 12, 4, $expires, $key, 'red-shirt', 'abc');
+	$bind = pg_proto_frame_bind($signature, 'session-a', $key);
+	$query = pg_proto_link_frame_query(7, 12, 4, $expires, $signature, 'red-shirt', 'abc', $bind);
+	pg_assert_contains('&b=' . $bind, $query);
+	parse_str($query, $get);
+
+	$parsed = pg_proto_link_frame_parse($get);
+	pg_assert_same($bind, $parsed['b']);
+	pg_assert_same('ok', pg_proto_link_frame_state($parsed, $key, $now, 'session-a'));
+
+	// Another browser, none, no binding or a malformed one: refused as a
+	// real address in the wrong place, never as a forgery.
+	pg_assert_same('unbound', pg_proto_link_frame_state($parsed, $key, $now, 'session-b'));
+	pg_assert_same('unbound', pg_proto_link_frame_state($parsed, $key, $now, ''));
+
+	$without = $get;
+	unset($without['b']);
+	pg_assert_same('unbound', pg_proto_link_frame_state(pg_proto_link_frame_parse($without), $key, $now, 'session-a'));
+
+	$malformed = $get;
+	$malformed['b'] = 'zz';
+	pg_assert_same('', pg_proto_link_frame_parse($malformed)['b']);
+	pg_assert_same('unbound', pg_proto_link_frame_state(pg_proto_link_frame_parse($malformed), $key, $now, 'session-a'));
+
+	// A changed address stays invalid and an old one expired, whatever the
+	// binding.
+	$forged = $get;
+	$forged['l'] = '5';
+	pg_assert_same('invalid', pg_proto_link_frame_state(pg_proto_link_frame_parse($forged), $key, $now, 'session-a'));
+	pg_assert_same('expired', pg_proto_link_frame_state($parsed, $key, $expires + 1, 'session-a'));
+
+	// The viewer binds both kinds of frame address to its session, and the
+	// frame checks a link's against the session cookie it kept.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	pg_assert_same(2, substr_count($source, 'pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)'));
+	pg_assert_contains('pg_proto_link_frame_state($parsed, $pg_proto_key, $pg_proto_now, $pg_proto_client)', $source);
+}
+
 function test_prototype_links_token_is_redacted_from_every_logged_address()
 {
 	$token = prototype_links_test_token();

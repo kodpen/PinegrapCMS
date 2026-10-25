@@ -602,11 +602,14 @@ function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key,
  * token is not in it: the frame runs the design's own scripts, and an
  * analytics or replay tag pasted into the design reports the frame's address
  * (and the page's links) to its vendor. The signature binds the link's id,
- * which the frame reads the link by.
+ * which the frame reads the link by; b= binds the address to the session of
+ * the browser that opened the link (pg_proto_frame_bind()), so a copy those
+ * scripts send away opens nothing.
  *
+ * @param string $bind pg_proto_frame_bind(), '' for none
  * @return string
  */
-function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $sub = '', $record = '')
+function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $sub = '', $record = '', $bind = '')
 {
     $query = 'frame=1'
         . '&s=' . (int) $style_id
@@ -614,6 +617,10 @@ function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $sig
         . '&l=' . (int) $link_id
         . '&e=' . (int) $expires
         . '&sig=' . rawurlencode((string) $signature);
+
+    if ((string) $bind !== '') {
+        $query .= '&b=' . rawurlencode((string) $bind);
+    }
 
     if ((string) $sub !== '') {
         $query .= '&sub=' . rawurlencode((string) $sub);
@@ -629,10 +636,11 @@ function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $sig
 /**
  * Reads a link's frame address from the request: design, page, link and
  * expiry as plain positive whole numbers and a 64-character hex signature;
- * anything else is no address.
+ * anything else is no address. A binding that is not 64 hex characters is
+ * read as none, as pg_proto_frame_parse() reads it.
  *
  * @param mixed $source $_GET
- * @return array|null s, p, l, e (int), sig, sub, r (string)
+ * @return array|null s, p, l, e (int), sig, sub, r, b (string)
  */
 function pg_proto_link_frame_parse($source)
 {
@@ -662,19 +670,24 @@ function pg_proto_link_frame_parse($source)
     $parsed['sub'] = pg_proto_clean_text(isset($source['sub']) ? $source['sub'] : '', 255);
     $parsed['r'] = pg_proto_clean_text(isset($source['r']) ? $source['r'] : '', 100);
 
+    $bind = isset($source['b']) ? $source['b'] : '';
+    $parsed['b'] = (is_string($bind) && (preg_match('/^[0-9a-f]{64}$/', $bind) === 1)) ? $bind : '';
+
     return $parsed;
 }
 
 /**
- * What a link's frame address can do now: 'ok', 'invalid' or 'expired', as
- * pg_proto_frame_state() answers for a person's.
+ * What a link's frame address can do now: 'ok', 'invalid', 'expired' or
+ * 'unbound', as pg_proto_frame_state() answers for a person's.
  *
- * @param array|null $parsed pg_proto_link_frame_parse()
- * @param string     $key
- * @param int        $now
+ * @param array|null  $parsed pg_proto_link_frame_parse()
+ * @param string      $key
+ * @param int         $now
+ * @param string|null $client the asking browser's session cookie ('' for
+ *                            none); null checks the signature alone
  * @return string
  */
-function pg_proto_link_frame_state($parsed, $key, $now)
+function pg_proto_link_frame_state($parsed, $key, $now, $client = null)
 {
     if (!is_array($parsed) || !isset($parsed['s'], $parsed['p'], $parsed['l'], $parsed['e'], $parsed['sig'])) {
         return 'invalid';
@@ -693,6 +706,16 @@ function pg_proto_link_frame_state($parsed, $key, $now)
 
     if ((int) $parsed['e'] < (int) $now) {
         return 'expired';
+    }
+
+    // Checked last: only an address that is genuine and in time can be
+    // refused as asked for in the wrong browser.
+    if ($client !== null) {
+        $bind = pg_proto_frame_bind($parsed['sig'], $client, $key);
+
+        if (($bind === '') || !isset($parsed['b']) || !hash_equals($bind, (string) $parsed['b'])) {
+            return 'unbound';
+        }
     }
 
     return 'ok';
