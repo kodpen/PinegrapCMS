@@ -7,8 +7,9 @@ description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/set
 - PHP 8.3 ready; no Composer. Reading, editing and the checks under `tools/` need no setup; `bash tools/static_analysis.sh` fetches its pinned PHPStan and PHPCompatibility from GitHub on first use (`static-analysis.md`).
 
 ## When do I need a running instance?
-- Only to reproduce a runtime error. `bash tools/setup_sandbox.sh` installs and starts MariaDB, creates the database, writes `data/config.php`, runs the installer and serves on `127.0.0.1:8000` (no SQL dump; the schema comes from the migration runner).
+- To reproduce a runtime error, and for the screenshot rounds below. `bash tools/setup_sandbox.sh` installs and starts MariaDB, creates the database, writes `data/config.php`, runs the installer and serves on `127.0.0.1:8000` (no SQL dump; the schema comes from the migration runner).
 - It is expensive: skip it unless needed. If it fails, report the reason; do not work around it.
+- The Bootstrap 6 panel plan's screenshot rounds are the other use (owner, 2026-10-25): B1b, the B8 rehearsals and the form-adorn pilot (`plans/bootstrap-6-panel.md`). A screen's look is a path no unit test reaches; the images are never committed.
 - Say in the PR when no running instance was set up and what could not be verified.
 
 ## What is dev.pinegrap.com?
