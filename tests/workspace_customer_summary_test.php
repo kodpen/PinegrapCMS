@@ -419,15 +419,24 @@ function test_ws_customer_money_text()
 }
 
 // The orders of a customer: by its contact, the users tied to it and, where
-// the column is there, its current accounts.
+// the column is there, its current accounts. A cart not ordered yet is no
+// order. A counter sale's user_id is the cashier who rang it up, not the
+// buyer (local_sale_complete()), so the users find no counter sale; the
+// sale's contact and account still find it for its buyer.
 function test_ws_customer_order_where()
 {
 	$identity = array('contact_id' => 5, 'user_ids' => array(3, 4), 'erp_account_ids' => array(9));
 
-	pg_assert_same("contact_id = '5' OR user_id IN ('3','4') OR erp_account_id IN ('9')", ws_customer_order_where($identity, true));
-	pg_assert_same("contact_id = '5' OR user_id IN ('3','4')", ws_customer_order_where($identity, false), 'no erp_account_id column yet');
-	pg_assert_same("erp_account_id IN ('9')", ws_customer_order_where(array('contact_id' => 0, 'user_ids' => array(), 'erp_account_ids' => array('9')), true), 'an account alone');
-	pg_assert_same('', ws_customer_order_where(array('contact_id' => 0, 'user_ids' => array(0), 'erp_account_ids' => array()), true), 'nobody to read by: no query');
+	pg_assert_same("status <> 'incomplete' AND (contact_id = '5' OR (user_id IN ('3','4') AND type <> 'local') OR erp_account_id IN ('9'))", ws_customer_order_where($identity, true, true));
+	pg_assert_same("status <> 'incomplete' AND (contact_id = '5' OR (user_id IN ('3','4') AND type <> 'local'))", ws_customer_order_where($identity, false, true), 'no erp_account_id column yet');
+	pg_assert_same("status <> 'incomplete' AND (contact_id = '5' OR user_id IN ('3','4'))", ws_customer_order_where($identity, false, false), 'no type column yet');
+	pg_assert_same("status <> 'incomplete' AND (erp_account_id IN ('9'))", ws_customer_order_where(array('contact_id' => 0, 'user_ids' => array(), 'erp_account_ids' => array('9')), true, true), 'an account alone');
+	pg_assert_same('', ws_customer_order_where(array('contact_id' => 0, 'user_ids' => array(0), 'erp_account_ids' => array()), true, true), 'nobody to read by: no query');
+
+	$source = workspace_customer_summary_test_source('ws_customer_order_rows');
+
+	pg_assert_contains("pg_schema_has('orders', 'type')", $source, 'the type column is asked for');
+	pg_assert_true(strpos($source, 'incomplete') === false, 'the reader adds no condition of its own');
 }
 
 // Nothing is read for a section the reader may not see, and the readers stay
@@ -451,6 +460,7 @@ function test_ws_customer_summary_reads_only_what_the_rights_open()
 
 	pg_assert_contains('ws_customer_summary_build($rights, $data', $source, 'the same rights lay it out');
 	pg_assert_contains("erp_quote_rows(array('state' => 'open'", workspace_customer_summary_test_source('ws_customer_sales_quote_rows'), 'open sales quotes, from the ERP\'s reader');
+	pg_assert_contains('erp_quote_open_count($account_id)', workspace_customer_summary_test_source('ws_customer_sales_quote_rows'), 'and their count from the ERP\'s own counter');
 	pg_assert_contains('ws_viewer_folder_open($viewer', workspace_customer_summary_test_source('ws_customer_form_rows'), 'a form is opened as the panel opens it');
 
 	foreach (array('ws_customer_identity', 'ws_customer_summary', 'ws_customer_order_rows', 'ws_customer_erp_account_rows', 'ws_customer_sales_quote_rows', 'ws_customer_form_rows') as $function) {

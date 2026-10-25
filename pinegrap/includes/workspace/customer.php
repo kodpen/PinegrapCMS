@@ -898,14 +898,18 @@ function ws_customer_ids($ids)
 }
 
 /**
- * The WHERE part that finds a customer's orders: by its contact, the users
+ * The WHERE clause that finds a customer's orders: by its contact, the users
  * tied to it and, once orders.erp_account_id is there, its current accounts.
+ * A cart not ordered yet (incomplete) is no order. A counter sale writes the
+ * cashier who rang it up into user_id (local_sale_complete()), so the users
+ * find no counter sale; its contact_id and erp_account_id name the buyer.
  *
  * @param array $identity      ws_customer_identity()
  * @param bool  $with_accounts whether orders has erp_account_id
+ * @param bool  $with_type     whether orders has type (online / local)
  * @return string '' when there is nothing to find them by
  */
-function ws_customer_order_where($identity, $with_accounts)
+function ws_customer_order_where($identity, $with_accounts, $with_type)
 {
     $where = array();
     $contact_id = (int) ($identity['contact_id'] ?? 0);
@@ -917,19 +921,24 @@ function ws_customer_order_where($identity, $with_accounts)
     }
 
     if (!empty($user_ids)) {
-        $where[] = "user_id IN ('" . implode("','", $user_ids) . "')";
+        $by_user = "user_id IN ('" . implode("','", $user_ids) . "')";
+        $where[] = $with_type ? "(" . $by_user . " AND type <> 'local')" : $by_user;
     }
 
     if (!empty($account_ids)) {
         $where[] = "erp_account_id IN ('" . implode("','", $account_ids) . "')";
     }
 
-    return implode(' OR ', $where);
+    if (empty($where)) {
+        return '';
+    }
+
+    return "status <> 'incomplete' AND (" . implode(' OR ', $where) . ")";
 }
 
 /**
- * A customer's orders: how many, and the latest. A cart not ordered yet
- * (incomplete) is no order.
+ * A customer's orders: how many, and the latest
+ * (ws_customer_order_where() says which).
  *
  * @param array $identity ws_customer_identity()
  * @param int   $limit
@@ -943,13 +952,13 @@ function ws_customer_order_rows($identity, $limit)
         return $none;
     }
 
-    $where = ws_customer_order_where($identity, function_exists('pg_schema_has') && pg_schema_has('orders', 'erp_account_id'));
+    $schema = function_exists('pg_schema_has');
+    $where = ws_customer_order_where($identity, $schema && pg_schema_has('orders', 'erp_account_id'), $schema && pg_schema_has('orders', 'type'));
 
     if ($where === '') {
         return $none;
     }
 
-    $where = "status <> 'incomplete' AND (" . $where . ")";
     $count = (int) db_value("SELECT COUNT(*) FROM orders WHERE " . $where);
 
     if ($count === 0) {
