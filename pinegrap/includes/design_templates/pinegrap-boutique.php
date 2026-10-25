@@ -154,6 +154,19 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
 $add_to_bag = function ($class = '') use ($button) {
     return $button(lang('Add to bag'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
+// The favourite heart in the corner of a product card, above the card's
+// stretched link: the listing marks it with the card's product and draws it
+// hidden, the page's script shows it, filled for a product the visitor
+// saved. A product group's card has none.
+$heart = function () use ($button, $icon, $span) {
+    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle',
+        array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
+    $node['children'] = array(
+        $icon('bi-heart', ''),
+        $span(lang('Add to favourites'), 'visually-hidden', lang('Screen Reader Text')),
+    );
+    return $node;
+};
 
 // The sample picture a product card shows until the widget fills it in.
 $sample_product = 'https://picsum.photos/seed/pinegrap-boutique-product/600/600';
@@ -507,12 +520,13 @@ $price = function ($class) use ($span, $bind) {
 };
 
 // New in: a tall card in a sideways strip, the "New" mark on the picture.
-$card_new = function () use ($el, $col, $span, $product_title, $product_picture, $price) {
+$card_new = function () use ($el, $col, $span, $product_title, $product_picture, $price, $heart) {
     return $col(array(
         $el('article', 'position-relative h-100', lang('Product Card'), array(
             $el('div', 'position-relative mb-3', lang('Picture Area'), array(
                 $product_picture('ratio ratio-1x1 bg-body-tertiary'),
                 $span(lang('New'), 'badge position-absolute top-0 start-0 m-3 fw-normal text-uppercase text-bg-light', lang('Badge')),
+                $heart(),
             )),
             $product_title('h3', 'h6 fw-normal mb-1'),
             $price('small text-body-secondary'),
@@ -521,10 +535,11 @@ $card_new = function () use ($el, $col, $span, $product_title, $product_picture,
 };
 
 // Minimal: the picture, the name and the price, centred, nothing else.
-$card_minimal = function () use ($el, $col, $product_title, $product_picture, $price) {
+$card_minimal = function () use ($el, $col, $product_title, $product_picture, $price, $heart) {
     return $col(array(
         $el('article', 'position-relative h-100 text-center', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 mb-3 bg-body-tertiary'),
+            $heart(),
             $product_title('h3', 'h6 fw-normal mb-1'),
             $price('small text-body-secondary'),
         )),
@@ -532,9 +547,10 @@ $card_minimal = function () use ($el, $col, $product_title, $product_picture, $p
 };
 
 // Editorial: a large picture with the words and the button beside it.
-$card_editorial = function () use ($el, $col, $row, $span, $bind, $product_title, $product_picture, $price, $add_to_bag) {
+$card_editorial = function () use ($el, $col, $row, $span, $bind, $product_title, $product_picture, $price, $add_to_bag, $heart) {
     return $col(array(
         $el('article', 'position-relative h-100 border', lang('Product Card'), array(
+            $heart(),
             $row(array(
                 $col(array($product_picture('ratio ratio-1x1 h-100 bg-body-tertiary')), '', '', '6'),
                 $col(array(
@@ -552,10 +568,11 @@ $card_editorial = function () use ($el, $col, $row, $span, $bind, $product_title
 
 // Collage: two square pictures side by side, the name and the price under
 // each.
-$card_collage = function () use ($el, $col, $product_title, $product_picture, $price) {
+$card_collage = function () use ($el, $col, $product_title, $product_picture, $price, $heart) {
     return $col(array(
         $el('article', 'position-relative', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 mb-2 bg-body-tertiary'),
+            $heart(),
             $el('div', 'd-flex flex-wrap justify-content-between gap-1 small', lang('Caption'), array(
                 $product_title('h3', 'fs-6 fw-normal mb-0'),
                 $price('text-body-secondary'),
@@ -565,10 +582,11 @@ $card_collage = function () use ($el, $col, $product_title, $product_picture, $p
 };
 
 // Gift: the minimal card with the button under it.
-$card_gift = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_bag) {
+$card_gift = function () use ($el, $col, $product_title, $product_picture, $price, $add_to_bag, $heart) {
     return $col(array(
         $el('article', 'position-relative d-flex flex-column h-100 text-center', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 mb-3 bg-body-tertiary'),
+            $heart(),
             $product_title('h3', 'h6 fw-normal mb-1'),
             $price('small mb-3 text-body-secondary'),
             $el('div', 'mt-auto position-relative z-2', lang('Button'), array($add_to_bag('w-100'))),
@@ -2767,7 +2785,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',
