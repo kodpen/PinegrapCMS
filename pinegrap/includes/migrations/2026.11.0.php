@@ -60,6 +60,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_channel_icon(); // 11.0.81
 	upgrade_2026_11_0_workspace_flows();        // 11.0.80
 	upgrade_2026_11_0_comment_record_counts();  // 11.0.33
+	upgrade_2026_11_0_order_return_refund();    // 11.0.34
 
 }
 
@@ -582,6 +583,111 @@ function upgrade_2026_11_0_return_reminders() {
 	install_add_column('order_returns', 'refund_overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Returns: each return request now records when its refund reminders were given, so a reminder cleared from the panel bell is not sent again the next day.');
+
+}
+
+// The refund of a return kept on the return itself (2026.11.0, 11.0.34;
+// includes/fn/returns.php, pg_return_refund()): refund_amount in minor units
+// (0 is a refund recorded as 0), refund_method driver or manual ('' while
+// nothing is known), refund_reference (the payment service's refund id, or
+// the typed reference of a refund made another way) and refund_unclear (1:
+// the service gave no clear answer, the refund is booked unconfirmed). Until
+// now they reached only the order.return.refunded event and the audit trail,
+// so GET /orders/{id}/returns could not say how much went back.
+//
+// Returns refunded before the step are filled in from what the refund wrote
+// at the time (pg_return_refund_backfill_values()): the return's refund
+// audit line, else its order_refunds row, matched by its exact note. Only a
+// return with nothing kept yet is read, so a second run finds nothing to do
+// and a return neither source knows stays empty for the next one.
+// order_returns holds one row per customer request (hundreds in a shop, not
+// millions), and only the refunded ones are read, so one pass in chunks of
+// 500 ids does it: no cursor and no pause.
+function upgrade_2026_11_0_order_return_refund() {
+
+	install_add_column('order_returns', 'refund_amount', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('order_returns', 'refund_method', "VARCHAR(10) NOT NULL DEFAULT ''");
+	install_add_column('order_returns', 'refund_reference', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('order_returns', 'refund_unclear', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	$returns = array();
+
+	foreach ((array) db_items("SELECT id, order_id FROM order_returns WHERE refund_method = '' AND refunded_at > 0 ORDER BY id") as $row) {
+		$returns[(int) $row['id']] = (int) $row['order_id'];
+	}
+
+	if (empty($returns)) {
+
+		install_skipped('order_returns: no refunded return without its refund, nothing to fill in');
+
+	} else {
+
+		$audit_ready = install_table_exists('audit_log');
+		$refunds_ready = install_column_exists('order_refunds', 'notes');
+		$filled = 0;
+
+		foreach (array_chunk(array_keys($returns), 500) as $ids) {
+
+			// The latest refund line of each return; rows come oldest first.
+			$audit = array();
+
+			if ($audit_ready) {
+				foreach ((array) db_items("SELECT entity_id, after_json FROM audit_log
+					WHERE entity_type = 'order_return' AND action = 'update' AND entity_id IN (" . implode(',', $ids) . ")
+					ORDER BY id") as $line) {
+					$after = json_decode((string) $line['after_json'], true);
+
+					if (is_array($after) && isset($after['refund_method'])) {
+						$audit[(int) $line['entity_id']] = $after;
+					}
+				}
+			}
+
+			$refunds = array();
+
+			if ($refunds_ready) {
+				$orders = array_values(array_unique(array_intersect_key($returns, array_flip($ids))));
+
+				foreach ((array) db_items("SELECT order_id, amount_cents, refund_type, transaction_id, notes FROM order_refunds
+					WHERE refund_type IN ('return', 'return_manual') AND order_id IN (" . implode(',', array_map('intval', $orders)) . ")
+					ORDER BY id") as $line) {
+					$refunds[(int) $line['order_id']][] = $line;
+				}
+			}
+
+			foreach ($ids as $id) {
+				$values = pg_return_refund_backfill_values(
+					isset($audit[$id]) ? $audit[$id] : null,
+					isset($refunds[$returns[$id]]) ? $refunds[$returns[$id]] : array(),
+					$id);
+
+				if ($values === null) {
+					continue;
+				}
+
+				db("UPDATE order_returns
+					SET refund_amount = '" . (int) $values['amount'] . "',
+						refund_method = '" . e($values['method']) . "',
+						refund_reference = '" . e(mb_substr($values['reference'], 0, 255)) . "',
+						refund_unclear = '" . (int) $values['unclear'] . "'
+					WHERE (id = '" . (int) $id . "') AND (refund_method = '')");
+
+				$filled += max(0, (int) mysqli_affected_rows(db::$con));
+			}
+		}
+
+		$left = count($returns) - $filled;
+
+		if ($filled > 0) {
+			install_ran('order_returns: the refund of ' . $filled . ' refunded return(s) filled in from the audit trail and the order refunds');
+		}
+
+		if ($left > 0) {
+			install_skipped('order_returns: ' . $left . ' refunded return(s) left without their refund: neither the audit trail nor the order refunds hold it');
+		}
+	}
+
+	install_note('Returns: a refunded return now keeps its refund (amount, how it was made, the reference and whether the payment service answered clearly); returns refunded earlier are filled in from the audit trail and the order refunds.');
 
 }
 
