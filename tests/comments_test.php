@@ -326,3 +326,37 @@ function test_comments_thread_add_comment_wiring()
 	pg_assert_false(strpos($item_block, 'add_error(') !== false, 'no form error that would come back with the refused item');
 	pg_assert_false(strpos($item_block, 'header(') !== false, 'no redirect back to the form');
 }
+
+// A member's address is a value like any other: validate_email_address()
+// accepts an apostrophe, and USER_EMAIL_ADDRESS holds the address as
+// stored. Quoted into SQL raw, it broke the watcher queries of
+// add_or_remove_watcher.php and the classic comments block ("Query
+// failed."), and a crafted address turned the self-remove DELETE into one
+// that removed every e-mail watcher of the thread. No PHP file under
+// pinegrap/ quotes the constant into a string without escaping it.
+function test_comments_watcher_queries_escape_the_address()
+{
+	$raw = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($files as $file) {
+		$path = $file->getPathname();
+
+		if (substr($path, -4) !== '.php') {
+			continue;
+		}
+
+		$source = (string) file_get_contents($path);
+
+		if ((strpos($source, 'USER_EMAIL_ADDRESS') === false) || !preg_match_all('/\'"\s*\.\s*USER_EMAIL_ADDRESS\s*\.\s*"\'/', $source, $found, PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		foreach ($found[0] as $hit) {
+			$raw[] = substr($path, strlen(PG_FUNCTIONS_DIR) + 1) . ':' . (substr_count($source, "\n", 0, $hit[1]) + 1);
+		}
+	}
+
+	pg_assert_same(array(), $raw, 'USER_EMAIL_ADDRESS quoted into SQL without escape()');
+	pg_assert_contains("(email_address = '\" . escape(USER_EMAIL_ADDRESS) . \"')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_or_remove_watcher.php'), 'the handler still matches the member by address');
+}
