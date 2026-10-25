@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 3, 4a-4c, 6 done; A, B, 2b-ii, 5a-5c open to any session
+description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 3, 4a-4c, 6, A done; B, 2b-ii, 5a-5c open to any session
 ---
 
 ## Why?
@@ -15,11 +15,10 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Payout/settlement reconciliation stays out (ERP roadmap B4).
 
 ## What is done?
-- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 6 API endpoint and order events (#1667).
+- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 6 API endpoint and order events (#1667), A hardening (#1675).
 
 ## What is open? (any session; claim one step at a time)
 - How each step was designed in a build that never reached GitHub: `marketplace-trendyol-remaining-design.md`. Follow it unless the code says otherwise.
-- A. Hardening: webhook 401 to the firewall, register re-reads the account, one id check for approve and ship (S).
 - B. Schema: `commission` and `invoice_sent` columns, before 2b-ii and 5a (S).
 - 2b-ii. Listing update by `contentId` (`content-bulk-update`, docs "Ürün Güncelleme - Onaylı Ürün v2"); `remote_id` holds the content id (`trendyol-listing-status.md`); the commission shown read-only (S–M).
 - 5a. Invoice link push: the operator types the URL, as the e-document PDF needs the panel login (`trendyol-orders.md`) (S).
@@ -39,5 +38,5 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 
 ## Where to start?
 - Owner (2026-10-24): no session holds this plan; any free session may take a step. Claim it as CLAUDE.md says (`[plan:marketplace-trendyol-hepsiburada] <step>`), one step per PR, steps of this plan one at a time.
-- Good first steps: A, B, then 2b-ii or 5a. No live credentials exist: build against saved answers in `tests/fixtures/trendyol/` shaped from the documentation, as the earlier steps did, and list what stays unverified.
+- Good first steps: B, then 2b-ii or 5a. No live credentials exist: build against saved answers in `tests/fixtures/trendyol/` shaped from the documentation, as the earlier steps did, and list what stays unverified.
 - Read `docs/memory/commerce/README.md` first.

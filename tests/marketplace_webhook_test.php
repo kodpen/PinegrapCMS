@@ -325,6 +325,48 @@ function test_marketplace_webhook_endpoint_is_an_api_script_for_the_firewall()
 	pg_assert_contains("'marketplace_webhook.php'", substr($source, $start, 400));
 }
 
+// A wrong or missing key goes to the firewall with the weight of a wrong API
+// secret, before the refusal is answered; no other refusal does, because a
+// paused account or a removed webhook is refused for the marketplace's own
+// servers, which also deliver the account's current webhook.
+function test_marketplace_webhook_wrong_key_counts_with_the_firewall()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_receiver.php');
+
+	$start = strpos($source, 'function mp_webhook_receive() {');
+	$end = strpos($source, '$length = isset($_SERVER[\'CONTENT_LENGTH\'])', (int) $start);
+
+	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end));
+
+	$refusal = substr($source, $start, $end - $start);
+
+	$only_401 = strpos($refusal, 'if ($status === 401) {');
+	$offence = strpos($refusal, 'mp_webhook_offence();');
+	$answer = strpos($refusal, 'mp_webhook_answer($status, array(\'ok\' => false));');
+
+	pg_assert_true($only_401 !== false, 'only a 401 counts');
+	pg_assert_true(($only_401 !== false) && ($offence !== false) && ($only_401 < $offence), 'inside that check');
+	pg_assert_true(($offence !== false) && ($answer !== false) && ($offence < $answer), 'before the answer ends the request');
+	pg_assert_same(1, substr_count($source, 'mp_webhook_offence();'), 'nowhere else');
+
+	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/auth.php');
+	$line = "waf_register_offence(waf_client_ip(), 5, (waf_mode() === 'block'));";
+
+	pg_assert_contains($line, $auth, 'the weight of a wrong API secret');
+	pg_assert_contains($line, $source, 'is the weight given here');
+
+	$body_start = strpos($source, 'function mp_webhook_offence() {');
+	$guard = strpos($source, "!function_exists('waf_register_offence')", (int) $body_start);
+	$call = strpos($source, $line, (int) $body_start);
+
+	pg_assert_true(($body_start !== false) && ($guard !== false) && ($guard < $call), 'a firewall that is not loaded is skipped');
+
+	pg_assert_same(401, mp_webhook_gate('POST', webhook_test_account(), 'wrong'), 'a wrong key is the 401');
+	pg_assert_same(401, mp_webhook_gate('POST', webhook_test_account(), ''), 'and so is none');
+	pg_assert_same(403, mp_webhook_gate('POST', webhook_test_account(array('status' => 'paused')), 'wrong'),
+		'a paused account answers before the key is looked at');
+}
+
 // A Save writes the form's credential fields; the webhook's key and id are not
 // among them and must survive it, or a registered webhook delivers with a key
 // nothing here knows.
@@ -395,6 +437,72 @@ function test_marketplace_webhook_key_is_new_for_every_registration()
 	pg_assert_same(0, mp_webhook_gate('POST', $old, $old['credentials']['webhook_key']));
 	pg_assert_same(401, mp_webhook_gate('POST', $new, $old['credentials']['webhook_key']),
 		'the earlier webhook\'s key is refused once a new one is registered');
+}
+
+// Register and Remove run one at a time per account, under a lock named after
+// the database and the account, and read the account again once they hold it:
+// two presses that both found no webhook would register two, and a removal
+// writing credentials it read before a registration finished would drop the
+// new webhook's id.
+function test_marketplace_webhook_register_and_remove_run_one_at_a_time()
+{
+	$receiver = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_receiver.php');
+	$name_start = strpos($receiver, 'function mp_webhook_lock_name($account_id) {');
+
+	pg_assert_true($name_start !== false);
+
+	$name = substr($receiver, $name_start, 400);
+
+	pg_assert_contains("DB_DATABASE . '@'", $name, 'the database is part of the name');
+	pg_assert_contains("'pg_mp_webhook_' . md5(\$database) . '_' . (int)\$account_id", $name);
+	pg_assert_true(strlen('pg_mp_webhook_' . md5('x') . '_' . '99999999999') <= 64, 'within the 64 characters of a lock name');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "if (\$action === 'webhook_register' && \$account) {");
+	$middle = strpos($source, "if (\$action === 'webhook_remove' && \$account) {");
+	$end = strpos($source, "exit();", (int) $middle);
+
+	pg_assert_true(($start !== false) && ($middle !== false) && ($end !== false) && ($start < $middle));
+
+	foreach (array('register' => substr($source, $start, $middle - $start), 'remove' => substr($source, $middle, $end - $middle)) as $what => $block) {
+		$lock = strpos($block, '$lock = mp_webhook_lock_name($account_id);');
+		$get = strpos($block, "GET_LOCK('\" . e(\$lock) . \"', 0)");
+		$reread = strpos($block, '$account = ');
+		$call = strpos($block, "mp_call(\$account['provider'], '" . $what . "_webhook'");
+		$release = strrpos($block, "RELEASE_LOCK('\" . e(\$lock) . \"')");
+
+		pg_assert_true(($lock !== false) && ($get !== false) && ($lock < $get), $what . ': the lock is taken without waiting');
+		pg_assert_true(($reread !== false) && ($get < $reread), $what . ': the account is read again after it');
+		pg_assert_contains('mp_account($account_id)', substr($block, (int) $reread, 80), $what . ': from the database');
+		pg_assert_true(($call !== false) && ($reread < $call), $what . ': before the marketplace is called');
+		pg_assert_true(($release !== false) && ($call < $release), $what . ': and let go after the answer is written');
+	}
+
+	$register = substr($source, $start, $middle - $start);
+
+	pg_assert_contains('mp_webhook_register_problem($account)', substr($register, (int) strpos($register, '$account = mp_account($account_id);'), 400),
+		'the re-read account is the one checked for a webhook already there');
+}
+
+// The register button disables itself on submit, without a new label: the
+// call waits on the marketplace, longer than the panel's three-second guard.
+function test_marketplace_webhook_register_button_disables_itself()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "\$webhook_action = 'webhook_register';");
+	$end = strpos($source, '$webhook_block = \'', (int) $start);
+
+	pg_assert_true(($start !== false) && ($end !== false));
+
+	$register = substr($source, $start, $end - $start);
+
+	pg_assert_contains("onsubmit=\"this.querySelector(\\'button[type=submit]\\').disabled = true;\"", $register);
+	pg_assert_false(strpos($register, 'textContent') !== false || strpos($register, 'innerHTML') !== false, 'the label stays');
+	pg_assert_false(strpos($register, ' name=') !== false, 'a disabled button with a name would drop it from the request');
+	pg_assert_contains("class=\"d-inline\"' . \$webhook_onsubmit . '>", $source, 'the form carries it');
+	pg_assert_contains("\$webhook_onsubmit = '';", $source, 'Remove has its confirm and no such handler');
 }
 
 // Deleting an account removes its webhook from the marketplace first, and a

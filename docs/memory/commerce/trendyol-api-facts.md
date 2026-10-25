@@ -14,6 +14,9 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - Seller id is in the path of seller-scoped calls only; categories, attributes and brands are not seller-scoped.
 - 401 (`ClientApiAuthenticationException`) = wrong key/secret or wrong environment. 403 = missing User-Agent or wrong endpoint/parameter. Stage answers 503 to a server whose IP is not whitelisted (`/integration/product/sellers/{id}/ip-whitelists`, IPv4, max 7).
 
+## How do ids go into a path or a body?
+- Seller id: 1–20 digits (`mp_trendyol_seller_id()`). Package and line ids of the accept and ship calls: `mp_trendyol_id_fits()`, 1–18 digits, no leading zero; a line id is a JSON number, where (int) drops a leading zero and saturates past 18 digits (PR #1675).
+
 ## Which call tests the connection?
 - `GET /integration/product/sellers/{sellerId}/products/approved?page=0&size=1` (`totalElements`, `content`): seller-scoped, read group, writes nothing. Not the addresses endpoint (was 1 call/hour).
 
