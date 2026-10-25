@@ -1048,7 +1048,8 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // The account widgets (widgets_account.php): each posts to the
             // processor of the legacy page type it stands in for. The login
             // region is the header's view of the session; the cart link
-            // (widgets_cart.php) sits beside it.
+            // (widgets_cart.php) sits beside it. Favourites
+            // (widgets_wishlist.php) lists the visitor's saved products.
             $account_renderers = array(
                 'login_region'      => '_render_system_widget_login_region',
                 'logout'            => '_render_system_widget_logout',
@@ -1060,6 +1061,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'account_security'  => '_render_system_widget_account_security',
                 'account_invoices'  => '_render_system_widget_account_invoices',
                 'account_email'     => '_render_system_widget_account_email',
+                'wishlist'          => '_render_system_widget_wishlist',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
