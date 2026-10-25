@@ -276,6 +276,48 @@ function pg_wishlist_widget_forms($pid, $form_ids, $used, $ctx)
 }
 
 /**
+ * Stamps rel="nofollow" on every node under $node whose address is bound to
+ * $token. The sign-in link carries ?send_to= this page, so every page gives
+ * it another address: an action, not a page for crawlers to walk. The rel
+ * prop is what a link, a semantic <a> and a button drawn as <a> print, and
+ * a set prop hides an Attributes panel rel, so the words of both are kept
+ * and nofollow is added once.
+ *
+ * @param array  $node
+ * @param string $token the bound address, e.g. __login_url
+ * @return void
+ */
+function _pg_wishlist_stamp_nofollow(&$node, $token)
+{
+    if (!is_array($node)) {
+        return;
+    }
+
+    if (isset($node['props']['_bindings']['href']) && $node['props']['_bindings']['href'] === $token) {
+        $rel = isset($node['props']['rel']) ? (string)$node['props']['rel'] : '';
+
+        foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+            if (is_array($a) && isset($a['name']) && strtolower((string)$a['name']) === 'rel' && isset($a['value'])) {
+                $rel .= ' ' . (string)$a['value'];
+            }
+        }
+
+        $words = array();
+        foreach (preg_split('/\s+/', strtolower(trim($rel . ' nofollow'))) as $word) {
+            $words[$word] = true;
+        }
+        $node['props']['rel'] = implode(' ', array_keys($words));
+    }
+
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) {
+            _pg_wishlist_stamp_nofollow($child, $token);
+        }
+        unset($child);
+    }
+}
+
+/**
  * Draws the widget from its tree and the saved products read for it. Reads
  * nothing itself: _render_system_widget_wishlist() hands it the rows and the
  * context.
@@ -297,6 +339,7 @@ function pg_wishlist_widget_html($tree, $widget_id, $rows, $ctx)
     $shop_url = isset($ctx['shop_url']) ? (string)$ctx['shop_url'] : '';
 
     _pg_member_drop_empty_links($tree, array('__login_url' => $login_url, '__shop_url' => $shop_url));
+    _pg_wishlist_stamp_nofollow($tree, '__login_url');
 
     $split = _split_widget_tree($tree);
 

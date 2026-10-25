@@ -13,7 +13,7 @@ description: Favourites system widget (kind wishlist, widgets_wishlist.php): who
 
 ## Which tokens and flags?
 - Row (loop_area), the catalog cards' names: `__id`, `__name`, `__short_description`, `__detail_url` (`pg_sw_catalog_detail_page_name()`, `#` without one), `__image_url`, `__image_alt`, `__price`, `__price_formatted` (offer price from `get_discounted_product_prices()`, strike block), `__original_price_formatted` (raw: money is markup), `__discount_percent`, `__out_of_stock_label`; and `__added_date`.
-- Static: `__wishlist_count`, `__login_url` (`login_page_id`, else the legacy sign-in, `?send_to=` this page), `__shop_url` (`shop_page_id`, else the first page with a catalog widget, else the legacy catalog page; the link drops when empty).
+- Static: `__wishlist_count`, `__login_url` (`_pg_acct_page_url()`: `login_page_id`, else the first page with a Login widget, else the legacy sign-in page, else the software root; `?send_to=` this page; every link bound to it gets `rel="nofollow"` from `_pg_wishlist_stamp_nofollow()`), `__shop_url` (`shop_page_id`, else the first page with a catalog widget, else the legacy catalog page; the link drops when empty).
 - Flags: `has_items`, `no_items`, `is_signed_in`, `is_signed_out`; row: `item_in_stock`, `item_out_of_stock`, `item_has_discount`. Static flags go on the static tree after the split, row flags per row.
 
 ## How do Remove and Add to Cart post?

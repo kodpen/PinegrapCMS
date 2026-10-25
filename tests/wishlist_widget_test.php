@@ -307,6 +307,39 @@ function test_wishlist_widget_html_escapes()
 	pg_assert_false(strpos($html, '^^') !== false, 'no token left');
 }
 
+// The sign-in link carries ?send_to= this page, so every page gives it
+// another address: an action, not a page for crawlers. Every link bound to
+// it gets rel="nofollow" from the drawing, printed once, with the words the
+// link already had; other links are left alone.
+function test_wishlist_widget_html_login_link_nofollow()
+{
+	$n = 'wishlist_widget_test_node';
+	$tree = $n('root', array(), array(
+		$n('content', array('contentType' => 'link', 'text' => 'Sign in', 'href' => '#', '_bindings' => array('href' => '__login_url'))),
+		$n('semantic', array('tag' => 'a', 'text' => 'Log in here', '_attrs' => array(array('name' => 'rel', 'value' => 'noopener')),
+			'_bindings' => array('href' => '__login_url'))),
+		$n('component', array('componentType' => 'btn', 'btnElement' => 'a', 'variant' => 'primary', 'text' => 'Log In', 'rel' => 'external nofollow',
+			'_bindings' => array('href' => '__login_url'))),
+		$n('content', array('contentType' => 'link', 'text' => 'Go to the shop', 'href' => '#', '_bindings' => array('href' => '__shop_url'))),
+	));
+
+	$html = pg_wishlist_widget_html($tree, 9, array(), wishlist_widget_test_ctx(array('signed_in' => false)));
+	preg_match_all('/<a [^>]*>/', $html, $m);
+	pg_assert_same(4, count($m[0]), 'four links');
+	list($link, $semantic, $btn, $shop) = $m[0];
+
+	pg_assert_contains('href="/login?send_to=%2Ffavourites"', $link, 'the sign-in address');
+	pg_assert_contains('rel="nofollow"', $link, 'a link');
+	pg_assert_contains('rel="noopener nofollow"', $semantic, 'an <a>, its own rel kept');
+	pg_assert_same(1, substr_count($semantic, 'rel='), 'rel printed once');
+	pg_assert_contains('rel="external nofollow"', $btn, 'a button drawn as a link, nofollow not repeated');
+	pg_assert_false(strpos($shop, 'rel=') !== false, 'the shop link is a page');
+
+	// The starter-like layout: its signed-out note's link.
+	$html = pg_wishlist_widget_html(wishlist_widget_test_tree(), 9, array(), wishlist_widget_test_ctx(array('signed_in' => false)));
+	pg_assert_same(1, preg_match('/<a href="\/login\?send_to=%2Ffavourites" rel="nofollow"[^>]*>Sign in<\/a>/', $html), 'the starter note');
+}
+
 // A link cannot post: one bound to a list action leaves the page instead of
 // sitting there dead.
 function test_wishlist_widget_html_link_actions_drop()
