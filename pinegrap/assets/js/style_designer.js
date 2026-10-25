@@ -14519,6 +14519,42 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // Does the drag place a <form>: the dragged element, any element below
+    // it (a newsletter or login block), or a <form> written in a node's own
+    // markup? A block's top-level type says nothing about it, so the tree is
+    // walked. Kept on the payload like _sdDragCarriesControl().
+    function _sdDragCarriesForm(data) {
+        if (!data) return false;
+        if (typeof data._sdForm === 'boolean') return data._sdForm;
+        var root = _sdDragTree(data);
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_semTag(n) === 'form' || /<form[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : _semTag({ type: data.type, props: data.extra || {} }) === 'form';
+        try { data._sdForm = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a <form>, or inside one at any depth? A custom form
+    // widget counts as one: the server prints the <form> around its tree,
+    // so it is not a node there.
+    function _sdInForm(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'form') return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return !!_cfWidgetOf(target);
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -14592,6 +14628,13 @@ const StyleDesigner = (function () {
             if (voidTags.indexOf(target.props.tag.toLowerCase()) !== -1) return false;
         }
 
+        // No <form> inside a <form>, at any depth, also when the form comes
+        // inside a dragged block: the browser drops the inner <form> tag, so
+        // the block's fields would submit with the outer form. Asked before
+        // the root's free pass, as a custom form widget's tree root is the
+        // inside of a <form> the server prints.
+        if (_sdDragCarriesForm(data) && _sdInForm(target)) return false;
+
         // Drop onto root: the auto-wrapper takes over
         if (target.type === 'root') return true;
 
@@ -14649,8 +14692,6 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
-        // Rule 7: <form> cannot contain another <form>
-        if (tgtTag === 'form' && srcTag === 'form') return false;
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────

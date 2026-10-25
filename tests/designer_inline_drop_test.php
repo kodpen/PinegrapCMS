@@ -6,11 +6,12 @@
  * content goes: a link or a button goes back into a heading (<h3><a>…</a></h3>,
  * the accordion's <h2><button>) or a sentence, but never into another link or
  * a button at any depth, a label holds one control, block content stays out
- * of headings and paragraphs, and a ready-made palette block is judged by
- * what it holds. canDrop() and its helpers, and _paletteInsert(), are cut out
- * of assets/js/style_designer.js and run under Node with stubs for the lock,
- * shared-component and loop checks, for createFromPalette() and for the
- * component list; on a machine without Node the test is skipped.
+ * of headings and paragraphs, no form goes inside a form at any depth, and
+ * a ready-made palette block is judged by what it holds. canDrop() and its
+ * helpers, and _paletteInsert(), are cut out of assets/js/style_designer.js
+ * and run under Node with stubs for the lock, shared-component, custom form
+ * and loop checks, for createFromPalette() and for the component list; on a
+ * machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -70,11 +71,15 @@ function designer_inline_drop_test_run($setup, $cases)
 		. ' if (type === "cf_field" && extra.cfType === "hidden") return sem("input", [], { _attrs: [{ name: "type", value: "hidden" }] });'
 		. ' if (type === "cf_field" && extra.cfType === "text") return sem("div", [sem("label", [], { text: "Name" }), sem("input", [], { _attrs: [{ name: "type", value: "text" }] })]);'
 		. ' if (type === "component" && extra.componentType === "links-block") return sem("section", [sem("div", [sem("h3", [con("link", { text: "Title", href: "#" })]), N("component", { componentType: "btn", text: "More", href: "#" })])]);'
+		. ' if (type === "component" && extra.componentType === "form-block") return sem("section", [sem("div", [sem("form", [sem("input", [], { _attrs: [{ name: "type", value: "email" }] })])])]);'
 		. ' if (type === "component") return N("component", { componentType: extra.componentType });'
 		. ' return null; }'
 		// An atomic component that prints its own interactive markup, as the
 		// language switcher prints a dropdown button and links.
 		. 'var COMPONENTS = { language_switcher: { toHTML: function () { return "<div class=\\"dropdown\\"><button type=\\"button\\">EN</button><ul><li><a href=\\"#\\">English</a></li></ul></div>"; } } };'
+		// A node marked `inCf` sits in a custom form widget, whose <form> the
+		// server prints around the widget's tree.
+		. 'function _cfWidgetOf(n) { return (n && n.props && n.props.inCf) ? { sid: 1 } : null; }'
 		// What _paletteInsert() touches besides the drop rules.
 		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
 		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; }'
@@ -389,4 +394,41 @@ function test_designer_inline_drop_dry_build_writes_no_styles()
 	$guarded = preg_match_all('/if \(!_sdPaletteDry\) _sdEnsureBlockStyles\(/', $body);
 	pg_assert_true($calls > 0, 'createFromPalette() writes block styles');
 	pg_assert_same($calls, $guarded, 'every block-style write in createFromPalette() is skipped during a dry build');
+}
+
+// No form inside a form, at any depth: a block or an element carrying a
+// <form> stays out of a form and of every element in it, and out of a
+// custom form widget, whose tree the server wraps in a <form>. A field still
+// goes into a form, and a block with no form in it too. An insert from the
+// palette with a field selected walks past the form and lands after it.
+function test_designer_inline_drop_no_form_in_form()
+{
+	$setup = designer_inline_drop_test_page()
+		. 'T.inputInForm = sem("input", [], { _attrs: [{ name: "type", value: "email" }] });'
+		. 'T.divInForm = sem("div", [T.inputInForm]); T.form = sem("form", [T.divInForm]); T.formCol = sem("div", [T.form]);'
+		. 'T.cfDiv = sem("div", [], { inCf: true }); T.cfRoot = { _id: "cfroot", type: "root", props: { inCf: true }, children: [] };'
+		. 'root.children.push(T.formCol, T.cfDiv);';
+	$block = 'pal("component", { componentType: "form-block" })';
+	$answer = designer_inline_drop_test_run($setup, array(
+		array($block, 'divInForm'),
+		array($block, 'form'),
+		array('pal("semantic", { tag: "form" })', 'form'),
+		array('pal("semantic", { tag: "form" })', 'divInForm'),
+		array('node(sem("div", [sem("form")]))', 'divInForm'),
+		array($block, 'cfDiv'),
+		array($block, 'cfRoot'),
+		array($block, 'formCol'),
+		array($block, 'div'),
+		array('pal("cf_field", { cfType: "text" })', 'divInForm'),
+		array('pal("component", { componentType: "links-block" })', 'divInForm'),
+		array('node(T.divInForm)', 'form'),
+		'(function () { selectedNode = T.inputInForm; _paletteInsert("component", { componentType: "form-block" });'
+		. ' return [T.divInForm.children.length, T.form.children.length, T.formCol.children.length, T.formCol.children[1] === selectedNode]; })()',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, false, false, false, false, false, true, true, true, true, true, array(1, 1, 2, true)), $answer, 'a form-carrying block, a palette form and a wrapper holding a form stay out of a form, a div in it and a custom form widget, its tree root too; the block goes beside the form, a field and a block without a form go in, a field moves within its form; the insert lands right after the form');
 }
