@@ -4,7 +4,7 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 ---
 
 ## What went wrong? (#1544)
-- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no panel screen cleared: the buttons were disabled; E-Shipment's read and an invoice naming a deleted document got 404. The order stayed refused.
+- Create Invoice refused an order holding `orders.parasut_invoice_id` (#1084), E-Shipment one holding `parasut_shipment_id` (#1407); E-Shipment read the order's invoice and Create Invoice named its shipment document (#1506). A record deleted on Paraşüt's screen left its id, which no screen cleared: the buttons were disabled; a read or an invoice naming it got 404. The order stayed refused.
 
 ## What does a press do with a stored id now?
 - Read first: `parasut_stored_record_check($type, $id, $get)` (GET `sales_invoices/{id}` or `shipment_documents/{id}`), judged by `parasut_stored_record_state($read, $type)`:
@@ -24,7 +24,7 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 | Create Invoice | `parasut_shipment_id` | cleared, invoice with shipment (Paraşüt's default) |
 | E-Shipment | own `parasut_shipment_id` | cleared, VKN/TCKN asked (the screen skips it once an id is kept), shipped anew |
 | E-Shipment | `parasut_invoice_id` | cleared (the link returns `gone`), document unlinked |
-| ERP send | `parasut_invoice_id` | cleared, sent (erp-parasut-legacy-invoiced-order.md) |
+| ERP send | `parasut_invoice_id` | cleared, the send goes on (erp-parasut-legacy-invoiced-order.md) |
 - `parasut_exported` stays: the Excel export sets it too.
 
 ## What does the order screen show?
