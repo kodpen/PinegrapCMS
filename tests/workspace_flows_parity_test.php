@@ -2380,6 +2380,7 @@ function workspace_flows_parity_table()
 		),
 		'record_types' => array(
 			array(array('product', 'stock', 'order', 'contact', 'erp_account', 'product_group', 'user', 'page', 'file', 'offer', 'form', 'calendar_event'), 3, 'condition box: a kind of record of the change catalogue'),
+			array(array('erp_quote'), 3, 'condition box: a sales quote (only made from the Workspace; its date, end date, currency and notes are read)'),
 			array(array('task'), 3, 'condition box: a task (status, priority, due date)'),
 		),
 		'record_fields' => array(
@@ -2388,6 +2389,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('order', 'status notes po_number custom_field_1 custom_field_2 tracking_numbers'), 3, 'condition box: a field of an order'),
 			array(workspace_flows_parity_prefixed('contact', 'salutation first_name last_name suffix nickname company title department office_location email opt_in phone business_phone business_fax website address_1 address_2 city state zip country home_address_1 home_address_2 home_city home_state home_zip home_country home_phone home_fax lead_source tax_number tax_office description member_id expiration_date'), 3, 'condition box: a field of a contact'),
 			array(workspace_flows_parity_prefixed('erp_account', 'title email phone address district city state postcode tax_number tax_office payment_days status notes country_code currency credit_limit invoice_email invoice_mail overdue_notify_days overdue_notify_customer'), 3, 'condition box: a field of an ERP account'),
+			array(workspace_flows_parity_prefixed('erp_quote', 'issue_date valid_until currency notes'), 3, 'condition box: a field of a sales quote'),
 			array(workspace_flows_parity_prefixed('product_group', 'name title short_description full_description meta_description meta_keywords keywords enabled'), 3, 'condition box: a field of a product group'),
 			array(workspace_flows_parity_prefixed('user', 'role email'), 3, 'condition box: a field of a user'),
 			array(workspace_flows_parity_prefixed('page', 'title meta_description search search_keywords sitemap noindex meta_keywords comments comments_open comments_publish comments_login'), 3, 'condition box: a field of a page'),

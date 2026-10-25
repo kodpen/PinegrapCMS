@@ -140,8 +140,10 @@ function workspace_record_kinds_test_lists()
 	$all = workspace_record_kinds_test_viewer(workspace_record_kinds_test_rights());
 
 	// The ERP's documents are tagged and read, never written from the
-	// Workspace (docs/memory/workspace/workspace-record-changes.md).
-	$tag_only = array_fill_keys(array('invoice', 'waybill', 'receipt', 'edoc', 'erp_quote'), 'an ERP document is tag-only: no kind of ws_change_types() writes it');
+	// Workspace (docs/memory/workspace/workspace-record-changes.md), but for
+	// a sales quote, which is only made: nothing of it is changed afterwards.
+	$tag_only = array_fill_keys(array('invoice', 'waybill', 'receipt', 'edoc'), 'an ERP document is tag-only: no kind of ws_change_types() writes it');
+	$made_only = array('erp_quote' => 'a sales quote is only made from the Workspace (action create); it is changed on its own screen');
 
 	$records = array();
 
@@ -204,7 +206,7 @@ function workspace_record_kinds_test_lists()
 		'quick_edit' => array(
 			'where'  => 'ws_quick_edit_types() in includes/workspace/quick_edit.php',
 			'kinds'  => workspace_record_kinds_test_tags_of(ws_quick_edit_types()),
-			'except' => $tag_only + array(
+			'except' => $tag_only + $made_only + array(
 				'user_account' => 'a user\'s role is given on the user screen',
 				'form'         => 'its answers field (kind answers) has no input in the drawer (saValueInput() in workspace.js)',
 				'file'         => 'a file\'s words are edited in the file manager',
@@ -215,7 +217,7 @@ function workspace_record_kinds_test_lists()
 		'bulk' => array(
 			'where'  => 'ws_bulk_types() in includes/workspace/bulk.php',
 			'kinds'  => workspace_record_kinds_test_tags_of(ws_bulk_types()),
-			'except' => $tag_only + array(
+			'except' => $tag_only + $made_only + array(
 				'order'        => 'left out of bulk changes; a status move may cancel and refund the order (ws_change_write_order())',
 				'user_account' => 'left out of bulk changes; a role is an administrator\'s to give (ws_change_allowed())',
 				'form'         => 'left out of bulk changes; each submitted form holds answers of its own',
@@ -247,7 +249,7 @@ function workspace_record_kinds_test_lists()
 		'audit' => array(
 			'where'  => 'pg_audit_tables() in includes/fn/audit.php, through ws_change_audit_target() in includes/workspace/changes.php',
 			'kinds'  => workspace_record_kinds_test_tags_of($audited),
-			'except' => $tag_only + array_fill_keys(array('product_group', 'contact', 'erp_account', 'form', 'calendar_event'),
+			'except' => $tag_only + array_fill_keys(array('product_group', 'contact', 'erp_account', 'erp_quote', 'form', 'calendar_event'),
 				'its table is not in pg_audit_tables(), as ws_change_audit_target() says'),
 		),
 		'customers' => array(
@@ -541,7 +543,7 @@ function test_workspace_record_kinds_source_reader_reads_the_change_catalogue()
 {
 	$types = pg_test_ws_change_types();
 
-	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'product_group', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
+	pg_assert_same(array('product', 'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'product_group', 'channel', 'user', 'page', 'file', 'offer', 'form', 'calendar_event', 'task', 'task_note', 'note'), array_keys($types), 'the kinds, in their order');
 
 	pg_assert_same('money', $types['product']['fields']['price'][0], 'the kind of value');
 	pg_assert_same(2147483647, $types['product']['fields']['price'][1], 'a literal limit');

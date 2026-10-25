@@ -104,7 +104,8 @@ function ws_record_type_keys()
  * - scope: the external API scope its reads need, as the assistants ask it
  *   (ws_ai_type_scope()); workspace:read when no API scope reads the kind;
  * - change: the ws_change_types() kind that writes it, '' when the Workspace
- *   never writes it (the ERP's documents are tag-only);
+ *   never writes it (the ERP's documents are tag-only; a sales quote is
+ *   only made);
  * - audit: the pg_audit_tables() table a Workspace write of it is recorded
  *   on (ws_change_audit_target()), '' when the trail does not follow it;
  * - quick_edit: the record drawer edits it (ws_quick_edit_types());
@@ -223,7 +224,7 @@ function ws_record_kinds()
             'prefixes'   => array('satis', 'satış', 'satisteklifi', 'satışteklifi', 'salesquote'),
             'right'      => 'erp',
             'scope'      => 'erp:read',
-            'change'     => '',
+            'change'     => 'erp_quote',
             'audit'      => '',
             'quick_edit' => false,
             'customer'   => false,

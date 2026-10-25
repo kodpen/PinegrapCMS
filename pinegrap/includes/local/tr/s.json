@@ -81,6 +81,7 @@
     "Sales invoices that pass this many days overdue are announced once: in the panel bell, by e-mail and on a subscribed device. An account can carry a threshold of its own. 0 turns the reminders off.": "Vadesi bu kadar gün geçen satış faturaları bir kez duyurulur: panel zilinde, e-posta ile ve abone olunan cihazda. Bir cari kendi eşiğini taşıyabilir. 0, hatırlatmaları kapatır.",
     "Sales less sales returns": "Satışlar eksi satış iadeleri",
     "Sales quote": "Satış teklifi",
+    "Sales quote {var:1} was added in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle eklendi.",
     "Sales return": "Satış iadesi",
     "Sales returns": "Satış iadeleri",
     "Sales settings (ERP card)": "Satış ayarları (ERP kartı)",

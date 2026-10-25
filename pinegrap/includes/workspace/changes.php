@@ -101,7 +101,9 @@ function ws_changes_ready()
  * empty]; kept as text such as "1.25", "" for empty), code (letters of the
  * length given, upper case: a country or a currency), lines (a list of short
  * lines: [at most, longest]), answers (the answers of a submitted form by
- * field name: [at most, longest]; only the ones given change). A column
+ * field name: [at most, longest]; only the ones given change), items (the
+ * lines of an ERP document: [at most, longest description]; read by
+ * ws_change_items_value()). A column
  * starting with "__" is read by ws_change_record() rather than from the
  * table. "key" is the table's id column when it is not id.
  *
@@ -293,6 +295,31 @@ function ws_change_types()
             'create'   => array(
                 'kind'      => array('enum', array('customer', 'supplier', 'both'), lang('Kind'), ''),
                 'is_person' => array('bool', 0, lang('A person, not a company'), ''),
+            ),
+        ),
+        // A sales quote of the ERP (includes/erp/quotes.php), made as the quote
+        // editor and the external API make it, with its number taken when it
+        // is saved. Only made from here: it is changed, sent and invoiced on
+        // its own screen.
+        'erp_quote' => array(
+            'label'   => lang('Sales quote'),
+            'right'   => 'erp',
+            'tag'     => 'erp_quote',
+            'table'   => 'erp_quotes',
+            'actions' => array('create'),
+            'names'   => array('full_number'),
+            'fields'  => array(
+                // Today, and ERP_QUOTE_VALID_DAYS after it, when left out.
+                'issue_date'  => array('date', 0, lang('Date'), 'issue_date'),
+                'valid_until' => array('date', 0, lang('Valid until'), 'valid_until'),
+                // The store's currency when left out.
+                'currency'    => array('code', 3, lang('Currency'), 'currency'),
+                // The quote editor keeps 5000 (erp_manual_header_build()).
+                'notes'       => array('long', 5000, lang('Notes'), 'notes'),
+            ),
+            'create'  => array(
+                'account_id' => array('ids', 'erp_account', lang('Current account'), ''),
+                'lines'      => array('items', array(50, 255), lang('Lines'), ''),
             ),
         ),
         'product_group' => array(
@@ -515,7 +542,12 @@ function ws_change_types()
     }
 
     if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
-        unset($types['erp_account']);
+        unset($types['erp_account'], $types['erp_quote']);
+    }
+
+    // Sales quotes where their table was made (2026.4.4, 4.92).
+    if (isset($types['erp_quote']) && function_exists('waf_table_has_column') && !waf_table_has_column('erp_quotes', 'line_data')) {
+        unset($types['erp_quote']);
     }
 
     // Task notes and workspace notes where their tables were made.
@@ -741,6 +773,9 @@ function ws_change_value($field, $value)
             }
 
             return $answers;
+
+        case 'items':
+            return ws_change_items_value($field, $value);
 
         case 'role':
             // By name (manager, user) or by number; only the ones listed.
@@ -1211,7 +1246,7 @@ function ws_change_viewer_from_row($row)
  */
 function ws_change_erp_types()
 {
-    return array('erp_account');
+    return array('erp_account', 'erp_quote');
 }
 
 /**
@@ -1576,6 +1611,38 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             $check = ws_task_validate($viewer, $values, $record);
 
             return $check['ok'] ? '' : $check['error'];
+
+        // What the database decides about a new sales quote; the rest is
+        // ws_change_erp_quote_refusal() and erp_quote_save() itself.
+        case 'erp_quote':
+            ws_change_erp_load();
+
+            if (!erp_quotes_ready()) {
+                return lang('Quotes come with the software update; run the update to use them.');
+            }
+
+            if (!is_array(erp_account((int) (((array) ($values['account_id'] ?? array()))[0] ?? 0)))) {
+                return lang('Choose an account.');
+            }
+
+            if (((string) ($values['currency'] ?? '') !== '') && !erp_fx_currency_allowed((string) $values['currency'])) {
+                return lang('That currency is not enabled for the ERP.');
+            }
+
+            $product_ids = array();
+
+            foreach ((array) ($values['lines'] ?? array()) as $item) {
+                if ((int) ($item['product_id'] ?? 0) > 0) {
+                    $product_ids[(int) $item['product_id']] = true;
+                }
+            }
+
+            if (!empty($product_ids)
+                && ((int) db_value("SELECT COUNT(*) FROM products WHERE id IN (" . implode(',', array_keys($product_ids)) . ")") !== count($product_ids))) {
+                return lang('That product could not be found.');
+            }
+
+            return '';
 
         case 'task_note':
             foreach ((array) ($values['task_id'] ?? array()) as $task_id) {
@@ -2033,7 +2100,237 @@ function ws_change_create_check($type, $list)
         return lang('task_id is one task.');
     }
 
+    if ($type === 'erp_quote') {
+        return ws_change_erp_quote_refusal($values, date('Y-m-d'));
+    }
+
     return '';
+}
+
+/**
+ * The lines of an ERP document as a change takes them, or null when they
+ * cannot be: a list of objects, each with the fields the external API's
+ * quote lines take (erp_api_lines_in()). A price is whole minor units, never
+ * a decimal, as everywhere in the API; a line names a product or says what
+ * it is, and one without a product carries its VAT rate. A product's name
+ * and rate fill what was left out when the document is saved
+ * (ws_change_write_erp_quote()).
+ *
+ * @param array $field [items, [at most, longest description], label, column]
+ * @param mixed $value
+ * @return array|null each product_id, description, quantity, unit,
+ *                    unit_price, discount_rate, tax_rate (null: the
+ *                    product's)
+ */
+function ws_change_items_value($field, $value)
+{
+    $known = array('product_id', 'description', 'quantity', 'unit', 'unit_price', 'discount_rate', 'tax_rate');
+
+    if (!is_array($value) || empty($value) || (array_keys($value) !== range(0, count($value) - 1)) || (count($value) > (int) $field[1][0])) {
+        return null;
+    }
+
+    $rate = function ($line, $name) {
+        if (!array_key_exists($name, $line) || ($line[$name] === null) || ($line[$name] === '')) {
+            return null;
+        }
+
+        $number = is_string($line[$name]) ? str_replace(',', '.', trim($line[$name])) : $line[$name];
+
+        return (!is_bool($number) && is_numeric($number) && ((float) $number >= 0) && ((float) $number <= 100)) ? round((float) $number, 2) : false;
+    };
+
+    $items = array();
+
+    foreach ($value as $line) {
+        if (!is_array($line) || empty($line) || (array_keys($line) === range(0, count($line) - 1)) || array_diff(array_keys($line), $known)) {
+            return null;
+        }
+
+        $product_id = $line['product_id'] ?? 0;
+
+        if (is_bool($product_id) || !preg_match('/^\d+$/', trim((string) (is_scalar($product_id) ? $product_id : '')))) {
+            return null;
+        }
+
+        $description = $line['description'] ?? '';
+
+        if (!is_scalar($description) || is_bool($description)) {
+            return null;
+        }
+
+        $description = trim(preg_replace('/\s+/u', ' ', (string) $description));
+
+        if (mb_strlen($description) > (int) $field[1][1]) {
+            return null;
+        }
+
+        $quantity = $line['quantity'] ?? 1;
+        $quantity = is_string($quantity) ? str_replace(',', '.', trim($quantity)) : $quantity;
+
+        if (is_bool($quantity) || !is_numeric($quantity) || ((float) $quantity <= 0) || ((float) $quantity > 999999999)) {
+            return null;
+        }
+
+        $unit = $line['unit'] ?? '';
+
+        if (!is_scalar($unit) || is_bool($unit) || !preg_match('/^[A-Za-z0-9]{0,10}$/', trim((string) $unit))) {
+            return null;
+        }
+
+        // Minor units: 19.99 sent where 1999 was meant is a price a hundred
+        // times too small.
+        $price = $line['unit_price'] ?? null;
+
+        if (is_bool($price) || !is_numeric($price) || preg_match('/[.,eE]/', (string) $price) || ((int) $price < 0)) {
+            return null;
+        }
+
+        $discount = $rate($line, 'discount_rate');
+        $tax = $rate($line, 'tax_rate');
+
+        if (($discount === false) || ($tax === false)) {
+            return null;
+        }
+
+        // Without a product, nothing else says what the line is or how it
+        // is taxed.
+        if (((int) $product_id === 0) && (($description === '') || ($tax === null))) {
+            return null;
+        }
+
+        $items[] = array(
+            'product_id'    => (int) $product_id,
+            'description'   => $description,
+            'quantity'      => round((float) $quantity, 4),
+            'unit'          => strtoupper(trim((string) $unit)),
+            'unit_price'    => (int) $price,
+            'discount_rate' => (float) $discount,
+            'tax_rate'      => $tax,
+        );
+    }
+
+    return $items;
+}
+
+/**
+ * The lines of an ERP document as the card and the decision print them:
+ * quantity, what, unit price in the document's own figures (its currency is
+ * a field of its own), discount and VAT.
+ *
+ * @param array $items from ws_change_items_value()
+ * @param int   $limit characters
+ * @return string
+ */
+function ws_change_items_text($items, $limit)
+{
+    $parts = array();
+
+    foreach ($items as $item) {
+        $what = ((string) ($item['description'] ?? '') !== '') ? (string) $item['description'] : lang('Product') . ' #' . (int) ($item['product_id'] ?? 0);
+        $text = ws_change_decimal_text((float) ($item['quantity'] ?? 1), 4) . ' × ' . $what . ' @ ' . number_format((int) ($item['unit_price'] ?? 0) / 100, 2, '.', '');
+
+        if ((float) ($item['discount_rate'] ?? 0) > 0) {
+            $text .= ' −' . ws_change_decimal_text((float) $item['discount_rate'], 2) . '%';
+        }
+
+        if (($item['tax_rate'] ?? null) !== null) {
+            $text .= ' · ' . lang('VAT') . ' ' . ws_change_decimal_text((float) $item['tax_rate'], 2) . '%';
+        }
+
+        $parts[] = $text;
+    }
+
+    $text = implode(' · ', $parts);
+
+    if ($text === '') {
+        return lang('(empty)');
+    }
+
+    return (mb_strlen($text) > $limit) ? rtrim(mb_substr($text, 0, $limit - 1)) . '…' : $text;
+}
+
+/**
+ * Why a new sales quote cannot be made from these fields, or ''. Pure: what
+ * the database decides (the account, the products, the currency) is asked
+ * by ws_change_check(), the rest by erp_quote_save() itself.
+ *
+ * @param array  $values field => value, as ws_change_value() read them
+ * @param string $today  YYYY-MM-DD
+ * @return string
+ */
+function ws_change_erp_quote_refusal($values, $today)
+{
+    $accounts = (array) ($values['account_id'] ?? array());
+
+    if (empty($accounts)) {
+        return lang('A new sales quote needs account_id: the current account it is for.');
+    }
+
+    if (count($accounts) !== 1) {
+        return lang('account_id is one current account.');
+    }
+
+    if (empty($values['lines'])) {
+        return lang('A new sales quote needs lines.');
+    }
+
+    $issue_date = ((string) ($values['issue_date'] ?? '') !== '') ? (string) $values['issue_date'] : (string) $today;
+    $valid_until = (string) ($values['valid_until'] ?? '');
+
+    if (($valid_until !== '') && ($valid_until < $issue_date)) {
+        return lang('The quote cannot run out before its date.');
+    }
+
+    return '';
+}
+
+/**
+ * A sales quote's fields in the shape erp_quote_save() reads (the quote
+ * editor's form): a sales document, the date it runs to as its due date,
+ * the lines as erp_manual_lines_build() takes them. A product's name and
+ * VAT rate where a line left them out, the currency and the exchange rate
+ * are the writer's, which reads the database.
+ *
+ * @param array  $values  field => value, as ws_change_value() read them
+ * @param int    $user_id who applies it
+ * @param string $today   YYYY-MM-DD
+ * @return array
+ */
+function ws_change_erp_quote_data($values, $user_id, $today)
+{
+    $lines = array();
+
+    foreach ((array) ($values['lines'] ?? array()) as $item) {
+        $lines[] = array(
+            'product_id'          => (int) ($item['product_id'] ?? 0),
+            'description'         => (string) ($item['description'] ?? ''),
+            'quantity'            => (float) ($item['quantity'] ?? 1),
+            'unit_code'           => (string) ($item['unit'] ?? ''),
+            'unit_price'          => (int) ($item['unit_price'] ?? 0),
+            'offer_id'            => 0,
+            'offer_discount_rate' => 0.0,
+            'discount_rate'       => (float) ($item['discount_rate'] ?? 0),
+            'tax_rate'            => (($item['tax_rate'] ?? null) === null) ? null : (float) $item['tax_rate'],
+            'tax2_rate'           => 0.0,
+            'withholding_code'    => '',
+            'withholding_rate'    => 0.0,
+            'source_line'         => '',
+        );
+    }
+
+    return array(
+        'direction'             => 'sales',
+        'account_id'            => (int) (((array) ($values['account_id'] ?? array()))[0] ?? 0),
+        'issue_date'            => ((string) ($values['issue_date'] ?? '') !== '') ? (string) $values['issue_date'] : (string) $today,
+        'due_date'              => (string) ($values['valid_until'] ?? ''),
+        'currency'              => (string) ($values['currency'] ?? ''),
+        'supplier_invoice_no'   => '',
+        'supplier_invoice_date' => '',
+        'notes'                 => (string) ($values['notes'] ?? ''),
+        'lines'                 => $lines,
+        'created_by'            => (int) $user_id,
+    );
 }
 
 /**
@@ -2162,6 +2459,9 @@ function ws_change_show($type, $name, $value, $limit = 300)
             $lines = array_filter(array_map('strval', (array) $value), 'strlen');
 
             return empty($lines) ? lang('(empty)') : implode(', ', $lines);
+
+        case 'items':
+            return ws_change_items_text((array) $value, $limit);
 
         case 'answers':
             $pairs = array();
@@ -3734,9 +4034,7 @@ function ws_change_write_contact($viewer, $action, $record, $values)
  */
 function ws_change_write_erp_account($viewer, $action, $record, $values)
 {
-    if (!function_exists('erp_account_save')) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
-    }
+    ws_change_erp_load();
 
     if ($action === 'create') {
         $data = array(
@@ -3829,6 +4127,97 @@ function ws_change_write_erp_account($viewer, $action, $record, $values)
     )));
 
     return array('ok' => true, 'error' => '', 'id' => $id);
+}
+
+/**
+ * The ERP module's functions, for a kind of change that writes ERP data.
+ */
+function ws_change_erp_load()
+{
+    if (!function_exists('erp_account_save') || !function_exists('erp_manual_lines_build')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    }
+}
+
+/**
+ * A new sales quote, saved by erp_quote_save() as the quote editor and the
+ * external API save one: it takes its number and announces
+ * erp.quote.created, which carries it to the ERP's audit trail and webhooks.
+ * A line tied to a product takes the product's name and VAT rate where the
+ * proposal left them out, as the API's lines do (erp_api_lines_in()); a
+ * currency other than the store's takes the rate recorded for the quote's
+ * date, or none yet, as the API's quotes do (erp_api_document_header()).
+ *
+ * @param array      $viewer
+ * @param string     $action create
+ * @param array|null $record
+ * @param array      $values
+ * @return array ok, error, id
+ */
+function ws_change_write_erp_quote($viewer, $action, $record, $values)
+{
+    ws_change_erp_load();
+
+    $data = ws_change_erp_quote_data($values, (int) $viewer['id'], date('Y-m-d'));
+    $base = erp_base_currency();
+    $data['currency'] = ($data['currency'] !== '') ? strtoupper($data['currency']) : $base;
+    $data['exchange_rate'] = 1.0;
+    $data['exchange_rate_date'] = $data['issue_date'];
+    $data['exchange_rate_source'] = 'base';
+
+    if ($data['currency'] !== $base) {
+        $recorded = erp_fx_rate_for($data['currency'], $data['issue_date']);
+        $data['exchange_rate'] = is_array($recorded) ? (float) $recorded['rate'] : 0.0;
+        $data['exchange_rate_date'] = is_array($recorded) ? (string) $recorded['rate_date'] : $data['issue_date'];
+        $data['exchange_rate_source'] = is_array($recorded) ? (string) $recorded['source'] : '';
+    }
+
+    $product_ids = array();
+
+    foreach ($data['lines'] as $line) {
+        if ($line['product_id'] > 0) {
+            $product_ids[$line['product_id']] = true;
+        }
+    }
+
+    $products = array();
+
+    if (!empty($product_ids)) {
+        foreach ((array) db_items("SELECT " . erp_product_columns('p') . " FROM products p WHERE p.id IN (" . implode(',', array_keys($product_ids)) . ")") as $row) {
+            $products[(int) $row['id']] = $row;
+        }
+    }
+
+    foreach ($data['lines'] as $index => $line) {
+        if (($line['product_id'] > 0) && (($line['description'] === '') || ($line['tax_rate'] === null))) {
+            if (!isset($products[$line['product_id']])) {
+                return array('ok' => false, 'error' => lang('That product could not be found.'), 'id' => 0);
+            }
+
+            $product = erp_product_for_line($products[$line['product_id']], $data['account_id']);
+
+            if ($line['description'] === '') {
+                $data['lines'][$index]['description'] = mb_substr((string) $product['name'], 0, 255);
+            }
+
+            if ($line['tax_rate'] === null) {
+                $data['lines'][$index]['tax_rate'] = (float) $product['tax_rate'];
+            }
+        }
+    }
+
+    $saved = erp_quote_save($data, 0, (int) $viewer['id']);
+
+    if (empty($saved['success'])) {
+        return array('ok' => false, 'error' => (string) $saved['error'], 'id' => 0);
+    }
+
+    ws_change_log(lang(array(
+        'string' => 'Sales quote {var:1} was added in the Workspace, on Claude\'s proposal.',
+        'vars'   => (string) $saved['full_number'],
+    )));
+
+    return array('ok' => true, 'error' => '', 'id' => (int) $saved['quote_id']);
 }
 
 /**
