@@ -97,6 +97,43 @@ the search API are blocked in cloud sessions.
    A claim delivered over several PRs gets each PR as a comment and is closed
    with the last one.
 
+## Working mode (owner rules, 2026-10-25)
+
+About fifteen sessions on four accounts share one merge queue. Quota spent
+waiting on it, refreshing PRs and re-running checks is quota not spent on
+work, so these rules bind every session. Details:
+`docs/memory/workflow/working-mode.md` (every session) and
+`docs/memory/workflow/merge-train.md` (the merging session).
+
+1. **One open PR per session; no stacked branches.** Branch only from
+   `development`, never from an open PR. Start the next task after your PR is
+   merged or handed over; a plan's next step waits for the previous step's
+   merge.
+2. **Hand over when green.** CI green on your head and nothing left for you:
+   comment "Ready to merge" on the PR (with the merge order if it has one),
+   unsubscribe from its activity, cancel your check-ins and stop. From then on
+   do not merge `development` into it, rebase it or re-run its checks; only
+   the merging session keeps it current. Act again only when it asks on the
+   PR.
+3. **Only the merging session merges**, in merge windows as a merge train
+   (`merge-train.md`), not one PR per CI run. No other session merges, also
+   not its own PR.
+4. **Light by default.** Do the task in this session: no multi-agent review
+   chains, no sandbox or browser run unless a runtime path cannot be covered
+   by a unit test (say why in the PR). Locally run the tests of what you
+   changed; `git push` runs the fast checks; CI runs the full suite and the
+   static analysis. If you run `tools/static_analysis.sh`, give it your own
+   cache folder (`PG_ANALYSIS_TOOLS=<your scratch dir>`): sessions on one
+   machine share `~/.cache/pinegrap-analysis` and overwrite its report.
+5. **Small PRs**: about 500 changed lines or fewer, tests and memory aside. A
+   bigger feature is a plan whose steps are separate PRs, one at a time.
+6. **One task, one session.** Hand over through the plan file and the PR, not
+   a long-running session; at most one safety check-in, never polling.
+7. **Shared hot files** (`tr.json`, `changelog.txt`, generated memory
+   indexes, `docs/memory/core/fn-module-map-additions.md`): append only; their
+   conflicts are settled by the merging session. `tr.json` is being split so
+   that two PRs stop conflicting on it: `docs/memory/plans/tr-json-split.md`.
+
 ## Fixed rules
 
 1. **Code comments in English, no exceptions** (PHP, JS, CSS, SQL, comments
@@ -143,6 +180,8 @@ the search API are blocked in cloud sessions.
 ## When a task is done
 
 CI (`.github/workflows/php-checks.yml`) runs all of these; none needs a database.
+In a session run the ones your change touches and the tests of your area
+(Working mode, rule 4); the merging session and CI run the rest.
 
 ```bash
 php tools/lint.php              # php -l over the product tree
