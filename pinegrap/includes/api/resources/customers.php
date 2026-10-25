@@ -323,6 +323,108 @@ function api_customers_get($params) {
 
 }
 
+// A customer's favourites (includes/fn/wishlist.php): the products the
+// accounts of this contact saved with the heart, newest first, cursor paged by
+// row. A visitor's list before signing in is kept under a cookie that names
+// nobody; it is here once it joins the account at sign-in. A product deleted
+// since is gone from the list; one switched off or in the Recycle Bin stays,
+// available false.
+function api_customers_wishlist($params) {
+
+	$id = (int)$params['id'];
+
+	api_customer_reachable_or_fail($id, 'contacts.id');
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = pg_wishlist_ready() ? api_rows(api_customer_wishlist_sql($id, $before, $limit + 1)) : array();
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_wishlist_item_present($row);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// The page of a contact's favourites: rows of its accounts (user.user_contact),
+// newest first, before the row $before (0 for the first page).
+function api_customer_wishlist_sql($contact_id, $before, $rows) {
+
+	return "SELECT wishlist_items.id, wishlist_items.product_id, wishlist_items.added_at,
+			products.name, products.short_description, products.enabled
+		FROM wishlist_items
+		INNER JOIN user ON user.user_id = wishlist_items.user_id
+		LEFT JOIN products ON products.id = wishlist_items.product_id
+		WHERE (wishlist_items.user_id > 0) AND (user.user_contact = '" . (int)$contact_id . "')"
+		. (((int)$before > 0) ? " AND (wishlist_items.id < '" . (int)$before . "')" : '') . "
+		ORDER BY wishlist_items.id DESC
+		LIMIT " . max(1, (int)$rows);
+
+}
+
+function api_wishlist_item_present($row) {
+
+	$found = isset($row['enabled']) && ($row['enabled'] !== null);
+
+	return array(
+		'product_id'        => (int)$row['product_id'],
+		'sku'               => (string)(int)$row['product_id'],
+		'name'              => $found ? (string)$row['name'] : null,
+		'short_description' => ($found && $row['short_description'] !== null) ? (string)$row['short_description'] : null,
+		'available'         => $found && ((int)$row['enabled'] === 1),
+		'added_at'          => api_time($row['added_at']),
+		'added_at_unix'     => (int)$row['added_at']
+	);
+
+}
+
+function api_wishlist_item_schema() {
+
+	return array(
+		'product_id'        => 'integer',
+		'sku'               => 'string',
+		'name'              => 'string?',
+		'short_description' => 'string?',
+		'available'         => 'boolean',
+		'added_at'          => 'string?',
+		'added_at_unix'     => 'integer'
+	);
+
+}
+
 // What api_customer_present() returns, declared for the OpenAPI document.
 //
 // Every column but the id may be null: a contact is created with what is known
