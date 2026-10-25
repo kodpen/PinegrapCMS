@@ -5,7 +5,7 @@ description: External API routes that send or take a file: api_send_file() and b
 
 ## How does a route send a file?
 - With `api_send_file($path, $mime, $file_name, $inline)` (`includes/api/response.php`), as its own bytes rather than JSON. The route carries `'binary' => true` (no `returns`; the document writes the 200 as `application/octet-stream`) and `'mcp' => false`, since a tool result cannot carry the bytes. Example: `GET /workspace/messages/{id}/file`.
-- `api_send_file()` itself answers the ETag/304, `Range` (206 with `Content-Range`, one range), 416 for a range past the end, `If-Range` (an ETag that no longer matches gets the whole file) and `Accept-Ranges`; the handler adds nothing. It drops every output buffer and streams the file in pieces.
+- `api_send_file()` itself answers the ETag/304, `Range` (206 with `Content-Range`, one range), 416 for a range past the end, `If-Range` (an ETag that no longer matches gets the whole file) and `Accept-Ranges`; the handler adds nothing. It drops every output buffer and streams the file in pieces, with the helpers `get_file.php` shares (`includes/http_range.php`, `platform/get-file-byte-ranges.md`).
 
 ## How does a route take a file?
 - As a multipart part: the route declares `'form_file' => 'file'`, and the document then offers a `multipart/form-data` body with that part. Or as `content_base64` with `name` in a JSON body; both in one call is 422. Example: `POST /workspace/channels/{id}/files`.

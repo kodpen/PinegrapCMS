@@ -87,4 +87,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
 - workspace-quotes.md: Plan (2026-10-23, 1 done #1546, 2 done #1614, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 done #1499, answer 2a): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
-- workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+- workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #PR, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

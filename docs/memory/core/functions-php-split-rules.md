@@ -6,7 +6,7 @@ description: Why functions.php became a manifest over includes/fn/ modules (2026
 ## What is functions.php now?
 - It had reached 3 MB / 63,000 lines / 782 functions: not openable in an FTP editor, unreadable diffs, a half-finished upload took the site down. Split on 2026-09-12 (plan `docs/_plan_functions_bolme.md`, Step 2a, eager manifest; the plan is not in the repository).
 - The split was MECHANICAL: a tokenizer cut every top-level function (with its preceding comment) verbatim into a module, order kept, no body changed.
-- `functions.php` is now a manifest: the `PG_FUNCTIONS_DIR` constant, three files shared with other entry points (`includes/authentication.php`, `includes/server_config.php`, `includes/image_engine.php`; `get-file-shared-code.md`) and one `require_once` per module. No classes, no namespaces, no lazy loading.
+- `functions.php` is now a manifest: the `PG_FUNCTIONS_DIR` constant, four files shared with other entry points (`includes/authentication.php`, `includes/server_config.php`, `includes/image_engine.php`, `includes/http_range.php`; `get-file-shared-code.md`) and one `require_once` per module. No classes, no namespaces, no lazy loading.
 - A module may instead be loaded by the few places that need it: `includes/fn/search_console.php` (its screen, its job, widget 31, `welcome.php`).
 - Module list: `docs/memory/core/fn-module-map.md`.
 

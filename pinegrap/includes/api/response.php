@@ -425,7 +425,7 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 	if ($status_code === 200) {
 
-		$range = api_file_range($etag, $size);
+		$range = pg_http_range_answer(api_header('Range'), api_header('If-Range'), array($etag), $size);
 
 		if ($range === false) {
 
@@ -475,13 +475,13 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 		} elseif ($status_code === 206) {
 
-			header('Content-Range: bytes ' . $range[0] . '-' . $range[1] . '/' . $size);
+			header('Content-Range: ' . pg_http_content_range($range, $size));
 
 			header('Content-Length: ' . ($range[1] - $range[0] + 1));
 
 		} elseif ($status_code === 416) {
 
-			header('Content-Range: bytes */' . $size);
+			header('Content-Range: ' . pg_http_content_range(false, $size));
 
 			header('Content-Length: 0');
 
@@ -499,80 +499,11 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 
 	} elseif ($status_code === 206) {
 
-		api_send_file_part($path, $range[0], $range[1] - $range[0] + 1);
+		pg_http_send_file_part($path, $range[0], $range[1] - $range[0] + 1);
 
 	}
 
 	exit();
-
-}
-
-// The part of the file a Range header asks for, as pg_http_byte_range() reads
-// it: array(first, last), null for the whole file, false when it lies past the
-// end. If-Range names the copy the client holds a part of; when that is not
-// this file any more - or it is a date, which this exit never sends - the whole
-// file goes out rather than a part of something else.
-function api_file_range($etag, $size) {
-
-	$header = api_header('Range');
-
-	if ($header === '') {
-
-		return null;
-
-	}
-
-	$if_range = trim(api_header('If-Range'));
-
-	if (($if_range !== '') && ($if_range !== $etag)) {
-
-		return null;
-
-	}
-
-	return pg_http_byte_range($header, $size);
-
-}
-
-// Streams $length bytes from $first in pieces, so a part of a large video is
-// never read into memory whole.
-function api_send_file_part($path, $first, $length) {
-
-	$handle = @fopen($path, 'rb');
-
-	if (!$handle) {
-
-		return;
-
-	}
-
-	if (($first > 0) && (@fseek($handle, $first) !== 0)) {
-
-		fclose($handle);
-
-		return;
-
-	}
-
-	while (($length > 0) && !feof($handle)) {
-
-		$chunk = fread($handle, (int)min(1048576, $length));
-
-		if (($chunk === false) || ($chunk === '')) {
-
-			break;
-
-		}
-
-		echo $chunk;
-
-		$length -= strlen($chunk);
-
-		flush();
-
-	}
-
-	fclose($handle);
 
 }
 
