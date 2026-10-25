@@ -2621,12 +2621,6 @@
             onInput: function () {
                 field.pickerCheck();
             },
-            // The undo and redo buttons of whoever shows them (a note).
-            onHistory: function (canUndo, canRedo) {
-                if (field && field.onHistory) {
-                    field.onHistory(canUndo, canRedo);
-                }
-            },
             onKeydown: function (event) {
                 // Escape closes the picker, not the drawer around it.
                 if (field.picker && field.pickerKey(event)) {
@@ -2662,18 +2656,15 @@
             dirty: function () {
                 return editor.markup() !== baseline;
             },
-            // Buttons under the box: people, records, emoji and, where the
-            // text may hold one, a checklist.
+            // Buttons under the box (PGWsEditor.toolbar()): people, records,
+            // emoji and, where the text may hold one, a checklist. Callers
+            // add their own (save, cancel) to the row it answers.
             tools: function (withList) {
-                var row = el('div', 'ws-note-actions');
-
                 var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
-                row.appendChild(mention);
 
                 var tag = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
-                row.appendChild(tag);
 
                 var emoji = button('btn btn-sm btn-ghost', '', 'bi-emoji-smile', t('insert_emoji'));
                 emoji.addEventListener('click', function (event) {
@@ -2682,21 +2673,8 @@
                     event.stopPropagation();
                     emojiPicker(box.left, box.bottom + 4, function (picked) { editor.insertText(picked); });
                 });
-                row.appendChild(emoji);
 
-                if (withList) {
-                    var list = button('btn btn-sm btn-ghost', '', 'bi-ui-checks', t('insert_checklist'));
-                    list.addEventListener('click', function () {
-                        window.PGWsEditor.openChecklist('', function (markup) {
-                            if (markup !== '') {
-                                editor.insertBlock('checklist', markup);
-                            }
-                        });
-                    });
-                    row.appendChild(list);
-                }
-
-                return row;
+                return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['checklist'] : []), { className: 'ws-note-actions' });
             }
         };
 
@@ -11124,7 +11102,10 @@
             self.input = input;
             box.appendChild(input);
 
-            var tools = el('div', 'ws-composer-tools');
+            // The row under the box, in order: the inserts, then the box's own
+            // marks and steps, then Send (or the microphone in its place).
+            var parts = [];
+
             // A file from this device, or one of the file manager's.
             var attach = button('btn btn-sm btn-ghost', '', 'bi-paperclip', t('attach'));
             attach.addEventListener('click', function (event) {
@@ -11141,15 +11122,15 @@
                     { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } }
                 ], true);
             });
-            tools.appendChild(attach);
+            parts.push(attach);
 
             var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
             mention.addEventListener('click', function () { self.insertTrigger('@'); });
-            tools.appendChild(mention);
+            parts.push(mention);
 
             var record = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
             record.addEventListener('click', function () { self.insertTrigger('#'); });
-            tools.appendChild(record);
+            parts.push(record);
 
             var emoji = button('btn btn-sm btn-ghost', '', 'bi-emoji-smile', t('insert_emoji'));
             emoji.addEventListener('click', function (event) {
@@ -11158,7 +11139,7 @@
                 event.stopPropagation();
                 emojiPicker(box.left, box.top - 6, function (picked) { self.insertText(picked); }, true);
             });
-            tools.appendChild(emoji);
+            parts.push(emoji);
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
@@ -11190,7 +11171,7 @@
                     } } : null
                 ], true);
             });
-            tools.appendChild(insert);
+            parts.push(insert);
 
             var command = button('btn btn-sm btn-ghost', '', 'bi-slash-square', t('commands'));
             command.addEventListener('click', function () {
@@ -11202,9 +11183,15 @@
                     self.showHelp();
                 }
             });
-            tools.appendChild(command);
+            parts.push(command);
 
-            tools.appendChild(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
+            // Bold, italic, strikethrough, undo and redo of the box itself
+            // (PGWsEditor.toolbar()); the stylesheet leaves them out where
+            // the row has no room for them, the bar over a selection still
+            // formats there.
+            parts.push(['bold', 'italic', 'strike'], ['undo', 'redo']);
+
+            parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
             var send = button('btn btn-sm btn-primary rounded-pill px-3', t('send'), 'bi-send');
             send.addEventListener('click', function () { self.send(); });
@@ -11246,9 +11233,9 @@
 
                 sendGroup.appendChild(send);
                 sendGroup.appendChild(later);
-                tools.appendChild(sendGroup);
+                parts.push(sendGroup);
             } else {
-                tools.appendChild(send);
+                parts.push(send);
             }
 
             // A voice message (assets/js/workspace_voice.js): the microphone
@@ -11262,9 +11249,26 @@
                 var mic = button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-mic', '', 'bi-mic', t('voice_record'));
 
                 mic.addEventListener('click', function () { self.voiceRecord(); });
-                tools.appendChild(mic);
+                parts.push(mic);
                 self.voiceMic = mic;
                 self.voiceBox = box;
+            }
+
+            var tools = null;
+
+            if (self.rich) {
+                tools = window.PGWsEditor.toolbar(self.rich, parts, {
+                    className: 'ws-composer-tools',
+                    groupClass: 'ws-composer-format',
+                    label: t('tool_bar_message')
+                });
+            } else {
+                tools = el('div', 'ws-composer-tools');
+                parts.forEach(function (item) {
+                    if (item && item.nodeType) {
+                        tools.appendChild(item);
+                    }
+                });
             }
 
             box.appendChild(tools);
@@ -21284,83 +21288,38 @@
             }).catch(fail);
         }
 
+        // The note's row of tools (PGWsEditor.toolbar()): undo and redo, the
+        // marks, the cards, tags and assistants, files and emoji. The marks
+        // and the steps are the box's own, so they are undone like typing.
         function toolbar() {
-            var tools = el('div', 'ws-nb-tools');
             var rich = field.rich;
-            var group = function () {
-                var box = el('div', 'ws-nb-tool-group');
-                tools.appendChild(box);
-                return box;
-            };
-            var tool = function (box, iconName, label, action) {
+            var tool = function (iconName, label, action) {
                 var node = button('btn btn-sm btn-ghost', '', iconName, label);
-                node.addEventListener('mousedown', function (event) { event.preventDefault(); });
                 node.addEventListener('click', action);
-                box.appendChild(node);
                 return node;
             };
-            var format = function (command) {
-                return function () {
-                    rich.restore();
-                    document.execCommand(command, false, null);
-                    rich.node.dispatchEvent(new Event('input', { bubbles: true }));
-                };
-            };
-            var block = function (kind, open) {
-                return function () {
-                    open(function (markup) {
-                        if (markup) {
-                            rich.insertBlock(kind, markup);
-                        }
-                    });
-                };
-            };
-
-            // Undo and redo: the box keeps its own steps (workspace_editor.js).
-            var steps = group();
-            var undo = tool(steps, 'bi-arrow-counterclockwise', t('notes_undo'), function () { rich.undo(); });
-            var redo = tool(steps, 'bi-arrow-clockwise', t('notes_redo'), function () { rich.redo(); });
-
-            field.onHistory = function (canUndo, canRedo) {
-                undo.disabled = !canUndo;
-                redo.disabled = !canRedo;
-            };
-            field.onHistory(rich.canUndo(), rich.canRedo());
-
-            var marks = group();
-            tool(marks, 'bi-type-bold', t('notes_bold'), format('bold'));
-            tool(marks, 'bi-type-italic', t('notes_italic'), format('italic'));
-            tool(marks, 'bi-type-strikethrough', t('notes_strike'), format('strikeThrough'));
-
-            var blocks = group();
-            tool(blocks, 'bi-ui-checks', t('notes_checklist'), block('checklist', function (done) { window.PGWsEditor.openChecklist('', done); }));
             var scope = function () { return field ? field.value() : ''; };
-
-            tool(blocks, 'bi-table', t('notes_table'), block('table', function (done) { window.PGWsEditor.openTable({ columns: 3, rows: 3 }, done, { insertLabel: t('insert_to_note'), scope: scope }); }));
-            tool(blocks, 'bi-calculator', t('notes_calc'), block('code', function (done) { window.PGWsEditor.openCalc('', done, { insertLabel: t('insert_to_note'), scope: scope }); }));
-            tool(blocks, 'bi-code-slash', t('notes_code'), block('code', function (done) { window.PGWsEditor.openCode('', done); }));
+            var blocks = ['checklist', 'table', 'calc', 'codeblock'];
 
             if (CFG.blocks) {
-                tool(blocks, 'bi-box-arrow-in-down', t('pull_title'), function () {
+                blocks.push(tool('bi-box-arrow-in-down', t('pull_title'), function () {
                     blockPuller(function (data) { field.insertPulled(data); });
-                });
+                }));
             }
 
-            var tags = group();
-            tool(tags, 'bi-hash', t('notes_tag'), function () { field.insertTrigger('#'); });
+            var tags = [tool('bi-hash', t('notes_tag'), function () { field.insertTrigger('#'); })];
 
             if (BOOT.claude || BOOT.ai) {
-                tool(tags, BOOT.claude ? 'bi-stars' : 'bi-cpu', t(BOOT.claude ? 'notes_claude' : 'notes_ai'), function () { field.insertTrigger('@'); });
+                tags.push(tool(BOOT.claude ? 'bi-stars' : 'bi-cpu', t(BOOT.claude ? 'notes_claude' : 'notes_ai'), function () { field.insertTrigger('@'); }));
             }
 
             // A scheduled action written in the note (staff).
             if (CFG.scheduled && current && current.id && editable()) {
-                tool(tags, 'bi-alarm', t('sa_new'), function () {
+                tags.push(tool('bi-alarm', t('sa_new'), function () {
                     scheduledForm({ note_id: current.id }, null, function () { refreshScheduled(); });
-                });
+                }));
             }
 
-            var extras = group();
             var picker = el('input');
             picker.type = 'file';
             picker.multiple = true;
@@ -21369,17 +21328,27 @@
                 attach(picker.files);
                 picker.value = '';
             });
-            extras.appendChild(picker);
-            tool(extras, 'bi-paperclip', t('notes_attach'), function () { picker.click(); });
 
-            var emoji = tool(extras, 'bi-emoji-smile', t('notes_emoji'), function (event) {
+            var emoji = tool('bi-emoji-smile', t('notes_emoji'), function (event) {
                 var box = emoji.getBoundingClientRect();
 
                 event.stopPropagation();
                 emojiPicker(box.left, box.bottom + 4, function (picked) { rich.insertText(picked); });
             });
 
-            return tools;
+            return window.PGWsEditor.toolbar(rich, [
+                ['undo', 'redo'],
+                ['bold', 'italic', 'strike'],
+                blocks,
+                tags,
+                [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]
+            ], {
+                className: 'ws-nb-tools',
+                groupClass: 'ws-nb-tool-group',
+                label: t('tool_bar_note'),
+                insertLabel: t('insert_to_note'),
+                scope: scope
+            });
         }
 
         // A line that ends with "=" shows what it comes to, worked out by the

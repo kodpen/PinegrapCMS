@@ -731,7 +731,8 @@ function pg_server_config_retarget($contents, $server)
 /**
  * What the live file has and what it is missing.
  *
- * Reads only — nothing here writes. The router block is scanned like the
+ * Changes nothing (on Windows the web root may be asked with a file made and
+ * removed again, see pg_dir_writable()). The router block is scanned like the
  * others but reported separately: a site whose router rule is missing is a
  * site that is not answering, so it is not a finding the operator needs a
  * dashboard to learn.
@@ -770,7 +771,8 @@ function pg_server_config_scan($recheck = false)
         // Nothing there: everything is missing, and the repair writes the
         // whole default rather than merging into a file that is not there.
         $result['missing'] = $blocks;
-        $result['writable'] = is_writable(dirname($target['file']));
+        // pg_dir_writable(), not is_writable(): Windows folders (see there)
+        $result['writable'] = pg_dir_writable(dirname($target['file']));
         $memo = $result;
         return $result;
     }

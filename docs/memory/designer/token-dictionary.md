@@ -7,6 +7,7 @@ description: System widget token namespaces (bare vs __ prefix), shared cart voc
 The boundary is a rule, not an accident.
 - **Bare name** (`^^reference_code^^`, `^^submitted_date_and_time^^`, `^^email_address^^`): submitted form **system fields**, resolved by classic screens with exactly those names; record is `get_standard_fields_for_view()` (`includes/fn/forms.php`). A system widget does not invent its own name.
 - **`__` prefixed** (`^^__cart_subtotal^^`, `^^__item_price^^`): state the widget computes (prices, counts, addresses, renderer-built blocks). The prefix prevents competing with a name a visitor may give a form field (`^^form_id^^` once did).
+- The comments widget: `__comments_*` for the thread, `__comment_*` for one comment. Its form's prefill slots (`^^pg_comment_form_*^^`) are internal and never start with `__` ([[comments-widget-form]]).
 
 ## Do widgets share names?
 - The same value has the same name in every widget. Cart, express order and order view show the same cart, so they share one vocabulary: `__cart_subtotal`, `__item_price`, `__item_total`, `__item_url`, `__item_description`.

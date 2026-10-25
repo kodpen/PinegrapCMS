@@ -27,10 +27,10 @@ description: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: pr
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
-7. F7 shares (schema); F8 MCP tool, assistant, AI draft cards, starters.
+7. F7 shares (schema, plans/prototype-sharing.md); F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
-Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members only personal flows with steps in their own reach), 3 a (publishing decides; a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". Recommendations taken for 5-8 (owner: decide without asking).
+Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members only personal flows with steps in their own reach), 3 a (publishing decides; a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". Recommendations taken for 5-7 (owner: decide without asking); 8 below.
 1. Editor: own vanilla (not JointJS, not Drawflow).
 2. Builders: staff; home channel readers Run; role-3 personal flows from F6.
 3. Record writes: publish decides, like `change`.
@@ -38,7 +38,7 @@ Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members o
 5. MCP connector tools: reads inline, writes propose and wait, F8.
 6. AI: drafts only (a draft card as scheduled_draft.php), a person publishes.
 7. Process runs: a task per box once ready, due from then, Done per run.
-8. Rules: the scheduled-actions form stays, shared steps, "Open on canvas".
+8. Scheduled actions in Flows, no loss: answered in workspace-flows-scheduled-merge.md (owner, 2026-10-24).
 
 ## Where to start?
 - F3 next (plans/workspace-flows-engine.md). Read workspace/README.md, plans/workspace-growth-terms.md.

@@ -12884,6 +12884,52 @@ a.ws-chip:hover {
   font-size: .72rem;
   color: var(--bs-secondary-color);
 }
+/* The composer's own marks and steps (PGWsEditor.toolbar()): two small
+   groups after the inserts. Where the row is too narrow for them (a phone,
+   the discussion panel, a narrow window) they are left out and the row
+   stays as it was; the bar over a selection still formats there. The widest
+   row (Turkish "Gönder" with the scheduled-send clock beside it) needs about
+   33rem with them; the cut-off leaves a margin for wider system fonts. */
+.ws-composer-tools {
+  container-type: inline-size;
+}
+.ws-composer-format {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  margin-left: .1rem;
+  padding-left: .25rem;
+  border-left: 1px solid var(--bs-border-color-translucent);
+}
+@container (max-width: 34rem) {
+  .ws-composer-format {
+    display: none;
+  }
+}
+@media (max-width: 767.98px) {
+  .ws-composer-format {
+    display: none;
+  }
+}
+/* The hint gives way to the buttons on one line rather than growing the row
+   by several. */
+.ws-composer-tools .ws-composer-hint {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* A mark the caret or the selection has, on a button of a box's row of
+   tools: the tint of the bar over a selection. Undo and redo with nothing to
+   take back draw no frame: .btn-ghost sets no disabled border colour, so the
+   border fell back to the text colour. */
+.ws-rich-tools .btn-ghost[aria-pressed="true"] {
+  background: rgba(var(--ws-accent-rgb), .15);
+  color: rgba(var(--ws-accent-rgb), 1);
+}
+.ws-rich-tools .btn-ghost:disabled {
+  border-color: transparent;
+}
 
 /* The writing box: formatted text, chips and cards, and still a chat field.
    (assets/js/workspace_editor.js) */
