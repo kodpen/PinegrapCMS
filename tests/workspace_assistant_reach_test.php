@@ -144,15 +144,20 @@ function test_workspace_assistant_reach_ai_writes_only_with_its_application()
 
 // The context Claude reads: through the person who asked only for Claude's
 // application, only where Claude may be asked and only where the owner does
-// not read; anywhere else the owner reads it as every endpoint does.
+// not read; anywhere else the owner reads it as every endpoint does. The
+// channel's customer is read the same way.
 function test_workspace_assistant_reach_claude_context()
 {
-	$context = workspace_assistant_reach_test_source('ws_api_channel_context');
+	foreach (array('ws_api_channel_context', 'ws_api_channel_customer') as $handler) {
+		pg_assert_contains('ws_api_assistant_channel_reader($params[\'id\'])', workspace_assistant_reach_test_source($handler), $handler . ' reads its channel as an assistant\'s read');
+	}
+
+	$context = workspace_assistant_reach_test_source('ws_api_assistant_channel_reader');
 	$asker = strpos($context, 'ws_claude_channel_asker($channel)');
 
 	pg_assert_true($asker !== false, 'the person who asked is looked for');
 	pg_assert_contains('ws_api_is_claude() && ws_claude_channel_allowed($channel) && !ws_app_reads_channel($owner, $channel)', $context, 'Claude\'s application, where Claude may be asked, where the owner does not read');
-	pg_assert_true(strpos($context, 'ws_api_channel_or_404($viewer, $params[\'id\'])') > $asker, 'otherwise the ordinary check');
+	pg_assert_true(strpos($context, 'ws_api_channel_or_404($viewer, $id)') > $asker, 'otherwise the ordinary check');
 
 	$lookup = workspace_assistant_reach_test_source('ws_claude_channel_asker');
 
