@@ -158,6 +158,7 @@ function ws_openapi_objects()
         'WorkspaceProposal'       => 'ws_api_proposal_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
+        'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
@@ -1211,9 +1212,9 @@ function ws_api_routes()
             'path'        => '/workspace/notes',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_notes_list',
-            'returns'     => array('list' => 'WorkspaceNote'),
+            'returns'     => array('list' => 'WorkspaceNote', 'deleted' => array(array('id' => 'integer', 'deleted_at' => 'string'))),
             'summary'     => 'The owner\'s notes',
-            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. text and body are null in the listing; GET /workspace/notes/{id} carries them.',
+            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. text and body are null in the listing; GET /workspace/notes/{id} carries them. With updated_since, the first page (no cursor) also lists in deleted the notes deleted since then that the owner kept - their own, those shared with them and those shared in a channel they may read - the oldest first, at most 1,000, so a copy kept elsewhere can be dropped; deletions are remembered for 30 days, so an app away longer reads the whole list again. Without updated_since, deleted is empty.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title or the text.'),
@@ -1273,6 +1274,38 @@ function ws_api_routes()
                 array('name' => 'pinned', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'base', 'in' => 'body', 'type' => 'datetime', 'description' => 'The updated_at the note was read at.'),
                 array('name' => 'revision', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The revision the note was read at.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/notes/{id}',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_notes_delete',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceNoteRemoval',
+            'summary'     => 'Delete a note',
+            'description' => 'Deletes a note of the owner of the application for good, as Delete on the notes screen does: its versions, its shares and the lines about it in the inboxes go with it, a card that shared it in a channel says it is no longer shared, and its files stay in the file manager. Only the note\'s owner may delete it; a note shared with them is refused with 403 forbidden. It cannot be undone, so it is not offered to assistants as a tool. The apps that keep notes in sync learn of it from deleted in GET /workspace/notes?updated_since=. POST /workspace/notes/{id}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.notes.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/notes/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_notes_delete',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceNoteRemoval',
+            'summary'     => 'Delete a note (POST)',
+            'description' => 'The same as DELETE /workspace/notes/{id}, for servers and clients that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

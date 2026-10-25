@@ -9093,6 +9093,7 @@ function get_tables() {
 		'ws_notes',
 		'ws_note_shares',
 		'ws_note_versions',
+		'ws_note_deletions',
 		'ws_file_edits',
 		'ws_message_hides',
 		'ws_scheduled_actions',

@@ -68,6 +68,13 @@ define('WS_NOTE_LIST_BODY', 4000);
 define('WS_NOTES_PAGE_MAX', 200);
 
 /**
+ * How long a deleted note is remembered for the apps that keep notes in sync
+ * (ws_note_deletions), and how many deletions one listing carries at most.
+ */
+define('WS_NOTE_DELETIONS_KEEP', 30 * 86400);
+define('WS_NOTE_DELETIONS_MAX', 1000);
+
+/**
  * Are notes installed (4.110)?
  *
  * @return bool
@@ -101,6 +108,22 @@ function ws_note_revision_ready()
         // A column of the table answers for the table too; without a
         // connection the answer is no.
         $ready = function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'revision');
+    }
+
+    return $ready;
+}
+
+/**
+ * Are deleted notes remembered (2026.11.0, 11.0.85)?
+ *
+ * @return bool
+ */
+function ws_note_deletions_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_note_deletions');
     }
 
     return $ready;
@@ -1114,6 +1137,62 @@ function ws_note_save($viewer, $data)
 }
 
 /**
+ * Whether the person may delete a note: its owner only. The screen's delete
+ * and the API's (and its dry run) meet the same refusal.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return array ok, error
+ */
+function ws_note_delete_check($viewer, $note)
+{
+    if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
+        return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The notes deleted since a moment that the person kept: their own, those
+ * shared with them, and those shared in a channel they may read, each once,
+ * the oldest deletion first.
+ *
+ * @param array $viewer ws_viewer()
+ * @param int   $since
+ * @return array[] id, deleted_at
+ */
+function ws_note_deletions_since($viewer, $since)
+{
+    if (!ws_note_deletions_ready()) {
+        return array();
+    }
+
+    $since = max((int) $since, time() - WS_NOTE_DELETIONS_KEEP);
+    $channels = array();
+
+    foreach ((array) db_values("SELECT DISTINCT channel_id FROM ws_note_deletions
+        WHERE channel_id > 0 AND deleted_at >= '" . $since . "'") as $channel_id) {
+        if (ws_can_read_channel($viewer, ws_channel((int) $channel_id))) {
+            $channels[] = (int) $channel_id;
+        }
+    }
+
+    $reach = "user_id = '" . (int) $viewer['id'] . "'" . (!empty($channels) ? " OR channel_id IN (" . implode(',', $channels) . ")" : '');
+    $rows = (array) db_items("SELECT note_id, MAX(deleted_at) AS deleted_at FROM ws_note_deletions
+        WHERE deleted_at >= '" . $since . "' AND (" . $reach . ")
+        GROUP BY note_id ORDER BY deleted_at ASC, note_id ASC LIMIT " . (int) WS_NOTE_DELETIONS_MAX);
+
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = array('id' => (int) $row['note_id'], 'deleted_at' => (int) $row['deleted_at']);
+    }
+
+    return $out;
+}
+
+/**
  * The rows ws_note_deletions keeps when a note is deleted: one for its owner,
  * one for each person it was shared with, one for each channel it was shared
  * in (user_id 0), each once.
@@ -1160,11 +1239,27 @@ function ws_note_deletion_rows($note, $shares, $by, $now)
  */
 function ws_note_delete($viewer, $note)
 {
-    if ((int) $note['user_id'] !== (int) $viewer['id']) {
-        return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
+    $check = ws_note_delete_check($viewer, $note);
+
+    if (!$check['ok']) {
+        return $check;
     }
 
     $id = (int) $note['id'];
+
+    // Who kept it is read before the shares go, for the apps that keep
+    // notes in sync.
+    if (ws_note_deletions_ready()) {
+        $now = time();
+        $shares = (array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . $id . "'");
+
+        foreach (ws_note_deletion_rows($note, $shares, (int) $viewer['id'], $now) as $row) {
+            db("INSERT INTO ws_note_deletions (note_id, user_id, channel_id, deleted_by, deleted_at)
+                VALUES ('" . $row['note_id'] . "', '" . $row['user_id'] . "', '" . $row['channel_id'] . "', '" . $row['deleted_by'] . "', '" . $row['deleted_at'] . "')");
+        }
+
+        db("DELETE FROM ws_note_deletions WHERE deleted_at < '" . ($now - WS_NOTE_DELETIONS_KEEP) . "' LIMIT 500");
+    }
 
     foreach ((array) db_items("SELECT message_id FROM ws_note_shares WHERE note_id = '" . $id . "' AND message_id > 0") as $share) {
         ws_note_card_retire($share['message_id']);

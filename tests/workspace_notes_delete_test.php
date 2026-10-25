@@ -41,3 +41,45 @@ function test_workspace_notes_delete_rows_for_everyone_who_kept_it()
 		array('note_id' => 41, 'user_id' => 5, 'channel_id' => 0, 'deleted_by' => 5, 'deleted_at' => 1),
 	), ws_note_deletion_rows(array('id' => 41, 'user_id' => 5), array(), 5, 1), 'a note shared with nobody: its owner alone');
 }
+
+// The text of a product file, for the checks that read the source.
+function workspace_notes_delete_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+function test_workspace_notes_delete_schema_step_and_table_list()
+{
+	$migration = workspace_notes_delete_test_source('includes/migrations/2026.11.0.php');
+
+	pg_assert_contains('upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85', $migration, 'the step is called');
+	pg_assert_contains("install_create_table('ws_note_deletions'", $migration, 'it creates the table');
+	pg_assert_contains("'ws_note_deletions',", workspace_notes_delete_test_source('install/index.php'), 'a reinstall drops it with the other tables (get_tables())');
+}
+
+function test_workspace_notes_delete_keeps_its_record_before_the_shares_go()
+{
+	$source = workspace_notes_delete_test_source('includes/workspace/notes.php');
+	$start = strpos($source, 'function ws_note_delete($viewer, $note)');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('ws_note_delete_check($viewer, $note)', $body, 'the screen and the API meet one check');
+	pg_assert_true(strpos($body, 'INSERT INTO ws_note_deletions') < strpos($body, 'DELETE FROM ws_note_shares'), 'who kept it is written before the shares are deleted');
+	pg_assert_contains('WS_NOTE_DELETIONS_KEEP', $body, 'older records go at the same time');
+}
+
+function test_workspace_notes_delete_api_routes()
+{
+	$api = workspace_notes_delete_test_source('includes/workspace/api.php');
+
+	foreach (array('workspace.notes.delete', 'workspace.notes.delete_post') as $id) {
+		pg_assert_true((bool) preg_match("/'id' +=> '" . preg_quote($id, '/') . "',(?:(?!'id' +=>).)*?'dry_run' +=> true,\\s*'mcp' +=> false,/s", $api), $id . ': rehearsable, and not an assistant\'s tool');
+	}
+
+	$resources = workspace_notes_delete_test_source('includes/workspace/api_resources.php');
+	$start = strpos($resources, 'function ws_api_notes_delete($params)');
+	$body = substr($resources, $start, strpos($resources, "\n}\n", $start) - $start);
+
+	pg_assert_true(strpos($body, 'ws_note_delete_check(') < strpos($body, 'api_dry_run_stop(') && strpos($body, 'api_dry_run_stop(') < strpos($body, 'ws_note_delete($viewer'), 'check, then the dry run stop, then the delete');
+	pg_assert_contains("array('deleted' => \$deleted)", $resources, 'the list answers the deletions');
+}
