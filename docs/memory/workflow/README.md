@@ -8,7 +8,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 <!-- key-rules:start -->
 - Read the decisions list before writing any audit finding or proposing a cleanup: a listed place is not a finding, and an entry you doubt is asked about, never changed (`decisions-made.md`).
-- Work in the working mode: claim a task with a draft PR and never an issue, one open PR per session, no stacked branches, the `ready` label when CI is green and then stop, light checks, no review chains; only the merging session merges, in merge trains landed by one fast-forward push (`working-mode.md`, `session-checks.md`, `merge-train.md`, `merge-train-landing.md`).
+- Work in the working mode: claim a task with a draft PR and never an issue, one open PR per session, no stacked branches, the `ready` label when CI is green, then wait subscribed and take the plan's next step once it is merged, light checks, no review chains; only the merging session merges, in merge trains landed by one fast-forward push; a coordinator per account starts the workers and carries the owner's questions (`working-mode.md`, `session-checks.md`, `merge-train.md`, `merge-train-landing.md`, `coordinator.md`).
 - Owner decisions are about the product's behaviour and carry their reason (`decisions-made.md`); a working rule is never written as the owner's decision (`CLAUDE.md`, Fixed rules 6).
 - Never edit `changelog.txt` (name the `[NEW]` line or `[SCHEME]` item in the PR body), add translation keys only with `php tools/tr_add.php` (sorted shards in `includes/local/tr/`, never edited by hand), and only append to the open migration file and `init.php`; merge `origin/development` once before the PR goes up (`working-mode.md`, `git-branches-and-shared-files.md`).
 - Keep PHP 7.1 working: raising the minimum is the owner's call, and a library may never raise it as a side effect (`project-overview.md`).
@@ -20,6 +20,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 ## Files
 
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
+- coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, carries owner questions through the PRs, writes no code, merges nothing
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes and tracking_company, user.secret_key*, order_items.tax, orders.tracking_code, fixing a released migration, MySQL 5.7 support.
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits.
