@@ -15,7 +15,7 @@
  *
  * Who is calling is settled the way integration.php settles it - an OAuth
  * token issued for this endpoint, a device token, or an application's key -
- * and every tool is held to that caller's scopes.
+ * and every tool, resource and prompt is held to that caller's scopes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -30,8 +30,10 @@ if (!defined('PG_MCP_ENTRY')) {
 // The protocol versions answered, newest first. The first is the current
 // generation; the rest open with initialize. 2024-11-05 is still what some
 // clients built on an older SDK ask for, and the messages this server
-// exchanges - tools/list and tools/call - read the same in it: a client
-// answered with a version it does not know gives up instead.
+// exchanges - the tools, resources and prompts lists, tools/call,
+// resources/read and prompts/get - read the same in it, apart from fields it
+// ignores: a client answered with a version it does not know gives up
+// instead.
 function pg_mcp_versions() {
 
 	return array('2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05');
@@ -78,11 +80,12 @@ function pg_mcp_request_version($header, $params) {
 
 }
 
-// The current generation repeats the method, the tool's name and the version
-// in headers so that a gateway can route on them without reading the body;
-// the server refuses a request whose headers and body disagree, or the
-// gateway's decision would rest on something the server never sees. Answers
-// '' when they agree, the reason otherwise.
+// The current generation repeats the method, the name of the tool or prompt
+// (the uri of a resource read) and the version in headers so that a gateway
+// can route on them without reading the body; the server refuses a request
+// whose headers and body disagree, or the gateway's decision would rest on
+// something the server never sees. Answers '' when they agree, the reason
+// otherwise.
 function pg_mcp_header_mismatch($method, $params, $headers) {
 
 	if ($headers['method'] !== $method) {
@@ -91,13 +94,17 @@ function pg_mcp_header_mismatch($method, $params, $headers) {
 
 	}
 
-	if (in_array($method, array('tools/call', 'prompts/get'), true)) {
+	$named = array('tools/call' => 'name', 'prompts/get' => 'name', 'resources/read' => 'uri');
 
-		$name = (isset($params['name']) && is_string($params['name'])) ? $params['name'] : '';
+	if (isset($named[$method])) {
 
-		if ($headers['name'] !== $name) {
+		$key = $named[$method];
 
-			return 'The Mcp-Name header does not match the name in the body.';
+		$name = (isset($params[$key]) && is_string($params[$key])) ? $params[$key] : '';
+
+		if (pg_mcp_header_name_decode($headers['name']) !== $name) {
+
+			return 'The Mcp-Name header does not match the ' . $key . ' in the body.';
 
 		}
 
@@ -113,6 +120,26 @@ function pg_mcp_header_mismatch($method, $params, $headers) {
 	}
 
 	return '';
+
+}
+
+// An Mcp-Name value as the body would hold it. A name or uri that is not
+// plain ASCII travels as =?base64?...?= (the markers lowercase), and is
+// compared decoded; a value in that shape that is not Base64 is null and
+// matches nothing.
+function pg_mcp_header_name_decode($value) {
+
+	$value = (string)$value;
+
+	if (preg_match('#^=\?base64\?(.*)\?=\z#s', $value, $found) !== 1) {
+
+		return $value;
+
+	}
+
+	$decoded = (preg_match('#^[A-Za-z0-9+/]*={0,2}\z#', $found[1]) === 1) ? base64_decode($found[1], true) : false;
+
+	return ($decoded === false) ? null : $decoded;
 
 }
 
@@ -212,6 +239,24 @@ function pg_mcp_result($id, $result, $modern) {
 
 }
 
+// The caching hints the current generation asks for on lists and reads: how
+// long the answer may be used again, and that it is this caller's own - what
+// is listed and read follows the caller's scopes and rights. Earlier
+// generations have none.
+function pg_mcp_cache_hints($result, $ttl_ms, $modern) {
+
+	if ($modern) {
+
+		$result['ttlMs'] = (int)$ttl_ms;
+
+		$result['cacheScope'] = 'private';
+
+	}
+
+	return $result;
+
+}
+
 function pg_mcp_error($id, $code, $message, $data = null, $http_status = 400) {
 
 	$error = array('code' => (int)$code, 'message' => (string)$message);
@@ -246,9 +291,15 @@ function pg_mcp_server_info() {
 
 }
 
+// Tools, resources and prompts; none of the lists is announced as changed
+// (no notifications are sent) and no resource can be subscribed to.
 function pg_mcp_capabilities() {
 
-	return array('tools' => array('listChanged' => false));
+	return array(
+		'tools'     => array('listChanged' => false),
+		'resources' => array('listChanged' => false),
+		'prompts'   => array('listChanged' => false)
+	);
 
 }
 
@@ -439,41 +490,36 @@ function pg_mcp_run() {
 				'cacheScope'        => 'private'
 			), $modern);
 
+		// The lists depend on who asks, so each is cached by that client
+		// alone, and for a few minutes: a permission granted or taken away
+		// shows within them. None is paged: each is complete in one answer.
 		case 'tools/list':
 
-			$result = array('tools' => pg_mcp_tools_list());
-
-			// The list depends on who asks, so it is cached by that client
-			// alone, and for a few minutes: a permission granted or taken
-			// away shows within them.
-			if ($modern) {
-
-				$result['ttlMs'] = 300000;
-
-				$result['cacheScope'] = 'private';
-
-			}
-
-			pg_mcp_result($id, $result, $modern);
+			pg_mcp_result($id, pg_mcp_cache_hints(array('tools' => pg_mcp_tools_list()), 300000, $modern), $modern);
 
 		case 'tools/call':
 
 			pg_mcp_tool_call($id, $params, $modern);
 
-		// Asked by some clients whatever the capabilities say. The server
-		// offers no resources and no prompts, and an empty list says so
-		// without the client reporting a failed server.
 		case 'resources/list':
 
-			pg_mcp_result($id, array('resources' => array()), $modern);
+			pg_mcp_result($id, pg_mcp_cache_hints(array('resources' => pg_mcp_resources_list(pg_mcp_routes())), 300000, $modern), $modern);
 
 		case 'resources/templates/list':
 
-			pg_mcp_result($id, array('resourceTemplates' => array()), $modern);
+			pg_mcp_result($id, pg_mcp_cache_hints(array('resourceTemplates' => pg_mcp_resource_templates_list(pg_mcp_routes())), 300000, $modern), $modern);
+
+		case 'resources/read':
+
+			pg_mcp_resource_read($id, $params, $modern);
 
 		case 'prompts/list':
 
-			pg_mcp_result($id, array('prompts' => array()), $modern);
+			pg_mcp_result($id, pg_mcp_cache_hints(array('prompts' => pg_mcp_prompts_list(pg_mcp_routes())), 300000, $modern), $modern);
+
+		case 'prompts/get':
+
+			pg_mcp_prompt_get($id, $params, $modern);
 
 	}
 

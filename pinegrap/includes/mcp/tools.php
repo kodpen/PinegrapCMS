@@ -265,26 +265,14 @@ function pg_mcp_route_path($route, $path_values) {
 
 }
 
-/* ---------------------------------------------------------------------------
-   Within a request: the caller's tools, and running one
-   --------------------------------------------------------------------------- */
-
-// The routes this caller may use, by tool name.
-function pg_mcp_routes() {
-
-	static $routes = null;
-
-	if ($routes !== null) {
-
-		return $routes;
-
-	}
+// The routes of $schema a caller holding $scopes may use, by tool name. The
+// resources and prompts (resources.php, prompts.php) are offered from the
+// same list, so a route that is no tool for the caller is no resource either.
+function pg_mcp_routes_for($schema, $scopes) {
 
 	$routes = array();
 
-	$scopes = api_current_scopes();
-
-	foreach (api_schema() as $route) {
+	foreach ($schema as $route) {
 
 		if (!pg_mcp_route_is_offered($route) || !api_has_scope($scopes, $route['scope'])) {
 
@@ -308,6 +296,25 @@ function pg_mcp_routes() {
 
 }
 
+/* ---------------------------------------------------------------------------
+   Within a request: the caller's tools, and running one
+   --------------------------------------------------------------------------- */
+
+// The routes this caller may use, by tool name.
+function pg_mcp_routes() {
+
+	static $routes = null;
+
+	if ($routes === null) {
+
+		$routes = pg_mcp_routes_for(api_schema(), api_current_scopes());
+
+	}
+
+	return $routes;
+
+}
+
 function pg_mcp_tools_list() {
 
 	$tools = array();
@@ -322,11 +329,9 @@ function pg_mcp_tools_list() {
 
 }
 
-// tools/call. The route runs as api_run() would run it; whatever it answers
-// with, success or refusal, comes back through api_send() into the hook below
-// and leaves as the tool's result. A refusal is a result with isError set, as
-// MCP asks for errors the model should see and could act on - a missing
-// field, a record that is not there - rather than a protocol error.
+// tools/call. A refusal is a result with isError set, as MCP asks for errors
+// the model should see and could act on - a missing field, a record that is
+// not there - rather than a protocol error.
 function pg_mcp_tool_call($id, $params, $modern) {
 
 	$name = (isset($params['name']) && is_string($params['name'])) ? $params['name'] : '';
@@ -339,9 +344,22 @@ function pg_mcp_tool_call($id, $params, $modern) {
 
 	}
 
-	$route = $routes[$name];
-
 	$arguments = (isset($params['arguments']) && is_array($params['arguments'])) ? $params['arguments'] : array();
+
+	pg_mcp_route_run($routes[$name], $arguments, function ($status_code, $body) use ($id, $modern) {
+
+		pg_mcp_tool_result($id, $status_code, $body, $modern);
+
+	});
+
+}
+
+// Runs one of the caller's routes (pg_mcp_routes()) as api_run() would run
+// it, for a tool call, a resource read or a prompt that embeds a resource.
+// Whatever the route answers with, success or refusal, comes back through
+// api_send() into the hook and is handed to $answer($status_code, $body),
+// which writes the JSON-RPC answer and leaves; this function never returns.
+function pg_mcp_route_run($route, $arguments, $answer) {
 
 	$split = pg_mcp_arguments($route, $arguments);
 
@@ -357,7 +375,7 @@ function pg_mcp_tool_call($id, $params, $modern) {
 
 	api_header('X-Dry-Run', $split['dry_run'] ? 'true' : '');
 
-	api_send_hook(function ($status_code, $body) use ($id, $modern, $route, $split) {
+	api_send_hook(function ($status_code, $body) use ($answer, $route, $split) {
 
 		// A write that went through makes every page the page cache keeps
 		// old once the request ends. Every tool call is a POST, so init.php
@@ -368,14 +386,15 @@ function pg_mcp_tool_call($id, $params, $modern) {
 
 		}
 
-		pg_mcp_tool_result($id, $status_code, $body, $modern);
+		call_user_func($answer, $status_code, $body);
 
 	});
 
 	api_current_route($route);
 
-	// Only routes the caller's scopes cover are listed, but a name can be
-	// sent without being listed.
+	// pg_mcp_routes() holds only the routes the caller's scopes cover; the
+	// check is the router's own and stays, so no caller of this function
+	// can run a route past it.
 	api_require_scope($route['scope']);
 
 	if ($split['dry_run'] === null) {

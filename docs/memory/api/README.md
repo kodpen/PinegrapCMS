@@ -35,7 +35,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
-- api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which routes are left out, how tools/call runs a handler, addresses, callers, protocol generations
+- api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
 - api-oauth-client-compat.md: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Codex, mcp-remote, Claude) connecting: lenient registration, app schemes, loopback matching, unknown scopes, discovery, panel guide
 - api-oauth-server.md: The site as an OAuth 2.1 server (oauth.php, includes/oauth/, 2026.4.10): api_devices tokens, the oauth app, scopes, resources, error format, CIMD clients, switching clients off, ending connections
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
@@ -51,5 +51,6 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
+- mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context, refs/{type}/{id}) read through their GET routes; prompts channel_summary and weekly_report; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/).
