@@ -25,5 +25,5 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 - Site CSS, `style_designer.css` and `page_designer.css` (editor, step B7) and JavaScript (step B2b) are outside this layer.
 
 ## What is converted so far?
-- B3a (#PR): the token block; every v5 `-rgb` use in panel CSS and the installer's, api_settings, marketplace_settings and view_folders style blocks (`check_bs6.php` RGB count 130 to 21; the rest are the token layer's own two lines, the editor, JavaScript and `design_themes.php`, whose values go into site designs); the accent role variables in backend.src.css and workspace_guest.css.
+- B3a (#1694): the token block; every v5 `-rgb` use in panel CSS and the installer's, api_settings, marketplace_settings and view_folders style blocks (`check_bs6.php` RGB count 130 to 21; the rest are the token layer's own two lines, the editor, JavaScript and `design_themes.php`, whose values go into site designs); the accent role variables in backend.src.css and workspace_guest.css.
 - Still reading `--bs-*`: the neutral variables in backend.src.css (about 1,000 uses), the other panel stylesheets and inline style blocks: steps B3b and B3c in `plans/bootstrap-6-panel-steps.md`.
