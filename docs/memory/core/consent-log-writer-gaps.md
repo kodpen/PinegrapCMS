@@ -1,11 +1,15 @@
 ---
 name: consent-log-writer-gaps
-description: What the e-mail consent log writers leave unrecorded, what was run against them, and the questions left for the owner (PR #1581)
+description: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
 ---
 
 ## What writes no row?
 - Question not shown: social sign-up (0), contacts created with DEFAULT 1 (forms, profile, `pg_contact_quick_save()`, affiliate), retrieve-order resets, a checkout that hid the box, a widget without the control. POS sales are staff writes.
 - A checkout while staff are ghosting, and a signed-in buyer whose card is not updated: the contact keeps its old `opt_in`, so the log does too.
+
+## Which refusals were never asked?
+- A custom layout that leaves the box out: registration or membership entrance (counted as asked for every post without `pg_widget_id`), billing information or express order (`opt_in_displayed` is printed by the server, not the layout). Its post looks like an unticked box, so 0 is stored and a `refused` row written. The system layouts and the shipped custom layouts draw the box. The same for a designed custom form widget that no longer draws its `opt_in` field (the field still saves, empty).
+- Telling them apart needs the rendered layout, which the post does not carry. Step 5 must not take such rows as answers.
 
 ## Was it run?
 - Tests: `tests/privacy_test.php`, `member_opt_in_test.php`, `express_order_opt_in_test.php`, `checkout_opt_in_consent_test.php`.
