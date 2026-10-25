@@ -6,6 +6,9 @@ description: Owner rule (2026-10-25) for the merging session: merge windows, bui
 ## Why a train and not one PR at a time?
 - One CI run takes about 20-25 minutes. Merging one PR, waiting for CI on the next, merging it caps the queue at two or three PRs an hour, and every single merge makes the PRs behind it conflict again. A train tests a batch once, and the PRs behind it see `development` move once per window instead of once per PR.
 
+## Who merges?
+- The primary merging session and a second one the owner names (2026-10-25). Before building a train each one posts a take-over comment on every PR it takes ("Taken over for merging"); a PR that already carries the other one's take-over comment is left alone.
+
 ## When does the merging session merge?
 - In windows: a scheduled routine wakes it every one to two hours. It does not react to each CI event in between. A security fix or a broken `development` may be merged at once, alone.
 

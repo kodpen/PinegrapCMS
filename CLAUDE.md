@@ -115,9 +115,11 @@ work, so these rules bind every session. Details:
    do not merge `development` into it, rebase it or re-run its checks; only
    the merging session keeps it current. Act again only when it asks on the
    PR.
-3. **Only the merging session merges**, in merge windows as a merge train
-   (`merge-train.md`), not one PR per CI run. No other session merges, also
-   not its own PR.
+3. **Only the merging sessions merge**: the primary one and a second one the
+   owner names. They merge in merge windows as a merge train
+   (`merge-train.md`), not one PR per CI run. A merging session takes a PR
+   with a take-over comment first and the other leaves that PR alone. No other
+   session merges, also not its own PR.
 4. **Light by default.** Do the task in this session: no multi-agent review
    chains, no sandbox or browser run unless a runtime path cannot be covered
    by a unit test (say why in the PR). Locally run the tests of what you
