@@ -110,6 +110,7 @@ function designer_widget_fork_test_run($body)
 		. designer_widget_fork_test_fn($source, '_pgBaselineTreeKey')
 		. designer_widget_fork_test_fn($source, '_sdSharedTreeJSON')
 		. designer_widget_fork_test_fn($source, '_sdSharedRevert')
+		. designer_widget_fork_test_fn($source, '_swKindOf')
 		. designer_widget_fork_test_fn($source, '_swNameKind')
 		. designer_widget_fork_test_fn($source, '_swKeepPageFieldIds')
 		. designer_widget_fork_test_fn($source, '_swForkOffer')
@@ -336,7 +337,8 @@ function test_designer_widget_fork_name_kind()
 
 	$answer = designer_widget_fork_test_run(
 		'var r = [_swNameKind({}), _swNameKind(null), _swNameKind({ regionType: 3 }), _swNameKind({ regionType: "submitted_forms_list" }),'
-		. ' _swNameKind({ regionType: "form_list" }), _swNameKind({ regionType: "blog_list" }), _swNameKind({ regionType: "" }), _swNameKind({ regionType: "custom_form" })];'
+		. ' _swNameKind({ regionType: "form_list" }), _swNameKind({ regionType: "blog_list" }), _swNameKind({ regionType: "" }), _swNameKind({ regionType: "custom_form" }),'
+		. ' _swNameKind({ regionType: "comments", mode: "recent" }), _swNameKind({ regionType: "comments", mode: "thread" })];'
 		. '_sharedCache[7].system_region_config = JSON.stringify({ custom_form_page_id: 9 });'
 		. '_swForkForThisPage(7, {});'
 		. '_sharedCache[7].system_region_config = JSON.stringify({ regionType: "blog_list" });'
@@ -347,12 +349,13 @@ function test_designer_widget_fork_name_kind()
 		. 'return r;'
 	);
 
-	pg_assert_same(array('form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', '', 'custom_form'), array_slice($answer, 0, 8));
+	pg_assert_same(array('form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', 'form_list_view', '', 'custom_form',
+		'comments_recent', 'comments'), array_slice($answer, 0, 10), 'a comments widget in the recent mode is named as a list of recent comments');
 	pg_assert_same(array(
 		array('home-form_list_view-widget', null),
 		array('home-form_list_view-widget', 'blog_list'),
 		array('home-widget', ''),
-	), $answer[8], 'the legacy row is named as a form list, its settings copied as they are');
+	), $answer[10], 'the legacy row is named as a form list, its settings copied as they are');
 }
 
 // Where the button and its question are wired in.

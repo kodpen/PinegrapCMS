@@ -14,6 +14,7 @@ How the e-mail draws the widget: [[comments-widget-email]].
 - A link to the comment: the Share control on a link, an `<a>` or a button component drawn as a link (a `<button>` is stripped); a link whose address is bound to `__comment_url` (no format after it) or reads `^^__comment_url^^`; a content node's markup with `href="^^__comment_url^^"`.
 - Lost below what the e-mail strips, a comments section, another control or small form, a thread flag false in an e-mail, or a comment flag other than `comment_is_root` (it holds for some comments only, or for none: `comment_is_reply`, `comment_has_replies`).
 - The list is lost below a false thread flag, a comment flag, a comments section or the share, reply, watch or open-or-close control. No loop area, an empty one, or one inside a stripped form: the server's default card, which has the Share link.
+- A node bound to a list's own token (`__comment_thread_title|thread_url`, `__comment_label`) goes with what it holds, as the thread drops it (`_sdCommentsModeOffBindings('thread')`).
 
 ## What does the canvas do without that link?
 - `_sdCommentsEmailDrawsComment(root, flags)` answers as the server does (`test_comments_widget_email_draws_comment_twin`: a table of trees drawn by both). In the E-mail state `_sdCommentsFlagOff()` then leaves the whole widget out (its root, `_sysWidgetRenderTreeRoot`), as the e-mail does, and `_sdAppendCommentsEmailNote()` puts a note in its place (`sd-system-empty-hint`, skipped by the canvas checks). `_sdCommentsStateFor()` moves a picked node to a state that draws it.

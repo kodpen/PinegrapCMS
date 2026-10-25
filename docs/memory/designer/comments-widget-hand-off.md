@@ -1,6 +1,6 @@
 ---
 name: comments-widget-hand-off
-description: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
+description: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
 ---
 
 ## Which pages does the widget leave to the classic block?
@@ -14,8 +14,11 @@ description: How the comments widget and the classic comments block share a page
 - The classic block skips a page in its pass's record (`pg_comments_widget_drawn()`): no second list, no second add_comment form-state reader, no System-region append; a `<!--pg-comments-block-->` marker is emptied.
 - In a comment e-mail the live claim is never reached: the e-mail branch claims the e-mail page only after it drew the comment with its link, and that claim also leaves out the e-mail's fixed comment markup (`pg_comments_email_keeps_fixed_markup()`, [[comments-widget-email]]).
 
+## Does a list of recent comments claim the page?
+- No. `_render_system_widget_comments()` hands a widget in the recent mode (`pg_sw_widget_kind()` `comments_recent`) to its own renderer before the e-mail branch, the classic check and the claim: it reads no form state and its Messages node is `comments_recent`, so a topic page's thread or classic block drawn after it keeps its form and a refused post's errors ([[comments-widget-recent]]).
+
 ## Which page id is it?
-- `pg_sw_render_context()['page_id']`, set by `get_page_content()` for the drawn page; never `_pg_sw_current_page_id()` (0 on the home page, in e-mails and the search index, cached per request). The editor's Preview sets the saved page's id in a claim record of its own ([[comments-widget-canvas]]); no page (an unsaved one): nothing drawn, nothing claimed.
+- `pg_sw_render_context()['page_id']`, set by `get_page_content()` for the drawn page; never `_pg_sw_current_page_id()` (0 on the home page, in e-mails and the search index, cached per request). The editor's Preview sets the saved page's id in a claim record of its own ([[comments-widget-preview]]); no page (an unsaved one): nothing drawn, nothing claimed.
 
 ## How is it checked?
 - `tests/comments_widget_test.php`: the claim registry, the classic-thread table, the renderer's order (classic check, claim, the other refusals), the wiring in `get_page_content.php`.

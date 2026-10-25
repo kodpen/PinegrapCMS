@@ -559,6 +559,7 @@ function comments_widget_email_test_drawn($tree, $data)
 	$_SESSION = array('software' => array('liveforms' => array('add_comment' => array(5 => array('message' => array('value' => 'kept'))))));
 	$ctx = pg_sw_render_context(array('email' => true, 'page_id' => 9, 'comment_id' => 12));
 	pg_comments_email_strip($tree);
+	pg_comments_drop_mode_bindings($tree, 'thread');
 	$html = pg_comments_widget_draw($tree, $data);
 	pg_sw_render_context($ctx);
 	$left = $_SESSION;
@@ -608,6 +609,23 @@ function test_comments_widget_email_draw_end_to_end()
 	list($closed_html) = comments_widget_email_test_drawn(pg_comments_default_tree(), $closed);
 	pg_assert_false(strpos($closed_html, 'reply_to='), 'no reply link when it may not be answered');
 	pg_assert_true(pg_comments_email_drew($closed_html, 12, $closed['rows'][0]['values']['__comment_url']), 'still drawn with its link');
+}
+
+// A node bound to a token only a list of recent comments fills
+// (__comment_thread_title, __comment_thread_url, __comment_label) leaves an
+// e-mail with what it holds, as it leaves the thread on the page, instead of
+// printing an empty element.
+function test_comments_widget_email_drops_list_tokens()
+{
+	if (!comments_widget_email_test_has(array('pg_comments_email_draw_data', 'pg_comments_email_strip', 'pg_comments_drop_mode_bindings'))) {
+		return;
+	}
+
+	$data = comments_widget_email_test_data();
+	$tree = comments_widget_email_test_card(array('type' => 'semantic', 'props' => array('tag' => 'span', 'class' => 'pg-test-list-only', '_bindings' => array('text' => '__comment_thread_title')), 'children' => array()));
+	list($html) = comments_widget_email_test_drawn($tree, $data);
+	pg_assert_false(strpos($html, 'pg-test-list-only'), 'the list token\'s node is left out');
+	pg_assert_true(pg_comments_email_drew($html, 12, $data['rows'][0]['values']['__comment_url']), 'the comment and its link are drawn');
 }
 
 // The draw may drop the comment: a list shown only to a visitor, or a design
@@ -752,6 +770,9 @@ function test_comments_widget_email_draws_comment_twin()
 		'share in a div posting comments' => array(comments_widget_email_test_card($box(array('action' => 'comment_form')), false), true),
 		'share in a form' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'form'), array($share)), false), false),
 		'share in the replying box' => array(comments_widget_email_test_card($box(array('eo_visible_if' => 'is_replying')), false), false),
+		'share in a box bound to a list token' => array(comments_widget_email_test_card($box(array('text' => '__comment_thread_title')), false), false),
+		'link bound to the thread address' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_thread_url'))), false), false),
+		'list in a box bound to a list token: the default card' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('text' => '__comment_label'))), true),
 		'list under is_signed_in' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'is_signed_in'))), false),
 		'list under has_comments' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'has_comments'))), true),
 		'list under comment_is_root' => array(comments_widget_email_test_list_in(array('tag' => 'div', '_bindings' => array('eo_visible_if' => 'comment_is_root'))), false),
@@ -774,7 +795,7 @@ function test_comments_widget_email_draws_comment_twin()
 		$trees[$name] = $case[0];
 	}
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment'),
+	$res = comments_widget_designer_test_node(array('_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment'),
 		'var trees = ' . json_encode($trees) . ";\nvar flags = " . json_encode($data['thread_flags']) . ";\nvar out = {};\n"
 		. "Object.keys(trees).forEach(function (k) { out[k] = _sdCommentsEmailDrawsComment(trees[k], flags); });\n"
 		. "process.stdout.write(JSON.stringify(out));\n");
@@ -1118,7 +1139,8 @@ function test_comments_widget_email_renderer_wiring()
 	pg_assert_contains("\$ctx['comment_id']", $branch, 'the comment comes from the render context');
 	pg_assert_contains('URL_SCHEME . HOSTNAME_SETTING . PATH', $branch, 'links on the configured host');
 
-	$order = array('pg_comments_email_rows(', 'pg_comments_email_decision(', 'pg_comments_email_draw_data(', 'pg_comments_email_strip(', 'pg_comments_widget_draw(', 'pg_comments_email_drew(', 'pg_comments_widget_claim(');
+	$order = array('pg_comments_email_rows(', 'pg_comments_email_decision(', 'pg_comments_email_draw_data(', 'pg_comments_email_strip(', "pg_comments_drop_mode_bindings(\$tree, 'thread');",
+		'pg_comments_widget_draw(', 'pg_comments_email_drew(', 'pg_comments_widget_claim(');
 	$last = -1;
 
 	foreach ($order as $call) {

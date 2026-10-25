@@ -15,7 +15,7 @@ Designing it (E-mail canvas state, the link the card must keep, save warnings): 
 
 ## What does it draw, for whom?
 - One comment, flat: depth 0, quoting a published parent of the same thread (`pg_comment_parent_ok()`, no viewer). `pg_comments_email_draw_data()` (pure): flag `is_email`; visitor, form, open/closed, featured and paging flags false; `has_comments`, `rating_on`, `files_on`, `watching_on` from the thread page; title "1 <label>".
-- `pg_comments_email_strip()` (twin `_sdCommentsEmailDrops()`) drops forms, fields, buttons, btn buttons, `is_replying` boxes and cancel. No session, form state, token, CAPTCHA, viewer or request address is read: the request is the poster's, a moderator's, the job's or an API app's.
+- `pg_comments_email_strip()` (twin `_sdCommentsEmailDrops()`) drops forms, fields, buttons, btn buttons, `is_replying` boxes and cancel; then, as the thread on the page, nodes bound to a list's own tokens (`pg_comments_drop_mode_bindings($tree, 'thread')`). A list of recent comments draws nothing ([[comments-widget-recent]]). No session, form state, token, CAPTCHA, viewer or request address is read: the request is the poster's, a moderator's, the job's or an API app's.
 
 ## Which links and dates?
 - On `URL_SCHEME . HOSTNAME_SETTING . PATH` and the thread page (`?r=` for a record): `__comment_url` and the parent's are the View or Reply address (`pg_comment_view_query()`); `__comment_reply_url` only when the thread page draws the widget, takes comments and replies (`pg_comments_email_reply_ok()`); the file link absolute.
