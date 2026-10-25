@@ -4,16 +4,16 @@ description: Designed-form uploads open for visitors when a public designed reco
 ---
 
 ## What was wrong?
-- `get_file.php` opened a form upload (`files.attachment = 1`) only with folder edit access, Manage Forms, or a classic layout printing `^^field^^`; designed widgets were never asked, so covers and staff photos were closed to readers (302, 403, `no-image.svg`, closed og:image / RSS enclosure).
+- `get_file.php` opened a form upload (`files.attachment = 1`) only with folder edit access, Manage Forms, or a classic layout printing `^^field^^`; designed widgets were never asked, so covers were closed to readers (302, 403, `no-image.svg`, og:image, RSS enclosure).
 
 ## When does the file open now?
 - After the classic checks refuse it, `pg_record_file_designed_access($form_page, $record, $field)` (`includes/record_files.php`) grants it when one `form_item_view` or `form_list_view` widget (older list names too) of the record's form:
   - is public (`pg_sw_form_widget_public()`: public access; a list without viewer filter),
-  - prints the field: a text/html/src/alt/href/value binding or `^^token^^` by name, name without hyphens, or label (not a slugified label); a list only inside its first `loop_area` (`pg_record_file_widget_binds()`: its surround is drawn once with no record), a record view or a list without `loop_area` anywhere,
+  - prints the field: a text/html/src/alt/href/value binding or `^^token^^` by name, name without hyphens, or label (not a slugified label), or an attachments list ([[widget-lists]]) naming it, or naming none when the field is not office use only; a list only inside its main `loop_area` (`pg_record_file_widget_binds()`: its surround is drawn once with no record), a record view or a list without one anywhere,
   - sits on a page (its own tree, else its style's) outside the recycle bin and the Drafts folder that the visitor may view (`check_view_access()`, as the classic branch),
   - lets the record through its filters: a record view its own, strictly (incomplete records too, as `?r=` shows them); a list its detail page's first record view of the form first, then with its own, address filters left out, only `forms.complete = 1`.
 - Decision: `pg_record_file_view_grants()` over gathered facts. Order: widgets, bindings, then pages: the lists' detail pages and the home page by id, one tree scan (one LIKE per widget) only for widgets not found there on an open page. Filters (memoized) are asked only for a widget on an open page, so refusal time never tells whether a record on a closed page passes. First grant ends it.
-- A file opened this way is sent `Cache-Control: private`: it depends on the visitor and on the record's current state, so no shared cache may keep it.
+- A file opened this way is sent `Cache-Control: private`: it depends on the visitor and the record's state.
 
 ## What keeps it closed?
 - Filtered-out records, incomplete ones under a list, a closed filter set (missing field, unknown operator, 51st row, address filter on a record view), a private widget, a viewer filtered list, a binned, draft or unviewable page, a field the widget does not print (a list's surround only).
@@ -28,7 +28,7 @@ description: Designed-form uploads open for visitors when a public designed reco
 - A filter the copy cannot build closes, never opens. Changing an original means changing its copy: `tests/record_files_test.php` compares them.
 
 ## Is it the same as the page?
-- As in the classic rule, the file opens by name while the page needs `?r=`: a public record view of a private form opens its uploads to anyone knowing the name. Keep such uploads in a private folder.
+- As in the classic rule, the file opens by name while the page needs `?r=`: a public record view of a private form opens its uploads to anyone knowing the name; keep them in a private folder.
 
 ## Where are the tests?
-- `tests/record_files_test.php` (decision, binding, list surround, filter SQL, fail-closed rows, copies, contract, call site). Live: published 200, draft 302, list-surround-only field 302.
+- `tests/record_files_test.php` (decision, bindings, lists, surround, filter SQL, fail-closed rows, copies, contract, call site). Live: published 200, draft 302, surround-only field 302.
