@@ -61,7 +61,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - tr-json-split.md: Plan (2026-10-25, not started): split includes/local/tr.json into sorted shard files so two PRs adding keys stop conflicting; tools to add and resolve keys; loader, readers and check_lang
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- widget-designability.md: Plan (2026-10-24, in progress, W1 done #1592): legacy-layout power in system widgets via one finish pass: value conditions, row position, nested lists, record fields, formats, placement, variants
+- widget-designability.md: Plan (2026-10-24, in progress, W1, W3 (#1597) done): legacy-layout power in system widgets via one finish pass: conditions, row position, nested lists, record fields, formats, placement, variants
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; step 1 in PR #1462, step 2 in PR #1523; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset

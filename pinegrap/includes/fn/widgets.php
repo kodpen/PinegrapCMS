@@ -821,10 +821,18 @@ function pg_sw_escape_token_values($values, $raw_extra = array())
 }
 
 // Drop the identifiers nothing answered, with their format suffix, so a raw
-// ^^token^^ never reaches the browser.
+// ^^token^^ never reaches the browser. While a widget renders, the six row
+// position tokens (^^__loop_index^^ and the rest) stay for the finish pass,
+// which fills them per row and takes out any left (widgets_finish.php);
+// outside a widget render they go like any other. Both read the markup as
+// the same run of tokens, left to right: a kept token is matched whole, so
+// its closing carets never pair with the next token's opening ones.
 function pg_sw_sweep_tokens($html)
 {
     if (!is_string($html) || $html === '') return $html;
+    if (strpos($html, '^^__loop_') !== false && pg_sw_finish_active()) {
+        return preg_replace('/(\^\^__loop_(?:index|count|is_first|is_last|is_odd|is_even)\^\^(?:%%.*?%%)?)|\^\^[^\^]*\^\^(?:%%.*?%%)?/', '$1', $html);
+    }
     return preg_replace('/\^\^[^\^]*\^\^(%%.*?%%)?/', '', $html);
 }
 
