@@ -145,7 +145,7 @@ function test_erp_edoc_parasut_deleted_gone_answer_keeps_the_mark()
 	}
 }
 
-// A row that can stand for a document GİB has is never freed by a 404: the
+// A row the ERP holds as a GİB document is never freed by a 404: the
 // company may have been switched, and a second send would issue the sale
 // twice. A handed-over row is freed only when this question read its
 // conversion job as failed (the record was a plain draft).
@@ -200,6 +200,7 @@ function test_erp_edoc_parasut_deleted_service_poll_set()
 	pg_assert_contains("edoc_kind = 'none'", $set, 'the kind is decided again on the next hand-over');
 	pg_assert_contains("gib_number = ''", $set);
 	pg_assert_contains("gib_uuid = ''", $set);
+	pg_assert_contains("edoc_sent_at = 0", $set, 'the invoice screen and the API show no send time for a record that is gone');
 
 	pg_assert_same($set, erp_edoc_invoice_poll_gone_set(array('success' => true, 'status' => 'error', 'gone' => true)), 'with the mark');
 	pg_assert_same(array(), erp_edoc_invoice_poll_gone_set(array('success' => true, 'status' => 'accepted', 'gone' => true)), 'a document is never forgotten');

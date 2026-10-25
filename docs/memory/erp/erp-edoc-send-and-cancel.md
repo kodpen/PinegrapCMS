@@ -20,7 +20,7 @@ description: How an ERP invoice goes through the e-document provider: the send g
 
 ## How is the status read?
 - `erp_edoc_invoice_poll()` asks the provider that carries the document: a button on the invoice, the order card, the invoice list's bulk action. Nothing polls on its own, nothing processes `erp_edoc_queue`, and neither provider has a webhook.
-- A `gone` answer (the provider has no such record) also clears `edoc_external_id`, `edoc_kind`, `gib_*` (`erp_edoc_invoice_poll_gone_set()`): Send is open again (erp-parasut-send-failures.md, #PR).
+- A `gone` answer (the provider has no such record) also clears `edoc_external_id`, `edoc_kind`, `gib_*`, `edoc_sent_at` (`erp_edoc_invoice_poll_gone_set()`): Send is open again (erp-parasut-send-failures.md, #PR).
 - A poll may name the provider card the invoice landed on (`party`); an account without a card is then linked to it (`erp_edoc_account_link_from_invoice()`).
 
 ## How is a sent document taken back?

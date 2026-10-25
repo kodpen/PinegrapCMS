@@ -2402,26 +2402,33 @@ function erp_edoc_parasut_invoice_gone($result, $external_id)
 }
 
 /**
- * What a status question answers for an invoice whose sales invoice Paraşüt
- * no longer holds (erp_edoc_parasut_invoice_gone()): it was deleted on
- * Paraşüt's screen, as the send's own refusal and the draft's hand-over
- * leave the operator free to do. The row is freed so the invoice can be
- * sent again: the service writes it as not at the provider, and the driver
- * forgets the record, its e-document and its job ('forget', the parasut_*
- * columns as cancel_invoice() clears them). Paraşüt gives the same answer
- * when the settings card now connects another company, so the message names
- * both; a draft left in the earlier company stays there.
+ * What a status question answers for an invoice whose sales invoice the
+ * connected Paraşüt company does not hold (erp_edoc_parasut_invoice_gone()).
+ * Either it was deleted on Paraşüt's screen, as the send's own refusal and
+ * the draft's hand-over leave the operator free to do, or the settings card
+ * now connects another company, taken to answer the same 404 (the path is
+ * per company); the message names both, and a draft left in the earlier
+ * company stays there. The row is freed so the invoice can be sent again:
+ * the service writes it as not at the provider, and the driver forgets the
+ * record, its e-document and its job ('forget', the parasut_* columns as
+ * cancel_invoice() clears them).
  *
  * The unsure mark of a send that got no answer is kept: that send may have
  * written a record of its own, so the row is 'error' without an id, the
  * state the next send and a cancel follow the mark from.
  *
- * Only a row that cannot stand for a document GİB has is freed: a draft
+ * Only a row the ERP does not hold as a GİB document is freed: a draft
  * ('created'), a record a later step failed on ('error'), and a handed-over
  * row whose conversion job this question read as failed. A sent, accepted
- * or cancelled document is never let go on a 404 (a company switched on the
- * settings card answers the same), and a rejected one may be sent again
- * as it is.
+ * or cancelled document is never let go on a 404, and a rejected one may be
+ * sent again as it is.
+ *
+ * The row is judged as the ERP knows it, not as Paraşüt does. After a
+ * company switch a 'created' or 'error' row may still stand for an
+ * e-document in the earlier company: one issued on Paraşüt's own screen, or
+ * one a hand-over made whose answer was lost (a failed hand-over leaves the
+ * row 'created'). Such a row is freed too, and sending it again would issue
+ * the sale at GİB a second time.
  *
  * @param array $invoice     An erp_invoices row
  * @param bool  $job_failed  This question read the conversion job, and it had failed
@@ -2465,9 +2472,10 @@ function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
 
 /**
  * Asks after a converted invoice: the trackable job while it still answers,
- * then the sales invoice and the e-document it became. A record deleted on
- * Paraşüt's screen frees a row that is no document yet
- * (erp_edoc_parasut_gone_answer(); the answer then carries 'gone' => true).
+ * then the sales invoice and the e-document it became. A record the
+ * connected company does not hold frees a row the ERP does not hold as a
+ * GİB document (erp_edoc_parasut_gone_answer(); the answer then carries
+ * 'gone' => true).
  *
  * @param array  $invoice    An erp_invoices row
  * @param string $job_id     The sales invoice id send_invoice() returned
@@ -2533,8 +2541,10 @@ function erp_edoc_parasut_poll($invoice, $job_id, $free_gone = true)
         return $out;
     }
 
-    // Deleted on Paraşüt's screen: a row that is no document yet is freed,
-    // so the invoice is sent again instead of being refused at every press.
+    // Not held by the connected company (deleted on Paraşüt's screen, or
+    // another company connected): a row the ERP does not hold as a GİB
+    // document is freed, so the invoice is sent again instead of being
+    // refused at every press.
     if ($free_gone && erp_edoc_parasut_invoice_gone($detail, $external_id)) {
         $gone = erp_edoc_parasut_gone_answer($invoice, $job_failed);
 

@@ -1352,12 +1352,13 @@ function erp_edoc_invoice_submit($invoice_id, $user_id = 0)
 
 /**
  * What a status question writes besides the status when the driver says the
- * provider no longer holds the record ('gone' => true; the record was
- * deleted on the provider's screen): the row names nothing there any more,
- * so the invoice can be sent again, and the kind is decided again on the
- * next hand-over. Only a row the answer frees ('none', or 'error' without an
- * id while a driver's own trace of an unanswered send stays) is changed; a
- * document is never forgotten this way.
+ * provider no longer holds the record ('gone' => true: it was deleted on the
+ * provider's screen, or another company is connected now): the row names
+ * nothing there any more, so the invoice can be sent again, the kind is
+ * decided again on the next hand-over, and no send time is shown for it.
+ * Only an answer that frees the row ('none', or 'error' without an id while
+ * a driver's own trace of an unanswered send stays) changes it; an answer
+ * with a document's status never does.
  *
  * @param array $result  The driver's poll answer
  * @return string[]  SET fragments, or none
@@ -1368,7 +1369,7 @@ function erp_edoc_invoice_poll_gone_set($result)
         return array();
     }
 
-    return array("edoc_external_id = ''", "edoc_kind = 'none'", "gib_number = ''", "gib_uuid = ''");
+    return array("edoc_external_id = ''", "edoc_kind = 'none'", "gib_number = ''", "gib_uuid = ''", "edoc_sent_at = 0");
 }
 
 /**
