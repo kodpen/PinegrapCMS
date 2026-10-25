@@ -105,6 +105,13 @@ function ws_changes_ready()
  * starting with "__" is read by ws_change_record() rather than from the
  * table. "key" is the table's id column when it is not id.
  *
+ * A text limit (text, long, email, keywords, code) is never wider than its
+ * column: sessions run non-strict, so MySQL would cut a longer value in
+ * silence while the decision shows the whole text. A longer text value is
+ * cut here, a longer keyword list refused, as ws_change_value() says.
+ * tests/workspace_change_limits_test.php holds every limit to the column
+ * the setup SQL defines.
+ *
  * @return array
  */
 function ws_change_types()
@@ -296,11 +303,11 @@ function ws_change_types()
             'fields'   => array(
                 'name'              => array('text', 100, lang('Name'), 'name'),
                 'title'             => array('text', 255, lang('Title'), 'title'),
-                'short_description' => array('long', 2000, lang('Short description'), 'short_description'),
+                'short_description' => array('long', 100, lang('Short description'), 'short_description'),
                 'full_description'  => array('long', 20000, lang('Full description'), 'full_description'),
                 'meta_description'  => array('text', 255, lang('Meta description'), 'meta_description'),
                 'meta_keywords'     => array('text', 2000, lang('Meta keywords'), 'meta_keywords'),
-                'keywords'          => array('text', 2000, lang('Search keywords'), 'keywords'),
+                'keywords'          => array('text', 255, lang('Search keywords'), 'keywords'),
                 'enabled'           => array('bool', 0, lang('Enabled'), 'enabled'),
             ),
             'create'   => array(
@@ -353,7 +360,7 @@ function ws_change_types()
             'names'   => array('page_name'),
             'fields'  => array(
                 'title'            => array('text', 255, lang('Title'), 'page_title'),
-                'meta_description' => array('text', 1000, lang('Meta description'), 'page_meta_description'),
+                'meta_description' => array('text', 255, lang('Meta description'), 'page_meta_description'),
                 'search'           => array('bool', 0, lang('In site search'), 'page_search'),
                 'search_keywords'  => array('keywords', 1000, lang('Search keywords'), 'page_search_keywords'),
                 'sitemap'          => array('bool', 0, lang('In the site map'), 'sitemap'),
@@ -424,9 +431,9 @@ function ws_change_types()
             'required' => array('name'),
             'names'    => array('name'),
             'fields'   => array(
-                'name'              => array('text', 255, lang('Name'), 'name'),
-                'short_description' => array('long', 1000, lang('Short description'), 'short_description'),
-                'location'          => array('text', 255, lang('Location'), 'location'),
+                'name'              => array('text', 100, lang('Name'), 'name'),
+                'short_description' => array('long', 255, lang('Short description'), 'short_description'),
+                'location'          => array('text', 100, lang('Location'), 'location'),
                 'start_time'        => array('datetime', 0, lang('Start'), 'start_time'),
                 'end_time'          => array('datetime', 0, lang('End'), 'end_time'),
                 'all_day'           => array('bool', 0, lang('All day'), 'all_day'),
