@@ -7,6 +7,9 @@ description: Which texts of a designer node enter the site translation (pg_tr_no
 - `pg_tr_node_fields($type, $props)` (`includes/translate/extract.php`) decides once, for extraction and render alike, which props carry words and in which format: a content node's `text` is inline markup, everything else plain text; a prop bound to data is a sample and is skipped; `pre`/`code`/script-like tags and form values are left alone; attributes with words (`title`, `placeholder`, `aria-label`…) count too.
 - Every tree (page body, shared component, system widget) goes through `_render_tree_node()`, which reads the translated props (`pg_tr_props()`) before bindings replace a bound prop with its token.
 
+## Is a widget condition's compared text translated?
+- Yes, when it is words: the field `_cond:show_if` (`_bindParams.show_if.value`, read and written by `pg_tr_field_get()`/`pg_tr_field_set()`), read in the page's language before the condition (`pg_tr_condition_props()`); the editor lists it in `_sdTrCandidate()` and `_sdTrFieldLabel()` ([[widget-condition-panel]]).
+
 ## What about visible text kept in an underscore prop?
 - A visible text in a `_` prop (the catalog link's `_labelDetail` / `_labelExpand`, one picked per row by the renderer) enters the translation only once `pg_tr_node_fields()` lists it, and a renderer that reads it during the binding pass reads it through `pg_tr_text()` (`_apply_catalog_listing_bindings()`).
 - The editor's twin lists the same props: `_sdTrCandidate()` (whether a node gets the Translate section) and `_sdTrFieldLabel()` (the name of each field). A new such prop goes into both sides.

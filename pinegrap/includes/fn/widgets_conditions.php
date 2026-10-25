@@ -149,6 +149,41 @@ function _pg_sw_cond_drop_conditions(&$node)
     }
 }
 
+// Whether $node is, or holds, a form control marked required. A condition
+// on such a node is not applied: the control stays on the page, because a
+// form whose required control is cut could never be sent (the server still
+// asks for its value). The editor's twin is _sdCondHoldsRequired().
+function pg_sw_cond_holds_required($node)
+{
+    if (!is_array($node)) return false;
+    if (!empty($node['props']['_attrs']) && is_array($node['props']['_attrs'])) {
+        foreach ($node['props']['_attrs'] as $attr) {
+            if (is_array($attr) && isset($attr['name']) && strtolower((string)$attr['name']) === 'required') return true;
+        }
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            if (pg_sw_cond_holds_required($child)) return true;
+        }
+    }
+    return false;
+}
+
+// Whether a condition's compared text is words a site translation should
+// carry: an operator that compares text, and a value that is not a number
+// or an amount (pg_sw_cond_is_number()). Numbers read the same in every
+// language.
+function pg_sw_cond_operand_is_words($props)
+{
+    if (!is_array($props) || empty($props['_bindings']['show_if'])) return false;
+    $params = (isset($props['_bindParams']['show_if']) && is_array($props['_bindParams']['show_if']))
+        ? $props['_bindParams']['show_if'] : array();
+    $op = isset($params['op']) ? (string)$params['op'] : '';
+    if (!in_array($op, array('eq', 'neq', 'contains', 'not_contains', 'starts'), true)) return false;
+    $value = (isset($params['value']) && is_string($params['value'])) ? trim($params['value']) : '';
+    return ($value !== '') && !pg_sw_cond_is_number($value);
+}
+
 // Whether a condition may read $token (see pg_sw_cond_denied_tokens()).
 // The numbered forms of the two sentinels (__page_link_0, __link_label_2)
 // are refused with them.

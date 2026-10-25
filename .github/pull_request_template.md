@@ -46,4 +46,4 @@ none
 - [ ] `.src.js` and `.min.js` updated together
 - [ ] `changelog.txt` not edited; the Changelog section above names its line or says "none"
 - [ ] Open PRs (drafts included) checked for the same files; overlaps noted above
-- [ ] When CI is green and nothing is left: the `ready` label, unsubscribe from the PR, stop (no merge of `development` into it after that)
+- [ ] When CI is green and nothing is left: the `ready` label, stay subscribed, no merge of `development` into it after that; once it is merged, the plan's next step (queue limit first)
