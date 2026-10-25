@@ -1690,11 +1690,23 @@ function validate_email_address($email_address)
         return false;
     }
 }
+// Hour, minute and second of a 24-hour time (H:MM or HH:MM, seconds
+// optional, as <input type="time"> posts it), or null when the text is not
+// one. Surrounding white space is allowed, other text is not.
+function pg_time_24_hour_parts($time)
+{
+    if (!is_string($time) || !preg_match('/^\s*([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*$/', $time, $parts)) {
+        return null;
+    }
+
+    return array((int) $parts[1], (int) $parts[2], isset($parts[3]) ? (int) $parts[3] : 0);
+}
+// A 12-hour time (with AM/PM) or a 24-hour time.
 function validate_time($time)
 {
-    // if format of time is not valid
+    // Not a 12-hour time: valid only as a 24-hour time.
     if (preg_match('/(\d{1,2})(:\d{1,2})(:\d{1,2})? (AM|PM)/i', $time, $time_parts) == 0) {
-        return false;
+        return pg_time_24_hour_parts($time) !== null;
     }
     $hour = $time_parts[1];
     $minute = str_replace(':', '', $time_parts[2]);
@@ -3313,6 +3325,24 @@ function pg_form_list_advanced_field_properties($text)
 
     return is_array($properties) ? $properties : null;
 }
+// Hour, minute and AM/PM of the time in a form value, for
+// prepare_form_data_for_input(): index 1 to 3, as the 12-hour pattern
+// captures them. A 24-hour time comes back with an empty AM/PM, which leaves
+// its hour as it is; a value that is neither has empty parts.
+function pg_form_input_time_parts($text)
+{
+    if (preg_match('/(\d+):(\d+) (AM|PM)/i', $text, $time_parts)) {
+        return $time_parts;
+    }
+
+    $parts = pg_time_24_hour_parts($text);
+
+    if ($parts === null) {
+        return array('', '', '', '');
+    }
+
+    return array('', (string) $parts[0], sprintf('%02d', $parts[1]), '');
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {
@@ -3359,8 +3389,7 @@ function prepare_form_data_for_input($data, $type)
                 $year = str_pad($year, 4, '0', STR_PAD_LEFT);
                 $month = str_pad($month, 2, '0', STR_PAD_LEFT);
                 $day = str_pad($day, 2, '0', STR_PAD_LEFT);
-                preg_match('/(\d+):(\d+) (AM|PM)/i', $time, $time_parts);
-                $time_parts += array('', '', '', '');
+                $time_parts = pg_form_input_time_parts($time);
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);
@@ -3379,8 +3408,7 @@ function prepare_form_data_for_input($data, $type)
             case 'time':
                 // A value that is not in a time format (e.g. a search term)
                 // has no parts; they count as empty.
-                preg_match('/(\d+):(\d+) (AM|PM)/i', $data, $time_parts);
-                $time_parts += array('', '', '', '');
+                $time_parts = pg_form_input_time_parts($data);
                 $hour = $time_parts[1];
                 $minute = $time_parts[2];
                 $am_pm = mb_strtoupper($time_parts[3]);

@@ -3031,6 +3031,8 @@ function no_acl_check($user_id)
         return false;
     }
 }
+// The panel scores with a copy of these rules (assets/js/pg_password_strength.js);
+// change both together.
 function validate_password_strength($password)
 {
     // if there are less than 10 characters then return false
