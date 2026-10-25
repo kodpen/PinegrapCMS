@@ -36,6 +36,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
@@ -154,6 +155,7 @@ function ws_openapi_objects()
         'WorkspaceChannelMember'  => 'ws_api_channel_member_schema',
         'WorkspaceChannelMembers' => 'ws_api_channel_members_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',
+        'WorkspaceProposal'       => 'ws_api_proposal_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
@@ -1116,7 +1118,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_decisions_list',
             'returns'     => array('list' => 'WorkspaceDecision'),
             'summary'     => 'List the decisions of every channel',
-            'description' => 'The decisions taken in every channel the owner of the application may read - every public channel and the private ones the owner is in, archived channels included - newest first, by the moment the message was marked as a decision (decided_at). notes adds the messages marked as notes. user_id keeps what that person wrote or marked; search looks in the text as it was written, tags included as tokens. claude_change is set when the decision records a record change Claude proposed and somebody applied. Page with next_cursor.',
+            'description' => 'The decisions taken in every channel the owner of the application may read - every public channel and the private ones the owner is in, archived channels included - newest first, by the moment the message was marked as a decision (decided_at). notes adds the messages marked as notes. user_id keeps what that person wrote or marked; search looks in the text as it was written, tags included as tokens. claude_change is set when the decision records a record change an assistant or an application proposed and somebody applied; its agent says which (claude, ai, mcp, oauth:<client id>, app:<application id>), as GET /workspace/changes lists it. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'notes', 'in' => 'query', 'type' => 'bool', 'description' => 'The notes too.'),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
@@ -1137,8 +1139,8 @@ function ws_api_routes()
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_changes_list',
             'returns'     => array('list' => 'WorkspaceChange'),
-            'summary'     => 'Record changes the assistants proposed',
-            'description' => 'The record changes Claude (agent claude) or Pinegrap AI (agent ai) proposed, newest first: under their answers in the channels the owner of the application may read, and on the tasks the owner may see, where an assistant the task was handed to proposes them (task_id is set, channel_id and message_id are 0). Only the person who asked applies a change, with their own rights: on its card, or with POST /workspace/changes/{id}/apply from a device session. status pending is waiting, applying is being written at this moment (decided_by and decided_at say who took it and when; a change to one record still applying 15 minutes later stopped half way and turns failed, perhaps written in part), applied was written (decision_message_id is the locked decision it left in a channel; a change on a task leaves none), dismissed was set aside, stale was not applied because the record changed after the proposal, failed could not be written (error says why). fields and reason are shown only when the owner may see records of that kind; hidden says when they are not. from_shown and to_shown are the values as the card prints them. can_apply and can_dismiss say what the owner may do with it now. A call of a tool that writes on an MCP server of the Workspace waits the same way (record.type mcp_call, action run, record.id the call, record.name the alias and the tool, fields its arguments); applied, it runs with the asker\'s own connected account on that service. A message to an MCP server that answers on its own (agent mcp) through a tool that changes things there waits the same way before it is sent, its fields the message; applied, it goes to the server with the asker\'s own account, and decision_message_id is the agent\'s answer under the message (none on a task, where the answer is the run\'s). Page with next_cursor.',
+            'summary'     => 'Record changes the assistants and applications proposed',
+            'description' => 'The record changes Claude (agent claude) or Pinegrap AI (agent ai) proposed, or an application did with POST /workspace/channels/{id}/changes or POST /workspace/tasks/{id}/changes (agent oauth:<client id> for an OAuth connection, app:<application id> for an application key), newest first: under their answers in the channels the owner of the application may read, and on the tasks the owner may see, where an assistant the task was handed to, or an application, proposes them (task_id is set, channel_id and message_id are 0). Only the person who asked, or the one the application acts for, applies a change, with their own rights: on its card, or with POST /workspace/changes/{id}/apply from a device session (a change an application proposed: from their team devices session only). status pending is waiting, applying is being written at this moment (decided_by and decided_at say who took it and when; a change to one record still applying 15 minutes later stopped half way and turns failed, perhaps written in part), applied was written (decision_message_id is the locked decision it left in a channel; a change on a task leaves none), dismissed was set aside, stale was not applied because the record changed after the proposal, failed could not be written (error says why). fields and reason are shown only when the owner may see records of that kind; hidden says when they are not. from_shown and to_shown are the values as the card prints them. can_apply and can_dismiss say what the owner may do with it now. A call of a tool that writes on an MCP server of the Workspace waits the same way (record.type mcp_call, action run, record.id the call, record.name the alias and the tool, fields its arguments); applied, it runs with the asker\'s own connected account on that service. A message to an MCP server that answers on its own (agent mcp) through a tool that changes things there waits the same way before it is sent, its fields the message; applied, it goes to the server with the asker\'s own account, and decision_message_id is the agent\'s answer under the message (none on a task, where the answer is the run\'s). Page with next_cursor.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'applying', 'applied', 'dismissed', 'stale', 'failed')),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
@@ -1161,7 +1163,7 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceChange',
             'summary'     => 'Apply a change an assistant proposed',
-            'description' => 'Writes a pending change, as Apply on its card does: only the person who asked the assistant, with their own rights to that record, signed in on a device (a Bearer token from POST /auth/login or a connection they made); an application key is refused with 403 forbidden, so an assistant never applies what it proposed. Applied in a channel, it leaves a locked decision under the answer; on a task, the task\'s activity keeps it. A record that changed after the proposal is not written over: 409 stale. A change somebody already decided about is 409 already_decided. A change to many records at once starts here and goes on a slice at a time; its status stays applying until it is done.',
+            'description' => 'Writes a pending change, as Apply on its card does: only the person who asked the assistant, with their own rights to that record, signed in on a device (a Bearer token from POST /auth/login or a connection they made); an application key is refused with 403 forbidden, so an assistant never applies what it proposed. A change an application proposed (agent oauth:<client id> or app:<application id>) is applied by the person it was proposed to from their own team devices session (POST /auth/login) only: an OAuth connection is refused with 403 forbidden as well, so no application applies what it or another application proposed. Applied in a channel, it leaves a locked decision under the answer; on a task, the task\'s activity keeps it. A record that changed after the proposal is not written over: 409 stale. A change somebody already decided about is 409 already_decided. A change to many records at once starts here and goes on a slice at a time; its status stays applying until it is done.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -1178,7 +1180,7 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceChange',
             'summary'     => 'Set aside a change an assistant proposed',
-            'description' => 'Sets a pending change aside, as on its card: the person who asked, or staff, signed in on a device; an application key is refused with 403 forbidden. Nothing is written to the record.',
+            'description' => 'Sets a pending change aside, as on its card: the person who asked, or staff, signed in on a device; an application key is refused with 403 forbidden. A change an application proposed (agent oauth:<client id> or app:<application id>) is set aside from a team devices session (POST /auth/login) only: an OAuth connection is refused with 403 forbidden as well. Nothing is written to the record.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -1192,7 +1194,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_assistant_requests_list',
             'returns'     => array('list' => 'WorkspaceAssistantRequest'),
             'summary'     => 'What Claude and Pinegrap AI were asked',
-            'description' => 'The requests to Claude (agent claude), to Pinegrap AI (agent ai) and to MCP servers that answer their alias on their own (agent mcp), newest first: those asked in the channels the owner of the application may read, the runs on the tasks the owner may see, and the owner\'s own requests written in a note or in the Visual Page Editor (origin says where). status queued and sent are waiting (a request of agent mcp that is sent waits for the person who asked to approve it on its card: GET /workspace/changes?type=mcp_call), running is being worked on, answered has its answer (reply_message_id in a channel), failed and cancelled ended without one (error says why). A run on a task (origin task) carries what the assistant was told (instruction, empty when it worked from the task itself) and what it answered (answer); the changes it proposed are listed by GET /workspace/changes with the same task_id. The words of any other request are read where it was asked. Page with next_cursor.',
+            'description' => 'The requests to Claude (agent claude), to Pinegrap AI (agent ai) and to MCP servers that answer their alias on their own (agent mcp), newest first: those asked in the channels the owner of the application may read, the runs on the tasks the owner may see, and the owner\'s own requests written in a note or in the Visual Page Editor (origin says where). status queued and sent are waiting (a request of agent mcp that is sent waits for the person who asked to approve it on its card: GET /workspace/changes?type=mcp_call), running is being worked on, answered has its answer (reply_message_id in a channel), failed and cancelled ended without one (error says why). A run on a task (origin task) carries what the assistant was told (instruction, empty when it worked from the task itself) and what it answered (answer); the changes it proposed are listed by GET /workspace/changes with the same task_id. The words of any other request are read where it was asked. A proposal an application made (POST /workspace/channels/{id}/changes) asked no assistant and is not listed: its changes are, by GET /workspace/changes. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'agent', 'in' => 'query', 'type' => 'enum', 'values' => array('claude', 'ai', 'mcp')),
                 array('name' => 'task_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the runs on this task.'),
@@ -1953,6 +1955,7 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php).
-    return array_merge($routes, ws_claude_api_routes());
+    // Asking Claude in a channel (api_claude.php), and the changes an
+    // application proposes (api_proposals.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
 }
