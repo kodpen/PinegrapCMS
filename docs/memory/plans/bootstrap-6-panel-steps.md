@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-panel-steps
-description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a, B0b, B1a, B2a done, B2b in slices (#1692 first), B1b and B3-B12 open; claim as [plan:bootstrap-6-panel] B<n>
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
@@ -10,6 +10,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B1b A screenshot script (sample records, light/dark, wide/phone; images never committed, shown on a private page the PR links): waits for open question 2 of the plan.
 - B2a The `pgUI` adapter (`assets/js/pg_ui.js`, `ui/pg-ui-adapter.md`) with `window.pgBootstrapReady`, loaded after Bootstrap's bundle. Done (#1677).
 - B2b and on: move the calls and listeners onto pgUI area by area (cold areas first; `check_bs6.php` counts what is left), fix the 3 parse-time scripts (welcome.php, api_settings.php, erp_lists.js), read open state with `isOpen()`, add `preventDefault()` to the settings drawer's Escape handler. Leave style_designer.js to B7.
+  - B2b slice 1 (#1692): dashboard (`welcome.php` parse-time popover, widget 1 menu), offers template, product builder, sale screen (`add_order.js`), ERP (`erp_lists.js` parse-time drawer, `erp_account_quick.js`, `erp_accountant.php`, `view_parasut_inbox.php`), translations, Cloudflare, form item view, AI field marks, tour. Left: `backend.src.js`, workspace, `view_folders.php`, `designer_home.js`, `page_designer.js`, `api_settings.php`, settings, `seo.php`, `codemirror_modal.js` and `image_editor_modal.js` (their own modal markup: `pgUI.dialog.build()`), `image_editor_edit.php`, `includes/designer_screen.php`.
 - B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block.
 - B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node.

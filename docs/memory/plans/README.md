@@ -15,7 +15,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
-- bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a (#1643), B0b (#1654), B1a (#1670), B2a (#1677) done, B1b and B2b-B12 open; claim as [plan:bootstrap-6-panel] B<n>
+- bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status: B0a, B0b, B1a, B2a done, B2b in slices (#1692 first), B1b and B3-B12 open; claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
 - bootstrap-6-switch.md: Step B8 of plans/bootstrap-6-panel.md: rehearsal, hand fixes, the owner's check, merge and the bs6-switch tag, open PRs after it, memory rewritten with it

@@ -792,7 +792,7 @@
     var reviewAllButton = document.getElementById('pg_tr_review_all');
     var reviewAllModal = document.getElementById('pg_tr_review_all_modal');
 
-    if (reviewAllButton && reviewAllModal && window.bootstrap) {
+    if (reviewAllButton && reviewAllModal && window.pgUI) {
         var reviewAllGo = reviewAllModal.querySelector('.pg-tr-review-all-go');
         var reviewAllFlagged = reviewAllModal.querySelector('.pg-tr-review-all-flagged');
         var reviewAllCount = reviewAllModal.querySelector('.pg-tr-review-all-count');
@@ -807,14 +807,14 @@
 
         reviewAllFlagged.addEventListener('change', syncReviewAll);
 
-        reviewAllModal.addEventListener('show.bs.modal', function () {
+        pgUI.dialog.on(reviewAllModal, 'show', function () {
             reviewAllFlagged.checked = (reviewAllPlain === 0) && (reviewAllFlaggedCount > 0);
             syncReviewAll();
         });
 
         reviewAllButton.addEventListener('click', function () {
             if (!running) {
-                window.bootstrap.Modal.getOrCreateInstance(reviewAllModal).show();
+                pgUI.dialog.show(reviewAllModal);
             }
         });
 
@@ -853,7 +853,7 @@
 
         clearReviewed.addEventListener('change', syncClear);
 
-        clearModal.addEventListener('show.bs.modal', function () {
+        pgUI.dialog.on(clearModal, 'show', function () {
             clearReviewed.checked = false;
             syncClear();
         });
@@ -883,7 +883,7 @@
     var acceptModal = document.getElementById('pg_tr_accept_modal');
     var pickAll = document.getElementById('pg_tr_pick_all');
 
-    if (acceptButton && acceptModal && window.bootstrap) {
+    if (acceptButton && acceptModal && window.pgUI) {
         var acceptGo = acceptModal.querySelector('.pg-tr-accept-go');
         var acceptCount = acceptModal.querySelector('.pg-tr-accept-count');
         var pickCount = acceptButton.querySelector('.pg-tr-pick-count');
@@ -920,7 +920,7 @@
             }
         });
 
-        acceptModal.addEventListener('show.bs.modal', function () {
+        pgUI.dialog.on(acceptModal, 'show', function () {
             var count = picked().length;
             acceptCount.textContent = text('accept_count', count);
             acceptGo.disabled = (count === 0);
@@ -928,7 +928,7 @@
 
         acceptButton.addEventListener('click', function () {
             if (!running && picked().length) {
-                window.bootstrap.Modal.getOrCreateInstance(acceptModal).show();
+                pgUI.dialog.show(acceptModal);
             }
         });
 
@@ -979,7 +979,7 @@
 
         fields.keep.addEventListener('change', syncKeep);
 
-        glossaryModal.addEventListener('show.bs.modal', function (event) {
+        pgUI.dialog.on(glossaryModal, 'show', function (event) {
             var row = event.relatedTarget ? event.relatedTarget.closest('.pg-tr-term') : null;
 
             fields.id.value = row ? row.getAttribute('data-id') : '0';
@@ -993,7 +993,7 @@
             syncKeep();
         });
 
-        glossaryModal.addEventListener('shown.bs.modal', function () {
+        pgUI.dialog.on(glossaryModal, 'shown', function () {
             fields.term.focus();
         });
     }
