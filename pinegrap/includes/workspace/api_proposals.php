@@ -81,7 +81,7 @@ function ws_proposal_api_routes()
             'returns'     => 'WorkspaceProposal',
             'status'      => 201,
             'summary'     => 'Propose record changes in a channel',
-            'description' => 'The way an AI app or an integration changes a site record (a product, its stock, an order, a customer, a page, a task...): it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. ' . $what . ' id may also be a discussion\'s the owner is in.',
+            'description' => 'How an AI app or an integration proposes a change to a site record (a product, its stock, an order, a customer, a page, a task...) instead of writing it: it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. ' . $what . ' id may also be a discussion\'s the owner is in.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true, 'description' => 'What is proposed and why, for the person who reads the cards. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
