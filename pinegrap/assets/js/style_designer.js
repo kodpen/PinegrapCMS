@@ -59416,6 +59416,13 @@ const StyleDesigner = (function () {
                             return;
                         }
                         sdToast(esc(_sdT('The link was revoked. It no longer opens the prototype.')), 'success');
+                        // The "ready" box of the link just revoked would go
+                        // on offering its dead address to copy.
+                        if (madeEl.getAttribute('data-ps-made-id') === String(id)) {
+                            madeEl.classList.add('d-none');
+                            madeEl.innerHTML = '';
+                            madeEl.removeAttribute('data-ps-made-id');
+                        }
                         load();
                     }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
                 };
@@ -59483,6 +59490,7 @@ const StyleDesigner = (function () {
                 }
                 passwordEl.value = '';
                 madeEl.innerHTML = '<div class="fw-semibold">' + esc(_sdT('The link is ready. Copy it now and send it on.')) + '</div>' + addressBox(res.url);
+                madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));
                 madeEl.classList.remove('d-none');
                 load();
             }).catch(function () {

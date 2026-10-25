@@ -961,11 +961,28 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'if (/^(button|checkbox|radio|file|reset|submit|image)$/i.test(t.type || "")) return;'
         . 'e.preventDefault(); toast(cfg.forms);'
         . '}, true);'
+        // A plain click on a link to another view of the prototype is handed
+        // to the viewer, which opens it on its own address: a share link's
+        // viewer holds the token the frame's links never carry (they name the
+        // link by its id), so the way on does not end with the session that
+        // opened the link. Only the page number and the view's item go. A
+        // click asking for a new tab, or a page outside a viewer, keeps the
+        // link's own address.
+        . 'function go(e, a) {'
+        . 'if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || window.parent === window) return false;'
+        . 'var q;'
+        . 'try { q = new URL(a.getAttribute("href") || "", document.baseURI).searchParams; } catch (err) { return false; }'
+        . 'var page = q.get("page") || "";'
+        . 'if (!/^[0-9]+$/.test(page)) return false;'
+        . 'window.parent.postMessage({ pgPrototype: "go", page: page, sub: q.get("sub") || "", r: q.get("r") || "", anchor: q.get("anchor") || "" }, "*");'
+        . 'return true;'
+        . '}'
         . 'document.addEventListener("click", function (e) {'
         . 'if (sends(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); toast(cfg.forms); return; }'
         . 'var a = (e.target && e.target.closest) ? e.target.closest("a") : null;'
         . 'if (!a) return;'
         . 'var kind = a.getAttribute("data-pg-proto");'
+        . 'if (kind === "prototype" && go(e, a)) { e.preventDefault(); return; }'
         . 'if (kind === "broken" || kind === "draft") { e.preventDefault(); e.stopImmediatePropagation(); toast(cfg[kind]); return; }'
         . 'if (kind || !a.hasAttribute("href")) return;'
         . 'var href = a.getAttribute("href") || "";'
@@ -1125,6 +1142,7 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
     var button = document.getElementById("pg-proto-hotspots");
     var pages = document.getElementById("pg-proto-pages");
     var close = document.getElementById("pg-proto-close");
+    var viewer = ' . json_encode($viewer, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . ';
     var KEY = "pg-proto-hotspots";
     var on = false;
     try { on = window.sessionStorage.getItem(KEY) === "1"; } catch (e) {}
@@ -1144,8 +1162,23 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
         paint();
         send();
     });
+    // A click on a link to another view, handed over by the frame
+    // (pg_proto_frame_inject()): a page number and the item of the view,
+    // never an address. The way on is built on the address of this viewer,
+    // which for a share link holds its token.
+    function go(d) {
+        var page = String(d.page || "");
+        if (!/^[0-9]+$/.test(page)) return;
+        var url = viewer + (viewer.indexOf("?") === -1 ? "?" : "&") + "page=" + page;
+        ["sub", "r", "anchor"].forEach(function (k) {
+            if (typeof d[k] === "string" && d[k] !== "") url += "&" + k + "=" + encodeURIComponent(d[k]);
+        });
+        window.location.href = url;
+    }
     window.addEventListener("message", function (e) {
-        if (frame && e.source === frame.contentWindow && e.data && e.data.pgPrototype === "ready") send();
+        if (!frame || e.source !== frame.contentWindow || !e.data) return;
+        if (e.data.pgPrototype === "ready") send();
+        else if (e.data.pgPrototype === "go") go(e.data);
     });
     if (frame) frame.addEventListener("load", send);
     if (pages) pages.addEventListener("change", function () { if (pages.value) window.location.href = pages.value; });
@@ -1226,7 +1259,26 @@ function pg_proto_frame_offence()
 }
 
 /**
- * The frame's answer when it draws no page: a short note inside the frame,
+ * The page of a short note: inside the frame, and on its own for a share
+ * link that opens nothing, which is mostly read on a phone (a link sent on
+ * in a messenger): it says its language and fits the screen, as the viewer
+ * and the password page do.
+ *
+ * @param string $message
+ * @param string $lang the page's language ('' for en)
+ * @return string
+ */
+function pg_proto_note_html($message, $lang)
+{
+    $lang = ((string) $lang !== '') ? (string) $lang : 'en';
+
+    return '<!DOCTYPE html><html lang="' . h($lang) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><title>' . h(lang('Prototype')) . '</title></head>'
+        . '<body style="margin:0;box-sizing:border-box;display:flex;min-height:100vh;align-items:center;justify-content:center;font:15px/1.5 system-ui,-apple-system,\'Segoe UI\',sans-serif;color:#495057;background:#f8f9fa;text-align:center;padding:1rem">'
+        . '<p>' . h($message) . '</p></body></html>';
+}
+
+/**
+ * The answer when no page is drawn: a short note (pg_proto_note_html()),
  * with the status it carries.
  *
  * @param string $message
@@ -1239,8 +1291,6 @@ function pg_proto_frame_refuse($message, $status)
     header('Content-Type: text/html; charset=utf-8');
     header_remove('Set-Cookie');
 
-    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer"><title>' . h(lang('Prototype')) . '</title></head>'
-        . '<body style="margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;font:15px/1.5 system-ui,-apple-system,\'Segoe UI\',sans-serif;color:#495057;background:#f8f9fa;text-align:center;padding:1rem">'
-        . '<p>' . h($message) . '</p></body></html>';
+    echo pg_proto_note_html($message, lang(array('info' => '')));
     exit;
 }

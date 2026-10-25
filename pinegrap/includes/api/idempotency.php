@@ -242,18 +242,48 @@ function api_idempotency_replay($app_id, $key, $body_hash) {
 
 // What this request is running under, set once the replay check has passed.
 // api_send() reads it on the way out, which is why a handler never has to
-// remember to record its own answer.
-function api_idempotency_context($app_id = null, $key = null, $body_hash = null) {
+// remember to record its own answer. $redact is the route's
+// 'idempotency_redact' list (api_idempotency_redacted()).
+function api_idempotency_context($app_id = null, $key = null, $body_hash = null, $redact = array()) {
 
-	static $context = array('app_id' => 0, 'key' => '', 'hash' => '');
+	static $context = array('app_id' => 0, 'key' => '', 'hash' => '', 'redact' => array());
 
 	if ($app_id !== null) {
 
-		$context = array('app_id' => (int)$app_id, 'key' => (string)$key, 'hash' => (string)$body_hash);
+		$context = array('app_id' => (int)$app_id, 'key' => (string)$key, 'hash' => (string)$body_hash, 'redact' => array_values((array)$redact));
 
 	}
 
 	return $context;
+
+}
+
+// The answer as it is recorded under its key: each top-level field the route
+// names in 'idempotency_redact' is null. A secret answered once, such as a
+// share link's address, would otherwise sit readable in api_idempotency for
+// the day the row lives (api_maintenance_purge()), for anyone who can read
+// the database and without the site's key. A retry answered from the record
+// gets the rest of the answer with that field null; the route's description
+// says where the secret can be had again.
+function api_idempotency_redacted($response, $keys) {
+
+	if (!is_array($response)) {
+
+		return $response;
+
+	}
+
+	foreach ((array)$keys as $name) {
+
+		if (is_string($name) && array_key_exists($name, $response)) {
+
+			$response[$name] = null;
+
+		}
+
+	}
+
+	return $response;
 
 }
 
@@ -290,7 +320,7 @@ function api_idempotency_finish($status_code, $response) {
 
 	}
 
-	api_idempotency_store($context['app_id'], $context['key'], $context['hash'], $status_code, $response);
+	api_idempotency_store($context['app_id'], $context['key'], $context['hash'], $status_code, api_idempotency_redacted($response, $context['redact']));
 
 }
 
@@ -373,6 +403,8 @@ function api_idempotency_release() {
 // part of a JSON body. A route run by the MCP endpoint has no form of its own.
 function api_idempotency_input($route, $params) {
 
+	$params = api_idempotency_secret_input($route, $params, defined('ENCRYPTION_KEY') ? (string)ENCRYPTION_KEY : '');
+
 	$field = isset($route['form_file']) ? (string)$route['form_file'] : '';
 
 	if (($field === '') || (api_send_hook() !== null) || !isset($_FILES[$field]) || !is_array($_FILES[$field])) {
@@ -390,6 +422,35 @@ function api_idempotency_input($route, $params) {
 		'size'   => (isset($part['size']) && !is_array($part['size'])) ? (int)$part['size'] : 0,
 		'sha256' => (($temporary !== '') && is_uploaded_file($temporary)) ? (string)@hash_file('sha256', $temporary) : ''
 	);
+
+	return $params;
+
+}
+
+// A field the route marks 'secret' (a password) enters the fingerprint as an
+// HMAC keyed with the site's key instead of as sent. The fingerprint is kept
+// beside the key for a day, and a plain SHA-256 over a short password and a
+// few fields with a handful of possible values is a fast offline guess, next
+// to the slow password_hash() the password itself is kept by. Two different
+// values still give two fingerprints, so the key sent again with another
+// password is still refused as reused.
+function api_idempotency_secret_input($route, $params, $key) {
+
+	$declared = (isset($route['params']) && is_array($route['params'])) ? $route['params'] : array();
+
+	foreach ($declared as $param) {
+
+		if (empty($param['secret']) || !isset($param['name']) || !array_key_exists($param['name'], $params)) {
+
+			continue;
+
+		}
+
+		$value = $params[$param['name']];
+
+		$params[$param['name']] = 'hmac:' . hash_hmac('sha256', is_string($value) ? $value : api_idempotency_input_text(array($value)), (string)$key);
+
+	}
 
 	return $params;
 

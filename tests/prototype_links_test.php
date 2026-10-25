@@ -140,6 +140,14 @@ function test_prototype_links_plan_password_is_optional_and_bounded()
 	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => array('x'))), array(11), prototype_links_test_durations(), $now);
 	pg_assert_false($plan['ok'], 'not text');
 
+	// A NUL byte is refused here rather than thrown on by password_hash()
+	// (PHP 8: ValueError, a 500) or cut at by bcrypt (PHP 7: a shorter
+	// password than the one given).
+	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => "abc\0defgh")), array(11), prototype_links_test_durations(), $now);
+	pg_assert_false($plan['ok'], 'a NUL byte');
+	pg_assert_same('password', $plan['error']);
+	pg_assert_same('password', $plan['field']);
+
 	// Spaces alone are no password; spaces around one are kept as given, as
 	// the password form reads them.
 	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => '      ')), array(11), prototype_links_test_durations(), $now);
@@ -529,6 +537,79 @@ function test_prototype_links_share_dialog_is_named_and_copies_with_a_fallback()
 	pg_assert_contains('new ClipboardItem(', $dialog);
 }
 
+// A new link's "ready" box goes away when that link is revoked from the list:
+// it would go on offering a dead address to copy.
+function test_prototype_links_share_dialog_drops_the_new_address_once_revoked()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$start = strpos($source, 'function _pgPrototypeShareDialog(');
+	$end = strpos($source, 'function _pgTabsSyncViewButton(');
+	$dialog = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
+
+	pg_assert_contains("madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));", $dialog);
+
+	$revoked = strpos($dialog, "sdToast(esc(_sdT('The link was revoked. It no longer opens the prototype.')), 'success');");
+	$drop = strpos($dialog, "if (madeEl.getAttribute('data-ps-made-id') === String(id)) {");
+	pg_assert_true(($revoked !== false) && ($drop !== false) && ($drop > $revoked), 'dropped on a revoke that succeeded');
+	pg_assert_contains("madeEl.classList.add('d-none');", $dialog);
+	pg_assert_contains("madeEl.removeAttribute('data-ps-made-id');", $dialog);
+}
+
+// A plain click on a link to another view of the prototype is handed to the
+// viewer, which opens it on its own address: a share link's viewer holds the
+// token the frame's links never carry, so the way on does not end with the
+// session that opened the link (garbage-collected after 24 idle minutes, or
+// never kept by a browser that refuses cookies).
+function test_prototype_links_frame_clicks_go_on_through_the_viewers_own_address()
+{
+	$out = pg_proto_frame_inject('<html><head></head><body><a href="/pinegrap/prototype.php?l=4&amp;page=12" data-pg-proto="prototype">P</a></body></html>', array());
+
+	pg_assert_contains('if (kind === "prototype" && go(e, a)) { e.preventDefault(); return; }', $out);
+	pg_assert_contains('window.parent.postMessage({ pgPrototype: "go", page: page, sub: q.get("sub") || "", r: q.get("r") || "", anchor: q.get("anchor") || "" }, "*");', $out);
+	// A click asking for a new tab, or outside a viewer, keeps the link's own
+	// address.
+	pg_assert_contains('if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || window.parent === window) return false;', $out);
+
+	$token = prototype_links_test_token();
+	$html = pg_proto_shell_html(array(
+		'design' => 'Spring',
+		'pages' => array(array('id' => 12, 'name' => 'pricing', 'title' => 'Pricing', 'scheduled' => false)),
+		'current' => 12,
+		'fallback' => false,
+		'frame_url' => '/pinegrap/prototype.php?frame=1',
+		'viewer' => '/pinegrap/prototype.php?link=' . $token,
+		'close_url' => '',
+		'software' => '/pinegrap',
+		'lang' => 'en',
+		'error' => '',
+	));
+
+	// The viewer takes a page number and the view's item from its frame,
+	// never an address, and builds the way on from its own.
+	pg_assert_contains('var viewer = "/pinegrap/prototype.php?link=' . $token . '";', $html);
+	pg_assert_contains('else if (e.data.pgPrototype === "go") go(e.data);', $html);
+	pg_assert_contains('if (!/^[0-9]+$/.test(page)) return;', $html);
+	pg_assert_contains('var viewer = "/pinegrap/prototype.php";', pg_proto_shell_html(array_merge(array('pages' => array(), 'frame_url' => ''), array('viewer' => '/pinegrap/prototype.php'))), 'the person\'s viewer');
+}
+
+// The note a link answers with when it opens nothing is read on a phone, the
+// usual way a shared link is opened: it says its language and fits the
+// screen, as the viewer and the password page do.
+function test_prototype_links_note_page_fits_a_phone_and_says_its_language()
+{
+	$html = pg_proto_note_html('This link no longer works.', 'tr');
+
+	pg_assert_contains('<html lang="tr">', $html);
+	pg_assert_contains('<meta name="viewport" content="width=device-width, initial-scale=1">', $html);
+	pg_assert_contains('<meta name="robots" content="noindex, nofollow">', $html);
+	pg_assert_contains('<p>This link no longer works.</p>', $html);
+	pg_assert_contains('<p>&lt;b&gt;</p>', pg_proto_note_html('<b>', 'en'), 'escaped');
+	pg_assert_contains('<html lang="en">', pg_proto_note_html('x', ''), 'no language given');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+	pg_assert_contains("echo pg_proto_note_html(\$message, lang(array('info' => '')));", $source);
+}
+
 function prototype_links_test_ctx($viewer)
 {
 	return array(
@@ -771,6 +852,52 @@ function test_prototype_links_api_routes_are_never_mcp_tools()
 	pg_assert_true(!empty($params['audience']['required']));
 	pg_assert_same(128, $params['password']['max_length']);
 	pg_assert_same(201, $routes['design.prototype_links.create']['status']);
+}
+
+// An Idempotency-Key record keeps neither the address nor the password: the
+// answer is recorded with url null, the password enters the fingerprint as
+// a keyed HMAC (includes/api/idempotency.php).
+function test_prototype_links_api_create_keeps_no_secret_in_its_idempotency_record()
+{
+	$routes = prototype_links_test_api();
+	$create = $routes['design.prototype_links.create'];
+	$params = array();
+
+	foreach ($create['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('url'), isset($create['idempotency_redact']) ? $create['idempotency_redact'] : null);
+	pg_assert_true(!empty($params['password']['secret']), 'the password is a secret field');
+
+	// A replay answers url null, so the schema says it may be.
+	$created = api_design_prototype_link_created_schema();
+	pg_assert_same('string?', $created['url']);
+	pg_assert_contains('Idempotency-Key', $create['description']);
+}
+
+// The API hands the plan the password as sent: text untrimmed, a number as
+// its digits (as the router reads one for a text field), anything else as it
+// came so the plan refuses it. A list used to become no password at all.
+function test_prototype_links_api_password_is_refused_unless_text()
+{
+	prototype_links_test_api();
+
+	pg_assert_same('', api_design_prototype_link_password(array()), 'not sent');
+	pg_assert_same('', api_design_prototype_link_password(array('password' => null)), 'null');
+	pg_assert_same(' k3Fq9z ', api_design_prototype_link_password(array('password' => ' k3Fq9z ')), 'untrimmed');
+	pg_assert_same('12345678', api_design_prototype_link_password(array('password' => 12345678)), 'a number');
+
+	foreach (array('a list' => array('hunter2x'), 'an object' => array('p' => 'hunter2x'), 'true' => true, 'false' => false) as $what => $value) {
+		$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => api_design_prototype_link_password(array('password' => $value)))), array(11), prototype_links_test_durations(), 1900000000);
+		pg_assert_false($plan['ok'], $what);
+		pg_assert_same('password', $plan['field'], $what);
+	}
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/design.php');
+	preg_match('~function api_design_prototype_links_create\(.*?\n}\n~s', $api, $create);
+	pg_assert_contains('api_design_prototype_link_password(api_request_input())', isset($create[0]) ? $create[0] : '');
+	pg_assert_false(strpos(isset($create[0]) ? $create[0] : '', 'is_scalar(') !== false, 'no cast that drops a list');
 }
 
 function test_prototype_links_api_presenter_matches_its_schema_and_hides_the_token()

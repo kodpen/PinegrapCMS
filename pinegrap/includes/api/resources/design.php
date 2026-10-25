@@ -1391,13 +1391,36 @@ function api_design_prototype_link_schema() {
 
 }
 
-// What a new link answers with: its address, shown this once, and the link.
+// What a new link answers with: its address, shown this once (null on a
+// retry answered from its Idempotency-Key record, which keeps no address),
+// and the link.
 function api_design_prototype_link_created_schema() {
 
 	return array(
-		'url'  => 'string',
+		'url'  => 'string?',
 		'link' => 'DesignPrototypeLink'
 	);
+
+}
+
+// The password of a new link as the plan is handed it, from the body as sent:
+// the router trims a string, which would make one of spaces alone no password
+// at all and drop the spaces around another, while the editor and the
+// password form take it as typed. Not sent or null is no password; a number
+// is read as its digits, as the router reads one for a text field; anything
+// else (a list, an object, true or false) goes on as it came, and the plan
+// refuses it instead of the link being made with no password.
+function api_design_prototype_link_password($input) {
+
+	if (!is_array($input) || !array_key_exists('password', $input) || ($input['password'] === null)) {
+
+		return '';
+
+	}
+
+	$value = $input['password'];
+
+	return (is_int($value) || is_float($value)) ? (string)$value : $value;
 
 }
 
@@ -1490,11 +1513,8 @@ function api_design_prototype_links_create($params) {
 
 	$now = time();
 
-	// The password as sent: the router trims a string, which would make one
-	// of spaces alone no password at all and drop the spaces around another,
-	// while the editor and the password form take it as typed.
-	$input = api_request_input();
-	$password = (isset($input['password']) && is_scalar($input['password'])) ? (string)$input['password'] : '';
+	// The password as sent, not as the router trimmed it.
+	$password = api_design_prototype_link_password(api_request_input());
 
 	$plan = pg_proto_link_plan(array(
 		'audience'      => isset($params['audience']) ? $params['audience'] : '',

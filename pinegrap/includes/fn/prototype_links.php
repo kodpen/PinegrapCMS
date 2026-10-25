@@ -14,7 +14,9 @@
  * lists and the Site Log name it by. The token itself is written nowhere
  * else: prototype.php takes it out of every copy of the request's address
  * before init.php runs the firewall, so no log line (waf_log, firewall.log,
- * the error log) keeps it.
+ * the error log) keeps it, and the external API's create records its answer
+ * under an Idempotency-Key without the address ('idempotency_redact') and
+ * the password only as a keyed HMAC in the fingerprint ('secret').
  *
  * A link is for 'anyone' holding it, with an expiry of at most ninety days,
  * or for the 'team' (a signed-in administrator, designer or manager), with
@@ -224,7 +226,10 @@ function pg_proto_link_plan($input, $draft_ids, $durations, $now)
 
     $password = isset($input['password']) ? $input['password'] : '';
 
-    if (!is_string($password) || (($password !== '') && ((mb_strlen($password) < 6) || (mb_strlen($password) > 128)))) {
+    // A NUL byte is refused with the length: bcrypt throws on one in PHP 8
+    // (password_hash(): a 500 where the dry run answered "created") and cuts
+    // the password there in PHP 7.
+    if (!is_string($password) || (strpos($password, "\0") !== false) || (($password !== '') && ((mb_strlen($password) < 6) || (mb_strlen($password) > 128)))) {
         return $fail('password', 'password');
     }
 
@@ -1055,7 +1060,13 @@ function pg_proto_link_issue($style_id, $link, $user_id, $username, $via = '')
     $hash = null;
 
     if ($password !== '') {
-        $hash = password_hash($password, PASSWORD_DEFAULT);
+        // PHP 8 throws (ValueError) on a password bcrypt cannot take; the
+        // callers answer their usual failure instead of a fatal error.
+        try {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+        } catch (Throwable $t) {
+            $hash = null;
+        }
 
         if (!is_string($hash) || ($hash === '')) {
             return null;
