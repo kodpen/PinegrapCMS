@@ -535,14 +535,32 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
 }
 
 /**
+ * Whether card HTML draws anything a visitor sees: text (a ^^token^^ in text
+ * counts, it becomes a value) or an image, graphic, video or frame. A token
+ * only in an attribute (a bound href, a class naming the row type) and the
+ * contents of script, style and template elements draw nothing.
+ *
+ * @param string $html
+ * @return bool
+ */
+function _pg_catalog_html_shows($html)
+{
+    $html = (string)$html;
+    $seen = preg_replace('~<(script|style|template)\b[^>]*>.*?</\1\s*>~is', '', $html);
+    if ($seen === null) $seen = $html;
+    $seen = strip_tags($seen, '<img><svg><picture><video><audio><iframe><object><embed><canvas>');
+    return trim(str_replace("\xC2\xA0", ' ', html_entity_decode($seen, ENT_QUOTES, 'UTF-8'))) !== '';
+}
+
+/**
  * The listing's card drawn once for each rating state. has_rating and
  * no_rating describe the product of a card, so only the card is marked: an
  * element outside it, or one carrying a flag no catalog evaluates, is drawn
  * as before. Each product row takes the template of its state. A group row
  * has no rating state of its own, so its card draws neither flag's elements;
- * when that leaves no token and no text (two alternative cards, one per state,
- * side by side or inside one column) it takes the card without a rating, so
- * child groups are still drawn and can be clicked.
+ * when that leaves nothing visible (two alternative cards, one per state,
+ * side by side or inside one column or link) it takes the card without a
+ * rating, so child groups are still drawn and can be clicked.
  *
  * @param array $nodes the loop_area's children, or the whole tree when it has none
  * @return array 'rated', 'unrated' and 'group' card HTML
@@ -561,12 +579,13 @@ function _pg_catalog_card_templates($nodes)
     // span never holds a description long enough to exhaust PCRE.
     $unrated = trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true)));
     // No flag is set, so every marked span is cut. What is left can be empty
-    // wrappers only (a column around two alternative cards): with no token and
-    // no text a group row would be drawn as a blank box, and with no card at
-    // all the listing skips child groups, so both fall back to the card
-    // without a rating.
+    // wrappers only (a column or a link around two alternative cards): with
+    // nothing visible a group row would be drawn as a blank box, and with no
+    // card at all the listing skips child groups, so both fall back to the
+    // card without a rating. A token in an attribute (href, class) does not
+    // make a wrapper visible.
     $group   = trim(_pg_sw_resolve_visibility($html, array()));
-    $group_shows = (strpos($group, '^^') !== false) || (trim(strip_tags($group)) !== '');
+    $group_shows = _pg_catalog_html_shows($group);
     return array(
         'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
         'unrated' => $unrated,
@@ -2076,7 +2095,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // ^^…^^ strip below — the designer template stays usable for both.
     // Elements shown only with or only without a rating (has_rating /
     // no_rating) are left out of a group card ($loop_template_group), unless
-    // that leaves no token and no text: then it is the card without a rating.
+    // that leaves nothing visible: then it is the card without a rating.
     //
     // ^^__row_type^^ ('group' / 'product') lets the designer add type-aware
     // CSS / wrapper markup if they want a visual distinction.

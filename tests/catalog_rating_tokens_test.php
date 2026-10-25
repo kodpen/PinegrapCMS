@@ -163,6 +163,29 @@ function test_catalog_rating_card_templates()
 		pg_assert_same($templates['unrated'], $templates['group'], $label . ': group rows take the card without a rating');
 	}
 
+	// A wrapper whose only token sits in an attribute (a card-as-link bound to
+	// the detail page, a class naming the row type) shows nothing by itself,
+	// so group rows take the card without a rating as well.
+	$link = array('type' => 'semantic', 'props' => array('tag' => 'a', 'cssClass' => 'd-block text-decoration-none', '_bindings' => array('href' => '__detail_url')), 'children' => $alternatives);
+	$wrappers = array(
+		'a link to the detail page' => array('type' => 'col', 'props' => array('xs' => '12', 'md' => '4'), 'children' => array($link)),
+		'a row type class'          => array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col card-^^__row_type^^'), 'children' => $alternatives),
+	);
+	foreach ($wrappers as $label => $wrapper) {
+		$templates = _pg_catalog_card_templates(array($wrapper));
+
+		pg_assert_contains('^^__name^^', $templates['group'], $label . ': group rows draw a name');
+		pg_assert_same($templates['unrated'], $templates['group'], $label . ': group rows take the card without a rating');
+	}
+
+	// An image left beside the two cards is seen, so the group card keeps it.
+	$image = array('type' => 'content', 'props' => array('contentType' => 'image', 'src' => '^^__image_url^^'), 'children' => array());
+	$wrapper = array('type' => 'col', 'props' => array('xs' => '12'), 'children' => array_merge(array($image), $alternatives));
+	$templates = _pg_catalog_card_templates(array($wrapper));
+
+	pg_assert_contains('<img', $templates['group'], 'the unflagged image stays');
+	pg_assert_false(strpos($templates['group'], 'Be the first') !== false, 'a group card with an image of its own has no "be the first" text');
+
 	// A wrapper that keeps a token or text of its own is a card for group rows.
 	$wrapper = array('type' => 'col', 'props' => array('xs' => '12'), 'children' => array_merge(array($paragraph('^^__name^^', '')), $alternatives));
 	$templates = _pg_catalog_card_templates(array($wrapper));
@@ -170,6 +193,33 @@ function test_catalog_rating_card_templates()
 	pg_assert_contains('<p>^^__name^^</p>', $templates['group'], 'the unflagged name stays');
 	pg_assert_false(strpos($templates['group'], 'Stars') !== false, 'a group card with a name of its own has no stars');
 	pg_assert_false(strpos($templates['group'], 'Be the first') !== false, 'nor the "be the first" text');
+}
+
+// What a group card shows once both rating states are cut: text and media
+// count, a token in an attribute and the body of a style block do not.
+function test_catalog_html_shows()
+{
+	$seen = array(
+		'<div class="col"><p>^^__name^^</p></div>',
+		'<div>Categories</div>',
+		'<div><img src="^^__image_url^^" alt=""></div>',
+		'<span><svg viewBox="0 0 1 1"><path d="M0 0"/></svg></span>',
+	);
+	foreach ($seen as $html) {
+		pg_assert_true(_pg_catalog_html_shows($html), $html);
+	}
+
+	$unseen = array(
+		'',
+		"<div class=\"col-12\">\n    \n</div>",
+		'<a class="d-block" href="^^__detail_url^^" data-pg-bind="href:detail_url"> </a>',
+		'<div class="col card-^^__row_type^^"></div>',
+		'<div><style>.card{color:red}</style><!-- ^^__name^^ --></div>',
+		'<div>&nbsp;</div>',
+	);
+	foreach ($unseen as $html) {
+		pg_assert_false(_pg_catalog_html_shows($html), $html);
+	}
 }
 
 // The listing reads the columns behind the readiness check, fills both tokens
