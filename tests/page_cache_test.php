@@ -74,6 +74,7 @@ function test_page_cache_session_allowlist()
 		'token' => 'x', 'device_type' => 'desktop', 'visitor_id' => '5', 'http_referer' => 'https://example.com/',
 		'tracking_code' => 't', 'affiliate_code' => 'a', 'utm_source' => 's', 'utm_medium' => 'm',
 		'utm_campaign' => 'c', 'utm_term' => 't', 'utm_content' => 'c', 'cookie_id' => '9'))), 'tracking keys');
+	pg_assert_true(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'wishlist_cookie' => str_repeat('a', 64)))), 'a guest who saved a favourite');
 
 	pg_assert_false(pg_page_cache_session_anonymous(array('sessionusername' => 'erdal')), 'signed in');
 	pg_assert_false(pg_page_cache_session_anonymous(array('ecommerce' => array('order_id' => 4))), 'an order');
@@ -487,7 +488,7 @@ function test_page_cache_request_dirties()
 	pg_assert_false(pg_page_cache_request_dirties('OPTIONS', 'integration.php', false, true));
 	pg_assert_false(pg_page_cache_request_dirties('POST', 'submit_form.php', false, false), 'a visitor');
 
-	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php') as $script) {
+	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php', 'wishlist.php') as $script) {
 		pg_assert_false(pg_page_cache_request_dirties('POST', $script, true, false), $script);
 	}
 }
