@@ -25,7 +25,7 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 | E-Shipment | own `parasut_shipment_id` | cleared, VKN/TCKN asked (the screen skips it once an id is kept), shipped anew |
 | E-Shipment | `parasut_invoice_id` | cleared (the link returns `gone`), document unlinked |
 | ERP send | `parasut_invoice_id` | cleared, the send goes on (erp-parasut-legacy-invoiced-order.md) |
-- `parasut_exported` is cleared with `parasut_invoice_id` (#PR).
+- `parasut_exported` is cleared with `parasut_invoice_id` (#1660).
 
 ## What does the order screen show?
 - On a finished sale both buttons stay pressable once sent (title kept); the confirm says the press asks Paraşüt first and creates anew only if it was deleted there. Each record left out comes back in the functions' `&$notices`; `view_order.php` passes `$parasut_notices` and shows each as a warning (`add_warning(h())`).
