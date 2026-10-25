@@ -14,7 +14,7 @@ description: Plan (2026-10-23, 1 done #1440, 2-3 done #1499, answer 2a): fix /ta
 
 ## What is proposed? (not approved yet)
 - `ws_commands($viewer)` (proposed, commands.php): key, TR/EN names, `lang()` description and usage, typed arguments (person, task, record, date…) with a suggestion source, gate. Picker, palette, `/help`, parser and API read it.
-- Suggestions only from what one may see (`BOOT.people`, `.channels`, `.priorities`, `ws_ref_search` through `ws_refs_resolve()`), never site members; runs re-check `ws_can_read_channel()`. Writes as today (/price, /stock: `ws_quick_edit_save()`, changes.php). Texts: `ws_js_strings()` (screen.php), includes/local/tr.json.
+- Suggestions only from what one may see (`BOOT.people`, `.channels`, `.priorities`, `ws_ref_search` through `ws_refs_resolve()`), never site members; runs re-check `ws_can_read_channel()`. Writes as today (/price, /stock: `ws_quick_edit_save()`, changes.php). Texts: `ws_js_strings()` (screen.php), keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
 - App commands stay in plans/workspace-phase3-leftovers.md item 2 (schema, ask first), in this shape.
 
 ## Slices

@@ -16,6 +16,6 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
 - Before PR #1090 (issue #768) `software[view_page_mode]` and `pg_language` were written but not listed.
 
 ## What does a new cookie need?
-- A row here and its description in `pg_consent_ui_keys()` (the Translations screen's "Cookie window" group; `test_consent_ui_keys_match_the_notice` compares the list with the file's `lang()` keys) and in `tr.json`. An optional cookie is written with `pg_consent_setcookie()` and goes into `pg_consent_revoke_names()` too.
+- A row here and its description in `pg_consent_ui_keys()` (the Translations screen's "Cookie window" group; `test_consent_ui_keys_match_the_notice` compares the list with the file's `lang()` keys) and its Turkish text through `php tools/tr_add.php`. An optional cookie is written with `pg_consent_setcookie()` and goes into `pg_consent_revoke_names()` too.
 - Panel-only cookies (ERP profit choice `pg_erp_profit_orders`, the Workspace guest `pg_ws_guest`) are not on visitor pages and not listed.
 - Tests: `test_consent_catalogue_lists_the_view_mode_and_language_cookies`, `test_consent_catalogue_lists_the_page_cache_marker` (`tests/consent_test.php`).

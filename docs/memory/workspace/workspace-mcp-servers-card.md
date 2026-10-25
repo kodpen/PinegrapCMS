@@ -9,7 +9,7 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 - Check the address (`mcp_probe`, `ws_mcp_probe()`): initialize and tools/list with no credential; on a 401 `pg_mcp_client_discover_auth()`: oauth when the site can register (`ws_mcp_oauth_registration()`), else bearer; else the client's error. The short form (alias from `ws_mcp_alias_from_host()`, a token for bearer) posts `mcp_save`. A probe registers nothing.
 
 ## How is an entry added?
-- A row in `ws_mcp_catalogue()`: an address that answers initialize with 200, or 401 with a challenge whose service registers the site (curl it first); a `bi-*` icon of assets/fonts/bootstrap-icons, no logos; an alias outside `ws_mcp_reserved_aliases()`; `tools` read_only; the description in tr.json. The tests read every row.
+- A row in `ws_mcp_catalogue()`: an address that answers initialize with 200, or 401 with a challenge whose service registers the site (curl it first); a `bi-*` icon of assets/fonts/bootstrap-icons, no logos; an alias outside `ws_mcp_reserved_aliases()`; `tools` read_only; the description's Turkish text through `php tools/tr_add.php`. The tests read every row.
 - 2026-10-24: 12 rows answered (5 open, 6 OAuth, GitHub by token: its sign-in server registers nobody). Stripe (OAuth) answered too but stayed out (~12 asked).
 
 ## Which tools are on after a server is added?

@@ -503,7 +503,7 @@ Bir style eklerken sırayla:
 | Testimonial | 1-2 cümle gerçekçi alıntı | `'This product changed how we work.'` |
 | İsim | Kanondaki kişiler | `'Jane Cooper'`, `'Michael Brooks'` |
 
-**Locale:** Örnek metin İngilizce kaynak anahtarla `_sdT('…')` içinden geçer ve Türkçesi `tr.json`'a eklenir (fiyat ve ondalıklı sayı da); kurallar `pinegrap-ceviri` ve `docs/memory/designer/designer-block-sample-content.md`. Renk ve tema uyumu: `docs/memory/designer/designer-block-theme-colours.md`.
+**Locale:** Örnek metin İngilizce kaynak anahtarla `_sdT('…')` içinden geçer ve Türkçesi `php tools/tr_add.php` ile `includes/local/tr/` parçalarına eklenir (fiyat ve ondalıklı sayı da); kurallar `pinegrap-ceviri` ve `docs/memory/designer/designer-block-sample-content.md`. Renk ve tema uyumu: `docs/memory/designer/designer-block-theme-colours.md`.
 
 ---
 

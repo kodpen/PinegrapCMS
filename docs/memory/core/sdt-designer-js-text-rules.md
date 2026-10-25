@@ -8,7 +8,7 @@ description: How visible text in assets/js/style_designer.js must use _sdT('Engl
 
 ## What may not be a plain literal?
 - NO text an operator or visitor reads may be a plain literal in this file: panel label, `row()`/`sect()` heading, toast, dialog, `customName`, placeholder, `aria-label`, palette component sample content (prices included), starting tree `text:` value.
-- All of it is `_sdT('English text')`. The key is the English source text (same contract as `lang()`) and MUST exist in `tr.json`.
+- All of it is `_sdT('English text')`. The key is the English source text (same contract as `lang()`) and MUST exist in the Turkish shards (`includes/local/tr/`, added with `php tools/tr_add.php`).
 
 ## What shape must the key have?
 - The key is a single-quoted literal. NOT `_sdT("...")`, NOT `_sdT(variable)`, NOT `_sdT('a' + b)`.

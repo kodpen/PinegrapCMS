@@ -54,7 +54,7 @@ jobs:
         if: ${{ hashFiles('tools/lint.php') != '' }}
         run: php tools/lint.php
 
-      - name: Translation keys (lang / _sdT against tr.json)
+      - name: Translation keys (lang / _sdT against the language shards)
         if: ${{ hashFiles('tools/check_lang.php') != '' }}
         run: php tools/check_lang.php
 

@@ -13,7 +13,7 @@ description: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap
 
 ## Where is the code?
 - This repo holds the product only, under `pinegrap/`. Paths in memory files are relative to that root: `includes/fn/core.php` means `pinegrap/includes/fn/core.php`.
-- Strings: `includes/local/tr.json`. Config: `data/config.php` (runtime constant `CONFIG_FILE_PATH`); the real config is never committed, the repo copy is an empty template, sample values are in `data/config(default).php`.
+- Strings: `includes/local/tr/` (the Turkish wording as sorted shards, `core/lang-files.md`) and `includes/local/en.json`. Config: `data/config.php` (runtime constant `CONFIG_FILE_PATH`); the real config is never committed, the repo copy is an empty template, sample values are in `data/config(default).php`.
 - Third-party libraries are embedded under `includes/`; Composer is not used.
 
 ## What exists only on the development branch?

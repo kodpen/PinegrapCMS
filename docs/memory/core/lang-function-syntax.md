@@ -6,7 +6,7 @@ description: lang() call forms: plain, variables {var:N}, case modifiers |c |u |
 ## How do I call lang()?
 ```php
 lang('Page Regions')
-// tr.json value, or the English string if absent
+// the Turkish value, or the English string if absent
 lang(['string' => '{var:1} is required', 'vars' => lang('Name')])
 // -> "Ad gereklidir"
 lang(['string' => '{var:1} match{suffix:1} found in {var:2} item{suffix:2}.', 'vars' => [5, 3], 'suffix' => ['es', 's']])
@@ -45,7 +45,7 @@ log_activity(lang([
 - `lang(['info' => true])` returns the active language code: `'tr'`, `'en'`, etc. On a site page drawn in another language (`FRONTEND_LANGUAGE`) it is that page's language, otherwise the enforced or the software language, else `'en'`.
 - `'language' => 'xx'` asks one language explicitly; with `'if_known' => true` the answer is the file's wording or `null` when the file does not know the key (nothing filled in).
 
-## How is the tr.json key written?
+## How is the language key written?
 - Key is the English source string character for character, spaces, punctuation and placeholders included: `"{var:1|c} is required": "{var:1|c} gereklidir"`.
 
 Related: docs/memory/core/translation-rules.md

@@ -13,7 +13,7 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, answers open): voic
 - Not blocked: `Permissions-Policy: microphone=(self)` (`waf_send_security_headers()`, waf.php), keep `(self)`; CSP `media-src` has `blob:`.
 
 ## What is proposed? (not approved yet)
-- A voice message: a message with an audio file, by the existing upload path and read rules (no site member). Mic in place of Send while the box is empty; vanilla `assets/js/workspace_voice.js` (proposed) in `workspace.min.js`; labels via `ws_voice_js_strings()` (proposed), tr.json.
+- A voice message: a message with an audio file, by the existing upload path and read rules (no site member). Mic in place of Send while the box is empty; vanilla `assets/js/workspace_voice.js` (proposed) in `workspace.min.js`; labels via `ws_voice_js_strings()` (proposed), keys added with `php tools/tr_add.php`.
 - Transcription: admin switch, off by default, named provider ("audio is sent to OpenAI"), sealed key; a private channel only where its manager allowed (like `ai_access`); `pg_audit()` line. One OpenAI-compatible `/audio/transcriptions` call (`pg_curl_tls()`, `pinegrap_user_agent()`); the provider card of plans/workspace-agent-handles.md step 3 if built first.
 - Owns recordings and transcripts; plans/workspace-composer-tools.md (in writing) owns live dictation. Erasure (plans/privacy-data-pack-audit-log.md step 4) covers both.
 - Each slice ships its API; no new scope (one would go into `ws_owner_scopes()`).

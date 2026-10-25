@@ -64,7 +64,8 @@ function pg_tr_owner_groups()
 /* ---------------------------------------------------------------------------
    The cookie window, for a language with no language file
    ---------------------------------------------------------------------------
-   lang() draws the software's wording from includes/local/<code>.json. The
+   lang() draws the software's wording from includes/local/<code>/ (shards)
+   or includes/local/<code>.json (pg_lang_map()). The
    software ships Turkish and English; a site may add any language. The
    software's interface is not part of the site's translations - on a page in
    a language with no file it stays English - with one exception: the cookie

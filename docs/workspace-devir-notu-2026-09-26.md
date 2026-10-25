@@ -11,7 +11,7 @@ Geliştirme Tuğba'nın isteğiyle 26.09'da, devir listesinin 12. maddesine baş
 
 ## 1. Kurallar (Erdal — hepsi geçerli)
 
-- Erdal'la **Türkçe** konuşulur; kod yorumları **İngilizce**, yorumlarda AI/süreç izi olmaz. Kullanıcıya görünen her metin `lang()` + `includes/local/tr.json`.
+- Erdal'la **Türkçe** konuşulur; kod yorumları **İngilizce**, yorumlarda AI/süreç izi olmaz. Kullanıcıya görünen her metin `lang()` ile; anahtarı `php tools/tr_add.php "English" "Türkçe"` `includes/local/tr/` altındaki sıralı parçasına ekler, parçalar elle düzenlenmez.
 - Commit/PR istenmedikçe yapılmaz; metne Claude atıf satırı konmaz. `git add -A` yasak; `pinegrap/data/` depo dışı.
 - **Kimlik bilgilerini Erdal girer.** Parola/API anahtarı kutusu doldurulmaz, anahtar üretilmez.
 - **Kalıcı silme yok.** Dev makinada dosya silinmez; taşınacak dosya `dev/_to_delete/` altına (`mv -n`). Dev DB'de silme düğmelerine basılmaz. Canlıda izinsiz gerçek e-posta gönderilmez. `settings_pane.php`'ye POST yapılmaz.
@@ -30,8 +30,8 @@ Geliştirme Tuğba'nın isteğiyle 26.09'da, devir listesinin 12. maddesine baş
 - `device_bash` (VM, `$HOME/mnt/PinegrapCMS`): python ve node var, **PHP yok**. `node --check` burada.
 - Lint bulutta: dosyaları `device_stage_files` ile al → `php -l`. `check_lang` / `check_api_schema` için ağacı `dev/_sync/tree_*.tgz` olarak tar'la (`--exclude=pinegrap/data`), stage et, bulutta aç, `php tools/check_lang.php pinegrap`. İş bitince tar `dev/_to_delete/ws-2026-09-26/`'ya taşınır.
 - Yeni dosya bulutta yazılır → `device_commit_files` → cihazda **LF'den CRLF'ye çevir** (commit LF yazıyor) → sha256 ile doğrula. Commit'ten önce yinelenen fonksiyon adı denetimi: `cat includes/workspace/*.php | grep -o "^function [a-z_0-9]*" | sort | uniq -d` (+ `includes/fn`). (26.09'da `ws_channel_pin` çakışması siteyi 500'e düşürdü.)
-- Satır sonları: `includes/workspace/*.php`, `assets/js/workspace*.js`, `backend.src.css`, `api.php` **CRLF**; `2026.4.5.php`, `docs/*.md`, `changelog.txt`, `tr.json` **LF**.
-- tr.json'a ekleme: `python3 dev/_sync/tr_append.py <json>` (var olan anahtarı atlar). `check_lang`, `ws_js_template` metinlerini ve değişkenle çağrılan `lang($error)`'u yakalamaz; onlar elle eklenir.
+- Satır sonları: `includes/workspace/*.php`, `assets/js/workspace*.js`, `backend.src.css`, `api.php` **CRLF**; `2026.4.5.php`, `docs/*.md`, `changelog.txt`, `includes/local/tr/*.json` **LF**.
+- Çeviri anahtarı ekleme: `php tools/tr_add.php "English" "Türkçe"` ya da `--from=<json>` (aynı değerle var olanı atlar, başka değerle var olanı reddeder). `check_lang`, `ws_js_template` metinlerini ve değişkenle çağrılan `lang($error)`'u yakalamaz; onlar elle eklenir.
 - Göçü dev'de denemek: `pinegrap/_dev_run_XXXX.php` (tek adımı koşar), tarayıcıdan iki kez çağrılır (ikincisinde hepsi atlanmalı), sonra `dev/_to_delete/ws-2026-09-26/`'ya taşınır.
 - **Yükseltme kapısı:** `config.version` koddan geride kalınca panel `install/index.php`'ye yönlenir. 26.09 ~08:00'de görsel editör oturumu 5.1 adımını ekleyip yükseltmeyi koştu. Yükseltme ekranında körlemesine tıklanmaz: sayfada "yeniden kur" seçeneği de var.
 - Giden HTTP: `includes/api/outbound/http.php` (`api_http_request`, `api_http_check_url`; yalnız https, ağ içi adres ve yönlendirme yok).

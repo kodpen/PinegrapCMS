@@ -18,6 +18,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
 
@@ -91,13 +93,13 @@ function test_ws_voice_get_file_has_the_sound_types()
 }
 
 // Every text the script asks for is one the screen gives it, and every
-// English source of voice.php is a tr.json key.
+// English source of voice.php is a Turkish key.
 function test_ws_voice_texts_are_given_and_translated()
 {
 	$script = ws_voice_test_source('assets/js/workspace_voice.js');
 	$strings = ws_voice_test_source('includes/workspace/voice.php');
 	$screen = ws_voice_test_source('includes/workspace/screen.php');
-	$tr = json_decode(ws_voice_test_source('includes/local/tr.json'), true);
+	$tr = pg_test_language_map();
 
 	preg_match_all("/\\bt\\('([a-z_]+)'/", $script, $asked);
 	pg_assert_true(count($asked[1]) > 5, 'the script asks for its texts');
@@ -112,7 +114,7 @@ function test_ws_voice_texts_are_given_and_translated()
 	pg_assert_true(count($sources[1]) >= 10, 'voice.php has its texts');
 
 	foreach ($sources[1] as $source) {
-		pg_assert_true(isset($tr[stripslashes($source)]), $source . ' is in tr.json');
+		pg_assert_true(isset($tr[stripslashes($source)]), $source . ' has a Turkish text');
 	}
 }
 

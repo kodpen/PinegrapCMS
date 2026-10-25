@@ -1,6 +1,6 @@
 ---
 name: designer-turkish-terms
-description: Turkish terms for designer layer names, palette labels and panel rows; how a shared tr.json key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
+description: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 ---
 
 ## Why does one wrong value show up in many places?
@@ -8,8 +8,8 @@ One English key serves every caller: `_sdT()` in `style_designer.js`, `lang()` i
 
 ## How is a misfit shared key fixed?
 - List every use first: `lang('Key')`, `_sdT('Key')`, and arrays later passed to `lang($x)` (for example `$short_labels` in `includes/fn/system_status.php`).
-- One Turkish fits every use: change the value in place. Only the value string changes; the key, its line and the file format stay.
-- The uses need different Turkish: leave the shared key and give the designer use a narrower English key, appended at the end of `tr.json`. Example: the flex-wrap select uses `Wrap Lines` (`Satır Kaydırma`); the carousel switch keeps `Wrap` (`Döngü`).
+- One Turkish fits every use: change the value with `php tools/tr_add.php --replace "Key" "Türkçe"`. Only the value changes; the key and its line stay.
+- The uses need different Turkish: leave the shared key and give the designer use a narrower English key, added with `php tools/tr_add.php`. Example: the flex-wrap select uses `Wrap Lines` (`Satır Kaydırma`); the carousel switch keeps `Wrap` (`Döngü`).
 
 ## Which terms does the designer use?
 - Carousel: `Karusel` (`Karusel İçi`, `Görsel Karuseli`), never `Carousel`; block roots use `_sdT('Carousel')`.

@@ -65,7 +65,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-conversion-pack.md: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, rating tokens, wishlist core, heart, Favourites page done): back-in-stock, bundles later
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
-- tr-json-split.md: Plan (2026-10-25, step 1 done #1632; 2 conversion, 3 rules open): split includes/local/tr.json into sorted shards so PRs adding keys stop conflicting; tools, loader, readers, check_lang
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - widget-designability.md: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W14 part 1 #1602): legacy-layout power in system widgets by one finish pass: conditions, row position, nested lists, fields, formats

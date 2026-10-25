@@ -5,7 +5,7 @@
  * Tests for the flows screen (workspace_flows.php, assets/js/workspace_flow.js):
  * its panel actions in api.php's table with the Workspace's gate, the texts
  * the canvas script reads (every key it uses handed over by
- * ws_flow_js_strings(), every English source in tr.json, which
+ * ws_flow_js_strings(), every English source a Turkish key, which
  * tools/check_lang.php does not read for ws_js_template()), the graph and
  * list entries the screen is answered with, and the run view: its actions go
  * through the runner's own checks and writes and answer with the API's run
@@ -25,6 +25,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/language_map.php');
 
 // Function definitions only: the panel table, the templates' assign rules
 // the store reads, the store, the runner, the API's run presenters (behind
@@ -90,13 +92,13 @@ function ws_flows_canvas_test_strings_source()
 	return (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
 }
 
-function test_workspace_flows_canvas_texts_are_in_tr_json()
+function test_workspace_flows_canvas_texts_are_translated()
 {
 	$body = ws_flows_canvas_test_strings_source();
-	$keys = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+	$keys = pg_test_language_map();
 
 	pg_assert_true($body !== '', 'ws_flow_js_strings() found');
-	pg_assert_true(is_array($keys), 'tr.json read');
+	pg_assert_true(count($keys) > 0, 'Turkish map read');
 
 	preg_match_all("/(?:lang|ws_js_template)\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $body, $matches);
 
@@ -104,7 +106,7 @@ function test_workspace_flows_canvas_texts_are_in_tr_json()
 
 	foreach ($matches[1] as $text) {
 		$text = str_replace("\\'", "'", $text);
-		pg_assert_true(is_array($keys) && array_key_exists($text, $keys), 'in tr.json: ' . $text);
+		pg_assert_true(is_array($keys) && array_key_exists($text, $keys), 'a Turkish key: ' . $text);
 	}
 }
 

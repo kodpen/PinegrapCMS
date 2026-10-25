@@ -4005,21 +4005,6 @@ function url_exists($url)
     return false;
 }
 
-// Software localization / translation helper.
-// Usage scenarios:
-//   echo lang('Hello World');
-//   echo lang(array('string' => 'Hello {var:1}', 'vars' => array('World')));
-//   echo lang(array('string' => 'Welcome {var:1|c}', 'vars' => array('john doe'))); // capitalize variable
-//   echo lang(array('string' => 'Count: {var:1}', 'vars' => 5));
-//   $lang = lang(array('info' => true)); // returns enforced or configured SOFTWARE_LANGUAGE (e.g. 'en' or 'tr')
-//   echo lang(array('string' => 'Save', 'language' => 'tr')); // one language explicitly
-//   $tr = lang(array('string' => 'Save', 'language' => 'tr', 'if_known' => true)); // the file's wording, null when it has none
-//
-// Notes:
-// - Works on PHP 7.0 up to PHP 8.5.
-// - Looks for JSON translation files in includes/local/{lang}.json relative to this file or cwd.
-// - If mbstring is not available, falls back to single-byte string helpers.
-// - in english language file you can overwrite strings.
 // The language map kept as shards in $dir (includes/local/<code>/): every
 // *.json there in name order, merged; null when $dir is not a folder or holds
 // no shard, so the caller falls back to the single <code>.json file. A shard
@@ -4057,6 +4042,62 @@ function pg_lang_read_folder($dir)
     return $map;
 }
 
+// Where language $code keeps its wording under $local (by default
+// includes/local): its folder of shards when that holds a *.json, else its
+// single <code>.json; null when it has neither, or when $code is not a plain
+// name (no path may be built from it). A <code>.json left beside a folder by
+// an update that could not delete it is never read: the folder wins.
+function pg_lang_source($code, $local = null)
+{
+    $code = (string) $code;
+
+    if (!preg_match('/^[A-Za-z0-9_-]{1,32}$/', $code)) {
+        return null;
+    }
+
+    $local = rtrim(($local === null) ? PG_FUNCTIONS_DIR . '/includes/local' : (string) $local, '/\\');
+
+    $shards = glob($local . '/' . $code . '/*.json');
+
+    if (is_array($shards) && (count($shards) > 0)) {
+        return $local . '/' . $code;
+    }
+
+    return is_file($local . '/' . $code . '.json') ? $local . '/' . $code . '.json' : null;
+}
+
+// The wording of language $code as lang() reads it, key => text, from where
+// pg_lang_source() finds it. Every reader of a language file goes through
+// here, so none of them can read a stale single file beside the folder.
+// array() when the language has no file, or its single file does not decode.
+function pg_lang_map($code, $local = null)
+{
+    $source = pg_lang_source($code, $local);
+
+    if ($source === null) {
+        return array();
+    }
+
+    $map = is_dir($source) ? pg_lang_read_folder($source) : @json_decode((string) @file_get_contents($source), true);
+
+    return is_array($map) ? $map : array();
+}
+
+// Software localization / translation helper.
+// Usage scenarios:
+//   echo lang('Hello World');
+//   echo lang(array('string' => 'Hello {var:1}', 'vars' => array('World')));
+//   echo lang(array('string' => 'Welcome {var:1|c}', 'vars' => array('john doe'))); // capitalize variable
+//   echo lang(array('string' => 'Count: {var:1}', 'vars' => 5));
+//   $lang = lang(array('info' => true)); // returns enforced or configured SOFTWARE_LANGUAGE (e.g. 'en' or 'tr')
+//   echo lang(array('string' => 'Save', 'language' => 'tr')); // one language explicitly
+//   $tr = lang(array('string' => 'Save', 'language' => 'tr', 'if_known' => true)); // the file's wording, null when it has none
+//
+// Notes:
+// - Works on PHP 7.0 up to PHP 8.5.
+// - Reads a language through pg_lang_map(): its shards in includes/local/{lang}/, else includes/local/{lang}.json.
+// - If mbstring is not available, falls back to single-byte string helpers.
+// - in english language file you can overwrite strings.
 function lang($properties = false)
 {
     static $translations = array(); // cache translations per language
@@ -4154,40 +4195,9 @@ function lang($properties = false)
 
     // Load translations for language (cache)
     if (!isset($translations[$selected_software_language])) {
-        $translations[$selected_software_language] = array();
-        $json = false;
-
-        // A language kept as shards (includes/local/<code>/*.json) is read
-        // from its folder; otherwise from its single file.
-        $folder_map = pg_lang_read_folder(PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language);
-
-        // Prefer absolute path relative to this file
-        $pathsToTry = ($folder_map !== null) ? array() : array(
-            PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json',
-            'includes/local/' . $selected_software_language . '.json',
-            PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json'
-        );
-
-        foreach ($pathsToTry as $path) {
-            if (file_exists($path) && is_readable($path)) {
-                $json = @file_get_contents($path);
-                if ($json !== false) {
-                    break;
-                }
-            }
-        }
-
-        if ($folder_map !== null) {
-            $translations[$selected_software_language] = $folder_map;
-        } elseif ($json !== false) {
-            $decoded = @json_decode($json, true);
-            if (is_array($decoded)) {
-                $translations[$selected_software_language] = $decoded;
-            } else {
-                // keep empty array on decode failure
-                $translations[$selected_software_language] = array();
-            }
-        }
+        // The shards in includes/local/<code>/, else includes/local/<code>.json;
+        // an empty map when the language has neither or it does not decode.
+        $translations[$selected_software_language] = pg_lang_map($selected_software_language);
     }
 
     // if_known: the wording the language's file has for the string, or null

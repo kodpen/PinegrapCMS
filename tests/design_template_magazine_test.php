@@ -23,6 +23,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 // -- helpers -----------------------------------------------------------------
 
 // The template file.
@@ -52,17 +54,10 @@ function _test_mag_news_tpl()
 	return $tpl;
 }
 
-// The Turkish translations, read as the file is.
+// The Turkish translations, as lang() reads them.
 function _test_mag_tr()
 {
-	static $tr = null;
-	if ($tr === null) {
-		$tr = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
-		if (!is_array($tr)) {
-			$tr = array();
-		}
-	}
-	return $tr;
+	return pg_test_language_map();
 }
 
 // The pages of a template by key.

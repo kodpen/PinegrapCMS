@@ -61,7 +61,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
-- lang-files.md: Language files as sorted shards (includes/local/<code>/a.json … _.json), lang()'s folder-or-file read, tools/tr_add.php to add keys, tools/tr_resolve.php to settle conflicts, check_lang.php on shards
+- lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
@@ -88,7 +88,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
-- translation-rules.md: Every visible string uses lang() (designer JS: _sdT()), English source as tr.json key; tr.json: exact keys, placeholders, append only, duplicates, atomic writes, misleading keys, check_lang.php
+- translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
 - two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

@@ -20,6 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 if (!defined('PG_API_PANEL')) {
 	define('PG_API_PANEL', true);
 }
@@ -240,16 +242,16 @@ function test_ws_channel_icon_api_routes_take_color_and_icon()
 }
 
 // The picker's names go through lang(), one literal English key per icon that
-// tr.json translates; the list is no longer read in one language or the other.
+// the Turkish language file translates; the list is no longer read in one language or the other.
 function test_ws_channel_icon_names_are_translated()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_icons.php');
-	$translations = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+	$translations = pg_test_language_map();
 
 	pg_assert_same(count(ws_channel_icon_list()), preg_match_all("/array\\('bi-[a-z0-9-]+', '[^']*', '[^']*', lang\\('([^']+)'\\)\\),/", $source, $found));
 
 	foreach ($found[1] as $english) {
-		pg_assert_true(isset($translations[$english]), $english . ' is in tr.json');
+		pg_assert_true(isset($translations[$english]), $english . ' has a Turkish text');
 	}
 
 	pg_assert_true(strpos($source, "lang(array('info' => true))") === false, 'no language test in the picker list');

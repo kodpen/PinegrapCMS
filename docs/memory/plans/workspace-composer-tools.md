@@ -14,7 +14,7 @@ description: Plan (2026-10-23, 1 done #1554, answers open): one toolbar for all 
 ## What is proposed? (not approved yet)
 - New tools go into `PGWsEditor.toolbar()` as item names and into `format()` / `applyMark()`. Vanilla JS, then `php tools/build_js.php`.
 - New syntax: drawn by `ws_render_body()` (and its fast-path regex) alone, twin in `inlineNodes()`/`parseBlocks()`/`serializeNode()`, readable in `ws_plain_text()` (push, e-mail, API `text`) and `ws_guest_render()`, styled in `workspace_guest.css` and the print page too; API `body`, MCP, search, Markdown export stay raw. Test `tests/workspace_render_test.php` (proposed), red first.
-- Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys in `includes/local/tr.json`.
+- Labels: `lang()` in `ws_editor_js_strings()` (screen.php, sent in `#ws-config`), `t()` in JS, keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
 - Saved replies live here, not in the CRM seams plan (proposed).
 
 ## Slices

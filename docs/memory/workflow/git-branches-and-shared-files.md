@@ -17,8 +17,8 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Where they come from and who removes them: pr-footer-and-trailers.md.
 
 ## How do I edit shared files?
-- Shared files: `includes/local/tr.json`, the open version's migration file, `init.php`. `pinegrap/changelog.txt` is not edited by a PR: its body names the `[NEW]` line or the `[SCHEME]` area and the merging session writes it (`working-mode.md`).
-- `tr.json`: add keys only with `php tools/tr_add.php "English" "Türkçe"`, never by hand; a conflict in it is settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
+- Shared files: the open version's migration file, `init.php`. `pinegrap/changelog.txt` is not edited by a PR: its body names the `[NEW]` line or the `[SCHEME]` area and the merging session writes it (`working-mode.md`).
+- The Turkish wording is no shared file any more: the shards in `includes/local/tr/` (`a.json` … `z.json`, `0.json`, `_.json`) are sorted by key, so branches adding different keys merge without a conflict. Add keys only with `php tools/tr_add.php "English" "Türkçe"`, never by hand; a conflict in a shard is settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
 - Migration file and `init.php`: append only, in your own section; never rewrite the whole file.
 - Merge `origin/development` once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`working-mode.md`).
 - `docs/memory/README.md` and the folder READMEs are generated: never edit or merge a file list by hand; run `php tools/memory_index.php` after the merge. Only a folder README's key-rules block is hand-written; a conflict inside it is merged by hand (`memory-index-key-rules.md`).
