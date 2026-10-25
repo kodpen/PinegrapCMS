@@ -11,9 +11,9 @@
  * news it gives, how it writes a record, its card - the buttons, the rest it
  * draws, where it is drawn -, the list, the panel routes, the ways into its
  * form, Pinegrap AI's drafts, the links to it, the inbox kinds the API
- * shows) is listed in the parity table below
- * with the merge slice and the box that keeps it, or 'form' with the reason
- * it stays in the form. The keys are read from the code - by calling the
+ * shows) is listed in the parity table below with the slice of the move and
+ * the box that keeps it, or 'form' with the reason it stays in the form.
+ * The keys are read from the code - by calling the
  * functions that run without a database, and from their source where a
  * table probe or a constant hides some (tests/helpers/source_reader.php) -
  * so a key added to the code and not to the table fails here, and so does a
@@ -22,7 +22,7 @@
  * read (an entry written another way, a new condition), rather than miss
  * what it adds.
  *
- * The slices are those of the merge plan: 1 one screen, 2 show on canvas,
+ * The slices number the stages of the move: 1 one screen, 2 show on canvas,
  * 3 parity boxes, 4 new rules on the canvas, 5 convert to flow.
  *
  * @author      Erdal Güral (Kodpen)
@@ -2238,9 +2238,9 @@ function workspace_flows_parity_prefixed($prefix, $words)
 }
 
 /**
- * The groups of keys: the row of the parity plan each belongs to, the slices
- * that row names (a key may also stay in the form), the function that reads
- * the keys from the code, and where it reads them.
+ * The groups of keys: the row each belongs to (Action, When, Conditions,
+ * Steps...), the slices that row allows (a key may also stay in the form),
+ * the function that reads the keys from the code, and where it reads them.
  *
  * @return array group => [row, slices, reader, where]
  */
@@ -2293,14 +2293,16 @@ function workspace_flows_parity_groups()
 
 /**
  * The parity table: per group, lines of [keys, slice, what keeps it]. The
- * slice is the merge slice that keeps the keys (1 one screen, 2 show on
+ * slice is the stage of the move that keeps the keys (1 one screen, 2 show on
  * canvas, 3 parity boxes, 4 new rules, 5 convert); what keeps them is the
  * box, or the part of the screen, that does. 'form' instead of a slice keeps
  * a key in the scheduled action's form, and its text says why.
  *
- * "The anchor" is the hidden ws_scheduled_actions row of a flow's trigger
- * box (plans/workspace-flows-engine.md); "steps.php" the shared steps the
- * engine plan proposes, which ws_scheduled_do() delegates to.
+ * "The anchor" is the hidden ws_scheduled_actions row behind a flow's
+ * trigger box; "steps.php" is the step code to be shared by flows and
+ * scheduled actions, which ws_scheduled_do() is to hand its steps to (not
+ * written yet); "the flows' own" boxes are those of the flow engine, not
+ * of scheduled actions.
  *
  * @return array group => array of [keys, slice, keeper]
  */
@@ -2419,7 +2421,7 @@ function workspace_flows_parity_table()
 			array(array('report'), 3, 'report box (steps.php)'),
 			array(array('trigger'), 3, 'start box: another action or a flow (steps.php)'),
 			array(array('change'), 3, 'change box (steps.php)'),
-			array(array('approval'), 3, 'approval box (F5)'),
+			array(array('approval'), 3, 'approval box, the flows\' own'),
 			array(array('checkin'), 3, 'check-in box (steps.php)'),
 		),
 		'step_options' => array(
@@ -2437,7 +2439,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('report', 'title metrics channel_id to'), 3, 'report box: title, counts, channel and addresses'),
 			array(workspace_flows_parity_prefixed('report.metrics', 'key param'), 3, 'report box: each count by its key, with its channel or threshold'),
 			array(array('trigger.target_id'), 3, 'start box: the action or flow started; itself again is a retry'),
-			array(array('trigger.delay'), 3, 'delay box (F5): minutes before the start'),
+			array(array('trigger.delay'), 3, 'delay box, the flows\' own: minutes before the start'),
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),
 			array(workspace_flows_parity_prefixed('checkin', 'channel_id question'), 3, 'check-in box: channel, question'),
@@ -2499,7 +2501,7 @@ function workspace_flows_parity_table()
 			array(array('step webhook first 4000'), 3, 'webhook box: text 4000 characters'),
 			array(array('step web_check min 365', 'step web_check first 200', 'step web_check min 60000'), 3, 'web check box: at most 365 days left asked for, a text of 200 characters, 60000 ms'),
 			array(array('step report first 160', 'step report first 20'), 3, 'report box: title 160 characters, at most 20 counts'),
-			array(array('step trigger min 10080'), 3, 'delay box (F5): at most 10080 minutes (a week)'),
+			array(array('step trigger min 10080'), 3, 'delay box, the flows\' own: at most 10080 minutes (a week)'),
 			array(array('ws_scheduled_people() first 50'), 3, 'notify, task and task e-mail boxes: at most 50 people'),
 			array(array('ws_scheduled_url_input() length > 2000'), 3, 'webhook and web check boxes: an address of at most 2000 characters'),
 		),
@@ -2605,10 +2607,10 @@ function workspace_flows_parity_table()
 			array(array('item.channel ? { channel_id: item.channel.id } : {} in scheduledCard()'), 1, 'Duplicate on the card'),
 		),
 		'ai_drafts' => array(
-			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas (F8); until then Pinegrap AI drafts into the form, opened by @ai draft Open'),
-			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas (F8): Pinegrap AI\'s drafts kept under its answer'),
-			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas (F8): a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
-			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas (F8): a draft is saved where it is opened, never applied as a change'),
+			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas; until then Pinegrap AI drafts into the form, opened by @ai draft Open'),
+			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas: Pinegrap AI\'s drafts kept under its answer'),
+			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas: a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
+			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
 			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, '@ai draft Open: the action saved from the form marks the draft\'s card applied'),
 		),
 		'links_in' => array(
@@ -2692,7 +2694,7 @@ function test_workspace_flows_parity_every_key_is_mapped()
 		pg_assert_same(array(), array_values(array_unique(array_diff_assoc($keys, array_unique($keys)))), $row[0] . ' (' . $group . '): ' . $row[3] . ' gives each key once');
 
 		pg_assert_same(array(), array_values(array_diff($keys, $mapped)),
-			$row[0] . ' (' . $group . '): keys in ' . $row[3] . ' that workspace_flows_parity_table() does not map; give each the merge slice and box that keep it, or \'form\' and why');
+			$row[0] . ' (' . $group . '): keys in ' . $row[3] . ' that workspace_flows_parity_table() does not map; give each the slice and box that keep it, or \'form\' and why');
 
 		pg_assert_same(array(), array_values(array_diff($mapped, $keys)),
 			$row[0] . ' (' . $group . '): keys of workspace_flows_parity_table() no longer in ' . $row[3] . '; take them out, or move them where the code has them now');
