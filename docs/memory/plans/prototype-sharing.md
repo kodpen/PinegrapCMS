@@ -1,6 +1,6 @@
 ---
 name: prototype-sharing
-description: Plan (2026-10-24; slice 2 #1579, slice 3 built, slice 4 #1578; all eight answered): a design's drafts play as a clickable prototype shared by a view-only link; flows with the team, a link later
+description: Plan (2026-10-24; slice 2 #1579, slice 3 #1595, slice 4 #1578; all eight answered): a design's drafts play as a clickable prototype shared by a view-only link; flows with the team, a link later
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -21,7 +21,7 @@ description: Plan (2026-10-24; slice 2 #1579, slice 3 built, slice 4 #1578; all 
 ## Slices (one PR each)
 1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
 2. PR #1579: prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver.
-3. Built: share links (schema 11.0.35): dialog, list, revoke, password, WAF offence; a link-signed frame beside the person's.
+3. PR #1595: share links (schema 11.0.35): dialog, list, revoke, password, WAF offence; a link-signed frame beside the person's.
 4. PR #1578: F7 flow shares (schema 11.0.83).
 5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
