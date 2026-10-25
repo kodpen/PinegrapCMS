@@ -1786,6 +1786,13 @@
                     items.push({ icon: 'bi-check2-square', label: t('new_task_about'), action: function () {
                         taskDrawer.open(0, { refs: [{ type: type, id: id, label: label, icon: (BOOT.ref_types[type] || {}).icon, token: '<#' + type + ':' + id + '>' }], title: label }, null);
                     } });
+
+                    // A sales quote opens the quote editor filled from it,
+                    // as its own screen's Copy does; the address is given
+                    // only to those who may write ERP documents.
+                    if ((type === 'erp_quote') && chip.href && CFG.urls.erp_quote_copy) {
+                        items.push({ icon: 'bi-files', label: t('erp_quote_copy'), action: function () { window.location.href = CFG.urls.erp_quote_copy + '?copy=' + id; } });
+                    }
                 }
 
                 items.push('-');
@@ -9701,7 +9708,11 @@
             // opened in their form and saved there, not applied.
             var drafts = message.changes.every(function (change) { return change.action === 'draft'; });
 
-            box.appendChild(el('div', 'ws-drafts-title', t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
+            // Changes an application proposed (proposals.php) are headed by
+            // its name.
+            var proposer = message.changes[0].proposer || '';
+
+            box.appendChild(el('div', 'ws-drafts-title', proposer ? t('proposal_changes', proposer) : t(agent ? 'mcp_agent_changes' : (drafts ? 'ai_scheduled' : ((message.sender && message.sender.ai) ? 'ai_changes' : 'claude_changes')))));
 
             message.changes.forEach(function (change) {
                 var card = el('div', 'ws-draft ws-change ws-change-' + change.status + ' ws-change-do-' + change.action);
@@ -9901,7 +9912,7 @@
                 if (change.status === 'pending' && change.draft) {
                     // The one who asked has the form to open: nothing to wait for.
                 } else if (change.status === 'pending' && !change.can_apply) {
-                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker))));
+                    card.appendChild(el('div', 'ws-draft-done', change.blocked || (change.no_right ? t('change_no_right') : (change.proposer ? t('proposal_change_waiting', change.asker, change.proposer) : t(change.action === 'draft' ? 'sa_draft_waiting' : 'change_waiting', change.asker)))));
                 } else if (change.status === 'pending' && change.account) {
                     var account = el('div', 'ws-draft-done', t('mcp_account', change.account.alias) + ' ');
                     var off = el('a', '', t('mcp_disconnect_me'));
@@ -9941,7 +9952,7 @@
                 } else if (change.status === 'dismissed') {
                     card.appendChild(el('div', 'ws-draft-done', t('change_dismissed', change.decided_by)));
                 } else if (change.status === 'stale') {
-                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', t((message.sender && message.sender.ai) ? 'ai_change_stale' : 'change_stale')));
+                    card.appendChild(el('div', 'ws-draft-done text-warning-emphasis', change.proposer ? t('proposal_change_stale', change.proposer) : t((message.sender && message.sender.ai) ? 'ai_change_stale' : 'change_stale')));
                 } else if (change.status === 'failed') {
                     card.appendChild(el('div', 'ws-draft-done text-danger-emphasis', t('change_failed', change.error)));
                 }
@@ -19063,7 +19074,7 @@
             if (item.claude) {
                 var proposal = el('span', 'ws-tl-ai');
                 proposal.appendChild(icon('bi-stars'));
-                proposal.appendChild(document.createTextNode(t(item.claude.agent === 'ai' ? 'tl_ai' : 'tl_claude') + ' · ' + item.claude.type_label));
+                proposal.appendChild(document.createTextNode((item.claude.proposer ? t('tl_proposal', item.claude.proposer) : t(item.claude.agent === 'ai' ? 'tl_ai' : 'tl_claude')) + ' · ' + item.claude.type_label));
                 head.appendChild(proposal);
             }
 
