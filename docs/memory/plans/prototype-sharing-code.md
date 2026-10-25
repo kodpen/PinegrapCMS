@@ -29,6 +29,6 @@ description: What the code holds for plans/prototype-sharing.md: drafts and thei
 - A new API route is an MCP tool unless `'mcp' => false` (`pg_mcp_route_is_offered()`). Flow publish has it and `ws_api_own_words_only()` (workspace/workspace-flows-store.md).
 
 ## Flows, notes, designer review?
-- `ws_flow_access()`: edit for the owner while staff (`ws_can_schedule()`, role < 3), run for readers of a live flow's public or private home channel; runs use the owner's rights (plans/workspace-flows.md). No shares.
+- `ws_flow_access()`: edit for the owner while staff, run for readers of a live flow's public or private home; person/channel shares add theirs (#1578, workspace/workspace-flows-shares.md); runs use the owner's rights.
 - `ws_note_shares`: person or channel, no link; a channel share is view only, `can_edit` only for one person.
 - Designer review: view mode and node notes (`props._notes`, `designer/note_save`; designer/designer-collab-view-mode.md).
