@@ -30,5 +30,5 @@ description: Favourites core (includes/fn/wishlist.php, wishlist.php): owner mod
 ## Personal data?
 - Privacy export section `wishlist` (after `watchers`): id, user_id, product_id, SKU, name, added_at, by account. A guest list names nobody until merged.
 
-## What else?
-- Catalog hearts: `wishlist-heart.md`. Favourites page: plan `storefront-conversion-pack.md` 3c. Tests: `tests/wishlist_test.php`.
+## What uses it?
+- Catalog hearts (`wishlist-heart.md`), the Favourites page widget (`designer/wishlist-widget.md`). Tests: `tests/wishlist_test.php`.

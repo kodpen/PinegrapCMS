@@ -28,6 +28,7 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 - `remove_from_cart`: shopping_cart + EO loop, tag-agnostic per-row removal (a -> href, button -> `data-pg-remove-href` + JS).
 - `apply_coupon` (shopping_cart button); `coupon_form` (shopping_cart form: action/method + CSRF).
 - `open_filters` / `clear_filters` / `submit_search` (catalog_listing): filter offcanvas, clear, search.
+- `wishlist_remove` / `wishlist_add_to_cart` (wishlist loop button): a submit button for a hidden form printed after the widget (`wishlist-widget.md`).
 
 ## What happens to the URL field when href is bound?
 - Hidden via `_sdHrefIsBound()` + `_sdBoundHrefNotice()` (style_designer.js) in four panels: Link Options, Button Options, semantic `<a>`, generic component href row. Reason: server rewrites href at render, so a typed URL did nothing ("visible but non-functional" is forbidden).

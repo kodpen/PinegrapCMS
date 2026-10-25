@@ -10903,6 +10903,7 @@ const StyleDesigner = (function () {
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
                     account_email:        _sdT('Account E-mail'),
+                    wishlist:             _sdT('Favourites'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -12747,6 +12748,10 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        // Favourites: the day a product was saved.
+        '__added_date': _sdDateSample(false),
+        // The badge a product out of stock carries (catalog cards, Favourites).
+        '__out_of_stock_label': _sdT('Out of stock'),
         '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
@@ -12980,7 +12985,8 @@ const StyleDesigner = (function () {
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
-        '__rating_avg': '4.6', '__rating_count': '12'
+        '__rating_avg': '4.6', '__rating_count': '12',
+        '__wishlist_count': '3'
     };
 
     // Boolean / flag-shaped tokens — empty string (collapses :empty styles).
@@ -13153,7 +13159,7 @@ const StyleDesigner = (function () {
         return 'data:image/svg+xml,' + encodeURIComponent(svg);
     }
 
-    var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1 };
+    var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1, wishlist: 1 };
 
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
@@ -30392,6 +30398,7 @@ const StyleDesigner = (function () {
             var _isAccountInvoices = (_regionType === 'account_invoices');
             var _isAccountEmail    = (_regionType === 'account_email');
             var _isComments        = (_regionType === 'comments');
+            var _isWishlist        = (_regionType === 'wishlist');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -30437,6 +30444,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isWishlist) {
+                _sourceInfoHtml = _sdT('The products the visitor saved with the hearts of the catalog, newest first: the signed-in customer\'s list, or the one a visitor who is not signed in keeps in this browser, which moves to the account at sign-in. Bind a button in the repeated card to <strong>Add to Cart</strong> or <strong>Remove from Favourites</strong>.');
             } else if (_isAccountEmail) {
                 _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
@@ -31453,6 +31462,30 @@ const StyleDesigner = (function () {
                     row(_sdT('Documents to list'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="max_results" data-sw-cfg-kind="int" min="1" max="500" value="' + _aiMax + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The newest documents first. The statement covers the whole year whatever the list shows.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── wishlist settings ─────────────────────────────────────────────
+            if (_isWishlist) {
+                var _wlMax = parseInt(_cfg.max_results, 10) > 0 ? parseInt(_cfg.max_results, 10) : 100;
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                systemSection += sect('bi-heart', _sdT('Favourites Settings'),
+                    row(_sdT('Products to list'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="max_results" data-sw-cfg-kind="int" min="1" max="500" value="' + _wlMax + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The products saved last come first.')) + '</div>'
+                    ) +
+                    row(_sdT('Sign-in page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Automatic —') }) +
+                        '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Linked for a visitor who is not signed in; after signing in they come back here.') + ' ' + _swLinkHint('wishlist', '__login_url')) + '</div>'
+                    ) +
+                    row(_sdT('Shop page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg.shop_page_id, _allPagesCache, { types: ['catalog_listing'], none: _sdT('— Automatic —') }) +
+                        '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: a page with a catalog widget, else the legacy catalog page.') + ' ' + _swLinkHint('wishlist', '__shop_url')) + '</div>'
                     )
                 );
             }
@@ -34896,6 +34929,7 @@ const StyleDesigner = (function () {
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
             ['__change_password_url',   _sdT('Change password page (the link drops when there is none)')],
             ['__address_book_url',      _sdT('Address book page (shop sites; the link drops when there is none)')],
+            ['__my_account_wishlist_url', _sdT('Favourites page (shop sites; the link drops when there is none)')],
             ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
             ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')]
         ]},
@@ -35384,6 +35418,33 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // wishlist (Favourites) token palette — has loop_area (one row per saved
+    // product), with the catalog cards' names. Mirrors
+    // _render_system_widget_wishlist() in widgets_wishlist.php.
+    var SW_WISHLIST_TOKEN_GROUPS = [
+        { label: _sdT('Favourites'), tokens: [
+            ['__wishlist_count',           _sdT('Number of saved products listed')]
+        ]},
+        { label: _sdT('Saved Product (loop_area)'), tokens: [
+            ['__id',                       _sdT('Product ID')],
+            ['__name',                     _sdT('Product name')],
+            ['__short_description',        _sdT('Short description')],
+            ['__price',                    _sdT('Price (number)')],
+            ['__price_formatted',          _sdT('Price (with symbol)')],
+            ['__original_price_formatted', _sdT('Original price (with symbol, to be struck through)')],
+            ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')],
+            ['__image_url',                _sdT('Image URL')],
+            ['__image_alt',                _sdT('Image alt text')],
+            ['__out_of_stock_label',       _sdT('Out of stock label')],
+            ['__added_date',               _sdT('Date saved')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__detail_url',               _sdT('Detail URL')],
+            ['__login_url',                _sdT('Sign-in page address (back to this page afterwards)')],
+            ['__shop_url',                 _sdT('Shop page address (the link drops when there is none)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -35396,7 +35457,8 @@ const StyleDesigner = (function () {
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
         account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
-        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS,
+        wishlist:          SW_WISHLIST_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -36323,6 +36385,15 @@ const StyleDesigner = (function () {
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
         ],
+        wishlist: [
+            ['has_items',         _sdT('Products are saved')],
+            ['no_items',          _sdT('Nothing is saved yet')],
+            ['is_signed_in',      _sdT('The visitor is signed in')],
+            ['is_signed_out',     _sdT('The visitor is signed out (the list is kept in this browser)')],
+            ['item_in_stock',     _sdT('Row: can go to the cart')],
+            ['item_out_of_stock', _sdT('Row: out of stock')],
+            ['item_has_discount', _sdT('Row: an offer lowers the price')]
+        ],
         cart_link: [
             ['cart_has_items',   _sdT('The cart has something in it')],
             ['cart_is_empty',    _sdT('The cart is empty')]
@@ -36488,6 +36559,13 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_codes_seen',          _sdT('Recovery codes saved')]);
                 aOpts.push(['mfa_recovery_regenerate', _sdT('New recovery codes')]);
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
+            }
+            // Only a button can post a list action's form; a link bound to
+            // one is dropped on the page (_pg_wishlist_wire_actions()), so a
+            // link that already carries one still lists it to be cleared.
+            if (region === 'wishlist' && (isRealButton || cur.action === 'wishlist_add_to_cart' || cur.action === 'wishlist_remove')) {
+                aOpts.push(['wishlist_add_to_cart', _sdT('Add to Cart — per saved product (loop_area)')]);
+                aOpts.push(['wishlist_remove',      _sdT('Remove from Favourites (loop_area)')]);
             }
             out += mkSelect('data-bind-action', cur.action || '', aOpts, _sdT('Action'),
                 _sdT('The backend wires up the submit or anchor behaviour and ignores conflicting values such as href.'));
@@ -48322,6 +48400,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'wishlist',          label: _sdT('Favourites'),        slug: _sdT('favourites'),        icon: 'bi-heart' },
         { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
@@ -48466,6 +48545,8 @@ const StyleDesigner = (function () {
             if (newType === 'address_book' && cfg.address_type === undefined) cfg.address_type = false;
         } else if (newType === 'account_invoices') {
             if (cfg.max_results === undefined) cfg.max_results = 50;
+        } else if (newType === 'wishlist') {
+            if (cfg.max_results === undefined) cfg.max_results = 100;
         } else if (newType === 'search_results') {
             if (cfg.search_scope === undefined) cfg.search_scope = 'all';
             if (cfg.results_per_page === undefined) cfg.results_per_page = 20;
@@ -50885,6 +50966,8 @@ const StyleDesigner = (function () {
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__change_password_url' } }),
                             createNode('content', { contentType: 'link', text: _sdT('Address book'), href: '#',
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__address_book_url' } }),
+                            createNode('content', { contentType: 'link', text: _sdT('Favourites'), href: '#',
+                                cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__my_account_wishlist_url' } }),
                             createNode('content', { contentType: 'link', text: _sdT('Log out'), href: '#',
                                 cssClass: 'list-group-item list-group-item-action', _bindings: { href: '__logout_url' } })
                         ]),
@@ -52810,6 +52893,66 @@ const StyleDesigner = (function () {
                     createNode('semantic', { tag: 'div', cssClass: 'list-group', customName: _sdT('Documents'),
                         _bindings: { eo_visible_if: 'has_documents' } }, [aiLoop])
                 ], true);
+            }
+
+            case 'wishlist': {
+                // The visitor's saved products, one card each in the loop
+                // row: the picture, the name, the price, Add to Cart and
+                // Remove. The two buttons are bound to the list's actions;
+                // the server makes each post a hidden form printed after the
+                // widget, and leaves Add to Cart out for a product out of
+                // stock. The empty state links to the shop; the note asks a
+                // visitor who is not signed in to sign in, since their list
+                // is kept in this browser only. Mirrors
+                // _render_system_widget_wishlist().
+                var wlLoop = createNode('loop_area', {}, [
+                    createNode('col', { xs: '12', sm: '6', md: '4', lg: '3', xl: '', xxl: '',
+                                       offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'card h-100', customName: _sdT('Product Card') }, [
+                            createNode('content', { contentType: 'image', src: '', alt: '', fluid: true, rounded: false,
+                                cssClass: 'card-img-top', _bindings: { src: '__image_url', alt: '__short_description' } }),
+                            createNode('semantic', { tag: 'div', cssClass: 'card-body d-flex flex-column', customName: _sdT('Card Body') }, [
+                                createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Product name'), cssClass: 'card-title',
+                                    _bindings: { text: '__short_description' } }),
+                                createNode('content', { contentType: 'paragraph', text: _sdMoney(0), cssClass: 'fw-bold mb-2',
+                                    _bindings: { text: '__price_formatted' } }),
+                                createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-secondary align-self-start mb-2', text: _sdT('Out of stock'),
+                                    customName: _sdT('Out of Stock Badge'), _bindings: { text: '__out_of_stock_label', eo_visible_if: 'item_out_of_stock' } }),
+                                createNode('content', { contentType: 'link', text: _sdT('View'), href: '#', cssClass: 'small mb-3',
+                                    _bindings: { href: '__detail_url' } }),
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 mt-auto', customName: _sdT('Action buttons') }, [
+                                    createNode('component', { componentType: 'btn', btnElement: 'button', btnType: 'submit',
+                                        variant: 'primary', size: 'sm', text: _sdT('Add to Cart'),
+                                        _bindings: { action: 'wishlist_add_to_cart' } }),
+                                    createNode('component', { componentType: 'btn', btnElement: 'button', btnType: 'submit',
+                                        variant: 'secondary', outline: true, size: 'sm', text: _sdT('Remove'),
+                                        _bindings: { action: 'wishlist_remove' } })
+                                ])
+                            ])
+                        ])
+                    ])
+                ]);
+                return createNode('root', {}, [
+                    createNode('container', { fluid: false, cssClass: 'py-4' }, [
+                        createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Favourites'), cssClass: 'h3 mb-4' }),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center justify-content-between gap-2 border rounded p-3 mb-4',
+                            customName: _sdT('Signed-out Note'), _bindings: { eo_visible_if: 'is_signed_out' } }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Sign in to keep your list on every device.'), cssClass: 'mb-0' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Log In'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
+                                _bindings: { href: '__login_url' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'text-center py-5', customName: _sdT('Empty State'),
+                            _bindings: { eo_visible_if: 'no_items' } }, [
+                            createNode('content', { contentType: 'paragraph', text: _sdT('You have not saved any products yet.'), cssClass: 'text-muted mb-3' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Visit the shop'), href: '#', cssClass: 'btn btn-primary',
+                                _bindings: { href: '__shop_url' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Saved Products'),
+                            _bindings: { eo_visible_if: 'has_items' } }, [
+                            createNode('row', { gutter: '4', justify: '', align: '', cssClass: '' }, [wlLoop])
+                        ])
+                    ])
+                ]);
             }
 
             case 'calendar_event_view': {

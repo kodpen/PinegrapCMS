@@ -1,6 +1,6 @@
 ---
 name: fn-module-map-additions
-description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, comments, widgets_comments, wishlist, link_resolve and others) and the memory file that describes each.
+description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, widgets_comments, wishlist, link_resolve, widgets_wishlist and others) and the memory file that describes each.
 ---
 
 ## Which `includes/fn/` modules were added in 2026.4.8?
@@ -14,6 +14,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, c
 - `widgets_comments`: the comments system widget, its hand-off with the classic comments block, its add-comment form, replies, watch and staff forms and pages ([[comments-widget]], [[comments-widget-form]], [[comments-widget-replies]], [[comments-widget-watch-staff]], [[comments-widget-pages]]).
 - `wishlist`: a visitor's or an account's favourites, the visitor cookie, the merge at sign-in, the toggle and state endpoint (`wishlist.php`): [[wishlist]].
 - `link_resolve` (what an href leads to, pure, with the SEO name maps) and `prototype` (loaded by prototype.php only): [[designer-prototype-viewer]].
+- `widgets_wishlist`: the Favourites system widget, the visitor's saved products with add to cart and remove: [[wishlist-widget]].
 
 ## Where does a module added later go?
 - Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].
