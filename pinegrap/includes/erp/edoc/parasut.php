@@ -1106,6 +1106,77 @@ function erp_edoc_parasut_kept_ids($invoice, $product_cards)
 }
 
 /**
+ * What the send does about the sales invoice the order screen's legacy
+ * Create Invoice wrote at Paraşüt for the same order (orders.parasut_invoice_id),
+ * typically before the store switched the ERP's Paraşüt provider on. Sending
+ * the ERP's invoice beside it would put the sale into Paraşüt twice: two
+ * sales invoices, two e-documents at GİB, the receivable doubled.
+ *
+ * The unsure mark of a create that got no answer
+ * (parasut_order_invoice_unsure()) is no record to read: Paraşüt may hold
+ * the invoice, so the send refuses before any request. A record id is read
+ * and judged as the order screen's buttons judge it
+ * (parasut_stored_record_state()): one Paraşüt holds refuses, naming it
+ * and where its e-document is issued if it never went through (the legacy
+ * create kept the id of such a record as well); only a 404 naming it as
+ * not found ("Record was not found", SalesInvoice-<id>) is gone, its id
+ * for the caller to clear; any other answer (no connection, no token, the
+ * 401 of a company number the token cannot reach, a 404 with no route)
+ * refuses with Paraşüt's words.
+ *
+ * @param string   $value  orders.parasut_invoice_id
+ * @param callable $get    function (string $path): the erp_edoc_parasut_request()
+ *                         answer of GET $path under the company prefix
+ * @return array ['state' => 'none' | 'unsure' | 'kept' | 'gone' | 'unknown',
+ *                'id' => string (the record read), 'refusal' => string ('' unless the
+ *                send stops), 'notice' => string ('' unless gone)]
+ */
+function erp_edoc_parasut_legacy_invoice_check($value, $get)
+{
+    $value = trim((string) $value);
+    $check = array('state' => 'none', 'id' => '', 'refusal' => '', 'notice' => '');
+
+    if ($value === '') {
+        return $check;
+    }
+
+    if (parasut_order_invoice_unsure($value)) {
+        $check['state'] = 'unsure';
+        $check['refusal'] = lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice: look for the record on Paraşüt\'s screen; if it is there, keep this invoice as a PDF document.');
+
+        return $check;
+    }
+
+    $check['id'] = $value;
+    $read = (array) call_user_func($get, '/sales_invoices/' . rawurlencode($value));
+
+    // No connection or no token says nothing about the record, whatever
+    // code came with it.
+    $transport = (trim((string) ($read['error'] ?? '')) !== '') || (trim((string) ($read['login_error'] ?? '')) !== '');
+    $check['state'] = $transport ? 'unknown' : parasut_stored_record_state($read, 'sales_invoices');
+
+    if ($check['state'] === 'kept') {
+        $check['refusal'] = lang(array(
+            'string' => 'This order was already invoiced at Paraşüt from the order screen (sales invoice ID: {var:1}), so this invoice was not sent there: the same sale would be invoiced twice. Keep this invoice as a PDF document; if that record\'s e-document did not go through, issue it from that invoice in Paraşüt. Or delete that record on Paraşüt\'s screen first and send again.',
+            'vars' => array($value),
+        ));
+    } elseif ($check['state'] === 'gone') {
+        $check['notice'] = lang(array(
+            'string' => 'The sales invoice the order screen created at Paraşüt for this order (ID: {var:1}) is no longer there: its id was removed from the order.',
+            'vars' => array($value),
+        ));
+    } else {
+        $check['state'] = 'unknown';
+        $check['refusal'] = lang(array(
+            'string' => 'This order has a sales invoice at Paraşüt from the order screen (ID: {var:1}), and Paraşüt could not be asked whether it is still there: {var:2}. This invoice was not sent; try again in a minute.',
+            'vars' => array($value, parasut_refusal_words(erp_edoc_parasut_error_text($read))),
+        ));
+    }
+
+    return $check;
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
@@ -1649,6 +1720,11 @@ function erp_edoc_parasut_find_written($payload, $contact_id, $context, $skip_id
  * and that Paraşüt answers it no longer holds is forgotten and the invoice
  * sent once more (parasut_send_once_more()); 'message' says so.
  *
+ * An order the order screen's Create Invoice already invoiced at Paraşüt
+ * is refused first, before the invoice's own checks and any write there
+ * (erp_edoc_parasut_legacy_invoice_check()); the id of such a record
+ * deleted at Paraşüt since is cleared, and the refusal or 'message' says so.
+ *
  * @param array $options  'party' (erp_edoc_invoice_party() output) when the caller has it
  * @return array ['success' => bool, 'external_id' => string, 'gib_uuid' => string,
  *                'gib_number' => string, 'status' => 'created', 'error' => string,
@@ -1676,10 +1752,66 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail(lang('The invoice has no lines.'));
     }
 
-    // Refused before anything reaches Paraşüt, so that the buyer's card is
-    // not opened there for an invoice that cannot follow: a rate it does
-    // not take, a line below zero, a total its VAT cannot come to, a line
-    // with no product to go on.
+    $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);
+
+    // The order's number and day (orders.order_date is a UNIX timestamp; the
+    // document wants the day), the shipment document the order screen's
+    // E-Shipment wrote for it (erp_edoc_parasut_order_shipment_id()) and the
+    // sales invoice its Create Invoice wrote (orders.parasut_invoice_id).
+    if (((int) ($invoice['order_id'] ?? 0) > 0)
+        && (!isset($invoice['order_date']) || !isset($invoice['order_number']) || !isset($invoice['order_shipment_id']) || !isset($invoice['order_parasut_invoice_id']))) {
+        $order = db_item("SELECT order_number, order_date, parasut_shipment_id, parasut_invoice_id FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+
+        if (!isset($invoice['order_parasut_invoice_id'])) {
+            $invoice['order_parasut_invoice_id'] = is_array($order) ? trim((string) $order['parasut_invoice_id']) : '';
+        }
+
+        if (!isset($invoice['order_number'])) {
+            $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
+        }
+
+        if (!isset($invoice['order_date'])) {
+            $stamp = is_array($order) ? (int) $order['order_date'] : 0;
+            $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+        }
+
+        if (!isset($invoice['order_shipment_id'])) {
+            $invoice['order_shipment_id'] = is_array($order) ? trim((string) $order['parasut_shipment_id']) : '';
+        }
+    }
+
+    // An order the order screen's Create Invoice already invoiced at Paraşüt
+    // is not invoiced there a second time. Asked before the invoice's own
+    // checks, so the operator is not first sent to fix a line or the account
+    // card of an invoice that cannot go anyway, and before the buyer's card
+    // is looked for or opened, so a refused send writes nothing at Paraşüt.
+    // A record deleted there since is no invoice of the sale: its id is
+    // cleared, only while the order still holds it, and every outcome of
+    // the send says so.
+    $legacy_notice = '';
+
+    if ((int) ($invoice['order_id'] ?? 0) > 0) {
+        $legacy = erp_edoc_parasut_legacy_invoice_check((string) ($invoice['order_parasut_invoice_id'] ?? ''), function ($path) use ($context) {
+            return erp_edoc_parasut_request('GET', $path, null, $context);
+        });
+
+        if ($legacy['refusal'] !== '') {
+            return $fail($legacy['refusal']);
+        }
+
+        if ($legacy['state'] === 'gone') {
+            _parasut_order_forget_record((int) $invoice['order_id'], 'parasut_invoice_id', $legacy['id']);
+            $legacy_notice = $legacy['notice'];
+            $fail = function ($error) use ($fail, $legacy_notice) {
+                return $fail($legacy_notice . ' ' . $error);
+            };
+        }
+    }
+
+    // Refused before anything is written at Paraşüt, so that the buyer's
+    // card is not opened there for an invoice that cannot follow: a rate it
+    // does not take, a line below zero, a total its VAT cannot come to, a
+    // line with no product to go on.
     $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
 
     if ($rate_refusal !== '') {
@@ -1704,7 +1836,6 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail($product_refusal);
     }
 
-    $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);
     $party = (isset($options['party']) && is_array($options['party'])) ? $options['party'] : erp_edoc_invoice_party($invoice);
     $tax_number = preg_replace('/\D/', '', (string) ($party['tax_number'] ?? ''));
     $is_person = !empty($party['is_person']) || (strlen($tax_number) === 11);
@@ -1737,27 +1868,6 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     if ($contact['error'] !== '') {
         return $fail($contact['error']);
-    }
-
-    // The order's number and day (orders.order_date is a UNIX timestamp; the
-    // document wants the day), and the shipment document the order screen's
-    // E-Shipment wrote for it (erp_edoc_parasut_order_shipment_id()).
-    if (((int) ($invoice['order_id'] ?? 0) > 0)
-        && (!isset($invoice['order_date']) || !isset($invoice['order_number']) || !isset($invoice['order_shipment_id']))) {
-        $order = db_item("SELECT order_number, order_date, parasut_shipment_id FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
-
-        if (!isset($invoice['order_number'])) {
-            $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
-        }
-
-        if (!isset($invoice['order_date'])) {
-            $stamp = is_array($order) ? (int) $order['order_date'] : 0;
-            $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
-        }
-
-        if (!isset($invoice['order_shipment_id'])) {
-            $invoice['order_shipment_id'] = is_array($order) ? trim((string) $order['parasut_shipment_id']) : '';
-        }
     }
 
     // What the send takes from what Pinegrap keeps rather than asks Paraşüt
@@ -1945,6 +2055,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         SET parasut_invoice_id = '" . escape(mb_substr($external_id, 0, 32)) . "',
             parasut_edoc_id = '', parasut_job_id = '', parasut_job_expires_at = 0
         WHERE id = '" . (int) $invoice['id'] . "'");
+
+    if ($legacy_notice !== '') {
+        $told = trim($legacy_notice . ' ' . $told);
+    }
 
     return array(
         'success' => true,
@@ -2449,16 +2563,132 @@ function erp_edoc_parasut_job_reading($attributes)
 }
 
 /**
- * Asks after a converted invoice: the trackable job while it still answers,
- * then the sales invoice and the e-document it became.
+ * Whether Paraşüt's answer to GET sales_invoices/{id} says that this very
+ * record is not there: 404 with the error Paraşüt gives for a record deleted
+ * on its screen (title "Record was not found", detail "SalesInvoice-<id>").
  *
- * @param array  $invoice  An erp_invoices row
- * @param string $job_id   The sales invoice id send_invoice() returned
+ * Any other answer says nothing about the record: a 404 that names no record
+ * or another one ("No route matches."), a company the token's user cannot
+ * reach (401 "No access to company"), a 5xx, a transport error, no token.
+ *
+ * @param array  $result       erp_edoc_parasut_request() answer
+ * @param string $external_id  The sales invoice id the row names
+ * @return bool
+ */
+function erp_edoc_parasut_invoice_gone($result, $external_id)
+{
+    $result = (array) $result;
+    $external_id = trim((string) $external_id);
+
+    if (($external_id === '') || ((int) ($result['http_code'] ?? 0) !== 404)
+        || ((string) ($result['error'] ?? '') !== '') || ((string) ($result['login_error'] ?? '') !== '')) {
+        return false;
+    }
+
+    $errors = $result['body']['errors'] ?? null;
+
+    if (!is_array($errors)) {
+        return false;
+    }
+
+    foreach ($errors as $error) {
+        if (is_array($error) && (trim((string) (is_scalar($error['title'] ?? null) ? $error['title'] : '')) === 'Record was not found')
+            && (trim((string) (is_scalar($error['detail'] ?? null) ? $error['detail'] : '')) === 'SalesInvoice-' . $external_id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What a status question answers for an invoice whose sales invoice the
+ * connected Paraşüt company does not hold (erp_edoc_parasut_invoice_gone()).
+ * Either it was deleted on Paraşüt's screen, as the send's own refusal and
+ * the draft's hand-over leave the operator free to do, or the settings card
+ * now connects another company, taken to answer the same 404 (the path is
+ * per company); the message names both, and a draft left in the earlier
+ * company stays there. The row is freed so the invoice can be sent again:
+ * the service writes it as not at the provider, and the driver forgets the
+ * record, its e-document and its job ('forget', the parasut_* columns as
+ * cancel_invoice() clears them).
+ *
+ * The unsure mark of a send that got no answer is kept: that send may have
+ * written a record of its own, so the row is 'error' without an id, the
+ * state the next send and a cancel follow the mark from.
+ *
+ * Only a row the ERP does not hold as a GİB document is freed: a draft
+ * ('created'), a record a later step failed on ('error'), and a handed-over
+ * row whose conversion job this question read as failed. A sent, accepted
+ * or cancelled document is never let go on a 404, and a rejected one may be
+ * sent again as it is.
+ *
+ * The row is judged as the ERP knows it, not as Paraşüt does. After a
+ * company switch a 'created' or 'error' row may still stand for an
+ * e-document in the earlier company: one issued on Paraşüt's own screen, or
+ * one a hand-over made whose answer was lost (a failed hand-over leaves the
+ * row 'created'). Such a row is freed too, and sending it again would issue
+ * the sale at GİB a second time.
+ *
+ * @param array $invoice     An erp_invoices row
+ * @param bool  $job_failed  This question read the conversion job, and it had failed
+ * @return array|null  ['answer' => the poll answer with 'gone' => true,
+ *                      'forget' => parasut_* column => value]; null when the
+ *                      row is not freed
+ */
+function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
+{
+    $status = (string) ($invoice['edoc_status'] ?? '');
+
+    if (!in_array($status, array('created', 'error'), true) && !(($status === 'sent') && $job_failed)) {
+        return null;
+    }
+
+    $external_id = trim((string) ($invoice['edoc_external_id'] ?? ''));
+    $marked = (erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '') !== null);
+    $forget = array('parasut_edoc_id' => '', 'parasut_job_id' => '', 'parasut_job_expires_at' => 0);
+
+    if (!$marked) {
+        $forget = array('parasut_invoice_id' => '') + $forget;
+    }
+
+    return array(
+        'answer' => array(
+            'success' => true,
+            'status' => $marked ? 'error' : 'none',
+            'gone' => true,
+            'gib_uuid' => '',
+            'gib_number' => '',
+            'kind' => '',
+            'message' => $marked
+                ? lang(array('string' => 'The connected Paraşüt company does not have this invoice\'s record (id {var:1}): it was deleted there, or another company is connected now. The last send got no answer, so the next send first looks at Paraşüt for a record that send may have written; the invoice can be sent again.', 'vars' => array($external_id)))
+                : lang(array('string' => 'The connected Paraşüt company does not have this invoice\'s record (id {var:1}): it was deleted there, or another company is connected now. The invoice can be sent again.', 'vars' => array($external_id))),
+            'error' => '',
+            'party' => array(),
+        ),
+        'forget' => $forget,
+    );
+}
+
+/**
+ * Asks after a converted invoice: the trackable job while it still answers,
+ * then the sales invoice and the e-document it became. A record the
+ * connected company does not hold frees a row the ERP does not hold as a
+ * GİB document (erp_edoc_parasut_gone_answer(); the answer then carries
+ * 'gone' => true).
+ *
+ * @param array  $invoice    An erp_invoices row
+ * @param string $job_id     The sales invoice id send_invoice() returned
+ * @param bool   $free_gone  Whether a deleted record frees the row. False for
+ *                           a caller that does not write the answer on the
+ *                           row (fetch_document()): it gets the plain 404
+ *                           answer, and the status question frees the row.
  * @return array ['success' => bool, 'status' => string, 'gib_uuid' => string,
  *                'gib_number' => string, 'kind' => 'einvoice'|'earchive'|'',
- *                'message' => string, 'error' => string, 'party' => array]
+ *                'message' => string, 'error' => string, 'party' => array,
+ *                'gone' => bool (only when the record was not found)]
  */
-function erp_edoc_parasut_poll($invoice, $job_id)
+function erp_edoc_parasut_poll($invoice, $job_id, $free_gone = true)
 {
     $external_id = trim((string) $job_id);
     $out = array('success' => false, 'status' => 'sent', 'gib_uuid' => '', 'gib_number' => '', 'kind' => '', 'message' => '', 'error' => '', 'party' => array());
@@ -2477,6 +2707,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     // go with it.
     $tracked = trim((string) ($invoice['parasut_job_id'] ?? ''));
     $job_words = '';
+    $job_failed = false;
 
     if (($tracked !== '') && ((int) ($invoice['parasut_job_expires_at'] ?? 0) > time())) {
         $job = erp_edoc_parasut_request('GET', '/trackable_jobs/' . rawurlencode($tracked), null, $context);
@@ -2498,6 +2729,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
 
             erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
             $job_words = (string) $reading['message'];
+            $job_failed = ($reading['state'] === 'error');
         }
     }
 
@@ -2507,6 +2739,26 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     if ((string) $detail['login_error'] !== '') {
         $out['error'] = $detail['login_error'];
         return $out;
+    }
+
+    // Not held by the connected company (deleted on Paraşüt's screen, or
+    // another company connected): a row the ERP does not hold as a GİB
+    // document is freed, so the invoice is sent again instead of being
+    // refused at every press.
+    if ($free_gone && erp_edoc_parasut_invoice_gone($detail, $external_id)) {
+        $gone = erp_edoc_parasut_gone_answer($invoice, $job_failed);
+
+        if ($gone !== null) {
+            $columns = array();
+
+            foreach ($gone['forget'] as $column => $value) {
+                $columns[] = $column . " = '" . escape((string) $value) . "'";
+            }
+
+            erp_query("UPDATE erp_invoices SET " . implode(', ', $columns) . " WHERE id = '" . (int) $invoice['id'] . "'");
+
+            return $gone['answer'];
+        }
     }
 
     if ((int) $detail['http_code'] === 404) {
@@ -2656,8 +2908,11 @@ function erp_edoc_parasut_fetch_document($invoice, $format = 'pdf')
     $kind = (string) ($invoice['edoc_kind'] ?? '');
 
     if (($document_id === '') || !in_array($kind, array('einvoice', 'earchive'), true)) {
-        // Not read yet: asking after the status writes it down.
-        $polled = erp_edoc_parasut_poll($invoice, (string) ($invoice['edoc_external_id'] ?? ''));
+        // Not read yet: asking after the status writes it down. A record
+        // deleted at Paraşüt is only reported here, since the service's write
+        // of the status does not run on this path; the status question frees
+        // the row.
+        $polled = erp_edoc_parasut_poll($invoice, (string) ($invoice['edoc_external_id'] ?? ''), false);
 
         if (empty($polled['success'])) {
             return array_merge($none, array('error' => (string) $polled['error']));

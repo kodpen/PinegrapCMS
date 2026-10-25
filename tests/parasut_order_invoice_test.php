@@ -566,15 +566,16 @@ function test_parasut_order_invoice_find_tells_none_from_unknown()
 	pg_assert_true($crowded['error'] !== '', 'pages left unread');
 }
 
-// The order screen's badge for the invoice: "Sent" with the record's id,
-// and for the unsure mark a warning to check Paraşüt, never "Sent" or the
-// mark shown as an id.
+// The order screen's badge for the invoice: "Sent" with the record's id
+// once its e-document was seen to finish (an unconfirmed one:
+// parasut_order_gates_test.php), and for the unsure mark a warning to check
+// Paraşüt, never "Sent" or the mark shown as an id.
 function test_parasut_order_invoice_status_badge()
 {
-	$sent = parasut_order_invoice_status_badge('5001');
+	$sent = parasut_order_invoice_status_badge('5001', false, true);
 	pg_assert_contains(lang('Sent') . '</span>', $sent);
 	pg_assert_contains(lang('Parasut ID') . ': 5001', $sent);
-	pg_assert_contains(lang('Parasut ID') . ': 5001', parasut_order_invoice_status_badge('5001', true));
+	pg_assert_contains(lang('Parasut ID') . ': 5001', parasut_order_invoice_status_badge('5001', true, true));
 
 	pg_assert_contains(lang('Not Sent'), parasut_order_invoice_status_badge(''));
 	pg_assert_same('', parasut_order_invoice_status_badge('', true), 'no badge on a button not pressed');
@@ -627,8 +628,8 @@ function test_parasut_order_screen_reads_the_mark()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
 
 	pg_assert_contains('$parasut_invoice_sent = ($parasut_invoice_id !== \'\') && !$parasut_invoice_unsure;', $source);
-	pg_assert_contains('$output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);', $source);
-	pg_assert_contains('$invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);', $source);
+	pg_assert_contains('$output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true, $parasut_exported);', $source);
+	pg_assert_contains('$invoice_row_badge  = parasut_order_invoice_row_badge($parasut_invoice_id, $parasut_exported, $parasut_erp_invoice);', $source);
 	pg_assert_true(strpos($source, 'title="\' . ($parasut_invoice_sent') !== false, 'only a record changes what the button says');
 }
 

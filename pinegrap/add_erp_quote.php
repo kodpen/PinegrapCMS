@@ -12,6 +12,12 @@
  * notes and lines), dated today with the usual run; it is a new open quote
  * and takes its own number when saved.
  *
+ * ?account_id=<id> opens it on that account: the account card's "New
+ * quote" and a Workspace channel's "New sales quote" (the channel's
+ * customer's account, found by ws_channel_sales_quote_account()). The id
+ * only chooses the account box's option; the editor lists active accounts
+ * alone and saving checks the account again.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen

@@ -475,6 +475,10 @@ function pg_dtc_page_comments($page, $ctx)
         'email_page'    => ($email_page > 0 && isset($ctx['page_ids'][$email_page])) ? '{{tab:' . $ctx['page_ids'][$email_page] . '}}' : $email_page,
         'email_subject' => isset($page['pg_comments_email_subject']) ? (string)$page['pg_comments_email_subject'] : '',
         'notify_email'  => ($site_email !== '' && $notify === $site_email) ? '{{site_email}}' : $notify,
+        'attachments'   => !empty($page['pg_comments_attachments']) ? 1 : 0,
+        'select_name'   => !empty($page['pg_comments_select_name']) ? 1 : 0,
+        'message'       => isset($page['pg_comments_message']) ? (string)$page['pg_comments_message'] : '',
+        'closed_message' => isset($page['pg_comments_closed_message']) ? (string)$page['pg_comments_closed_message'] : '',
     );
 }
 

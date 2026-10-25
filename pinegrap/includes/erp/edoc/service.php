@@ -1360,6 +1360,28 @@ function erp_edoc_invoice_submit($invoice_id, $user_id = 0)
 }
 
 /**
+ * What a status question writes besides the status when the driver says the
+ * provider no longer holds the record ('gone' => true: it was deleted on the
+ * provider's screen, or another company is connected now): the row names
+ * nothing there any more, so the invoice can be sent again, the kind is
+ * decided again on the next hand-over, and no send time is shown for it.
+ * Only an answer that frees the row ('none', or 'error' without an id while
+ * a driver's own trace of an unanswered send stays) changes it; an answer
+ * with a document's status never does.
+ *
+ * @param array $result  The driver's poll answer
+ * @return string[]  SET fragments, or none
+ */
+function erp_edoc_invoice_poll_gone_set($result)
+{
+    if (empty($result['gone']) || !in_array((string) ($result['status'] ?? ''), array('none', 'error'), true)) {
+        return array();
+    }
+
+    return array("edoc_external_id = ''", "edoc_kind = 'none'", "gib_number = ''", "gib_uuid = ''", "edoc_sent_at = 0");
+}
+
+/**
  * Asks the carrying provider where a sent invoice stands and writes what
  * it hears: GİB number, ETTN, status.
  *
@@ -1417,6 +1439,9 @@ function erp_edoc_invoice_poll($invoice_id)
         $set[] = "edoc_kind = '" . escape((string) $result['kind']) . "'";
     }
 
+    $gone = erp_edoc_invoice_poll_gone_set($result);
+    $set = array_merge($set, $gone);
+
     erp_query("UPDATE erp_invoices SET " . implode(', ', $set) . " WHERE id = '" . $invoice_id . "'");
 
     // The card the provider put the invoice on, when the account has none yet.
@@ -1424,7 +1449,9 @@ function erp_edoc_invoice_poll($invoice_id)
         erp_edoc_account_link_from_invoice($provider, $invoice, $result['party']);
     }
 
-    if (($status !== $before) && function_exists('erp_event_invoice')) {
+    // A record the provider no longer holds changes the document even when
+    // the status stays 'error' (the unsure mark of an unanswered send).
+    if ((($status !== $before) || ($gone !== array())) && function_exists('erp_event_invoice')) {
         erp_event_invoice($invoice_id, 'erp.invoice.edoc_changed');
     }
 
