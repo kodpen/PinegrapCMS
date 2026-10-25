@@ -1,6 +1,6 @@
 ---
 name: design-template-forum-leftovers
-description: Forum template plan (1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix #1545, 4A-4B #1619, comments index #1638, D #1658 done): record filters (4C) and two comments widget fixes left
+description: Forum template plan (1-3 #1473 #1489 #1474 #1501, 5 #1526, 4A-4B #1619, index #1638, D #1658, widget fixes #1545 #1668 done): record filters (4C) left
 ---
 
 The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the template's own memory is [[design-template-forum]].
@@ -25,9 +25,7 @@ The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the t
 - 4C. Record filters for a list (category pages: latest replies of one board): stored under their own key `recent_filters`, the form list's filter editor shown whenever that key is not empty, one record source only. Then the board pages gain their Latest replies list.
 - Done (#1638, schema 11.0.36, owner-approved): index `idx_author (created_user_id, created_timestamp)` on `comments` for slow `mine` reads ([[comments-widget-recent-reads]]).
 
-- Two comments widget fixes found while building D, one small PR each:
-  - the default layout's Replying to box carries `d-flex`, which beats `[hidden]`, so the empty box shows (`pg_comments_default_tree()` in `includes/fn/widgets_comments.php` and the JS starter in `style_designer.js`);
-  - watcher e-mails also go to the comment's own writer, when it is posted and when a moderator publishes it (`send_comment_email_to_watchers()` in `includes/fn/mail.php`).
+- Two comments widget fixes found while building D, done (#1668): a hidden Replying to box also gets `d-none` ([[comments-widget-replies]]); watcher e-mails leave out the comment's own writer ([[comments-watcher-mail]]).
 
 ## Where to start?
-- 4C, or either fix; each is its own draft PR.
+- 4C, its own draft PR.

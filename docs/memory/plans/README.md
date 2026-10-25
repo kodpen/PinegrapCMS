@@ -22,7 +22,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
-- design-template-forum-leftovers.md: Forum template plan (1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix #1545, 4A-4B #1619, comments index #1638, D #1658 done): record filters (4C) and two comments widget fixes left
+- design-template-forum-leftovers.md: Forum template plan (1-3 #1473 #1489 #1474 #1501, 5 #1526, 4A-4B #1619, index #1638, D #1658, widget fixes #1545 #1668 done): record filters (4C) left
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
 - designable-comments.md: Plan (1-19 and 3b done; 20 deferred): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
