@@ -11599,6 +11599,15 @@
             this.autosize();
         },
 
+        // Empties the box only while it still holds the text that was sent.
+        // A card's button sends the text the card was drawn from, so a draft
+        // typed into the box after the card appeared was never sent and stays.
+        clearSent: function (sent) {
+            if (this.tokens(this.inputText()) === sent) {
+                this.clearInput();
+            }
+        },
+
         // What was typed before the caret: the pickers read it. Chips and
         // cards of the rich box count as U+FFFC.
         beforeCaret: function () {
@@ -11909,6 +11918,14 @@
                     return;
                 }
 
+                // /product: every value the product would be made with,
+                // made only from the card.
+                if (result.command && result.command.type === 'create_preview') {
+                    self.pending = { body: body };
+                    self.drawCreatePreview(result.command);
+                    return;
+                }
+
                 // /poll with only a question: the rest is asked in the form.
                 if (result.command && result.command.type === 'poll_form') {
                     self.pollForm({ question: result.command.question, options: result.command.options }, function () {
@@ -11938,10 +11955,17 @@
                 }
 
                 if (result.command && result.command.type === 'done' && result.command.saved) {
-                    toast(t('qe_saved'), 'success');
+                    toast(t(result.command.created ? 'qc_created' : 'qe_saved'), 'success');
                 }
 
-                self.clearInput();
+                // A card's button names the text it sends; a different one in
+                // the box was not sent and is kept.
+                if (options && (typeof options.body === 'string')) {
+                    self.clearSent(options.body);
+                } else {
+                    self.clearInput();
+                }
+
                 self.reply = null;
                 self.replyMore = null;
                 self.pending = null;
@@ -12094,12 +12118,106 @@
             tick.appendChild(tickLabel);
             card.appendChild(tick);
 
+            // Save writes the text this card was drawn from, not what the box
+            // holds by then, which nobody has seen as a card.
+            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
             var save = button('btn btn-sm btn-primary rounded-pill px-3', t('qe_save'), 'bi-check2');
             save.addEventListener('click', function () {
-                self.send({ confirm: 1, from: command.from, decision: decision.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, from: command.from, decision: decision.checked ? 1 : 0 });
             });
             actions.appendChild(save);
+
+            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        // The /product card: the values the product is made with, the "On
+        // sale" tick (off by default), the decision tick, and "All fields",
+        // which opens the drawer's new mode with the same values. As on the
+        // /price card, Enter draws the card again; only Create writes.
+        drawCreatePreview: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview');
+
+            card.appendChild(el('div', 'fw-semibold', t('qc_command_title')));
+
+            var list = el('dl');
+            (preview.rows || []).forEach(function (item) {
+                list.appendChild(el('dt', '', item.label));
+                var value = el('dd', '', item.html ? '' : item.text);
+
+                if (item.html) {
+                    setHtml(value, item.html);
+                }
+
+                list.appendChild(value);
+            });
+            card.appendChild(list);
+
+            var tick = function (label, checked, prefix) {
+                var wrap = el('div', 'form-check form-check-sm mb-1');
+                var input = el('input', 'form-check-input');
+                input.type = 'checkbox';
+                input.checked = checked;
+                input.id = nextId(prefix);
+                var text = el('label', 'form-check-label small', label);
+                text.htmlFor = input.id;
+                wrap.appendChild(input);
+                wrap.appendChild(text);
+                card.appendChild(wrap);
+
+                return input;
+            };
+
+            var onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
+            card.appendChild(el('div', 'small text-body-secondary mb-1', t('qc_unticked')));
+            var decision = tick(t('qe_decision'), true, 'ws-cmd-decision-');
+
+            // Create makes what the card shows: the text it was drawn from,
+            // not what the box holds by then, as on the /task card.
+            var drawn = self.pending.body;
+            var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
+            var create = button('btn btn-sm btn-primary rounded-pill px-3', t('qc_create'), 'bi-plus-lg');
+            create.addEventListener('click', function () {
+                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
+            });
+            actions.appendChild(create);
+
+            var all = button('btn btn-sm btn-outline-secondary', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
+            all.addEventListener('click', function () {
+                var values = {};
+
+                Object.keys(command.values || {}).forEach(function (name) { values[name] = command.values[name]; });
+                values.enabled = onSale.checked;
+
+                openRecord(preview.kind, 0, '', {
+                    values: values,
+                    labels: command.labels || {},
+                    // The decision goes where the card's own Create puts it:
+                    // this composer's channel, also a discussion beside one,
+                    // and only if the card's decision tick is still ticked.
+                    channelId: self.channel.id,
+                    decision: decision.checked,
+                    // Made from the drawer: the line that asked for it goes,
+                    // a draft typed since the card appeared stays.
+                    onCreated: function () {
+                        self.pending = null;
+                        clear(self.previewBox);
+                        self.clearSent(drawn);
+                        self.autosize();
+                    }
+                });
+            });
+            actions.appendChild(all);
 
             var cancel = button('btn btn-sm btn-ghost', t('cancel'));
             cancel.addEventListener('click', function () {
@@ -18332,6 +18450,12 @@
     // ═══════════════════════════════════════════════════════════════════
 
     function openRecord(type, id, label, options) {
+        // No record yet: the new mode, an empty form that makes one.
+        if (!(id > 0)) {
+            openRecordNew(type, options);
+            return;
+        }
+
         var node = offcanvas('ws-record', t('workspace'));
         var body = clear(node.querySelector('.offcanvas-body'));
         var footer = clear(node.querySelector('.offcanvas-footer'));
@@ -18707,6 +18831,192 @@
         });
 
         section.appendChild(form);
+
+        return section;
+    }
+
+    // The record drawer's new mode: an empty product or product group
+    // (includes/workspace/quick_edit.php, ws_quick_create_*), opened from
+    // the search box or a /product card. It is made off sale unless "On
+    // sale" is ticked; once written, the drawer shows the new record.
+    // options.values fill the form (a /product card's), options.labels name
+    // the records they pick, options.channelId is the channel its decision
+    // goes to (the card's composer), options.decision false starts the
+    // decision tick unticked (the card's own tick), options.onCreated is
+    // told the new record.
+    function openRecordNew(type, options) {
+        var node = offcanvas('ws-record', t('workspace'));
+        var body = clear(node.querySelector('.offcanvas-body'));
+        var footer = clear(node.querySelector('.offcanvas-footer'));
+
+        options = options || {};
+        node.classList.add('ws-record-drawer');
+        node.querySelector('.offcanvas-title').textContent = t(type === 'product_group' ? 'qc_new_group' : 'qc_new_product');
+        footer.classList.add('d-none');
+        body.appendChild(el('div', 'small text-body-secondary', t('loading')));
+        showOffcanvas(node);
+
+        api('ws_record_fields', { type: type, id: 0 }).then(function (data) {
+            clear(body);
+
+            if (data.title) {
+                node.querySelector('.offcanvas-title').textContent = data.title;
+            }
+
+            body.appendChild(quickCreateSection(type, data, options, function (created) {
+                if (options.onCreated) {
+                    options.onCreated(created);
+                }
+
+                openRecord(type, created.id, created.name);
+            }));
+        }).catch(function (error) {
+            clear(body);
+            body.appendChild(el('div', 'small text-body-secondary', (error && error.message) ? error.message : t('error_generic')));
+        });
+    }
+
+    // The form of the new mode: the fields the server lists, the ones made
+    // most often first. Only what differs from the value a field starts
+    // with is sent (the writer's starting row keeps the rest); the on-sale
+    // tick is always sent, unticked by default.
+    function quickCreateSection(type, data, options, done) {
+        var section = el('div', 'ws-record-section ws-qe');
+        var values = options.values || {};
+        var labels = options.labels || {};
+        var short = data.short || [];
+        var required = data.required || [];
+        var inputs = {};
+        var metas = {};
+        var shortBox = el('div');
+        var moreBox = el('div', 'd-none');
+        var inShort = function (name) { return short.indexOf(name) !== -1; };
+        var ordered = data.fields.filter(function (meta) { return inShort(meta.name); }).sort(function (a, b) { return short.indexOf(a.name) - short.indexOf(b.name); })
+            .concat(data.fields.filter(function (meta) { return !inShort(meta.name); }));
+        var help = function (name) {
+            if (type === 'product' && name === 'name') {
+                return t('qc_name_help');
+            }
+
+            return (type === 'product' && name === 'quantity') ? t('qc_quantity_help') : '';
+        };
+
+        section.appendChild(el('div', 'ws-record-title', t('qe_title')));
+
+        ordered.forEach(function (meta) {
+            var given = Object.prototype.hasOwnProperty.call(values, meta.name) ? values[meta.name] : meta.value;
+            var label = meta.label + ((required.indexOf(meta.name) !== -1) ? ' *' : '');
+            var input;
+            var row;
+
+            if (meta.name === 'enabled') {
+                row = el('div', 'form-check mb-2');
+                input = el('input', 'form-check-input');
+                input.type = 'checkbox';
+                input.checked = given === true;
+                input.id = nextId('ws-qc-enabled-');
+                var tickLabel = el('label', 'form-check-label small', meta.label);
+                tickLabel.htmlFor = input.id;
+                row.appendChild(input);
+                row.appendChild(tickLabel);
+                row.appendChild(el('div', 'form-text mt-0', t('qc_unticked')));
+                input.read = function () { return input.checked; };
+            } else if (meta.kind === 'ids') {
+                // One record, picked among those the person may tag.
+                var first = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
+                var picker = saRecordPicker(meta.tag, first, first ? (labels[meta.name] || ('#' + first)) : '');
+                picker.read = function () {
+                    var id = picker.value();
+                    return id ? [id] : [];
+                };
+                input = picker;
+                row = saLabelled(label, picker, '');
+            } else {
+                input = saValueInput(meta, given);
+                row = saLabelled(label, input, help(meta.name));
+            }
+
+            row.classList.add('ws-qe-row');
+            inputs[meta.name] = input;
+            metas[meta.name] = meta;
+            (inShort(meta.name) ? shortBox : moreBox).appendChild(row);
+        });
+
+        section.appendChild(shortBox);
+
+        if (moreBox.childNodes.length) {
+            var more = button('btn btn-sm btn-ghost mb-2', t('qe_more'), 'bi-chevron-down');
+
+            more.addEventListener('click', function () {
+                var showing = moreBox.classList.contains('d-none');
+                moreBox.classList.toggle('d-none', !showing);
+                more.textContent = '';
+                more.appendChild(icon(showing ? 'bi-chevron-up' : 'bi-chevron-down', 'me-1'));
+                more.appendChild(document.createTextNode(showing ? t('qe_fewer') : t('qe_more')));
+            });
+
+            section.appendChild(more);
+            section.appendChild(moreBox);
+        }
+
+        // Kept in the channel the drawer was opened from, as a decision: the
+        // card's composer when a /product card opened it, else the main view.
+        var decision = null;
+        var channelId = (options.channelId > 0) ? options.channelId : ((CFG.mode === 'channels' && app.channel && app.channel.id) ? app.channel.id : 0);
+
+        if (channelId) {
+            var tick = el('div', 'form-check form-check-sm mt-1 mb-2');
+            decision = el('input', 'form-check-input');
+            decision.type = 'checkbox';
+            // A /product card hands over its own tick; otherwise ticked.
+            decision.checked = options.decision !== false;
+            decision.id = nextId('ws-qc-decision-');
+            var decisionLabel = el('label', 'form-check-label small', t('qe_decision'));
+            decisionLabel.htmlFor = decision.id;
+            tick.appendChild(decision);
+            tick.appendChild(decisionLabel);
+            section.appendChild(tick);
+        }
+
+        var bar = el('div', 'd-flex align-items-center gap-2 mt-1');
+        var save = button('btn btn-sm btn-primary rounded-pill px-3', t('qc_create'), 'bi-plus-lg');
+        var status = el('span', 'small text-body-secondary');
+        bar.appendChild(save);
+        bar.appendChild(status);
+        section.appendChild(bar);
+
+        save.addEventListener('click', function () {
+            var fields = {};
+
+            Object.keys(inputs).forEach(function (name) {
+                var value = inputs[name].read();
+
+                if (name === 'enabled') {
+                    fields[name] = value;
+                } else if (metas[name].kind === 'ids') {
+                    if (value.length) {
+                        fields[name] = value;
+                    }
+                } else if (quickEditChanged(metas[name], metas[name].value, value)) {
+                    fields[name] = value;
+                }
+            });
+
+            save.disabled = true;
+            status.textContent = '';
+
+            api('ws_record_create', {
+                type: type, fields: fields,
+                channel_id: channelId, decision: !!(decision && decision.checked)
+            }).then(function (created) {
+                save.disabled = false;
+                toast(t('qc_created'), 'success');
+                done(created);
+            }).catch(function (error) {
+                save.disabled = false;
+                status.textContent = (error && error.message) ? error.message : t('error_generic');
+            });
+        });
 
         return section;
     }
@@ -21908,6 +22218,10 @@
             directMessage: directMessage,
             openTask: function (taskId, defaults, onSaved) {
                 taskDrawer.open(taskId, defaults, onSaved);
+            },
+            // The record drawer's new mode: a new product or product group.
+            openCreate: function (type, options) {
+                openRecord(type, 0, '', options || {});
             },
             // The channel open on the channel screen, with the screen's ways
             // to open another and to write into its box; null elsewhere.
