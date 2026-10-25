@@ -15,7 +15,7 @@ description: The 'unclear' flag of a payment driver's answer, how the iyzico ref
 ## What does a return's refund do with it? (pg_return_refund())
 - A driver refund never stores the form's typed reference; only the service's refund id.
 - Refusal: the return goes back to `received`; `pg_return_refund_refused_line()` logs the return, order, amount, service and what came back.
-- Unclear: the return stays `refunded`, `orders.refunded_amount` and `order_refunds` are written (notes `Return request #N (unconfirmed: no clear answer from <service>)`, no reference), the audit row too; `ok` false, `unclear` true.
+- Unclear: the return stays `refunded`, `orders.refunded_amount` and `order_refunds` are written (notes `Return request #N (unconfirmed: no clear answer from <service>)`, no reference), the audit row too; the return keeps `refund_method` driver, an empty reference and `refund_unclear` = 1 (11.0.34; set while the service is asked, too); `ok` false, `unclear` true.
 - Screen and log: `pg_return_refund_service_words($answer)` gives the screen words (`raw.message` only when `raw.exception` is not set) and the log detail (`raw.message` always); neither falls back to `error`, an empty one reads "no answer". `pg_return_refund_unclear_lines(…, $message, $log_detail)`. Before, the screen showed PHP's TypeError text with the server path, or nested the driver's whole sentence.
 - No mail and no ERP hand-off, then or later: staff confirm the refund on the service's screen, then tell the customer and issue the return invoice by hand.
 - Why booked: whichever way the check goes, the books are then right; left unbooked the order kept money "left" for a second refund.
@@ -29,4 +29,4 @@ description: The 'unclear' flag of a payment driver's answer, how the iyzico ref
 ## Tests?
 - `tests/payment_unclear_answer_test.php` (stand-in HTTP client returning raw bodies or throwing `\Error` / `RuntimeException`), the screen text never carrying `.php` or the driver's nested sentence.
 
-Related: docs/memory/commerce/order-returns-refund.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/payment-drivers.md
+Related: docs/memory/commerce/order-returns-refund.md, docs/memory/commerce/order-returns-refund-columns.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/payment-drivers.md

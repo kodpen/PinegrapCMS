@@ -12,7 +12,7 @@ description: Canvas ghost records of listing widgets (designer/widget_ghosts); t
 
 ## What is the edit pencil on records?
 - `pg_sw_add_edit_chip($html, $url, $title, $tone)` (`includes/fn/widgets.php`) puts a pencil link into the first element of a rendered record (class `pg-edit-host`). Not on a record whose first element is a link, a button, a form, a table row or a void element (the record's detail page carries one).
-- Who sees it: a signed-in user, never in a search-index or SEO render (`pg_sw_edit_chips_on()`); products need `pg_sw_can_edit_products()` (role below 3 or e-commerce management), submitted forms `pg_sw_can_edit_submitted_forms()` (a manager, or forms management with edit access to the form's folder).
+- Who sees it: a signed-in user, never in a search-index, SEO or e-mail render (`pg_sw_edit_chips_on()`, rule `pg_sw_edit_chips_rule()`); products need `pg_sw_can_edit_products()` (role below 3 or e-commerce management), submitted forms `pg_sw_can_edit_submitted_forms()` (a manager, or forms management with edit access to the form's folder), calendar events `pg_sw_can_edit_calendar_event()` (`widget-edit-chip-coverage.md`).
 - A page built in the visual editor has no edit mode: `get_page.php` ignores a session left in edit mode for it.
 - Canvas ghosts and the Preview never draw one: they are SEO renders.
 
