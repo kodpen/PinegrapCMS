@@ -28325,5 +28325,8 @@
     "Off — works only inside a comment": "Kapalı — yalnızca bir yorumun içinde çalışır",
     "Off — has no place inside a comment": "Kapalı — bir yorumun içinde yeri yok",
     "Off — works only inside its own form": "Kapalı — yalnızca kendi formunun içinde çalışır",
-    "Off — a form cannot sit inside another form": "Kapalı — bir form başka bir formun içinde olamaz"
+    "Off — a form cannot sit inside another form": "Kapalı — bir form başka bir formun içinde olamaz",
+    "Remembers the products you saved to your favourites before signing in.": "Oturum açmadan önce favorilerinize eklediğiniz ürünleri hatırlar.",
+    "Your session has expired. Reload the page and try again.": "Oturumunuzun süresi doldu. Sayfayı yenileyip tekrar deneyin.",
+    "Favourites are not available on this site yet.": "Favoriler bu sitede henüz kullanılamıyor."
 }
