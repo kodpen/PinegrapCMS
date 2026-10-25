@@ -31225,7 +31225,8 @@ const StyleDesigner = (function () {
     // row is not loaded yet (only the open tab's are) is 'loading' until
     // _sdCommentsRecentLoad() has it. Each as { ref (the value the list
     // stores, _swPageRef()), page, kind, form (the record view's form name),
-    // comments (on), filtered (the view holds filters), viewerFilter (they
+    // formId (its id as stored, '' without a view), comments (on), filtered
+    // (the view holds filters), viewerFilter (they
     // keep records per viewer), checked, unloaded (those components' ids) }.
     function _sdCommentsRecentSources(cfg) {
         cfg = cfg || {};
@@ -31256,8 +31257,9 @@ const StyleDesigner = (function () {
             if (view) unloaded = [];
             if (!view && !on && !unloaded.length) return;
             var form = '';
+            var formId = '';
             if (view) {
-                var formId = String(view.custom_form_page_id || view.form_page_id || '');
+                formId = String(view.custom_form_page_id || view.form_page_id || '');
                 ((typeof _customFormsCache !== 'undefined' && Array.isArray(_customFormsCache)) ? _customFormsCache : []).forEach(function (f) {
                     if (!form && String(f.page_id) === formId) form = (f.form_name && String(f.form_name).trim()) || f.page_title || f.page_name || '';
                 });
@@ -31273,7 +31275,7 @@ const StyleDesigner = (function () {
             });
             var ref = _swPageRef(p);
             var filtered = !!view && Array.isArray(view.filters) && view.filters.length > 0;
-            out.push({ ref: ref, page: p, kind: view ? 'record' : (unloaded.length ? 'loading' : 'page'), form: form, comments: on, filtered: filtered,
+            out.push({ ref: ref, page: p, kind: view ? 'record' : (unloaded.length ? 'loading' : 'page'), form: form, formId: formId, comments: on, filtered: filtered,
                 viewerFilter: viewerFilter, checked: !!chosen[ref], unloaded: unloaded });
         });
         return out;
@@ -31299,10 +31301,10 @@ const StyleDesigner = (function () {
     }
 
     // The list's section of the widget panel: what it shows, from which
-    // pages, in which order, how many. Its options are the widget's and
-    // shared by every page that places it; the generic [data-sw-cfg] and
-    // [data-sw-cfg-list] handlers write them, stored as
-    // pg_comments_recent_options() reads them.
+    // pages, which of their records, in which order, how many. Its options
+    // are the widget's and shared by every page that places it; the generic
+    // [data-sw-cfg] and [data-sw-cfg-list] handlers and the filter editor's
+    // write them, stored as pg_comments_recent_options() reads them.
     function _sdCommentsRecentSect(sid, cfg) {
         cfg = cfg || {};
         var word = function (key, allowed, def) {
@@ -31329,6 +31331,8 @@ const StyleDesigner = (function () {
                 '<span class="bi bi-exclamation-triangle-fill me-1"></span>' + esc(text) + '</div>';
         };
         var sources = _sdCommentsRecentSources(cfg);
+        var filters = Array.isArray(cfg.recent_filters) ? cfg.recent_filters : [];
+        var listFiltered = filters.some(function (f) { return !!f && String(f.field == null ? '' : f.field).trim() !== ''; });
         var stored = [];
         (Array.isArray(cfg.recent_page_ids) ? cfg.recent_page_ids : []).forEach(function (v) {
             var k = String(v);
@@ -31359,7 +31363,7 @@ const StyleDesigner = (function () {
             if (!src.comments) notes += warn(_sdT('Comments are off for {var}: it adds nothing until they are on.', name));
             if (src.kind === 'record' && src.viewerFilter) {
                 notes += warn(_sdT('{var} shows each member their own records: it adds nothing for a visitor who is not signed in.', name));
-            } else if (src.kind === 'record' && !src.filtered) {
+            } else if (src.kind === 'record' && !src.filtered && !listFiltered) {
                 notes += hint(_sdT('Every complete record of {var} that has a comment can be listed here, with its title and address.', src.form));
             }
         });
@@ -31373,6 +31377,31 @@ const StyleDesigner = (function () {
         if (show === 'mine') notes += hint(_sdT('Shown only to a signed-in member: their own comments, published or awaiting approval.'));
         notes += hint(_sdT('Each comment follows the comment settings of its own page.'));
         notes += hint(_sdT('The Preview shows what a visitor who is not signed in sees.'));
+        // Record filters, in the form list's editor writing recent_filters:
+        // offered while the list reads one page with a Form Item View, and
+        // kept in view whenever some are stored, so none is held unseen. The
+        // server applies them to that one page only (the 'filters' refusal
+        // of pg_comments_recent_source_decision()); a page outside the
+        // design, or one whose widgets are loading, is its to tell.
+        var single = null;
+        if (stored.length === 1) sources.forEach(function (src) { if (src.ref === stored[0]) single = src; });
+        var applied = !!single && single.kind === 'record';
+        var unknown = (stored.length === 1) && (!single || single.kind === 'loading');
+        var filterRow = '';
+        if (applied || filters.length) {
+            var fields = null;
+            if (applied && /^[1-9]\d*$/.test(single.formId)) {
+                fields = _formFieldsCache[single.formId] || null;
+                if (fields === null) _fetchFormFields(single.formId, function () { renderProperties(); });
+            }
+            filterRow = row(_sdT('Record filters'),
+                ((!applied && !unknown)
+                    ? warn(_sdT('Record filters apply only while the list reads a single page with a Form Item View: with the pages chosen now, it shows no comment. Choose one such page, or delete the filters.'))
+                    : '') +
+                _swFormListFiltersHtml(sid, filters, fields || [], fields === null,
+                    _sdT('A comment is listed only when its record matches every filter, besides the filters of that page\'s Form Item View. A value from the address is read from the address of the page that shows this list.'),
+                    true, 'recent_filters'));
+        }
         return sect('bi-chat-square-quote', _sdT('Recent comments'),
             '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
                 esc(_sdT('Shared: every page that shows this widget uses these options.')) + '</div>' +
@@ -31381,6 +31410,7 @@ const StyleDesigner = (function () {
                  ['pending', _sdT('Comments awaiting approval (staff)')]], show)) +
             row(_sdT('Comments from'), (boxes || hint(_sdT('No page of this design has a Form Item View or comments on.'))) +
                 hint(_sdT('Up to five pages.')) + notes) +
+            filterRow +
             ((show !== 'published')
                 ? row(_sdT('Comment order'), choice('recent_order', [['newest', _sdT('Newest first')], ['oldest', _sdT('Oldest first')]], order))
                 : '') +
@@ -34441,7 +34471,10 @@ const StyleDesigner = (function () {
         // ── Form list view filters ─────────────────────────────────────────
         // The list is rebuilt from the panel on every change, so the saved
         // order is the order on screen. A new field or dynamic value changes
-        // which inputs the row needs, so those re-render the panel.
+        // which inputs the row needs, so those re-render the panel. The rows
+        // are written to the key they carry (data-sw-filter-key), 'filters'
+        // when none.
+        var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };
         var _swFilterEls = document.querySelectorAll('.sd-sw-filter');
         var _swReadFilters = function () {
             var out = [];
@@ -34475,8 +34508,9 @@ const StyleDesigner = (function () {
             var any = el.querySelector('[data-sw-id]');
             if (any) sid = parseInt(any.dataset.swId, 10);
             if (!sid) return;
+            var key = _swFilterKey(el);
             var save = function (list, rerender) {
-                _patchSysCfg(sid, function (cfg) { cfg.filters = list; },
+                _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
                     rerender ? { afterSave: function () { renderProperties(); } } : undefined);
             };
             var fieldEl = el.querySelector('.sd-sw-filter-field');
@@ -34514,9 +34548,10 @@ const StyleDesigner = (function () {
             fAddEl.addEventListener('click', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
+                var key = _swFilterKey(this);
                 var list = _swReadFilters();
                 list.push({ field: '', operator: 'is equal to', value: '', dynamic_value: '', dynamic_value_attribute: '' });
-                _patchSysCfg(sid, function (cfg) { cfg.filters = list; }, { afterSave: function () { renderProperties(); } });
+                _patchSysCfg(sid, function (cfg) { cfg[key] = list; }, { afterSave: function () { renderProperties(); } });
             });
         }
 
@@ -50922,8 +50957,11 @@ const StyleDesigner = (function () {
         serverPages.forEach(function (p) { if (p && parseInt(p.page_id, 10) === pageId) hit = p; });
         return !hit || _swPageBinned(hit);
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
+    // `key`: the config key the rows are written to, 'filters' unless
+    // another is named (a recent comments list's recent_filters).
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key) {
         var formFields = _swFilterFormFields(fields);
+        var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key="' + esc(key) + '"' : '';
         var html = '';
         (filters || []).forEach(function (f, i) {
             f = f || {};
@@ -50985,7 +51023,7 @@ const StyleDesigner = (function () {
             if (inputType === 'datetime-local') val = val.replace(' ', 'T').slice(0, 16);
 
             html +=
-                '<div class="sd-sw-filter" data-idx="' + i + '"' + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
                         '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
@@ -51020,7 +51058,7 @@ const StyleDesigner = (function () {
                 '</div>';
         });
         html +=
-            '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
