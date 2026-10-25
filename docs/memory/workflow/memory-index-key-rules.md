@@ -19,6 +19,6 @@ description: The hand-written key-rules block of each memory folder README, what
 ## How is a README conflict settled after a merge?
 - Conflict only in the file list: run `php tools/memory_index.php`; it rewrites the README and the conflict is gone.
 - Conflict inside the block: merge the rules by hand, then run the tool.
-- Never resolve a folder README with `--theirs` from a branch whose README has no block, and never delete a README to regenerate it: the tool rebuilds it with an empty block and the folder's rules are lost. Restore the file from git instead, then check each folder README's block is intact.
+- Never resolve a folder README with `--theirs` from a branch whose README has no block, and never delete a README to regenerate it: the tool rebuilds it with an empty block and the folder's rules are lost. Restore the file from git instead, then check each folder README's block is intact. Taking one side's README whole drops the other side's key rule (#1382 lost one this way, restored before merging).
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md

@@ -25,7 +25,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 4. Schema, ask first, one 2026.11.0 sub-step each (labels from the call list on `origin/development` and open PRs): `ws_refs.source_type` (CRM), flows (F1), workflow tables (canvas T1), flow shares (F7), `cart_quotes` (quotes), `erp_quote_templates` (ERP label), `ws_voice` (voice V3), `ws_channels.icon`, saved replies.
 
 ## Which rules bind every slice?
-- One slice, one PR, a `sahiplenildi` claim first (CLAUDE.md); a PR marks its step done in its plan.
+- One slice, one PR, a draft PR as the claim first (CLAUDE.md, Claim work); a PR marks its step done in its plan.
 - Every feature ships its API with `dry_run`; MCP tools follow from routes; no ws_ screen, tool or file reaches a site member.
 - Personal things (workflow tables, canvases, notes) are owner-only by default; shares are explicit; nothing forces a link to a channel, task or record.
 - Owner questions are collected per plan; ask them together, Turkish, with the recommendation first.
