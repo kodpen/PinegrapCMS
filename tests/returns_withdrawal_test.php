@@ -95,6 +95,20 @@ function test_returns_withdrawal_check_uses_the_rule()
 	pg_assert_contains("pg_return_find_repeat(\$order_id, \$ship_to_id, \$result['source']", $check, 'the repeat is looked for by the request\'s source');
 }
 
+// A retry of an accepted request answers as its repeat even when the timing
+// rules would refuse it now (sent at 23:59 on the deadline day, repeated
+// after midnight): the repeat is looked for before the timing block.
+function test_returns_withdrawal_repeat_before_timing()
+{
+	$check = returns_withdrawal_test_body(returns_withdrawal_test_source('includes/fn/returns.php'), 'pg_return_create_check');
+	$repeat = strpos($check, 'pg_return_find_repeat(');
+	$timing = strpos($check, 'if (pg_return_customer_rules(');
+
+	pg_assert_true(($repeat !== false) && ($timing !== false), 'both are in the check');
+	pg_assert_true($repeat < $timing, 'the repeat comes before the timing rules');
+	pg_assert_true(strpos($check, "'window_closed'", $timing) !== false, 'the period is still checked after it');
+}
+
 // The panel reads the timing through the helper.
 function test_returns_withdrawal_panel_uses_the_helper()
 {

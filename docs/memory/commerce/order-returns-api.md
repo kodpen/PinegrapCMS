@@ -13,7 +13,7 @@ description: Returns over the external API: GET/POST /orders/{id}/returns, body,
 - By default every customer timing rule, as for staff (staff decide; an unsent delivery is normally cancelled instead); `customer_rules: true` holds the request to them. Both, and `OrderReturn.withdrawal` (did it come in time): order-returns-api-timing.md.
 
 ## How do the API and My Account meet one set of refusals?
-- `pg_return_create_check()` holds every check of `pg_return_create()` in the same order (reason, note, order, status, delivery, customer timing, the same form sent again, the lines) and answers `field` and `code`; the API maps the code, never the sentence. `pg_return_create()` runs it, takes the lock and checks the repeat and the lines again; its refusals carry `field`/`code` too (`busy` for the lock).
+- `pg_return_create_check()` holds every check of `pg_return_create()` in the same order (reason, note, order, status, delivery, the same form sent again, customer timing, the lines) and answers `field` and `code`; the API maps the code, never the sentence. `pg_return_create()` runs it, takes the lock and checks the repeat and the lines again; its refusals carry `field`/`code` too (`busy` for the lock).
 - The check reads the repeat, then the held lines, outside the lock. A first request committed between the two reads made the second one "at most 0" (422 items) instead of a repeat, so before a line refusal stands the check looks for the repeat once more. `order_return.php` gave the same 14 answers before and after (sandbox).
 - The handler stops for X-Dry-Run directly above `pg_return_create()`. A repeat (same owner, order, delivery, reason, note, lines within 60 s) answers 200 with that return, nothing else, rehearsal or not.
 

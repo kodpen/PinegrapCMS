@@ -1124,14 +1124,16 @@ function pg_return_find_repeat($order_id, $ship_to_id, $source, $user_id, $reaso
 /**
  * Everything pg_return_create() checks before it writes, without writing or
  * taking the order's lock, in the same order and with the same refusals: the
- * reason and the note, the order and its status, the delivery, a customer's
- * timing, then the same form sent again and the lines. pg_return_create()
+ * reason and the note, the order and its status, the delivery, the same form
+ * sent again, then a customer's timing and the lines. pg_return_create()
  * runs it first; an external API rehearsal (X-Dry-Run) stops after it.
  *
  * The repeat and the lines are read again by pg_return_create() under the
  * lock, where they are final: another request may take the last units
- * meanwhile. A repeat is looked for before the lines, as there, because the
- * request it repeats may have taken every unit.
+ * meanwhile. A repeat is looked for before the timing and the lines, because
+ * the request it repeats was already accepted: its day may have ended since
+ * (a retry after midnight on the deadline day) and it may have taken every
+ * unit.
  *
  * A refusal names the request field it is about (ship_to_id, reason, note or
  * items; '' when it is about the order or the delivery's timing) and a code
@@ -1207,6 +1209,17 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
         return $refuse(lang('That delivery is not part of this order.'), 'delivery_not_in_order', 'ship_to_id');
     }
 
+    // The same form sent again answers with the request it repeats before
+    // the timing rules: that request was already accepted, and a retry that
+    // crosses midnight on the deadline day would otherwise be refused as late.
+    $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
+
+    if ($result['repeat'] > 0) {
+        $result['ok'] = true;
+
+        return $result;
+    }
+
     if (pg_return_customer_rules($result['source'], $options)) {
 
         if (!$state['goods_left']) {
@@ -1222,14 +1235,6 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
         if (!$state['window']['open']) {
             return $refuse(lang('The return period for this delivery has ended.'), 'window_closed');
         }
-    }
-
-    $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
-
-    if ($result['repeat'] > 0) {
-        $result['ok'] = true;
-
-        return $result;
     }
 
     $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
