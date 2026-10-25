@@ -1072,6 +1072,37 @@ function erp_edoc_parasut_order_shipment_id($invoice)
 }
 
 /**
+ * The Paraşüt ids an invoice's send takes from what Pinegrap keeps rather
+ * than asks Paraşüt for, as parasut_send_once_more() reads them: its lines'
+ * product cards (parasut_kept_product_cards()) and the order's shipment
+ * document (erp_edoc_parasut_order_shipment_id()). The buyer card is not
+ * among them: erp_edoc_parasut_contact_for() reads it first.
+ *
+ * @param array      $invoice        An erp_invoices row (order_id, order_shipment_id)
+ * @param array|null $product_cards  The cards the lines' products keep
+ * @return array ['Product' => ids, 'ShipmentDocument' => ids]
+ */
+function erp_edoc_parasut_kept_ids($invoice, $product_cards)
+{
+    $cards = array();
+
+    foreach ((array) $product_cards as $card) {
+        $card = trim((string) $card);
+
+        if ($card !== '') {
+            $cards[] = $card;
+        }
+    }
+
+    $shipment_id = erp_edoc_parasut_order_shipment_id($invoice);
+
+    return array(
+        'Product' => $cards,
+        'ShipmentDocument' => ($shipment_id !== '') ? array($shipment_id) : array(),
+    );
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
@@ -1605,9 +1636,14 @@ function erp_edoc_parasut_find_written($payload, $contact_id, $context, $skip_id
  * Paraşüt would not delete is named in the refusal ('external_id'), so the
  * row keeps it.
  *
+ * A product card or the order's shipment document whose id Pinegrap kept
+ * and that Paraşüt answers it no longer holds is forgotten and the invoice
+ * sent once more (parasut_send_once_more()); 'message' says so.
+ *
  * @param array $options  'party' (erp_edoc_invoice_party() output) when the caller has it
  * @return array ['success' => bool, 'external_id' => string, 'gib_uuid' => string,
- *                'gib_number' => string, 'status' => 'created', 'error' => string]
+ *                'gib_number' => string, 'status' => 'created', 'error' => string,
+ *                'message' => string (on success: what was forgotten on the way, else '')]
  */
 function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 {
@@ -1715,6 +1751,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         }
     }
 
+    // What the send takes from what Pinegrap keeps rather than asks Paraşüt
+    // for, noted before the body is built (a card the build opens is not a
+    // kept one): its lines' product cards and the order's shipment document.
+    $kept = erp_edoc_parasut_kept_ids($invoice, parasut_kept_product_cards(array_column($lines, 'product_id')));
     $payload = erp_edoc_parasut_invoice_payload($invoice, $lines, $contact['id']);
 
     if (isset($payload['error'])) {
@@ -1778,18 +1818,54 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         }
     }
 
+    // What the operator is told beside the outcome: a kept id Paraşüt no
+    // longer held, forgotten, and whether the invoice was sent once more
+    // without it.
+    $told = '';
+
     if ($external_id === '') {
         // Marked before the request goes, so that a request whose answer
         // never comes (or a process that dies waiting) leaves the next try
         // the question to ask instead of a second record, with the date and
         // contact to ask it with.
-        $mark(erp_edoc_parasut_unsure_mark($date_now, $contact_now));
+        $result = array();
+        $create = function () use ($mark, $date_now, $contact_now, $context, $kept, &$payload, &$result) {
+            $mark(erp_edoc_parasut_unsure_mark($date_now, $contact_now));
 
-        $result = erp_edoc_parasut_request('POST', '/sales_invoices', $payload, $context);
+            $result = erp_edoc_parasut_request('POST', '/sales_invoices', $payload, $context);
+
+            return array('answer' => $result, 'kept' => $kept);
+        };
+
+        // A product card or shipment document Pinegrap kept that Paraşüt
+        // answers it no longer holds (404, nothing written: deleted there,
+        // or the shop moved to another Paraşüt company) is forgotten and the
+        // invoice sent once more: the product on a new card, the order's
+        // invoice as an ordinary one with the shipment included. That 404 is
+        // a definite answer, not an unsure one. The default product/service
+        // is a setting: it refuses in words that name it.
+        $sent = parasut_send_once_more($create, defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '', function ($type, $id) use ($lines, $contact, &$invoice, &$payload) {
+            _parasut_forget_kept_id($type, $id, (int) ($invoice['order_id'] ?? 0));
+
+            if ($type === 'ShipmentDocument') {
+                $invoice['order_shipment_id'] = '';
+            }
+
+            $payload = erp_edoc_parasut_invoice_payload($invoice, $lines, $contact['id']);
+
+            return isset($payload['error']) ? (string) $payload['error'] : '';
+        });
+        $told = implode(' ', $sent['notices']);
+        $before = ($told !== '') ? $told . ' ' : '';
+
+        if ($sent['refusal'] !== '') {
+            $mark('');
+            return $fail($before . $sent['refusal']);
+        }
 
         if ((string) $result['login_error'] !== '') {
             $mark('');
-            return $fail($result['login_error']);
+            return $fail($before . $result['login_error']);
         }
 
         $external_id = trim((string) ($result['body']['data']['id'] ?? ''));
@@ -1797,10 +1873,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         if (!erp_edoc_parasut_ok($result) || ($external_id === '')) {
             if (!erp_edoc_parasut_answer_unsure($result)) {
                 $mark('');
-                return $fail(lang(array('string' => 'Paraşüt would not take the invoice: {var:1}', 'vars' => erp_edoc_parasut_error_text($result))));
+                return $fail($before . lang(array('string' => 'Paraşüt would not take the invoice: {var:1}', 'vars' => erp_edoc_parasut_error_text($result))));
             }
 
-            return $fail(lang(array(
+            return $fail($before . lang(array(
                 'string' => 'Paraşüt did not say whether it took the invoice ({var:1}). The next send looks for it at Paraşüt first, so it is not written twice.',
                 'vars' => erp_edoc_parasut_error_text($result),
             )));
@@ -1853,7 +1929,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
             ));
         }
 
-        return array_merge($fail($message), array('external_id' => $gone ? '' : $external_id));
+        return array_merge($fail((($told !== '') ? $told . ' ' : '') . $message), array('external_id' => $gone ? '' : $external_id));
     }
 
     erp_query("UPDATE erp_invoices
@@ -1868,6 +1944,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         'gib_number' => '',
         'status' => 'created',
         'error' => '',
+        'message' => $told,
     );
 }
 

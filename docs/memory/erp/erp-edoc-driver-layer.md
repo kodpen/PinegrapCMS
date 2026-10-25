@@ -12,7 +12,7 @@ description: ERP e-document driver layer (4.61): registry gate, adding a provide
 - `poll` may add `'gone' => true` (no such record; not in that comment yet): with `none`/`error` the service clears the record columns (`erp_edoc_invoice_poll_gone_set()`; which rows: erp-parasut-send-failures.md).
 
 ## What is the driver contract?
-- `info()` (label, description, docs_url, capabilities, settings_note); `fields()` (name, label, type text|password, help, required); `ping($credentials)` → `['success','message','details']` (`details['pending']=true` = "not connecting yet, but setup is done"; the screen prints it in the info colour); `check_taxpayer($vkn)` → is_einvoice_user + aliases; `send_invoice`, `poll`, `cancel_invoice`, `fetch_document`, `send_waybill` → all `['success' => bool, 'error' => string, …]`.
+- `info()` (label, description, docs_url, capabilities, settings_note); `fields()` (name, label, text|password, help, required); `ping($credentials)` → `['success','message','details']` (`details['pending']=true`: setup done, not connecting yet; shown in the info colour); `check_taxpayer($vkn)` → is_einvoice_user + aliases; `send_invoice`, `poll`, `cancel_invoice`, `fetch_document`, `send_waybill` → all `['success' => bool, 'error' => string, …]`; `send_invoice` may add `message` (`erp_edoc_invoice_send()` appends it).
 - An undefined operation = unsupported.
 - Capabilities (`erp_edoc_has_capability()`): `einvoice`, `earchive`, `ewaybill`, `inbox`, `accounts`, `return`, `ubl` (`fetch_document` hands back the UBL, not only the PDF; the invoice screen draws the UBL button by it).
 
@@ -25,7 +25,7 @@ description: ERP e-document driver layer (4.61): registry gate, adding a provide
 - Work completely: most stores never have one. A screen only a provider can fill (incoming e-invoices, account sync) gets its menu link from `pg_erp_provider_offers('inbox'|'accounts')` (`includes/fn/ecommerce.php`); a new such screen = a new branch there.
 
 ## What schema does it add?
-- `erp_invoices` / `erp_waybills`: `edoc_provider`, `edoc_external_id`; `erp_edoc_queue`: `provider`, `external_job_id` (no processor yet). The older `erp_invoices.parasut_*` columns (4.43) stay for the Paraşüt driver's e-document id and job; no new one is added.
+- `erp_invoices` / `erp_waybills`: `edoc_provider`, `edoc_external_id`; `erp_edoc_queue`: `provider`, `external_job_id` (no processor yet). `erp_invoices.parasut_*` (4.43) keep the Paraşüt driver's e-document id and job.
 
 ## Where do endpoint addresses come from?
 - Never guessed: from the provider's document, else onto its unverified list. İşbaşı: `docs/_isbasi_api_notlari.md` ("Doğrulanmadı"); Paraşüt: the published swagger, checked live on a demo company (erp-parasut-driver.md), unread fields marked UNVERIFIED in the driver.
