@@ -497,6 +497,37 @@ function test_prototype_frame_parse_takes_plain_numbers_only()
 	pg_assert_same('', $parsed['r']);
 }
 
+function test_prototype_frame_query_round_trips_through_parse_and_state()
+{
+	// The address the viewer writes is the one the frame reads back: the
+	// frame branch is picked by frame=1 alone, and every signed part comes
+	// back as it was signed, escapes and multibyte text included.
+	$cases = array(
+		array('a b/c', 'r+1'),
+		array('ürün/x%y&z=1', 'ab#12'),
+		array(str_repeat('é', 255), str_repeat('x', 100)),
+		array('', ''),
+	);
+
+	foreach ($cases as $case) {
+		list($sub, $record) = $case;
+		$signature = pg_proto_frame_sign(7, 12, 3, 1000900, 'k', $sub, $record);
+		$query = pg_proto_frame_query(7, 12, 3, 1000900, $signature, $sub, $record);
+		parse_str($query, $get);
+
+		pg_assert_same('1', $get['frame'], $query);
+		$parsed = pg_proto_frame_parse($get);
+		pg_assert_same('ok', pg_proto_frame_state($parsed, 'k', 1000000), $query);
+		pg_assert_same($sub, $parsed['sub'], $query);
+		pg_assert_same($record, $parsed['r'], $query);
+	}
+
+	// No item and no record: neither key is written.
+	parse_str(pg_proto_frame_query(7, 12, 3, 1000900, pg_proto_frame_sign(7, 12, 3, 1000900, 'k')), $get);
+	pg_assert_false(isset($get['sub']));
+	pg_assert_false(isset($get['r']));
+}
+
 function test_prototype_viewer_admits_roles_zero_to_two_only()
 {
 	pg_assert_true(pg_proto_viewer_role_allowed(0));
