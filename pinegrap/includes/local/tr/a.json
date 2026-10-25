@@ -117,6 +117,7 @@
     "A column inside a row. Its width is set per screen size, in twelfths of the row.": "Bir satırın içindeki sütun. Genişliği her ekran boyutu için satırın on ikide biri cinsinden ayarlanır.",
     "A coming copy of a repeating task: it is made on its start day.": "Tekrarlayan bir görevin gelecek kopyası: başlangıç gününde oluşturulur.",
     "A command cannot be scheduled. Write it as a message, or send it now.": "Bir komut zamanlanamaz. Mesaj olarak yazın ya da hemen gönderin.",
+    "A comment is listed only when its record matches every filter, besides the filters of that page's Form Item View. A value from the address is read from the address of the page that shows this list.": "Bir yorum, o sayfanın Form Öğesi Görünümü filtrelerinin yanında kaydı her filtreye uyduğunda listelenir. Adresten alınan değer, bu listeyi gösteren sayfanın adresinden okunur.",
     "A comment is required.": "Yorum gerekli.",
     "A comment on page ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Sayfadaki ({var:1}) bir yorum, {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
     "A comment on page ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Sayfadaki ({var:1}) bir yorum, {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",

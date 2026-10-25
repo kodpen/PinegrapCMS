@@ -39,7 +39,9 @@
  * the box to follow the topic and the moderators' controls. Three lists of
  * the same widget, in its recent mode, read the topic and guide pages: the
  * latest replies on the home page, the member's own in My topics and the
- * ones awaiting approval on the moderators' dashboard. The reply e-mails
+ * ones awaiting approval on the moderators' dashboard; a fourth reads the
+ * topic page alone and keeps the replies of the board the address names
+ * (its record filters), on the board page. The reply e-mails
  * draw the comment they are about with it too. The desk, the inbox and the
  * report page keep the platform's fixed comments block. Every page keeps its
  * own comment settings ('comments' below).
@@ -2262,6 +2264,12 @@ $pages[] = array(
                 $col(array(
                     $widget('board_pinned'),
                     $widget('board_topics'),
+                    // The newest replies of the board's topics, each opening
+                    // at its post; every board's on the bare page.
+                    $el('section', 'pf-card mt-4', lang('Latest replies'), array(
+                        $sec_head(lang('Latest replies')),
+                        $widget('board_latest_replies'),
+                    )),
                 ), '', '', '', '12', 'col-xl-10'),
             )),
         ), 'pf-band pt-0'),
@@ -4325,6 +4333,29 @@ $widgets['home_latest_replies'] = array(
     )),
 );
 
+// The latest replies of a board: the five newest published replies of the
+// topics whose board the address names (?board=, the list's record filter,
+// after the topic page's own rules), each opening the topic at the reply.
+// Without a name the filter is left out: every board's.
+$widgets['board_latest_replies'] = array(
+    'page'   => 'board',
+    'slug'   => lang('recent-comments'),
+    'config' => array(
+        'regionType'      => 'comments',
+        'mode'            => 'recent',
+        'recent_show'     => 'published',
+        'recent_page_ids' => array('{{tab:topic}}'),
+        'recent_filters'  => array($board_param),
+        'recent_limit'    => '5',
+    ),
+    'tree'   => $recent_list(array(
+        'empty'  => lang('No replies yet.'),
+        'title'  => $topic_heads[1][5],
+        'status' => false,
+        'edit'   => false,
+    )),
+);
+
 // The forum: the count of every live topic (the page's feed), the pinned
 // topics, then every other live topic with a search over the title, the
 // text, the tags and the board, twenty to a page.
@@ -5680,7 +5711,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.1.0',
+    'version'     => '1.2.0',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

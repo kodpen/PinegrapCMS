@@ -47,12 +47,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * - limit: 5 (default), 10, 20 or 50 comments, after the sources are merged.
  * - order: 'newest' (default) or 'oldest' first, for 'mine' and 'pending';
  *   'published' is always read newest first (pg_comments_recent_read()).
- *
- * The record filters of a list are not an option of this mode: a 'filters'
- * key a row carries from another kind is never read.
+ * - filters: the list's record filters (recent_filters, rows as a form
+ *   list stores them), applied only when the list reads one page with a
+ *   record view (pg_comments_recent_source_decision()). A 'filters' key a
+ *   list carries from another kind is never read, so none applies unseen.
  *
  * @param mixed $cfg
- * @return array 'show', 'page_ids', 'limit', 'order'
+ * @return array 'show', 'page_ids', 'limit', 'order', 'filters'
  */
 function pg_comments_recent_options($cfg)
 {
@@ -100,11 +101,22 @@ function pg_comments_recent_options($cfg)
         }
     }
 
+    $filters = array();
+
+    if (isset($cfg['recent_filters']) && is_array($cfg['recent_filters'])) {
+        foreach ($cfg['recent_filters'] as $filter) {
+            if (is_array($filter)) {
+                $filters[] = $filter;
+            }
+        }
+    }
+
     return array(
         'show' => $word('recent_show', array('published', 'mine', 'pending'), 'published'),
         'page_ids' => $ids,
         'limit' => $limit,
         'order' => $word('recent_order', array('newest', 'oldest'), 'newest'),
+        'filters' => $filters,
     );
 }
 
@@ -166,9 +178,11 @@ function pg_comments_recent_sign_in_page($page_type, $properties)
  * comments_on (the page's comment switch, the Preview's unsaved settings
  * included), page_type, record (a top-level form_item_view widget), form_id
  * (that view's form), nested (a form_item_view below the top level),
- * viewer_filter (the view's filters compare a field with the viewer,
- * pg_sw_filters_compare_viewer()), personal (a live render for a signed-in
- * visitor), show, signed_in (a live render for a signed-in visitor).
+ * viewer_filter (the view's filters, or the list's, compare a field with
+ * the viewer, pg_sw_filters_compare_viewer()), personal (a live render for
+ * a signed-in visitor), show, signed_in (a live render for a signed-in
+ * visitor), list_filters (the list has a record filter with a field),
+ * sources (the number of pages the list reads).
  *
  * A page with a record view adds that view's records' threads ('record');
  * any other page adds its own thread ('page'). Refusals, in order:
@@ -179,7 +193,9 @@ function pg_comments_recent_sign_in_page($page_type, $properties)
  * (a page that keeps its classic comments block,
  * pg_comments_widget_classic_thread()), 'nested' (a page source whose
  * record view is below the top level: its thread cannot be told), 'no_form'
- * (a record view without a form), 'viewer_filter' (a view that keeps
+ * (a record view without a form), 'filters' (a list with record filters
+ * reads one page with a record view only: the filters name that form's
+ * fields), 'viewer_filter' (a view that keeps
  * records per viewer, drawn for nobody in particular: the filter would read
  * '' and match every record sent while signed out), 'not_staff' ('pending'
  * without edit access), 'signed_out' ('mine' for a visitor who is not
@@ -227,6 +243,9 @@ function pg_comments_recent_source_decision($facts)
     }
     if (($kind === 'record') && ($form_id <= 0)) {
         return $refuse('no_form');
+    }
+    if ($on('list_filters') && (($kind !== 'record') || !isset($facts['sources']) || ($facts['sources'] !== 1))) {
+        return $refuse('filters');
     }
     if (($kind === 'record') && $on('viewer_filter') && !$on('personal')) {
         return $refuse('viewer_filter');
@@ -996,17 +1015,27 @@ function pg_comments_recent_default_tree()
  * access in a live render), settings (pg_comments_settings()), url (its
  * address), and for a record source form_id, view_cfg, pretty, access
  * (pg_comments_recent_access_sql(), null for closed) and gate (the view's
- * filters, pg_sw_list_record_filter_clause(); null for closed).
+ * filters and the list's, pg_sw_list_record_filter_clause(); null for
+ * closed).
  *
- * @param mixed    $ids    pg_comments_recent_options()'s page_ids
+ * @param mixed    $ids     pg_comments_recent_options()'s page_ids
  * @param mixed    $show
  * @param mixed    $viewer
- * @param callable $fetch  runs a SELECT and returns its rows (db_items)
+ * @param callable $fetch   runs a SELECT and returns its rows (db_items)
+ * @param mixed    $filters pg_comments_recent_options()'s filters: held,
+ *                          after the view's own, to the one record source
  * @return array
  */
-function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
+function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items', $filters = array())
 {
     $ids = _pg_comments_recent_ids($ids);
+    $list_filters = is_array($filters) ? array_values(array_filter($filters, 'is_array')) : array();
+    $filtered = false;
+
+    foreach ($list_filters as $filter) {
+        $filtered = $filtered || (isset($filter['field']) && is_scalar($filter['field']) && (trim((string) $filter['field']) !== ''));
+    }
+
     $viewer = is_array($viewer) ? $viewer : array();
     $live = !empty($viewer['live']);
     $signed_in = $live && !empty($viewer['signed_in']);
@@ -1085,7 +1114,9 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
             'page_type' => $page_type,
             'record' => ($widget !== null),
             'form_id' => $form_id,
-            'viewer_filter' => ($widget !== null) && pg_sw_filters_compare_viewer(pg_sw_record_view_filters($view_cfg)),
+            'viewer_filter' => ($widget !== null) && pg_sw_filters_compare_viewer(array_merge(pg_sw_record_view_filters($view_cfg), $list_filters)),
+            'list_filters' => $filtered,
+            'sources' => count($ids),
         );
 
         // Asked only of a page that would otherwise add its own thread: one
@@ -1121,7 +1152,7 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items')
                 $form_staff = ($form_folder !== null) && ($form_folder !== '') && (check_edit_access($form_folder) == true);
             }
 
-            $clause = pg_sw_list_record_filter_clause($form_id, array('filters' => array()), $view_cfg, $page_id, pg_sw_filter_request());
+            $clause = pg_sw_list_record_filter_clause($form_id, array('filters' => $list_filters), $view_cfg, $page_id, pg_sw_filter_request());
             $source += array(
                 'form_id' => $form_id,
                 'view_cfg' => $view_cfg,
@@ -1446,7 +1477,7 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
     $since = ($signed_in && $audience['session'] && ($options['show'] === 'mine')) ? pg_comments_recent_account_since($user_id) : 0;
     $viewer = array('signed_in' => $signed_in, 'user_id' => $user_id, 'live' => $audience['session'], 'since' => $since);
 
-    $sources = pg_comments_recent_sources($options['page_ids'], $options['show'], $viewer);
+    $sources = pg_comments_recent_sources($options['page_ids'], $options['show'], $viewer, 'db_items', $options['filters']);
     $read = pg_comments_recent_read($sources, $options, $viewer);
     $audience_sql = pg_comments_recent_audience_sql($options['show'], $viewer['signed_in'] ? $user_id : 0, $since);
     $ids = array();

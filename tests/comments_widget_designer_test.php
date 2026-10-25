@@ -2085,6 +2085,134 @@ JS;
 	pg_assert_same(array(array('tab:topic', 'record', true), array('12', 'page', false)), $res['sources'], 'the sources the design offers');
 }
 
+// Record filters: the form list's editor, writing recent_filters, while the
+// list reads one page with a record view, and whenever filters are stored,
+// with a warning when the pages chosen leave them unapplied.
+function test_comments_widget_designer_recent_filters()
+{
+	$script = <<<'JS'
+function _sdT(s, v) {
+    if (v === undefined) return s;
+    if (Array.isArray(v)) return String(s).replace(/\{var:(\d)\}/g, function (m, i) { return v[i - 1]; });
+    return String(s).replace(/\{var(?::1)?\}/g, v);
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function sect(icon, title, body) { return '<section data-title="' + title + '">' + body + '</section>'; }
+function row(label, ctrl) { return '<div data-row="' + label + '">' + ctrl + '</div>'; }
+function _swPageRef(p) { return (p.page_id > 0) ? String(p.page_id) : ('tab:' + p.key); }
+var cfgs = {
+    7: { regionType: 'form_item_view', custom_form_page_id: 70 },
+    8: { regionType: 'form_item_view', custom_form_page_id: 71 },
+    9: { regionType: 'form_item_view', custom_form_page_id: 'tab:form' }
+};
+function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var _sharedCache = {};
+Object.keys(cfgs).forEach(function (k) { _sharedCache[k] = { tree: { type: 'root', children: [] }, system_region_config: JSON.stringify(cfgs[k]) }; });
+var _sdCommentsRecentAsked = {};
+var _customFormsCache = [{ page_id: 70, page_name: 'Forum Topics' }, { page_id: 71, page_name: 'Guides' }];
+var _activeKey = 'home';
+function _getCmtVal() { return '0'; }
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid }, children: [] }; }
+var _pages = [
+    { key: 'home', page_id: 1, page_name: 'home', pg_comments: 0, tree: { type: 'root', children: [] } },
+    { key: 'topic', page_id: 0, page_name: 'topic', pg_comments: 1, tree: { type: 'root', children: [ref(7)] } },
+    { key: 'doc', page_id: 12, page_name: 'doc', pg_comments: 1, tree: { type: 'root', children: [] } },
+    { key: 'guide', page_id: 14, page_name: 'guide', pg_comments: 1, tree: { type: 'root', children: [ref(8)] } },
+    { key: 'draft', page_id: 15, page_name: 'draft', pg_comments: 1, tree: { type: 'root', children: [ref(9)] } }
+];
+function _pgTreeOf(p) { return p.tree; }
+var _formFieldsCache = { 70: [{ name: 'board', label: 'Board', type: 'pick list' }] };
+var asked = [];
+function _fetchFormFields(id, cb) { asked.push(String(id)); }
+function renderProperties() {}
+var calls = [];
+function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key) {
+    calls.push({ sid: sid, filters: filters.length, fields: fields.map(function (f) { return f.name; }), loading: loading, note: !!note, withUrl: withUrl, key: key });
+    return '<div data-filter-editor="' + key + '"></div>';
+}
+var board = [{ field: 'board', operator: 'is equal to', value: '', dynamic_value: 'url parameter', dynamic_value_attribute: 'board' }];
+var list = function (ids, filters) {
+    calls = [];
+    var cfg = { regionType: 'comments', mode: 'recent', recent_show: 'published', recent_page_ids: ids };
+    if (filters) cfg.recent_filters = filters;
+    var html = _sdCommentsRecentSect(5, cfg);
+    return { html: html, calls: calls.slice() };
+};
+var out = {};
+out.oneRecord = list(['tab:topic']);
+out.oneRecordFiltered = list(['tab:topic'], board);
+out.onePage = list(['12']);
+out.onePageFiltered = list(['12'], board);
+out.twoFiltered = list(['tab:topic', '14'], board);
+out.twoPlain = list(['tab:topic', '14']);
+out.noneFiltered = list([], board);
+out.elsewhereFiltered = list(['99'], board);
+out.uncached = list(['14']);
+out.askedUncached = asked.slice();
+asked = [];
+out.unsavedForm = list(['15']);
+out.askedUnsaved = asked.slice();
+out.emptyRows = list(['12'], []);
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsRecentSources', '_sdCommentsRecentSect'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	$warning = 'Record filters apply only while the list reads a single page with a Form Item View';
+	$one = $res['oneRecord'];
+	pg_assert_contains('data-row="Record filters"', $one['html'], 'one record source: the filters row');
+	pg_assert_same(array(array('sid' => 5, 'filters' => 0, 'fields' => array('board'), 'loading' => false, 'note' => true, 'withUrl' => true, 'key' => 'recent_filters')), $one['calls'],
+		'the form list\'s editor, with the form\'s fields, values from the address, a note of its own, writing recent_filters');
+	pg_assert_false(strpos($one['html'], $warning), 'no warning');
+	pg_assert_contains('Every complete record of Forum Topics that has a comment can be listed here', $one['html'], 'unfiltered: every record can be listed');
+
+	$filtered = $res['oneRecordFiltered'];
+	pg_assert_same(1, $filtered['calls'][0]['filters'], 'the stored filter');
+	pg_assert_false(strpos($filtered['html'], $warning), 'applied: no warning');
+	pg_assert_false(strpos($filtered['html'], 'Every complete record of Forum Topics'), 'filtered: not every record');
+
+	foreach (array('onePage', 'twoPlain') as $case) {
+		pg_assert_same(array(), $res[$case]['calls'], $case . ': no filters, no editor');
+		pg_assert_false(strpos($res[$case]['html'], 'data-row="Record filters"'), $case . ': no row');
+	}
+	pg_assert_same(array(), $res['emptyRows']['calls'], 'an empty list of filters is no filter');
+
+	foreach (array('onePageFiltered', 'twoFiltered', 'noneFiltered') as $case) {
+		pg_assert_same(1, count($res[$case]['calls']), $case . ': stored filters stay in view');
+		pg_assert_same('recent_filters', $res[$case]['calls'][0]['key'], $case . ': and editable');
+		pg_assert_contains($warning, $res[$case]['html'], $case . ': with the warning that they are not applied');
+	}
+	pg_assert_same(array(), $res['onePageFiltered']['calls'][0]['fields'], 'a page source has no form fields');
+
+	// A page outside the design: its kind is the server's to tell.
+	pg_assert_same(1, count($res['elsewhereFiltered']['calls']), 'filters on a page outside the design stay in view');
+	pg_assert_true($res['elsewhereFiltered']['calls'][0]['loading'], 'its fields unknown, nothing is marked incompatible');
+	pg_assert_false(strpos($res['elsewhereFiltered']['html'], $warning), 'and no warning');
+
+	pg_assert_true($res['uncached']['calls'][0]['loading'], 'fields not loaded yet');
+	pg_assert_same(array('71'), $res['askedUncached'], 'asked for once per draw');
+	pg_assert_true($res['unsavedForm']['calls'][0]['loading'], 'a form not saved yet has no fields to load');
+	pg_assert_same(array(), $res['askedUnsaved'], 'and nothing is asked');
+}
+
+// The shared filter editor names the key it writes: the rows and the Add
+// button carry data-sw-filter-key for any key but a form list's own, and the
+// handlers write the key they read.
+function test_comments_widget_designer_filter_editor_key()
+{
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$html = comments_widget_designer_test_js_function($js, '_swFormListFiltersHtml');
+	pg_assert_contains('function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key)', $html, 'the key is a parameter');
+	pg_assert_same(3, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button');
+	pg_assert_contains("var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key=\"' + esc(key) + '\"' : '';", $html, 'only for another key');
+	pg_assert_contains("var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };", $js, 'the handlers read it');
+	pg_assert_same(0, substr_count($js, 'cfg.filters = list;'), 'and never write filters by name');
+	pg_assert_same(2, substr_count($js, 'cfg[key] = list;'), 'a changed or deleted row and an added one write the key');
+}
+
 // The editor loads only the open tab's components: a tab not opened yet
 // places a record view the cache does not know. Its kind is shown as loading,
 // its components are fetched once, and the panel is drawn again.
@@ -2127,6 +2255,9 @@ function prefetchShared(ids, cb) {
     cb();
 }
 function renderProperties() { renders++; }
+var _formFieldsCache = { 70: [] };
+function _fetchFormFields() {}
+function _swFormListFiltersHtml() { return ''; }
 var kinds = function (cfg) { return _sdCommentsRecentSources(cfg).map(function (s) { return [s.ref, s.kind]; }); };
 var cfg = { regionType: 'comments', mode: 'recent', recent_page_ids: ['tab:topic'] };
 var out = {};
