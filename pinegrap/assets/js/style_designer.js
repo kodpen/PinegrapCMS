@@ -6433,6 +6433,12 @@ const StyleDesigner = (function () {
         '.sd-loop-band-row .sd-loop-band-cell .bi { font-size:.85rem; line-height:1; flex:0 0 auto; }',
         '.sd-loop-band-row .sd-loop-band-cell .sd-loop-band-text { font-size:.65rem; overflow:hidden; text-overflow:ellipsis; }',
         '.sd-recipient-loop-band-row .sd-loop-band-cell { background:#0d9488; }',
+        // A list inside a record (_sdListBand()): a cyan frame and band; one
+        // the site draws nothing for is faded under an amber band.
+        '.sd-loop-area.sd-list-area { min-height:44px; outline-color:rgba(8,145,178,.7); background:rgba(8,145,178,.04); }',
+        '.sd-list-area > .sd-loop-band, .sd-list-band-row .sd-loop-band-cell { background:#0891b2; }',
+        '.sd-list-area.sd-list-off > :not(.sd-loop-band) { opacity:.45; }',
+        '.sd-list-area.sd-list-off > .sd-loop-band, .sd-list-band-row.sd-list-off .sd-loop-band-cell { background:#b45309; }',
         // ─── Feature switched off in the options panel ───────────────────────
         // Catalog search / filter elements whose feature is toggled off. They
         // stay selectable and editable — the designer can still restyle them,
@@ -10718,7 +10724,8 @@ const StyleDesigner = (function () {
         // (div-based) loop_area path so behavior stays consistent regardless
         // of which builder handled it.
         var hideLoop = false;
-        if (_sysWidgetRenderCfg) {
+        var isList = _sdListIsSourced(node);
+        if (_sysWidgetRenderCfg && !isList) {
             var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
                 ? _sysWidgetRenderCfg.regionType : 'form_list_view';
             hideLoop = (_lwRt === 'form_item_view') ||
@@ -10735,8 +10742,10 @@ const StyleDesigner = (function () {
         }
 
         var isRecipient = (node.type === 'recipient_loop_area');
+        var listBand = isList ? _sdListBand(node) : null;
         var bandTr = doc.createElement('tr');
-        bandTr.className = 'sd-wrap sd-loop-band-row' + (isRecipient ? ' sd-recipient-loop-band-row' : '') + (hideLoop ? ' d-none' : '');
+        bandTr.className = 'sd-wrap sd-loop-band-row' + (isRecipient ? ' sd-recipient-loop-band-row' : '') + (hideLoop ? ' d-none' : '') +
+            (listBand ? ' sd-list-band-row' + (listBand.off ? ' sd-list-off' : '') : '');
         bandTr.setAttribute('data-sd-id', node._id);
         bandTr.setAttribute('data-sd-type', node.type);
         bandTr.setAttribute('data-sd-band', '1');
@@ -10756,7 +10765,9 @@ const StyleDesigner = (function () {
         // symptom; the cell must stay a real table-cell.
         var bandInner = doc.createElement('div');
         bandInner.className = 'sd-loop-band-inner';
-        bandInner.innerHTML = isRecipient
+        bandInner.innerHTML = listBand
+            ? '<i class="bi bi-list-ul"></i><span class="sd-loop-band-text">' + esc(listBand.text) + '</span>'
+            : isRecipient
             ? '<i class="bi bi-people"></i><span class="sd-loop-band-text">' + esc(_sdT('Recipient list — shown again for every recipient')) + '</span>'
             : '<i class="bi bi-arrow-repeat"></i><span class="sd-loop-band-text">' + esc(_sdT('Loop area — one record shown (repeated for every record at runtime)')) + '</span>';
         bandTd.appendChild(bandInner);
@@ -11817,7 +11828,7 @@ const StyleDesigner = (function () {
         };
         var found = null;
         (function walk(n, trail) {
-            if (found || !n || typeof n !== 'object' || lost(n)) return;
+            if (found || !n || typeof n !== 'object' || lost(n) || _sdListIsSourced(n)) return;
             if (n.type === 'loop_area') { found = { loop: n, path: trail }; return; }
             if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, trail.concat([n])); });
         })(root, []);
@@ -12046,11 +12057,12 @@ const StyleDesigner = (function () {
         return samples;
     }
 
-    // The first loop area of a tree (the one the server repeats).
+    // The first loop area of a tree without a source (the one the server
+    // repeats); a list inside a record is skipped with what it holds.
     function _sdFirstLoopArea(tree) {
         var found = null;
         (function walk(n) {
-            if (found || !n) return;
+            if (found || !n || _sdListIsSourced(n)) return;
             if (n.type === 'loop_area') { found = n; return; }
             if (Array.isArray(n.children)) n.children.forEach(walk);
         })(tree);
@@ -12381,7 +12393,8 @@ const StyleDesigner = (function () {
         // misleading: it looks like content will repeat, but it won't. Hide the
         // wrapper with d-none so the designer doesn't see it while editing.
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
-        if (node.type === 'loop_area' && _sysWidgetRenderCfg) {
+        // A list inside a record repeats its rows in every kind that draws it.
+        if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
             var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
                 ? _sysWidgetRenderCfg.regionType : 'form_list_view';
             var _loopHide = (_lwRt === 'form_item_view') ||
@@ -13394,6 +13407,13 @@ const StyleDesigner = (function () {
                     '<span class="sd-loop-band-text">' +
                     esc(_sdT('Loop area — one record shown (repeated for every record at runtime)')) +
                     '</span>';
+                // A list inside a record: its own band, faded when the site
+                // draws nothing for it (_sdListBand()).
+                if (_sdListIsSourced(node)) {
+                    var laList = _sdListBand(node);
+                    la.className += ' sd-list-area' + (laList.off ? ' sd-list-off' : '');
+                    laBand.innerHTML = '<i class="bi bi-list-ul"></i><span class="sd-loop-band-text">' + esc(laList.text) + '</span>';
+                }
                 la.appendChild(laBand);
                 return la;
             case 'recipient_loop_area':
@@ -14027,7 +14047,7 @@ const StyleDesigner = (function () {
         if (!_sdGhostsOn || !cfg || !(sid > 0)) return;
         var type = (typeof cfg.regionType !== 'string') ? 'form_list_view' : cfg.regionType;
         if (!_SD_GHOST_TYPES[type]) return;
-        var loopEl = inner.querySelector('.sd-loop-area');
+        var loopEl = inner.querySelector('.sd-loop-area:not(.sd-list-area)');
         if (!loopEl || !loopEl.querySelector('.sd-wrap')) return;   // nothing designed yet
         var loopWrap = loopEl.closest('[data-sd-type="loop_area"]');
         if (loopWrap && loopWrap.hasAttribute('data-sd-loop-hidden')) return;
@@ -14108,6 +14128,10 @@ const StyleDesigner = (function () {
             // Type-aware placeholder dispatch — order matters: currency
             // FIRST so __cart_total_formatted doesn't fall through to the
             // short-label map by accident.
+            // A list row's own value, inside a list (_SD_LIST_ROW_PREVIEWS).
+            if (fieldName && Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, fieldName) && _sdListRowOptions(node).length) {
+                return _SD_LIST_ROW_PREVIEWS[fieldName];
+            }
             // System fields of a submitted form come first: several of them
             // (reference_code, newest_comment) would otherwise fall through to
             // lorem, and a couple would be misread by the heuristics below.
@@ -14334,7 +14358,7 @@ const StyleDesigner = (function () {
                 }
                 return _sct;
             case 'row': return 'Row';
-            case 'loop_area': return _sdT('🔁 Loop Area');
+            case 'loop_area': return _sdListIsSourced(node) ? _sdListName(node) : _sdT('🔁 Loop Area');
             case 'recipient_loop_area': return _sdT('👥 Recipient List');
             case 'col':
                 var cls = buildColClasses(node.props).split(' ').filter(function (c) { return c.indexOf('col') === 0; });
@@ -15674,6 +15698,11 @@ const StyleDesigner = (function () {
         // inside of a <form> the server prints.
         if (_sdDragCarriesForm(data) && _sdInForm(target)) return false;
 
+        // A list inside a record goes where a record fills it
+        // (_sdListPlaceOk()); the main loop's rules below are not its.
+        var _dragList = _sdDragIsList(data);
+        if (_dragList && !_sdListPlaceOk(data, target)) return false;
+
         // Drop onto root: the auto-wrapper takes over
         if (target.type === 'root') return true;
 
@@ -15771,7 +15800,10 @@ const StyleDesigner = (function () {
         // (b) Only ONE loop_area per system widget — if the target widget already has one,
         //     additional drops are rejected (UNLESS we're moving the existing one — node
         //     drag of an existing loop_area is allowed across containers).
-        if (t === 'loop_area') {
+        // (c) The main loop never goes into a list inside a record. A list
+        //     is not the main loop and does not count (_sdListPlaceOk()).
+        if (t === 'loop_area' && !_dragList) {
+            if (_sdListIsSourced(target) || _sdListsAbove(target).length) return false;
             // Resolve which shared_component (if any) the target lives in
             var _sysSid = 0;
             if (target.type === 'root') {
@@ -15794,7 +15826,7 @@ const StyleDesigner = (function () {
             if (!_isMovingExisting) {
                 var _hasLoop = false;
                 (function scan(n) {
-                    if (_hasLoop || !n) return;
+                    if (_hasLoop || !n || _sdListIsSourced(n)) return;
                     if (n.type === 'loop_area') { _hasLoop = true; return; }
                     if (n.children) n.children.forEach(scan);
                 })(_sysCachedCheck.tree);
@@ -15841,6 +15873,9 @@ const StyleDesigner = (function () {
             }
         }
 
+        // A list goes into a loop area too: the record of the main loop or
+        // the row of another list (_sdListPlaceOk() said where).
+        if (_dragList && target.type === 'loop_area') return true;
         return (allowed[target.type] || []).indexOf(t) !== -1;
     }
 
@@ -16036,7 +16071,7 @@ const StyleDesigner = (function () {
             // form_fields.type.
             case 'cf_field': return _cfPaletteBlock(extra.cfType);
             case 'region': return createNode('region', { regionType: extra.regionType || 'page', regionName: '', cssClass: '' });
-            case 'loop_area': return createNode('loop_area', {}, []);
+            case 'loop_area': return (extra && extra.listSource) ? _sdListStarter(String(extra.listSource)) : createNode('loop_area', {}, []);
             case 'recipient_loop_area': return createNode('recipient_loop_area', {}, []);
             case 'component':
                 var ctype = extra.componentType;
@@ -21800,9 +21835,11 @@ const StyleDesigner = (function () {
     // Returns true if the node's subtree contains a loop_area at any depth (incl. self).
     // Used to extend delete + cross-widget-move protection: a wrapper that holds the
     // loop_area can't be deleted or carried out of its system widget either, since that
-    // would orphan or duplicate the loop_area.
+    // would orphan or duplicate the loop_area. A list inside a record (a loop_area with
+    // props.source) is not the main loop and holds none: it is deleted, copied and
+    // moved like any element (_sdListPlaceOk() says where it may go).
     function _subtreeContainsLoopArea(node) {
-        if (!node) return false;
+        if (!node || _sdListIsSourced(node)) return false;
         if (node.type === 'loop_area') return true;
         if (!node.children) return false;
         for (var i = 0; i < node.children.length; i++) {
@@ -22194,6 +22231,14 @@ const StyleDesigner = (function () {
             { title: _sdT('Form'), icon: 'bi-ui-checks', items: CF_PALETTE_ORDER.map(function (k) {
                 return { label: CF_PALETTE[k].label, type: 'cf_field', icon: CF_PALETTE[k].icon, extra: { cfType: k } };
             })},
+            // Lists inside a record of the two form views: a field's values,
+            // its comma-separated parts or the record's attachments, each
+            // repeating its row (_sdListPlaceOk() says where one lands).
+            { title: _sdT('Lists in a record'), icon: 'bi-list-ul', items: [
+                { label: _sdT('Values of a field'), type: 'loop_area', icon: 'bi-list-check', extra: { listSource: 'form_record.values' } },
+                { label: _sdT('Parts of a field, split at commas'), type: 'loop_area', icon: 'bi-list-ul', extra: { listSource: 'form_record.split' } },
+                { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } }
+            ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
                          legacy: !!SD_LEGACY_REGIONS[k] };
@@ -25905,9 +25950,9 @@ const StyleDesigner = (function () {
             case 'loop_area':
                 // Pseudo-tag in the HTML tree preview — not actual HTML output but a
                 // visible marker so the user can see where the per-row template starts.
-                tag = 'loop';
+                tag = _sdListIsSourced(node) ? 'list' : 'loop';
                 cls = 'sd-loop-marker';
-                preview = _sdT('Repeated for each record');
+                preview = _sdListIsSourced(node) ? _sdListName(node) : _sdT('Repeated for each record');
                 break;
             case 'recipient_loop_area':
                 // Pseudo-tag mirroring loop_area — per-recipient template marker.
@@ -31503,10 +31548,83 @@ const StyleDesigner = (function () {
     }
 
     // ── Shared Component info panel ───────────────────────────────────────────
+    // The panel of a list inside a record: what it lists, the field it
+    // reads, how many rows in which order, and why the site would draw
+    // nothing (_sdListBand()). _sdWireListProps() writes the props
+    // pg_sw_list_spec() reads.
+    function propsListArea(n) {
+        var p = n.props || {};
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var offered = _sdKindLists(_sdListWidgetKind(_isInsideSystemWidget(n)));
+        var srcOpts = '';
+        offered.forEach(function (s) {
+            srcOpts += '<option value="' + esc(s) + '"' + (s === p.source ? ' selected' : '') + '>' + esc(SW_LIST_SOURCES[s].label) + '</option>';
+        });
+        if (offered.indexOf(p.source) === -1) {
+            srcOpts += '<option value="' + esc(p.source) + '" selected>' + esc(p.source + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+        }
+        var html = row(esc(_sdT('What it lists')),
+            '<select class="form-select form-select-sm sd-list-source" aria-label="' + esc(_sdT('What it lists')) + '">' + srcOpts + '</select>' +
+            note(_sdT('The row stays as it is: bind its elements to the new row values in Bind Data.'), false));
+
+        var src = SW_LIST_SOURCES[p.source];
+        if (src) {
+            var formId = _getSystemWidgetCustomFormPageId(n);
+            var fields = formId ? _formFieldsCache[formId] : null;
+            var fieldCtl;
+            if (!formId) {
+                fieldCtl = note(_sdT('Pick the widget\'s form first (the System Widget section).'), true);
+            } else if (!fields) {
+                _fetchFormFields(formId, function () { renderProperties(); });
+                fieldCtl = note(_sdT('Loading the form fields...'), false);
+            } else {
+                var cur = String(p.sourceArg == null ? '' : p.sourceArg);
+                // The field is matched as the site reads the arg (_sdListSpec()).
+                var curKey = cur.replace(/[^a-z0-9_\-]/gi, '');
+                var known = (cur === '');
+                var fOpts = '<option value=""' + (cur === '' ? ' selected' : '') + '>' +
+                    esc(src.argRequired ? _sdT('— Choose a field —') : _sdT('Every attachment but those kept for office use')) + '</option>';
+                fields.forEach(function (ff) {
+                    if (!ff || !ff.name || !_sdListFieldFits(p.source, ff)) return;
+                    var on = !known && _sdListFieldOf([ff], curKey) !== null;
+                    if (on) known = true;
+                    fOpts += '<option value="' + esc(String(ff.name)) + '"' + (on ? ' selected' : '') + '>' + esc(ff.label || ff.name) + '</option>';
+                });
+                if (!known) fOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                fieldCtl = '<select class="form-select form-select-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
+            }
+            html += row(esc(_sdT('Field')), fieldCtl);
+            var limit = parseInt(p.limit, 10);
+            html += row(esc(_sdT('Rows to show')),
+                '<input type="number" min="0" max="100" step="1" class="form-control form-control-sm sd-list-limit" value="' + ((limit > 0 && limit <= 100) ? limit : 0) + '" aria-label="' + esc(_sdT('Rows to show')) + '">' +
+                note(_sdT('0 shows every row; at most 100.'), false));
+            var oOpts = '';
+            SW_LIST_ORDERS.forEach(function (o) {
+                oOpts += '<option value="' + o[0] + '"' + (o[0] === (p.order || '') ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+            });
+            html += row(esc(_sdT('Row order')), '<select class="form-select form-select-sm sd-list-order" aria-label="' + esc(_sdT('Row order')) + '">' + oOpts + '</select>');
+        }
+
+        var band = _sdListBand(n);
+        if (band.off) html += note(band.text, true);
+        var about = {
+            'form_record.values': _sdT('One row for every value the field holds: every ticked box of a check box group, every choice of a multiple choice list. Bind the row\'s elements to "Value" in Bind Data.'),
+            'form_record.split':  _sdT('One row for every part of the field\'s text cut at its commas, spaces at either end dropped: "red, green, blue" gives three rows. Bind the row\'s elements to "Value" in Bind Data.'),
+            'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.')
+        };
+        if (about[p.source]) html += note(about[p.source], false);
+        html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
+        return sect('bi-list-ul', esc(_sdT('List')), html);
+    }
+
     // Loop area props — explanatory section. Loop area itself has no prop knobs;
     // widget-level configuration (form selection, items per page, search, etc.)
     // is on the parent system widget's props (propsSharedRef).
     function propsLoopArea(n) {
+        if (_sdListIsSourced(n)) return propsListArea(n);
         // Detect if this loop_area lives inside a single-record widget type
         // (form_item_view, or my_account without show_submissions). In those cases
         // the loop_area is hidden on the canvas — show a contextual info note.
@@ -39264,12 +39382,21 @@ const StyleDesigner = (function () {
         // "Another page, with values from the record": a link's href only,
         // and only in the widget kinds whose renderer expands it.
         var _pageLinkOffered = _swPageLinkOffered(node);
+        // Inside a list inside the record: the row's own values.
+        var _listRows = _sdListRowOptions(node);
 
-        // Build the field-select options:  form fields → built-ins → custom input
+        // Build the field-select options:  list row → form fields → built-ins → custom input
         function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
             var withPageLink = (prop === 'href' && _pageLinkOffered);
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
+            if (_listRows.length) {
+                html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
+                _listRows.forEach(function (o) {
+                    html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+                });
+                html += '</optgroup>';
+            }
             // Form fields group
             if (formFields.length) {
                 html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
@@ -39305,6 +39432,7 @@ const StyleDesigner = (function () {
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
                               !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
+                              !_listRows.some(function (o) { return o.token === currentVal; }) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
                               !_builtins.some(function (o) { return o[0] === currentVal; }));
@@ -50016,6 +50144,7 @@ const StyleDesigner = (function () {
             _wireSystemWidgetProps();
         }
         _wireDataBindingProps();
+        _sdWireListProps();
         var _splitLinkBtn = document.getElementById('sd-bind-split-link');
         if (_splitLinkBtn) _splitLinkBtn.addEventListener('click', function () { _sdSplitTextLink(selectedNode); });
         // The Form Field panel of a control inside a custom form widget.
@@ -51290,7 +51419,9 @@ const StyleDesigner = (function () {
     // Whether `node` is in the row template of its widget's list: the first
     // loop_area on its way up, before a recipient_loop_area (express order's
     // recipients number themselves with __recipient_index) or the widget's
-    // root. The loop_area itself is not inside its loop.
+    // root. That loop_area may be a list inside the record: its position
+    // tokens number the list's own rows. The loop_area itself is not inside
+    // its loop.
     function _swInMainLoop(node) {
         var cur = node;
         for (var guard = 0; cur && guard < 500; guard++) {
@@ -51351,6 +51482,16 @@ const StyleDesigner = (function () {
                 ['__file_ext',   _sdT('File type')]
             ]
         }
+    };
+
+    // What the canvas shows for a list row's value: one sample row.
+    var _SD_LIST_ROW_PREVIEWS = {
+        __value_text:  _sdT('Example'),
+        __value_param: 'example',
+        __file_name:   'document.pdf',
+        __file_url:    '#',
+        __file_field:  _sdT('Attachment'),
+        __file_ext:    'pdf'
     };
 
     // The orders a list's rows take (props.order).
@@ -51447,6 +51588,187 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // The name of a list in the tree and on its band: its source's label,
+    // "List" for a source the editor does not know.
+    function _sdListName(node) {
+        var src = SW_LIST_SOURCES[node && node.props ? node.props.source : ''];
+        return '☰ ' + (src ? src.label : _sdT('List'));
+    }
+
+    // A new list of `source` from the palette: a list without its field
+    // yet (the panel asks for it) around one row, a badge showing the value
+    // or a link opening the file. The row is the designer's to restyle.
+    function _sdListStarter(source) {
+        var bs = _sdUsesBootstrap();
+        var row = (source === 'form_record.files')
+            ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
+                customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
+            : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
+                customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
+        return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // The kind the site draws widget `sid` as (pg_sw_finish_kind()): its
+    // regionType, a form list's early names and an unset one read as
+    // form_list_view; '' for no system widget.
+    function _sdListWidgetKind(sid) {
+        var cached = sid ? _sharedCache[sid] : null;
+        if (!cached || !cached.system_region_config) return '';
+        var cfg = null;
+        try { cfg = JSON.parse(cached.system_region_config); } catch (e) { cfg = null; }
+        var kind = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (kind === 'submitted_forms_list' || kind === 'form_list' || kind === 'blog_list') ? 'form_list_view' : kind;
+    }
+
+    // Whether `node` is the widget's main loop or inside it.
+    function _sdInMainLoopAt(node) {
+        var cur = node;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            if (cur.type === 'loop_area' && !_sdListIsSourced(cur)) return true;
+            if (cur.type === 'recipient_loop_area') return false;
+            var up = _sdAnyParent(cur);
+            cur = up ? up.parent : null;
+        }
+        return false;
+    }
+
+    // How many lists deep `node`'s subtree reaches, itself included.
+    function _sdListNesting(node) {
+        var deepest = 0;
+        (node && Array.isArray(node.children) ? node.children : []).forEach(function (c) {
+            deepest = Math.max(deepest, _sdListNesting(c));
+        });
+        return deepest + (_sdListIsSourced(node) ? 1 : 0);
+    }
+
+    // Whether a drag carries a list: a list item of the palette, or a list
+    // being moved.
+    function _sdDragIsList(data) {
+        if (!data) return false;
+        if (data.source === 'palette') return data.type === 'loop_area' && !!(data.extra && data.extra.listSource);
+        return data.source === 'node' && _sdListIsSourced(data.node);
+    }
+
+    // Whether the list a drag carries may land in `target`: inside a system
+    // widget whose kind offers its source (a list moved inside its own
+    // widget keeps a source the editor does not know), in a list of records
+    // inside the main loop (the record template: outside it no record fills
+    // the list), not inside itself, and no more than SW_LIST_MAX_DEPTH
+    // lists deep.
+    function _sdListPlaceOk(data, target) {
+        if (!target) return false;
+        var list = (data.source === 'node') ? data.node : null;
+        if (list && isDescendantOf(target, list)) return false;
+        var source = list ? String(list.props.source) : String((data.extra && data.extra.listSource) || '');
+        var sid = _isInsideSystemWidget(target);
+        var kind = _sdListWidgetKind(sid);
+        if (!kind) return false;
+        if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
+        if (kind === 'form_list_view' && !_sdInMainLoopAt(target)) return false;
+        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : 1);
+        return depth <= SW_LIST_MAX_DEPTH;
+    }
+
+    // Writes one setting of a list: its source (a field kept only when the
+    // new source reads the same kind of field), its field, its limit (0 or
+    // none: every row) or its order; an empty field, no limit and the
+    // stored order stay out of the tree. Marks the widget changed; the
+    // caller records the undo step and redraws.
+    function _sdListWrite(node, key, value) {
+        if (!node || !node.props) return;
+        var p = node.props;
+        if (key === 'source') {
+            var from = SW_LIST_SOURCES[p.source], to = SW_LIST_SOURCES[value];
+            if (!to) return;
+            if (!from || from.arg !== to.arg) delete p.sourceArg;
+            p.source = String(value);
+        } else if (key === 'sourceArg') {
+            var arg = String(value == null ? '' : value);
+            if (arg === '') delete p.sourceArg; else p.sourceArg = arg;
+        } else if (key === 'limit') {
+            var lim = parseInt(value, 10);
+            if (!(lim > 0)) delete p.limit; else p.limit = Math.min(100, lim);
+        } else if (key === 'order') {
+            if (!value || !SW_LIST_ORDERS.some(function (o) { return o[0] === value; })) delete p.order; else p.order = String(value);
+        }
+        _sdSharedMarkEdited(node);
+    }
+
+    // The controls of the list panel (propsListArea()): one undo step per
+    // choice; the canvas band follows, and a new source redraws the panel
+    // (its field list changes).
+    function _sdWireListProps() {
+        if (!_sdListIsSourced(selectedNode)) return;
+        [['.sd-list-source', 'source'], ['.sd-list-arg', 'sourceArg'], ['.sd-list-limit', 'limit'], ['.sd-list-order', 'order']].forEach(function (c) {
+            var el = document.querySelector(c[0]);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                if (!_sdListIsSourced(selectedNode)) return;
+                saveState();
+                _sdListWrite(selectedNode, c[1], this.value);
+                renderCanvas();
+                if (typeof renderProperties === 'function') renderProperties();
+            });
+        });
+    }
+
+    // The field of `fields` a list's arg names, as the site matches it
+    // (_pg_sw_list_names_field()): the name, the name with only a-z, 0-9
+    // and _ left, or the label, in any case. Null for none.
+    function _sdListFieldOf(fields, arg) {
+        var a = String(arg == null ? '' : arg).toLowerCase();
+        if (a === '' || !Array.isArray(fields)) return null;
+        for (var i = 0; i < fields.length; i++) {
+            var ff = fields[i] || {};
+            var name = String(ff.name == null ? '' : ff.name).trim().toLowerCase();
+            if (name !== '' && (name === a || name.replace(/[^a-z0-9_]/g, '') === a)) return ff;
+            if (String(ff.label == null ? '' : ff.label).trim().toLowerCase() === a) return ff;
+        }
+        return null;
+    }
+
+    // Whether a field gives `source` rows: an attachments list reads file
+    // uploads; a values or parts list any other field but a rich text area.
+    function _sdListFieldFits(source, ff) {
+        if (!ff) return false;
+        if (source === 'form_record.files') return ff.type === 'file upload';
+        return ff.type !== 'file upload' && !(ff.type === 'text area' && String(ff.wysiwyg) === '1');
+    }
+
+    // What the band over a list says on the canvas, and whether the site
+    // draws nothing for it (off: the canvas fades it). The canvas shows the
+    // row once; the page repeats it for every value the record holds.
+    function _sdListBand(node) {
+        var src = SW_LIST_SOURCES[node.props.source];
+        if (!src) return { off: true, text: _sdT('A list of a kind this site does not know: nothing is drawn') };
+        var spec = _sdListSpec(node.props);
+        if (!spec) {
+            var needsArg = src.argRequired && String(node.props.sourceArg == null ? '' : node.props.sourceArg).replace(/[^a-z0-9_\-]/gi, '') === '';
+            return { off: true, text: needsArg ? _sdT('{var}: choose the field it lists', src.label) : _sdT('{var}: settings the site cannot read, nothing is drawn', src.label) };
+        }
+        var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
+        if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
+        if (kind === 'form_list_view' && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (_sdListsAbove(node).length >= SW_LIST_MAX_DEPTH) return { off: true, text: _sdT('{var}: more than four lists deep, nothing is drawn', src.label) };
+        var name = src.label;
+        if (spec.arg) {
+            var formId = _getSystemWidgetCustomFormPageId(node);
+            var fields = formId ? _formFieldsCache[formId] : null;
+            // Asked once from here (as a field label's preview asks), and
+            // painted again when the fields arrive.
+            if (formId && !fields && !_sdLabelFieldsAsked[formId]) {
+                _sdLabelFieldsAsked[formId] = true;
+                _fetchFormFields(formId, function () { renderCanvas(); });
+            }
+            var ff = fields ? _sdListFieldOf(fields, spec.arg) : null;
+            if (fields && !_sdListFieldFits(spec.source, ff)) {
+                return { off: true, text: _sdT('{var:1}: the field {var:2} gives this list no rows', [src.label, spec.arg]) };
+            }
+            name += ' · ' + (ff ? (ff.label || ff.name) : spec.arg);
+        }
+        return { off: false, text: _sdT('{var} — one row shown (repeated for every row at runtime)', name) };
+    }
+
     // The token palette (groups of [token, label]) of a widget type whose
     // tokens are fixed. The two form views have none: their tokens are the
     // form's fields (_swBindTokenOptions()).
@@ -51478,7 +51800,9 @@ const StyleDesigner = (function () {
     // the form's fields, their labels when the detail view shows labels, and
     // the built-in fields. The panel's branches draw these same tables; a
     // form whose fields are not cached yet is fetched and answers empty now.
-    // Inside the list's loop the row position tokens follow, in every kind.
+    // Inside a list inside the record its row's values follow
+    // (_sdListRowOptions()); inside a loop the row position tokens, in
+    // every kind.
     function _swBindTokenOptions(node) {
         var type = _getSystemWidgetRegionType(node);
         if (!type) return [];
@@ -51503,6 +51827,8 @@ const StyleDesigner = (function () {
                 g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
             });
         }
+        // Inside a list inside the record, its row's values.
+        _sdListRowOptions(node).forEach(function (o) { out.push(o); });
         if (_swInMainLoop(node)) {
             SW_LOOP_POSITION_TOKEN_GROUPS.forEach(function (g) {
                 g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
@@ -51520,6 +51846,8 @@ const StyleDesigner = (function () {
         if (position) return position;
         if (type === 'form_list_view' || type === 'form_item_view') {
             if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
+            var listRow = _sdListRowLabel(token);
+            if (listRow) return listRow;
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
@@ -56220,9 +56548,10 @@ const StyleDesigner = (function () {
             case 'loop_area':
             case 'recipient_loop_area':
                 if (sink && sink.full) {
-                    h += pad + '<!-- ' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                    var mark = (n.type === 'recipient_loop_area') ? 'recipients' : (_sdListIsSourced(n) ? 'list' : 'loop');
+                    h += pad + '<!-- ' + mark + ' -->\n';
                     if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
-                    h += pad + '<!-- /' + (n.type === 'loop_area' ? 'loop' : 'recipients') + ' -->\n';
+                    h += pad + '<!-- /' + mark + ' -->\n';
                 }
                 break;
         }
