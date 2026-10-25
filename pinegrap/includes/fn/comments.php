@@ -1037,6 +1037,98 @@ function pg_comments_settings($page_row)
 }
 
 /**
+ * The page comment settings the visual designer edits, by the key the editor
+ * sends them under (the hidden pg_comments* inputs, a page tab's fields).
+ * Pure.
+ *
+ * Each key is array('kind', 'columns', 'max'):
+ * - 'flag': a switch, written 1 or 0;
+ * - 'page': a page id, one page for both comment e-mails (to the record's
+ *   sender and to the watchers);
+ * - 'text': trimmed and cut to 'max' characters; the e-mail subject fills
+ *   the subject of both e-mails.
+ *
+ * The save (pg_designer_save_page()), the Preview's page override
+ * (pg_comments_page_override()), the editor's field list (_PG_CMT_FIELDS in
+ * style_designer.js, the same keys in the same order) and the editor screen
+ * follow this map.
+ *
+ * @return array
+ */
+function pg_comment_editor_keys()
+{
+    $flag = function ($column) {
+        return array('kind' => 'flag', 'columns' => array($column), 'max' => 0);
+    };
+    $text = function ($columns, $max) {
+        return array('kind' => 'text', 'columns' => $columns, 'max' => $max);
+    };
+
+    return array(
+        'pg_comments' => $flag('comments'),
+        'pg_comments_label' => $text(array('comments_label'), 100),
+        'pg_comments_allow_new' => $flag('comments_allow_new_comments'),
+        'pg_comments_rating' => $flag('comments_rating'),
+        'pg_comments_auto_publish' => $flag('comments_automatic_publish'),
+        'pg_comments_show_date' => $flag('comments_show_submitted_date_and_time'),
+        'pg_comments_login' => $flag('comments_require_login_to_comment'),
+        'pg_comments_email_page' => array('kind' => 'page', 'columns' => array('comments_submitter_email_page_id', 'comments_watcher_email_page_id'), 'max' => 0),
+        'pg_comments_email_subject' => $text(array('comments_submitter_email_subject', 'comments_watcher_email_subject'), 255),
+        'pg_comments_notify_email' => $text(array('comments_administrator_email_to_email_address'), 100),
+        'pg_comments_attachments' => $flag('comments_allow_file_attachments'),
+        'pg_comments_select_name' => $flag('comments_allow_user_to_select_name'),
+        'pg_comments_message' => $text(array('comments_message'), 255),
+        'pg_comments_closed_message' => $text(array('comments_disallow_new_comment_message'), 255),
+        'pg_comments_watchers_managed' => $flag('comments_watchers_managed_by_submitter'),
+    );
+}
+
+/**
+ * The page columns, and their values, for the comment settings the editor
+ * sent (pg_comment_editor_keys()). Pure; the values are not escaped for SQL.
+ *
+ * Only the keys present in $fields are written; any other key is left out.
+ * A switch is 1 for 1, '1' or true, else 0. A page is a whole number above 0,
+ * else 0: an unsaved tab (`tab:<key>`, written once the save knows its id),
+ * a negative number or anything that is not a value. A text is trimmed and
+ * cut to its length in characters; anything that is not a value is ''.
+ *
+ * @param mixed $fields editor key => value
+ * @return array column => value
+ */
+function pg_comment_editor_columns($fields)
+{
+    $out = array();
+
+    if (!is_array($fields)) {
+        return $out;
+    }
+
+    foreach (pg_comment_editor_keys() as $key => $def) {
+        if (!array_key_exists($key, $fields)) {
+            continue;
+        }
+
+        $raw = $fields[$key];
+
+        if ($def['kind'] === 'flag') {
+            $value = ($raw === 1 || $raw === '1' || $raw === true) ? 1 : 0;
+        } elseif ($def['kind'] === 'page') {
+            $value = (is_scalar($raw) && !is_bool($raw) && preg_match('/^\s*\d+\s*$/', (string) $raw)) ? (int) $raw : 0;
+            $value = max(0, $value);
+        } else {
+            $value = (is_scalar($raw) && !is_bool($raw)) ? mb_substr(trim((string) $raw), 0, $def['max']) : '';
+        }
+
+        foreach ($def['columns'] as $column) {
+            $out[$column] = $value;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Whether a thread takes new comments. Pure: pg_comments_allow_new() reads
  * the item's row.
  *

@@ -28,10 +28,10 @@ description: Legacy Paraşüt buttons on an order keeping the id of a record del
 - `parasut_exported` stays: the Excel export sets it too.
 
 ## What does the order screen show?
-- Both buttons stay pressable once sent (badge and title kept); the confirm says the press asks Paraşüt first and creates anew only if it was deleted there. Each record left out comes back in the functions' `&$notices`; `view_order.php` passes `$parasut_notices` and shows each as a warning (`add_warning(h())`).
+- On a finished sale both buttons stay pressable once sent (title kept); the confirm says the press asks Paraşüt first and creates anew only if it was deleted there. Each record left out comes back in the functions' `&$notices`; `view_order.php` passes `$parasut_notices` and shows each as a warning (`add_warning(h())`).
 
 ## How was it checked live? (demo company, 2026-10-24)
-- Dev order 443. E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or the read sent to company 999999999 (401): refused, ids kept.
+- Dev order 443. E-Shipment over a deleted document: notice, new document. Create Invoice naming a deleted document: notice, invoice with `shipment_included` true and no link, stock out once. Create Invoice over a deleted invoice: notice, new invoice. E-Shipment over a deleted invoice: notice, unlinked document. Record still there, or company 999999999 (401): refused, ids kept.
 
 ## Tests
 - `tests/parasut_stale_ids_test.php`: the state, the read, the notices, the refusal words, the link's `gone`, the order of reads and writes, the guarded clear, the order screen.

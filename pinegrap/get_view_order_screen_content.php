@@ -176,6 +176,25 @@ function get_view_order_screen_content($properties)
         output_error(lang('You do not have access to this order.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
+    // The order's returns (includes/fn/returns.php), for the signed-in account
+    // that owns the order and never in a page drawn as an e-mail. A request, a
+    // withdrawal or a parcel sent back is posted to order_return.php, which
+    // answers through liveform 'order_receipt' (the order view widget's
+    // messages node) and sends the customer back here. This screen's own
+    // liveform 'view_order' is shared with the panel's order screens and is
+    // not printed by the system layout, so the answer is not moved there.
+    $render_context = function_exists('pg_sw_render_context') ? pg_sw_render_context() : array();
+    $output_return_messages = '';
+    $output_returns = '';
+
+    if (pg_return_classic_visible(defined('USER_ID') ? USER_ID : 0, $order_user_id, !empty($render_context['email']))) {
+        $return_answer = new liveform('order_receipt');
+        $output_return_messages = $return_answer->get_messages();
+        $return_answer->remove();
+
+        $output_returns = pg_return_classic_block($order_id, REQUEST_URL);
+    }
+
     // prepare shipped quantity variables
     $shipped_quantities_exist = FALSE;
     $output_shipped_quantity_heading_cell = '';
@@ -1683,7 +1702,7 @@ function get_view_order_screen_content($properties)
 
         return
             '<div class="software_order_view">
-                '  . $output . '
+                '  . $output_return_messages . $output . $output_returns . '
             </div>
             <div>' . $output_primary_button . '<a href="' . h(get_page_type_url('my account')) . '" class="software_button_secondary back_button">Back</a>' . $output_delete_button . '</div>';
 
@@ -2706,7 +2725,7 @@ function get_view_order_screen_content($properties)
 
         return
             '<div class="software_order_view">
-                '  . $content . '
+                '  . $output_return_messages . $content . $output_returns . '
             </div>';
 
     }

@@ -4,7 +4,7 @@ description: Designer view mode when another person holds the lock: _sdMayEdit, 
 ---
 
 ## How does the editor decide a node may be edited?
-- `_sdMayEdit(node)` asks per node. Today the answer is the page lock; preview mode will change this function's **answer**; no second gate is added beside it. Call sites: `handleDrop`, inline text editing, `onDelete`, two keyboard listeners.
+- `_sdMayEdit(node)` asks per node. Today the answer is the page lock; preview mode will change this function's **answer**; no second gate is added beside it. Call sites: `handleDrop`, `_sdInsertSpot` (palette double-click; the command palette, Ctrl+Shift+P, stays open in view mode), inline text editing, `onDelete`, two keyboard listeners.
 - **`_sdGuardItem` checks the lock first, then the role.** `_sdIsContentLevel()` asks *which node* may be touched; the lock says *none*. Role-level items (lock, convert to shared component, editable field) must go through this guard too, otherwise an admin in view mode could do everything from the menu.
 
 ## What is hidden in view mode?

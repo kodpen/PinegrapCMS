@@ -434,11 +434,27 @@ function _parasut_credentials($fresh = false)
         return $credentials;
     }
 
-    $credentials = ['client_secret' => '', 'password' => ''];
-
-    $stored = $fresh
+    $credentials = parasut_credentials_decode($fresh
         ? (string) db_value("SELECT parasut_credentials_enc FROM config LIMIT 1")
-        : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : '');
+        : (defined('PARASUT_CREDENTIALS_ENC') ? (string) PARASUT_CREDENTIALS_ENC : ''));
+
+    return $credentials;
+}
+
+/**
+ * One config.parasut_credentials_enc value decoded: what _parasut_credentials()
+ * reads, for a caller holding the column's value (the settings card,
+ * includes/settings/prep.php).
+ *
+ * @param string $stored  "<ciphertext>:<iv>", or ''
+ * @return array ['client_secret' => string, 'password' => string]; empty
+ *               strings for a value that is not there or cannot be read
+ */
+function parasut_credentials_decode($stored)
+{
+    $credentials = ['client_secret' => '', 'password' => ''];
+    $stored = (string) $stored;
+
     if ($stored === '' || strpos($stored, ':') === false) {
         return $credentials;
     }
@@ -453,6 +469,39 @@ function _parasut_credentials($fresh = false)
     }
 
     return $credentials;
+}
+
+/**
+ * The placeholder and the help text of the settings card's Client Secret and
+ * Password boxes, each from what is stored for it. A connection made with an
+ * authorization code stores the client secret alone; one "Saved" mark for
+ * both boxes told the operator a password was on file to fall back on when
+ * there was none.
+ *
+ * @param array $credentials  parasut_credentials_decode() output
+ * @return array ['secret' => ['placeholder' => string, 'help' => string],
+ *                'password' => ['placeholder' => string, 'help' => string]]
+ */
+function parasut_credential_boxes($credentials)
+{
+    $credentials = (array) $credentials;
+    $secret = (trim((string) ($credentials['client_secret'] ?? '')) !== '');
+    $password = (trim((string) ($credentials['password'] ?? '')) !== '');
+
+    return [
+        'secret' => [
+            'placeholder' => $secret ? lang('Saved') : '',
+            'help' => $secret
+                ? lang('The client secret is stored and is not shown. Leave the box empty to keep it.')
+                : lang('The client secret is stored encrypted and is never shown again after saving.'),
+        ],
+        'password' => [
+            'placeholder' => $password ? lang('Saved') : '',
+            'help' => $password
+                ? lang('The password is stored and is not shown. Leave the box empty to keep it.')
+                : lang('No password is stored. One typed here is stored encrypted and is never shown again after saving.'),
+        ],
+    ];
 }
 
 /**
@@ -492,21 +541,66 @@ function _parasut_credentials_store($values)
  * Which Parasut account a cached token belongs to. A token kept from another
  * company, client or user is not offered after the settings change.
  *
+ * A token from the authorization code is the account of whoever signed in
+ * to Paraşüt; the user name box serves the password grant only. Its stamp
+ * leaves the user name out, so typing, changing or clearing that box (Save
+ * with a code writes it before the code is exchanged) does not orphan the
+ * token. Its stamp is the one a code token got while the box was empty.
+ *
  * The connect endpoint computes the owner for the values it has just saved,
  * which the constants of the running request do not know yet.
  *
  * @param string|null $company_id  PARASUT_COMPANY_ID when null
  * @param string|null $client_id   PARASUT_CLIENT_ID when null
- * @param string|null $username    PARASUT_USERNAME when null
+ * @param string|null $username    PARASUT_USERNAME when null; not used for a code token
+ * @param string      $grant       The token's grant; 'code' leaves the user name out
  * @return string
  */
-function _parasut_token_owner($company_id = null, $client_id = null, $username = null)
+function _parasut_token_owner($company_id = null, $client_id = null, $username = null, $grant = '')
 {
     $company_id = ($company_id === null) ? (defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : $company_id;
     $client_id = ($client_id === null) ? (defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : '') : $client_id;
-    $username = ($username === null) ? (defined('PARASUT_USERNAME') ? PARASUT_USERNAME : '') : $username;
+
+    if ((string) $grant === 'code') {
+        $username = '';
+    } else {
+        $username = ($username === null) ? (defined('PARASUT_USERNAME') ? PARASUT_USERNAME : '') : $username;
+    }
 
     return md5((string) $company_id . '|' . (string) $client_id . '|' . (string) $username);
+}
+
+/**
+ * Whether a cached token belongs to the saved settings, judged by its own
+ * grant (_parasut_token_owner()).
+ *
+ * A code token stamped before its stamp left the user name out carries the
+ * user name saved when it was connected; it is still read while that user
+ * name is saved, and the next renewal writes the new stamp
+ * (_parasut_token_cache_write()).
+ *
+ * @param array       $cache       The sealed token
+ * @param string|null $company_id  PARASUT_COMPANY_ID when null
+ * @param string|null $client_id   PARASUT_CLIENT_ID when null
+ * @param string|null $username    PARASUT_USERNAME when null
+ * @return bool
+ */
+function _parasut_token_owner_matches($cache, $company_id = null, $client_id = null, $username = null)
+{
+    $cache = (array) $cache;
+    $stamp = (string) ($cache['owner'] ?? '');
+
+    if ($stamp === '') {
+        return false;
+    }
+
+    $grant = (string) ($cache['grant'] ?? '');
+
+    if ($stamp === _parasut_token_owner($company_id, $client_id, $username, $grant)) {
+        return true;
+    }
+
+    return ($grant === 'code') && ($stamp === _parasut_token_owner($company_id, $client_id, $username));
 }
 
 /**
@@ -518,10 +612,11 @@ function _parasut_token_owner($company_id = null, $client_id = null, $username =
  * from then is moved in on the first read and deleted. Before the database
  * upgrade has run there is nowhere to move it, and the file is read as it was.
  *
- * @param string|null $owner  The owner stamp to match; _parasut_token_owner() of
- *                            the running request when null. The connect endpoint
- *                            names the one it has just written with, which the
- *                            constants of its own request do not know yet.
+ * @param string|null $owner  The owner stamp to match; the saved settings' when
+ *                            null (_parasut_token_owner_matches(), by the token's
+ *                            grant). The connect endpoint names the one it has
+ *                            just written with, which the constants of its own
+ *                            request do not know yet.
  * @return array  Cache contents, or an empty array
  */
 function _parasut_token_cache_read($owner = null)
@@ -539,7 +634,7 @@ function _parasut_token_cache_read($owner = null)
 
             // The file was written for the settings of its day, which are the
             // settings of today on every site that has not changed them since.
-            $legacy['owner'] = _parasut_token_owner();
+            $legacy['owner'] = _parasut_token_owner(null, null, null, (string) ($legacy['grant'] ?? ''));
 
             if (pg_connect_service_put('parasut', 'Paraşüt', $legacy)) {
                 @unlink(PARASUT_TOKEN_CACHE);
@@ -549,9 +644,11 @@ function _parasut_token_cache_read($owner = null)
         }
     }
 
-    $owner = ($owner === null) ? _parasut_token_owner() : (string) $owner;
+    if ($owner === null) {
+        return _parasut_token_owner_matches($cache) ? $cache : [];
+    }
 
-    if (!isset($cache['owner']) || ($cache['owner'] !== $owner)) {
+    if (!isset($cache['owner']) || ($cache['owner'] !== (string) $owner)) {
         return [];
     }
 
@@ -569,12 +666,13 @@ function _parasut_token_cache_read($owner = null)
  * one.
  *
  * @param array       $cache
- * @param string|null $owner  _parasut_token_owner() of the running request when null
+ * @param string|null $owner  _parasut_token_owner() of the running request, for
+ *                            the token's grant, when null
  * @return void
  */
 function _parasut_token_cache_write($cache, $owner = null)
 {
-    $cache['owner'] = ($owner === null) ? _parasut_token_owner() : (string) $owner;
+    $cache['owner'] = ($owner === null) ? _parasut_token_owner(null, null, null, (string) ($cache['grant'] ?? '')) : (string) $owner;
 
     if (pg_connect_service_put('parasut', 'Paraşüt', $cache)) {
         return;
@@ -913,12 +1011,131 @@ function _parasut_me_parse($body)
 }
 
 /**
+ * The company a connection by code works in, from the Company ID box as
+ * posted, the saved number and the companies the authorized user can see.
+ *
+ * An empty box keeps the saved number while the user can see it (the box's
+ * help says so), takes the user's one company otherwise, and lists them when
+ * there are several. A number the user cannot see is refused with the user's
+ * companies listed - except the saved number itself while the user has
+ * exactly one company: the card draws the saved number in the box, so
+ * connecting another account whose one company is a different one posted
+ * it, and the code was spent on the refusal. That company is taken instead.
+ *
+ * Whenever the saved number is given up for the user's one company - the
+ * box as drawn, or emptied - 'replaced' names it, so that the answer can
+ * warn about the switch. A number typed in the box is never replaced.
+ *
+ * @param string $posted     The Company ID box as posted
+ * @param string $saved      The saved company number
+ * @param array  $companies  id => name, from parasut_me()
+ * @return array ['company_id' => string, 'replaced' => string, 'error' => string]
+ */
+function parasut_connect_company($posted, $saved, $companies)
+{
+    $posted = trim((string) $posted);
+    $saved = trim((string) $saved);
+    $companies = (array) $companies;
+    $ids = array_map('strval', array_keys($companies));
+
+    $named = [];
+    foreach ($companies as $id => $name) {
+        $named[] = ((string) $name !== '') ? $name . ' (' . $id . ')' : (string) $id;
+    }
+
+    $refuse = function ($error) {
+        return ['company_id' => '', 'replaced' => '', 'error' => $error];
+    };
+
+    if ($posted === '') {
+        if (($saved !== '') && in_array($saved, $ids, true)) {
+            return ['company_id' => $saved, 'replaced' => '', 'error' => ''];
+        }
+
+        // The saved number, if there is one, is not among these companies.
+        if (count($ids) === 1) {
+            return ['company_id' => $ids[0], 'replaced' => $saved, 'error' => ''];
+        }
+
+        if (count($ids) === 0) {
+            return $refuse(lang('This Paraşüt user has no company to work in.'));
+        }
+
+        return $refuse(lang(array(
+            'string' => 'This Paraşüt user works in more than one company. Write the id of the one to use in the Company ID box and connect again: {var:1}',
+            'vars' => implode(', ', $named),
+        )));
+    }
+
+    if (empty($ids) || in_array($posted, $ids, true)) {
+        return ['company_id' => $posted, 'replaced' => '', 'error' => ''];
+    }
+
+    if (($posted === $saved) && (count($ids) === 1)) {
+        return ['company_id' => $ids[0], 'replaced' => $saved, 'error' => ''];
+    }
+
+    return $refuse(lang(array(
+        'string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}',
+        'vars' => array($posted, implode(', ', $named)),
+    )));
+}
+
+/**
+ * What Connect answers with, the same for the Connect button and for a code
+ * saved with the page: a notice saying whom and which company it connected
+ * to, and the activity log line. When the saved company was given up for
+ * the authorized user's one company (parasut_connect_company()), the switch
+ * is a warning naming both numbers - the default product/service and
+ * warehouse ids on the card were set for the company before - and the log
+ * line names both numbers too.
+ *
+ * @param array $result  A successful parasut_connect_with_code() answer
+ * @return array ['notices' => string[], 'warnings' => string[], 'log' => string];
+ *               plain text, not escaped
+ */
+function parasut_connect_report($result)
+{
+    $result = (array) $result;
+    $company_id = (string) ($result['company_id'] ?? '');
+    $company_name = (string) ($result['company_name'] ?? '');
+    $company = ($company_name !== '') ? $company_name . ' (' . $company_id . ')' : $company_id;
+    $replaced = trim((string) ($result['replaced_company_id'] ?? ''));
+
+    $report = [
+        'notices' => [lang(array(
+            'string' => 'Connected to Paraşüt as {var:1}; company {var:2}.',
+            'vars' => array(
+                ((string) ($result['email'] ?? '') !== '') ? (string) $result['email'] : lang('the authorized user'),
+                $company,
+            ),
+        ))],
+        'warnings' => [],
+        'log' => lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => $company_id)),
+    ];
+
+    if ($replaced !== '') {
+        $report['warnings'][] = lang(array(
+            'string' => 'The saved company {var:1} is not among the companies of the Paraşüt user you authorized; its one company, {var:2}, is saved instead. Check the default product/service and warehouse IDs: they were set for the company before.',
+            'vars' => array($replaced, $company),
+        ));
+        $report['log'] = lang(array(
+            'string' => 'parasut connection was authorized for company {var:1} in place of the saved company {var:2}',
+            'vars' => array($company_id, $replaced),
+        ));
+    }
+
+    return $report;
+}
+
+/**
  * Turns the authorization code Paraşüt showed into a connection: the code is
  * exchanged for a token pair, the account is asked who it is and which
  * companies it can see, and what the next request needs is written down -
- * client id and secret in the config row, the company id when the box was
- * empty and the account has exactly one, and the sealed token with its
- * refresh token. No password is involved, so none is stored.
+ * client id and secret in the config row, the company the box and the
+ * account's companies leave (parasut_connect_company()), and the sealed
+ * token with its refresh token.
+ * No password is involved, so none is stored.
  *
  * A code is good for one exchange and a few minutes; a second click with
  * the same code is refused by Paraşüt, which is what the error says.
@@ -928,12 +1145,14 @@ function _parasut_me_parse($body)
  * @param string $client_secret  As typed (the saved one when empty)
  * @param string $company_id     As typed; '' lets the account's one company fill it
  * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
- *                'email' => string, 'owner' => string (the token's owner stamp), 'error' => string]
+ *                'email' => string, 'owner' => string (the token's owner stamp),
+ *                'replaced_company_id' => string (the saved number given up, or ''),
+ *                'error' => string]
  */
 function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
 {
     $fail = function ($error) {
-        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'owner' => '', 'error' => $error];
+        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'owner' => '', 'replaced_company_id' => '', 'error' => $error];
     };
 
     $code = trim((string) $code);
@@ -977,44 +1196,26 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         return $fail(lang(array('string' => 'Paraşüt gave a token but would not say whose it is: {var:1}', 'vars' => $me['error'])));
     }
 
-    $companies = $me['companies'];
+    // The constant holds the number saved before this request: Save with a
+    // code writes the box to the config row before the code is exchanged.
+    $company = parasut_connect_company($company_id, defined('PARASUT_COMPANY_ID') ? (string) PARASUT_COMPANY_ID : '', $me['companies']);
 
-    if ($company_id === '') {
-        if (count($companies) === 1) {
-            $company_id = (string) key($companies);
-        } elseif (count($companies) === 0) {
-            return $fail(lang('This Paraşüt user has no company to work in.'));
-        } else {
-            $named = [];
-            foreach ($companies as $id => $name) {
-                $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
-            }
-            return $fail(lang(array(
-                'string' => 'This Paraşüt user works in more than one company. Write the id of the one to use in the Company ID box and connect again: {var:1}',
-                'vars' => implode(', ', $named),
-            )));
-        }
-    } elseif (!empty($companies) && !isset($companies[$company_id])) {
-        $named = [];
-        foreach ($companies as $id => $name) {
-            $named[] = ($name !== '') ? $name . ' (' . $id . ')' : (string) $id;
-        }
-        return $fail(lang(array(
-            'string' => 'The Paraşüt user cannot see company {var:1}. Its companies: {var:2}',
-            'vars' => array($company_id, implode(', ', $named)),
-        )));
+    if ($company['error'] !== '') {
+        return $fail($company['error']);
     }
 
-    $company_name = (string) ($companies[$company_id] ?? '');
+    $company_id = $company['company_id'];
+    $company_name = trim((string) ($me['companies'][$company_id] ?? ''));
 
     // Kept in this order: the config row first, so the owner of the sealed
-    // token matches what the next request reads from the constants.
+    // token matches what the next request reads from the constants. A code
+    // token's stamp leaves the user name out (_parasut_token_owner()).
     db("UPDATE config SET
         parasut_client_id = '" . escape($client_id) . "',
         parasut_company_id = '" . escape($company_id) . "'");
     _parasut_credentials_store(['client_secret' => $client_secret]);
 
-    $owner = _parasut_token_owner($company_id, $client_id, null);
+    $owner = _parasut_token_owner($company_id, $client_id, null, 'code');
 
     _parasut_token_cache_write([
         'access_token' => (string) $data['access_token'],
@@ -1032,6 +1233,7 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         'company_name' => $company_name,
         'email' => $me['email'],
         'owner' => $owner,
+        'replaced_company_id' => $company['replaced'],
         'error' => '',
     ];
 }
@@ -1189,6 +1391,238 @@ function parasut_order_buttons_on()
 function _parasut_order_buttons_on($enabled, $company_id, $client_id)
 {
     return (bool) $enabled && ((string) $company_id !== '') && ((string) $client_id !== '');
+}
+
+/**
+ * The order statuses the order screen's Paraşüt buttons go for: a finished
+ * sale, as the ERP invoices it (erp_order_billable_statuses(): complete, and
+ * exported for a complete order exported since). The ERP code is loaded as
+ * Create Invoice loads it (_parasut_order_invoice_load()); without it the
+ * same two.
+ *
+ * @return string[]
+ */
+function parasut_order_billable_statuses()
+{
+    if (!function_exists('erp_order_billable_statuses') && defined('PG_FUNCTIONS_DIR') && is_file(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php')) {
+        _parasut_order_invoice_load();
+    }
+
+    return function_exists('erp_order_billable_statuses') ? erp_order_billable_statuses() : array('complete', 'exported');
+}
+
+/**
+ * Why Create Invoice or E-Shipment may not go for an order of this status,
+ * or '' when it may: only a finished sale gets a legal document and has its
+ * goods counted out of Paraşüt's stock. A cancelled order keeps its total, so
+ * nothing else on the way stops it, and an unfinished checkout already holds
+ * its buyer. The words are the ERP's for its invoice and delivery note.
+ *
+ * @param string|null   $status    orders.status
+ * @param string        $action    'invoice' | 'shipment'
+ * @param string[]|null $billable  The statuses that may go; null asks parasut_order_billable_statuses()
+ * @return string
+ */
+function parasut_order_status_refusal($status, $action, $billable = null)
+{
+    $billable = is_array($billable) ? $billable : parasut_order_billable_statuses();
+    $status = (string) $status;
+
+    if (in_array($status, $billable, true)) {
+        return '';
+    }
+
+    $cancelled = in_array($status, array('cancelled', 'canceled'), true);
+
+    if ($action === 'shipment') {
+        return $cancelled
+            ? lang('A cancelled order gets no delivery note.')
+            : lang('The order has not been completed yet; the delivery note is written once it is.');
+    }
+
+    return $cancelled
+        ? lang('A cancelled order is not invoiced.')
+        : lang('An order is invoiced once it is complete.');
+}
+
+/**
+ * What the order's ERP invoice holds at an e-document provider:
+ * - 'parasut': the Paraşüt sales invoice its Paraşüt provider wrote (the
+ *   service keeps it in edoc_external_id, the driver in parasut_invoice_id);
+ * - 'unsure': the driver's mark of a send that got no answer, so Paraşüt may
+ *   hold the record (erp_edoc_parasut_unsure_read());
+ * - 'other': a record of another provider, the sale's e-document at GİB;
+ * - 'none': no ERP invoice, or one never handed to a provider.
+ *
+ * @param array|null $row  erp_invoices row (full_number, edoc_provider, edoc_external_id,
+ *                         parasut_invoice_id) of the order's sales invoice; null for none
+ * @return array ['state' => string, 'id' => string (the Paraşüt id when 'parasut'),
+ *                'number' => string (the ERP invoice's number)]
+ */
+function parasut_order_erp_invoice_record($row)
+{
+    if (!is_array($row)) {
+        return array('state' => 'none', 'id' => '', 'number' => '');
+    }
+
+    $provider = trim((string) ($row['edoc_provider'] ?? ''));
+    $external = trim((string) ($row['edoc_external_id'] ?? ''));
+    $kept = trim((string) ($row['parasut_invoice_id'] ?? ''));
+    $number = trim((string) ($row['full_number'] ?? ''));
+
+    if (($external !== '') && ($provider === 'parasut')) {
+        return array('state' => 'parasut', 'id' => $external, 'number' => $number);
+    }
+
+    if (($kept !== '') && !parasut_order_invoice_unsure($kept)) {
+        return array('state' => 'parasut', 'id' => $kept, 'number' => $number);
+    }
+
+    if ($kept !== '') {
+        return array('state' => 'unsure', 'id' => '', 'number' => $number);
+    }
+
+    if ($external !== '') {
+        return array('state' => 'other', 'id' => '', 'number' => $number);
+    }
+
+    return array('state' => 'none', 'id' => '', 'number' => '');
+}
+
+/**
+ * parasut_order_erp_invoice_record() of the order's ERP sales invoice that is
+ * not cancelled, the one the ERP counts as the order's (erp_invoice_for_order()).
+ * The ERP's tables are installed whether the module is on or not; its rows
+ * stay when the module or its provider is switched off.
+ *
+ * @param int $order_id  orders.id
+ * @return array As parasut_order_erp_invoice_record()
+ */
+function parasut_order_erp_invoice($order_id)
+{
+    if (!function_exists('waf_table_has_column') || !waf_table_has_column('erp_invoices', 'edoc_external_id') || !waf_table_has_column('erp_invoices', 'parasut_invoice_id')) {
+        return parasut_order_erp_invoice_record(null);
+    }
+
+    $row = db_item("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id FROM erp_invoices
+        WHERE order_id = '" . (int) $order_id . "' AND direction = 'sales' AND doc_type = 'invoice'
+          AND status <> 'cancelled'
+        ORDER BY id ASC
+        LIMIT 1");
+
+    return parasut_order_erp_invoice_record(is_array($row) ? $row : null);
+}
+
+/**
+ * Why the order's ERP invoice stops Create Invoice or E-Shipment, or '' when
+ * it does not. An ERP invoice the provider took to Paraşüt, or to GİB through
+ * another provider, is the sale's invoice: once the provider is switched off
+ * the buttons are drawn again, and Create Invoice would issue a second one.
+ * E-Shipment judges a Paraşüt record as the order's own invoice
+ * (parasut_shipment_invoice_id()); only a send that got no answer stops it,
+ * as the order's own unsure mark does, while the order has no invoice id of
+ * its own. An ERP invoice with no provider record (on paper) stops neither.
+ *
+ * @param array  $record          parasut_order_erp_invoice_record()
+ * @param string $action          'invoice' | 'shipment'
+ * @param string $own_invoice_id  orders.parasut_invoice_id
+ * @return string
+ */
+function parasut_order_erp_invoice_refusal($record, $action, $own_invoice_id = '')
+{
+    $state = (string) ($record['state'] ?? 'none');
+    $number = (string) ($record['number'] ?? '');
+
+    if ($action === 'shipment') {
+        if (($state !== 'unsure') || (trim((string) $own_invoice_id) !== '')) {
+            return '';
+        }
+
+        return lang(array(
+            'string' => 'The send of this order\'s ERP invoice {var:1} to Paraşüt got no answer, so it is not known whether a sales invoice carrying the shipment is there. No shipment document was created.',
+            'vars' => array($number),
+        ));
+    }
+
+    if ($state === 'parasut') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP: its invoice {var:1} went to Paraşüt as sales invoice {var:2}. A second sales invoice was not created.',
+            'vars' => array($number, (string) $record['id']),
+        ));
+    }
+
+    if ($state === 'unsure') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP, and the send of its invoice {var:1} to Paraşüt got no answer, so Paraşüt may hold it. A second sales invoice was not created.',
+            'vars' => array($number),
+        ));
+    }
+
+    if ($state === 'other') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP: its invoice {var:1} went to GİB through the ERP\'s e-document provider. A second invoice was not created in Paraşüt.',
+            'vars' => array($number),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Why a press of Create Invoice or E-Shipment is refused before anything is
+ * asked of Paraşüt, or '' when it may go: the order's status first
+ * (parasut_order_status_refusal()), then its ERP invoice
+ * (parasut_order_erp_invoice_refusal()). Asked by the writers themselves: a
+ * page opened before the order was cancelled, or before the provider was
+ * switched off, still posts to them.
+ *
+ * @param array         $order       orders row (status, parasut_invoice_id)
+ * @param string        $action      'invoice' | 'shipment'
+ * @param array         $erp_record  parasut_order_erp_invoice()
+ * @param string[]|null $billable    As parasut_order_status_refusal()
+ * @return string
+ */
+function parasut_order_press_refusal($order, $action, $erp_record, $billable = null)
+{
+    $refusal = parasut_order_status_refusal($order['status'] ?? '', $action, $billable);
+
+    if ($refusal !== '') {
+        return $refusal;
+    }
+
+    return parasut_order_erp_invoice_refusal($erp_record, $action, (string) ($order['parasut_invoice_id'] ?? ''));
+}
+
+/**
+ * The sales invoice E-Shipment judges (parasut_shipment_invoice_link()): the
+ * order's own (orders.parasut_invoice_id, the unsure mark included), else the
+ * Paraşüt record of its ERP invoice. The ERP's unsure mark is handed on too,
+ * so that the link refuses it should the press reach it; another provider's
+ * record is no Paraşüt invoice to name.
+ *
+ * @param string $own_invoice_id  orders.parasut_invoice_id
+ * @param array  $erp_record      parasut_order_erp_invoice()
+ * @return array ['invoice_id' => string, 'erp' => bool (the id is the ERP invoice's, not the order's column)]
+ */
+function parasut_shipment_invoice_id($own_invoice_id, $erp_record)
+{
+    $own = trim((string) $own_invoice_id);
+
+    if ($own !== '') {
+        return array('invoice_id' => $own, 'erp' => false);
+    }
+
+    $state = (string) ($erp_record['state'] ?? 'none');
+
+    if ($state === 'parasut') {
+        return array('invoice_id' => (string) $erp_record['id'], 'erp' => true);
+    }
+
+    if ($state === 'unsure') {
+        return array('invoice_id' => (defined('ERP_EDOC_PARASUT_UNSURE') ? ERP_EDOC_PARASUT_UNSURE : '?'), 'erp' => true);
+    }
+
+    return array('invoice_id' => '', 'erp' => false);
 }
 
 /**
@@ -2012,15 +2446,25 @@ function parasut_order_invoice_unsure($value)
 /**
  * The order screen's badge for the order's Paraşüt invoice, beside Create
  * Invoice ($in_button) or in the Order Information card's status row:
- * "Sent" with the record's id, "Not Sent" in the row, and for the unsure
- * mark a warning that the last create got no answer, so Paraşüt is to be
- * checked. The mark is never shown as "Sent" or as an id.
+ * "Sent" with the record's id once the e-document's conversion was seen to
+ * finish, "Not Sent" in the row, and for the unsure mark a warning that the
+ * last create got no answer, so Paraşüt is to be checked. The mark is never
+ * shown as "Sent" or as an id.
  *
- * @param string|null $value      orders.parasut_invoice_id
+ * The sales invoice's id is kept also when its e-document failed, was
+ * rejected or was still being processed when the press stopped waiting
+ * (parasut_create_invoice()); only a finished conversion sets
+ * orders.parasut_exported, the order's $edoc_confirmed. Without it the badge
+ * says the sales invoice exists and the e-document is not confirmed. The
+ * spreadsheet export sets the flag as well, and a conversion that finished
+ * after the press stays unconfirmed here: Paraşüt has the last word.
+ *
+ * @param string|null $value           orders.parasut_invoice_id
  * @param bool        $in_button
+ * @param bool        $edoc_confirmed  orders.parasut_exported
  * @return string HTML
  */
-function parasut_order_invoice_status_badge($value, $in_button = false)
+function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_confirmed = false)
 {
     $value = trim((string) $value);
 
@@ -2028,6 +2472,15 @@ function parasut_order_invoice_status_badge($value, $in_button = false)
         return ($in_button ? ' ' : '')
             . '<span class="badge bg-warning text-dark' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
             . h(lang('Check Paraşüt')) . '</span>';
+    }
+
+    if (($value !== '') && !$edoc_confirmed) {
+        $title = h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.'));
+
+        return $in_button
+            ? ' <span class="badge bg-warning text-dark ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
+            : '<span class="badge bg-warning text-dark" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
+                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
     if ($value !== '') {
@@ -2038,6 +2491,53 @@ function parasut_order_invoice_status_badge($value, $in_button = false)
     }
 
     return $in_button ? '' : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+}
+
+/**
+ * The status row's badge for an order the ERP invoiced through an
+ * e-document provider (parasut_order_erp_invoice_record()): the ERP
+ * invoice's number, with the Paraşüt id its provider wrote, or the warning
+ * to check Paraşüt after a send that got no answer.
+ *
+ * @param array $record  parasut_order_erp_invoice_record(), state not 'none'
+ * @return string HTML
+ */
+function parasut_order_erp_invoice_badge($record)
+{
+    $state = (string) ($record['state'] ?? 'none');
+    $facts = array(h((string) ($record['number'] ?? '')));
+
+    if ($state === 'parasut') {
+        $facts[] = lang('Parasut ID') . ': ' . h((string) $record['id']);
+    } elseif ($state === 'unsure') {
+        $facts[] = h(lang('Check Paraşüt'));
+    }
+
+    return '<span class="badge bg-success">' . h(lang('Invoiced through the ERP')) . '</span>'
+        . ' <small class="text-muted">' . implode(' · ', $facts) . '</small>';
+}
+
+/**
+ * The Order Information card's invoice row: the ERP's invoice when the order
+ * was invoiced through its provider, with the order's own record beside it
+ * if it has one; otherwise the order's own (parasut_order_invoice_status_badge()).
+ *
+ * @param string|null $value           orders.parasut_invoice_id
+ * @param bool        $edoc_confirmed  orders.parasut_exported
+ * @param array       $erp_record      parasut_order_erp_invoice()
+ * @return string HTML
+ */
+function parasut_order_invoice_row_badge($value, $edoc_confirmed, $erp_record)
+{
+    $own = parasut_order_invoice_status_badge($value, false, $edoc_confirmed);
+
+    if ((string) ($erp_record['state'] ?? 'none') === 'none') {
+        return $own;
+    }
+
+    $erp = parasut_order_erp_invoice_badge($erp_record);
+
+    return (trim((string) $value) === '') ? $erp : $erp . '<br>' . $own;
 }
 
 /**
@@ -2668,7 +3168,9 @@ function parasut_kept_product_cards($product_ids)
  * one deleted on Paraşüt's screen since is left out and its id cleared. The
  * buyer card and product cards Pinegrap kept are sent without a read; one
  * Paraşüt answers the create it no longer holds is forgotten and the
- * invoice sent once more (parasut_send_once_more()).
+ * invoice sent once more (parasut_send_once_more()). Only a finished sale is
+ * invoiced, and not one the ERP already invoiced through its e-document
+ * provider (parasut_order_press_refusal()).
  *
  * @param int   $order_id  orders.id
  * @param array $notices   Receives what the order screen shows beside the outcome:
@@ -2696,6 +3198,16 @@ function parasut_create_invoice($order_id, &$notices = array())
     }
 
     _parasut_order_invoice_load();
+
+    // Only a finished sale is invoiced, and not one the ERP already invoiced
+    // through its e-document provider: once the provider is switched off the
+    // button is back on the screen, and orders.parasut_invoice_id knows
+    // nothing of the ERP's record. Refused before anything is asked of
+    // Paraşüt; a page opened before the order was cancelled still posts here.
+    $refusal = parasut_order_press_refusal($order, 'invoice', parasut_order_erp_invoice((int) $order['id']));
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $refusal];
+    }
 
     // One sales invoice per order. The id is kept as soon as the sales invoice
     // exists, also when its e-document failed or is still being converted; a
@@ -3127,10 +3639,12 @@ function parasut_create_invoice($order_id, &$notices = array())
 /**
  * Create a Parasut shipment document (e-irsaliye) for the given order.
  *
- * After Create Invoice it goes only for a sales invoice issued without
- * shipment, which the document names; one that carries the shipment, the
- * unsure mark or an invoice that cannot be read refuses it before anything
- * is written (parasut_shipment_invoice_link()). A shipment document or
+ * Only a finished sale is shipped (parasut_order_press_refusal()). After
+ * Create Invoice, or after the ERP's Paraşüt provider sent the order's ERP
+ * invoice (parasut_shipment_invoice_id()), it goes only for a sales invoice
+ * issued without shipment, which the document names; one that carries the
+ * shipment, the unsure mark or an invoice that cannot be read refuses it
+ * before anything is written (parasut_shipment_invoice_link()). A shipment document or
  * invoice the order keeps the id of and that was deleted on Paraşüt's
  * screen since is left out and its id cleared (parasut_stored_record_check()).
  * The buyer card, default warehouse and product cards Pinegrap kept are
@@ -3156,6 +3670,17 @@ function parasut_create_shipment($order_id, &$notices = array())
 
     if (!$order) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
+    }
+
+    // Only a finished sale has its goods counted out: a cancelled order, or
+    // a checkout that never finished but already holds its buyer, is refused
+    // before anything is asked of Paraşüt, as is an order whose ERP invoice
+    // was sent to Paraşüt and got no answer. A page opened before the order
+    // was cancelled still posts here.
+    $erp_invoice = parasut_order_erp_invoice((int) $order['id']);
+    $refusal = parasut_order_press_refusal($order, 'shipment', $erp_invoice);
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $refusal];
     }
 
     // One outgoing shipment document per order, refused before anything is
@@ -3218,10 +3743,13 @@ function parasut_create_shipment($order_id, &$notices = array())
     }
     $token = $token_result['token'];
 
-    // The order's sales invoice from Create Invoice, judged before anything
-    // is written: one that carries the shipment already took the goods out
-    // of stock, one issued without shipment is named by the document.
-    $invoice_link = parasut_shipment_invoice_link((string) ($order['parasut_invoice_id'] ?? ''), function ($path) use ($token) {
+    // The order's sales invoice from Create Invoice, or else the one the
+    // ERP's Paraşüt provider wrote for the order's ERP invoice, judged before
+    // anything is written: one that carries the shipment already took the
+    // goods out of stock, one issued without shipment is named by the
+    // document.
+    $invoice_to_judge = parasut_shipment_invoice_id((string) ($order['parasut_invoice_id'] ?? ''), $erp_invoice);
+    $invoice_link = parasut_shipment_invoice_link($invoice_to_judge['invoice_id'], function ($path) use ($token) {
         return _parasut_request('GET', _parasut_prefix() . $path, null, $token);
     });
 
@@ -3231,8 +3759,11 @@ function parasut_create_shipment($order_id, &$notices = array())
 
     // An invoice deleted on Paraşüt's screen since: the document goes
     // unlinked, as for an order never invoiced, and the order forgets it.
+    // The ERP invoice's record is the ERP's, left as it is.
     if ((string) ($invoice_link['gone'] ?? '') !== '') {
-        _parasut_order_forget_record($order_id, 'parasut_invoice_id', $invoice_link['gone']);
+        if (!$invoice_to_judge['erp']) {
+            _parasut_order_forget_record($order_id, 'parasut_invoice_id', $invoice_link['gone']);
+        }
         $notices[] = parasut_stored_record_gone_notice('sales_invoices', $invoice_link['gone']);
     }
 
@@ -3452,26 +3983,114 @@ function parasut_create_shipment($order_id, &$notices = array())
 /**
  * Check if a VKN/TCKN is registered for e-invoice in the GİB system.
  *
- * @param string $vkn  Tax/identity number to look up
- * @return array ['success' => bool, 'data' => array|null, 'error' => string]
+ * The number is read as the ERP's lookup reads it (erp_edoc_taxpayer_lookup()):
+ * its digits only, ten of them (VKN) or eleven (TCKN), passing the tax
+ * authority's check digits. Paraşüt answers a filter on any other value with
+ * 200 and an empty list, the same answer a valid number that is not
+ * registered gets, so a mistyped number would read as "not registered, issue
+ * an e-archive". Such a number is refused before any request ('refused').
+ *
+ * @param string        $vkn      Tax/identity number to look up, as typed
+ * @param callable|null $request  Asks Paraşüt for a path under the company
+ *                                prefix and returns the _parasut_request()
+ *                                answer; null sends the request (tests pass one)
+ * @return array ['success' => bool, 'data' => array|null, 'error' => string,
+ *                'refused' => bool the number was not asked, 'number' => string the digits asked]
  */
-function parasut_check_einvoice_address($vkn)
+function parasut_check_einvoice_address($vkn, $request = null)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'data' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
+    $number = preg_replace('/\D/', '', (string) $vkn);
+    $out = ['success' => false, 'data' => null, 'error' => '', 'refused' => false, 'number' => $number];
 
-    $url = _parasut_prefix() . '/e_invoice_inboxes?filter[vkn]=' . urlencode($vkn);
-    $result = _parasut_request('GET', $url, null, $token);
-
-    if ($result['http_code'] !== 200) {
-        return ['success' => false, 'data' => null, 'error' => _parasut_extract_error($result)];
+    if ((strlen($number) !== 10) && (strlen($number) !== 11)) {
+        $out['refused'] = true;
+        $out['error'] = lang('A VKN has 10 digits and a TCKN 11.');
+        return $out;
     }
 
-    $items = $result['body']['data'] ?? [];
-    return ['success' => true, 'data' => $items, 'error' => ''];
+    // The check digits are the ERP's arithmetic; this screen does not load
+    // the module, so it is loaded the way the order's invoice loads it.
+    if (!function_exists('erp_edoc_tax_number_valid')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    }
+
+    // The final consumer's eleven ones are asked, as the ERP's lookup asks them.
+    if (!erp_edoc_tax_number_valid($number, true)) {
+        $out['refused'] = true;
+        $out['error'] = lang('The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.');
+        return $out;
+    }
+
+    $path = '/e_invoice_inboxes?filter[vkn]=' . $number;
+
+    if ($request !== null) {
+        $result = call_user_func($request, $path);
+    } else {
+        $token_result = parasut_get_token();
+        if (!$token_result['success']) {
+            $out['error'] = $token_result['error'];
+            return $out;
+        }
+
+        $result = _parasut_request('GET', _parasut_prefix() . $path, null, $token_result['token']);
+    }
+
+    if ((int) ($result['http_code'] ?? 0) !== 200) {
+        $out['error'] = _parasut_extract_error($result);
+        return $out;
+    }
+
+    $out['success'] = true;
+    $out['data'] = $result['body']['data'] ?? [];
+    return $out;
+}
+
+/**
+ * The totals of a Paraşüt sales invoice or purchase bill as the e-invoice
+ * inbox shows them. net_total is what Paraşüt calls "Genel Toplam": VAT,
+ * excise duty and communications tax added, the VAT withheld
+ * (total_vat_withholding) and the income tax withheld (withholding, stopaj)
+ * taken off. before_taxes_total is what the line and invoice discounts leave
+ * before any tax.
+ *
+ * Paraşüt's API definition lists before_taxes_total and the stopaj amount
+ * (withholding) for sales invoices only; a purchase bill carries neither.
+ * A bill therefore gets the figure from gross_total (the subtotal before
+ * any discount) less total_discount (the line discounts alone) and
+ * total_invoice_discount, which on a sales invoice gives before_taxes_total
+ * to the kurus. net_total less the taxes would not: the stopaj is taken off
+ * net_total too, and a bill gives only its rate. A bill entered without
+ * lines (is_detailed false) has net_total and total_vat as its amounts, so
+ * it gets the one less the other.
+ *
+ * @param array $attributes  data.attributes of the record
+ * @return array ['before_vat' => float, 'vat' => float, 'withheld' => float the VAT withheld,
+ *                'withholding_tax' => float the stopaj (0 on a purchase bill), 'total' => float]
+ */
+function parasut_inbox_totals($attributes)
+{
+    $attributes = (array) $attributes;
+    // Each amount in kurus, so a figure taken from several is not off by a
+    // float's last digit.
+    $kurus = function ($key) use ($attributes) {
+        return (isset($attributes[$key]) && is_numeric($attributes[$key])) ? (int) round(((float) $attributes[$key]) * 100) : 0;
+    };
+
+    if (isset($attributes['before_taxes_total']) && is_numeric($attributes['before_taxes_total'])) {
+        $before_vat = $kurus('before_taxes_total');
+    } elseif (($attributes['is_detailed'] ?? null) === false) {
+        $before_vat = $kurus('net_total') - $kurus('total_vat');
+    } else {
+        $before_vat = $kurus('gross_total') - $kurus('total_discount') - $kurus('total_invoice_discount');
+    }
+
+    return [
+        'before_vat' => $before_vat / 100.0,
+        'vat' => $kurus('total_vat') / 100.0,
+        'withheld' => $kurus('total_vat_withholding') / 100.0,
+        'withholding_tax' => $kurus('withholding') / 100.0,
+        'total' => $kurus('net_total') / 100.0,
+    ];
 }
 
 /**

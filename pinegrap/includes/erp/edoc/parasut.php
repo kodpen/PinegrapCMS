@@ -2554,16 +2554,132 @@ function erp_edoc_parasut_job_reading($attributes)
 }
 
 /**
- * Asks after a converted invoice: the trackable job while it still answers,
- * then the sales invoice and the e-document it became.
+ * Whether Paraşüt's answer to GET sales_invoices/{id} says that this very
+ * record is not there: 404 with the error Paraşüt gives for a record deleted
+ * on its screen (title "Record was not found", detail "SalesInvoice-<id>").
  *
- * @param array  $invoice  An erp_invoices row
- * @param string $job_id   The sales invoice id send_invoice() returned
+ * Any other answer says nothing about the record: a 404 that names no record
+ * or another one ("No route matches."), a company the token's user cannot
+ * reach (401 "No access to company"), a 5xx, a transport error, no token.
+ *
+ * @param array  $result       erp_edoc_parasut_request() answer
+ * @param string $external_id  The sales invoice id the row names
+ * @return bool
+ */
+function erp_edoc_parasut_invoice_gone($result, $external_id)
+{
+    $result = (array) $result;
+    $external_id = trim((string) $external_id);
+
+    if (($external_id === '') || ((int) ($result['http_code'] ?? 0) !== 404)
+        || ((string) ($result['error'] ?? '') !== '') || ((string) ($result['login_error'] ?? '') !== '')) {
+        return false;
+    }
+
+    $errors = $result['body']['errors'] ?? null;
+
+    if (!is_array($errors)) {
+        return false;
+    }
+
+    foreach ($errors as $error) {
+        if (is_array($error) && (trim((string) (is_scalar($error['title'] ?? null) ? $error['title'] : '')) === 'Record was not found')
+            && (trim((string) (is_scalar($error['detail'] ?? null) ? $error['detail'] : '')) === 'SalesInvoice-' . $external_id)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What a status question answers for an invoice whose sales invoice the
+ * connected Paraşüt company does not hold (erp_edoc_parasut_invoice_gone()).
+ * Either it was deleted on Paraşüt's screen, as the send's own refusal and
+ * the draft's hand-over leave the operator free to do, or the settings card
+ * now connects another company, taken to answer the same 404 (the path is
+ * per company); the message names both, and a draft left in the earlier
+ * company stays there. The row is freed so the invoice can be sent again:
+ * the service writes it as not at the provider, and the driver forgets the
+ * record, its e-document and its job ('forget', the parasut_* columns as
+ * cancel_invoice() clears them).
+ *
+ * The unsure mark of a send that got no answer is kept: that send may have
+ * written a record of its own, so the row is 'error' without an id, the
+ * state the next send and a cancel follow the mark from.
+ *
+ * Only a row the ERP does not hold as a GİB document is freed: a draft
+ * ('created'), a record a later step failed on ('error'), and a handed-over
+ * row whose conversion job this question read as failed. A sent, accepted
+ * or cancelled document is never let go on a 404, and a rejected one may be
+ * sent again as it is.
+ *
+ * The row is judged as the ERP knows it, not as Paraşüt does. After a
+ * company switch a 'created' or 'error' row may still stand for an
+ * e-document in the earlier company: one issued on Paraşüt's own screen, or
+ * one a hand-over made whose answer was lost (a failed hand-over leaves the
+ * row 'created'). Such a row is freed too, and sending it again would issue
+ * the sale at GİB a second time.
+ *
+ * @param array $invoice     An erp_invoices row
+ * @param bool  $job_failed  This question read the conversion job, and it had failed
+ * @return array|null  ['answer' => the poll answer with 'gone' => true,
+ *                      'forget' => parasut_* column => value]; null when the
+ *                      row is not freed
+ */
+function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
+{
+    $status = (string) ($invoice['edoc_status'] ?? '');
+
+    if (!in_array($status, array('created', 'error'), true) && !(($status === 'sent') && $job_failed)) {
+        return null;
+    }
+
+    $external_id = trim((string) ($invoice['edoc_external_id'] ?? ''));
+    $marked = (erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '') !== null);
+    $forget = array('parasut_edoc_id' => '', 'parasut_job_id' => '', 'parasut_job_expires_at' => 0);
+
+    if (!$marked) {
+        $forget = array('parasut_invoice_id' => '') + $forget;
+    }
+
+    return array(
+        'answer' => array(
+            'success' => true,
+            'status' => $marked ? 'error' : 'none',
+            'gone' => true,
+            'gib_uuid' => '',
+            'gib_number' => '',
+            'kind' => '',
+            'message' => $marked
+                ? lang(array('string' => 'The connected Paraşüt company does not have this invoice\'s record (id {var:1}): it was deleted there, or another company is connected now. The last send got no answer, so the next send first looks at Paraşüt for a record that send may have written; the invoice can be sent again.', 'vars' => array($external_id)))
+                : lang(array('string' => 'The connected Paraşüt company does not have this invoice\'s record (id {var:1}): it was deleted there, or another company is connected now. The invoice can be sent again.', 'vars' => array($external_id))),
+            'error' => '',
+            'party' => array(),
+        ),
+        'forget' => $forget,
+    );
+}
+
+/**
+ * Asks after a converted invoice: the trackable job while it still answers,
+ * then the sales invoice and the e-document it became. A record the
+ * connected company does not hold frees a row the ERP does not hold as a
+ * GİB document (erp_edoc_parasut_gone_answer(); the answer then carries
+ * 'gone' => true).
+ *
+ * @param array  $invoice    An erp_invoices row
+ * @param string $job_id     The sales invoice id send_invoice() returned
+ * @param bool   $free_gone  Whether a deleted record frees the row. False for
+ *                           a caller that does not write the answer on the
+ *                           row (fetch_document()): it gets the plain 404
+ *                           answer, and the status question frees the row.
  * @return array ['success' => bool, 'status' => string, 'gib_uuid' => string,
  *                'gib_number' => string, 'kind' => 'einvoice'|'earchive'|'',
- *                'message' => string, 'error' => string, 'party' => array]
+ *                'message' => string, 'error' => string, 'party' => array,
+ *                'gone' => bool (only when the record was not found)]
  */
-function erp_edoc_parasut_poll($invoice, $job_id)
+function erp_edoc_parasut_poll($invoice, $job_id, $free_gone = true)
 {
     $external_id = trim((string) $job_id);
     $out = array('success' => false, 'status' => 'sent', 'gib_uuid' => '', 'gib_number' => '', 'kind' => '', 'message' => '', 'error' => '', 'party' => array());
@@ -2582,6 +2698,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     // go with it.
     $tracked = trim((string) ($invoice['parasut_job_id'] ?? ''));
     $job_words = '';
+    $job_failed = false;
 
     if (($tracked !== '') && ((int) ($invoice['parasut_job_expires_at'] ?? 0) > time())) {
         $job = erp_edoc_parasut_request('GET', '/trackable_jobs/' . rawurlencode($tracked), null, $context);
@@ -2603,6 +2720,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
 
             erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
             $job_words = (string) $reading['message'];
+            $job_failed = ($reading['state'] === 'error');
         }
     }
 
@@ -2612,6 +2730,26 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     if ((string) $detail['login_error'] !== '') {
         $out['error'] = $detail['login_error'];
         return $out;
+    }
+
+    // Not held by the connected company (deleted on Paraşüt's screen, or
+    // another company connected): a row the ERP does not hold as a GİB
+    // document is freed, so the invoice is sent again instead of being
+    // refused at every press.
+    if ($free_gone && erp_edoc_parasut_invoice_gone($detail, $external_id)) {
+        $gone = erp_edoc_parasut_gone_answer($invoice, $job_failed);
+
+        if ($gone !== null) {
+            $columns = array();
+
+            foreach ($gone['forget'] as $column => $value) {
+                $columns[] = $column . " = '" . escape((string) $value) . "'";
+            }
+
+            erp_query("UPDATE erp_invoices SET " . implode(', ', $columns) . " WHERE id = '" . (int) $invoice['id'] . "'");
+
+            return $gone['answer'];
+        }
     }
 
     if ((int) $detail['http_code'] === 404) {
@@ -2761,8 +2899,11 @@ function erp_edoc_parasut_fetch_document($invoice, $format = 'pdf')
     $kind = (string) ($invoice['edoc_kind'] ?? '');
 
     if (($document_id === '') || !in_array($kind, array('einvoice', 'earchive'), true)) {
-        // Not read yet: asking after the status writes it down.
-        $polled = erp_edoc_parasut_poll($invoice, (string) ($invoice['edoc_external_id'] ?? ''));
+        // Not read yet: asking after the status writes it down. A record
+        // deleted at Paraşüt is only reported here, since the service's write
+        // of the status does not run on this path; the status question frees
+        // the row.
+        $polled = erp_edoc_parasut_poll($invoice, (string) ($invoice['edoc_external_id'] ?? ''), false);
 
         if (empty($polled['success'])) {
             return array_merge($none, array('error' => (string) $polled['error']));

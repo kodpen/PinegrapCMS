@@ -82,6 +82,185 @@ function ws_record_type_keys()
 }
 
 /**
+ * Every kind of site record a tag can point at, described in one place, in
+ * the order of ws_record_type_keys(). A new kind is described here first;
+ * the lists that name kinds one by one (the tags, the change catalogue, the
+ * drawer, the customer kinds, the audit trail, the assistants' scopes) still
+ * hold it as well, and tests/workspace_record_kinds_registry_test.php names
+ * the list a kind here is missing from, or the kind a list names that is
+ * missing here.
+ *
+ * Per kind:
+ * - prefixes: the words typed after # that pick it (ws_ref_types());
+ * - right: the ws_viewer() right that shows its tag (ws_ref_types()) and that
+ *   its change asks (ws_change_types()), '' when every member may;
+ * - scope: the external API scope its reads need, as the assistants ask it
+ *   (ws_ai_type_scope()); workspace:read when no API scope reads the kind;
+ * - change: the ws_change_types() kind that writes it, '' when the Workspace
+ *   never writes it (the ERP's documents are tag-only);
+ * - audit: the pg_audit_tables() table a Workspace write of it is recorded
+ *   on (ws_change_audit_target()), '' when the trail does not follow it;
+ * - quick_edit: the record drawer edits it (ws_quick_edit_types());
+ * - customer: a customer channel can be about it (ws_customer_types()).
+ *
+ * Nothing here reads the database or the reader's rights: what a given
+ * person may see is still ws_ref_types() and the checks of each kind.
+ *
+ * @return array kind => prefixes, right, scope, change, audit, quick_edit, customer
+ */
+function ws_record_kinds()
+{
+    return array(
+        'order' => array(
+            'prefixes'   => array('sip', 'siparis', 'sipariş', 'order', 'o'),
+            'right'      => 'ecommerce',
+            'scope'      => 'orders:read',
+            'change'     => 'order',
+            'audit'      => 'orders',
+            'quick_edit' => true,
+            'customer'   => false,
+        ),
+        'product' => array(
+            'prefixes'   => array('urun', 'ürün', 'product', 'p'),
+            'right'      => 'ecommerce',
+            'scope'      => 'products:read',
+            'change'     => 'product',
+            'audit'      => 'products',
+            'quick_edit' => true,
+            'customer'   => false,
+        ),
+        'product_group' => array(
+            'prefixes'   => array('grup', 'urungrubu', 'ürüngrubu', 'kategori', 'group'),
+            'right'      => 'ecommerce',
+            'scope'      => 'products:read',
+            'change'     => 'product_group',
+            'audit'      => '',
+            'quick_edit' => true,
+            'customer'   => false,
+        ),
+        // The site's discount, never the ERP's sales quote (erp_quote).
+        'offer' => array(
+            'prefixes'   => array('teklif', 'kampanya', 'kupon', 'offer'),
+            'right'      => 'ecommerce',
+            'scope'      => 'offers:read',
+            'change'     => 'offer',
+            'audit'      => 'offers',
+            'quick_edit' => true,
+            'customer'   => false,
+        ),
+        'contact' => array(
+            'prefixes'   => array('kisi', 'kişi', 'contact', 'k'),
+            'right'      => 'contacts',
+            'scope'      => 'customers:read',
+            'change'     => 'contact',
+            'audit'      => '',
+            'quick_edit' => true,
+            'customer'   => true,
+        ),
+        // A login. Its role is given on the user screen, not in the drawer.
+        'user_account' => array(
+            'prefixes'   => array('kullanici', 'kullanıcı', 'kul', 'user', 'u'),
+            'right'      => 'users',
+            'scope'      => 'workspace:read',
+            'change'     => 'user',
+            'audit'      => 'user',
+            'quick_edit' => false,
+            'customer'   => true,
+        ),
+        'erp_account' => array(
+            'prefixes'   => array('cari', 'hesap', 'account', 'a'),
+            'right'      => 'erp',
+            'scope'      => 'erp:read',
+            'change'     => 'erp_account',
+            'audit'      => '',
+            'quick_edit' => true,
+            'customer'   => true,
+        ),
+        'invoice' => array(
+            'prefixes'   => array('fat', 'fatura', 'invoice', 'f'),
+            'right'      => 'erp',
+            'scope'      => 'erp:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'waybill' => array(
+            'prefixes'   => array('irs', 'irsaliye', 'waybill', 'i'),
+            'right'      => 'erp',
+            'scope'      => 'erp:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'receipt' => array(
+            'prefixes'   => array('makbuz', 'tahsilat', 'odeme', 'ödeme', 'receipt', 'm'),
+            'right'      => 'erp_cash',
+            'scope'      => 'erp_cash:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'edoc' => array(
+            'prefixes'   => array('gelen', 'ebelge', 'e-belge', 'edoc', 'e'),
+            'right'      => 'erp',
+            'scope'      => 'erp:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'erp_quote' => array(
+            'prefixes'   => array('satis', 'satış', 'satisteklifi', 'satışteklifi', 'salesquote'),
+            'right'      => 'erp',
+            'scope'      => 'erp:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'form' => array(
+            'prefixes'   => array('form', 'basvuru', 'başvuru', 'talep'),
+            'right'      => 'forms',
+            'scope'      => 'forms:read',
+            'change'     => 'form',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'calendar_event' => array(
+            'prefixes'   => array('etkinlik', 'takvim', 'event', 't'),
+            'right'      => 'calendars',
+            'scope'      => 'calendars:read',
+            'change'     => 'calendar_event',
+            'audit'      => '',
+            'quick_edit' => true,
+            'customer'   => false,
+        ),
+        'file' => array(
+            'prefixes'   => array('dosya', 'file', 'd'),
+            'right'      => '',
+            'scope'      => 'files:read',
+            'change'     => 'file',
+            'audit'      => 'files',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+        'page' => array(
+            'prefixes'   => array('sayfa', 'page', 's'),
+            'right'      => '',
+            'scope'      => 'pages:read',
+            'change'     => 'page',
+            'audit'      => 'page',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
+    );
+}
+
+/**
  * @return string[] people, records and the workspace's own things; app is an
  *                  application that can be asked (Claude, <@app:N>)
  */
@@ -262,6 +441,28 @@ function ws_money_out($minor)
 }
 
 /**
+ * May this reader edit the folder a file, a page or a form lives in? Asked
+ * of the reader, not of whoever is signed in: an API owner reads too. Staff
+ * edit every folder; anybody else the ones they were given.
+ *
+ * @param array $viewer
+ * @param int   $folder_id
+ * @return bool
+ */
+function ws_viewer_folder_open($viewer, $folder_id)
+{
+    if ((int) $viewer['role'] < 3) {
+        return true;
+    }
+
+    if (function_exists('pg_folder_edit_access')) {
+        return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
+    }
+
+    return function_exists('check_edit_access') && check_edit_access($folder_id);
+}
+
+/**
  * Whether sales quotes can be read: the ERP is on and its quotes table is
  * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
  * and the money helpers (erp_money_out_currency()) alone rather than the
@@ -298,7 +499,8 @@ function ws_erp_quotes_readable()
  * @param array $viewer
  * @param array $tokens ws_tokens() rows, from any number of texts
  * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon;
- *               a channel also badge (ws_channel_icon_badge())
+ *               a channel also badge (ws_channel_icon_badge()); a tag whose
+ *               record is gone (or whose module is off) also gone (true)
  */
 function ws_refs_resolve($viewer, $tokens)
 {
@@ -329,18 +531,8 @@ function ws_refs_resolve($viewer, $tokens)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
-    // May this reader edit the folder a file, a page or a form lives in? Asked
-    // of the reader, not of whoever is signed in: an API owner reads too.
     $folder_open = function ($folder_id) use ($viewer) {
-        if ($viewer['role'] < 3) {
-            return true;
-        }
-
-        if (function_exists('pg_folder_edit_access')) {
-            return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
-        }
-
-        return function_exists('check_edit_access') && check_edit_access($folder_id);
+        return ws_viewer_folder_open($viewer, $folder_id);
     };
 
     $date_out = function ($value) {
@@ -773,12 +965,14 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
-    // Tags whose record is gone are still drawn, and say so.
+    // Tags whose record is gone are still drawn, and say so. gone tells them
+    // apart from a record the reader may not see (known false too).
     foreach ((array) $tokens as $token) {
         $key = $token['type'] . ':' . (int) $token['id'];
 
         if (!isset($out[$key])) {
             $put($token['type'], $token['id'], lang('Deleted record'), '', '', '', false, 'bi-x-circle');
+            $out[$key]['gone'] = true;
         }
     }
 
