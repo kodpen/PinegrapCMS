@@ -12,7 +12,7 @@ description: The ERP driver's sales invoice for an order the legacy E-Shipment a
 - With one, `erp_edoc_parasut_invoice_payload()` adds `attributes.shipment_included` false and `relationships.shipment_documents` naming the document. Without, the body is the one sent before (no `shipment_included`: Paraşüt's default, shipment included).
 - The legacy Create Invoice builds its body with the same function but passes no `order_shipment_id`; it adds the same two fields itself (`parasut_order_invoice_with_shipment()`, any non-empty value): erp-parasut-legacy-invoice-shipment.md. Returns and proformas never go to Paraşüt (`send_invoice` refuses them).
 
-## And a shipment document deleted at Paraşüt since? (#PR)
+## And a shipment document deleted at Paraşüt since? (#1627)
 - The create gets 404 `ShipmentDocument-<id>`: the id is forgotten and the invoice sent once more without the link (erp-parasut-stale-kept-ids.md).
 
 ## And an order the legacy Create Invoice already invoiced? (#PR)

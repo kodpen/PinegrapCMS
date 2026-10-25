@@ -1,9 +1,9 @@
 ---
 name: erp-parasut-stale-kept-ids
-description: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#PR)
+description: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
 ---
 
-## What went wrong? (#PR)
+## What went wrong? (#1627)
 - Sent without a read: a product's card (`products.parasut_product_id`), `config.parasut_default_warehouse_id` (E-Shipment; typed or cached), `orders.parasut_contact_id` (both legacy buttons) and, in the driver's order invoice, `orders.parasut_shipment_id` (#1530).
 - A record deleted at Paraşüt, or a shop moved to another company, left them for good: the create got 404 `Record was not found`, detail `Product-<id>` (`Warehouse-`, `Contact-`, `ShipmentDocument-`), and wrote nothing. No screen clears them.
 
