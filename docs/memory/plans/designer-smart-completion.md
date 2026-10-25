@@ -1,10 +1,10 @@
 ---
 name: designer-smart-completion
-description: Plan (2026-10-24): deterministic smart completion for designer CSS/HTML/JS and class inputs, a per-element custom style rule, fixes first
+description: Plan (2026-10-24, waits for the owner's start): deterministic smart completion for designer CSS/HTML/JS and class inputs, a per-element custom style rule, fixes first
 ---
 
 ## What is being built?
-- One pure, text-free predictor (`assets/js/pg_style_predict.js`, lazy) ranks classes, CSS properties, values, units, tokens, selectors, attributes and the Bootstrap JS API from the element, its parents and the design. It feeds panel inputs (light dropdown) and CM6 completion sources.
+- One pure predictor (`assets/js/pg_style_predict.js`, lazy) ranks classes, CSS properties, values, units, tokens, selectors, attributes and the Bootstrap JS API from the element, its parents and the design, for panel inputs (light dropdown) and CM6 sources.
 - A "Custom style" field (Attributes panel, Styles panel "This element" card): one User Styles rule keyed by a generated `pgs-` class.
 - CM6 (`@codemirror/autocomplete` 6.20.3) has the engine, not Bootstrap, design or theme knowledge. No npm package or bundle rebuild.
 
@@ -16,12 +16,12 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 
 ## How do we keep clear of other sessions in style_designer.js?
 - New logic goes into new files (predictor, vocabulary, pure CSS text helpers) with Node tests; `style_designer.js` gets wiring only.
-- Each claim names the functions it touches; before a step read the open PRs' hunks there (`pulls/<n>/files`); one open step per region; merge `development` just before the PR.
+- Each claim names the functions it touches; read the open PRs' hunks there first (`pulls/<n>/files`); one open step per region.
 
 ## Which decisions are made?
 - Owner (2026-10-24): deterministic first, AI decided later, never per keystroke; the custom style field is a growing textarea with the light dropdown (no CM6 in panel inputs); off inside shared components and system widgets, reason shown; fixes F1-F4 and the predictor base (F6, 1, 3) run side by side.
-- Defaults (owner may change): class `pgs-` + 6 characters; a copied element shares the rule ("N elements use it" + Split); base rule first; theme-breaking classes last, with the replacement; `class_suggestions.js` replaced; inline hint off by default; Export keeps `pgs-` rules; `!important` allowed with a warning.
-- The facade primes the lezer cache (`resolveInner(0, 0)`) from a `Prec.highest` css/js source.
+- Defaults (owner may change): class `pgs-` + 6 characters; a copy shares the rule ("N elements use it" + Split); base rule first; theme-breaking classes last, with the replacement; `class_suggestions.js` replaced; inline hint off; Export keeps `pgs-` rules; `!important` with a warning.
+- The facade primes the lezer cache (`resolveInner(0, 0)`) from a `Prec.highest` source.
 - The vocabulary is generated from the local Bootstrap 5.3.8 and kept by a regenerate-and-compare test.
 
 ## What is open (owner)?
@@ -45,4 +45,5 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - Optional: User Styles CSS tab (after F1), inline hint.
 
 ## Where to start?
+- Waits for the owner's start (2026-10-24): other sessions edit the same designer files.
 - F6, 1 and 3 touch no shared designer code and can run beside other sessions; F1 next. Facade: docs/memory/core/code-editor-facade-and-bundle.md.

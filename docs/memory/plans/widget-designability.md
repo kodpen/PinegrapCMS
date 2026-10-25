@@ -4,7 +4,7 @@ description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 
 ---
 
 ## What is built, and why?
-- Legacy layouts (`data/layouts/<id>.php`, 89 in the starter site) branch on any value, loop nested arrays, place every piece. Widgets: one loop, fixed flags (none in 7 kinds) and tokens, server-built blocks.
+- Legacy layouts (`data/layouts/<id>.php`, 89 in the starter site) branch on any value, loop nested arrays, place every piece; widgets had one loop, fixed flags and tokens.
 - One mechanism for every kind (30 today): a finish pass in the outer callback of `_expand_system_widgets()` (page, e-mail, Preview, ghosts, nested) resolves the markers `_render_tree_node()` and `_split_widget_tree()` write. `_apply_bindings()` is not edited.
 
 ## What are the rules?
@@ -17,7 +17,8 @@ description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 
 
 ## What is decided?
 - Chosen 2026-10-24 of three designs: the finish pass, with the layout gallery, widget parts, condition vectors, filters and code areas.
-- Missing page types stay in [[system-widget-missing-types]], built on this engine.
+- Missing page types stay in [[system-widget-missing-types]], built on this engine, the multi-step checkout first.
+- Owner (2026-10-24): steps on different files may run in parallel, each with its own claim; a value condition starts as one per element (OR stays open below).
 
 ## What does the owner still answer?
 OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical old blocks; words beside a value; code areas; page-level facts; per-placement settings; gallery sources; parts with controls; express order lists; classic bridge.

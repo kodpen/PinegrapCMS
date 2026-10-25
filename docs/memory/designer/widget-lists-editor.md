@@ -23,3 +23,7 @@ description: Lists inside a record in the designer (#1688): palette items, where
 ## Which lists must match the server?
 - `SW_LIST_SOURCES` (labels, arg, arg required, row tokens, kinds) = `pg_sw_list_sources()` and `pg_sw_kind_lists()`; `_sdListSpec()` = `pg_sw_list_spec()`; `_sdListIsSourced()` = `pg_sw_list_is_sourced()`. `tests/widget_lists_editor_test.php` checks them under Node. No list name holds TOKEN (check_bindings reads `SW_*TOKEN*` as palettes).
 - Tests that cut `canDrop()`, `_swBindTokenOptions()` or the comments walk also cut or stub the list helpers.
+
+## What is not done yet?
+- Tried by unit tests only: a browser round (palette drag into a form list and a detail view, the panel, the band, Preview) is still owed.
+- A source change keeps the row's bindings (no rebinding offer). No condition on a list's own loop_area; `eo_visible_if` inside a list is not resolved (W23).
