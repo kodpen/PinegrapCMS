@@ -767,11 +767,42 @@ function workspace_flows_parity_product_files()
 	return $files;
 }
 
+// The first argument of a call of a function as a call site's key shows it:
+// as written, runs of whitespace made one, or empty when it is the first
+// parameter's default, written as its constant or its value, so
+// ws_scheduled_run(WS_SCHEDULED_BATCH) is the same place as
+// ws_scheduled_run(): writing a default out changes nothing the call does.
+function workspace_flows_parity_first_argument($function, $written)
+{
+	$written = trim(preg_replace('/\s+/', ' ', (string) $written));
+
+	if (($written === '') || !function_exists($function)) {
+		return $written;
+	}
+
+	$parameters = (new ReflectionFunction($function))->getParameters();
+
+	if (empty($parameters) || !$parameters[0]->isDefaultValueAvailable()) {
+		return $written;
+	}
+
+	$defaults = array(var_export($parameters[0]->getDefaultValue(), true));
+
+	if ($parameters[0]->isDefaultValueConstant()) {
+		$defaults[] = ltrim((string) $parameters[0]->getDefaultValueConstantName(), '\\');
+	}
+
+	return in_array($written, $defaults, true) ? '' : $written;
+}
+
 // The calls of a function in the product's PHP files, comments left out, by
 // where they are: "name(first argument) in file", then the function they
 // are in (none outside a function) and the case of the switch they come
 // under there, if any ("case 'ws_tick'"); a second call in the same place
-// written the same way numbered (workspace_flows_parity_numbered()).
+// written the same way numbered (workspace_flows_parity_numbered()). The
+// first argument is keyed by workspace_flows_parity_first_argument(); the
+// others are not keyed, so a call given a further argument stays the same
+// place.
 function workspace_flows_parity_php_call_sites($name)
 {
 	$root = realpath(PG_FUNCTIONS_DIR);
@@ -861,7 +892,7 @@ function workspace_flows_parity_php_call_sites($name)
 				continue;
 			}
 
-			$first = trim(preg_replace('/\s+/', ' ', implode('', array_map('pg_test_source_text', $args[0]))));
+			$first = workspace_flows_parity_first_argument($name, implode('', array_map('pg_test_source_text', $args[0])));
 			$where = array($file);
 
 			if (!empty($functions)) {
@@ -2336,9 +2367,10 @@ function workspace_flows_parity_table()
 		),
 		'starts' => array(
 			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
-			array(array('ws_scheduled_run() in job.php'), 3, 'driver: the general job, when ws_scheduled_due() says one is due'),
-			array(array('ws_scheduled_run(20) in workspace_recurring_job.php'), 3, 'driver: the Workspace job, 20 a run'),
+			array(array('ws_scheduled_run() in job.php'), 3, 'driver: the general job, when ws_scheduled_due() says one is due; it carries the flows\' runs on with a job\'s time (WS_FLOW_BUDGET_JOB)'),
+			array(array('ws_scheduled_run(20) in workspace_recurring_job.php'), 3, 'driver: the Workspace job, 20 a run, the flows\' runs with a job\'s time (WS_FLOW_BUDGET_JOB)'),
 			array(array('ws_scheduled_due() in includes/workspace/actions.php ws_handle_action case \'ws_sync\'', 'ws_scheduled_due() in job.php'), 3, 'driver: ws_sync tells the screen one is due (scheduled_due); the general job asks first'),
+			array(array('ws_scheduled_due() in includes/workspace/actions.php ws_handle_action case \'ws_flow_run_get\''), 3, 'a flow run\'s view says whether something is due (due), so the canvas sends ws_tick, as a channel screen does after ws_sync'),
 			array(array('ws_scheduled_execute($scheduled[\'id\']) in includes/workspace/actions.php ws_handle_action case \'ws_scheduled_run_now\''), 3, 'the anchor runs on ws_scheduled_execute() until converted: Run now'),
 			array(array('ws_scheduled_execute($scheduled[\'id\']) in includes/workspace/actions.php ws_handle_action case \'ws_scheduled_message_send\''), 'form', 'a scheduled message sent now: scheduled messages are not moved into Flows'),
 			array(array('ws_scheduled_execute((int) $id) in includes/workspace/scheduled.php ws_scheduled_run'), 3, 'driver: each anchor whose time has come'),
@@ -2597,4 +2629,18 @@ function test_workspace_flows_parity_lists_agree()
 	$when = workspace_flows_parity_read_when();
 	pg_assert_same(array_values(array_diff($when, array('at'))), workspace_flows_parity_list_after(workspace_flows_parity_source('ws_scheduled_event_rule'), "in_array((\$rule['type'] ?? ''), "), 'ws_scheduled_event_rule(): the "when" kinds without a time');
 	pg_assert_same($when, workspace_flows_parity_list_after(workspace_flows_parity_source('ws_scheduled_present'), "in_array((\$rule['type'] ?? ''), "), 'ws_scheduled_present() leaves the "when" kinds out of the conditions');
+}
+
+// ─── The readers themselves ─────────────────────────────────────────────
+
+// A call that writes out its first parameter's default is the same place as
+// one that leaves it out; any other first argument is part of its key.
+function test_workspace_flows_parity_default_argument_is_no_new_place()
+{
+	pg_assert_same('', workspace_flows_parity_first_argument('ws_scheduled_run', 'WS_SCHEDULED_BATCH'), 'the default written as its constant');
+	pg_assert_same('', workspace_flows_parity_first_argument('ws_scheduled_run', (string) WS_SCHEDULED_BATCH), 'the default written as its value');
+	pg_assert_same('', workspace_flows_parity_first_argument('ws_scheduled_run', ''), 'no argument');
+	pg_assert_same('20', workspace_flows_parity_first_argument('ws_scheduled_run', '20'), 'another batch');
+	pg_assert_same("'workspace.task.completed'", workspace_flows_parity_first_argument('ws_event', "'workspace.task.completed'"), 'an argument with no default');
+	pg_assert_same('(int) $id', workspace_flows_parity_first_argument('ws_scheduled_execute', "(int)\n\t\$id"), 'runs of whitespace made one');
 }
