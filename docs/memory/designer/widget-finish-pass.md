@@ -1,6 +1,6 @@
 ---
 name: widget-finish-pass
-description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, cut points, the pg-hide-if-empty rerun, the edit pencil and the strip stage (#NNNN).
+description: The finish pass every system widget render goes through: scope, markers, carriers, nonce, cut points, the pg-hide-if-empty rerun, the edit pencil and the strip stage (#1592).
 ---
 
 ## Where does the pass run?

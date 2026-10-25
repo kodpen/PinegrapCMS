@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24, in progress, W1 done #NNNN): legacy-layout power in system widgets via one finish pass: value conditions, row position, nested lists, record fields, formats, placement, variants
+description: Plan (2026-10-24, in progress, W1 done #1592): legacy-layout power in system widgets via one finish pass: value conditions, row position, nested lists, record fields, formats, placement, variants
 ---
 
 ## What is built, and why?
@@ -24,7 +24,7 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 Before W4: a cut required control (custom_form, registration, express_order) still blocks submit; refuse show_if on required controls? `pg_tr_node_fields()` skips `_bindParams`: a text operand is not translated.
 
 ## What are the steps? (one PR each)
-- W1 done (#NNNN): finish pass and value conditions, server side ([[widget-finish-pass]], [[widget-conditions]]).
+- W1 done (#1592): finish pass and value conditions, server side ([[widget-finish-pass]], [[widget-conditions]]).
 - W2 Palette double-click lands beside the selection, inside a widget too (shared_ref items stop at the widget).
 - W3 Row position `__loop_index/count/is_first/is_last/is_odd/is_even`; row marks only when used.
 - W4 Bind Data "Show only when a value…" for every kind, canvas chip, position group.

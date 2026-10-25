@@ -1,6 +1,6 @@
 ---
 name: widget-conditions
-description: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#NNNN).
+description: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 ---
 
 ## What is show_if?
