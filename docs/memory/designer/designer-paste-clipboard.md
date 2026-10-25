@@ -1,6 +1,6 @@
 ---
 name: designer-paste-clipboard
-description: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where every paste path lands (into, beside, repeated paste), one _sdPasteNodes().
+description: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 ---
 
 ## How does one Ctrl+V handle two clipboards?
@@ -14,16 +14,16 @@ description: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes
 - In inline text editing a paste is reduced to plain text (no source-site spans or colors).
 
 ## Where does a paste land?
-- Every path calls `_sdPasteNodes(nodes, key)` → spot `_sdPasteSpot()`: the paste event (our nodes, imported markup), the context-menu Paste, Ctrl+V while `_sdClipStamp` is empty (designer document and canvas iframe). One undo step, the last copy selected, order kept, a shared tree that got it marked dirty, controls through `_cfAdoptOnDrop()`.
+- Every path calls `_sdPasteNodes(nodes)` → spot `_sdPasteSpot()`: the paste event (our nodes, imported markup), the context-menu Paste, Ctrl+V while `_sdClipStamp` is empty (designer document and canvas iframe). One undo step, the last copy selected, order kept, a shared tree that got it marked dirty, controls through `_cfAdoptOnDrop()`.
 - Only the selection decides; nothing selected → end of the page. A click selects, so the caret's spot is not asked (after Ctrl+Z: the first canvas element or a locked row's label).
-- INTO the selection only when it holds children (root, container, row, col, loop areas, a non-void semantic tag that is not a text sink), it is not a repeat, and `canDrop()` takes every node (`_sdPasteFits()`: not into a selected locked element, a row takes columns, a list items, a column goes beside a column; the copy's own lock flag does not count).
-- A repeat (`_sdPasteRepeats()`) goes BESIDE: the selection is a copied node (same `_id`), or the last copy (`_sdLastPaste`: what the last paste selected, or a Ctrl+D duplicate of it or of a copied node) while the clipboard holds the same thing (`key`: the nodes' JSON, the same on both paths; the markup for an import, whose nodes get new ids). So Ctrl+C, Ctrl+V, Ctrl+V and Ctrl+C, Ctrl+D, Ctrl+V give siblings; pasting into a container takes selecting another one.
-- The last copy is held by reference (an undo hands its id out again). Undo/redo rebuild every node, so each snapshot stores its id and tree (`_sdPasteMemo()`) and undo/redo find it by that (`_sdPasteRelink()`); the id names the copy only in its snapshot.
+- The rule, from the visible tree only: BESIDE the selection when it looks exactly like a pasted node (`_sdPasteRepeats()`), else INTO it when it holds children and `_sdPasteFits()` takes every node, else beside.
+- "Looks exactly like" (`_sdPasteShape()`): the node and subtree as JSON with sorted keys, without `_id`, `_expanded`, empty lists/objects (selecting writes `_attrs: []`; PHP returns `[]` for `{}`) and a form control's `name`/`_cf.ids` (a form widget renames copies). Markup compares the nodes it became. So the copied node, any earlier copy, a Ctrl+D or context-menu duplicate, a copy after undo/redo or a reload all take it beside; an edited copy or another container takes it inside; two identical empty boxes count as copies. No paste history is kept.
+- Holds children: root, container, row, col, loop areas, a non-void semantic tag that is not a text sink. `_sdPasteFits()` = `canDrop()`: not into a selected locked element, a row takes columns, a list items, a column goes beside a column; the copy's own lock flag does not count.
 - Beside = right after the selection in its tree (`_sdAnyParent()`: page, shared component or widget), without the drop rules (beside a node inside a locked element is inside it).
 
 ## Why is there one spot function?
 - `style_designer.js` is one function scope: a second `function` of the same name replaces the first for every caller. Two were once called `_sdPasteTarget`; the in-memory one (no index) answered the paste event too, so `splice(NaN)` put every block FIRST in the selection's parent. The in-memory paths now share `_sdPasteNodes()`.
-- `tests/designer_paste_target_test.php` scans for names declared twice in one scope (`findNodeById` is a known pair) and pins the spot, drop rules, repeats (also after undo/redo and Ctrl+D), both paths and the stale caret.
+- `tests/designer_paste_target_test.php` scans for names declared twice in one scope (`findNodeById` is a known pair) and pins the spot, drop rules, the look rule (earlier copy, duplicates, undo/redo, reload, edits), both paths and the stale caret.
 - Open: a context-menu Copy after a Ctrl+C leaves `_sdClipStamp`, so Ctrl+V pastes the older system clipboard.
 - Open: a canvas Shift+click range keeps `selectedNode` on the first node clicked, so its copies land after that one, between the originals.
 
