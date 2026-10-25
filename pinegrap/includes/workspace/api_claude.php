@@ -570,7 +570,9 @@ function ws_api_claude_record($params)
     // record is looked up, so the refusal says nothing about the record.
     api_require_scope(ws_ai_type_scope((string) $types[$type]['tag']));
 
-    if (!ws_change_allowed($asker, $type, $record_id)) {
+    // Read as a reader: the ERP's read-only right reads an ERP account here
+    // as on the ERP screens, while change_types leaves it out.
+    if (!ws_change_allowed(ws_change_reader($asker), $type, $record_id)) {
         api_fail_not_found(lang('Record'));
     }
 

@@ -1165,16 +1165,79 @@ function ws_change_viewer_for_id($user_id)
         return null;
     }
 
+    return ws_change_viewer_from_row($row);
+}
+
+/**
+ * The account of a person, from their row of the user table. The ERP's
+ * read-only right is read where the upgrade that added it was taken; a
+ * table without the column holds nobody read only.
+ *
+ * @param array $row the user table's columns
+ * @return array ws_viewer()
+ */
+function ws_change_viewer_from_row($row)
+{
     return ws_viewer(array(
-        'id'               => (int) $row['user_id'],
-        'role'             => (int) $row['user_role'],
-        'manage_ecommerce' => $row['user_manage_ecommerce'] ?? '',
-        'manage_contacts'  => $row['user_manage_contacts'] ?? '',
-        'manage_erp'       => $row['manage_erp'] ?? 0,
-        'manage_erp_cash'  => $row['manage_erp_cash'] ?? 0,
-        'manage_calendars' => $row['user_manage_calendars'] ?? '',
-        'manage_forms'     => $row['user_manage_forms'] ?? '',
+        'id'                  => (int) $row['user_id'],
+        'role'                => (int) $row['user_role'],
+        'manage_ecommerce'    => $row['user_manage_ecommerce'] ?? '',
+        'manage_contacts'     => $row['user_manage_contacts'] ?? '',
+        'manage_erp'          => $row['manage_erp'] ?? 0,
+        'manage_erp_cash'     => $row['manage_erp_cash'] ?? 0,
+        'manage_erp_readonly' => $row['manage_erp_readonly'] ?? 0,
+        'manage_calendars'    => $row['user_manage_calendars'] ?? '',
+        'manage_forms'        => $row['user_manage_forms'] ?? '',
     ));
+}
+
+/**
+ * The kinds of change that write ERP data: every kind of ws_change_types()
+ * asked with an ERP right. Named here too, so the writer can refuse them
+ * without building the catalogue; tests/workspace_erp_readonly_test.php lays
+ * the two side by side.
+ *
+ * @return string[]
+ */
+function ws_change_erp_types()
+{
+    return array('erp_account');
+}
+
+/**
+ * Why this person may not make a change of this kind when the reason is the
+ * ERP's read-only right (ws_viewer()'s erp_readonly): the sentence the ERP
+ * screens refuse it with (validate_erp_access()). '' for every other person
+ * and kind, which the other checks decide.
+ *
+ * @param array|null $viewer
+ * @param string     $type a kind of ws_change_types()
+ * @return string
+ */
+function ws_change_erp_readonly_refusal($viewer, $type)
+{
+    if (!is_array($viewer) || empty($viewer['erp_readonly']) || !in_array((string) $type, ws_change_erp_types(), true)) {
+        return '';
+    }
+
+    return lang('Your account can read the ERP but not change anything in it.');
+}
+
+/**
+ * The person as a reader of a record a change would be laid against, for a
+ * route that only reads it: the ERP's read-only right reads an ERP record it
+ * may not change, as on the ERP screens.
+ *
+ * @param array|null $viewer
+ * @return array|null
+ */
+function ws_change_reader($viewer)
+{
+    if (is_array($viewer)) {
+        $viewer['erp_readonly'] = false;
+    }
+
+    return $viewer;
 }
 
 /**
@@ -1197,6 +1260,12 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
     $right = $types[$type]['right'];
 
     if (($right !== '') && empty($viewer[$right])) {
+        return false;
+    }
+
+    // The accountant's read-only right reads ERP records and changes none,
+    // so no path offers or makes such a change for them.
+    if (ws_change_erp_readonly_refusal($viewer, $type) !== '') {
         return false;
     }
 
@@ -2488,7 +2557,9 @@ function ws_change_apply_check($viewer, $change_id)
             return $fail($problem);
         }
     } elseif (!isset($types[$type]) || !ws_change_allowed($viewer, $type, (int) $change['record_id'])) {
-        return $fail(lang('You may not change a record of this kind.'));
+        $readonly = ws_change_erp_readonly_refusal($viewer, $type);
+
+        return $fail(($readonly !== '') ? $readonly : lang('You may not change a record of this kind.'));
     }
 
     // Proposed on a task (delegation.php): applied by whoever asked and may
@@ -2895,6 +2966,16 @@ function ws_change_write($viewer, $type, $action, $record, $values, $as_job = fa
 {
     $type = (string) $type;
     $action = (string) $action;
+
+    // Every caller asked ws_change_allowed(), which refuses the ERP's
+    // read-only right; refused here too, so no path that forgets to ask
+    // writes ERP data for it.
+    $readonly = ws_change_erp_readonly_refusal($viewer, $type);
+
+    if ($readonly !== '') {
+        return array('ok' => false, 'error' => $readonly, 'id' => 0);
+    }
+
     $id = is_array($record) ? (int) ($record['id'] ?? 0) : 0;
     $audit = function_exists('pg_audit_record') && function_exists('pg_audit_as_job');
 
