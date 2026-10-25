@@ -5,6 +5,7 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 
 ## Which card does an order go on?
 - `parasut_sync_contact()`, called by both buttons: the id the order holds (`orders.parasut_contact_id`); else `parasut_order_contact_for()`: the card Paraşüt holds for the buyer's VKN/TCKN, else a new card. Either id is stored on the order.
+- A held id Paraşüt no longer has: erp-parasut-stale-kept-ids.md.
 - Before #1543 every order opened a card of its own, so a repeat buyer collected one card per order.
 
 ## When is a card looked up, and how? (#1543)

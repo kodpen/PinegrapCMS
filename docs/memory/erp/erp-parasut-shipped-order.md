@@ -12,6 +12,9 @@ description: The ERP driver's sales invoice for an order the legacy E-Shipment a
 - With one, `erp_edoc_parasut_invoice_payload()` adds `attributes.shipment_included` false and `relationships.shipment_documents` naming the document. Without, the body is the one sent before (no `shipment_included`: Paraşüt's default, shipment included).
 - The legacy Create Invoice builds its body with the same function but passes no `order_shipment_id`; it adds the same two fields itself (`parasut_order_invoice_with_shipment()`, any non-empty value): erp-parasut-legacy-invoice-shipment.md. Returns and proformas never go to Paraşüt (`send_invoice` refuses them).
 
+## And a shipment document deleted at Paraşüt since? (#PR)
+- The create gets 404 `ShipmentDocument-<id>`: the id is forgotten and the invoice sent once more without the link (erp-parasut-stale-kept-ids.md).
+
 ## Why name the document in the invoice?
 - The record written second has to name the first: a shipment document cannot be linked afterwards (`PUT shipment_documents/{id}` with `relationships.invoices` answers 200 and links nothing).
 
@@ -22,8 +25,7 @@ description: The ERP driver's sales invoice for an order the legacy E-Shipment a
 - A document already linked is named again: a second invoice while the first stands, or after the first is cancelled (`DELETE sales_invoices/{id}/cancel` on a plain record; it stays linked), answers 201, the document names both, no stock moves. A deleted invoice drops out of the document's `invoices`. So a rejected e-Invoice sent again, an order invoiced again after a cancel, and the rewrite after a delete go through.
 
 ## What is still open?
-- A shipment document deleted on Paraşüt's screen: the send is refused (404, "Paraşüt would not take the invoice") on every try until `orders.parasut_shipment_id` is cleared; no screen clears it.
 - What GİB gets for an invoice without shipment, and a cancelled e-Archive's link: the demo has no e-document integration (erp-parasut-driver.md).
 
 ## Tests
-- `tests/erp_edoc_parasut_test.php`: `..._order_shipment_id`, `..._invoice_payload_legacy_shipment`, `..._send_invoice_reads_the_order_shipment`.
+- `tests/erp_edoc_parasut_test.php`: `..._order_shipment_id`, `..._invoice_payload_legacy_shipment`, `..._send_invoice_reads_the_order_shipment`; `tests/parasut_stale_product_test.php`: the deleted document.
