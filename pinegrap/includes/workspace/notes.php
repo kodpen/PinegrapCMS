@@ -87,6 +87,63 @@ function ws_notes_ready()
 }
 
 /**
+ * Does a note carry its revision (2026.11.0, 11.0.84)? The files of an update
+ * land before its schema step runs, and a statement that names the column
+ * before then fails as a whole, so the column is named only once it is there.
+ *
+ * @return bool
+ */
+function ws_note_revision_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_notes_ready() && function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'revision');
+    }
+
+    return $ready;
+}
+
+/**
+ * The part of an UPDATE of ws_notes that moves the revision on, for every
+ * write of a note's title, text or pin: ", revision = revision + 1" ('' while
+ * the column is not there yet).
+ *
+ * @param bool $comma with the comma that joins it to the fields before it
+ * @return string
+ */
+function ws_note_revision_sql($comma = true)
+{
+    if (!ws_note_revision_ready()) {
+        return '';
+    }
+
+    return ($comma ? ', ' : '') . 'revision = revision + 1';
+}
+
+/**
+ * Whether a change was made against an older note than the one stored. The
+ * revision that was read decides when it is sent and the note has one: any
+ * change since, the person's own on another device included. Without it,
+ * base (the updated_at that was read) refuses only a later change by
+ * somebody else, to the second.
+ *
+ * @param array $note      the stored row: revision, updated_at, updated_by
+ * @param array $data      revision and base as the change sent them
+ * @param int   $viewer_id
+ * @return bool
+ */
+function ws_note_stale($note, $data, $viewer_id)
+{
+    if (isset($data['revision'], $note['revision']) && ((int) $data['revision'] > 0)) {
+        return (int) $note['revision'] !== (int) $data['revision'];
+    }
+
+    return isset($data['base']) && ((int) $data['base'] > 0) && ((int) $note['updated_at'] > (int) $data['base'])
+        && ((int) $note['updated_by'] !== (int) $viewer_id);
+}
+
+/**
  * Are a note's earlier versions kept (2026.4.8, 8.111)?
  *
  * @return bool
@@ -931,9 +988,12 @@ function ws_note_save_check($viewer, $data)
             return $fail(lang('That note could not be found.'));
         }
 
-        if (isset($data['base']) && ((int) $data['base'] > 0) && ((int) $note['updated_at'] > (int) $data['base'])
-            && ((int) $note['updated_by'] !== (int) $viewer['id'])) {
-            return $fail(lang(array('string' => '{var:1} changed this note meanwhile.', 'vars' => ws_person_name($note['updated_by']))), $note_id, true);
+        if (ws_note_stale($note, $data, (int) $viewer['id'])) {
+            $error = ((int) $note['updated_by'] !== (int) $viewer['id'])
+                ? lang(array('string' => '{var:1} changed this note meanwhile.', 'vars' => ws_person_name($note['updated_by'])))
+                : lang('You changed this note meanwhile on another screen or device.');
+
+            return $fail($error, $note_id, true);
         }
     } elseif ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'") >= WS_NOTE_LIMIT) {
         return $fail(lang(array('string' => 'You can keep at most {var:1} notes.', 'vars' => WS_NOTE_LIMIT)));
