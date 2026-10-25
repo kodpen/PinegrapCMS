@@ -30,6 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
+- catalog-rating-tokens.md: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
@@ -53,7 +54,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
 - design-template-forum-layout.md: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, focus rings, light e-mail frames.
 - design-template-forum-moderation.md: Forum template moderators: dashboard counts and lists, topics desk, docs desk, reported posts, the folders a moderator needs, hiding and solving topics, reports never linked, e-mails, renaming rules.
-- design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the comments block, Turkish words, platform limits.
+- design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the comments block and their names, Turkish words.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, token hrefs, plain names, launching one.
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
@@ -148,6 +149,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
+- form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
@@ -203,4 +205,5 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
+- widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

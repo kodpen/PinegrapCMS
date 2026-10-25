@@ -124,10 +124,14 @@ function ws_bulk_operations()
  * The ids a bulk change reaches as the records are now, in their order, at
  * most WS_BULK_MAX (and, for the card, the number there are).
  *
- * @param array $spec checked by ws_bulk_input()
+ * @param array      $spec   checked by ws_bulk_input()
+ * @param array|null $viewer the person who applies it: with the user role,
+ *                           only the contacts they may open are reached, so
+ *                           neither the count nor the sample on the card
+ *                           tells of the others
  * @return array ids, total
  */
-function ws_bulk_match($spec)
+function ws_bulk_match($spec, $viewer = null)
 {
     $types = ws_change_types();
     $type = $types[$spec['type']];
@@ -143,6 +147,12 @@ function ws_bulk_match($spec)
 
     if ($spec['type'] === 'page') {
         $where[] = '1 = 1' . (function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('t.page_folder') : '');
+    }
+
+    // A contact, for the user role: one filed in a group given to the
+    // person (ws_change_allowed()).
+    if (($spec['type'] === 'contact') && is_array($viewer) && ((int) ($viewer['role'] ?? 0) >= 3)) {
+        $where[] = pg_contact_owner_sql((int) $viewer['id'], 't.' . $key);
     }
 
     // A file of a design belongs to the design, not to the site's files.
@@ -195,13 +205,15 @@ function ws_bulk_match($spec)
  * apply it: a kind they may change, a field that takes what is asked of it,
  * and records it reaches.
  *
- * @param array $asker the person who asked
- * @param mixed $bulk  type, action (update | delete), scope (all | group | search | ids),
- *                     group_id, search, ids, only_empty, field, operation (set | percent |
- *                     add | generate | values), value, instruction, values, round
+ * @param array $asker        the person who asked
+ * @param mixed $bulk         type, action (update | delete), scope (all | group | search | ids),
+ *                            group_id, search, ids, only_empty, field, operation (set | percent |
+ *                            add | generate | values), value, instruction, values, round
+ * @param bool  $for_proposal an application's proposal (proposals.php), whose
+ *                            refusal speaks of the person it is proposed to
  * @return array ok, error, spec, matched, sample
  */
-function ws_bulk_input($asker, $bulk)
+function ws_bulk_input($asker, $bulk, $for_proposal = false)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'spec' => null, 'matched' => 0, 'sample' => array());
@@ -223,7 +235,9 @@ function ws_bulk_input($asker, $bulk)
     }
 
     if (!ws_change_allowed($asker, $type, 0)) {
-        return $fail(lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
+        return $fail($for_proposal
+            ? lang(array('string' => 'The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.', 'vars' => $types[$type]['label']))
+            : lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
     }
 
     $action = ((string) ($bulk['action'] ?? 'update') === 'delete') ? 'delete' : 'update';
@@ -400,7 +414,7 @@ function ws_bulk_input($asker, $bulk)
         }
     }
 
-    $match = ws_bulk_match($spec);
+    $match = ws_bulk_match($spec, $asker);
 
     if (empty($match['ids'])) {
         return $fail(lang('No record matches. Say so in the answer instead of proposing it.'));
@@ -628,7 +642,7 @@ function ws_bulk_start($viewer, $change)
         return array('ok' => false, 'error' => lang('Deleting records in bulk is switched off in the Workspace Settings.'));
     }
 
-    $match = ws_bulk_match($spec);
+    $match = ws_bulk_match($spec, $viewer);
 
     $state['ids'] = $match['ids'];
     $state['total'] = count($match['ids']);
@@ -715,6 +729,18 @@ function ws_bulk_step($change_id)
         $state['ai_tries'] = 0;
     }
 
+    // The records' lines name who proposed the change (ws_ai_voice(),
+    // ws_change_sentence()): Pinegrap AI or the application, not Claude.
+    // Only the first slice runs in the request that applied the change and
+    // set it; the others run from the screen's step, the tick or the job.
+    // What was set before is handed back once the slice is written.
+    $voice = function_exists('ws_ai_voice_change');
+    $voice_before = $voice ? ws_ai_voice_change() : null;
+
+    if ($voice) {
+        ws_ai_voice_change($change);
+    }
+
     foreach ($slice as $id) {
         $state['pos']++;
         $record = ws_change_record($type, $id);
@@ -775,6 +801,10 @@ function ws_bulk_step($change_id)
         }
     }
 
+    if ($voice) {
+        ws_ai_voice_change(is_array($voice_before) ? $voice_before : false);
+    }
+
     $state['errors'] = array_slice($state['errors'], -20);
     $finished = ((int) $state['pos'] >= count($state['ids']));
 
@@ -805,8 +835,11 @@ function ws_bulk_finish($viewer, $change, $spec, $state)
     $decision_id = 0;
     $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
 
+    // An application's proposal (proposals.php) is named by the application.
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
     $body = lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => array(
-        $by_ai ? 'Pinegrap AI' : 'Claude', ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
+        ($proposer !== '') ? $proposer : ($by_ai ? 'Pinegrap AI' : 'Claude'), ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
         (int) $state['done'], (int) $state['skipped'], (int) $state['failed'])));
 
     if (!empty($state['lines'])) {
