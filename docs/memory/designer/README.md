@@ -22,6 +22,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Add a new page-save dependency beyond the page's tree and settings to `_pgPageUnchanged()`, or Save skips the page as unchanged (`multi-page-designer-editor.md`).
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
 - A widget condition is `_bindings.show_if` + `_bindParams.show_if`, resolved by the finish pass; never a class (`widget-conditions.md`, `widget-finish-pass.md`).
+- A widget list is a loop_area with props.source, drawn by the finish pass from rows its renderer published; the main loop is the unsourced one (`widget-lists.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -207,5 +208,6 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
+- widget-lists.md: Lists inside a widget record (#PR): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.
