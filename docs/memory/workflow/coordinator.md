@@ -19,6 +19,7 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 
 ## What can it not do?
 - The app starts a new session only on a turn the owner started. On a turn woken by a check-in or a GitHub event the coordinator offers the workers as cards instead, and the owner's short "go on" in the coordinator starts a batch.
+- A worker card opens its cloud session only when the owner presses Start on it, so a worker counts as started only once its draft PR is on GitHub. Until then the coordinator neither reports it as running nor counts it toward the account's workers, and reminds the owner of the card.
 - It reaches only its own account; each account runs its own coordinator, and the draft PRs keep them apart.
 - Its context grows with each turn: it keeps no copy of reports, and once its context is large it ends and a fresh coordinator reads the state again.
 
