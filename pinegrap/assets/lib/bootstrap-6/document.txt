@@ -1,7 +1,21 @@
-Version: 
-Alpha 1 Bootstrap 6.0
-Document link:      
-https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/getting-started/install/
-Orginal File links: 
-https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/dist/js/bootstrap.js
-https://v6-dev--twbs-bootstrap.netlify.app/docs/6.0/dist/css/bootstrap.css
+Version:
+Bootstrap 6.0.0-alpha.1 (npm, published 2026-10-08)
+
+Source:
+https://registry.npmjs.org/bootstrap/-/bootstrap-6.0.0-alpha.1.tgz
+integrity sha512-snAWSjKDVdQAyPOtR69Upy247tZq13gw86SMDMZS4wNfBXGNdzbHdIP6GAyaAVJwTX4LjWowY8YYaJkSDv2wGQ==
+
+Files (copied unchanged from the package's dist/ folder):
+css/bootstrap.css, css/bootstrap.css.map
+css/bootstrap.min.css, css/bootstrap.min.css.map
+js/bootstrap.js, js/bootstrap.js.map (standalone ES module; imports @floating-ui/dom and vanilla-calendar-pro)
+js/bootstrap.bundle.min.js, js/bootstrap.bundle.min.js.map (ES module with Floating UI and Vanilla Calendar Pro)
+
+CDN SRI of the same files:
+css/bootstrap.min.css        sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe
+js/bootstrap.bundle.min.js   sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL
+
+Documentation:
+https://getbootstrap.com/docs/6.0/getting-started/install/
+https://getbootstrap.com/llms.txt
+https://getbootstrap.com/llms-full.txt
