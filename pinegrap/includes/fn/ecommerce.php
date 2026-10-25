@@ -2284,7 +2284,9 @@ function pg_catalog_bin_group($group_id, $user_id)
  * output_error()'s HTML page into the response.
  *
  * @param string $sql
- * @param string $answer 'exec' (a write), 'value' (one scalar or null) or 'rows' (a list of rows)
+ * @param string $answer 'exec' (a write), 'insert' (a write answered with the
+ *                       new row's id), 'value' (one scalar or null) or 'rows'
+ *                       (a list of rows)
  * @param array  $opts   api: run through the external API's helpers
  * @return mixed
  */
@@ -2300,7 +2302,13 @@ function pg_catalog_query($sql, $answer, $opts = array())
         return $api ? api_value($sql) : db_value($sql);
     }
 
-    return $api ? api_exec($sql) : db($sql);
+    $result = $api ? api_exec($sql) : db($sql);
+
+    if ($answer === 'insert') {
+        return $api ? api_insert_id() : (int) mysqli_insert_id(db::$con);
+    }
+
+    return $result;
 }
 
 /**
@@ -2389,6 +2397,65 @@ function pg_catalog_group_xref_sql($group_id, $product_id)
 }
 
 /**
+ * What a new group is written with, settled before anything is written: the
+ * user it is stamped with, its parent (none named: the top of the catalogue),
+ * the text its address is made from (the short description, else the name),
+ * the rich text prepared as the editor prepares it, and its products as ids.
+ * Nothing here reads the database but $top_id, so the unit tests hold the
+ * writer's rules here.
+ *
+ * @param array       $data   as pg_catalog_group_create()
+ * @param array|int   $user   as pg_catalog_group_create()
+ * @param callable    $top_id answers the top of the catalogue's id; asked only
+ *                            when no parent is named
+ * @param string|null $path   the site path the editor's addresses start with;
+ *                            null: PATH
+ * @return array data (name a string, full_description prepared), user_id,
+ *               parent_id, address_source, product_ids
+ */
+function pg_catalog_group_create_input($data, $user, $top_id, $path = null)
+{
+    $data['name'] = (string) ($data['name'] ?? '');
+    $data['full_description'] = prepare_rich_text_editor_content_for_input((string) ($data['full_description'] ?? ''), $path);
+
+    $short = (string) ($data['short_description'] ?? '');
+    $parent_id = (int) ($data['parent_id'] ?? 0);
+
+    return array(
+        'data'           => $data,
+        'user_id'        => is_array($user) ? (int) ($user['id'] ?? 0) : (int) $user,
+        'parent_id'      => ($parent_id > 0) ? $parent_id : (int) $top_id(),
+        'address_source' => ($short !== '') ? $short : $data['name'],
+        'product_ids'    => array_map('intval', array_values((array) ($data['product_ids'] ?? array()))),
+    );
+}
+
+/**
+ * Writes the row of a new group, then files each of its products under the
+ * new id, every statement through $run, which runs one statement as
+ * pg_catalog_query() does (the writer hands it one bound to its $opts).
+ *
+ * @param array    $input   from pg_catalog_group_create_input()
+ * @param string   $address from prepare_catalog_item_address_name()
+ * @param callable $run     function ($sql, $answer), $answer 'insert' or 'exec'
+ * @return int the new group's id; 0 when the row was not written
+ */
+function pg_catalog_group_write($input, $address, $run)
+{
+    $id = (int) $run(pg_catalog_group_insert_sql($input['data'], $input['user_id'], $input['parent_id'], $address), 'insert');
+
+    if ($id <= 0) {
+        return 0;
+    }
+
+    foreach ($input['product_ids'] as $product_id) {
+        $run(pg_catalog_group_xref_sql($id, $product_id), 'exec');
+    }
+
+    return $id;
+}
+
+/**
  * A new product group, the one writer of POST /product-groups
  * (api_product_groups_create()) and a Workspace create
  * (ws_change_write_product_group()). add_product_group.php and the variant
@@ -2413,37 +2480,25 @@ function pg_catalog_group_xref_sql($group_id, $product_id)
  */
 function pg_catalog_group_create($data, $user, $opts = array())
 {
-    $user_id = is_array($user) ? (int) ($user['id'] ?? 0) : (int) $user;
-    $name = (string) ($data['name'] ?? '');
-    $short = (string) ($data['short_description'] ?? '');
+    $run = function ($sql, $answer) use ($opts) {
+        return pg_catalog_query($sql, $answer, $opts);
+    };
 
-    $parent_id = (int) ($data['parent_id'] ?? 0);
+    $input = pg_catalog_group_create_input($data, $user, function () use ($opts) {
+        return pg_catalog_group_top_id($opts);
+    });
 
-    if ($parent_id <= 0) {
-        $parent_id = pg_catalog_group_top_id($opts);
-    }
-
-    $data['full_description'] = prepare_rich_text_editor_content_for_input((string) ($data['full_description'] ?? ''));
-
-    $address = prepare_catalog_item_address_name(($short !== '') ? $short : $name);
-
-    pg_catalog_query(pg_catalog_group_insert_sql($data, $user_id, $parent_id, $address), 'exec', $opts);
-
-    $id = (int) mysqli_insert_id(db::$con);
+    $id = pg_catalog_group_write($input, prepare_catalog_item_address_name($input['address_source']), $run);
 
     if ($id <= 0) {
         return 0;
-    }
-
-    foreach ((array) ($data['product_ids'] ?? array()) as $product_id) {
-        pg_catalog_query(pg_catalog_group_xref_sql($id, $product_id), 'exec', $opts);
     }
 
     pg_catalog_group_clouds($id, false, $opts);
 
     pg_catalog_seo_rescore('product_group', $id);
 
-    pg_announce('product_group.created', array('id' => $id, 'name' => $name));
+    pg_announce('product_group.created', array('id' => $id, 'name' => $input['data']['name']));
 
     return $id;
 }

@@ -3,12 +3,16 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the one product group writer (pg_catalog_group_create() and
- * pg_catalog_group_clouds(), includes/fn/ecommerce.php): the row it writes is
- * the row POST /product-groups and a Workspace create wrote before they
- * shared it, both callers are thin wrappers around it, every create it makes
- * is scored for SEO and announced once as product_group.created, a Workspace
- * product create is scored too, and add_product_group.php and the variant set
- * builder keep their own code.
+ * pg_catalog_group_clouds(), includes/fn/ecommerce.php). Run here: what the
+ * writer settles before it writes (the parent, the text the address is made
+ * from, the rich text with {path}, the products), the INSERT and product
+ * links it builds held to the statements POST /product-groups and a
+ * Workspace create built before they shared it, the statements it runs in
+ * their order, and the API's own query helpers taking the API's statements.
+ * Read from the source, since they need a database: both callers are thin
+ * wrappers around it, every create is scored for SEO and announced once as
+ * product_group.created, a Workspace product create is scored too, and
+ * add_product_group.php and the variant set builder keep their own code.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -32,6 +36,74 @@ function catalog_group_writer_test_db_stub()
 			public static $con;
 		}
 	}
+}
+
+// Stand-ins for the external API's query helpers (includes/api/db.php, which
+// only an API request loads and no test loads): each records the statement it
+// was handed and answers as the real one would.
+if (!function_exists('api_query')) {
+	function api_query($sql)
+	{
+		$GLOBALS['catalog_group_writer_test_api_calls'][] = array('api_query', $sql);
+
+		return true;
+	}
+
+	function api_exec($sql)
+	{
+		$GLOBALS['catalog_group_writer_test_api_calls'][] = array('api_exec', $sql);
+
+		return 1;
+	}
+
+	function api_value($sql)
+	{
+		$GLOBALS['catalog_group_writer_test_api_calls'][] = array('api_value', $sql);
+
+		return '3';
+	}
+
+	function api_rows($sql)
+	{
+		$GLOBALS['catalog_group_writer_test_api_calls'][] = array('api_rows', $sql);
+
+		return array(array('page_id' => '8', 'product_group_id' => '3'));
+	}
+
+	function api_insert_id()
+	{
+		$GLOBALS['catalog_group_writer_test_api_calls'][] = array('api_insert_id', '');
+
+		return 42;
+	}
+}
+
+// pg_catalog_query() answered as array(answer, ''), or array(null, message)
+// when the statement reached the db() family: that has no connection here and
+// ends in output_error(), which would print its page and end the whole run
+// with exit code 0, so it is made to throw for the call.
+function catalog_group_writer_test_query($sql, $answer, $opts)
+{
+	$throws = pg_error_throws();
+	pg_error_throws(true);
+
+	try {
+		return array(pg_catalog_query($sql, $answer, $opts), '');
+	} catch (RuntimeException $exception) {
+		return array(null, $exception->getMessage());
+	} finally {
+		pg_error_throws($throws);
+	}
+}
+
+// A top of the catalogue that counts how often it was asked.
+function catalog_group_writer_test_top($id, &$asked)
+{
+	return function () use ($id, &$asked) {
+		$asked++;
+
+		return $id;
+	};
 }
 
 // Whitespace folded to single spaces, so a statement can be compared without
@@ -157,18 +229,34 @@ function test_catalog_group_writer_writes_the_row_the_api_wrote()
 		'quotes and an unset flag' => array('name' => "O'Neil \"Tea\"", 'enabled' => 0, 'keywords' => "it's", 'title' => "a\\b"),
 	);
 
+	// The description the editor sent, and what the API stored of it with the
+	// site at /shop/.
+	$requests['every field']['description'] = '<p><a href="/shop/mugs">Big</a> <img src="/shop/files/mug.png"></p>';
+	$prepared = array(
+		'every field' => '<p><a href="{path}mugs">Big</a> <img src="{path}files/mug.png"></p>',
+		'name only, off' => '',
+		'quotes and an unset flag' => '',
+	);
+
 	foreach ($requests as $label => $params) {
 		$name = trim((string) $params['name']);
 		$short = isset($params['short_description']) ? (string) $params['short_description'] : '';
-		$full = isset($params['description']) ? (string) $params['description'] : '';
 		$address = 'Mugs_1';
+		$asked = 0;
 
-		$data = catalog_group_writer_test_api_data($params, $name, 12, array());
+		$input = pg_catalog_group_create_input(
+			catalog_group_writer_test_api_data($params, $name, 12, array()),
+			array('id' => '7', 'username' => 'owner'),
+			catalog_group_writer_test_top(1, $asked),
+			'/shop/');
 
 		pg_assert_same(
-			catalog_group_writer_test_flat(catalog_group_writer_test_api_before($params, $name, 12, $short, $full, $address, 7)),
-			catalog_group_writer_test_flat(pg_catalog_group_insert_sql($data, 7, 12, $address)),
+			catalog_group_writer_test_flat(catalog_group_writer_test_api_before($params, $name, 12, $short, $prepared[$label], $address, 7)),
+			catalog_group_writer_test_flat(pg_catalog_group_insert_sql($input['data'], $input['user_id'], $input['parent_id'], $address)),
 			$label);
+
+		pg_assert_same(($short !== '') ? $short : $name, $input['address_source'], $label . ': the address is made from the short description, else the name');
+		pg_assert_same(0, $asked, $label . ': a parent named, the top is not asked');
 	}
 }
 
@@ -186,15 +274,28 @@ function test_catalog_group_writer_writes_the_row_the_workspace_wrote()
 		'quotes, switched off' => array('name' => "O'Neil", 'enabled' => false, 'meta_keywords' => "it's"),
 	);
 
+	$proposals['every field']['full_description'] = '<p>Big <a href="/cups" title="cups">cups</a></p>';
+	$prepared = array(
+		'every field' => '<p>Big <a href="{path}cups" title="cups">cups</a></p>',
+		'name only' => '',
+		'quotes, switched off' => '',
+	);
+
 	foreach ($proposals as $label => $values) {
-		$data = ws_change_group_create_data($values);
 		$short = (string) ($values['short_description'] ?? '');
-		$full = (string) ($values['full_description'] ?? '');
+		$asked = 0;
+
+		// A proposal with no parent goes under the top of the catalogue, 9.
+		$input = pg_catalog_group_create_input(ws_change_group_create_data($values), 21, catalog_group_writer_test_top(9, $asked), '/');
+		$parent = empty($values['parent_id']) ? 9 : 4;
 
 		pg_assert_same(
-			catalog_group_writer_test_flat(catalog_group_writer_test_workspace_before($values, 9, $short, $full, 'Addr', 21)),
-			catalog_group_writer_test_flat(pg_catalog_group_insert_sql($data, 21, 9, 'Addr')),
+			catalog_group_writer_test_flat(catalog_group_writer_test_workspace_before($values, $parent, $short, $prepared[$label], 'Addr', 21)),
+			catalog_group_writer_test_flat(pg_catalog_group_insert_sql($input['data'], $input['user_id'], $input['parent_id'], 'Addr')),
 			$label);
+
+		pg_assert_same(($short !== '') ? $short : $values['name'], $input['address_source'], $label . ': the address is made from the short description, else the name');
+		pg_assert_same(empty($values['parent_id']) ? 1 : 0, $asked, $label . ': the top is asked only when no parent is named');
 	}
 
 	$data = ws_change_group_create_data($proposals['every field']);
@@ -211,6 +312,79 @@ function test_catalog_group_writer_files_products_as_both_callers_did()
 		"INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('5', '9', '0')",
 		catalog_group_writer_test_flat(pg_catalog_group_xref_sql(9, '5')),
 		'one link, sorted first');
+}
+
+function test_catalog_group_writer_settles_parent_user_and_products_first()
+{
+	catalog_group_writer_test_db_stub();
+
+	$parents = array(
+		'a parent named' => array(array('parent_id' => 5), 5, 0),
+		'parent 0: the top' => array(array('parent_id' => 0), 1, 1),
+		'no parent: the top' => array(array(), 1, 1),
+		'a negative parent: the top' => array(array('parent_id' => -3), 1, 1),
+	);
+
+	foreach ($parents as $label => $case) {
+		$asked = 0;
+		$input = pg_catalog_group_create_input($case[0] + array('name' => 'Mugs'), 7, catalog_group_writer_test_top(1, $asked), '/');
+
+		pg_assert_same($case[1], $input['parent_id'], $label);
+		pg_assert_same($case[2], $asked, $label . ': times the top was asked');
+	}
+
+	$asked = 0;
+
+	pg_assert_same(0, pg_catalog_group_create_input(array('name' => 'Mugs'), 7, catalog_group_writer_test_top(0, $asked), '/')['parent_id'], 'an empty catalogue: no top');
+
+	$top = catalog_group_writer_test_top(1, $asked);
+
+	pg_assert_same(7, pg_catalog_group_create_input(array('name' => 'Mugs'), array('id' => '7'), $top, '/')['user_id'], 'the person or key owner as an array');
+	pg_assert_same(21, pg_catalog_group_create_input(array('name' => 'Mugs'), '21', $top, '/')['user_id'], 'a user id');
+	pg_assert_same(0, pg_catalog_group_create_input(array('name' => 'Mugs'), array(), $top, '/')['user_id'], 'nobody named');
+
+	pg_assert_same(array(3, 5), pg_catalog_group_create_input(array('name' => 'Mugs', 'product_ids' => array('3', 5)), 7, $top, '/')['product_ids'], 'the products as ids');
+	pg_assert_same(array(), pg_catalog_group_create_input(array('name' => 'Mugs'), 7, $top, '/')['product_ids'], 'no products');
+
+	pg_assert_same('Coffee mugs', pg_catalog_group_create_input(array('name' => 'Mugs', 'short_description' => 'Coffee mugs'), 7, $top, '/')['address_source'], 'the address from the short description');
+	pg_assert_same('Mugs', pg_catalog_group_create_input(array('name' => 'Mugs', 'short_description' => ''), 7, $top, '/')['address_source'], 'from the name without one');
+
+	$input = pg_catalog_group_create_input(array('name' => 'Mugs', 'full_description' => '<a href="/shop/a">a</a><a href="https://example.com/shop/b">b</a><input value="/shop/c">'), 7, $top, '/shop/');
+
+	pg_assert_same('<a href="{path}a">a</a><a href="https://example.com/shop/b">b</a><input value="{path}c">', $input['data']['full_description'], 'the site path stored as {path}, other addresses left alone');
+}
+
+function test_catalog_group_writer_writes_the_row_then_files_each_product()
+{
+	catalog_group_writer_test_db_stub();
+
+	$asked = 0;
+	$input = pg_catalog_group_create_input(array('name' => 'Mugs', 'parent_id' => 4, 'product_ids' => array(3, 5)), 7, catalog_group_writer_test_top(1, $asked), '/');
+	$ran = array();
+
+	$id = pg_catalog_group_write($input, 'Mugs', function ($sql, $answer) use (&$ran) {
+		$ran[] = array($answer, catalog_group_writer_test_flat($sql));
+
+		return ($answer === 'insert') ? 42 : 1;
+	});
+
+	pg_assert_same(42, $id, 'the new id');
+	pg_assert_same(array(
+		array('insert', catalog_group_writer_test_flat(pg_catalog_group_insert_sql($input['data'], 7, 4, 'Mugs'))),
+		array('exec', catalog_group_writer_test_flat(pg_catalog_group_xref_sql(42, 3))),
+		array('exec', catalog_group_writer_test_flat(pg_catalog_group_xref_sql(42, 5))),
+	), $ran, 'the row, then one link per product under the new id');
+
+	$ran = array();
+
+	$id = pg_catalog_group_write($input, 'Mugs', function ($sql, $answer) use (&$ran) {
+		$ran[] = $answer;
+
+		return 0;
+	});
+
+	pg_assert_same(0, $id, 'no row, no id');
+	pg_assert_same(array('insert'), $ran, 'and no product filed');
 }
 
 function test_catalog_group_writer_api_create_is_a_thin_wrapper()
@@ -296,15 +470,37 @@ function test_catalog_group_writer_workspace_product_create_is_scored()
 
 function test_catalog_group_writer_api_queries_fail_the_api_way()
 {
-	$query = catalog_group_writer_test_body(catalog_group_writer_test_source('includes/fn/ecommerce.php'), 'pg_catalog_query');
+	catalog_group_writer_test_db_stub();
 
-	foreach (array('api_exec(', 'api_value(', 'api_rows(', 'db(', 'db_value(', 'db_items(') as $helper) {
-		pg_assert_contains($helper, $query, $helper);
+	$api = array('api' => true);
+	$GLOBALS['catalog_group_writer_test_api_calls'] = array();
+
+	pg_assert_same(array(1, ''), catalog_group_writer_test_query('UPDATE a', 'exec', $api), 'a write');
+	pg_assert_same(array('3', ''), catalog_group_writer_test_query('SELECT b', 'value', $api), 'a value');
+	pg_assert_same(array(array(array('page_id' => '8', 'product_group_id' => '3')), ''), catalog_group_writer_test_query('SELECT c', 'rows', $api), 'rows');
+	pg_assert_same(array(42, ''), catalog_group_writer_test_query('INSERT d', 'insert', $api), 'an insert answers the new id');
+
+	pg_assert_same(array(
+		array('api_exec', 'UPDATE a'),
+		array('api_value', 'SELECT b'),
+		array('api_rows', 'SELECT c'),
+		array('api_exec', 'INSERT d'),
+		array('api_insert_id', ''),
+	), $GLOBALS['catalog_group_writer_test_api_calls'], 'every statement through the API\'s helpers, which answer a failure with its JSON 500');
+
+	// Elsewhere the db() family runs them.
+	foreach (array('exec', 'value', 'rows', 'insert') as $answer) {
+		$GLOBALS['catalog_group_writer_test_api_calls'] = array();
+
+		pg_assert_same(array(null, 'No database connection.'), catalog_group_writer_test_query('SELECT e', $answer, array()), $answer . ': through the db() family');
+		pg_assert_same(array(), $GLOBALS['catalog_group_writer_test_api_calls'], $answer . ': not through the API\'s helpers');
 	}
 
 	$writer = catalog_group_writer_test_body(catalog_group_writer_test_source('includes/fn/ecommerce.php'), 'pg_catalog_group_create');
 
-	pg_assert_contains("pg_catalog_query(pg_catalog_group_insert_sql(", $writer, 'the row through the chosen helpers');
+	pg_assert_contains('return pg_catalog_query($sql, $answer, $opts);', $writer, 'the row and its links through the chosen helpers');
+	pg_assert_contains('return pg_catalog_group_top_id($opts);', $writer, 'the top through the same helpers');
+	pg_assert_contains("pg_catalog_group_write(\$input, prepare_catalog_item_address_name(\$input['address_source']), \$run);", $writer, 'the address made by the catalogue\'s rule, then the row written');
 	pg_assert_contains('pg_catalog_group_clouds($id, false, $opts);', $writer, 'the clouds through the same helpers');
 }
 
