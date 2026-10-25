@@ -1993,6 +1993,15 @@ function workspace_flows_parity_read_routes()
 	return $out;
 }
 
+// The external API's routes of scheduled actions: the route ids of
+// includes/workspace/api_scheduled.php.
+function workspace_flows_parity_read_api_routes()
+{
+	preg_match_all("/'id'\s*=>\s*'(workspace\.scheduled_actions\.[a-z_]+)'/", workspace_flows_parity_file('includes/workspace/api_scheduled.php'), $ids);
+
+	return array_values(array_unique($ids[1]));
+}
+
 // What the form sends and the routes take: the keys request() of
 // scheduledForm() in workspace.js builds (scheduledForm.key), and those each
 // route of scheduled actions reads from the request
@@ -2288,6 +2297,7 @@ function workspace_flows_parity_groups()
 		'ai_drafts'           => array('Entry points', array(1, 4), 'workspace_flows_parity_read_ai_drafts', 'Pinegrap AI\'s tool in ai.php and the functions that treat, mark or write a draft of the kind scheduled'),
 		'links_in'            => array('Links in', array(1), 'workspace_flows_parity_read_links_in', 'ws_inbox_describe(), ws_nav_groups(), workspace.js, ws_tour_steps()'),
 		'inbox_kinds'         => array('API', array(5), 'workspace_flows_parity_read_inbox_kinds', 'the inbox route of includes/workspace/api.php'),
+		'api_routes'          => array('API', array(5), 'workspace_flows_parity_read_api_routes', 'the route ids of includes/workspace/api_scheduled.php'),
 	);
 }
 
@@ -2628,6 +2638,11 @@ function workspace_flows_parity_table()
 			array(array('scheduled_notice'), 5, 'kept for a converted anchor, with its text'),
 			array(array('scheduled_failed'), 5, 'kept for a converted anchor'),
 			array(array('scheduled_message'), 'form', 'a scheduled message\'s line: scheduled messages are not moved into Flows'),
+		),
+		'api_routes' => array(
+			array(array('workspace.scheduled_actions.list', 'workspace.scheduled_actions.get'), 5, 'GET /workspace/flows and /workspace/flow-runs for a converted anchor; an action not converted stays listed (anchors never are)'),
+			array(array('workspace.scheduled_actions.pause'), 5, 'POST /workspace/flows/{id}/pause for a converted anchor'),
+			array(array('workspace.scheduled_actions.cancel'), 5, 'a converted anchor is cancelled with its flow (deleting or pausing the flow)'),
 		),
 	);
 }
