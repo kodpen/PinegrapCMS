@@ -1349,7 +1349,7 @@ function test_ws_file_preview_sends_the_original()
 		$small = $directory . '/small.png';
 		$image = imagecreatetruecolor(150, 90);
 		imagepng($image, $small);
-		imagedestroy($image);
+		pg_image_destroy($image);
 
 		pg_assert_same(null, ws_file_preview($small, 160), 'no larger than the edge');
 		pg_assert_same(null, ws_file_preview($small, 1), 'smaller than the smallest edge');
@@ -2013,7 +2013,7 @@ function test_ws_upload_inspect()
 		ob_start();
 		imagepng($image);
 		$png = (string) ob_get_clean();
-		imagedestroy($image);
+		pg_image_destroy($image);
 
 		$picture = ws_upload_inspect('photo.png', $png);
 

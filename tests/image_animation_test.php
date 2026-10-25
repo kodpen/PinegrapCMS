@@ -42,14 +42,6 @@ function image_animation_test_remove($path)
 	}
 }
 
-// imagedestroy() frees nothing since PHP 8.0 and is deprecated in 8.5.
-function image_animation_test_destroy($image)
-{
-	if (PHP_VERSION_ID < 80000) {
-		imagedestroy($image);
-	}
-}
-
 function image_animation_test_chunk($type, $data)
 {
 	return pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
@@ -82,7 +74,7 @@ function image_animation_test_png($width, $height)
 	ob_start();
 	imagepng($image, null, 0);
 	$png = ob_get_clean();
-	image_animation_test_destroy($image);
+	pg_image_destroy($image);
 
 	return $png;
 }
@@ -174,7 +166,7 @@ function test_image_animation_detects_apng_and_animated_webp()
 		if (function_exists('imagewebp')) {
 			$image = imagecreatetruecolor(16, 16);
 			imagewebp($image, $folder . '/gd.webp', 80);
-			image_animation_test_destroy($image);
+			pg_image_destroy($image);
 
 			pg_assert_false(pg_image_is_animated($folder . '/gd.webp'), 'a plain VP8 WebP');
 		}

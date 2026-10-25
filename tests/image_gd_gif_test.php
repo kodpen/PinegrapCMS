@@ -34,7 +34,7 @@ function image_gd_gif_test_file($path)
 	imagefilledrectangle($image, 0, 0, 39, 29, $background);
 	imagefilledrectangle($image, 0, 0, 9, 9, $block);
 	imagegif($image, $path);
-	imagedestroy($image);
+	pg_image_destroy($image);
 }
 
 // Whether the pixel at (x, y) of an encoded image is fully transparent.
@@ -102,7 +102,7 @@ function test_image_gd_gif_rotate_keeps_transparency()
 		pg_assert_true(image_gd_gif_test_transparent($image, 20, 20), 'rotate ' . $angle . ': the middle is transparent');
 		pg_assert_false(image_gd_gif_test_transparent($image, $corner[0], $corner[1]), 'rotate ' . $angle . ': the block is opaque');
 		pg_assert_same(array(4, 2, 4), image_gd_gif_test_near(array(4, 2, 4), $image, $corner[0], $corner[1]), 'rotate ' . $angle . ': the block keeps its colour');
-		imagedestroy($image);
+		pg_image_destroy($image);
 	}
 
 	unlink($path);
@@ -125,14 +125,14 @@ function test_image_gd_gif_resize_keeps_transparency()
 	pg_assert_true(imagecolortransparent($image) < imagecolorstotal($image), 'resize: the transparent index is inside the palette');
 	pg_assert_true(image_gd_gif_test_transparent($image, 15, 10), 'resize: the middle is transparent');
 	pg_assert_false(image_gd_gif_test_transparent($image, 2, 2), 'resize: the block is opaque');
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	$data = pg_process_image_with_gd($path, IMAGETYPE_GIF, true, 20, 15, 92, '', 90);
 	$image = imagecreatefromstring($data);
 	pg_assert_same(15, imagesx($image), 'resize and rotate: width');
 	pg_assert_true(image_gd_gif_test_transparent($image, 7, 10), 'resize and rotate: the middle is transparent');
 	pg_assert_false(image_gd_gif_test_transparent($image, 12, 2), 'resize and rotate: the block is opaque');
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	unlink($path);
 }
@@ -148,13 +148,13 @@ function test_image_gd_gif_opaque_gif_gets_no_transparent_index()
 	imagecolorallocate($image, 252, 2, 4);
 	imagefilledrectangle($image, 0, 0, 9, 9, imagecolorallocate($image, 4, 2, 4));
 	imagegif($image, $path);
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	$data  = pg_process_image_with_gd($path, IMAGETYPE_GIF, false, 0, 0, 92, '', 90);
 	$image = imagecreatefromstring($data);
 	pg_assert_same(-1, imagecolortransparent($image), 'an opaque GIF stays without a transparent index');
 	pg_assert_same(array(252, 2, 4), image_gd_gif_test_near(array(252, 2, 4), $image, 15, 20), 'the background colour is kept');
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	unlink($path);
 }
@@ -174,7 +174,7 @@ function test_image_gd_gif_rotate_to_webp_keeps_alpha()
 	$image = image_gd_gif_test_webp_image($data);
 	pg_assert_true(image_gd_gif_test_transparent($image, 20, 20), 'webp: the middle is transparent');
 	pg_assert_false(image_gd_gif_test_transparent($image, 25, 5), 'webp: the block is opaque');
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	unlink($path);
 }
@@ -191,13 +191,32 @@ function test_image_gd_palette_png_rotate_keeps_alpha()
 	imagecolortransparent($image, $background);
 	imagefilledrectangle($image, 0, 0, 9, 9, imagecolorallocate($image, 4, 2, 4));
 	imagepng($image, $path);
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	$data  = pg_process_image_with_gd($path, IMAGETYPE_PNG, false, 0, 0, 92, '', 90);
 	$image = imagecreatefromstring($data);
 	pg_assert_true(image_gd_gif_test_transparent($image, 20, 20), 'png: the middle is transparent');
 	pg_assert_false(image_gd_gif_test_transparent($image, 25, 5), 'png: the block is opaque');
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	unlink($path);
+}
+
+// pg_image_destroy() frees the image below PHP 8.0 and from 8.0 on leaves it
+// to its last reference, never calling imagedestroy(), which PHP 8.5
+// deprecates and this runner turns into an ERROR.
+function test_image_destroy_frees_only_below_php_8()
+{
+	if (!function_exists('imagecreatetruecolor')) {
+		return;
+	}
+
+	$image = imagecreatetruecolor(3, 2);
+	pg_image_destroy($image);
+
+	if (PHP_VERSION_ID < 80000) {
+		pg_assert_false(is_resource($image), 'below PHP 8.0 the resource is freed');
+	} else {
+		pg_assert_same(3, imagesx($image), 'from PHP 8.0 on the image is left untouched');
+	}
 }

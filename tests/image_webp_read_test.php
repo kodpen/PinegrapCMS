@@ -36,14 +36,6 @@ function image_webp_read_test_remove($folder)
 	rmdir($folder);
 }
 
-// imagedestroy() frees nothing since PHP 8.0 and is deprecated in 8.5.
-function image_webp_read_test_destroy($image)
-{
-	if (PHP_VERSION_ID < 80000) {
-		imagedestroy($image);
-	}
-}
-
 // A still WebP drawn with GD in one colour (200, 10, 10): a "VP8 " chunk, or
 // VP8X, ALPH and "VP8 " when it is half transparent. '' without WebP support.
 function image_webp_read_test_still($width, $height, $alpha = false)
@@ -65,7 +57,7 @@ function image_webp_read_test_still($width, $height, $alpha = false)
 	ob_start();
 	imagewebp($image, null, 80);
 	$webp = (string) ob_get_clean();
-	image_webp_read_test_destroy($image);
+	pg_image_destroy($image);
 
 	return $webp;
 }
@@ -155,7 +147,7 @@ function test_image_webp_read_from_string_on_every_php_version()
 	ob_start();
 	imagepng($image);
 	$png = (string) ob_get_clean();
-	image_webp_read_test_destroy($image);
+	pg_image_destroy($image);
 
 	$image = pg_image_from_string($png);
 	pg_assert_true($image !== false, 'a PNG as before');
@@ -186,7 +178,7 @@ function test_image_webp_read_from_string_on_every_php_version()
 
 				pg_assert_same(array(20, 10), array(imagesx($image), imagesy($image)), 'size from ' . $label);
 				pg_assert_true(abs((($rgb >> 16) & 0xFF) - 200) <= 8, 'red from ' . $label);
-				image_webp_read_test_destroy($image);
+				pg_image_destroy($image);
 			}
 		}
 

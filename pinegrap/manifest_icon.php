@@ -236,8 +236,8 @@ function pg_app_icon_render($source, $target, $size, $maskable)
 
 	$written = @imagepng($canvas, $target, 6);
 
-	imagedestroy($image);
-	imagedestroy($canvas);
+	pg_image_destroy($image);
+	pg_image_destroy($canvas);
 
 	return ($written && is_file($target));
 }

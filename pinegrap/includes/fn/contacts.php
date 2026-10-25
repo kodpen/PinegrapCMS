@@ -815,8 +815,8 @@ function pg_contact_photo_store($user_id, $data)
             imagejpeg($canvas, null, 88);
             $redrawn = (string) ob_get_clean();
 
-            imagedestroy($canvas);
-            imagedestroy($source);
+            pg_image_destroy($canvas);
+            pg_image_destroy($source);
 
             if ($redrawn !== '') {
                 $binary = $redrawn;
