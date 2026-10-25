@@ -579,6 +579,7 @@ function bs6_convert_source($source, $lines = null)
  *   'shared' - prints for panel and site: converted per function by hand;
  *   'editor' - the visual editor, rewritten only outside the site-output
  *              members marked in step B7;
+ *   'adapter' - assets/js/pg_ui.js, which names both versions on purpose;
  *   'vendor' - third-party, generated or data files;
  *   'other'  - no markup the rules read (images, fonts, json, ...).
  */
@@ -595,6 +596,10 @@ function bs6_scope_kind($path)
 	if (preg_match('#^(assets/lib|assets/fonts|data|includes/local|includes/migrations|includes/(phpmailer|stripe|iyzipay-php|phpexcel|boxpacker|dompdf|qrcode))/#', $path)
 		|| preg_match('/\.min\.(js|css)$/', $base)) {
 		return 'vendor';
+	}
+
+	if ($path === 'assets/js/pg_ui.js') {
+		return 'adapter';
 	}
 
 	$editor = array(
@@ -843,7 +848,7 @@ function bs6_scope_files($root)
 		$path = substr(str_replace('\\', '/', $file->getPathname()), strlen($root) + 1);
 		$kind = bs6_scope_kind($path);
 
-		if ($kind !== 'vendor' && $kind !== 'other') {
+		if ($kind !== 'vendor' && $kind !== 'other' && $kind !== 'adapter') {
 			$files[$path] = $kind;
 		}
 	}
