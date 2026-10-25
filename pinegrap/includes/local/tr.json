@@ -28263,5 +28263,11 @@
     "Applied when {var:1}, to whom {var:2} proposed it, approves": "{var:2} bunu {var:1} için önerdi; {var:1} onaylayınca uygulanır",
     "Proposed for {var:1}, {var:2}": "{var:1} için önerildi, {var:2}",
     "This application has made {var:1} proposals for this person in the last hour. Try again in {var:2} seconds.": "Bu uygulama son bir saatte bu kişi için {var:1} öneride bulundu. {var:2} saniye sonra tekrar deneyin.",
-    "Another proposal of this application for this person is being saved. Try again in a moment.": "Bu uygulamanın bu kişi için başka bir önerisi kaydediliyor. Birazdan tekrar deneyin."
+    "Another proposal of this application for this person is being saved. Try again in a moment.": "Bu uygulamanın bu kişi için başka bir önerisi kaydediliyor. Birazdan tekrar deneyin.",
+    "Average rating (verified reviews)": "Ortalama puan (doğrulanmış incelemeler)",
+    "Number of verified reviews": "Doğrulanmış inceleme sayısı",
+    "Row: the product has a rating from verified reviews": "Satır: ürünün doğrulanmış incelemelerden bir puanı var",
+    "Row: the product has no rating yet": "Satır: ürünün henüz puanı yok",
+    "The product has a rating from verified reviews": "Ürünün doğrulanmış incelemelerden bir puanı var",
+    "The product has no rating yet": "Ürünün henüz puanı yok"
 }
