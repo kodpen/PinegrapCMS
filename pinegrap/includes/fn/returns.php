@@ -1392,7 +1392,9 @@ function pg_return_announce($event, $return, $extra = array())
  * @param int    $return_id
  * @param string $to
  * @param array  $options by ('customer' or staff), user_id, time, note,
- *                        carrier, carrier_code, tracking_number
+ *                        carrier, carrier_code, tracking_number, announce
+ *                        (false: the caller announces the move itself, after
+ *                        letting go of a lock it holds)
  * @return array ok, error, return (the row as it is now)
  */
 function pg_return_move($return_id, $to, $options = array())
@@ -1458,13 +1460,15 @@ function pg_return_move($return_id, $to, $options = array())
 
     $after = pg_return_load($return['id']);
 
-    // Approved and received are announced here, whoever made the move: one
-    // return's screen or a bulk approval (one event per request it
-    // approves). Refunded is not: pg_return_refund() moves the return there
+    // Approved and received are announced here only for a caller that does
+    // not announce them itself. pg_return_staff_move(), behind one return's
+    // screen and a bulk approval (one event per request it approves), passes
+    // announce => false and announces once it has let go of the order's
+    // lock. Refunded is not: pg_return_refund() moves the return there
     // before the payment service is asked and puts it back on a refusal, so
     // it announces the refund itself once the outcome stands. A rejection,
     // the parcel sent back and a closing are not announced.
-    if (in_array($to, array('approved', 'received'), true)) {
+    if (in_array($to, array('approved', 'received'), true) && (!isset($options['announce']) || ($options['announce'] !== false))) {
         pg_return_announce('order.return.' . $to, $after);
     }
 
@@ -2372,6 +2376,12 @@ function pg_return_audit_create_fields($row)
  * activity log line and, when the request was approved or rejected, the
  * customer's mail. A rejection needs a note: the customer is told why.
  *
+ * The move is made under the order's return lock, the one pg_return_create()
+ * and pg_return_refund() hold: a return cannot be closed while its refund
+ * waits on the payment service, which would leave the refund unkept, or a
+ * refusal unable to put the return back. A move made while the lock is busy
+ * is refused; the lock is let go before the audit line, the log and the mail.
+ *
  * The caller has checked the person's commerce rights.
  *
  * @param int    $return_id
@@ -2391,11 +2401,30 @@ function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
     }
 
     $before = pg_returns_ready() ? db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'") : null;
+    $lock = $before ? pg_return_lock_name($before['order_id']) : '';
 
-    $moved = pg_return_move($return_id, $to, array_merge($options, array('by' => 'staff', 'user_id' => (int) $user_id)));
+    if (($lock !== '') && ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1)) {
+        return array('ok' => false, 'error' => lang('Another return is being saved for this order. Try again in a moment.'), 'return' => null, 'mailed' => false);
+    }
+
+    if ($lock !== '') {
+        // Read again under the lock: a refund that held it may have moved it.
+        $before = db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'");
+    }
+
+    $moved = pg_return_move($return_id, $to, array_merge($options, array('by' => 'staff', 'user_id' => (int) $user_id, 'announce' => false)));
+
+    if ($lock !== '') {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+    }
 
     if (!$moved['ok']) {
         return array('ok' => false, 'error' => $moved['error'], 'return' => null, 'mailed' => false);
+    }
+
+    // Announced once the lock is let go, as pg_return_move() would have.
+    if (in_array($to, array('approved', 'received'), true)) {
+        pg_return_announce('order.return.' . $to, $moved['return']);
     }
 
     $after = $moved['return'];
@@ -3089,11 +3118,25 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
     $unclear = null;
+    $kept = pg_schema_has('order_returns', 'refund_method');
 
     if ($method === 'driver') {
         // A driver refund keeps only the service's own id of the refund: the
         // form's reference belongs to a refund made another way.
         $reference = '';
+
+        // While the service is asked, the return reads as a driver refund of
+        // this amount that is not confirmed yet: a reader in between, or a
+        // request that dies during the call, sees an unclear refund rather
+        // than a clear one of 0. The answer below overwrites it.
+        if ($kept) {
+            db("UPDATE order_returns
+                SET refund_amount = '" . (int) $amount . "',
+                    refund_method = 'driver',
+                    refund_reference = '',
+                    refund_unclear = 1
+                WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
+        }
 
         $order_row = db_item("SELECT * FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
         $order_lines = db_items(
@@ -3117,7 +3160,8 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
             log_activity($unclear['log']);
         } elseif (!$answer['success']) {
-            db("UPDATE order_returns SET status = 'received', refunded_at = 0
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0"
+                . ($kept ? ", refund_amount = 0, refund_method = '', refund_reference = '', refund_unclear = 0" : "") . "
                 WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
 
             $release();
@@ -3141,6 +3185,22 @@ function pg_return_refund($return_id, $options, $user_id = 0)
                 '" . e($reference) . "',
                 '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
                 NOW())");
+    }
+
+    // The refund is kept on the return (11.0.34): what order.return.refunded
+    // carries, for the panel and GET /orders/{id}/returns. Written under the
+    // order's lock, which staff moves take too (pg_return_staff_move()), so
+    // nobody closed the return meanwhile; refunded_at > 0 rather than the
+    // status, so a return closed after its refund keeps it all the same. A
+    // refusal went back to received above with nothing kept. Before the step
+    // adds the columns the refund works as it did.
+    if ($kept) {
+        db("UPDATE order_returns
+            SET refund_amount = '" . (int) $amount . "',
+                refund_method = '" . e($method) . "',
+                refund_reference = '" . e($reference) . "',
+                refund_unclear = '" . (($unclear !== null) ? 1 : 0) . "'
+            WHERE (id = '" . (int) $return['id'] . "') AND (refunded_at > 0)");
     }
 
     $release();
@@ -3268,6 +3328,77 @@ function pg_return_refund_refused_line($return_id, $order_number, $amount, $serv
     return lang(array(
         'string' => 'Return request {var:1} of order {var:2}: {var:4} refused the refund of {var:3} ({var:5}). The return is back to received.',
         'vars'   => array((int) $return_id, (string) $order_number, pg_return_money_text($amount), (string) $service, ((string) $message !== '') ? (string) $message : lang('no message'))));
+}
+
+/**
+ * The refund of a return refunded before order_returns kept it (step
+ * 11.0.34), worked out from what pg_return_refund() wrote at the time.
+ *
+ * The audit line is exact for the amount and the method. Its reference is
+ * taken only when it is text: the line holds only what changed (a reference
+ * left empty is not in it), and the trail keeps a text that reads as JSON
+ * ("[12345]") decoded; otherwise the order_refunds row's own text, else ''.
+ * Whether the payment service gave a clear answer is only in the
+ * order_refunds note ("Return request #<id> (unconfirmed: ..."), written when
+ * money moved. With no audit line the order_refunds row gives the amount, the
+ * method (by its type) and the reference. A row belongs to the return only by
+ * its exact note: "Return request #1" must not take the refund of #12.
+ *
+ * @param array|null $audit_after the after-values of the return's refund
+ *                                audit line, decoded, or null
+ * @param array      $refund_rows order_refunds rows of the return's order
+ *                                (refund_type, amount_cents, transaction_id,
+ *                                notes)
+ * @param int        $return_id
+ * @return array|null amount, method (driver or manual), reference, unclear
+ *                    (0 or 1); null when neither source has it
+ */
+function pg_return_refund_backfill_values($audit_after, $refund_rows, $return_id)
+{
+    $note = 'Return request #' . (int) $return_id;
+    $row = null;
+    $unclear = 0;
+
+    foreach (is_array($refund_rows) ? $refund_rows : array() as $candidate) {
+        if (!is_array($candidate) || !isset($candidate['notes']) || !in_array((string) (isset($candidate['refund_type']) ? $candidate['refund_type'] : ''), array('return', 'return_manual'), true)) {
+            continue;
+        }
+
+        $notes = (string) $candidate['notes'];
+
+        if ($notes === $note) {
+            $row = $candidate;
+            break;
+        }
+
+        if (strpos($notes, $note . ' (unconfirmed') === 0) {
+            $row = $candidate;
+            $unclear = 1;
+            break;
+        }
+    }
+
+    $row_reference = (($row !== null) && isset($row['transaction_id'])) ? (string) $row['transaction_id'] : '';
+
+    if (is_array($audit_after) && isset($audit_after['refund_method']) && in_array((string) $audit_after['refund_method'], array('driver', 'manual'), true)) {
+        return array(
+            'amount'    => max(0, (int) (isset($audit_after['refund_amount']) ? $audit_after['refund_amount'] : 0)),
+            'method'    => (string) $audit_after['refund_method'],
+            'reference' => (isset($audit_after['refund_reference']) && is_string($audit_after['refund_reference'])) ? $audit_after['refund_reference'] : $row_reference,
+            'unclear'   => $unclear,
+        );
+    }
+
+    if ($row === null) {
+        return null;
+    }
+
+    return array(
+        'amount'    => max(0, (int) $row['amount_cents']),
+        'method'    => ((string) $row['refund_type'] === 'return') ? 'driver' : 'manual',
+        'reference' => $row_reference,
+        'unclear'   => $unclear,
+    );
 }
 
 /**
