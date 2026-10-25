@@ -22,7 +22,9 @@
  * A click saves or removes the product: every heart of it on the page
  * follows at once, and goes back if the server refuses, whose words are
  * read out to a screen reader (the page's own words when there are none,
- * or no answer came at all). The button stays a button throughout, usable
+ * or no answer came at all). A refusal because the session ended (its
+ * token gone with it) reads the state for the new token and sends the
+ * change once more first. The button stays a button throughout, usable
  * from the keyboard. On a product page of a variant group, the variant the
  * visitor picks (pg_civ_variants.js, the pg-civ-product-change event)
  * becomes the product of the hearts inside that page's form.
@@ -178,8 +180,10 @@
 
         // Saves (on) or removes a product. Resolves with the server's
         // {product_id, on}; rejects with an Error carrying the server's
-        // words (message) and the status, or no words and status 0 when no
-        // answer came (the browser's own error text is English).
+        // words (message), its refusal code (code; '' for an answer that is
+        // not the endpoint's own, such as a firewall's page) and the status,
+        // or no words and status 0 when no answer came (the browser's own
+        // error text is English).
         function write(id, on) {
             return send(address(''), {
                 method: 'POST',
@@ -196,12 +200,14 @@
                 return response.json().then(null, function () { return null; }).then(function (data) {
                     if (response.ok && data && typeof data.on === 'boolean') return data;
                     var error = new Error((data && data.message) ? String(data.message) : '');
+                    error.code = (data && data.error) ? String(data.error) : '';
                     error.status = response.status;
                     throw error;
                 });
             }, function () {
                 // Offline or a dropped connection: no words of the server's.
                 var error = new Error('');
+                error.code = '';
                 error.status = 0;
                 throw error;
             });
@@ -210,7 +216,10 @@
         // Saves a product the heart shows empty, removes one it shows
         // pressed. Every heart of the product changes at once and goes back
         // when the server refuses; a click while the product's change is on
-        // its way is ignored.
+        // its way is ignored. A change refused because the session ended
+        // (it lapsed, or the visitor signed out in another tab, and its
+        // token went with it) is sent once more with the token the state
+        // brings.
         function toggle(el) {
             var id = productOf(el);
             if (saved === null || !id || pending[id]) return Promise.resolve(false);
@@ -220,21 +229,36 @@
                 if (on) saved[id] = true; else delete saved[id];
                 paintProduct(id, on);
             };
+            var saveDone = function (reply) {
+                done(!!reply.on);
+                return true;
+            };
+            // The hearts go back to the state given and the refusal is
+            // read out.
+            var refused = function (on, error) {
+                done(on);
+                announce((error && error.message) ? error.message : label('failed'));
+                return false;
+            };
 
             pending[id] = true;
             done(!was);
             busy(id, true);
 
-            return write(id, !was).then(function (reply) {
-                done(!!reply.on);
-                return true;
-            }, function (error) {
-                done(was);
-                announce((error && error.message) ? error.message : label('failed'));
-                // A session that ended took its token: the next click
-                // carries a new one.
-                if (error && error.status === 403) refresh();
-                return false;
+            return write(id, !was).then(saveDone, function (error) {
+                if (!error || error.code !== 'session') return refused(was, error);
+                return refresh().then(function (ok) {
+                    if (!ok) return refused(was, error);
+                    // The state repainted every heart from the new list:
+                    // the visitor's choice goes back on screen while it is
+                    // sent again, and a second refusal leaves the state
+                    // that list holds, which is what the server has.
+                    var fresh = !!saved[id];
+                    done(!was);
+                    return write(id, !was).then(saveDone, function (again) {
+                        return refused(fresh, again);
+                    });
+                });
             }).then(function (ok) {
                 delete pending[id];
                 busy(id, false);

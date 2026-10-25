@@ -11,7 +11,8 @@
  * script itself (assets/js/pg_wishlist.js) run under Node against a small
  * fake document: it fills the hearts from the state reply, saves and removes
  * with every heart of the product following, puts a refused change back,
- * reads the list again on a page the browser brings back from its
+ * sends a change refused for an ended session once more with the new
+ * token, reads the list again on a page the browser brings back from its
  * back/forward cache and follows the variant a product page switches to.
  *
  * @author      Erdal Güral (Kodpen)
@@ -554,6 +555,7 @@ w.start().then(function () {
 	return tick();
 }).then(function () {
 	out.remove_call = calls[2];
+	out.calls_after_refusal = calls.length;
 	out.after_refusal = { a: look(a).pressed, b: look(b).pressed, b_busy: b.getAttribute('aria-busy') };
 	var status = doc.getElementById('pg-wishlist-status');
 	out.status = status ? status.textContent : null;
@@ -613,6 +615,7 @@ JS;
 	pg_assert_same('action=remove&product_id=7&token=T0k', $r['remove_call']['body'], 'removal');
 	pg_assert_same(array('a' => 'true', 'b' => 'true', 'b_busy' => null), $r['after_refusal'], 'refused: back to saved, not busy');
 	pg_assert_same('Too many', $r['status'], 'the server\'s words are announced');
+	pg_assert_same(3, $r['calls_after_refusal'], 'a refusal other than the session\'s reads no state');
 
 	pg_assert_same('action=remove&product_id=7&token=T0k', $r['retry_call']['body'], 'the button stayed usable');
 	pg_assert_same(array('a' => 'false', 'b' => 'false'), $r['after_retry']);
@@ -787,6 +790,130 @@ JS;
 	}
 
 	pg_assert_same(array('ok' => false, 'pressed' => 'false', 'busy' => null, 'status' => 'Bir şeyler ters gitti.'), $r, 'back, usable, the page\'s words');
+}
+
+// A write refused because the session ended (it lapsed and took its token)
+// reads the state for the new token and is sent once more with it. The
+// hearts keep the visitor's choice meanwhile, a second click is ignored,
+// and nothing is read out when the second try is saved.
+function test_wishlist_heart_script_session_expired()
+{
+	$steps = <<<'JS'
+var a = body.appendChild(heart('7'));
+var b = body.appendChild(heart('7'));
+var out = {};
+var saving = null;
+
+var w = W.create({ document: doc, fetch: fakeFetch, config: { url: '/software/wishlist.php', labels: { failed: 'Failed' } } });
+replies.push({ status: 200, data: { ids: [], token: 'old' } });
+
+w.start().then(function () {
+	replies.push({ status: 403, data: { error: 'session', message: 'expired' } });
+	replies.push({ status: 200, data: { ids: [], token: 'new' } });
+	replies.push({ status: 200, data: { product_id: 7, on: true }, hold: true });
+	saving = w.toggle(a);
+	return tick();
+}).then(function () {
+	out.during = { a: look(a).pressed, b: look(b).pressed, busy: a.getAttribute('aria-busy'), calls: calls.length };
+	var before = calls.length;
+	fire('click', { target: b, preventDefault: function () {} });
+	out.second_click_calls = calls.length - before;
+	release();
+	return saving;
+}).then(function (ok) {
+	var status = doc.getElementById('pg-wishlist-status');
+	out.ok = ok;
+	out.calls = calls.map(function (c) { return c.method + ' ' + c.url + (c.body ? ' ' + c.body : ''); });
+	out.after = { a: look(a).pressed, b: look(b).pressed, busy: a.getAttribute('aria-busy') };
+	out.status = status ? status.textContent : null;
+	console.log(JSON.stringify(out));
+}).catch(function (err) { console.log('ERR ' + (err && err.stack)); });
+JS;
+
+	$r = wishlist_heart_test_node($steps);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($r['error']), isset($r['error']) ? $r['error'] : '');
+
+	if (isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array('a' => 'true', 'b' => 'true', 'busy' => 'true', 'calls' => 4), $r['during'], 'the second try is on its way, the choice still shown');
+	pg_assert_same(0, $r['second_click_calls'], 'a click during the second try is ignored');
+	pg_assert_true($r['ok'], 'saved');
+	pg_assert_same(array(
+		'GET /software/wishlist.php?action=state&pg_lang=en',
+		'POST /software/wishlist.php?pg_lang=en action=add&product_id=7&token=old',
+		'GET /software/wishlist.php?action=state&pg_lang=en',
+		'POST /software/wishlist.php?pg_lang=en action=add&product_id=7&token=new',
+	), $r['calls'], 'the state read again and the change sent with the new token');
+	pg_assert_same(array('a' => 'true', 'b' => 'true', 'busy' => null), $r['after'], 'saved, not busy');
+	pg_assert_same('', $r['status'], 'nothing read out');
+}
+
+// The second try is made once: refused again, the hearts show the state the
+// new session's list holds (not the one the page started with) and its words
+// are read out. When the state cannot be read, the hearts go back and the
+// first refusal's words are read out. A 403 that is not the session's (a
+// firewall's page) reads no state.
+function test_wishlist_heart_script_session_retry_refused()
+{
+	$steps = <<<'JS'
+var a = body.appendChild(heart('7'));
+var out = {};
+
+var w = W.create({ document: doc, fetch: fakeFetch, config: { url: '/software/wishlist.php', labels: { failed: 'Failed' } } });
+replies.push({ status: 200, data: { ids: [7], token: 'old' } });
+
+function status() {
+	var box = doc.getElementById('pg-wishlist-status');
+	return box ? box.textContent : null;
+}
+
+w.start().then(function () {
+	replies.push({ status: 403, data: { error: 'session', message: 'expired' } });
+	replies.push({ status: 200, data: { ids: [], token: 'new' } });
+	replies.push({ status: 403, data: { error: 'session', message: 'expired again' } });
+	return w.toggle(a);
+}).then(function (ok) {
+	out.again = { ok: ok, calls: calls.length, last: calls[calls.length - 1].body, pressed: look(a).pressed, busy: a.getAttribute('aria-busy'), status: status() };
+
+	replies.push({ status: 403, data: { error: 'session', message: 'expired' } });
+	replies.push({ status: 503, data: { error: 'unavailable', message: 'x' } });
+	return w.toggle(a);
+}).then(function (ok) {
+	out.no_state = { ok: ok, calls: calls.length, pressed: look(a).pressed, busy: a.getAttribute('aria-busy'), status: status() };
+
+	replies.push({ status: 403, data: null });
+	return w.toggle(a);
+}).then(function (ok) {
+	out.firewall = { ok: ok, calls: calls.length, pressed: look(a).pressed, status: status() };
+	console.log(JSON.stringify(out));
+}).catch(function (err) { console.log('ERR ' + (err && err.stack)); });
+JS;
+
+	$r = wishlist_heart_test_node($steps);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true(!isset($r['error']), isset($r['error']) ? $r['error'] : '');
+
+	if (isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array('ok' => false, 'calls' => 4, 'last' => 'action=remove&product_id=7&token=new', 'pressed' => 'false', 'busy' => null, 'status' => 'expired again'),
+		$r['again'], 'one second try; refused, the new list\'s state');
+	pg_assert_same(array('ok' => false, 'calls' => 6, 'pressed' => 'false', 'busy' => null, 'status' => 'expired'),
+		$r['no_state'], 'no state: back, the first refusal read out');
+	pg_assert_same(array('ok' => false, 'calls' => 7, 'pressed' => 'false', 'status' => 'Failed'),
+		$r['firewall'], 'another 403 reads no state');
 }
 
 // A page the browser brings back from its back/forward cache runs no script
