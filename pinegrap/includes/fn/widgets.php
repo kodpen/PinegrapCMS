@@ -70,6 +70,7 @@ function pg_sw_type_labels()
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
         'account_invoices'    => lang('My Invoices'),
+        'wishlist'            => lang('Favourites'),
         'account_email'       => lang('Account E-mail'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
@@ -3635,7 +3636,11 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
     if (!$logged_in) {
         // Redirect mode: send to login page when configured and accessible.
-        if ($redirect_to_login && $login_page_id > 0) {
+        // A page drawn inside another request (SEO pass, prototype frame)
+        // draws the signed-out view instead: go() would send a Location
+        // header and end that request in the middle of the render.
+        $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+        if ($redirect_to_login && $login_page_id > 0 && !$background) {
             $login_page_name = (string)db_value(
                 "SELECT page_name FROM page WHERE page_id = '" . (int)$login_page_id . "' LIMIT 1"
             );

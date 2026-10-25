@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23, step 1 test in #1512, step 2 #1622, answer 4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23, 1 #1621, 2 #1622, answer 4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -12,8 +12,8 @@ description: Plan (2026-10-23, step 1 test in #1512, step 2 #1622, answer 4 give
 - `merge_contacts()` (includes/fn/contacts.php) moves only groups, `opt_in`; other links keep the old id. No pipeline, custom fields, activity; `lead_source` is text.
 
 ## Slices
-Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right.
-1. Record-kind registry `ws_record_kinds()` (proposed, refs.php): per kind tag, change kind, audit table, customer flag; drift test on `ws_record_type_keys()`, `ws_change_types()` (plans/workspace-catalog-create.md 1a source reader), `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_customer_types()`, `pg_audit_tables()` (lists stay). Test #1512; no registry.
+Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right, row rule.
+1. PR #1621: record-kind registry `ws_record_kinds()` (refs.php; workspace/workspace-record-kind-registry.md): per kind prefixes, right, scope, change kind, audit table, drawer, customer; drift test, lists stay.
 2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
 3. Panel: channel customer section shows it [2].
 4. History: `ws_customer_history()` (new): read-only union: orders, invoices, sales and cart quotes, submissions, `ws_record_refs()` per tied record; route [2].

@@ -168,7 +168,7 @@ function test_ws_api_own_words_routes_are_no_tools()
 
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
 		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create',
-		'workspace.flows.publish') as $id) {
+		'workspace.flows.publish', 'workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
 		pg_assert_contains($id, $gated);
 	}
 }
@@ -541,20 +541,64 @@ function test_ws_api_flow_home_of_a_published_flow_is_moved_by_the_person()
 	pg_assert_true(strpos($gate, 'OAuth connection') !== false);
 }
 
-// The application Claude works through reads the flows and the runs it
-// reaches only through a channel where Claude may be asked; what the owner
-// of its key owns stays readable, as their notes do.
+// The application Claude works through reaches somebody else's flow only
+// along a way it may take: shared with its key owner in person (as a note
+// is), shared in a channel they read where Claude may be asked, or live with
+// such a channel as its home; and somebody else's run only when it was
+// started in such a channel. What the owner of its key owns stays readable.
+// Ownership decides, not the access: a colleague shared at edit has edit
+// access to a flow that is not theirs.
 function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
 {
-	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list', 'ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
-		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable(') !== false, $handler . ' asks where Claude may be asked');
+	$none = array('owner' => false, 'person' => false, 'channel' => false, 'home' => false);
+
+	pg_assert_false(ws_api_flow_claude_reaches($none), 'no way at all');
+
+	foreach (array('owner', 'person', 'channel', 'home') as $way) {
+		pg_assert_true(ws_api_flow_claude_reaches(array($way => true) + $none), $way);
 	}
 
-	$reachable = ws_api_test_handler_source('ws_api_flow_reachable');
+	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable($viewer, ') !== false, $handler . ' asks where Claude may be asked');
+	}
 
-	pg_assert_true(strpos($reachable, 'ws_api_is_claude()') !== false);
-	pg_assert_true(strpos($reachable, "'edit'") !== false, 'the key owner\'s own flows');
-	pg_assert_true(strpos($reachable, 'ws_claude_channel_allowed(') !== false);
+	foreach (array('ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_run_reachable($viewer, ') !== false, $handler . ' asks where the run was started');
+	}
+
+	$strip = function ($source) {
+		return (string) preg_replace('~^\s*(//|\*|/\*).*$~m', '', $source);
+	};
+
+	foreach (array('ws_api_flow_reachable', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_is_claude()') !== false, $name . ' asks about Claude');
+		pg_assert_true(strpos($source, "(int) \$flow['owner_id'] === (int) \$viewer['id']") !== false, $name . ': the key owner\'s own flows');
+		pg_assert_true(strpos($source, "'edit'") === false, $name . ': not edit access, which a share gives too');
+	}
+
+	$reachable = $strip(ws_api_test_handler_source('ws_api_flow_reachable'));
+
+	pg_assert_true(strpos($reachable, 'ws_flow_share_rows(') !== false, 'the shares are read');
+	pg_assert_true(strpos($reachable, 'ws_api_flow_claude_channel($viewer, (int) $share[\'target_id\'])') !== false, 'a share channel counts only where Claude may be asked');
+	pg_assert_true(strpos($reachable, "(string) \$flow['status'] === 'live'") !== false, 'the home counts for a live flow');
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'ws_claude_channel_allowed(') !== false);
+
+	// Both lists ask this for every row, so a channel is read once a
+	// request: whether the person reads it (ws_flow_channel_readable()) and
+	// whether Claude may be asked there (ws_api_flow_claude_allowed()).
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'static $') !== false, 'kept for the request');
+
+	foreach (array('ws_api_flow_claude_channel', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_flow_claude_allowed(') !== false, $name . ' asks whether Claude may be asked there');
+		pg_assert_true(strpos($source, 'ws_channel(') === false, $name . ' reads no channel row itself');
+	}
+
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_channel')), 'ws_flow_channel_readable(') !== false, 'a channel the key owner reads');
+	pg_assert_false(ws_api_flow_claude_allowed(0), 'no channel');
 }
 
 // A run opens tasks in the flow owner's name: starting and cancelling one
@@ -593,6 +637,125 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 	pg_assert_same(array(201, 200), $routes['workspace.flow_runs.start']['status']);
 	pg_assert_same('/workspace/flows/{id}/runs', $routes['workspace.flow_runs.start']['path']);
 	pg_assert_same('/workspace/flow-runs/{id}/cancel', $routes['workspace.flow_runs.cancel']['path']);
+}
+
+// Who sees a flow is widened only by the person: sharing and taking a share
+// back are REST writes from their team devices session that rehearse,
+// offered to no MCP client as a tool and refused to the application an
+// assistant works through; reading the shares stays a tool. A share answers 201 when it is new, 200 when its level
+// changed; the removal addressed as a POST is the same handler.
+function test_ws_api_flow_shares_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expected = array(
+		'workspace.flow_shares.list'        => array('GET', '/workspace/flows/{id}/shares', 'workspace:read'),
+		'workspace.flow_shares.set'         => array('POST', '/workspace/flows/{id}/shares', 'workspace:write'),
+		'workspace.flow_shares.delete'      => array('DELETE', '/workspace/flows/{id}/shares/{share_id}', 'workspace:write'),
+		'workspace.flow_shares.delete_post' => array('POST', '/workspace/flows/{id}/shares/{share_id}/delete', 'workspace:write'),
+	);
+
+	foreach ($expected as $id => $shape) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($shape, array($routes[$id]['method'], $routes[$id]['path'], $routes[$id]['scope']), $id . ' method, path, scope');
+	}
+
+	if (count(array_intersect_key($routes, $expected)) !== count($expected)) {
+		return;
+	}
+
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.flow_shares.list']), 'reading the shares is a tool');
+	pg_assert_same('WorkspaceFlowShare', $routes['workspace.flow_shares.list']['returns']['list'] ?? null);
+
+	foreach (array('workspace.flow_shares.set', 'workspace.flow_shares.delete', 'workspace.flow_shares.delete_post') as $id) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_same('WorkspaceFlowShare', $routes[$id]['returns']);
+
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($routes[$id]['handler']));
+
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
+		pg_assert_true(strpos($source, 'ws_api_as_owner(') > strpos($source, 'api_dry_run_stop('), $id . ' writes in the owner\'s name after the rehearsal');
+
+		// An application key or an OAuth connection may not widen who
+		// starts the flow or changes its draft, as it may not move a
+		// published flow's home.
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') !== false, $id . ' asks for the team devices session');
+		pg_assert_true(strpos($source, 'ws_api_own_words_only(') < strpos($source, 'api_dry_run_stop('), $id . ' before the rehearsal');
+		pg_assert_true(strpos($source, 'team devices session (POST /auth/login)') !== false, $id . ': the refusal names it');
+	}
+
+	// The shares Claude's application is shown leave out the channels where
+	// Claude may not be asked, as the channel listing does.
+	foreach (array('ws_api_flow_shares_list', 'ws_api_flow_share_answer', 'ws_api_flow_shares_delete') as $name) {
+		$source = ws_api_test_handler_source($name);
+
+		pg_assert_true(strpos($source, 'ws_api_flow_shares_seen($viewer, $flow)') !== false, $name . ' lists the shares the application may see');
+		pg_assert_true(strpos($source, 'ws_flow_shares_list(') === false, $name . ' never the store\'s list as it is');
+	}
+
+	$seen = ws_api_test_handler_source('ws_api_flow_shares_seen');
+
+	pg_assert_true(strpos($seen, 'ws_api_is_claude()') !== false);
+	pg_assert_true(strpos($seen, 'ws_claude_channel_allowed(') !== false);
+
+	pg_assert_same(array(201, 200), $routes['workspace.flow_shares.set']['status']);
+	pg_assert_same($routes['workspace.flow_shares.delete']['handler'], $routes['workspace.flow_shares.delete_post']['handler']);
+
+	$params = array();
+
+	foreach ($routes['workspace.flow_shares.set']['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_same(array('user', 'channel'), $params['target_type']['values'] ?? null, 'a person or a channel');
+	pg_assert_same(array('view', 'run', 'edit'), $params['level']['values'] ?? null, 'the three levels');
+	pg_assert_true(!empty($params['target_type']['required']) && !empty($params['target_id']['required']), 'what is shared with is required');
+}
+
+// A share's fields are read as ws_flow_share_set() takes them: the kind and
+// the level as text, the id as a number, a view when no level is sent.
+function test_ws_api_flow_share_input()
+{
+	pg_assert_same(array('target_type' => '', 'target_id' => 0, 'level' => 'view'), ws_api_flow_share_input(array()), 'nothing sent');
+	pg_assert_same(array('target_type' => 'user', 'target_id' => 12, 'level' => 'run'), ws_api_flow_share_input(array('target_type' => 'user', 'target_id' => '12', 'level' => 'run')), 'the id as a number');
+	pg_assert_same(array('target_type' => 'channel', 'target_id' => 3, 'level' => 'view'), ws_api_flow_share_input(array('target_type' => 'channel', 'target_id' => 3)));
+}
+
+// A flow as the API answers it to a person shared at view or run: the live
+// graph of a published flow and no draft, and the draft of a flow never
+// published, read-only, without what stops it from being published (the
+// editors' alone, read with the record kinds, which need a database).
+function test_ws_api_flow_present_gives_the_draft_to_its_readers()
+{
+	$draft = json_encode(ws_flow_graph_empty());
+	$flow = array('id' => 9, 'name' => 'Onboarding', 'status' => 'live', 'owner_id' => 2, 'channel_id' => 3, 'draft_rev' => 4, 'draft' => $draft, 'created_at' => 1700000000, 'updated_at' => 1700000000);
+	$version = array('id' => 7, 'n' => 2, 'published_by' => 2, 'published_at' => 1700000000, 'graph' => $draft);
+
+	foreach (array('view', 'run') as $access) {
+		$shared = ws_api_flow_present($flow + array('access' => $access), $version, true);
+
+		pg_assert_same(null, $shared['draft'], $access . ': no draft of a published flow');
+		pg_assert_same(null, $shared['problems'], $access . ': no problems');
+		pg_assert_true(is_array($shared['graph']), $access . ': the live graph');
+
+		$unpublished = ws_api_flow_present(array('status' => 'draft') + $flow + array('access' => $access), null, true);
+
+		pg_assert_true(is_array($unpublished['draft']), $access . ': the draft of a flow never published');
+		pg_assert_same(null, $unpublished['problems'], $access . ': without its problems');
+		pg_assert_same(null, $unpublished['graph']);
+	}
 }
 
 // A start retried with its token after the flow was paused answers the run
@@ -2024,6 +2187,8 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
 		'ws_api_flow_runs_start'      => array('ws_flow_run_start_check(', 'api_dry_run_stop(', 'ws_flow_run_start('),
 		'ws_api_flow_runs_cancel'     => array('ws_flow_run_cancel_check(', 'api_dry_run_stop(', 'ws_flow_run_cancel('),
+		'ws_api_flow_shares_set'      => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_set_check(', 'api_dry_run_stop(', 'ws_flow_share_set('),
+		'ws_api_flow_shares_delete'   => array('ws_api_own_words_only(', 'ws_api_is_assistant()', 'ws_flow_share_remove_check(', 'api_dry_run_stop(', 'ws_flow_share_remove('),
 		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_changes_propose'      => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_message_send_check(', 'ws_api_proposal_rows(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
 		'ws_api_task_changes_propose' => array('ws_api_proposal_agent(', 'ws_api_proposal_scopes(', 'ws_task_note_add_check(', 'ws_api_proposal_rows(', 'ws_task_delegation_open_run(', 'ws_api_proposal_limit(', 'api_dry_run_stop(', 'ws_proposal_store('),
