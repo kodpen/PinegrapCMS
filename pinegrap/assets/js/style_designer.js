@@ -14587,6 +14587,80 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // System widgets whose output is a <form> or holds one. The renderer
+    // prints a <form> around the widget's whole tree for the custom form,
+    // the member and account widgets (_pg_member_form_wrap()), the login
+    // region's sign-in form, the express order's host form and the product
+    // page widget's add-to-cart form (catalog_item_view); some print
+    // it in one state only (signed in or out, before a reset is sent), and
+    // each counts as always printing it. Account security's blocks are forms
+    // of their own, and a tree with no block bound as one is wrapped whole.
+    var _SD_FORM_WIDGET_TYPES = ['custom_form', 'login_form', 'login_region', 'forgot_password', 'registration',
+                                 'membership', 'logout', 'change_password', 'set_password', 'account_profile',
+                                 'email_preferences', 'address_book', 'account_security', 'express_order',
+                                 'catalog_item_view'];
+
+    // Does the tree of system widget `sid` sit in a <form> the server prints
+    // around it, which is not a node there? Account security is left out:
+    // its forms are its blocks, nodes _sdInForm() finds by walking up, and
+    // its whole-tree form is only the fallback for a tree with no bound
+    // block; a form dropped there to be bound is the way back to blocks.
+    function _sdWidgetPrintsForm(sid) {
+        var cfg = sid ? _cfCfgOf(sid) : null;
+        return !!cfg && cfg.regionType !== 'account_security' && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1;
+    }
+
+    // Does the drag place a <form>: the dragged element, any element below
+    // it (a newsletter or login block), a <form> written in a node's own
+    // markup, or a shared component or widget that brings one (a widget of
+    // a kind in _SD_FORM_WIDGET_TYPES, or a component whose cached tree
+    // holds one)? A block's top-level type says nothing about it, so the
+    // tree is walked. A new system widget has no tree yet and counts by its
+    // kind. Kept on the payload like _sdDragCarriesControl().
+    function _sdDragCarriesForm(data) {
+        if (!data) return false;
+        if (typeof data._sdForm === 'boolean') return data._sdForm;
+        var root = _sdDragTree(data);
+        var seen = {};
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_semTag(n) === 'form' || /<form[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+                if (n.type === 'shared_ref') {
+                    var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                    if (!sid || seen[sid]) return false;
+                    seen[sid] = true;
+                    var cfg = _cfCfgOf(sid);
+                    if (cfg && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1) return true;
+                    var cached = _sharedCache[sid];
+                    return !!(cached && cached.tree) && walk(cached.tree);
+                }
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : (data.type === 'system_widget'
+                ? _SD_FORM_WIDGET_TYPES.indexOf(String((data.extra || {}).regionType || '')) !== -1
+                : _semTag({ type: data.type, props: data.extra || {} }) === 'form');
+        try { data._sdForm = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a <form>, or inside one at any depth? The tree of a
+    // system widget that prints a <form> around it (_sdWidgetPrintsForm())
+    // counts as one, its root too: that <form> is not a node there.
+    function _sdInForm(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'form') return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return _sdWidgetPrintsForm(_isInsideSystemWidget(target));
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -14660,6 +14734,13 @@ const StyleDesigner = (function () {
             if (voidTags.indexOf(target.props.tag.toLowerCase()) !== -1) return false;
         }
 
+        // No <form> inside a <form>, at any depth, also when the form comes
+        // inside a dragged block: the browser drops the inner <form> tag, so
+        // the block's fields would submit with the outer form. Asked before
+        // the root's free pass, as a custom form widget's tree root is the
+        // inside of a <form> the server prints.
+        if (_sdDragCarriesForm(data) && _sdInForm(target)) return false;
+
         // Drop onto root: the auto-wrapper takes over
         if (target.type === 'root') return true;
 
@@ -14717,8 +14798,6 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
-        // Rule 7: <form> cannot contain another <form>
-        if (tgtTag === 'form' && srcTag === 'form') return false;
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────
@@ -14892,73 +14971,10 @@ const StyleDesigner = (function () {
         // Track original dropped node before any auto-wrapping so selection stays on what the user dragged
         var _origDroppedNode = n;
 
-        // 1. a row/col dropped straight onto root has to be wrapped in a container — BUT:
-        //    a widget inner tree's root is type='root' as well. EXEMPT the widget root from
-        //    auto-wrapping: a widget is already a constrained area and elements are meant to
-        //    go straight into it ("widget > col > card" rather than "widget > container > col > card").
-        //    _resolveSharedSid(target) > 0 means target is the cached tree root of a
-        //    shared_component (system widgets and shared components alike).
-        var _targetIsSharedRoot = (target.type === 'root') && _resolveSharedSid(target) > 0;
-        if (target.type === 'root' && !_targetIsSharedRoot) {
-            if (t === 'col') {
-                // col → container > row > col (user's col goes directly into row, no extra col-12 wrapper)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
-                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
-                ]);
-            } else if (t === 'row') {
-                // row → container > row (user's row goes directly into container)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
-            }
-            // Auto-wrap complex component explosions (pricing, hero, features, etc.) in a container
-            if (dragData.source === 'palette' && dragData.type === 'component' && n && n.type === 'semantic') {
-                var _noWrapCtypes = ['navbar',
-                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
-                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
-                                     'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
-                                     'cta-simple', 'cta-inline', 'cta-gradient',
-                                     'features-grid', 'features-alt', 'features-list',
-                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
-                                     'image-carousel', 'image-grid', 'image-masonry',
-                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
-                                     'stats-counter', 'stats-icons', 'stats-progress',
-                                     'team-grid', 'team-minimal', 'team-leadership',
-                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
-                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
-                                     'blog-grid', 'blog-featured', 'blog-list',
-                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
-                                     'compare-vs', 'compare-table', 'compare-side-by-side',
-                                     'contact-form', 'contact-info', 'contact-map',
-                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
-                                     'login-centered', 'login-split', 'login-minimal',
-                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
-                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
-                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
-                                     'breadcrumbs-with-header',
-                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
-                                     'steps-numbered', 'booking-cta', 'booking-split',
-                                     'hours-card', 'hours-location', 'locations-cards',
-                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
-                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
-                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
-                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
-                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
-                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
-                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
-                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                var _ct = (dragData.extra || {}).componentType || '';
-                if (_noWrapCtypes.indexOf(_ct) === -1) {
-                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
-                }
-            }
-        }
-
-        // 2. col → col: wrap the inner col in a new row
-        if (target.type === 'col' && (t === 'col' || n.type === 'col')) {
-            var wrapRow = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
-            autoBalanceCols(wrapRow);
-            n = wrapRow;
-        }
+        // 1. At the page root a col, a row or a palette block gets its
+        //    container; 2. a col dropped onto a col gets a row
+        //    (_sdWrapForParent(), shared with the palette insert).
+        n = _sdWrapForParent(target, n, dragData);
 
         // 3. container → container: reject
         if (target.type === 'container' && (t === 'container')) {
@@ -14966,7 +14982,7 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // 4. container → row: reddet
+        // 4. container → row: reject
         if (target.type === 'row' && (t === 'container')) {
             undoStack.pop();
             return;
@@ -21689,29 +21705,14 @@ const StyleDesigner = (function () {
             });
                     el.addEventListener('dblclick', function () {
                         var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                        var target = selectedNode || tree;
-                        if (!target) return;
                         // Carries the id, so canDrop() can refuse placing a component inside itself.
-                        var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                        if (!canDrop(_dbData, target)) {
-                            if (target.children && target.children.length) {
-                                for (var i = target.children.length - 1; i >= 0; i--) {
-                                    if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                                }
-                            }
-                            if (!canDrop(_dbData, target)) target = tree;
-                            if (!canDrop(_dbData, target)) return;
-                        }
+                        var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                        if (!spot) return;
                         saveState();
                         var n = createFromPalette('shared_ref', extra);
                         if (!n) return;
-                        if (!target.children) target.children = [];
-                        target.children.push(n);
-                        // Placed inside a shared component: that component is saved with the next save.
-                        var _dbOwner = _sdSharedOwnerOf(target);
-                        if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                        _sdInsertAt(spot, n);
                         selectedNode = n;
-                        expandAncestors(n, tree);
                         render();
                         // Safety-net: if tree not yet cached, fetch then re-render
                         var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
@@ -21952,18 +21953,12 @@ const StyleDesigner = (function () {
                 el.addEventListener('dblclick', function () {
                     var label = this.dataset.label || _sdT('System Widget');
                     var rtype = this.dataset.regionType || '';
-                    var target = selectedNode || tree;
-                    if (!target) return;
-                    if (!canDrop({ type: 'shared_ref' }, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                        if (!canDrop({ type: 'shared_ref' }, target)) return;
-                    }
-                    _createSystemWidgetNode({ label: label, regionType: rtype }, target, null);
+                    // The payload a drag of this item carries: the widget's
+                    // kind tells canDrop() whether it brings a <form>.
+                    var spot = _sdInsertSpot({ source: 'palette', type: 'system_widget', extra: { label: label, regionType: rtype } });
+                    if (!spot) return;
+                    _createSystemWidgetNode({ label: label, regionType: rtype }, spot.parent,
+                        spot.sibling ? { sibling: spot.sibling, after: spot.after } : null);
                 });
             });
 
@@ -21995,29 +21990,14 @@ const StyleDesigner = (function () {
             });
                 el.addEventListener('dblclick', function () {
                     var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                    var target = selectedNode || tree;
-                    if (!target) return;
                     // Carries the id, so canDrop() can refuse placing a component inside itself.
-                    var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                    if (!canDrop(_dbData, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop(_dbData, target)) target = tree;
-                        if (!canDrop(_dbData, target)) return;
-                    }
+                    var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                    if (!spot) return;
                     saveState();
                     var n = createFromPalette('shared_ref', extra);
                     if (!n) return;
-                    if (!target.children) target.children = [];
-                    target.children.push(n);
-                    // Placed inside a shared component: that component is saved with the next save.
-                    var _dbOwner = _sdSharedOwnerOf(target);
-                    if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                    _sdInsertAt(spot, n);
                     selectedNode = n;
-                    expandAncestors(n, tree);
                     render();
                     var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
                     if (_dbSid > 0 && (!_sharedCache[_dbSid] || !_sharedCache[_dbSid].tree)) {
@@ -39172,6 +39152,172 @@ const StyleDesigner = (function () {
             if (owner) return owner;
         }
         return { parent: tree, sid: 0 };
+    }
+
+    // Where a palette item added without a drag (a double-click, the command
+    // palette) goes, for the drop payload `payload`: { parent, sibling,
+    // after, sid } — the insertCtx shape _swInsertRef() takes — or null when
+    // nothing on the way takes it. Into the selection when it holds the
+    // item; else into the last of its children that does (a row's column),
+    // unless the selection takes inline content only (a button, a link, a
+    // select, a heading, a paragraph): a span or an option in it would take
+    // a block canDrop() lets through there; else right after the selection,
+    // in the nearest ancestor that takes it, in the page tree or in the
+    // shared tree the selection lives in; else at the end of the page. `sid`
+    // is the shared component whose tree gets the item (0 for the page). A
+    // component or widget (a shared_ref payload) never goes into a system
+    // widget's own tree, where a loop row would print it once per record: it
+    // goes beside the widget's placement on the open page
+    // (_sdPlacementOnPage()).
+    // A place counts only when the operator may edit it, as handleDrop()
+    // asks _sdMayEdit() of its target: an editable place on the way is taken
+    // first, and when there is none, they are told why (outside their area,
+    // another person holding the page) and nothing is added.
+    function _sdInsertSpot(payload) {
+        if (!tree) return null;
+        var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
+        if (payload && (payload.type === 'shared_ref' || payload.type === 'system_widget')) {
+            var seen = {};
+            for (var wsid = _isInsideSystemWidget(sel); wsid && !seen[wsid]; wsid = _isInsideSystemWidget(sel)) {
+                seen[wsid] = true;
+                sel = _sdPlacementOnPage(wsid) || tree;
+            }
+        }
+        var kids = (_isInteractiveNode(sel) || _sdIsTextSink(sel)) ? [] : (sel.children || []);
+        function find(takes) {
+            if (takes(sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (takes(kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+            }
+            var child = sel;
+            for (var guard = 0; guard < 500; guard++) {
+                var up = _sdAnyParent(child);
+                if (!up || !up.parent) break;
+                if (takes(up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
+                child = up.parent;
+            }
+            return (sel !== tree && takes(tree)) ? { parent: tree, sid: 0 } : null;
+        }
+        var spot = find(function (n) { return canDrop(payload, n) && _sdCanEditNode(n); });
+        if (spot) return spot;
+        var refused = find(function (n) { return canDrop(payload, n); });
+        return (refused && _sdMayEdit(refused.parent)) ? refused : null;
+    }
+
+    // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
+    // last in the parent, wrapped as a drop of `payload` there would be
+    // (_sdWrapForParent()); a column that joins a row rebalances the row's
+    // columns, as after a drop. A shared tree that gets it is saved with the
+    // next save, and the overview opens down to it.
+    function _sdInsertAt(spot, node, payload) {
+        if (!spot.parent.children) spot.parent.children = [];
+        var kids = spot.parent.children;
+        var put = _sdWrapForParent(spot.parent, node, payload);
+        var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
+        if (at === -1) kids.push(put);
+        else kids.splice(spot.after ? at + 1 : at, 0, put);
+        if (spot.parent.type === 'row' && put.type === 'col') autoBalanceCols(spot.parent);
+        if (spot.sid) _sharedDirty[spot.sid] = true;
+        expandAncestorsAnywhere(node);
+        return node;
+    }
+
+    // What goes into `parent` when `node` is placed there by a drop or an
+    // insert of `payload` (the drag payload; without one the node's own
+    // type counts): the Bootstrap structure rules both follow. At the page
+    // root a column comes in a new container > row, a row in a new
+    // container, and a ready-made block from the palette in a boxed
+    // container unless it is a full-width section. A shared component's
+    // tree root is left out: a widget is already a bounded area, so
+    // elements go straight into it. A column into a column comes in a new
+    // row there. Returns `node` itself when nothing wraps it.
+    function _sdWrapForParent(parent, node, payload) {
+        var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
+        var t = payload ? (map[payload.type] || payload.type) : node.type;
+        var n = node;
+        if (parent.type === 'root' && !(_sdSharedOwnerOf(parent) > 0)) {
+            if (t === 'col') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
+                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
+                ]);
+            } else if (t === 'row') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
+            }
+            if (payload && payload.source === 'palette' && payload.type === 'component' && n.type === 'semantic') {
+                var _noWrapCtypes = ['navbar',
+                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
+                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
+                                     'carousel', 'modal', 'offcanvas', 'dropdown',
+                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'cta-simple', 'cta-inline', 'cta-gradient',
+                                     'features-grid', 'features-alt', 'features-list',
+                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
+                                     'image-carousel', 'image-grid', 'image-masonry',
+                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
+                                     'stats-counter', 'stats-icons', 'stats-progress',
+                                     'team-grid', 'team-minimal', 'team-leadership',
+                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
+                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
+                                     'blog-grid', 'blog-featured', 'blog-list',
+                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
+                                     'compare-vs', 'compare-table', 'compare-side-by-side',
+                                     'contact-form', 'contact-info', 'contact-map',
+                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
+                                     'login-centered', 'login-split', 'login-minimal',
+                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
+                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
+                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
+                                     'breadcrumbs-with-header',
+                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
+                                     'steps-numbered', 'booking-cta', 'booking-split',
+                                     'hours-card', 'hours-location', 'locations-cards',
+                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
+                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
+                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
+                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
+                }
+            }
+        }
+        if (parent.type === 'col' && (t === 'col' || n.type === 'col')) {
+            n = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
+            autoBalanceCols(n);
+        }
+        return n;
+    }
+
+    // The placement of shared component `sid` that the open page shows: a
+    // shared_ref on the page tree itself first, else the first one inside a
+    // component placed on this page (a widget in the header). Cached trees
+    // of components that only other pages show are not looked at, so an
+    // insert never lands in another page's header. Null when the page does
+    // not show `sid`.
+    function _sdPlacementOnPage(sid) {
+        var direct = null, nested = null, seen = {};
+        (function walk(n, inShared) {
+            if (!n || direct) return;
+            if (n.type === 'shared_ref') {
+                var s = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (s === sid) {
+                    if (!inShared) direct = n;
+                    else if (!nested) nested = n;
+                    return;
+                }
+                var c = _sharedCache[s];
+                if (s && !seen[s] && c && c.tree) {
+                    seen[s] = true;
+                    walk(c.tree, true);
+                }
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(function (k) { walk(k, inShared); });
+        })(tree, false);
+        return direct || nested;
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -56876,6 +57022,9 @@ const StyleDesigner = (function () {
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
+        // The design's saved drafts as a clickable prototype, from a saved
+        // draft tab (_pgPrototypeUrl()).
+        var protoUrl = _pgPrototypeUrl(p);
         // A saved page of this design can go to another one; the chooser is
         // on the screen for designers only (pg_designer_target_modal()).
         var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
@@ -56906,6 +57055,7 @@ const StyleDesigner = (function () {
         }
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
+            (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
@@ -56958,10 +57108,11 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
                 && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
+                case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
@@ -59396,6 +59547,18 @@ const StyleDesigner = (function () {
         return (window.OUTPUT_PATH || '/') + p.savedName;
     }
 
+    // The prototype viewer (prototype.php) opened on a draft tab, or '': a
+    // tab never saved, a page on the site, drafts not available, or an
+    // operator the viewer does not admit (_design.prototypeUrl is '' then).
+    // A page picked from another design and not saved here yet still belongs
+    // to that design, whose prototype the viewer would open.
+    // The viewer draws what was last saved, never the editor's unsaved trees.
+    function _pgPrototypeUrl(p) {
+        if (!p || !(p.page_id > 0) || !p.page_draft || p.pickedPending || !_pgDraftsReady()) return '';
+        if (!_design || !_design.prototypeUrl || !(_design.styleId > 0)) return '';
+        return _design.prototypeUrl + '?page=' + encodeURIComponent(p.page_id);
+    }
+
     // "View page" next to Save AND next to Preview on the canvas bar: both
     // only for a page that exists on the site.
     function _pgTabsSyncViewButton() {
@@ -60452,22 +60615,16 @@ const StyleDesigner = (function () {
     }
 
     function _paletteInsert(type, extra) {
-        var target = selectedNode || tree;
-        if (!target) return;
         // The same payload a palette drag carries, so the drop rules see
         // what the item holds (_sdDragTree()), not its type alone.
         var _pd = { source: 'palette', type: type, extra: extra || {} };
-        if (!canDrop(_pd, target)) {
-            target = tree;
-            if (!canDrop(_pd, target)) return;
-        }
+        var spot = _sdInsertSpot(_pd);
+        if (!spot) return;
         saveState();
         var n = createFromPalette(type, extra || {});
         if (!n) return;
-        if (!target.children) target.children = [];
-        target.children.push(n);
+        _sdInsertAt(spot, n, _pd);
         selectedNode = n;
-        expandAncestors(n, tree);
         render();
         _trackRecentComp(type, extra || {});
         var _cl = document.getElementById('sd-comp-list');
@@ -61795,31 +61952,17 @@ const StyleDesigner = (function () {
                 var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                 var hintLabel = this.dataset.label || '';
                 var hintIcon  = this.dataset.icon || '';
-                var target = selectedNode || tree;
-                if (!target) return;
                 // The same payload a palette drag carries (see _paletteInsert()).
                 var _pd = { source: 'palette', type: type, extra: extra };
-                if (!canDrop(_pd, target)) {
-                    if (target.children && target.children.length) {
-                        for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
-                        }
-                    }
-                    if (!canDrop(_pd, target)) target = tree;
-                    if (!canDrop(_pd, target)) return;
-                }
+                var spot = _sdInsertSpot(_pd);
+                if (!spot) return;
                 saveState();
                 var n = createFromPalette(type, extra);
                 if (!n) return;
-                if (!target.children) target.children = [];
-                target.children.push(n);
+                _sdInsertAt(spot, n, _pd);
                 selectedNode = n;
-                expandAncestors(n, tree);
-                // Inserted into a widget's own tree: that tree has to be
-                // flushed, and — same rule as a drop — a control that lands
-                // inside a custom form widget is a field of it.
-                var _dcOwner = (typeof _sdAnyParent === 'function') ? _sdAnyParent(n) : null;
-                if (_dcOwner && _dcOwner.sid) _sharedDirty[_dcOwner.sid] = true;
+                // Same rule as a drop: a control that lands inside a custom
+                // form widget is a field of it.
                 if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(n);
                 render();
                 _trackRecentComp(type, extra, hintLabel, hintIcon);
