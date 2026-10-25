@@ -9,14 +9,14 @@
  * design's name, its draft pages, a hotspots switch, close) around a
  * sandboxed frame. The frame is a second request with no session and no
  * cookie at all, admitted by a short-lived signed address the first one
- * made and bound to the browser it made it for (the session cookie is only
- * compared, never used): there is no signed-in person in it whose rights
- * could decide what a list or a widget shows, so the draft is drawn exactly
- * as a signed-out visitor would get it once it is published. Every link of
- * the drawn page is resolved (includes/fn/link_resolve.php) and rewritten
- * here: to another draft of the design it stays in the prototype, to a page
- * on the site it opens that page in a new tab, to nothing it is marked and
- * goes nowhere.
+ * made and bound to the browser it made it for (the session cookie is
+ * compared, no session is started): there is no signed-in person in it
+ * whose rights could decide what a list or a widget shows, so the draft is
+ * drawn exactly as a signed-out visitor would get it once it is published.
+ * Every link of the drawn page is resolved (includes/fn/link_resolve.php)
+ * and rewritten here: to another draft of the design it stays in the
+ * prototype, to a page on the site it opens that page in a new tab, to
+ * nothing it is marked and goes nowhere.
  *
  * Loaded by prototype.php only (and by the tests).
  *
