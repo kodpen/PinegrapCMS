@@ -69,7 +69,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462) and 2 (#1523) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 done #1708, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, slices 1-3 done #1510, answers given): left: channel templates carry icon and colour, optional group icons
 - workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes), not started on development: an unmerged branch, its 9 open review findings, the split into 2a (server) and 2b (editor)
