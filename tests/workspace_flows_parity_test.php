@@ -1922,19 +1922,24 @@ function workspace_flows_parity_read_card_parts()
 }
 
 // What the list of scheduled actions draws around the cards (showScheduled()
-// in workspace.js): its labels (the state chips, "in #channel / in note",
-// the tabs) and the fields of an action it reads.
+// in workspace.js, and scheduledList(), which it and the Scheduled actions
+// section of Flows draw the list with): its labels (the state chips, "in
+// #channel / in note", the tabs) and the fields of an action it reads.
 function workspace_flows_parity_read_list_parts()
 {
 	$js = workspace_flows_parity_file('assets/js/workspace.js');
+	$list = '';
 
-	if (!preg_match('/\n(\s*)showScheduled: function \(/', $js, $match, PREG_OFFSET_CAPTURE)) {
-		throw new RuntimeException('workspace.js has no showScheduled: function ().');
+	foreach (array('/\n(\s*)showScheduled: function \(/' => 'showScheduled: function ()', '/\n(\s*)function scheduledList\(/' => 'function scheduledList()') as $pattern => $name) {
+		if (!preg_match($pattern, $js, $match, PREG_OFFSET_CAPTURE)) {
+			throw new RuntimeException('workspace.js has no ' . $name . '.');
+		}
+
+		$start = $match[0][1];
+		$open = strpos($js, '{', strpos($js, ')', $start));
+		$list .= substr($js, $start, workspace_flows_parity_js_close($js, $open) - $start + 1);
 	}
 
-	$start = $match[0][1];
-	$open = strpos($js, '{', strpos($js, ')', $start));
-	$list = substr($js, $start, workspace_flows_parity_js_close($js, $open) - $start + 1);
 	$out = array();
 
 	foreach (workspace_flows_parity_t_keys($list) as $key) {
@@ -2280,7 +2285,7 @@ function workspace_flows_parity_groups()
 		'record_writes'       => array('Record writes', array(3), 'workspace_flows_parity_read_record_writes', 'ws_scheduled_change()'),
 		'card_buttons'        => array('Screen', array(1), 'workspace_flows_parity_read_card_buttons', 'the button() labels of scheduledCard() in workspace.js'),
 		'card_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_card_parts', 'the other labels (each use), the item fields and those of its callbacks\' parameters in scheduledCard() of workspace.js'),
-		'list_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_list_parts', 'the labels and the item fields of showScheduled() in workspace.js'),
+		'list_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_list_parts', 'the labels and the item fields of showScheduled() and scheduledList() in workspace.js'),
 		'card_places'         => array('Screen', array(1), 'workspace_flows_parity_read_card_places', 'the scheduledCard() calls of workspace.js and the functions they are in'),
 		'routes'              => array('Screen', array(1), 'workspace_flows_parity_read_routes', 'the ws_scheduled_* branches of includes/workspace/actions.php, their pg_panel_actions() rows and the api() calls of workspace.js'),
 		'templates'           => array('Screen', array(1), 'workspace_flows_parity_read_templates', 'saTemplates() in workspace.js and templates() in workspace_events.js'),
@@ -2581,9 +2586,10 @@ function workspace_flows_parity_table()
 			array(array('label sa_all', 'label sa_state_active', 'label sa_state_paused', 'label sa_state_done', 'label sa_state_failed', 'label sa_state_cancelled'), 1, 'Scheduled actions section in Flows: the state chips'),
 			array(array('label sa_in_channel', 'label sa_in_note', 'item.channel', 'item.channel.id', 'item.channel.name', 'item.note', 'item.note.id', 'item.note.name', 'item.message_id'), 1, 'Scheduled actions section in Flows: "in #channel / in note", linked to the card'),
 			array(array('label sm_title', 'label sm_mine_help'), 1, '?view=scheduled keeps the Messages tab (scheduled messages are not moved)'),
+			array(array('label fl_sa_moved'), 1, 'staff\'s Messages tab links to the Scheduled actions section of Flows'),
 		),
 		'card_places' => array(
-			array(array('scheduledCard(item) in load() in showScheduled()'), 1, 'Scheduled actions section in Flows: the list'),
+			array(array('scheduledCard(item) in load() in scheduledList()'), 1, 'Scheduled actions section in Flows: the list'),
 			array(array('scheduledCard(message.scheduled) in messageNode()'), 1, 'the card under its message in the channel, kept where written'),
 			array(array('scheduledCard(item) in drawScheduled() in startNotes()'), 1, 'the note strip, kept where written'),
 		),
@@ -2598,7 +2604,7 @@ function workspace_flows_parity_table()
 			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
 		),
 		'entry_points' => array(
-			array(array('{} in showScheduled()'), 1, 'New on the list, in the Scheduled actions section of Flows'),
+			array(array('{} in scheduledList()'), 1, 'New on the list, in the Scheduled actions section of Flows'),
 			array(array('{ channel_id: self.channel.id } in action() in composer()'), 1, 'composer insert menu (not in discussions) still opens the form'),
 			array(array('{ note_id: current.id } in toolbar() in startNotes()'), 1, 'note toolbar (note edit right) still opens the form'),
 			array(array('{ channel_id: change.draft.channel_id } (sentence) in changesNode()'), 1, '@ai draft Open still opens the form, its draft_change_id sent on Save (see request)'),
@@ -2620,6 +2626,7 @@ function workspace_flows_parity_table()
 			array(array('sidebar data-ws-nav="scheduled" sa_title'), 1, 'workspace.php sidebar: staff\'s entry gives way to the Flows one'),
 			array(array('sidebar data-ws-nav="scheduled" sm_title'), 1, 'workspace.php sidebar: others keep Scheduled messages'),
 			array(array('tour scheduled #ws-root [data-ws-nav="scheduled"]'), 1, 'tour step on the workspace.php sidebar entry (optional: it drops silently), moved with it'),
+			array(array('tour scheduled #ws-root [data-ws-nav="flows"]'), 1, 'tour step on the Flows sidebar entry once Flows lists staff\'s scheduled actions'),
 			array(array('inbox scheduled_notice'), 1, 'lands on the card in its channel'),
 			array(array('inbox scheduled_failed'), 1, 'lands on the card, or on ?view=scheduled without one'),
 			array(array('inbox scheduled_message'), 1, 'a scheduled message that failed lands where scheduled messages are: others on ?view=scheduled; for staff the link has to name the Messages tab, since today ?view=scheduled opens their actions part on a fresh load and from slice 1 it opens Flows'),

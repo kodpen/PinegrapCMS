@@ -55,9 +55,12 @@ function ws_nav_groups($viewer)
     }
 
     // Scheduled actions are staff's (scheduled.php); everybody else finds
-    // their own scheduled messages on the same screen.
+    // their own scheduled messages on the same screen. Once Flows lists
+    // staff's actions (ws_flows_scheduled()), the Flows entry below is theirs.
     if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
-        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+        if (!(function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer))) {
+            $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+        }
     } elseif (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer)) {
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
