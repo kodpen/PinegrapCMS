@@ -647,6 +647,7 @@
     "{var:1} has no title.": "{var:1} ürününün başlığı yok.",
     "{var:1} has the document and its driver cannot cancel it, so it is taken back with a return invoice.": "Belge {var:1} tarafında ve sürücüsü onu iptal edemiyor; bu yüzden iade faturasıyla geri alınır.",
     "{var:1} has this document, so it is taken back from the invoice screen in the panel, or corrected with a return.": "Bu belge {var:1} tarafında; panelde fatura ekranından geri alınır ya da iade faturasıyla düzeltilir.",
+    "{var:1} holds at most {var:2} lines.": "{var:1} en fazla {var:2} satır alır.",
     "{var:1} holds more than the {var:2} items accepted in one request.": "{var:1}, tek istekte kabul edilen {var:2} kalemden fazlasını içeriyor.",
     "{var:1} holds {var:2} of free space ({var:3} %); OPTIMIZE TABLE gives it back": "{var:1} içinde {var:2} boş alan var (% {var:3}); OPTIMIZE TABLE bu alanı geri kazandırır",
     "{var:1} hour(s) before": "{var:1} saat önce",

@@ -1168,7 +1168,7 @@ function ws_api_routes()
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('pending', 'applying', 'applied', 'dismissed', 'stale', 'failed')),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),
                 array('name' => 'task_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the changes proposed on this task.'),
-                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note, of the ones this site runs; or mcp_call for the calls of MCP server tools.'),
+                array('name' => 'type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A kind of record: product, stock, order, contact, erp_account, erp_quote, product_group, channel, user, page, form, file, offer, calendar_event, task, task_note or note, of the ones this site runs; or mcp_call for the calls of MCP server tools.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
             ),

@@ -25,7 +25,7 @@ description: Plan (2026-10-23, steps 1-2 done #1468, 3 #1564, 4 #1598, answers 1
 6. No schema, a PR each: tasks `due_time`, `remind_minutes`; channel customer on create/update (`ws_customer_input()`); forward (includes/workspace/forward.php); a small-file path (files.create is `'mcp' => false`).
 7. Scheduled actions as tools: plans/workspace-canvas-workflow-tables.md S1, S2.
 8. No schema, a PR per area: `dry_run` on 9 of 42 ERP writes lacking it (includes/erp/api.php: accounts, expenses, receipts) and all 7 translations writes.
-- Each new change kind (`erp_quote`, `variant_set`, bulk create) also reaches `ws_api_changes_param()` (the `changes` text of requests.answer and both propose routes, so their MCP tools) and `ws_ai_tools()`.
+- Each new change kind (`erp_quote`: done #1705; `variant_set`, bulk create) also reaches `ws_api_changes_param()` (the `changes` text of requests.answer and both propose routes, so their MCP tools) and `ws_ai_tools()`.
 
 ## Which questions are answered? (owner, 2026-10-24)
 1. MCP on approvals.decide, changes.apply: (a) as now, (b) not offered (the card), (c) confirmed again → b.
