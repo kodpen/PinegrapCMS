@@ -33,6 +33,17 @@
  * comments of the guide page; the author and the moderators write messages
  * under a guide on the desk, and the moderators notes under a report.
  *
+ * The replies and the feedback are drawn by the Comments widget, each page's
+ * thread in the template's layout: replies under the post they answer, the
+ * deepest quoting it, the best answer (a featured reply) first, the form,
+ * the box to follow the topic and the moderators' controls. Three lists of
+ * the same widget, in its recent mode, read the topic and guide pages: the
+ * latest replies on the home page, the member's own in My topics and the
+ * ones awaiting approval on the moderators' dashboard. The reply e-mails
+ * draw the comment they are about with it too. The desk, the inbox and the
+ * report page keep the platform's fixed comments block. Every page keeps its
+ * own comment settings ('comments' below).
+ *
  * The look ships in the template's User Styles: the template's own rules,
  * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
  * Mono for code, from the editor's font picker.
@@ -212,8 +223,8 @@ $kinds = array(lang('Question'), lang('Discussion'));
 
 // A topic's Status, set by the moderators. A new topic is Open and public
 // at once; Hidden takes it off the site ($topic_live below). Solved and
-// Closed are only said: replies are closed with the reply block's own
-// button.
+// Closed are only said: a moderator stops new replies with Stop new replies
+// under the topic's replies.
 $topic_statuses = array(lang('Open'), lang('Solved'), lang('Closed'), lang('Hidden'));
 $solved_value   = $topic_statuses[1];
 $hidden_value   = $topic_statuses[3];
@@ -533,6 +544,22 @@ $forum_css = implode("\n", array(
     // The platform's notices in the replies print their links without
     // .alert-link: they take the alert's link colour.
     '.pf-replies .alert a:not(.btn){color:var(--bs-alert-link-color)}',
+    // A reply of a topic or a guide: a rule before a reply's body (the
+    // layout shows it for replies only), its words, then its Reply, Share
+    // and Edit links as 44px targets. A reply two deep moves in further by
+    // the depth the server writes on each comment's own element
+    // (data-pg-comment-depth); the editor's canvas shows the rule alone.
+    // Share and Edit take the secondary text colour, which keeps its
+    // contrast in both themes (Bootstrap's link-secondary does not in the
+    // dark one); Reply keeps the ink of its link-body-emphasis class.
+    '.pf-reply{display:flex;gap:1rem;padding:1.25rem 0;border-bottom:1px solid var(--bs-border-color)}',
+    '.pf-reply-rule{flex:0 0 2px;margin-inline-start:.75rem;background-color:var(--bs-border-color)}',
+    '.pf-reply-body{flex:1 1 auto;min-width:0}',
+    '.pf-reply[data-pg-comment-depth="2"]{padding-inline-start:1.5rem}',
+    '@media (min-width:768px){.pf-reply[data-pg-comment-depth="2"]{padding-inline-start:2.75rem}}',
+    '.pf-reply-actions{display:flex;flex-wrap:wrap;column-gap:1.25rem}',
+    '.pf-reply-actions a{display:inline-flex;align-items:center;min-height:2.75rem;font-weight:600;font-size:.875rem;color:var(--bs-secondary-color)}',
+    '.pf-reply-actions a:hover{color:var(--bs-emphasis-color)}',
     // A row with the moderators' pencil in its corner (pg-edit-host, put
     // there by the list for whoever may edit the record) moves its words
     // clear of it.
@@ -683,8 +710,9 @@ $edit_button = function ($text = '') use ($link) {
     return $link($text !== '' ? $text : lang('Edit'), '#', 'btn btn-sm btn-secondary', array(),
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
 };
-// The replies of a record page: the platform's comments block, placed in
-// the page's own tree.
+// The messages and notes of the desk, the inbox and the report pages: the
+// platform's fixed comments block, placed in the page's own tree. The topic
+// and guide pages draw theirs with the Comments widget ($reply_thread).
 $comments_block = function () {
     return array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array());
 };
@@ -1575,34 +1603,47 @@ $mail_settings = array('folder' => 'private', 'search' => false, 'sitemap' => fa
 // ── Comments ────────────────────────────────────────────────────────────
 // The comment settings of the record pages. Each label is a singular noun:
 // the platform puts it in plural and into sentences ("2 replies", "Add
-// reply", "Notify me when a reply is added.").
+// reply", "Notify me when a reply is added."). No page takes attachments,
+// and nobody picks the name a comment is signed with: a member's comes from
+// their profile (attachments and select_name off, the keys the editor's
+// export writes).
 
 // The replies under a topic: signed in, published at once, mailed to the
 // topic's followers. No staff address: the moderators follow replies on
 // their dashboard and in the control panel's Comments screen. The label is
 // a key of its own, in lower case: the shared "Reply" is a verb button of
 // the workspace, and its Turkish, a verb, would make the "Add reply" heading
-// and button under every topic ungrammatical.
+// and button under every topic ungrammatical. The message shows over the
+// reply form, the closed message in its place while a moderator stopped new
+// replies.
 $reply_comments = array(
-    'label'         => lang('reply'),
-    'allow_new'     => true,
-    'auto_publish'  => true,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_reply}}',
-    'email_subject' => lang('There is a new reply to a topic you follow'),
+    'label'          => lang('reply'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_reply}}',
+    'email_subject'  => lang('There is a new reply to a topic you follow'),
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your reply is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This topic takes no new replies.'),
 );
 // Feedback under a guide, with a rating: held until a moderator publishes it.
 $feedback_comments = array(
-    'label'         => lang('Feedback'),
-    'allow_new'     => true,
-    'rating'        => true,
-    'auto_publish'  => false,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_reply}}',
-    'email_subject' => lang('There is new feedback on a guide you follow'),
-    'notify_email'  => '{{site_email}}',
+    'label'          => lang('Feedback'),
+    'allow_new'      => true,
+    'rating'         => true,
+    'auto_publish'   => false,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_reply}}',
+    'email_subject'  => lang('There is new feedback on a guide you follow'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your feedback is signed with the name in your profile. A moderator reads it before it appears.'),
+    'closed_message' => lang('This guide takes no new feedback.'),
 );
 // The messages between a guide's author and the moderators.
 $doc_desk_comments = array(
@@ -1614,6 +1655,8 @@ $doc_desk_comments = array(
     'email_page'    => '{{tab:email_doc_message}}',
     'email_subject' => lang('New message about a guide sent to the docs'),
     'notify_email'  => '{{site_email}}',
+    'attachments'   => false,
+    'select_name'   => false,
 );
 // The answers in a conversation started from the contact page.
 $conversation_comments = array(
@@ -1625,6 +1668,8 @@ $conversation_comments = array(
     'email_page'    => '{{tab:email_reply}}',
     'email_subject' => lang('There is a new reply to your conversation'),
     'notify_email'  => '{{site_email}}',
+    'attachments'   => false,
+    'select_name'   => false,
 );
 // The moderators' notes under a report, for the moderators only.
 $staff_note_comments = array(
@@ -1633,6 +1678,8 @@ $staff_note_comments = array(
     'auto_publish' => true,
     'show_date'    => true,
     'login'        => true,
+    'attachments'  => false,
+    'select_name'  => false,
 );
 
 // ── The sample records ──────────────────────────────────────────────────
@@ -2109,9 +2156,15 @@ $pages[] = array(
                         $sec_head(lang('Waiting for an answer'), lang('See all'), '{{page:unanswered}}'),
                         $widget('home_unanswered'),
                     )),
-                    $el('section', 'pf-card', lang('Popular this week'), array(
+                    $el('section', 'pf-card mb-4', lang('Popular this week'), array(
                         $sec_head(lang('Popular this week')),
                         $widget('home_popular'),
+                    )),
+                    // The newest published replies and feedback of every
+                    // topic and guide, each opening at its post.
+                    $el('section', 'pf-card', lang('Latest replies'), array(
+                        $sec_head(lang('Latest replies')),
+                        $widget('home_latest_replies'),
                     )),
                 ), '', '4'),
             ), '4', '', 'g-lg-5'),
@@ -2222,9 +2275,9 @@ $pages[] = array(
 // The topic (?r=): the topic and its replies (signed in, published at once)
 // in the main column, and beside them what is known about it, a way to
 // report a post and the guidelines. Two record views of the same topic: the
-// replies sit in the page's own tree, between them. The bare page shows
-// "not found", so it stays out of the sitemap; its topics get there
-// through the lists.
+// replies, the topic's own Comments widget, sit in the page's own tree
+// between them. The bare page shows "not found", so it stays out of the
+// sitemap; its topics get there through the lists.
 $pages[] = array(
     'key'              => 'topic',
     'name'             => lang('topic'),
@@ -2238,7 +2291,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('topic_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($widget('topic_replies'))),
                 ), '', '8'),
                 $col(array($widget('topic_aside')), '', '4', '', '12', 'd-print-none'),
             ), '4', '', 'g-lg-5'),
@@ -2443,7 +2496,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('doc_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Feedback'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Feedback'), array($widget('doc_feedback'))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', 'pf-sticky', lang('Side Column'), array(
@@ -2734,17 +2787,22 @@ $pages[] = array(
                     lang('Choose Start a topic at the top of any page, pick the board that fits and give the topic a title that says what happens. Your topic is public as soon as you post it.'),
                 ), lang('new topic, ask a question, post')),
                 $faq(3, lang('Will I know when someone replies?'), array(
-                    lang('Yes: every reply to a topic you started comes to you by e-mail. On other topics, tick the box under the reply form when you reply, and new replies come to you too.'),
+                    lang('Yes: every reply to a topic you started comes to you by e-mail. To follow another topic, choose Follow this topic under its replies, or tick the box under the reply form when you reply: its new replies then come to you too.'),
                 ), lang('notifications, e-mail, follow, watch, replies')),
                 $faq(4, lang('Can I change or delete my topic?'), array(
                     lang('Once a topic is posted, only the moderators can change it. Add details or corrections in a reply to your own topic. To have a topic changed or removed, write to the moderators through the contact page.'),
                 ), lang('edit, delete, remove, change a post')),
                 $faq(5, lang('What does Solved mean?'), array(
-                    lang('The question of the topic has an answer. When a reply solves your question, say so in a reply, and a moderator marks the topic as solved.'),
+                    lang('The question of the topic has an answer. When a reply solves your question, say so in a reply: a moderator marks the topic as solved and shows that reply first, as the best answer.'),
                 ), lang('solved, answered, accepted answer')),
                 $faq(6, lang('Why can I no longer find my topic?'), array(
                     lang('A moderator hides a topic that breaks the community guidelines or repeats another topic. If you think that was a mistake, write to the moderators through the contact page.'),
                 ), lang('hidden, removed, missing topic, moderation')),
+                // Numbered after the others, so their anchors stay as they
+                // were.
+                $faq(13, lang('How do I answer one reply, or point someone to it?'), array(
+                    lang('Choose Reply under it: your answer goes right under it, and deep in a thread it quotes it. Share copies a link that opens the topic at that reply: paste it in a reply, or in a report to the moderators.'),
+                ), lang('reply to a reply, quote, share, link to a reply')),
             )),
         )),
         $el('section', 'mb-5', lang('Account and E-mails'), array(
@@ -2771,7 +2829,7 @@ $pages[] = array(
                     lang('Open My guides from My Account. Each guide you sent has its own page, where the moderators write to you and you can answer them; each message also comes by e-mail.'),
                 ), lang('review, my guides, status, moderators')),
                 $faq(12, lang('Why does my feedback on a guide not show yet?'), array(
-                    lang('Feedback on guides appears once a moderator has read it. Questions get the quickest answer as a topic in the forum.'),
+                    lang('Feedback on guides appears once a moderator has read it. Until then you find it under Your replies in My topics, marked Awaiting approval. Questions get the quickest answer as a topic in the forum.'),
                 ), lang('feedback, rating, comment, held')),
             )),
         )),
@@ -3049,7 +3107,8 @@ $pages[] = array(
 // The member's own topics: the ones they started, the most recently active
 // first (the page's one list with page links), and the ones they follow.
 // Both hold live topics only: a topic the moderators hid opens nowhere, so
-// it leaves this page too.
+// it leaves this page too. Under them, the member's own replies and
+// feedback, the newest first, the ones awaiting approval marked so.
 $pages[] = array(
     'key'     => 'my_topics',
     'name'    => lang('my-topics'),
@@ -3059,7 +3118,7 @@ $pages[] = array(
     'sitemap' => false,
     'noindex' => true,
     'tree'    => $page(array(
-        $page_header(lang('My topics'), lang('The topics you started and the topics you follow, the most recently active first.'), array(
+        $page_header(lang('My topics'), lang('The topics you started, the topics you follow and your latest replies.'), array(
             $breadcrumb(array(array(lang('My Account'), '{{page:my_account}}'), array(lang('My topics'), ''))),
         )),
         $band(lang('Content'), array(
@@ -3069,16 +3128,20 @@ $pages[] = array(
                         $sec_head(lang('Topics you started'), lang('Start a topic'), '{{page:new_topic}}', 'pf-started'),
                         $widget('my_topics_started'),
                     ), array('_attrs' => array($attr('aria-labelledby', 'pf-started')))),
-                    $el('section', '', lang('Followed'), array(
+                    $el('section', 'mb-5', lang('Followed'), array(
                         $sec_head(lang('Topics you follow'), '', '', 'pf-followed'),
                         $widget('my_topics_followed'),
                     ), array('_attrs' => array($attr('aria-labelledby', 'pf-followed')))),
+                    $el('section', '', lang('Your replies'), array(
+                        $sec_head(lang('Your replies'), '', '', 'pf-my-replies'),
+                        $widget('my_replies'),
+                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-my-replies')))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', '', lang('Side Column'), array(
                         $side_card(lang('Following'), lang('How following works'), array(
                             $para(lang('Every reply to a topic you started comes to you by e-mail.'), 'small'),
-                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), 'small mb-0'),
+                            $para(lang('To follow someone else\'s topic, choose Follow this topic under its replies, or tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), 'small mb-0'),
                         ), 'pf-card pf-tint mb-4'),
                         $side_card(lang('Missing Topic'), lang('A topic is missing?'), array(
                             $para(lang('A topic the moderators hid no longer shows anywhere, this page included. If you think that was a mistake, write to them.'), 'small text-body-secondary mb-3'),
@@ -3234,8 +3297,9 @@ $staff_notes = array(
     lang('Moderators: open the account under Users and, under Content and Forms, tick the private, registration and public folders and switch on Reach the data submitted through forms. Administrators, designers and managers need none of this.'),
     lang('The private folder opens these pages. The registration folder holds the Forum Topics, Community Docs and Forum Reports forms: it lets a moderator open any guide on the docs desk and any report, and change them in the control panel. The public folder holds the topic and guide pages and the contact form: it lets a moderator publish, edit or delete replies and feedback, stop new replies under a topic and answer contact messages in the inbox. A ticked folder also lets the moderator edit its pages.'),
     lang('To take a topic off the site, open it with the pencil on its row or Moderate on its page, set its Status to Hidden and save: it leaves every list and its page at once, and Open brings it back. A hidden topic opens only in the control panel.'),
-    lang('Mark a topic Solved, pin it or make it an announcement the same way, in its Status, Pinned and Announcement fields. Closed is only a word on the topic: to stop new replies, use the moderators\' button under its replies.'),
-    lang('Replies are published at once; feedback on a guide waits until a moderator publishes it. Edit, publish or delete them under Comments in the control panel, or with the pencil on each one on its page.'),
+    lang('Mark a topic Solved, pin it or make it an announcement the same way, in its Status, Pinned and Announcement fields. Closed is only a word on the topic: to stop new replies, use Stop new replies under its replies.'),
+    lang('Replies are published at once; feedback on a guide waits until a moderator publishes it, and is listed under Replies awaiting approval on this page. Edit, publish or delete them under Comments in the control panel, or with Edit on each one on its page.'),
+    lang('To show the reply that solved a topic first, open it with Edit, tick Featured and save: it moves to the top of the topic as the best answer.'),
     lang('A topic shows the first and last name in its author\'s profile, and a member\'s reply or message is signed with that name, or with Member when the profile has none. Your replies, messages and notes are signed with the name in the form\'s name box, filled in from your own profile: fill in your first and last name under My Profile.'),
     lang('A guide arrives as Awaiting review. Open it on the docs desk, write to its author under it and set its Status: In review while you read it, Changes requested once you wrote what to change, Live on the site to put it in the docs, Withdrawn to take it out, Not accepted to decline it. A Status alone sends no e-mail: say what you did in a message under the guide.'),
     lang('Before you publish a guide, check its links and remove pictures that load from other sites: both are printed as written, for every reader. Readers can open its attachment once it is published.'),
@@ -3243,7 +3307,7 @@ $staff_notes = array(
     lang('A report arrives as Open. Its post is what the member typed: copy it into your browser, it is never a link. Act on the post, write a note under the report for the other moderators, then set the report to Resolved or Dismissed. The member who wrote the post is never told who reported it.'),
     lang('Never rename or remove the fields named status, board, kind, pinned, announcement, section, featured or doc_order, nor their options: the lists filter on these words, and a list whose filter names a missing field or word shows nothing. Keep Hide from the visitor (staff only) on for the office fields, or members could set them. A board, a section or a status is renamed by an administrator or designer in the visual editor, together with the board and section links of the pages; then publish, and set the new word on the records that had the old one.'),
     lang('Site search changes when its index is rebuilt, once a day: after you hide a topic, an administrator, designer or manager can run Update Search Index in the control panel to take it out of search at once. The popular tags of the forum and tag pages are written in the design: keep them in step with the tags members use.'),
-    lang('New topics, guides, reports and contact messages are e-mailed to the site\'s address; replies are not: follow them on this page and under Comments.'),
+    lang('New topics, guides, reports and contact messages are e-mailed to the site\'s address; replies are not: follow them in Latest replies on the home page and under Comments.'),
 );
 // The notes in two columns from lg: the first half, then the rest.
 $staff_note_cols = array();
@@ -3272,7 +3336,7 @@ $pages[] = array(
             $container(array(
                 $para(lang('Moderators'), 'pf-kicker mb-2'),
                 $heading('h1', lang('Moderation'), 'pf-page-title mb-2', array('id' => 'pf-staff-title')),
-                $para(lang('What is waiting for the moderators: reports, guides to review, new and unanswered topics, and the topics taken off the site.'), 'lead text-body-secondary pf-lead mb-4'),
+                $para(lang('What is waiting for the moderators: reports, guides to review, replies awaiting approval, new and unanswered topics, and the topics taken off the site.'), 'lead text-body-secondary pf-lead mb-4'),
                 $buttons(array(
                     $link(lang('Moderate replies and feedback'), $comments_url, 'btn btn-primary'),
                     $link(lang('Open the control panel'), $panel_url, 'btn btn-secondary'),
@@ -3291,6 +3355,7 @@ $pages[] = array(
         $jump_list(array(
             array(lang('Open reports'), 'open-reports'),
             array(lang('Guides awaiting review'), 'guides-to-review'),
+            array(lang('Replies awaiting approval'), 'replies-waiting'),
             array(lang('New topics this week'), 'new-topics'),
             array(lang('Unanswered topics'), 'unanswered-topics'),
             array(lang('Hidden topics'), 'hidden-topics'),
@@ -3300,6 +3365,7 @@ $pages[] = array(
             $row(array(
                 $desk_section('open-reports', lang('Open reports'), lang('Reported posts nobody has dealt with yet, the oldest first.'), 'staff_reports_waiting', lang('All reports'), '{{page:staff_reports}}'),
                 $desk_section('guides-to-review', lang('Guides awaiting review'), lang('Guides sent to the docs that no moderator has opened yet, the oldest first.'), 'staff_guides_waiting', lang('Docs desk'), '{{page:staff_docs}}'),
+                $desk_section('replies-waiting', lang('Replies awaiting approval'), lang('Feedback on guides and replies held for a moderator, the oldest first. Publish, edit or delete each one.'), 'staff_replies_waiting', lang('Moderate replies and feedback'), $comments_url),
                 $desk_section('new-topics', lang('New topics this week'), lang('Every live topic posted in the last seven days, the newest first. A topic taken off the site is under Hidden topics.'), 'staff_new_topics', lang('Topics desk'), '{{page:staff_topics}}'),
                 $desk_section('unanswered-topics', lang('Unanswered topics'), lang('Live topics still waiting for a first reply, the oldest first.'), 'staff_unanswered', lang('See all'), '{{page:unanswered}}'),
                 $desk_section('most-viewed', lang('Most viewed this week'), lang('The live topics viewed most in the last seven days.'), 'staff_popular'),
@@ -3546,8 +3612,11 @@ foreach ($mail_pages as $m) {
         'tree'  => $mail_page(array($widget($m[3]))),
     ));
 }
-// The comment e-mails. The System region carries what was written and its
-// "View or Reply" button.
+// The comment e-mails. Their Comments widget draws the comment the e-mail
+// is about in the template's layout, with its "View or Reply" button. The
+// System region after it keeps the fixed comment and its own View or Reply
+// button for an e-mail the widget does not draw: a comment of a product or
+// an event, or a card edited so it lost its link to the comment.
 $mail_system = array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array());
 // Something new on a page the member follows: a reply under a topic they
 // started or follow, feedback a moderator published under a guide they
@@ -3559,6 +3628,7 @@ $pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('There is something new for you')),
         $mail_para(lang('Someone wrote on a page you follow: a reply under a topic, feedback under a guide, or an answer from the moderators in your conversation. Read it below and answer on the page.')),
+        $widget('email_comment'),
         $mail_system,
     )),
 ));
@@ -3571,6 +3641,7 @@ $pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('New message about a guide sent to the docs')),
         $mail_para(lang('There is a new message under a guide sent to the docs. Read it below and answer on the guide\'s page.')),
+        $widget('email_comment'),
         $mail_system,
     )),
 ));
@@ -3868,6 +3939,285 @@ $widgets = array(
     ),
 );
 
+// ── The Comments widgets ────────────────────────────────────────────────
+// The replies of a topic, the feedback of a guide, the lists of recent
+// replies and the comment e-mails are Comments widgets. Their layouts ship
+// with the template, in its own look: a widget left to the editor's starter
+// would keep its page out of the installer's preview. Every control is a
+// binding the renderer wires to its handler: the form posts the comment, the
+// watch form follows the thread, the moderators' form opens or closes it,
+// Reply and Share answer or point at one post. A flag shows a part only
+// while it holds for the visitor.
+
+// A Messages node: the notices and errors of the form it sits in.
+$messages = function ($class = '') {
+    return array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => $class), 'children' => array());
+};
+
+// A thread: the posts in the layout's order, each a .pf-reply card with a
+// rule before a reply, its byline (the best answer marked, the account only
+// for the moderators), the post it answers quoted where the thread stops
+// going deeper, its words and its Reply, Share and Edit links; the page
+// links; the form (its notices first, the post being answered, the stars of
+// a guide, the words, the name for whoever types one, the publish options of
+// the moderators, the box to follow the thread, the CAPTCHA); the box to
+// follow or stop following; the moderators' Stop and Allow buttons.
+// $w: the words of the thread (empty, heading, label, sign_in, submit,
+// watch_box, follow, unfollow, close, reopen, featured) and rating, whether
+// the form asks for stars.
+$reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $attr, $bind, $show_when, $loop, $widget_root, $messages, $people) {
+    $body = array();
+    if ($w['rating']) {
+        $body[] = $el('div', 'text-warning small mb-1', lang('Stars'), array(), array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')));
+    }
+    $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array(
+        $span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')),
+        $el('span', 'pf-badge pf-badge-pin', lang('Featured'), array(
+            $icon('bi-patch-check-fill'),
+            $span($w['featured'], '', lang('Text')),
+        ), $show_when('comment_is_featured')),
+        $span(lang('Moderator'), 'pf-badge', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
+        $span(lang('2 hours ago'), 'pg-hide-if-empty', lang('Time'), $bind('__comment_date')),
+        // The account behind the post, for the moderators only.
+        $el('span', 'pg-hide-if-empty', lang('Account'), array(
+            $span(lang('Account:'), 'me-1', lang('Label')),
+            $span('priya.raman', 'pg-field-value', lang('User Name'), $bind('__comment_staff_name')),
+        ), $show_when('is_staff')),
+    ));
+    $body[] = $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
+        array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending')));
+    $body[] = $el('div', 'pf-post', lang('Message'), array(
+        $el('blockquote', '', lang('Quote'), array(
+            $el('p', 'small mb-1', lang('In reply to'), array(
+                $span(lang('In reply to'), 'me-1', lang('Label')),
+                $link($people[0], '#', 'fw-semibold link-body-emphasis', array(), array('_bindings' => array('href' => '__comment_parent_url', 'text' => '__comment_parent_name'))),
+            )),
+            $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote'))),
+        ), $show_when('comment_has_quote')),
+        $el('div', '', lang('Comment text'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+    ));
+    // The file a post carries, while the page takes attachments.
+    $body[] = $el('p', 'small mb-2', lang('Attachment'), array(
+        $icon('bi-paperclip', 'me-1'),
+        $link('screenshot.png', '#', '', array(), array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+        $span('84 KB', 'pf-meta ms-1', lang('Value'), $bind('__comment_file_size')),
+    ), $show_when('comment_has_file'));
+    $body[] = $el('div', 'pf-reply-actions', lang('Comment Actions'), array(
+        $link(lang('Reply'), '#', 'link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply'))),
+        $link(lang('Share'), '#', '', array(), array('_bindings' => array('action' => 'comment_share'))),
+        // Bound to the post's edit screen, so the list adds no pencil of
+        // its own.
+        $link(lang('Edit'), '#', '', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit'))),
+    ));
+
+    $label = function ($for, $text, $class = 'form-label') use ($el, $attr) {
+        return $el('label', $class, lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $for))));
+    };
+    $control = function ($tag, $class, $id, $value, $attrs = array()) use ($el) {
+        return $el($tag, $class, lang('Field'), array(), array('id' => $id, '_attrs' => $attrs, '_bindings' => array('value' => $value)));
+    };
+    $fields = array(
+        $messages(),
+        // The post the reply answers, while it answers one. The page keeps
+        // the box with the hidden attribute for Reply to show it, so it
+        // takes no display utility: d-flex, !important and later in
+        // Bootstrap than its [hidden] rule, would keep it on screen, empty.
+        $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
+            $span(lang('Replying to'), 'me-1', lang('Text')),
+            $el('strong', '', lang('Name'), array(), array('text' => $people[1], '_bindings' => array('text' => '__reply_to_name'))),
+            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+        ), $show_when('is_replying')),
+    );
+    if ($w['rating']) {
+        $fields[] = $el('div', 'mb-3', lang('Rating'), array(
+            $el('div', 'form-label', lang('Label'), array(), array('text' => lang('Rating'))),
+            $el('div', '', lang('Stars'), array(), array('_bindings' => array('section' => 'comment_rating_input'))),
+        ), $show_when('rating_on'));
+    }
+    $fields[] = $el('div', 'mb-3', lang('Message'), array(
+        $label('comment_message', $w['label']),
+        $control('textarea', 'form-control', 'comment_message', 'comment_message', array($attr('rows', '6'))),
+    ));
+    // The name: typed by whoever may type one (the moderators, filled in
+    // from their profile), else the profile's, as the page shows it.
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name', lang('Your Name')),
+        $control('input', 'form-control', 'comment_name', 'comment_name', array($attr('type', 'text'))),
+    ), $show_when('name_is_typed'));
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name_type', lang('Your Name')),
+        $control('select', 'form-select', 'comment_name_type', 'comment_name_type'),
+    ), $show_when('name_is_chosen'));
+    $fields[] = $el('div', 'mb-3 small', lang('Posting as'), array(
+        $span(lang('Posting as'), 'me-1', lang('Label')),
+        $el('strong', '', lang('Name'), array(), array('text' => $people[0], '_bindings' => array('text' => '__comment_author_name'))),
+    ), $show_when('name_is_fixed'));
+    $fields[] = $el('div', 'mb-3', lang('Attach a File'), array(
+        $label('comment_file', lang('Attach a File')),
+        $control('input', 'form-control', 'comment_file', 'comment_file', array($attr('type', 'file'))),
+    ), $show_when('files_on'));
+    $fields[] = $el('div', 'mb-3 small', lang('Publish'), array(), array('_bindings' => array('section' => 'comment_publish')));
+    $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
+        $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
+        $label('comment_watcher', $w['watch_box'], 'form-check-label'),
+    ), $show_when('watching_on'));
+    $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
+    $fields[] = $el('div', '', lang('Send Button'), array(
+        $el('button', 'btn btn-primary px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
+    ));
+
+    $small_button = function ($text, $action) use ($el, $attr) {
+        return $el('button', 'btn btn-sm btn-secondary', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
+    };
+
+    return $widget_root(array(
+        $el('div', 'pg-hide-if-empty', lang('Comment List'), array(
+            $loop(array($el('article', 'pf-reply', lang('Comment'), array(
+                $el('div', 'pf-reply-rule', lang('Reply Indent'), array(), $show_when('comment_is_reply')),
+                $el('div', 'pf-reply-body', lang('Comment Card'), $body),
+            )))),
+            $el('div', 'mt-3', lang('Pagination'), array(), array('_bindings' => array('section' => 'comment_pagination'))),
+        )),
+        $para($w['empty'], 'pf-meta mb-0', $show_when('no_comments')),
+        $el('div', 'mt-4', lang('Add a comment'), array(
+            $heading('h3', $w['heading'], 'h5 fw-bold mb-2', $show_when('comments_open')),
+            $el('p', 'pf-meta mb-3 pg-hide-if-empty', lang('Text'), array(), array('_bindings' => array('text' => '__comments_intro', 'eo_visible_if' => 'comments_open'))),
+            $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
+            $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
+                $span($w['sign_in'], '', lang('Text')),
+                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+            ), $show_when('must_sign_in')),
+            $el('form', 'pf-card', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
+        )),
+        // Following the thread: how many follow it, and the member's own
+        // button; the moderators' list of who follows.
+        $el('div', 'pf-card pf-tint mt-4 pg-hide-if-empty', lang('Watch'), array(
+            $el('p', 'pf-meta mb-2 pg-hide-if-empty', lang('Text'), array(), $bind('__watcher_count_text')),
+            $el('form', 'd-flex flex-wrap align-items-center gap-2', lang('Watch Form'), array(
+                $messages('w-100'),
+                $small_button($w['follow'], 'comment_watch'),
+                $small_button($w['unfollow'], 'comment_unwatch'),
+            ), array('_bindings' => array('action' => 'comment_watch_form'))),
+            $el('div', '', lang('Watchers'), array(), array('_bindings' => array('section' => 'comment_watchers'))),
+        ), $show_when('watching_on')),
+        $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
+            $el('form', '', lang('Open or Close'), array(
+                $small_button($w['close'], 'comment_close'),
+                $small_button($w['reopen'], 'comment_reopen'),
+            ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
+        ), $show_when('is_staff')),
+    ));
+};
+// The words of a topic's replies and of a guide's feedback.
+$topic_words = array(
+    'empty'     => lang('No replies yet. Be the first to answer.'),
+    'heading'   => lang('Write a reply'),
+    'label'     => lang('Your reply'),
+    'sign_in'   => lang('Sign in to reply.'),
+    'submit'    => lang('Post reply'),
+    'watch_box' => lang('Follow this topic: e-mail me its new replies.'),
+    'follow'    => lang('Follow this topic'),
+    'unfollow'  => lang('Stop following this topic'),
+    'close'     => lang('Stop new replies'),
+    'reopen'    => lang('Allow new replies'),
+    'featured'  => lang('Best answer'),
+    'rating'    => false,
+);
+$doc_words = array(
+    'empty'     => lang('No feedback yet. Tell the next reader whether this guide helped you.'),
+    'heading'   => lang('Rate this guide'),
+    'label'     => lang('Your feedback'),
+    'sign_in'   => lang('Sign in to rate this guide.'),
+    'submit'    => lang('Send feedback'),
+    'watch_box' => lang('Follow this guide: e-mail me its new feedback.'),
+    'follow'    => lang('Follow this guide'),
+    'unfollow'  => lang('Stop following this guide'),
+    'close'     => lang('Stop new feedback'),
+    'reopen'    => lang('Allow new feedback'),
+    'featured'  => lang('Featured'),
+    'rating'    => true,
+);
+
+// A list of recent replies, in a side card's short rows: whether a reply
+// awaits approval ($w status), the topic or guide it was written on (its
+// link opens the page at the reply; over the whole row unless the row has
+// its own Publish or edit link, $w edit), who wrote it and when, its stars
+// and the start of its words. A list draws no form, no quote and nothing
+// else of a thread. $w: empty, the sentence while there is none, and title,
+// the sample the editor shows.
+$recent_list = function ($w) use ($el, $para, $link, $span, $bind, $dot, $show_when, $loop, $widget_root, $people) {
+    $row = array();
+    if ($w['status']) {
+        $row[] = $el('p', 'small fw-semibold text-danger-emphasis mb-1 pg-hide-if-empty', lang('Comment Status'), array(),
+            array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending')));
+    }
+    $row[] = $el('h3', 'pf-compact-title', lang('Thread Title'), array(
+        $link($w['title'], '#', $w['edit'] ? '' : 'stretched-link', array(), array('_bindings' => array('href' => '__comment_url', 'text' => '__comment_thread_title'))),
+    ));
+    $row[] = $el('p', 'pf-meta small mb-1', lang('Name Line'), array(
+        $span($people[2], 'fw-semibold', lang('Name'), $bind('__comment_name')),
+        $el('span', 'pg-hide-if-empty', lang('Time'), array(
+            $dot(),
+            $span(lang('2 hours ago'), 'pg-field-value', lang('Value'), $bind('__comment_date')),
+        )),
+    ));
+    $row[] = $el('div', 'text-warning small mb-1', lang('Stars'), array(), array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')));
+    $row[] = $el('p', 'small text-body-secondary mb-0 pf-clamp-3', lang('Excerpt'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_excerpt')));
+    if ($w['edit']) {
+        $row[] = $el('p', 'small mt-2 mb-0', lang('Link'), array(
+            $link(lang('Publish or edit'), '#', 'fw-semibold', array(), array('_bindings' => array('href' => '__comment_edit_url'))),
+        ), $show_when('comment_can_edit'));
+    }
+    return $widget_root(array(
+        $el('ul', 'list-unstyled mb-0 pg-hide-if-empty', lang('Comment List'), array(
+            $loop(array($el('li', 'pf-compact', lang('Comment'), $row))),
+        )),
+        $para($w['empty'], 'pf-meta mb-0', $show_when('no_comments')),
+    ));
+};
+// The pages the lists read: the topics' replies and the guides' feedback.
+$reply_sources = array('{{tab:topic}}', '{{tab:doc}}');
+
+// The comment of a reply e-mail (a reply, feedback or a message under a
+// guide), drawn for the comment the e-mail is about: who wrote it and when,
+// its stars, the post it answers, its words and its file in the e-mail's
+// box, then its View or Reply button. The button is bound to the comment's
+// own address, with no flag over it: an e-mail whose card has no such link
+// keeps the fixed comment the System region carries. No form, no control,
+// no capitals by CSS; every colour written for mail programs that drop the
+// stylesheet, with its fallback inside var().
+$mail_comment_tree = $widget_root(array(
+    $el('div', '', lang('Comment List'), array(
+        $loop(array(
+            $mail_box(array(
+                $el('p', 'mb-1', lang('Name Line'), array(
+                    $span($people[1], 'fw-semibold', lang('Name'), array_merge($bind('__comment_name'), $mail_style('font-weight:600;color:#1d2131'))),
+                    $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true'), $attr('style', 'color:#5b6070;margin:0 6px')))),
+                    $span(lang('Date'), 'text-body-secondary', lang('Date'), array_merge($bind('__comment_date'), $mail_style('color:#5b6070'))),
+                ), $mail_style('margin:0 0 8px')),
+                $el('div', '', lang('Stars'), array(), array_merge(
+                    array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')),
+                    $mail_style('color:#b45309;margin:0 0 8px'))),
+                $el('blockquote', '', lang('Quote'), array(
+                    $el('p', 'small mb-1', lang('In reply to'), array(
+                        $span(lang('In reply to'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+                        $span($people[0], 'fw-semibold', lang('Name'), $bind('__comment_parent_name')),
+                    ), $mail_style('font-size:13px;margin:0 0 4px')),
+                    $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array_merge(
+                        array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote')), $mail_style('margin:0'))),
+                ), array_merge(array('_bindings' => array('eo_visible_if' => 'comment_has_quote')),
+                    $mail_style('margin:0 0 12px;padding:0 0 0 12px;border-left:3px solid #dcdfe8;color:#5b6070'))),
+                $el('div', '', lang('Message'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+                $el('p', 'small mt-2 mb-0', lang('Attachment'), array(
+                    $link('screenshot.png', '#', '', array($attr('style', 'color:#4f46e5;color:var(--bs-link-color,#4f46e5)')),
+                        array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+                ), array_merge(array('_bindings' => array('eo_visible_if' => 'comment_has_file')), $mail_style('font-size:13px;margin:8px 0 0'))),
+            ), lang('Comment')),
+            $mail_button(lang('View or Reply'), '#', array('_bindings' => array('href' => '__comment_url'))),
+        )),
+    )),
+));
+
 // ── The lists ───────────────────────────────────────────────────────────
 // Every public list carries its form's live rule before its own filters.
 // Lists on one page share the page_number and query parameters, so only
@@ -3953,6 +4303,27 @@ $widgets['home_guides'] = $doc_list('home', 3, 3, array($is_featured),
     array($el('div', 'row row-cols-1 row-cols-md-3 g-3 g-lg-4', lang('Featured guides'), array(
         $loop(array($el('div', 'col', lang('Column'), array($guide_card($doc_sample(1)))))),
     ))));
+// The latest replies: the five newest published replies and feedback of
+// every topic and guide a visitor may open (the topic and guide pages' own
+// rules keep a hidden topic's and an unpublished guide's out), each opening
+// its page at the post.
+$widgets['home_latest_replies'] = array(
+    'page'   => 'home',
+    'slug'   => lang('recent-comments'),
+    'config' => array(
+        'regionType'      => 'comments',
+        'mode'            => 'recent',
+        'recent_show'     => 'published',
+        'recent_page_ids' => $reply_sources,
+        'recent_limit'    => '5',
+    ),
+    'tree'   => $recent_list(array(
+        'empty'  => lang('No replies yet.'),
+        'title'  => $topic_heads[1][5],
+        'status' => false,
+        'edit'   => false,
+    )),
+);
 
 // The forum: the count of every live topic (the page's feed), the pinned
 // topics, then every other live topic with a search over the title, the
@@ -4358,6 +4729,42 @@ $widgets['doc_view'] = array(
     )),
 );
 
+// The replies under a topic: the topic page's own Comments widget, under
+// the topic view (whose record the replies belong to). Oldest first, a
+// reply under the post it answers and one more level under that; a reply
+// to a reply that deep stays at that level and quotes the post it answers.
+// A featured reply, the best answer, comes first. Twenty posts with their
+// replies to a page, each post a permalink.
+$widgets['topic_replies'] = array(
+    'page'   => 'topic',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'first',
+        'layout'     => 'threaded',
+        'max_depth'  => 2,
+        'per_page'   => 20,
+    ),
+    'tree'   => $reply_thread($topic_words),
+);
+// The feedback under a guide, with its stars: the guide page's own Comments
+// widget. The newest first, an answer to a feedback right under it (an
+// answer to that answer quotes it), a featured one first, ten to a page.
+$widgets['doc_feedback'] = array(
+    'page'   => 'doc',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'newest',
+        'featured'   => 'first',
+        'layout'     => 'threaded',
+        'max_depth'  => 1,
+        'per_page'   => 10,
+    ),
+    'tree'   => $reply_thread($doc_words),
+);
+
 // ── The forms ───────────────────────────────────────────────────────────
 
 // The Forum Topics form, on Start a Topic. What a member fills in sits in
@@ -4505,6 +4912,27 @@ $widgets['my_topics_started'] = $topic_list('my_topics', 20, 0, array(),
 $widgets['my_topics_followed'] = $topic_list('my_topics', 20, 20, array(),
     lang('You follow no topic yet. Tick the box under the reply form when you reply, and the topic appears here.'),
     array($topic_rows($topic_sample(7))), $own(false, true));
+// The member's own replies and feedback, the newest first, published or
+// waiting for a moderator (marked so). Only a signed-in member reaches the
+// page, and the list shows nobody else's.
+$widgets['my_replies'] = array(
+    'page'   => 'my_topics',
+    'slug'   => lang('recent-comments'),
+    'config' => array(
+        'regionType'      => 'comments',
+        'mode'            => 'recent',
+        'recent_show'     => 'mine',
+        'recent_page_ids' => $reply_sources,
+        'recent_limit'    => '10',
+        'recent_order'    => 'newest',
+    ),
+    'tree'   => $recent_list(array(
+        'empty'  => lang('You have not replied yet. Your replies and your feedback on guides appear here, the newest first.'),
+        'title'  => $topic_heads[4][5],
+        'status' => true,
+        'edit'   => false,
+    )),
+);
 
 // A list of the docs desk or the moderators' desks: the records in their
 // state on the desk. No live rule: these lists sit on the member's own page
@@ -4672,6 +5100,27 @@ $widgets['staff_reports_waiting'] = $desk_list('staff', $report_base, 10, 10, ar
     lang('No report is waiting.'), array($report_rows($report)));
 $widgets['staff_guides_waiting'] = $desk_list('staff', $desk_doc_base, 10, 10, array($is_status($doc_statuses[0])),
     lang('No guide is waiting for review.'), array($desk_doc_rows($desk_guide(8, $doc_statuses[0]))));
+// The replies and the feedback held for a moderator, the oldest first, on
+// the topic and guide pages the moderator may edit; each with its way to
+// the comment's edit screen, where it is published.
+$widgets['staff_replies_waiting'] = array(
+    'page'   => 'staff',
+    'slug'   => lang('recent-comments'),
+    'config' => array(
+        'regionType'      => 'comments',
+        'mode'            => 'recent',
+        'recent_show'     => 'pending',
+        'recent_page_ids' => $reply_sources,
+        'recent_limit'    => '10',
+        'recent_order'    => 'oldest',
+    ),
+    'tree'   => $recent_list(array(
+        'empty'  => lang('Nothing is waiting for approval.'),
+        'title'  => $doc_heads[3][3],
+        'status' => true,
+        'edit'   => true,
+    )),
+);
 // Every live topic of the last seven days, the newest first: its title
 // opens its page. A hidden one is in the hidden topics' list.
 $widgets['staff_new_topics'] = $desk_list('staff', $topic_pub, 10, 10,
@@ -5091,6 +5540,22 @@ $widgets['email_message_sender'] = $mail_widget('email_message_received', 'conta
     $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
     $mail_new_account(),
 ));
+// The comment of the reply e-mails: placed on the new reply e-mail and the
+// guide message e-mail, drawn for the comment the e-mail is about, flat and
+// alone. The pages that name these e-mails keep their comment settings.
+$widgets['email_comment'] = array(
+    'page'   => 'email_reply',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'none',
+        'layout'     => 'flat',
+        'max_depth'  => 1,
+        'per_page'   => 0,
+    ),
+    'tree'   => $mail_comment_tree,
+);
 
 // The site search: the whole site for ?query=, ten results a page. A
 // result that matches a part of a page links to that part.
@@ -5215,7 +5680,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.0.1',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',
@@ -5234,10 +5699,10 @@ return array(
     // What the installer lists on the template's card, after the points
     // every template shares.
     'highlights'  => array(
-        lang('Boards, pinned topics and announcements, with the latest activity, unanswered topics and the week\'s most viewed on the home page.'),
-        lang('Topic pages with replies, the topic\'s facts beside them and a way to report a post.'),
+        lang('Boards, pinned topics and announcements, with the latest activity, the latest replies, unanswered topics and the week\'s most viewed on the home page.'),
+        lang('Topic pages with threaded replies that quote each other and a best answer shown first, the topic\'s facts beside them and a way to report a post.'),
         lang('Docs that members write and moderators review, publish and feature.'),
-        lang('A moderation dashboard, member accounts with an inbox, and e-mails for new topics, replies, guides and reports.'),
+        lang('A moderation dashboard with the replies awaiting approval, member accounts with their own replies and an inbox, and e-mails for new topics, replies, guides and reports.'),
     ),
 
     // Made (or found again) when the template is opened; see _pg_tpl_folders().

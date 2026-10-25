@@ -1,6 +1,6 @@
 ---
 name: design-template-forum-layout
-description: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, focus rings, light e-mail frames.
+description: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, reply cards, focus rings, light e-mail frames.
 ---
 
 ## How does the look ship?
@@ -14,7 +14,8 @@ description: Forum template look: pf- User Styles, Figtree and JetBrains Mono, t
 - Count strips: a list whose loop area is empty, in a `has_records` box, prints `^^__result_count^^` and no empty sentence. The home numbers are `col-6 col-sm-4` and the third `col-12 col-sm-4`: three in a row at 320px left a four-digit count no room. There are 24: home 3, board tiles 6, section tiles 6, forum, board, docs, dashboard 6. Board and section tiles each place their own (`board_count_<key>`, `doc_count_<key>`, page '').
 - The announcements and featured guides bands are `.pf-vanish`: `:has(.pg-sw-empty){display:none}`; an older browser shows the empty sentence.
 - What members write sits in `.pf-post` (`position:relative;contain:paint`, tables scroll, code in the mono font); a guide keeps a 42rem `.pf-measure`.
-- The topic page: the topic and its replies (`.pf-replies`) in the main column, and an aside with the facts, Report a post and the guidelines, sticky (`.pf-sticky`) from lg only on a screen at least 56rem tall: on a laptop its lower cards stayed out of view. A printed topic leaves out the replies and the aside.
+- The topic page: the topic and its replies (`.pf-replies`) in the main column, and an aside with the facts, Report a post and the guidelines, sticky (`.pf-sticky`) from lg only on a screen at least 56rem tall: on a laptop its lower cards stayed out of view. A printed topic leaves out the replies (`.pf-replies` is `d-print-none`) and the aside.
+- A reply is an `article.pf-reply` (flex): a 2px `.pf-reply-rule` before an answer to a reply (`comment_is_reply`), depth 2 padded further from md; Reply, Share and Edit are 44px-tall links in the secondary colour (no `link-secondary`: too faint in dark). The Replying to box has no display utility: `d-flex` beats `[hidden]`.
 
 ## How is it accessible?
 - Ink outlines for focus: `body .btn`, fields, check boxes, page links and close buttons, `.pf-navlink` and the FAQ's `.accordion-button` (inset, so the next item cannot cover it), `.nav-underline .nav-link`, `.pf-tag`, and the masthead's bare menu button.
@@ -23,4 +24,4 @@ description: Forum template look: pf- User Styles, Figtree and JetBrains Mono, t
 - E-mail frames are `data-bs-theme="light"`: inline colours are written for a light card, each `var()` with its fallback, and no CSS capitals (`pf-kicker` and `pf-label` stay out of e-mails: a Turkish i would print dotless).
 
 ## What does the installer preview show?
-- 14 public pages (home, forum, board, unanswered, docs, docs_section, search and the static pages) and the 11 e-mails. The preview repeats each loop three times and prints each element's sample words (Date, 2 hours ago): never a calendar date, which would go stale on the canvas.
+- 14 public pages (home, forum, board, unanswered, docs, docs_section, search and the static pages) and the 11 e-mails. The preview repeats each loop three times (the e-mail comment card too) and prints each element's sample words (Date, 2 hours ago): never a calendar date, which would go stale on the canvas.
