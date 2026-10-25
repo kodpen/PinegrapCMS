@@ -28214,5 +28214,8 @@
     "Open the task of {var:1}": "{var:1} görevini aç",
     "Select a box to see how it went in this run.": "Bu çalıştırmada nasıl gittiğini görmek için bir kutu seçin.",
     "The boxes of this run": "Bu çalıştırmanın kutuları",
-    "Not reached yet": "Sırası gelmedi"
+    "Not reached yet": "Sırası gelmedi",
+    "The runs could not be loaded.": "Çalıştırmalar yüklenemedi.",
+    "The run is no longer followed; it is shown as it was last read.": "Çalıştırma artık izlenmiyor; en son okunduğu hâliyle gösteriliyor.",
+    "The run could not be read just now; it will be tried again shortly.": "Çalıştırma şu an okunamadı; birazdan yeniden denenecek."
 }

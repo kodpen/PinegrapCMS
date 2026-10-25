@@ -66,7 +66,9 @@
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
-    // failed look waits up to POLL_FAIL_MAX. The screen's ws_tick, which
+    // look that got no answer waits twice as long each time, up to
+    // POLL_FAIL_MAX, and one the server refused is not made again
+    // (pollFailed()). The screen's ws_tick, which
     // carries the runs on, is sent at most once in TICK_GAP ms.
     var POLL_FIRST = 2000;
     var POLL_GROW = 1.5;
@@ -139,14 +141,16 @@
         pinch: null,
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
-        runs: { flow: 0, items: [], next: null, loading: false },
+        runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
         stash: null,        // what the run view put aside: the draft, selection, view, edit
         starting: false,    // a start is being asked or sent
         startToken: null,   // { flow, value } kept until a start is answered
         opening: {},        // run ids whose ws_flow_run_get from the list is on its way
         openSeq: 0,         // the run asked for last; an older answer is not shown
-        poll: { timer: 0, delay: POLL_FIRST, busy: 0 }, // busy: the id of the run a look is on its way for
+        // busy: the id of the run a look is on its way for; note: why the
+        // run shown is not being read ({ lost, text }), null while it is.
+        poll: { timer: 0, delay: POLL_FIRST, busy: 0, note: null },
         tickAt: 0
     };
 
@@ -667,7 +671,7 @@
         // (after Publish or Pause); another flow starts without it.
         if (!same) {
             state.panel = '';
-            state.runs = { flow: flow.id, items: [], next: null, loading: false };
+            state.runs = { flow: flow.id, items: [], next: null, loading: false, error: '' };
         }
 
         state.flow = flow;
@@ -2378,6 +2382,13 @@
 
                 keys.push('run-title');
             }
+
+            // A control of the bar over the canvas that went with the
+            // drawing (Try again once the run is read again) hands the
+            // focus to the bar's Close.
+            if (state.run && ui.runBox.contains(active)) {
+                keys.push('run-close');
+            }
         }
 
         state.refocus = '';
@@ -2427,10 +2438,11 @@
         }
 
         if (list.flow !== flow.id) {
-            state.runs = list = { flow: flow.id, items: [], next: null, loading: false };
+            state.runs = list = { flow: flow.id, items: [], next: null, loading: false, error: '' };
         }
 
         list.loading = true;
+        list.error = '';
 
         K.api('ws_flow_runs_list', { flow_id: flow.id, before_id: more ? (list.next || 0) : 0 }).then(function (data) {
             var runs = data.runs || [];
@@ -2443,7 +2455,12 @@
             if (more && runs.length) {
                 state.refocus = 'run-' + runs[0].id;
             }
-        }).catch(K.fail).then(function () {
+        }).catch(function (error) {
+            // Kept for the side panel, which says it in place of "has not
+            // run yet" while nothing is listed (runsSide()).
+            list.error = (error && error.message) || t('error_generic');
+            K.fail(error);
+        }).then(function () {
             list.loading = false;
 
             if ((state.runs === list) && (state.panel === 'runs') && !state.run) {
@@ -2489,6 +2506,24 @@
         head.tabIndex = -1;
         head.setAttribute('data-refocus', 'runs-title');
         ui.side.appendChild(head);
+
+        // A load that failed is not "has not run yet": the reason, and a
+        // way to load the list again. The redraw shows "Loading…" at once,
+        // which loadRuns() itself does not draw.
+        if (!list.items.length && list.error && !list.loading) {
+            var failed = el('p', 'small text-danger', t('fl_runs_failed') + ' ' + list.error);
+            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+
+            retry.setAttribute('data-refocus', 'runs-retry');
+            retry.addEventListener('click', function () {
+                loadRuns(false);
+                state.refocus = 'runs-title';
+                drawSettings();
+            });
+            failed.appendChild(retry);
+            ui.side.appendChild(failed);
+            return;
+        }
 
         if (!list.items.length) {
             ui.side.appendChild(el('p', 'small text-body-secondary', list.loading ? t('loading') : t('fl_runs_none')));
@@ -2592,6 +2627,7 @@
 
         stopPoll();
         state.run = run;
+        state.poll.note = null;
         state.edit = false;
         state.graph = graphOf(run.graph);
         state.selected = null;
@@ -2617,6 +2653,7 @@
     function endRun() {
         stopPoll();
         state.run = null;
+        state.poll.note = null;
         state.stash = null;
 
         if (ui.app) {
@@ -2679,6 +2716,31 @@
             closeRun('');
         });
         ui.runBox.appendChild(close);
+
+        // Why the run is not being read (pollFailed()), on a line of its own
+        // under the bar: the server's refusal, after which what is shown is
+        // the run as last read, or a look that got no answer, tried again
+        // on its own or at once from here.
+        var note = state.poll.note;
+
+        if (!note) {
+            return;
+        }
+
+        var line = el('div', 'w-100 small ' + (note.lost ? 'text-danger' : 'text-body-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
+
+        if (!note.lost) {
+            var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
+
+            retry.setAttribute('data-refocus', 'run-retry');
+            retry.addEventListener('click', function () {
+                state.poll.delay = POLL_FIRST;
+                schedulePoll(0);
+            });
+            line.appendChild(retry);
+        }
+
+        ui.runBox.appendChild(line);
     }
 
     // The side panel of a run: the run, then the box selected or its boxes.
@@ -2687,6 +2749,9 @@
         var head = el('div', 'wsf-side-title', t('fl_run_name', run.id));
         var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
         var tools = el('div', 'd-flex flex-wrap gap-2 mb-3');
+        // A run the server no longer answers for (pollFailed()) is not said
+        // to be still going: it shows as it was last read.
+        var lost = !!(state.poll.note && state.poll.note.lost);
 
         head.tabIndex = -1;
         head.setAttribute('data-refocus', 'run-title');
@@ -2694,7 +2759,7 @@
         ui.side.appendChild(runBadge(RUN_STATES, run.status));
 
         [t('fl_run_version', run.version), t('fl_run_by', personName(run.started_by)), t('fl_run_at', when(run.started_at)),
-            run.finished_at ? t('fl_run_ended', when(run.finished_at)) : t('fl_run_open')].forEach(function (text) {
+            run.finished_at ? t('fl_run_ended', when(run.finished_at)) : (lost ? t('fl_run_lost') : t('fl_run_open'))].forEach(function (text) {
             facts.appendChild(el('li', '', text));
         });
         ui.side.appendChild(facts);
@@ -2874,12 +2939,13 @@
         state.poll.timer = 0;
     }
 
-    // The next look at the run shown, none once it ended or while the tab
-    // is hidden (it looks again when shown, bindWindow()).
+    // The next look at the run shown, none once it ended, once the server
+    // refused it (pollFailed()) or while the tab is hidden (it looks again
+    // when shown, bindWindow()).
     function schedulePoll(delay) {
         stopPoll();
 
-        if (!runOpen(state.run) || (document.visibilityState === 'hidden')) {
+        if (!runOpen(state.run) || (state.poll.note && state.poll.note.lost) || (document.visibilityState === 'hidden')) {
             return;
         }
 
@@ -2909,7 +2975,19 @@
                 return;
             }
 
-            state.poll.delay = applyRun(data.run) ? POLL_FIRST : Math.min(POLL_MAX, Math.round(state.poll.delay * POLL_GROW));
+            // Read again after looks that got no answer: their word goes
+            // from the bar, which applyRun() redraws only on a change.
+            var noted = !!state.poll.note;
+
+            state.poll.note = null;
+
+            var changed = applyRun(data.run);
+
+            if (noted && !changed) {
+                keepFocus(drawRunBar);
+            }
+
+            state.poll.delay = changed ? POLL_FIRST : Math.min(POLL_MAX, Math.round(state.poll.delay * POLL_GROW));
 
             if (data.due) {
                 tick(false);
@@ -2924,15 +3002,39 @@
                 return;
             }
 
-            // A refusal (the run is gone or out of reach) is final; a look
-            // that got no answer is tried again, later each time.
-            if (error && (error.field !== undefined)) {
-                return;
-            }
-
-            state.poll.delay = Math.min(POLL_FAIL_MAX, state.poll.delay * 2);
-            schedulePoll();
+            pollFailed(error);
         });
+    }
+
+    // A look at the run shown that failed. An error api() read from the
+    // server's JSON answer carries a code ('' or one): the server refused
+    // the run (it went with its binned flow, its channel is no longer read,
+    // the session ended or its token changed), and asking again would only
+    // be refused again. The run stays as it was last read, says why, offers
+    // no Cancel and is not read again. A look that got no answer (the
+    // network, a server error page that is not JSON) has no code: it is
+    // tried again, waiting twice as long each time, and the bar says so
+    // until a look succeeds; told to screen readers once.
+    function pollFailed(error) {
+        if (error && (error.code !== undefined)) {
+            state.poll.note = { lost: true, text: error.message || t('error_generic') };
+            state.run.can_cancel = false;
+            keepFocus(drawRunViews);
+            announce(state.poll.note.text + ' ' + t('fl_run_lost'));
+            return;
+        }
+
+        var first = !state.poll.note;
+
+        state.poll.note = { lost: false, text: t('fl_run_unreached') };
+        state.poll.delay = Math.min(POLL_FAIL_MAX, state.poll.delay * 2);
+
+        if (first) {
+            keepFocus(drawRunBar);
+            announce(state.poll.note.text);
+        }
+
+        schedulePoll();
     }
 
     // A look at run has come back: busy is cleared only while it still names
