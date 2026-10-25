@@ -1478,7 +1478,7 @@ function pg_designer_components_card($user)
         if (!is_array($cfg)) $cfg = array();
 
         $type_cell = h($is_widget ? lang('System Widget') : lang('Shared Component'));
-        $kind = isset($cfg['regionType']) ? (string)$cfg['regionType'] : '';
+        $kind = pg_sw_widget_kind($cfg);
         if ($is_widget && $kind !== '') {
             $type_cell .= '<div class="small text-muted">' . h(isset($comp_types[$kind]) ? $comp_types[$kind] : $kind) . '</div>';
         }

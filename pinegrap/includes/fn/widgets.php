@@ -76,7 +76,33 @@ function pg_sw_type_labels()
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
         'comments'            => lang('Comments'),
+        'comments_recent'     => lang('Recent Comments'),
     );
+}
+
+/**
+ * The kind of a system widget, as the panel, the palette, a template's
+ * starter and the census name it: its regionType, except a comments widget
+ * in the recent mode ('mode' => 'recent'), which is 'comments_recent'. The
+ * row still stores regionType 'comments', and _expand_system_widgets()
+ * dispatches on that. '' for a config without a kind. Pure.
+ *
+ * The editor's twin is _swKindOf() in assets/js/style_designer.js.
+ *
+ * @param mixed $cfg system_region_config, decoded
+ * @return string
+ */
+function pg_sw_widget_kind($cfg)
+{
+    if (!is_array($cfg) || !isset($cfg['regionType']) || !is_string($cfg['regionType'])) {
+        return '';
+    }
+
+    if (($cfg['regionType'] === 'comments') && isset($cfg['mode']) && ($cfg['mode'] === 'recent')) {
+        return 'comments_recent';
+    }
+
+    return $cfg['regionType'];
 }
 
 // ============================================================================
@@ -5619,14 +5645,27 @@ function _pg_sw_search_merge_pages($first, $rest)
 function pg_sw_search_index_eligible($list_cfg, $view_cfg)
 {
     if (!pg_sw_form_widget_public($list_cfg) || !pg_sw_form_widget_public($view_cfg)) return false;
-    foreach (pg_sw_merge_record_filters($list_cfg, $view_cfg) as $filter) {
+    return !pg_sw_filters_compare_viewer(pg_sw_merge_record_filters($list_cfg, $view_cfg));
+}
+
+// Whether a list of record filters compares a field with the viewer: a
+// filter with a field, no fixed value and the dynamic value 'viewer' or
+// 'viewers email address'. Without a signed-in visitor such a filter reads
+// '' and matches every record sent while signed out, so a render with no
+// visitor of its own (the search index, a list of recent comments drawn for
+// a visitor who is not signed in) must not apply it. Pure.
+function pg_sw_filters_compare_viewer($filters)
+{
+    if (!is_array($filters)) return false;
+    foreach ($filters as $filter) {
+        if (!is_array($filter)) continue;
         $field   = isset($filter['field']) ? trim((string)$filter['field']) : '';
         $value   = isset($filter['value']) ? (string)$filter['value'] : '';
         $dynamic = isset($filter['dynamic_value']) ? (string)$filter['dynamic_value'] : '';
         if ($field === '' || $value !== '') continue;
-        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return false;
+        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return true;
     }
-    return true;
+    return false;
 }
 
 // The address a record's search item is stored under: relative to PATH, as

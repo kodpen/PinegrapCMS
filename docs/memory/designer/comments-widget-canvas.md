@@ -4,13 +4,13 @@ description: The comments widget on the canvas and in the Preview: visitor state
 ---
 
 ## What does the canvas draw?
-- One visitor state at a time (`_sdCommentsCanvasState`, editor only): comments, replying, no comments, member, sign in, closed, staff (`_sdCommentsCanvasStates()`), picked by chips on the band (`_sdStateChips()`, `sd-chips-wrap`; the login region's `_sdSessionChips()` uses it, same DOM) or the panel's "Canvas shows" (`_sdCommentsCanvasSect()`).
+- One visitor state at a time (`_sdCommentsCanvasState`, editor only): comments, replying, no comments, member, sign in, closed, staff (`_sdCommentsCanvasStates(cfg)`; a recent list's: [[comments-widget-recent-editor]]), picked by chips on the band (`_sdStateChips()`, `sd-chips-wrap`, shared with the login region) or the panel's "Canvas shows" (`_sdCommentsCanvasSect()`).
 - `_sdCommentsCanvasFacts(state, cfg)` -> `_sdCommentsThreadFlags()`, a line-for-line twin of `pg_comments_widget_thread_flags()` (22 flags, compared under Node): a new PHP flag goes into both (check_bindings misses it).
 
 ## Hide or fade?
 - Hide (`sd-state-off`, `_sdCommentsFlagOff()` in buildNodeEl): a node whose thread flag the state has false; the loop area without comments. A row flag (`comment_*`) hides only in a sample; the card shows every part.
 - Fade (`sd-binding-off`, `_sdCommentsBindingOff()`): what the page's settings or the site switch off; the facts keep `rating_on`, `files_on`, `watching_on` on in every state, so it fades, never hides.
-- Table structure nodes (buildTableNodeEl) take no state class, as in the login region.
+- Table structure nodes (buildTableNodeEl) take no state class.
 
 ## What does picking a node do?
 - `_sdCommentsStateFor(root, node, cfg)` reads the thread flags from root to node (a loop area needs comments): the state drawn if it shows them, else the first that does. `_sdSelectionNeedsCanvas()` and buildSharedRefEl use it, so a node picked in the layer tree is drawn. A chip that hides the selection moves it to the widget (`_sdSetCommentsCanvasState()`).

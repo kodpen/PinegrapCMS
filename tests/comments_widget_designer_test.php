@@ -535,7 +535,7 @@ out.on = run();
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_sdCommentsBindingOff'), $script);
+	$res = comments_widget_designer_test_node(array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff'), $script);
 	if ($res === null) {
 		return;
 	}
@@ -815,7 +815,8 @@ out.pick = {
 JS;
 
 	$res = comments_widget_designer_test_node(
-		array('_sdCommentsThreadFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
+		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts',
+			'_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
@@ -1064,7 +1065,7 @@ function test_comments_widget_designer_canvas_wiring()
 
 	$ref = comments_widget_designer_test_js_function($js, 'buildSharedRefEl');
 	pg_assert_contains('_sdAppendCommentSamples(', $ref, 'the samples follow the card');
-	pg_assert_contains('_sdCommentsCanvasStates()', $ref, 'the band carries the state chips');
+	pg_assert_contains('_sdCommentsCanvasStates(_sysCfg)', $ref, 'the band carries the state chips of the widget\'s kind');
 	pg_assert_contains('_sdCommentsFlagOff(', comments_widget_designer_test_js_function($js, 'buildNodeEl'), 'the canvas hides what a state leaves out');
 	pg_assert_contains('_sdCommentsStateFor(', comments_widget_designer_test_js_function($js, '_sdSelectionNeedsCanvas'), 'a hidden node picked switches the state');
 	pg_assert_contains('_sdCommentSample', comments_widget_designer_test_js_function($js, '_displayValueForBinding'), 'a sample\'s values are drawn');
@@ -1255,7 +1256,7 @@ out.block = _sdCommentsBlockNode();
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRefNode', '_sdCommentsBlockNode'), $script);
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRefNode', '_sdCommentsBlockNode'), $script);
 	if ($res === null) {
 		return;
 	}
@@ -1318,10 +1319,14 @@ var rowCfg = _sdCommentsRowConfigs([{ id: '31', system_region_config: '{"regionT
 var parkedPages = [{ tree: root([ref(7)]) }, { tree: root([ref(31)]) }];
 out.pick_cache_only = _sdCommentsPickWidget(parkedPages, function () { return null; }, treeOf, {}, 3);
 out.pick_with_rows = _sdCommentsPickWidget(parkedPages, function (s) { return cfgs[s] || rowCfg[s] || null; }, treeOf, {}, 3);
+// A list of recent comments on a parked tab is known by its row too, and is
+// not the design's Comments widget.
+var listCfg = _sdCommentsRowConfigs([{ id: '32', system_region_config: '{"regionType":"comments","mode":"recent"}' }]);
+out.pick_parked_list = _sdCommentsPickWidget([{ tree: root([ref(32)]) }], function (s) { return listCfg[s] || null; }, treeOf, {}, 3);
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs'), $script);
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsPickWidget', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs'), $script);
 	if ($res === null) {
 		return;
 	}
@@ -1333,6 +1338,7 @@ JS;
 	pg_assert_same(array(), $res['unloaded_none'], 'no pages');
 	pg_assert_same(0, $res['pick_cache_only'], 'a parked tab\'s widget is missed without its config');
 	pg_assert_same(31, $res['pick_with_rows'], 'and found with the config its row carries');
+	pg_assert_same(0, $res['pick_parked_list'], 'a parked list of recent comments is not picked');
 }
 
 
@@ -1462,7 +1468,7 @@ out.parked_gone = run(function (c) {
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs',
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRowConfigs', '_sdCommentsUnloadedRefs',
 		'_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode', '_sdCommentsBlockNode', '_sdCommentsSwapOffered', '_sdCommentsMakeDesignable',
 		'_sdCommentsBackToBlock'), $script);
 	if ($res === null) {
@@ -1590,4 +1596,493 @@ function test_comments_widget_designer_conversion_wiring()
 	pg_assert_contains('saveState()', comments_widget_designer_test_js_function($js, '_sdCommentsBackToBlock'), 'back is one undo step');
 
 	pg_assert_contains('pg_comments_save_warnings(', comments_widget_designer_test_php_body('pg_designer_save_page'), 'the save warns');
+}
+
+// -- the recent comments mode ------------------------------------------------------
+
+// The editor tells a list of recent comments from a thread by its kind
+// (_swKindOf()): the widget the conversion picks, the rows named after the
+// design, the settings shortcut and the Preview's comment settings are the
+// thread's only.
+function test_comments_widget_designer_recent_kind_checks()
+{
+	$script = <<<'JS'
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid, sharedName: 'w' + sid }, children: [] }; }
+function root(kids) { return { type: 'root', props: {}, children: kids }; }
+var cfgs = { 5: { regionType: 'comments', mode: 'recent' }, 6: { regionType: 'comments' }, 7: { regionType: 'comments', mode: 'thread' } };
+var cfgOf = function (sid) { return cfgs[sid] || null; };
+var treeOf = function () { return null; };
+var out = {};
+out.pick = _sdCommentsPickWidget([{ tree: root([ref(5), ref(6)]) }], cfgOf, treeOf, {}, 3);
+out.pick_list_only = _sdCommentsPickWidget([{ tree: root([ref(5)]) }], cfgOf, treeOf, { 5: [{ style_id: 3 }] }, 3, [5]);
+out.pick_thread_mode = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, {}, 3);
+out.named = _sdCommentsNamedRows([
+    { id: 21, name: 'design-comments-widget', system_region_config: '{"regionType":"comments","mode":"recent"}' },
+    { id: 22, name: 'design-comments-widget [2]', system_region_config: '{"regionType":"comments"}' }
+], 'design-comments-widget');
+// The settings shortcut: a node inside a thread, not inside a list.
+var _inside = 0;
+function _isInsideSystemWidget() { return _inside; }
+function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var node = { type: 'semantic', props: { tag: 'span' }, children: [] };
+_inside = 5; out.shortcut_list = _sdCommentsWidgetOf(node);
+_inside = 6; out.shortcut_thread = _sdCommentsWidgetOf(node) ? _sdCommentsWidgetOf(node).sid : 0;
+// The Preview asks for the page's comment settings only for a thread.
+function _pgActivePage() { return { page_id: 12 }; }
+var _sharedCache = { 5: { tree: root([]), system_region_config: '{}' }, 6: { tree: root([]), system_region_config: '{}' } };
+function _sdCommentSettingsValues() { return { pg_comments: '1' }; }
+out.preview_list = _sdPreviewWidgetPayload('<!--pg-sw-preview:5-->');
+out.preview_thread = _sdPreviewWidgetPayload('<!--pg-sw-preview:5--><!--pg-sw-preview:6-->');
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsWidgetOf', '_sdPreviewWidgetPayload'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(6, $res['pick'], 'the thread, not the list placed before it');
+	pg_assert_same(0, $res['pick_list_only'], 'a page with only a list has no Comments widget to reuse');
+	pg_assert_same(7, $res['pick_thread_mode'], 'a row that says thread is a thread');
+	pg_assert_same(array(22), $res['named'], 'a list named like the design\'s widget is not reused');
+	pg_assert_same(null, $res['shortcut_list'], 'no comment settings shortcut inside a list');
+	pg_assert_same(6, $res['shortcut_thread'], 'one inside a thread');
+	pg_assert_false(isset($res['preview_list']['comment_settings']), 'the Preview of a list sends no page comment settings');
+	pg_assert_true(isset($res['preview_thread']['comment_settings']), 'with a thread it does');
+}
+
+// The kind's defaults, and switching between the two modes; a kind's name.
+function test_comments_widget_designer_recent_type_defaults()
+{
+	$script = <<<'JS'
+function _sdT(s) { return s; }
+var _SW_FORM_ORDER_COUNTERS = [];
+var out = {};
+out.recent = _swTypeDefaults({}, 'comments_recent');
+var back = _swTypeDefaults(JSON.parse(JSON.stringify(out.recent)), 'comments');
+out.back = back;
+out.again = _swTypeDefaults(JSON.parse(JSON.stringify(back)), 'comments_recent');
+out.thread = _swTypeDefaults({}, 'comments');
+out.kept = _swTypeDefaults({ recent_show: 'mine', recent_limit: '20', recent_page_ids: [4] }, 'comments_recent');
+out.names = [_swNameKind(out.recent), _swNameKind(out.thread), _swNameKind({}), _swNameKind({ regionType: 'blog_list' })];
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_swTypeDefaults', '_swNameKind'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('regionType' => 'comments', 'mode' => 'recent', 'recent_show' => 'published', 'recent_page_ids' => array(), 'recent_limit' => '5', 'recent_order' => 'newest'),
+		$res['recent'], 'a list: stored as a comments widget in the recent mode');
+	pg_assert_same('thread', $res['back']['mode'], 'back to a thread: the mode says so');
+	pg_assert_same('comments', $res['back']['regionType'], 'the same kind is stored');
+	pg_assert_same('oldest', $res['back']['order'], 'with the thread\'s options');
+	pg_assert_same('published', $res['back']['recent_show'], 'the list\'s options are kept for the way back');
+	pg_assert_same('recent', $res['again']['mode'], 'and a list again');
+	pg_assert_false(array_key_exists('mode', $res['thread']), 'a new thread writes no mode: rows stay as they were');
+	pg_assert_same('mine', $res['kept']['recent_show'], 'a chosen value survives');
+	pg_assert_same(array(4), $res['kept']['recent_page_ids'], 'the sources too');
+	pg_assert_same(array('comments_recent', 'comments', 'form_list_view', 'form_list_view'), $res['names'], 'the kind a name is made from');
+}
+
+// "Make a copy for this page" and Change type through the copy keep the
+// kind straight: a list copied as a thread gets the thread's starter and
+// mode, a thread copied as a list the list's, and a plain copy of a list is
+// named after the list.
+function test_comments_widget_designer_recent_fork()
+{
+	$script = <<<'JS'
+function _sdT(s) { return s; }
+var _SW_FORM_ORDER_COUNTERS = [];
+var _seq = 0;
+function gid() { return 'n' + (++_seq); }
+function cloneTree(t) { return JSON.parse(JSON.stringify(t)); }
+function _swKeepPageFieldIds() {}
+function _swBlankTree() { return { type: 'root', props: {}, children: [] }; }
+function _buildStarterTree(kind) { return { type: 'root', props: { starter: kind }, children: [] }; }
+function _swAutoName(kind) { return 'topic-' + kind + '-widget'; }
+function _pgActivePage() { return { key: 'a', page_id: 3, page_name: 'topic' }; }
+var _activeKey = 'a';
+var made = [];
+function _swCreateRow(name, cfg, tree) { made.push({ name: name, cfg: cfg, tree: tree }); }
+var _sharedCache = {
+    5: { tree: { type: 'root', props: { own: 'list' }, children: [] }, system_region_config: '{"regionType":"comments","mode":"recent","recent_show":"mine"}' },
+    6: { tree: { type: 'root', props: { own: 'thread' }, children: [] }, system_region_config: '{"regionType":"comments","order":"newest"}' }
+};
+_swForkForThisPage(5, { regionType: 'comments' });
+_swForkForThisPage(6, { regionType: 'comments_recent' });
+_swForkForThisPage(5, {});
+_swForkForThisPage(6, {});
+process.stdout.write(JSON.stringify(made));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_swTypeDefaults', '_swNameKind', '_swForkForThisPage'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(4, count($res), 'four copies');
+	pg_assert_same('comments', $res[0]['tree']['props']['starter'], 'a list copied as a thread: the thread\'s starter');
+	pg_assert_same('thread', $res[0]['cfg']['mode'], 'and mode');
+	pg_assert_same('topic-comments-widget', $res[0]['name'], 'named after the thread');
+	pg_assert_same('comments_recent', $res[1]['tree']['props']['starter'], 'a thread copied as a list: the list\'s starter');
+	pg_assert_same('recent', $res[1]['cfg']['mode'], 'mode recent');
+	pg_assert_same('published', $res[1]['cfg']['recent_show'], 'with its defaults');
+	pg_assert_same('newest', $res[1]['cfg']['order'], 'the thread\'s options kept');
+	pg_assert_same('topic-comments_recent-widget', $res[1]['name'], 'named after the list');
+	pg_assert_same('list', $res[2]['tree']['props']['own'], 'a plain copy of a list keeps its layout');
+	pg_assert_same('mine', $res[2]['cfg']['recent_show'], 'and its options');
+	pg_assert_same('topic-comments_recent-widget', $res[2]['name'], 'and is named after the list');
+	pg_assert_same('thread', $res[3]['tree']['props']['own'], 'a plain copy of a thread is unchanged');
+	pg_assert_same('topic-comments-widget', $res[3]['name'], 'named after the thread');
+}
+
+// A template's widget left to the editor opens with its kind's starter, the
+// installer's way (StyleDesigner.starterTree(), pg_design_template_starter_kinds()).
+function test_comments_widget_designer_recent_template_starter()
+{
+	$script = <<<'JS'
+var known = { comments: 1, comments_recent: 1, login_region: 1 };
+function _swIsType(t) { return !!known[t]; }
+function _buildStarterTree(kind) { return { type: 'root', props: { starter: kind }, children: [] }; }
+var out = {
+    list: _swTemplateStarterTree({ starter: true, system_region_config: '{"regionType":"comments","mode":"recent"}' }),
+    thread: _swTemplateStarterTree({ starter: true, system_region_config: '{"regionType":"comments"}' }),
+    unknown: _swTemplateStarterTree({ starter: true, system_region_config: '{"regionType":"nope"}' }),
+    stored: _swTemplateStarterTree({ starter: false, system_region_config: '{"regionType":"comments"}' }),
+    broken: _swTemplateStarterTree({ starter: true, system_region_config: 'not json' })
+};
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_swTemplateStarterTree'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('comments_recent', $res['list']['props']['starter'], 'a list opens with the list\'s starter');
+	pg_assert_same('comments', $res['thread']['props']['starter'], 'a thread with the thread\'s');
+	pg_assert_same(null, $res['unknown'], 'an unknown kind: none');
+	pg_assert_same(null, $res['stored'], 'a widget with its own layout: none');
+	pg_assert_same(null, $res['broken'], 'settings that cannot be read: none');
+
+	$tpl = array(
+		'pages' => array(array('key' => 'home'), array('key' => 'topic')),
+		'widgets' => array(
+			array('key' => 'latest', 'page' => 'home', 'tree' => 'starter', 'config' => array('regionType' => 'comments', 'mode' => 'recent', 'recent_page_ids' => array('{{tab:topic}}'))),
+			array('key' => 'replies', 'page' => 'topic', 'tree' => 'starter', 'config' => array('regionType' => 'comments')),
+		),
+	);
+	pg_assert_same(array('comments_recent', 'comments'), pg_design_template_starter_kinds($tpl), 'the server asks for both starters');
+
+	// Every place that builds a starter from a stored config reads the kind.
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	pg_assert_contains('_swTemplateStarterTree(w)', comments_widget_designer_test_js_function($js, '_pgTemplateApply'), 'opening a template');
+	pg_assert_contains('_buildStarterTree(_swKindOf(tcfg))', $js, 'the repair of a template placeholder');
+	pg_assert_contains('_SW_NO_MESSAGES[_swKindOf(mcfg)]', $js, 'the Messages drop on load');
+	pg_assert_contains('opts.regionType !== _swKindOf(cfg)', comments_widget_designer_test_js_function($js, '_swForkForThisPage'), 'the copy');
+	pg_assert_contains('_swTypeInfo(_swKindOf(itemCfg))', $js, 'the System palette names and draws each widget by its kind');
+	pg_assert_false(strpos($js, '_swTypeInfo(itemCfg.regionType)'), 'never by the stored regionType alone');
+	pg_assert_contains("{ type: 'comments_recent',", $js, 'the editor knows the kind');
+	pg_assert_contains('comments_recent: 1', $js, 'it has no Messages node');
+}
+
+// After a save, a tab named in a list of pages becomes the page's id.
+function test_comments_widget_designer_tab_refs_in_lists()
+{
+	$script = <<<'JS'
+var _sharedCache = {
+    5: { tree: null, system_region_config: JSON.stringify({ regionType: 'comments', mode: 'recent', recent_page_ids: ['tab:topic', 12, 'tab:gone', { page_id: 'tab:doc' }], email_page_id: 'tab:doc' }) }
+};
+var _sharedSnapshots = {};
+function _sdSharedTreeJSON(t) { return JSON.stringify(t); }
+var _pages = [];
+var _activeKey = '';
+function _setCmtVal() {}
+_swResolveTabRefs({ topic: '31', doc: '40' });
+process.stdout.write(_sharedCache[5].system_region_config);
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swResolveTreeTabRefs', '_swResolveTabRefs'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(31, 12, 0, array('page_id' => 40)), $res['recent_page_ids'], 'tabs in a list become ids, a closed one 0, objects walked');
+	pg_assert_same(40, $res['email_page_id'], 'a single page as before');
+}
+
+// The checkboxes that write a list: page lists keep a tab not published yet
+// and stop at their maximum; id lists read numbers as before.
+function test_comments_widget_designer_cfg_list_values()
+{
+	$script = <<<'JS'
+var boxes = [
+    { checked: true, value: 'tab:topic' }, { checked: false, value: '9' }, { checked: true, value: '12' },
+    { checked: true, value: '12' }, { checked: true, value: '0' }, { checked: true, value: 'x' },
+    { checked: true, value: '13' }, { checked: true, value: '14' }, { checked: true, value: '15' }, { checked: true, value: '16' }
+];
+var out = {
+    pages: _swCfgListValues(boxes, 'page', 5),
+    pages_no_max: _swCfgListValues(boxes, 'page', 0),
+    ids: _swCfgListValues([{ checked: true, value: '3' }, { checked: false, value: '4' }, { checked: true, value: '5' }], '', 0)
+};
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swCfgListValues'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('tab:topic', 12, 13, 14, 15), $res['pages'], 'ticked pages, a tab kept, each once, five at most');
+	pg_assert_same(array('tab:topic', 12, 13, 14, 15, 16), $res['pages_no_max'], 'without a maximum');
+	pg_assert_same(array(3, 5), $res['ids'], 'an id list as before');
+
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	pg_assert_contains('_swCfgListValues(', comments_widget_designer_test_js_function($js, '_wireSystemWidgetProps'), 'the generic handler reads them');
+}
+
+// The recent comments section of the widget panel.
+function test_comments_widget_designer_recent_section()
+{
+	$script = <<<'JS'
+function _sdT(s, v) {
+    if (v === undefined) return s;
+    if (Array.isArray(v)) return String(s).replace(/\{var:(\d)\}/g, function (m, i) { return v[i - 1]; });
+    return String(s).replace(/\{var(?::1)?\}/g, v);
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function sect(icon, title, body) { return '<section data-title="' + title + '">' + body + '</section>'; }
+function row(label, ctrl) { return '<div data-row="' + label + '">' + ctrl + '</div>'; }
+function _swPageRef(p) { return (p.page_id > 0) ? String(p.page_id) : ('tab:' + p.key); }
+var cfgs = { 7: { regionType: 'form_item_view', custom_form_page_id: 70 } };
+function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var _sharedCache = { 7: { tree: { type: 'root', children: [] }, system_region_config: JSON.stringify(cfgs[7]) } };
+var _sdCommentsRecentAsked = {};
+var _customFormsCache = [{ page_id: 70, page_name: 'Forum Topics' }];
+var _activeKey = 'home';
+function _getCmtVal() { return '0'; }
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid }, children: [] }; }
+var _pages = [
+    { key: 'home', page_id: 1, page_name: 'home', pg_comments: 0, tree: { type: 'root', children: [] } },
+    { key: 'topic', page_id: 0, page_name: 'topic', pg_comments: 1, tree: { type: 'root', children: [ref(7)] } },
+    { key: 'doc', page_id: 12, page_name: 'doc', pg_comments: 1, tree: { type: 'root', children: [] } },
+    { key: 'about', page_id: 13, page_name: 'about', pg_comments: 0, tree: { type: 'root', children: [] } }
+];
+function _pgTreeOf(p) { return p.tree; }
+var _allPagesCache = null;
+var out = {};
+out.published = _sdCommentsRecentSect(5, { regionType: 'comments', mode: 'recent', recent_show: 'published', recent_page_ids: ['tab:topic', 99] });
+out.mine = _sdCommentsRecentSect(5, { regionType: 'comments', mode: 'recent', recent_show: 'mine', recent_page_ids: [] });
+out.full = _sdCommentsRecentSect(5, { regionType: 'comments', mode: 'recent', recent_page_ids: [93, 94, 95, 96, 97] });
+out.sources = _sdCommentsRecentSources({ recent_page_ids: ['tab:topic'] }).map(function (s) { return [s.ref, s.kind, s.checked]; });
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsRecentSources', '_sdCommentsRecentSect'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	$published = $res['published'];
+	pg_assert_contains('data-title="Recent comments"', $published, 'headed Recent comments');
+	pg_assert_contains('Shared: every page that shows this widget uses these options.', $published, 'shared by the placements');
+	pg_assert_contains('data-row="Shows"', $published, 'what it shows');
+	pg_assert_contains('data-sw-cfg="recent_show"', $published, 'written by the generic handler');
+	pg_assert_contains('data-row="Number of comments"', $published, 'how many');
+	pg_assert_false(strpos($published, 'data-row="Comment order"'), 'published is always newest first');
+	pg_assert_contains('data-row="Comment order"', $res['mine'], 'the order for mine');
+	pg_assert_false(strpos($published, 'data-row="Order"'), 'not the shop\'s "Order"');
+	pg_assert_contains('topic — records of Forum Topics', $published, 'a page with a record view lists its records');
+	pg_assert_contains('doc — the page', $published, 'a page with comments on lists its own');
+	pg_assert_false(strpos($published, 'about —'), 'a page with neither is not offered');
+	pg_assert_contains('value="tab:topic"', $published, 'an unsaved page by its tab');
+	pg_assert_contains('data-sw-cfg-list="recent_page_ids"', $published, 'the list key');
+	pg_assert_contains('data-sw-cfg-list-kind="page"', $published, 'read as pages');
+	pg_assert_contains('Another page (#99)', $published, 'a stored page outside the design');
+	pg_assert_contains('Pick the pages whose comments it lists.', $res['mine'], 'no page yet');
+	pg_assert_same(2, substr_count($res['full'], ' disabled'), 'at five pages the design\'s other two cannot be ticked');
+	pg_assert_same(array(array('tab:topic', 'record', true), array('12', 'page', false)), $res['sources'], 'the sources the design offers');
+}
+
+// The editor loads only the open tab's components: a tab not opened yet
+// places a record view the cache does not know. Its kind is shown as loading,
+// its components are fetched once, and the panel is drawn again.
+function test_comments_widget_designer_recent_section_cold_cache()
+{
+	$script = <<<'JS'
+function _sdT(s, v) {
+    if (v === undefined) return s;
+    if (Array.isArray(v)) return String(s).replace(/\{var:(\d)\}/g, function (m, i) { return v[i - 1]; });
+    return String(s).replace(/\{var(?::1)?\}/g, v);
+}
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function sect(icon, title, body) { return '<section data-title="' + title + '">' + body + '</section>'; }
+function row(label, ctrl) { return '<div data-row="' + label + '">' + ctrl + '</div>'; }
+function _swPageRef(p) { return (p.page_id > 0) ? String(p.page_id) : ('tab:' + p.key); }
+var cfgs = {};
+function _cfCfgOf(sid) { return cfgs[sid] || null; }
+var _sharedCache = { 4: { tree: { type: 'root', children: [] }, system_region_config: null } };
+var _sdCommentsRecentAsked = {};
+var _customFormsCache = [{ page_id: 70, page_name: 'Forum Topics' }];
+var _activeKey = 'home';
+function _getCmtVal() { return '0'; }
+function ref(sid) { return { type: 'shared_ref', props: { sharedId: sid }, children: [] }; }
+var _pages = [
+    { key: 'home', page_id: 1, page_name: 'home', pg_comments: 0, tree: { type: 'root', children: [ref(4)] } },
+    { key: 'topic', page_id: 0, page_name: 'topic', pg_comments: 1, tree: { type: 'root', children: [{ type: 'container', children: [ref(7)] }] } },
+    { key: 'doc', page_id: 12, page_name: 'doc', pg_comments: 1, tree: { type: 'root', children: [ref(9)] } },
+    { key: 'about', page_id: 13, page_name: 'about', pg_comments: 0, tree: { type: 'root', children: [ref(8)] } }
+];
+function _pgTreeOf(p) { return p.tree; }
+var fetched = [];
+var renders = 0;
+// The server answers for 7 (a record view) only.
+function prefetchShared(ids, cb) {
+    fetched.push(ids.slice());
+    if (ids.indexOf(7) !== -1) {
+        cfgs[7] = { regionType: 'form_item_view', custom_form_page_id: 70 };
+        _sharedCache[7] = { tree: { type: 'root', children: [] }, system_region_config: JSON.stringify(cfgs[7]) };
+    }
+    cb();
+}
+function renderProperties() { renders++; }
+var kinds = function (cfg) { return _sdCommentsRecentSources(cfg).map(function (s) { return [s.ref, s.kind]; }); };
+var cfg = { regionType: 'comments', mode: 'recent', recent_page_ids: ['tab:topic'] };
+var out = {};
+out.cold = kinds(cfg);
+out.coldSect = _sdCommentsRecentSect(5, cfg);
+_sdCommentsRecentLoad(cfg);
+out.fetched = fetched.slice();
+out.renders = renders;
+out.warm = kinds(cfg);
+out.warmSect = _sdCommentsRecentSect(5, cfg);
+_sdCommentsRecentLoad(cfg);
+out.fetchedAgain = fetched.length;
+out.rendersAgain = renders;
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsRecentSources', '_sdCommentsRecentSect', '_sdCommentsRecentLoad'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('tab:topic', 'loading'), array('12', 'loading'), array('13', 'loading')), $res['cold'],
+		'tabs that place components not loaded yet: loading, never a page source');
+	pg_assert_contains('topic — loading its widgets…', $res['coldSect'], 'shown as loading');
+	pg_assert_false(strpos($res['coldSect'], 'topic — the page'), 'not labelled as the page\'s comments');
+	pg_assert_false(strpos($res['coldSect'], 'Every complete record'), 'no source note before its kind is known');
+	pg_assert_false(strpos($res['coldSect'], 'home —'), 'a loaded plain component is no record view');
+
+	pg_assert_same(array(array(7, 9, 8)), $res['fetched'], 'the components of every tab, fetched once together');
+	pg_assert_same(1, $res['renders'], 'the panel is drawn again when they arrive');
+	pg_assert_same(array(array('tab:topic', 'record'), array('12', 'page')), $res['warm'],
+		'a record view once known; a component the server did not return no longer holds a tab back');
+	pg_assert_contains('topic — records of Forum Topics', $res['warmSect'], 'the record source by name');
+	pg_assert_contains('Every complete record of Forum Topics that has a comment can be listed here', $res['warmSect'], 'with its note');
+	pg_assert_same(1, $res['fetchedAgain'], 'nothing is fetched twice');
+	pg_assert_same(1, $res['rendersAgain'], 'and the panel is not drawn again for nothing');
+
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	pg_assert_contains('_sdCommentsRecentLoad(_cfg);', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the panel loads them');
+}
+
+// -- the recent list on the canvas -----------------------------------------------
+
+function test_comments_widget_designer_recent_flags_twin()
+{
+	if (!function_exists('pg_comments_recent_flags')) {
+		pg_assert_true(false, 'pg_comments_recent_flags() exists');
+		return;
+	}
+
+	$sets = array(
+		'default' => array(),
+		'some' => array('count' => 3, 'more' => true, 'signed_in' => true, 'staff' => false),
+		'none' => array('count' => 0, 'more' => false, 'signed_in' => false, 'staff' => true),
+		'text' => array('count' => '2', 'more' => '1', 'signed_in' => '0', 'staff' => ''),
+	);
+	$res = comments_widget_designer_test_node(array('_sdCommentsRecentFlags'),
+		'var sets = ' . json_encode($sets) . ";\nvar out = {};\nObject.keys(sets).forEach(function (k) { out[k] = _sdCommentsRecentFlags(sets[k]); });\nprocess.stdout.write(JSON.stringify(out));\n");
+	if ($res === null) {
+		return;
+	}
+
+	foreach ($sets as $name => $facts) {
+		pg_assert_same(pg_comments_recent_flags($facts), isset($res[$name]) ? $res[$name] : null, 'twin: ' . $name);
+	}
+}
+
+function test_comments_widget_designer_recent_states_and_samples()
+{
+	$body = <<<'JS'
+var list = { regionType: 'comments', mode: 'recent', recent_show: 'published' };
+var mine = { regionType: 'comments', mode: 'recent', recent_show: 'mine' };
+out.states = _sdCommentsCanvasStates(list).map(function (s) { return s[0]; });
+out.states_mine = _sdCommentsCanvasStates(mine).map(function (s) { return s[0]; });
+out.states_thread = _sdCommentsCanvasStates(cfg).map(function (s) { return s[0]; });
+out.flags = {};
+['comments', 'empty', 'signed_out', 'staff', 'replying'].forEach(function (st) {
+    out.flags[st] = _sdCommentsRecentFlags(_sdCommentsRecentFacts(st, mine));
+});
+var keys = function (list) { return list.map(function (s) { return s.key; }); };
+out.samples = keys(_sdCommentsRecentSamples(list, { is_staff: false }));
+out.samples_staff = keys(_sdCommentsRecentSamples(list, { is_staff: true }));
+var plain = function (list) {
+    list.forEach(function (s) { Object.keys(s.values).forEach(function (v) { if (typeof s.values[v] === 'function') s.values[v] = s.values[v](); }); });
+    return list;
+};
+out.samples_mine = plain(_sdCommentsRecentSamples(mine, { is_staff: false }));
+out.samples_mine_staff = plain(_sdCommentsRecentSamples(mine, { is_staff: true }));
+out.samples_pending = plain(_sdCommentsRecentSamples({ regionType: 'comments', mode: 'recent', recent_show: 'pending' }, { is_staff: true }));
+_sdCommentsCanvasState = 'empty';
+out.loop_off_empty = _sdCommentsFlagOff(loop, list);
+_sdCommentsCanvasState = 'comments';
+out.loop_off = _sdCommentsFlagOff(loop, list);
+out.staff_off = _sdCommentsFlagOff(named['staff controls'], list);
+_sdCommentsCanvasState = 'staff';
+out.staff_on = _sdCommentsFlagOff(named['staff controls'], list);
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts',
+		'_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsRecentSamples'), comments_widget_designer_test_canvas_script($body));
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('comments', 'empty', 'staff'), $res['states'], 'a list: comments, none, staff');
+	pg_assert_same(array('comments', 'empty', 'signed_out', 'staff'), $res['states_mine'], 'the member\'s own: signed out too');
+	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff'), $res['states_thread'], 'a thread as before');
+	pg_assert_true($res['flags']['comments']['has_comments'] && $res['flags']['comments']['is_signed_in'], 'mine: a member with comments');
+	pg_assert_true($res['flags']['empty']['no_comments'], 'none');
+	pg_assert_true($res['flags']['signed_out']['is_signed_out'] && $res['flags']['signed_out']['no_comments'], 'signed out: nothing');
+	pg_assert_true($res['flags']['staff']['is_staff'], 'staff');
+	pg_assert_same($res['flags']['comments'], $res['flags']['replying'], 'a thread\'s state reads as comments');
+
+	pg_assert_same(array('record', 'page'), $res['samples'], 'a visitor: a record\'s and a page\'s comment');
+	pg_assert_same(array('record', 'page'), $res['samples_staff'], 'staff: a list of published comments holds none awaiting approval');
+	$pending = end($res['samples_mine']);
+	pg_assert_same('pending', $pending['key'], 'mine: the member\'s own waiting one');
+	pg_assert_true($pending['flags']['comment_is_own_pending'], 'their own');
+	pg_assert_true($res['samples_mine'][0]['flags']['comment_on_record'], 'on a record');
+	pg_assert_true($res['samples_mine'][1]['flags']['comment_on_page'], 'on a page');
+	pg_assert_same('How do I reset my password?', $res['samples_mine'][0]['values']['__comment_thread_title'], 'the record\'s title');
+	pg_assert_same('Your comment is awaiting approval', $pending['values']['__comment_status'], 'the status the author reads');
+	$own_staff = end($res['samples_mine_staff']);
+	pg_assert_true($own_staff['flags']['comment_is_own_pending'], 'a member who is staff: still their own');
+	pg_assert_same('Your comment is awaiting approval', $own_staff['values']['__comment_status'], 'with the author\'s status, as the server writes it first');
+	pg_assert_same(array('record', 'page'), array_map(function ($s) { return $s['key']; }, $res['samples_pending']), 'a list awaiting approval: a record\'s and a page\'s');
+	foreach ($res['samples_pending'] as $sample) {
+		pg_assert_true($sample['flags']['comment_is_pending'], 'awaiting approval: ' . $sample['key']);
+		pg_assert_false($sample['flags']['comment_is_own_pending'], 'someone else\'s: ' . $sample['key']);
+		pg_assert_same('Not Published', $sample['values']['__comment_status'], 'staff read Not Published: ' . $sample['key']);
+	}
+
+	pg_assert_true($res['loop_off_empty'], 'no comments: no card');
+	pg_assert_false($res['loop_off'], 'comments: the card');
+	pg_assert_true($res['staff_off'], 'a staff box is left out for a visitor');
+	pg_assert_false($res['staff_on'], 'and drawn for staff');
 }
