@@ -66,6 +66,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
+	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 
 }
 
@@ -2214,5 +2215,26 @@ function upgrade_2026_11_0_prototype_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
+
+}
+
+// Two marketplace columns (2026.11.0, 11.0.37; includes/api/outbound/).
+//
+// marketplace_product_map.commission is the commission rate in percent the
+// marketplace reports for an approved listing (Trendyol answers it with the
+// approved product), NULL until one is read: 0.00 would say the marketplace
+// takes nothing. It is shown beside the listing and never enters a price.
+//
+// marketplace_order_map.invoice_sent is when the marketplace accepted the
+// invoice link of an imported package, a unix time, 0 while it has not.
+//
+// Code that reads either column probes it first (mp_commission_ready(),
+// mp_invoice_sent_ready()): the files land before this step runs.
+function upgrade_2026_11_0_marketplace_columns() {
+
+	install_add_column('marketplace_product_map', 'commission', "DECIMAL(6,2) NULL DEFAULT NULL");
+	install_add_column('marketplace_order_map', 'invoice_sent', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Marketplaces: a listing can keep the commission rate the marketplace reports for it, and an imported order can record when its invoice link was sent to the marketplace.');
 
 }
