@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
+description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 5 done: #740, #812, #1710, #937, #873; 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
 ---
 
 ## What did the owner decide?
@@ -20,8 +20,8 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 
 ## What remains?
 1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740).
-2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #812); the inline iyzico code stays (frozen).
-2b. The iyzico 3-D Secure return (`mode=iyzipay_threedsecure_return`) still runs in submit_order.php's Iyzipay block; moving it into the card driver's `complete()` is open (S).
+2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #812).
+2b. ~~iyzico 3-D Secure return in the card driver's `complete()` (S).~~ Done (PR #1710).
 3a. ~~Stripe PaymentIntents driver + Payment Element in the express order widget (L).~~ Done (PR #937, `commerce/payment-driver-stripe.md`).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M).
 4. PayTR driver (M); PayPal v2 driver (M).
@@ -30,6 +30,7 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 
 ## Open questions?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
+- Since 2b no request reaches submit_order.php's inline Iyzipay and Pay With Iyzico code: remove it or keep it? Owner.
 - 3b: `payment_intent.succeeded` for an order still incomplete: alert only, or complete it from the webhook? Owner.
 - Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
 

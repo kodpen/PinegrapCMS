@@ -768,7 +768,8 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     // The order must still total what the payment was started with (the cart
     // may have changed in another tab), and iyzico must have taken exactly
     // that plus the instalment charge. In the protected currency iyzico's
-    // amount was converted at the rate of the start, which may have moved.
+    // amount was converted at the rate of the start, so today's rate may be
+    // 1% off it.
     $base_total = (int) $row['base_total_cents'];
     $current_total = (int) $amount;
     $expected_paid = $base_total + (int) $row['installment_charge_cents'];
