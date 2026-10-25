@@ -574,6 +574,100 @@ function _pg_catalog_card_templates($nodes)
     );
 }
 
+/**
+ * Whether the variants of a select group differ in rating: some have a
+ * verified, starred review and some none. Only then does the product page
+ * keep both has_rating / no_rating states for the variant script to switch.
+ *
+ * @param array $products the variant payload's products ('rating_count' is '' without a review)
+ * @return bool
+ */
+function _pg_catalog_rating_states_differ($products)
+{
+    $rated = false;
+    $unrated = false;
+    foreach ((array)$products as $vp) {
+        if (is_array($vp) && isset($vp['rating_count']) && (string)$vp['rating_count'] !== '') {
+            $rated = true;
+        } else {
+            $unrated = true;
+        }
+    }
+    return $rated && $unrated;
+}
+
+/**
+ * The tag name of the one element $html is (whitespace around it allowed),
+ * or null when it is text, several elements, or its tags do not balance.
+ *
+ * @param string $html
+ * @return string|null the name as written
+ */
+function _pg_catalog_single_element_tag($html)
+{
+    $html = trim((string)$html);
+    // An opening or closing tag; a quoted attribute value may hold '>'.
+    $tag_re = '(?=[\s\/>])(?:[^>"\']|"[^"]*"|\'[^\']*\')*>';
+    if (!preg_match('/^<([a-zA-Z][a-zA-Z0-9-]*)' . $tag_re . '/', $html, $open)) return null;
+
+    $void = array('area', 'br', 'col', 'embed', 'hr', 'img', 'input', 'source', 'track', 'wbr');
+    if (in_array(strtolower($open[1]), $void, true) || substr($open[0], -2) === '/>') {
+        return (strlen($open[0]) === strlen($html)) ? $open[1] : null;
+    }
+
+    // Tags of the same name, counted until the first one is closed: that
+    // close must end the HTML.
+    if (!preg_match_all('/<(\/?)' . preg_quote($open[1], '/') . $tag_re . '/i', $html, $tags, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        return null;
+    }
+    $depth = 0;
+    foreach ($tags as $t) {
+        if ($t[1][0] === '/') {
+            $depth--;
+        } elseif (substr($t[0][0], -2) !== '/>') {
+            $depth++;
+        }
+        if ($depth === 0) {
+            return ($t[0][1] + strlen($t[0][0]) === strlen($html)) ? $open[1] : null;
+        }
+    }
+    return null;
+}
+
+/**
+ * The product page's has_rating / no_rating elements kept in both states,
+ * for a variant group whose variants differ in rating: pg_civ_variants.js
+ * shows the state of the variant picked. Each marked span loses its
+ * markers, and its element carries data-pg-rating-flag="<flag>", plus
+ * `hidden` when the flag is off for the product drawn first. The attribute
+ * goes on the flagged element itself, never on a wrapper, so a flagged
+ * column stays the direct child of its row, a flex or grid item stays the
+ * item and a paragraph keeps its content. A span that is not one element
+ * (plain text, several elements) has nowhere to carry it and is kept or cut
+ * for the product drawn first, like a span of any other flag.
+ *
+ * @param string $html  HTML marked by _pg_sw_mark_visibility()
+ * @param array  $flags flag => bool for the product drawn first
+ * @return string
+ */
+function _pg_catalog_rating_flags_keep($html, $flags)
+{
+    if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
+    return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
+        $on = !empty($flags[$m[1]]);
+        if ($m[1] !== 'has_rating' && $m[1] !== 'no_rating') {
+            return $on ? _pg_catalog_rating_flags_keep($m[3], $flags) : '';
+        }
+        $inner = _pg_catalog_rating_flags_keep($m[3], $flags);
+        $tag = _pg_catalog_single_element_tag($inner);
+        if ($tag === null) return $on ? $inner : '';
+        $at = strpos($inner, '<') + 1 + strlen($tag);
+        return substr($inner, 0, $at)
+            . ' data-pg-rating-flag="' . $m[1] . '"' . ($on ? '' : ' hidden')
+            . substr($inner, $at);
+    }, $html);
+}
+
 function _render_system_widget_catalog_listing($product_group_id, $tree_json, $widget_id, $cfg = array())
 {
     $product_group_id = (int)$product_group_id;  // 0 = all groups
@@ -4065,9 +4159,12 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   ^^__gallery_image_2^^  — …row 2
 //   ^^__gallery_image_3^^, ^^__gallery_image_4^^, ^^__gallery_image_5^^
 //   The rating (^^__rating_avg^^, ^^__rating_count^^) is in the variant
-//   payload too; "Show only when" has_rating / no_rating is resolved once,
-//   after the product is read (the tree is drawn before), so a variant
-//   switch in the browser moves the two values but not the flags.
+//   payload too. "Show only when" has_rating / no_rating is resolved after
+//   the product is read (the tree is drawn before): the state that does not
+//   fit is cut, unless the variant script is on the page and the variants
+//   differ in rating; then both states stay, the one that is off hidden,
+//   and the script shows the state of the variant picked
+//   (_pg_catalog_rating_flags_keep()).
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
@@ -4745,8 +4842,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         'has_rating' => $_civ_rating['__rating_count'] !== '',
         'no_rating'  => $_civ_rating['__rating_count'] === '',
     );
-    $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
-    $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
+    // With the variant script on the page and variants that differ in
+    // rating, a switch can change the state: both states stay, each element
+    // marked with its flag and the one that does not fit $p hidden, and the
+    // script shows the state of the variant picked. Otherwise the state that
+    // does not fit is cut here.
+    $_civ_variants_scripted = $is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs']);
+    $_civ_rating_switch     = $_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products']);
+    if ($_civ_rating_switch) {
+        $loop_template = _pg_catalog_rating_flags_keep($loop_template, $_civ_flags);
+        $static_html   = _pg_catalog_rating_flags_keep($static_html, $_civ_flags);
+    } else {
+        $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
+        $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
+    }
 
     // ── Build token map ───────────────────────────────────────────────────
     // The same keys are produced regardless of found/not-found so the designer's
@@ -5423,20 +5532,29 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     //   • refresh the product_id hidden input + Sepete Ekle disabled state
     //   • optional API call to confirm stock + grab any field not preloaded
     $_civ_variant_script = '';
-    if ($is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs'])) {
+    if ($_civ_variants_scripted) {
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '4';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '5';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
 
+    // Both rating states kept: the one that is off carries `hidden`, which a
+    // design's display utility (Bootstrap's d-flex is !important) or its own
+    // display rule would beat. Two attribute selectors with !important win
+    // over both. Printed before the elements so the first paint obeys it.
+    $_civ_rating_css = $_civ_rating_switch
+        ? '<style>[data-pg-rating-flag][hidden]{display:none!important}</style>'
+        : '';
+
     // No auto-prepended messages placeholder — designer controls placement
     // via a Messages content node inside the widget tree.
     return _pg_widget_layout_css_once()
+         . $_civ_rating_css
          . '<form action="' . h($_civ_action) . '" method="post" data-pg-civ-form="1">'
          . $_civ_hidden
          . $_civ_html

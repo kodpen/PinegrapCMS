@@ -1,6 +1,6 @@
 ---
 name: catalog-rating-tokens
-description: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns read before 11.0.14, variant payload
+description: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 ---
 
 ## Which tokens carry a product's rating?
@@ -11,11 +11,17 @@ description: Product rating in the catalog widgets: __rating_avg / __rating_coun
 ## How does a wrapper (stars, "(12)") hide without a rating?
 - "Show only when" `has_rating` / `no_rating` (`SW_VISIBILITY_FLAGS`, both catalog kinds). They read the same count as the tokens. `pg-hide-if-empty` does nothing in catalog widgets.
 - Listing: the card is drawn before the products are read, once for each state (`_pg_catalog_card_templates()`: `_pg_sw_mark_visibility()` with only these two flags, then `_pg_sw_resolve_visibility()` on the card alone); a row takes the card of its state. Only the card (loop area) is marked: an element outside it, or another widget's flag, is drawn as before. Group rows (categories, select groups) have no rating state: their card (`'group'`, resolved with no flag set) draws neither has_rating nor no_rating elements. When that leaves no `^^` token and no text (two alternative cards side by side, or inside one unflagged column as in the starter), it falls back to the card without a rating: an empty card skips the child-group block and empty wrappers draw blank columns, so category navigation would vanish.
-- Product page: the tree is marked before the split and resolved once the product is read, on the card and the surround, before the variant picker looks for its anchors and before values go in.
+- Product page: the tree is marked before the split and resolved once the product and its variants are read, on the card and the surround, before the variant picker looks for its anchors and before values go in. The state that does not fit the product shown is cut, unless a variant switch can change it (below).
 - The no-products check counts both cards: a card drawn only with a rating is still a card.
+
+## What does a variant switch do with the flags?
+- When the variant script is on the page and the variants differ in rating (`_pg_catalog_rating_states_differ()`), both states stay (`_pg_catalog_rating_flags_keep()`): the flagged element itself gets `data-pg-rating-flag="<flag>"`, the one that is off also `hidden`. No wrapper is added, so `.row > .col`, flex and grid items and `<p>` content keep working.
+- A `[data-pg-rating-flag][hidden]{display:none!important}` rule printed before the form beats `d-flex` and a design's own display.
+- `applyVariant()` in `pg_civ_variants.js` sets `hidden` from the variant's `rating_count`.
+- A flagged span that is not one element (plain text, several elements) cannot carry the attribute and is kept or cut for the variant shown first.
 
 ## What about columns, variants and structured data?
 - The five SELECTs (listing, three product page queries, variant query) take `_pg_catalog_rating_columns(pg_reviews_ready())`: before the 11.0.14 columns exist they read `0 AS rating_avg`, because a missing column fails the whole query and the listing shows "No products found".
-- `$vproducts` carries bare `rating_avg` / `rating_count`: `pg_civ_variants.js` swaps only fields it is given. A variant switch moves the values, not the flags (decided on the server for the variant shown first).
+- `$vproducts` carries bare `rating_avg` / `rating_count`: `pg_civ_variants.js` swaps only fields it is given, and switches the flagged elements from `rating_count`.
 - `_pg_build_product_jsonld()` and the RSS columns stay without a rating: designer aggregateRating, the review form and `__reviews` wait for designable-comments slice 20.
 - Tests: `tests/catalog_rating_tokens_test.php`; `php tools/check_bindings.php` counts both tokens and both flags.

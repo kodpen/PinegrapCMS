@@ -202,7 +202,8 @@ function test_catalog_rating_listing_source()
 
 // The product page reads the columns in its three product queries and the
 // variant query, fills the same keys found or not, passes the rating to the
-// variant swap, and resolves the flags once the product is known.
+// variant swap, and resolves the flags once the product is known (both
+// states kept for the variant script when the variants differ in rating).
 function test_catalog_rating_item_view_source()
 {
 	$view = _catalog_rating_function_source('includes/fn/widgets_catalog.php', '_render_system_widget_catalog_item_view');
@@ -242,6 +243,131 @@ function test_catalog_rating_item_view_source()
 	pg_assert_contains("'has_rating' => \$_civ_rating['__rating_count'] !== '',", $view, 'a product with reviews has a rating');
 	pg_assert_contains("'no_rating'  => \$_civ_rating['__rating_count'] === '',", $view, 'a product without reviews has none');
 	pg_assert_contains('$static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);', $view);
+
+	// A variant group whose variants differ in rating keeps both states for
+	// the variant script, on the card and the surround, and ships the rule
+	// that keeps a hidden state hidden; the script switches them.
+	pg_assert_contains('_pg_catalog_rating_states_differ($variant_data[\'products\'])', $view, 'only when the variants differ');
+	pg_assert_contains('_pg_catalog_rating_flags_keep($loop_template, $_civ_flags)', $view);
+	pg_assert_contains('_pg_catalog_rating_flags_keep($static_html, $_civ_flags)', $view);
+	pg_assert_contains('[data-pg-rating-flag][hidden]{display:none!important}', $view);
+	$keep = strpos($view, '_pg_catalog_rating_flags_keep($loop_template');
+	pg_assert_true($keep !== false && $keep > strpos($view, '$variant_data = array('), 'decided once the variant payload is built');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_civ_variants.js');
+	$apply = substr($js, (int) strpos($js, 'function applyVariant('));
+
+	pg_assert_contains("querySelectorAll('[data-pg-rating-flag]')", $apply, 'the script switches the flagged elements');
+	pg_assert_contains('p.rating_count', $apply, 'from the chosen variant\'s count');
+}
+
+// Whether a select group's variants differ in rating: only then does the
+// product page keep both has_rating / no_rating states for the script.
+function test_catalog_rating_states_differ()
+{
+	$rated = array('id' => 1, 'rating_avg' => '4.6', 'rating_count' => '12');
+	$unrated = array('id' => 2, 'rating_avg' => '', 'rating_count' => '');
+
+	pg_assert_true(_pg_catalog_rating_states_differ(array($rated, $unrated)), 'one with and one without');
+	pg_assert_true(_pg_catalog_rating_states_differ(array($unrated, $unrated, $rated)), 'in any order');
+	pg_assert_false(_pg_catalog_rating_states_differ(array($rated, $rated)), 'all with a rating');
+	pg_assert_false(_pg_catalog_rating_states_differ(array($unrated, $unrated)), 'none with a rating');
+	pg_assert_false(_pg_catalog_rating_states_differ(array($rated)), 'one variant');
+	pg_assert_false(_pg_catalog_rating_states_differ(array()), 'no variants');
+	pg_assert_true(_pg_catalog_rating_states_differ(array($rated, array('id' => 3))), 'a variant without the field has no rating');
+}
+
+// Whether a piece of HTML is one element, and its tag name as written.
+function test_catalog_single_element_tag()
+{
+	pg_assert_same('div', _pg_catalog_single_element_tag("\n  <div class=\"a\"><div>x</div></div>\n"), 'nested tags of the same name');
+	pg_assert_same('P', _pg_catalog_single_element_tag('<P>x</p>'), 'any letter case');
+	pg_assert_same('img', _pg_catalog_single_element_tag('<img src="a.png" alt="">'), 'an element without a closing tag');
+	pg_assert_same('span', _pg_catalog_single_element_tag('<span title="a > b">x</span>'), 'a quoted value may hold ">"');
+	pg_assert_same('p', _pg_catalog_single_element_tag('<p><svg><path d="M0"/></svg></p>'), '<path> is not <p>');
+	pg_assert_same(null, _pg_catalog_single_element_tag('x'), 'text');
+	pg_assert_same(null, _pg_catalog_single_element_tag(''), 'nothing');
+	pg_assert_same(null, _pg_catalog_single_element_tag('<p>a</p><p>b</p>'), 'two elements');
+	pg_assert_same(null, _pg_catalog_single_element_tag('<p>a</p> tail'), 'an element and text');
+	pg_assert_same(null, _pg_catalog_single_element_tag('<div><div>a</div>'), 'not closed');
+	pg_assert_same(null, _pg_catalog_single_element_tag('<!--c--><p>a</p>'), 'a comment first');
+}
+
+// Both rating states kept: each flagged element carries its flag, the state
+// that does not fit the product drawn first is hidden, no wrapper is added
+// and no marker is left. A span that is not one element is kept or cut as
+// without variants, and so is a span of another flag.
+function test_catalog_rating_flags_keep()
+{
+	$span = function ($flag, $n, $html) {
+		return '<!--pg-vis:' . $flag . ':' . $n . '-->' . $html . '<!--/pg-vis:' . $n . '-->';
+	};
+	$rated = array('has_rating' => true, 'no_rating' => false);
+	$unrated = array('has_rating' => false, 'no_rating' => true);
+
+	$html = '<div class="row">'
+		. $span('has_rating', 1, "\n  <div class=\"col d-flex\">&#9733; <span data-pg-bind=\"text:rating_avg\">4,6</span></div>\n")
+		. $span('no_rating', 2, '<p class="small">Be the first to review</p>')
+		. '</div>';
+
+	pg_assert_same(
+		'<div class="row">'
+		. "\n  <div data-pg-rating-flag=\"has_rating\" class=\"col d-flex\">&#9733; <span data-pg-bind=\"text:rating_avg\">4,6</span></div>\n"
+		. '<p data-pg-rating-flag="no_rating" hidden class="small">Be the first to review</p>'
+		. '</div>',
+		_pg_catalog_rating_flags_keep($html, $rated),
+		'a product with a rating: the no_rating element is hidden'
+	);
+	pg_assert_same(
+		'<div class="row">'
+		. "\n  <div data-pg-rating-flag=\"has_rating\" hidden class=\"col d-flex\">&#9733; <span data-pg-bind=\"text:rating_avg\">4,6</span></div>\n"
+		. '<p data-pg-rating-flag="no_rating" class="small">Be the first to review</p>'
+		. '</div>',
+		_pg_catalog_rating_flags_keep($html, $unrated),
+		'a product without a rating: the has_rating element is hidden'
+	);
+
+	// One element without a closing tag, and nested elements of the same name.
+	pg_assert_same('<img data-pg-rating-flag="has_rating" src="stars.svg" alt="">', _pg_catalog_rating_flags_keep($span('has_rating', 3, '<img src="stars.svg" alt="">'), $rated));
+	pg_assert_same(
+		'<div data-pg-rating-flag="has_rating" hidden><div>4,6</div><div>(12)</div></div>',
+		_pg_catalog_rating_flags_keep($span('has_rating', 4, '<div><div>4,6</div><div>(12)</div></div>'), $unrated)
+	);
+
+	// Spans inside a kept span are switched on their own.
+	pg_assert_same(
+		'<div data-pg-rating-flag="has_rating" hidden><span data-pg-rating-flag="no_rating">none</span></div>',
+		_pg_catalog_rating_flags_keep($span('has_rating', 5, '<div>' . $span('no_rating', 6, '<span>none</span>') . '</div>'), $unrated)
+	);
+
+	// Plain text, or several elements, cannot carry the attribute: kept or
+	// cut for the product drawn first.
+	pg_assert_same('Be the first', _pg_catalog_rating_flags_keep($span('no_rating', 7, 'Be the first'), $unrated));
+	pg_assert_same('', _pg_catalog_rating_flags_keep($span('no_rating', 8, 'Be the first'), $rated));
+	pg_assert_same('<b>4,6</b><i>(12)</i>', _pg_catalog_rating_flags_keep($span('has_rating', 9, '<b>4,6</b><i>(12)</i>'), $rated));
+	pg_assert_same('', _pg_catalog_rating_flags_keep($span('has_rating', 10, '<div>4,6</div><div>(12)</div>'), $unrated));
+
+	// Another flag is resolved as before.
+	pg_assert_same('<p>Edit</p>', _pg_catalog_rating_flags_keep($span('record_found', 11, '<p>Edit</p>'), array('record_found' => true)));
+	pg_assert_same('', _pg_catalog_rating_flags_keep($span('record_found', 12, '<p>Edit</p>'), array()));
+
+	// From a designer tree, as the product page draws it.
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'd-flex gap-2', '_bindings' => array('eo_visible_if' => 'has_rating')), 'children' => array(
+			array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Stars'), 'children' => array()),
+		)),
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'No reviews yet', '_bindings' => array('eo_visible_if' => 'no_rating')), 'children' => array()),
+	));
+	_pg_sw_mark_visibility($tree, array('has_rating', 'no_rating'));
+	$html = '';
+	foreach ($tree['children'] as $child) {
+		$html .= _render_tree_node($child, 0, 0);
+	}
+	$kept = _pg_catalog_rating_flags_keep($html, $unrated);
+
+	pg_assert_false(strpos($kept, 'pg-vis') !== false, 'no marker is left');
+	pg_assert_true((bool) preg_match('/<div data-pg-rating-flag="has_rating" hidden class="d-flex gap-2">\s*<p>Stars<\/p>\s*<\/div>/', $kept), 'the stars row is kept, hidden');
+	pg_assert_contains('<p data-pg-rating-flag="no_rating">No reviews yet</p>', $kept, 'the text without a rating is shown');
 }
 
 // The designer offers both tokens in both catalog widgets, the two flags in
