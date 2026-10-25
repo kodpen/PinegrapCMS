@@ -2857,7 +2857,7 @@
         $('#pg_pb_attr_options').html(optionRow() + optionRow());
     }
 
-    $('#pg_pb_attribute_modal').on('show.bs.modal', resetAttributeModal);
+    pgUI.dialog.on('#pg_pb_attribute_modal', 'show', resetAttributeModal);
 
     $('#pg_pb_attr_add_option').on('click', function () {
         $('#pg_pb_attr_options').append(optionRow());
@@ -2911,10 +2911,7 @@
             $('#pg_pb_attributes').append(attribute.html);
             $('#pg_pb_attributes_empty').addClass('d-none');
 
-            var modal = window.bootstrap && bootstrap.Modal.getInstance(document.getElementById('pg_pb_attribute_modal'));
-            if (modal) {
-                modal.hide();
-            }
+            pgUI.dialog.hide('#pg_pb_attribute_modal');
 
             renderMatrix();
 
