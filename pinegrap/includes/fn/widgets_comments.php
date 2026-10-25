@@ -133,6 +133,108 @@ function pg_comments_widget_drawn($page_id, $pages = null)
 }
 
 // ============================================================================
+// Who a thread is drawn for, and the editor's Preview
+// ============================================================================
+
+/**
+ * Who the widget draws a thread for. Pure.
+ *
+ * A live visitor's request reads and writes the visitor's session: the
+ * add-comment form state, the CAPTCHA, the CSRF token, the visitor's own
+ * pending comments. The search index and a background render (the editor's
+ * Preview, the SEO pass: pg_seo_rendering()) draw what a visitor who is not
+ * signed in reads, and never touch the session of the user whose request
+ * runs them.
+ *
+ * @param mixed $search     the page is drawn for the search index
+ * @param mixed $background a background render
+ * @param mixed $staff      edit access to the page
+ * @param mixed $signed_in  a signed-in visitor
+ * @return array 'staff', 'signed_in', 'session' (bool)
+ */
+function pg_comments_widget_audience($search, $background, $staff, $signed_in)
+{
+    $anonymous = (bool) $search || (bool) $background;
+
+    return array(
+        'staff' => (bool) $staff && !$anonymous,
+        'signed_in' => (bool) $signed_in && !$anonymous,
+        'session' => !$anonymous,
+    );
+}
+
+/**
+ * The comment settings the editor holds for the page it previews, saved or
+ * not: array('page_id' => int, 'columns' => column => value), the columns as
+ * pg_comment_editor_columns() gives them. pg_designer_preview_widgets() sets
+ * it around the Preview and clears it after.
+ *
+ * Pass an array with a page id to set it; pass anything else to clear it;
+ * either way the previous value comes back. Pass nothing to read (null when
+ * none is set).
+ *
+ * @param mixed $set
+ * @return array|null
+ */
+function pg_comments_preview_page($set = null)
+{
+    static $preview = null;
+
+    if (func_num_args() === 0) {
+        return $preview;
+    }
+
+    $old = $preview;
+    $page_id = (is_array($set) && isset($set['page_id']) && is_scalar($set['page_id']) && !is_bool($set['page_id'])) ? (int) $set['page_id'] : 0;
+    $preview = ($page_id > 0)
+        ? array('page_id' => $page_id, 'columns' => (isset($set['columns']) && is_array($set['columns'])) ? $set['columns'] : array())
+        : null;
+
+    return $old;
+}
+
+/**
+ * A page row with the editor's unsaved comment settings in place of the
+ * stored ones, for the page the Preview draws (pg_comments_preview_page()).
+ * Pure.
+ *
+ * Only a comment setting column (pg_comment_editor_keys()) that the row
+ * holds is replaced, as a string, the way the row reads it from the
+ * database. Another page's row, or no override, comes back as it is.
+ *
+ * @param mixed $row      the page row
+ * @param mixed $override array('page_id', 'columns'), or null
+ * @return mixed
+ */
+function pg_comments_page_override($row, $override)
+{
+    if (!is_array($row) || !is_array($override) || !isset($override['page_id'], $override['columns']) || !is_array($override['columns'])) {
+        return $row;
+    }
+
+    if (!isset($row['page_id']) || !is_scalar($override['page_id']) || ((int) $override['page_id'] <= 0)
+        || ((int) $override['page_id'] !== (int) $row['page_id'])) {
+        return $row;
+    }
+
+    $allowed = array();
+
+    foreach (pg_comment_editor_keys() as $def) {
+        foreach ($def['columns'] as $column) {
+            $allowed[$column] = true;
+        }
+    }
+
+    foreach ($override['columns'] as $column => $value) {
+        if (isset($allowed[$column]) && array_key_exists($column, $row) && is_scalar($value)) {
+            $row[$column] = (string) $value;
+        }
+    }
+
+    return $row;
+}
+
+// ============================================================================
 // Display options, the order a thread is drawn in, the featured links
 // ============================================================================
 
@@ -976,6 +1078,343 @@ function pg_comments_nested_record_decision($top, $children, $types)
     }
 
     return false;
+}
+
+/**
+ * What one tree places: the shared components and widgets (id => number of
+ * placements) and the fixed comments blocks (regions of type comments_block).
+ * A placement is not walked into: what a component places is its own tree's
+ * (pg_comments_component_census()). Pure.
+ *
+ * @param mixed $tree
+ * @return array 'refs' => id => placements, 'blocks' => int
+ */
+function pg_comments_tree_census($tree)
+{
+    $census = array('refs' => array(), 'blocks' => 0);
+    _pg_comments_census_walk($tree, $census, 0);
+
+    return $census;
+}
+
+/**
+ * pg_comments_tree_census()'s walk.
+ *
+ * @param mixed $node
+ * @param array $census
+ * @param int   $depth
+ */
+function _pg_comments_census_walk($node, &$census, $depth)
+{
+    if (!is_array($node) || ($depth > 200)) {
+        return;
+    }
+
+    $type = (isset($node['type']) && is_string($node['type'])) ? $node['type'] : '';
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+
+    if ($type === 'shared_ref') {
+        $sid = (isset($props['sharedId']) && is_scalar($props['sharedId']) && !is_bool($props['sharedId'])) ? (int) $props['sharedId'] : 0;
+
+        if ($sid > 0) {
+            $census['refs'][$sid] = (isset($census['refs'][$sid]) ? $census['refs'][$sid] : 0) + 1;
+        }
+
+        return;
+    }
+
+    if (($type === 'region') && isset($props['regionType']) && ($props['regionType'] === 'comments_block')) {
+        $census['blocks']++;
+    }
+
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            _pg_comments_census_walk($child, $census, $depth + 1);
+        }
+    }
+}
+
+/**
+ * The shared components and widgets a page reaches from its own placements
+ * ($ids), each read once, breadth first: one query per level, at most 8
+ * levels and 500 components, as pg_comments_page_nested_record() always read
+ * them.
+ *
+ * @param mixed $ids the component ids the page places
+ * @return array id => array('type' => its regionType ('' for none),
+ *               'census' => pg_comments_tree_census() of its tree)
+ */
+function pg_comments_component_census($ids)
+{
+    $out = array();
+    $asked = array();
+    $level = array();
+
+    foreach ((is_array($ids) ? $ids : array()) as $id) {
+        $id = (is_scalar($id) && !is_bool($id)) ? (int) $id : 0;
+
+        if ($id > 0) {
+            $level[$id] = true;
+        }
+    }
+
+    $level = array_keys($level);
+    $read = 0;
+
+    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
+        $now = array();
+
+        foreach ($level as $id) {
+            if (!isset($asked[$id])) {
+                $asked[$id] = true;
+                $now[] = (int) $id;
+            }
+        }
+
+        if (!$now) {
+            break;
+        }
+
+        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $now) . ")");
+        $next = array();
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) $row['id'];
+            $cfg = json_decode((string) $row['system_region_config'], true);
+            $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
+            $out[$id] = array(
+                'type' => (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '',
+                'census' => $census,
+            );
+
+            foreach (array_keys($census['refs']) as $child) {
+                if (!isset($asked[$child])) {
+                    $next[$child] = true;
+                }
+            }
+
+            if (++$read >= 500) {
+                break;
+            }
+        }
+
+        $level = array_keys($next);
+    }
+
+    return $out;
+}
+
+/**
+ * What a page shows of comments, from its own tree's census ($top,
+ * pg_comments_tree_census()) and the components it reaches ($components,
+ * pg_comments_component_census()). Pure.
+ *
+ * - widgets: the page's own placements of comments widgets, each counted,
+ *   and the comments widgets placed in each component the page reaches
+ *   (each component read once, at most 8 levels down). Two placements of one
+ *   component that holds a comments widget count that widget once: the
+ *   number is an approximation that errs on the low side.
+ * - blocks: the fixed comments blocks of the page and of the components it
+ *   reaches.
+ * - nested_record: a form_item_view widget below the top level
+ *   (pg_comments_nested_record_decision()).
+ * - top_record: a form_item_view widget placed on the page itself, the one
+ *   whose record the thread is then.
+ *
+ * @param mixed $top
+ * @param mixed $components
+ * @return array 'widgets' (int), 'blocks' (int), 'nested_record' (bool),
+ *               'top_record' (bool)
+ */
+function pg_comments_page_census_facts($top, $components)
+{
+    $top = is_array($top) ? $top : array();
+    $components = is_array($components) ? $components : array();
+    $refs_of = function ($census) {
+        $refs = (is_array($census) && isset($census['refs']) && is_array($census['refs'])) ? $census['refs'] : array();
+        $out = array();
+
+        foreach ($refs as $id => $count) {
+            if ((int) $id > 0) {
+                $out[(int) $id] = (is_scalar($count) && !is_bool($count)) ? max(0, (int) $count) : 0;
+            }
+        }
+
+        return $out;
+    };
+    $blocks_of = function ($census) {
+        return (is_array($census) && isset($census['blocks']) && is_scalar($census['blocks'])) ? max(0, (int) $census['blocks']) : 0;
+    };
+    $types = array();
+    $children = array();
+
+    foreach ($components as $id => $component) {
+        $id = (int) $id;
+        $types[$id] = (is_array($component) && isset($component['type']) && is_string($component['type'])) ? $component['type'] : '';
+        $children[$id] = $refs_of(is_array($component) && isset($component['census']) ? $component['census'] : null);
+    }
+
+    $type = function ($id) use ($types) {
+        return isset($types[$id]) ? $types[$id] : '';
+    };
+    $top_refs = $refs_of($top);
+    $widgets = 0;
+    $blocks = $blocks_of($top);
+    $top_record = false;
+    $queue = array();
+    $seen = array();
+
+    foreach ($top_refs as $id => $count) {
+        if ($type($id) === 'comments') {
+            $widgets += $count;
+        }
+
+        if ($type($id) === 'form_item_view') {
+            $top_record = true;
+        }
+
+        $seen[$id] = true;
+        $queue[] = array($id, 0);
+    }
+
+    for ($i = 0; $i < count($queue); $i++) {
+        list($id, $depth) = $queue[$i];
+
+        if (isset($components[$id]['census'])) {
+            $blocks += $blocks_of($components[$id]['census']);
+        }
+
+        if (($depth >= 8) || !isset($children[$id])) {
+            continue;
+        }
+
+        foreach ($children[$id] as $child => $count) {
+            if ($type($child) === 'comments') {
+                $widgets += $count;
+            }
+
+            if (!isset($seen[$child])) {
+                $seen[$child] = true;
+                $queue[] = array($child, $depth + 1);
+            }
+        }
+    }
+
+    $child_ids = array();
+
+    foreach ($children as $id => $list) {
+        $child_ids[$id] = array_keys($list);
+    }
+
+    return array(
+        'widgets' => $widgets,
+        'blocks' => $blocks,
+        'nested_record' => pg_comments_nested_record_decision(array_keys($top_refs), $child_ids, $types),
+        'top_record' => $top_record,
+    );
+}
+
+/**
+ * The save warnings a page's comments call for, in order. Pure.
+ *
+ * None without a comments widget. Then: 'block' (the fixed comments block
+ * too: the widget claims the page and the block prints nothing), 'widgets'
+ * (more than one: only the first draws), 'nested_record' (a form_item_view
+ * below the top level and none on the page: the widget fails closed),
+ * 'off' (comments are off for the page).
+ *
+ * @param mixed $facts pg_comments_page_census_facts() plus 'comments_on'
+ * @return string[]
+ */
+function pg_comments_save_warning_codes($facts)
+{
+    if (!is_array($facts)) {
+        return array();
+    }
+
+    $widgets = (isset($facts['widgets']) && is_scalar($facts['widgets'])) ? (int) $facts['widgets'] : 0;
+
+    if ($widgets <= 0) {
+        return array();
+    }
+
+    $codes = array();
+
+    if (!empty($facts['blocks'])) {
+        $codes[] = 'block';
+    }
+
+    if ($widgets > 1) {
+        $codes[] = 'widgets';
+    }
+
+    if (!empty($facts['nested_record']) && empty($facts['top_record'])) {
+        $codes[] = 'nested_record';
+    }
+
+    if (empty($facts['comments_on'])) {
+        $codes[] = 'off';
+    }
+
+    return $codes;
+}
+
+/**
+ * The words of a save warning (pg_comments_save_warning_codes()), '' for an
+ * unknown code. Pure but for the translation.
+ *
+ * @param string $code
+ * @param mixed  $page_name
+ * @param mixed  $widgets   the number of comments widgets on the page
+ * @return string
+ */
+function pg_comments_save_warning_text($code, $page_name, $widgets)
+{
+    $name = is_scalar($page_name) ? (string) $page_name : '';
+    $count = is_scalar($widgets) ? (int) $widgets : 0;
+
+    switch ($code) {
+        case 'block':
+            return lang(array('string' => 'The page "{var:1}" shows a Comments widget and the fixed comments block: only the widget draws the comments.', 'vars' => array($name)));
+        case 'widgets':
+            return lang(array('string' => 'The page "{var:1}" shows {var:2} Comments widgets: only the first draws the comments.', 'vars' => array($name, $count)));
+        case 'nested_record':
+            return lang(array('string' => 'The page "{var:1}" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.', 'vars' => array($name)));
+        case 'off':
+            return lang(array('string' => 'Comments are off for the page "{var:1}": its Comments widget draws nothing. Turn them on in the widget\'s comment settings.', 'vars' => array($name)));
+    }
+
+    return '';
+}
+
+/**
+ * The warnings a page's save gives about comments that are not drawn as the
+ * operator may expect: the page's tree (as it is saved), whether the page
+ * takes comments, its name. Reads the components the page reaches only when
+ * it places any.
+ *
+ * @param mixed  $tree
+ * @param mixed  $comments_on
+ * @param string $page_name
+ * @return string[]
+ */
+function pg_comments_save_warnings($tree, $comments_on, $page_name)
+{
+    $census = pg_comments_tree_census($tree);
+
+    if (!$census['refs']) {
+        return array();
+    }
+
+    $facts = pg_comments_page_census_facts($census, pg_comments_component_census(array_keys($census['refs'])))
+        + array('comments_on' => (bool) $comments_on);
+    $out = array();
+
+    foreach (pg_comments_save_warning_codes($facts) as $code) {
+        $out[] = pg_comments_save_warning_text($code, $page_name, $facts['widgets']);
+    }
+
+    return $out;
 }
 
 /**
@@ -2907,8 +3346,10 @@ function pg_comments_widget_draw($tree, $data)
 
 /**
  * Whether a page places a form_item_view widget below its top level
- * (pg_comments_nested_record_decision()). One query per level of nesting, at
- * most 8 levels and 500 components; cached per page for the request.
+ * (pg_comments_page_census_facts()'s 'nested_record'), from the page's
+ * stored tree and the components it reaches (pg_comments_component_census():
+ * one query per level of nesting, at most 8 levels and 500 components);
+ * cached per page for the request.
  *
  * @param mixed $page_id
  * @return bool
@@ -2926,65 +3367,10 @@ function pg_comments_page_nested_record($page_id)
         return $cache[$page_id];
     }
 
-    $top_ids = array();
-    $tree = json_decode((string) pg_page_tree_json($page_id), true);
+    $census = pg_comments_tree_census(json_decode((string) pg_page_tree_json($page_id), true));
+    $facts = pg_comments_page_census_facts($census, pg_comments_component_census(array_keys($census['refs'])));
 
-    if (is_array($tree)) {
-        _vt_collect_shared_ids($tree, $top_ids);
-    }
-
-    $top = array_keys($top_ids);
-    $children = array();
-    $types = array();
-    $seen = array();
-    $level = $top;
-    $read = 0;
-
-    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
-        $ids = array();
-
-        foreach ($level as $id) {
-            if (!isset($seen[$id])) {
-                $seen[$id] = true;
-                $ids[] = (int) $id;
-            }
-        }
-
-        if (!$ids) {
-            break;
-        }
-
-        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $ids) . ")");
-        $next = array();
-
-        foreach ((is_array($rows) ? $rows : array()) as $row) {
-            $id = (int) $row['id'];
-            $cfg = json_decode((string) $row['system_region_config'], true);
-            $types[$id] = (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '';
-            $placed = array();
-            $component = json_decode((string) $row['tree_json'], true);
-
-            if (is_array($component)) {
-                _vt_collect_shared_ids($component, $placed);
-            }
-
-            $children[$id] = array_keys($placed);
-
-            foreach ($children[$id] as $child) {
-                if (!isset($seen[$child])) {
-                    $next[$child] = true;
-                }
-            }
-
-            if (++$read >= 500) {
-                break;
-            }
-        }
-
-        $level = array_keys($next);
-    }
-
-    return $cache[$page_id] = pg_comments_nested_record_decision($top, $children, $types);
+    return $cache[$page_id] = $facts['nested_record'];
 }
 
 /**
@@ -3168,6 +3554,10 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
+    // The editor's Preview draws the page with the comment settings the
+    // editor holds, saved or not.
+    $page = pg_comments_page_override($page, pg_comments_preview_page());
+
     // The thread: the record the page's form_item_view widget shows, else
     // the page's own. The read thread of a page that shows no record is
     // every comment on the page, as the classic block reads it.
@@ -3212,19 +3602,22 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     // Who reads it. The search index stores what a visitor who is not signed
-    // in reads.
+    // in reads; a background render (the editor's Preview, the SEO pass)
+    // draws the same and leaves the session of the user whose request runs
+    // it alone: no form state read or used up, no CAPTCHA issued, no token.
     $search = defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
-    $staff = (check_edit_access($page['page_folder']) == true);
+    $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+    $audience = pg_comments_widget_audience($search, $background, check_edit_access($page['page_folder']) == true, _pg_acct_signed_in());
     $record_form = ($record !== null)
         ? array('form_editor_user_id' => $record['form']['form_editor_user_id'], 'form_editor_username' => $record['form']['form_editor_username'])
         : null;
-    $viewer = pg_comments_viewer($staff, $record_form, $search);
-    $is_staff = $staff && !$search;
-    $signed_in = _pg_acct_signed_in() && !$search;
-    $user_id = (defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
-    $role = defined('USER_ROLE') ? USER_ROLE : '';
-    $email = defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '';
-    $form_editor = !empty($viewer['form_editor']) && !$search;
+    $viewer = pg_comments_viewer($audience['staff'], $audience['session'] ? $record_form : null, !$audience['session']);
+    $staff = $is_staff = $audience['staff'];
+    $signed_in = $audience['signed_in'];
+    $user_id = ($audience['session'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
+    $role = ($audience['session'] && defined('USER_ROLE')) ? USER_ROLE : '';
+    $email = ($audience['session'] && defined('USER_EMAIL_ADDRESS')) ? (string) USER_EMAIL_ADDRESS : '';
+    $form_editor = !empty($viewer['form_editor']) && $audience['session'];
 
     // Which comments, and which page of them. A page asked for by number
     // (?comments_page=) wins; else the page that holds the comment the
@@ -3272,12 +3665,15 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
     }
 
-    $lf = new liveform('add_comment', $page_id);
+    $lf = $audience['session'] ? new liveform('add_comment', $page_id) : null;
     $field = function ($name) use ($lf) {
-        $value = $lf->get_field_value($name);
+        $value = $lf ? $lf->get_field_value($name) : null;
         return is_scalar($value) ? (string) $value : '';
     };
-    $in_session = isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    $in_session = $lf && isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    // The CSRF token of the forms; none in a render that is not the
+    // visitor's own.
+    $token = $audience['session'] ? get_token_field() : '';
 
     $facts = array(
         'allow_new' => $allow_new,
@@ -3488,7 +3884,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $sections = array(
-        'comment_captcha' => $captcha_on ? (string) get_captcha_fields($lf) : '',
+        'comment_captcha' => ($captcha_on && $lf) ? (string) get_captcha_fields($lf) : '',
         'comment_rating_input' => ($settings['rating'] && $can_comment) ? pg_comments_rating_input_html($field('rating')) : '',
         'comment_publish' => '',
         'comment_watchers' => '',
@@ -3555,7 +3951,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $typed = (new liveform('add_or_remove_watcher', $page_id))->get_field_value('username_or_email_address');
         $sections['comment_watchers'] = pg_comments_watchers_html(array(
             'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
-            'token_field' => get_token_field(),
+            'token_field' => $token,
             'send_to' => get_request_uri(),
             'page_id' => $page_id,
             'item_type' => $post_type,
@@ -3570,11 +3966,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'can_comment' => $can_comment,
         'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php',
         'hidden_html' => $can_comment
-            ? pg_comments_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
+            ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
             : '',
         'multipart' => $settings['attachments'],
         'label_slot' => 'pg_comment_form_label',
-        'watcher_checked' => !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
+        'watcher_checked' => !$lf || !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
         // A staff comment from a form without the publish options follows
         // the page's setting, as the classic form's default does.
         'publish_default' => $can_publish ? ($settings['auto_publish'] ? 'now' : 'manual') : '',
@@ -3601,13 +3997,13 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'is_watcher' => $is_watcher,
         'watch_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
         'watch_hidden_html' => $can_watch
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
             : '',
         'is_staff' => $is_staff,
         'allow_new' => $allow_new,
         'allow_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/allow_or_disallow_new_comments.php',
         'allow_hidden_html' => $is_staff
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
             : '',
     );
 
@@ -3628,9 +4024,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'edit_chips' => $is_staff && pg_sw_edit_chips_on(),
     ));
 
-    $lf->remove_form();
+    if ($lf) {
+        $lf->remove_form();
+    }
 
-    if ($watching_on) {
+    if ($watching_on && $audience['session']) {
         (new liveform('add_or_remove_watcher', $page_id))->remove_form();
     }
 
