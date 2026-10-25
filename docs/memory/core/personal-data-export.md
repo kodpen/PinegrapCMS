@@ -11,8 +11,9 @@ description: privacy_export.php (PR #938): one person's data as JSON and a PDF s
 - `pg_privacy_export_find()`: users by id, address or `user_contact`; contacts by id or address (also the users' contacts); then the users of those contacts. One step only, so a shared company address does not pull in a second person through their own records. All addresses found are used for orders, forms, gift cards, watchers, mail and chat; `pg_privacy_export_merge()` is the pure part.
 
 ## What do the sections read?
-- `pg_privacy_export_sections()` pins the 28 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut).
-- Orders include carts: an `order_items` line with `saved_for_later` is the wishlist. A product form's answers sit in the order row as `form_answers`; a form submission's fields as `fields`, found also by the address typed in any field (`form_data.data`, prefix index).
+- `pg_privacy_export_sections()` pins the 29 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut).
+- Orders include carts; a line saved for later is an `order_items` row of the cart (`saved_for_later`), not the wishlist. A product form's answers sit in the order row as `form_answers`; a form submission's fields as `fields`, found also by the address typed in any field (`form_data.data`, prefix index).
+- Favourites (`wishlist`, after `watchers`): the account's `wishlist_items` rows with the product's SKU and name. A visitor's list is keyed by a cookie hash that names nobody; it is found once it joins the account at sign-in (`commerce/wishlist.md`).
 - Passkeys (`passkeys`, after `identities`, PR #1384): id, user_id, name, aaguid, transports, backup flags, created_at, last_used_at. The credential (credential_id, credential_hash, public_key, user_handle, sign_count, alg) is never read; a test pins the columns.
 - References only: ERP documents (number, date, totals, status) and Workspace customer channels. Not read: site log, `audit_log`, `visitors` (no index by order; IPs cleared by retention), Workspace guest rooms (a guest has only a name).
 

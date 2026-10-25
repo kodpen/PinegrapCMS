@@ -1819,7 +1819,8 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     }
 
     // What the operator is told beside the outcome: a kept id Paraşüt no
-    // longer held, forgotten before the invoice was sent once more.
+    // longer held, forgotten, and whether the invoice was sent once more
+    // without it.
     $told = '';
 
     if ($external_id === '') {
