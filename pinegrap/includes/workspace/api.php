@@ -204,7 +204,7 @@ function ws_api_routes()
         array('name' => 'estimate_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'description' => 'Each person\'s share of the effort, in minutes. 0 counts the site default on the board.'),
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
         array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
-        array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, form, calendar_event, file or page.'),
+        array('name' => 'refs', 'in' => 'body', 'type' => 'list', 'of' => array('type' => 'string', 'id' => 'integer'), 'max_items' => 20, 'description' => 'Records the task is about, as objects of {type, id}: order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, erp_quote, form, calendar_event, file or page.'),
         array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => 'Hand the work over even though somebody on it is away on those days. Refused unless the owner may override the board.'),
         array('name' => 'blocked_by', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'Ids of the tasks this one cannot start before; replaces the list (links to tasks the owner cannot see are kept). A list that would make tasks wait for each other is refused with 422. Not enforced: a blocked task can still be started.'),
     );
@@ -1541,7 +1541,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_refs_get',
             'returns'     => 'WorkspaceRefs',
             'summary'     => 'Where a record was talked about',
-            'description' => 'The messages and the tasks that point at one record - an order, a product or product group, an offer, a contact, a user, a current account, an invoice, a delivery note, a cash receipt, an incoming e-invoice, a form submission, a calendar event, a file or a page - in the channels the owner may read. For a contact, the channels tied to them as well.',
+            'description' => 'The messages and the tasks that point at one record - an order, a product or product group, an offer, a contact, a user, a current account, an invoice, a delivery note, a cash receipt, an incoming e-invoice, a sales quote, a form submission, a calendar event, a file or a page - in the channels the owner may read. For a contact, the channels tied to them as well.',
             'params'      => array(
                 array('name' => 'type', 'in' => 'query', 'type' => 'enum', 'values' => ws_record_type_keys(), 'required' => true),
                 array('name' => 'id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true),
