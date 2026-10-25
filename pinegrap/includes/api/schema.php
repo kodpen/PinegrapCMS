@@ -289,6 +289,20 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'products.marketplaces',
+			'method'  => 'GET',
+			'path'    => '/products/{id}/marketplaces',
+			'scope'   => 'products:read',
+			'handler' => 'api_products_marketplaces',
+			'returns' => array('list' => 'ProductMarketplace'),
+			'summary' => 'Where a product is listed on the marketplaces',
+			'description' => 'One row per marketplace account the product is matched to: the account and its provider (n11, trendyol), the code the marketplace knows the product by (the seller code on n11, the barcode on Trendyol), the id the marketplace gave the listing once it took it (null before), the mapping\'s status (active, paused, error), the last refusal or note (null when there is none) and when its stock and price last went out. One page, newest account last. The marketplace screen is the manager role\'s, so an application whose owner has the user role answers 403 forbidden here even with products:read. Account credentials are never part of the answer. A product matched to no marketplace answers an empty list.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Product groups ----------------------------------------------- */
 
 		array(

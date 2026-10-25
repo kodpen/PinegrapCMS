@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-remaining-design
-description: Design of the open Trendyol steps (hardening, schema, 2b-ii, 5a-5c, 6) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
+description: Design of the open Trendyol steps (hardening, schema, 2b-ii, 5a-5c) from a full build finished 2026-10-24 that never reached GitHub; what to build, deviations, unverified doc facts
 ---
 
 ## What is this?
@@ -30,12 +30,8 @@ description: Design of the open Trendyol steps (hardening, schema, 2b-ii, 5a-5c,
 - "Questions from Trendyol" card: reads on a button; each waiting question has a 10–2000 character textarea and an Answer button.
 - Both keep the read in `$_SESSION['software']['marketplace_read']`, never in a table.
 
-## 6. API and events?
-- `GET /products/{id}/marketplaces` under products:read, a `ProductMarketplace` object and presenter pair in `check_api_schema.php`; account credentials are never read.
-- Events `marketplace.order.imported`, `.cancelled` (only when the cancellation happens now), `.shipped` (only the own-carrier report, as its description says), through `mp_order_announce()`.
-
 ## Tests?
-- `tests/marketplace_trendyol_remaining_test.php` (red first per part), `tests/api_product_marketplaces_test.php`, claims and questions fixtures; `tests/message_values_commerce_test.php` counts the new escaped warnings.
+- `tests/marketplace_trendyol_remaining_test.php` (red first per part), claims and questions fixtures; `tests/message_values_commerce_test.php` counts the new escaped warnings.
 
 ## What did the docs not prove?
 - The content update's batch result line (assumed keyed by `requestItem.contentId`); the invoice-link 201 and 409 bodies; every claims field, the largest claims page and whether `orderOutboundPackageId` is the imported package id; a successful claim approval's and answer's bodies; a question's status after answering. The return reasons page was not read.

@@ -1414,6 +1414,8 @@ function mp_sync_ship_pending($account) {
 					'vars'   => array((string)$row['remote_order_id'], mp_provider_name($account['provider']), $link['url'])
 				)), 'system');
 
+				mp_order_announce('marketplace.order.shipped', $account, $map_id, 'Shipped', array('tracking_url' => (string)$link['url']));
+
 				continue;
 
 			}
