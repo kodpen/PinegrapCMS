@@ -14522,13 +14522,15 @@ const StyleDesigner = (function () {
     // System widgets whose output is a <form> or holds one. The renderer
     // prints a <form> around the widget's whole tree for the custom form,
     // the member and account widgets (_pg_member_form_wrap()), the login
-    // region's sign-in form and the express order's host form; some print
+    // region's sign-in form, the express order's host form and the product
+    // page widget's add-to-cart form (catalog_item_view); some print
     // it in one state only (signed in or out, before a reset is sent), and
     // each counts as always printing it. Account security's blocks are forms
     // of their own, and a tree with no block bound as one is wrapped whole.
     var _SD_FORM_WIDGET_TYPES = ['custom_form', 'login_form', 'login_region', 'forgot_password', 'registration',
                                  'membership', 'logout', 'change_password', 'set_password', 'account_profile',
-                                 'email_preferences', 'address_book', 'account_security', 'express_order'];
+                                 'email_preferences', 'address_book', 'account_security', 'express_order',
+                                 'catalog_item_view'];
 
     // Does the tree of system widget `sid` sit in a <form> the server prints
     // around it, which is not a node there? Account security is left out:

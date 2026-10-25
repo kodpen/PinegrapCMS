@@ -479,15 +479,15 @@ function test_designer_inline_drop_no_form_in_member_widget()
 {
 	$setup = designer_inline_drop_test_page()
 		. 'WIDGETS[2] = { regionType: "login_form" }; WIDGETS[3] = { regionType: "account_security" };'
-		. 'WIDGETS[5] = { regionType: "catalog_listing" };'
+		. 'WIDGETS[5] = { regionType: "catalog_listing" }; WIDGETS[7] = { regionType: "catalog_item_view" };'
 		. '_sharedCache[6] = { tree: sem("section", [sem("div", [sem("form")])]) };'
 		. 'T.loginInput = sem("input", [], { inWidget: 2, _attrs: [{ name: "type", value: "email" }] });'
 		. 'T.loginDiv = sem("div", [T.loginInput], { inWidget: 2 });'
 		. 'T.loginRoot = { _id: "loginroot", type: "root", props: { inWidget: 2 }, children: [] };'
-		. 'T.secDiv = sem("div", [], { inWidget: 3 }); T.catDiv = sem("div", [], { inWidget: 5 });'
+		. 'T.secDiv = sem("div", [], { inWidget: 3 }); T.catDiv = sem("div", [], { inWidget: 5 }); T.civDiv = sem("div", [], { inWidget: 7 });'
 		. 'T.inputInForm = sem("input", [], { _attrs: [{ name: "type", value: "email" }] });'
 		. 'T.divInForm = sem("div", [T.inputInForm]); T.form = sem("form", [T.divInForm]); T.formCol = sem("div", [T.form]);'
-		. 'root.children.push(T.loginDiv, T.secDiv, T.catDiv, T.formCol);';
+		. 'root.children.push(T.loginDiv, T.secDiv, T.catDiv, T.civDiv, T.formCol);';
 	$block = 'pal("component", { componentType: "form-block" })';
 	$answer = designer_inline_drop_test_run($setup, array(
 		array($block, 'loginDiv'),
@@ -495,6 +495,7 @@ function test_designer_inline_drop_no_form_in_member_widget()
 		array($block, 'secDiv'),
 		array('pal("semantic", { tag: "form" })', 'secDiv'),
 		array($block, 'catDiv'),
+		array($block, 'civDiv'),
 		array('pal("cf_field", { cfType: "text" })', 'loginDiv'),
 		array('pal("shared_ref", { sharedId: 2 })', 'divInForm'),
 		array('pal("shared_ref", { sharedId: 3 })', 'divInForm'),
@@ -518,9 +519,9 @@ function test_designer_inline_drop_no_form_in_member_widget()
 	}
 
 	pg_assert_same(
-		array(false, false, true, true, true, true, false, false, false, false, false, true, true, true, array(1, 1), array(true, true, true, true)),
+		array(false, false, true, true, true, false, true, false, false, false, false, false, true, true, true, array(1, 1), array(true, true, true, true)),
 		$answer,
-		'a form-carrying block stays out of a login widget, its tree root too; it and a form go into account security, and into a widget that prints no form; a field goes into the login widget; a widget or component that brings a form stays out of a form, new or moved, one that brings none goes in; the inserts land on the page and right after the form'
+		'a form-carrying block stays out of a login widget, its tree root too; it and a form go into account security, and into a widget that prints no form, but not into the product page widget, whose form holds its tree; a field goes into the login widget; a widget or component that brings a form stays out of a form, new or moved, one that brings none goes in; the inserts land on the page and right after the form'
 	);
 
 	// The widget double-clicks sit in click handlers: each passes the
