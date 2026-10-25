@@ -70,12 +70,39 @@ function pg_sw_type_labels()
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
         'account_invoices'    => lang('My Invoices'),
+        'wishlist'            => lang('Favourites'),
         'account_email'       => lang('Account E-mail'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
         'comments'            => lang('Comments'),
+        'comments_recent'     => lang('Recent Comments'),
     );
+}
+
+/**
+ * The kind of a system widget, as the panel, the palette, a template's
+ * starter and the census name it: its regionType, except a comments widget
+ * in the recent mode ('mode' => 'recent'), which is 'comments_recent'. The
+ * row still stores regionType 'comments', and _expand_system_widgets()
+ * dispatches on that. '' for a config without a kind. Pure.
+ *
+ * The editor's twin is _swKindOf() in assets/js/style_designer.js.
+ *
+ * @param mixed $cfg system_region_config, decoded
+ * @return string
+ */
+function pg_sw_widget_kind($cfg)
+{
+    if (!is_array($cfg) || !isset($cfg['regionType']) || !is_string($cfg['regionType'])) {
+        return '';
+    }
+
+    if (($cfg['regionType'] === 'comments') && isset($cfg['mode']) && ($cfg['mode'] === 'recent')) {
+        return 'comments_recent';
+    }
+
+    return $cfg['regionType'];
 }
 
 // ============================================================================
@@ -535,9 +562,14 @@ function pg_sw_default_date_format($type)
 // a frame, a link and a form control. Marked elements inside marked elements
 // go first, so a box whose rows all left goes with them. Any element can
 // carry the class; the designer keeps one by taking the class off.
-function pg_sw_hide_empty_fields($html)
+// With $mark (the finish pass's cut point, widgets_finish.php) only the
+// elements that hold $mark are judged, and one that goes leaves $mark in
+// its place, so the element around it is judged in turn.
+function pg_sw_hide_empty_fields($html, $mark = null)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
+    $mark = ($mark === null) ? '' : (string)$mark;
+    if ($mark !== '' && strpos($html, $mark) === false) return $html;
     if (!preg_match_all('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-hide-if-empty\b[^"]*"[^>]*>#i', $html, $opens, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
         return $html;
     }
@@ -550,15 +582,16 @@ function pg_sw_hide_empty_fields($html)
         $tag   = strtolower($opens[$i][1][0]);
 
         if (pg_sw_is_void_tag($tag)) {
-            if (!pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            if ($mark === '' && !pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
             continue;
         }
 
         $close = pg_sw_closing_tag($html, $tag, $start + strlen($open));
         if ($close === null) continue;
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
+        if ($mark !== '' && strpos($inner, $mark) === false) continue;
         if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
-        $html = substr($html, 0, $start) . substr($html, $close[1]);
+        $html = substr($html, 0, $start) . $mark . substr($html, $close[1]);
     }
 
     return $html;
@@ -606,8 +639,11 @@ function pg_sw_field_value($inner)
 // Does this markup show anything: words (spaces and &nbsp; are not), a
 // picture with an address (a file field left empty comes out as
 // <img src="">), a video, a frame, a drawing, a link or a form control?
+// The value a condition reads (its carrier, widgets_finish.php) is not shown
+// and does not count.
 function pg_sw_has_content($html)
 {
+    $html = pg_sw_finish_strip_carriers((string)$html);
     $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     if (trim($text) !== '') return true;
     if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
@@ -785,10 +821,18 @@ function pg_sw_escape_token_values($values, $raw_extra = array())
 }
 
 // Drop the identifiers nothing answered, with their format suffix, so a raw
-// ^^token^^ never reaches the browser.
+// ^^token^^ never reaches the browser. While a widget renders, the six row
+// position tokens (^^__loop_index^^ and the rest) stay for the finish pass,
+// which fills them per row and takes out any left (widgets_finish.php);
+// outside a widget render they go like any other. Both read the markup as
+// the same run of tokens, left to right: a kept token is matched whole, so
+// its closing carets never pair with the next token's opening ones.
 function pg_sw_sweep_tokens($html)
 {
     if (!is_string($html) || $html === '') return $html;
+    if (strpos($html, '^^__loop_') !== false && pg_sw_finish_active()) {
+        return preg_replace('/(\^\^__loop_(?:index|count|is_first|is_last|is_odd|is_even)\^\^(?:%%.*?%%)?)|\^\^[^\^]*\^\^(?:%%.*?%%)?/', '$1', $html);
+    }
     return preg_replace('/\^\^[^\^]*\^\^(%%.*?%%)?/', '', $html);
 }
 
@@ -3635,7 +3679,11 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
 
     if (!$logged_in) {
         // Redirect mode: send to login page when configured and accessible.
-        if ($redirect_to_login && $login_page_id > 0) {
+        // A page drawn inside another request (SEO pass, prototype frame)
+        // draws the signed-out view instead: go() would send a Location
+        // header and end that request in the middle of the render.
+        $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+        if ($redirect_to_login && $login_page_id > 0 && !$background) {
             $login_page_name = (string)db_value(
                 "SELECT page_name FROM page WHERE page_id = '" . (int)$login_page_id . "' LIMIT 1"
             );
@@ -3649,7 +3697,7 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         // A tree with no place for ^^not_logged_in^^ (the starter has none)
         // showed a signed-out visitor an empty profile card and one blank
         // row of the submissions list: say why instead, with the way in.
-        if (strpos((string)json_encode($tree_decoded), 'not_logged_in') === false) {
+        if (strpos(pg_sw_cond_tree_json($tree_decoded), 'not_logged_in') === false) {
             $login_url = function_exists('_pg_acct_page_url') ? _pg_acct_page_url($login_page_id, 'login') : '';
             return _pg_sw_render_message_only($tree_decoded, 'my_account',
                 h($not_logged_in_message)
@@ -5614,14 +5662,27 @@ function _pg_sw_search_merge_pages($first, $rest)
 function pg_sw_search_index_eligible($list_cfg, $view_cfg)
 {
     if (!pg_sw_form_widget_public($list_cfg) || !pg_sw_form_widget_public($view_cfg)) return false;
-    foreach (pg_sw_merge_record_filters($list_cfg, $view_cfg) as $filter) {
+    return !pg_sw_filters_compare_viewer(pg_sw_merge_record_filters($list_cfg, $view_cfg));
+}
+
+// Whether a list of record filters compares a field with the viewer: a
+// filter with a field, no fixed value and the dynamic value 'viewer' or
+// 'viewers email address'. Without a signed-in visitor such a filter reads
+// '' and matches every record sent while signed out, so a render with no
+// visitor of its own (the search index, a list of recent comments drawn for
+// a visitor who is not signed in) must not apply it. Pure.
+function pg_sw_filters_compare_viewer($filters)
+{
+    if (!is_array($filters)) return false;
+    foreach ($filters as $filter) {
+        if (!is_array($filter)) continue;
         $field   = isset($filter['field']) ? trim((string)$filter['field']) : '';
         $value   = isset($filter['value']) ? (string)$filter['value'] : '';
         $dynamic = isset($filter['dynamic_value']) ? (string)$filter['dynamic_value'] : '';
         if ($field === '' || $value !== '') continue;
-        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return false;
+        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return true;
     }
-    return true;
+    return false;
 }
 
 // The address a record's search item is stored under: relative to PATH, as
@@ -5974,15 +6035,17 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * get_page_content() sets 'email' for its whole render (true when the page is
  * the body of an e-mail), and around its widget pass adds 'page_id' and the
  * dynamic properties the sender passed with it - 'form_id' for a form's
- * confirmation or notification, 'order_id' for an order receipt. A widget on
- * an e-mail page has no address to read ?r= or ?order_id= from, and the
- * recipient is chosen by the server, so the checks that keep a visitor to
- * their own records do not apply there. 'page_id' is the page being drawn: a
- * widget whose data is the page's own (the comments widget's thread) reads it
- * here, never through _pg_sw_current_page_id(), which is 0 on the live home
- * page, in e-mails and in the search index, and is cached for the whole
- * request. Pass an array to set (the previous context comes back, for
- * restoring); pass nothing to read.
+ * confirmation or notification, 'order_id' for an order receipt, 'comment_id'
+ * for a comment e-mail whose page places a comments widget (mail.php). A
+ * widget on an e-mail page has no address to read ?r= or ?order_id= from, and
+ * the recipient is chosen by the server, so the checks that keep a visitor to
+ * their own records do not apply there. The comments widget draws only the
+ * comment named, for nobody. 'page_id' is the page being drawn: a widget
+ * whose data is the page's own (the comments widget's thread) reads it here,
+ * never through _pg_sw_current_page_id(), which is 0 on the live home page,
+ * in e-mails and in the search index, and is cached for the whole request.
+ * Pass an array to set (the previous context comes back, for restoring); pass
+ * nothing to read.
  *
  * @param array|null $set
  * @return array
@@ -6244,7 +6307,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // other tree came out as a page of headings with nothing under them, or
     // as nothing at all, so it shows the message through its message area.
     $render_not_found = function () use ($tree_decoded, $not_found_message) {
-        if (strpos((string)json_encode($tree_decoded), '__not_found_message') === false) {
+        if (strpos(pg_sw_cond_tree_json($tree_decoded), '__not_found_message') === false) {
             return _pg_sw_render_message_only($tree_decoded, 'order_view', h($not_found_message), 'warning');
         }
         $split_empty = _split_widget_tree($tree_decoded);
@@ -6849,12 +6912,14 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before the links existed binds neither of them: the
     // kept copies are listed in a card after the widget instead, so every
     // design shows them, with the withdrawal line under them unless the
-    // layout places that itself. A layout that binds a link places them.
-    $legal_block = (strpos((string)$tree_json, '__legal_preinfo_url') === false
-                    && strpos((string)$tree_json, '__legal_contract_url') === false)
+    // layout places that itself. A layout that binds a link places them; a
+    // condition that reads one does not (pg_sw_cond_tree_json()).
+    $placed_json = pg_sw_cond_tree_json((string)$tree_json);
+    $legal_block = (strpos($placed_json, '__legal_preinfo_url') === false
+                    && strpos($placed_json, '__legal_contract_url') === false)
         ? pg_legal_documents_order_view_block(
             $legal_urls,
-            (strpos((string)$tree_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
+            (strpos($placed_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
         )
         : '';
 
@@ -6913,8 +6978,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // A layout made before returns existed places neither token: once the
     // setting is on, the block goes after the widget so every design has it.
     $_ov_returns_tail = (is_array($_ov_returns) && $_ov_returns['enabled']
-                         && strpos((string)$tree_json, '__return_form') === false
-                         && strpos((string)$tree_json, '__returns') === false)
+                         && strpos($placed_json, '__return_form') === false
+                         && strpos($placed_json, '__returns') === false)
         ? pg_return_block_html($_ov_returns_list, $_ov_return_form)
         : '';
 
@@ -8340,6 +8405,27 @@ function pg_sw_edit_chip_css_inject($html)
 }
 
 /**
+ * Put an edit chip in the first element of a rendered record
+ * (pg_sw_insert_edit_chip()). A record that holds a value condition gets it
+ * from the widget's finish pass instead, in the first element the record
+ * keeps once its conditions are resolved (pg_sw_finish_defer_chip()): put
+ * in at once, it went with an element a condition cut.
+ *
+ * @param string $html  one record's markup
+ * @param string $url   the edit screen
+ * @param string $title what the chip says to a screen reader and on hover
+ * @param string $tone  page | ecommerce | forms | calendar
+ */
+function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
+{
+    if ($url !== '' && pg_sw_finish_holds_condition($html)) {
+        $deferred = pg_sw_finish_defer_chip($html, $url, $title, $tone);
+        if ($deferred !== null) return $deferred;
+    }
+    return pg_sw_insert_edit_chip($html, $url, $title, $tone);
+}
+
+/**
  * Put an edit chip in the first element of a rendered record and mark that
  * element as its host. A record whose first element cannot hold one - a
  * void element, a table row, a link or button (a link in a link is not
@@ -8361,7 +8447,7 @@ function pg_sw_edit_chip_css_inject($html)
  * @param string $title what the chip says to a screen reader and on hover
  * @param string $tone  page | ecommerce | forms | calendar
  */
-function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
+function pg_sw_insert_edit_chip($html, $url, $title, $tone = 'page')
 {
     if ($url === '' || !preg_match('/^(\s*(?:<!--.*?-->\s*)*)<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/s', (string)$html, $m)) {
         return $html;

@@ -15,6 +15,9 @@ description: The ERP driver's sales invoice for an order the legacy E-Shipment a
 ## And a shipment document deleted at Paraşüt since? (#1627)
 - The create gets 404 `ShipmentDocument-<id>`: the id is forgotten and the invoice sent once more without the link (erp-parasut-stale-kept-ids.md).
 
+## And an order the legacy Create Invoice already invoiced? (#1629)
+- Refused, or a deleted record's id cleared, before the invoice's own checks and the buyer's card: erp-parasut-legacy-invoiced-order.md.
+
 ## Why name the document in the invoice?
 - The record written second has to name the first: a shipment document cannot be linked afterwards (`PUT shipment_documents/{id}` with `relationships.invoices` answers 200 and links nothing).
 

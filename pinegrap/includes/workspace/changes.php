@@ -105,6 +105,16 @@ function ws_changes_ready()
  * starting with "__" is read by ws_change_record() rather than from the
  * table. "key" is the table's id column when it is not id.
  *
+ * A text limit (text, long, email, keywords, code) is never wider than its
+ * column, a TEXT type counted at four bytes a character: sessions run
+ * non-strict, so MySQL would cut a longer value in silence while the
+ * decision shows the whole text. The one exception is the channel summary,
+ * 20000 characters as the summary tab keeps (ws_channel_set_summary()) in a
+ * TEXT column of 65535 bytes. A longer text value is cut, a longer keyword
+ * list refused, by ws_change_value(). tests/workspace_change_limits_test.php
+ * holds every limit to its column, as the setup SQL or the upgrade step
+ * that made the table defines it.
+ *
  * @return array
  */
 function ws_change_types()
@@ -296,11 +306,11 @@ function ws_change_types()
             'fields'   => array(
                 'name'              => array('text', 100, lang('Name'), 'name'),
                 'title'             => array('text', 255, lang('Title'), 'title'),
-                'short_description' => array('long', 2000, lang('Short description'), 'short_description'),
+                'short_description' => array('long', 100, lang('Short description'), 'short_description'),
                 'full_description'  => array('long', 20000, lang('Full description'), 'full_description'),
                 'meta_description'  => array('text', 255, lang('Meta description'), 'meta_description'),
                 'meta_keywords'     => array('text', 2000, lang('Meta keywords'), 'meta_keywords'),
-                'keywords'          => array('text', 2000, lang('Search keywords'), 'keywords'),
+                'keywords'          => array('text', 255, lang('Search keywords'), 'keywords'),
                 'enabled'           => array('bool', 0, lang('Enabled'), 'enabled'),
             ),
             'create'   => array(
@@ -353,7 +363,7 @@ function ws_change_types()
             'names'   => array('page_name'),
             'fields'  => array(
                 'title'            => array('text', 255, lang('Title'), 'page_title'),
-                'meta_description' => array('text', 1000, lang('Meta description'), 'page_meta_description'),
+                'meta_description' => array('text', 255, lang('Meta description'), 'page_meta_description'),
                 'search'           => array('bool', 0, lang('In site search'), 'page_search'),
                 'search_keywords'  => array('keywords', 1000, lang('Search keywords'), 'page_search_keywords'),
                 'sitemap'          => array('bool', 0, lang('In the site map'), 'sitemap'),
@@ -424,9 +434,9 @@ function ws_change_types()
             'required' => array('name'),
             'names'    => array('name'),
             'fields'   => array(
-                'name'              => array('text', 255, lang('Name'), 'name'),
-                'short_description' => array('long', 1000, lang('Short description'), 'short_description'),
-                'location'          => array('text', 255, lang('Location'), 'location'),
+                'name'              => array('text', 100, lang('Name'), 'name'),
+                'short_description' => array('long', 255, lang('Short description'), 'short_description'),
+                'location'          => array('text', 100, lang('Location'), 'location'),
                 'start_time'        => array('datetime', 0, lang('Start'), 'start_time'),
                 'end_time'          => array('datetime', 0, lang('End'), 'end_time'),
                 'all_day'           => array('bool', 0, lang('All day'), 'all_day'),
@@ -3184,7 +3194,8 @@ function ws_change_log($what)
 
 /**
  * The search results pages that gather a group rebuild their keyword cloud,
- * as the product group screens do after a change to the group.
+ * as the product group screens do after a change to the group: the shared
+ * rebuild (pg_catalog_group_clouds()).
  *
  * @param int  $group_id
  * @param bool $clear_only take the clouds down (before the group is deleted)
@@ -3192,30 +3203,31 @@ function ws_change_log($what)
  */
 function ws_change_group_clouds($group_id, $clear_only = false)
 {
-    if (!function_exists('get_product_groups_in_product_group_tree')) {
-        return array();
-    }
+    return pg_catalog_group_clouds($group_id, $clear_only);
+}
 
-    $pages = array();
-
-    foreach ((array) db_items("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'") as $page) {
-        foreach ((array) get_product_groups_in_product_group_tree($page['product_group_id']) as $group) {
-            if ((int) $group['id'] === (int) $group_id) {
-                $pages[] = $page;
-                break;
-            }
-        }
-    }
-
-    foreach ($pages as $page) {
-        delete_tag_cloud_keywords_for_search_results_page($page['page_id']);
-
-        if (!$clear_only) {
-            update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
-        }
-    }
-
-    return $pages;
+/**
+ * What a proposed product group create hands the catalogue's group writer
+ * (pg_catalog_group_create()): the one parent the proposal names (0: the top
+ * of the catalogue) and its products.
+ *
+ * @param array $values field => value of the checked proposal
+ * @return array
+ */
+function ws_change_group_create_data($values)
+{
+    return array(
+        'name'              => $values['name'],
+        'enabled'           => !empty($values['enabled']),
+        'parent_id'         => (int) (((array) ($values['parent_id'] ?? array()))[0] ?? 0),
+        'short_description' => (string) ($values['short_description'] ?? ''),
+        'full_description'  => (string) ($values['full_description'] ?? ''),
+        'keywords'          => (string) ($values['keywords'] ?? ''),
+        'title'             => (string) ($values['title'] ?? ''),
+        'meta_description'  => (string) ($values['meta_description'] ?? ''),
+        'meta_keywords'     => (string) ($values['meta_keywords'] ?? ''),
+        'product_ids'       => array_map('intval', (array) ($values['product_ids'] ?? array())),
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -3286,6 +3298,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
         if ($id <= 0) {
             return array('ok' => false, 'error' => lang('The product could not be created.'), 'id' => 0);
         }
+
+        // Scored now, as POST /products scores a new product, so the drawer
+        // and the product list show its score at once.
+        pg_catalog_seo_rescore('product', $id);
 
         ws_change_log(lang(array('string' => 'Product ({var:1}) was added in the Workspace, on Claude\'s proposal.', 'vars' => $values['name'])));
         pg_announce('product.created', array('id' => $id, 'name' => (string) $values['name']));
@@ -3749,52 +3765,15 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
     $fields = ws_change_types()['product_group']['fields'];
 
     if ($action === 'create') {
-        $parent = (int) (((array) ($values['parent_id'] ?? array()))[0] ?? 0);
-
-        // Under the top of the catalogue when no parent is named.
-        if ($parent <= 0) {
-            $parent = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id LIMIT 1");
-        }
-
-        $short = (string) ($values['short_description'] ?? '');
-        $address = function_exists('prepare_catalog_item_address_name') ? prepare_catalog_item_address_name(($short !== '') ? $short : $values['name']) : '';
-        $full = (string) ($values['full_description'] ?? '');
-
-        if (function_exists('prepare_rich_text_editor_content_for_input')) {
-            $full = prepare_rich_text_editor_content_for_input($full);
-        }
-
-        db("INSERT INTO product_groups (name, enabled, parent_id, short_description, full_description, details, code, keywords, image_name,
-                display_type, address_name, title, meta_description, meta_keywords, attributes, user, timestamp)
-            VALUES (
-                '" . e($values['name']) . "',
-                '" . (!empty($values['enabled']) ? '1' : '0') . "',
-                '" . $parent . "',
-                '" . e($short) . "',
-                '" . e($full) . "',
-                '', '',
-                '" . e((string) ($values['keywords'] ?? '')) . "',
-                '',
-                'browse',
-                '" . e($address) . "',
-                '" . e((string) ($values['title'] ?? '')) . "',
-                '" . e((string) ($values['meta_description'] ?? '')) . "',
-                '" . e((string) ($values['meta_keywords'] ?? '')) . "',
-                '1',
-                '" . (int) $viewer['id'] . "',
-                UNIX_TIMESTAMP())");
-
-        $id = (int) mysqli_insert_id(db::$con);
+        // The catalogue's one group writer, which POST /product-groups shares:
+        // the row, its products, the search clouds, the SEO score and the
+        // product_group.created announcement.
+        $id = pg_catalog_group_create(ws_change_group_create_data($values), $viewer);
 
         if ($id <= 0) {
             return array('ok' => false, 'error' => lang('The product group could not be created.'), 'id' => 0);
         }
 
-        foreach ((array) ($values['product_ids'] ?? array()) as $product_id) {
-            db("INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . (int) $product_id . "', '" . $id . "', '0')");
-        }
-
-        ws_change_group_clouds($id);
         ws_change_log(lang(array('string' => 'product group ({var:1}) was created', 'vars' => $values['name'])));
 
         return array('ok' => true, 'error' => '', 'id' => $id);

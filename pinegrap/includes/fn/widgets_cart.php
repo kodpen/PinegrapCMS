@@ -574,7 +574,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'" . pg_order_item_active_sql()) === 0);
     if ($_pg_cart_empty) {
         $_pg_cart_empty_msg = (string)(isset($cfg['empty_message']) ? $cfg['empty_message'] : lang('Your cart is empty.'));
-        if (strpos((string)$tree_json, '"has_items"') === false && function_exists('_pg_sw_render_message_only')) {
+        if (strpos(pg_sw_cond_tree_json((string)$tree_json), '"has_items"') === false && function_exists('_pg_sw_render_message_only')) {
             // The legacy empty cart still offers the quick add box.
             $_pg_cart_qa_gid = (int)(isset($cfg['quick_add_product_group_id']) ? $cfg['quick_add_product_group_id'] : 0);
             $_pg_cart_qa_html = ($_pg_cart_qa_gid > 0)
@@ -2808,6 +2808,13 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         _eo_apply_visibility_bindings($tree_decoded_for_eo, $_eo_vis_ctx);
         _eo_apply_section_bindings($tree_decoded_for_eo, $sections_html);
 
+        // The opt_in_displayed field the system screens post, added only
+        // while the tree still draws the opt-in box: it tells the handlers
+        // the visitor was asked, which the consent log needs. The handlers
+        // read the box itself the same way with or without it.
+        $_eo_opt_in_marker = _eo_tree_asks_opt_in($tree_decoded_for_eo)
+            ? '<input type="hidden" name="opt_in_displayed" value="true">' : '';
+
         // ── 1b. Split off any recipient_loop_area BEFORE the field-bindings
         // walker runs. The walker takes a single ship_rid and rewrites every
         // shipping_<X> field name accordingly — applying it to a node that
@@ -2974,6 +2981,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             . '<input type="hidden" name="page_id" value="' . (int)$_eo_page_id . '">'
             . '<input type="hidden" name="current_url" value="' . h($request_uri) . '">'
             . $totals_hidden_html
+            . $_eo_opt_in_marker
             . $designed_body
             . '</form>'
             . $eo_modal_fallback

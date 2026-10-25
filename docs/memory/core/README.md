@@ -34,6 +34,8 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
 - consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
+- consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
+- consent-log-writers.md: Which screens write a person's own e-mail marketing answer to consent_log (sign-up, preferences, one-click, checkout, custom form) and when a row is written (PR #1581)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
@@ -50,7 +52,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.
 - file-placement-rules.md: Where new PHP files go (root only for URL-called files, else includes/), the gate constant each include starts with, root files that stay, file-integrity scope.
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
-- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to comments, widgets_comments and wishlist) and the memory file that describes each.
+- fn-module-map-additions.md: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, lang_files, wishlist, link_resolve, widgets_wishlist and others) and the memory file that describes each.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - form-double-opt-in.md: Double opt-in for custom forms that add to a contact group (11.0.27): the switch, the signed stateless link, confirm_subscription.php, consent_log pending/granted, the global opt-out
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
@@ -59,6 +61,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
+- lang-files.md: Language files as sorted shards (includes/local/<code>/a.json … _.json), lang()'s folder-or-file read, tools/tr_add.php to add keys, tools/tr_resolve.php to settle conflicts, check_lang.php on shards
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left

@@ -7,7 +7,9 @@
  *
  * Three contracts are enforced:
  *   1. lang('English text') in PHP and _sdT('English text') in the style
- *      designer must resolve to a key present in includes/local/tr.json.
+ *      designer must resolve to a key present in includes/local/tr.json, or
+ *      in its shards under includes/local/tr/ once the language is split;
+ *      each shard must then be in its exact form (lang_files.php).
  *   2. _sdT() takes a single-quoted literal only. The server scans the file
  *      for that exact pattern, so _sdT("x"), _sdT($x) and _sdT('a' . $b)
  *      silently ship untranslated text.
@@ -57,31 +59,83 @@ if ($root_real === false) {
 
 // -- the language file is the single source of truth -------------------------
 
-$language_path = $root_real . '/' . $language_file;
-
-if (!is_file($language_path)) {
-	fwrite(STDERR, "Language file not found: $language_path\n");
-	exit(1);
-}
-
-$language_json = file_get_contents($language_path);
-
-$translations = json_decode($language_json, true);
-
-if (!is_array($translations)) {
-	fwrite(STDERR, 'Language file is not valid JSON: ' . json_last_error_msg() . "\n");
-	exit(1);
-}
-
-// pg_json_duplicate_keys() lives in includes/fn/core.php; functions.php loads
+// pg_json_duplicate_keys(), pg_lang_read_folder() (includes/fn/core.php) and
+// pg_lang_shard_problems() (includes/fn/lang_files.php): functions.php loads
 // the modules under includes/fn/ without a connection.
 require_once(dirname(__DIR__) . '/pinegrap/functions.php');
 
-$duplicates = pg_json_duplicate_keys($language_json);
+$language_path = $root_real . '/' . $language_file;
 
-if (!is_array($duplicates)) {
-	fwrite(STDERR, 'Could not scan ' . $language_file . " for duplicate keys.\n");
-	exit(1);
+// The language as shards (includes/local/tr/*.json) once it has been split:
+// docs/memory/plans/tr-json-split.md. lang() reads the folder first, so a
+// single file left beside it would be stale.
+$language_folder = $root_real . '/includes/local/tr';
+
+$duplicates = array();
+
+$shard_problems = array();
+
+if (is_dir($language_folder)) {
+
+	if (is_file($language_path)) {
+		fwrite(STDERR, 'Both includes/local/tr/ and ' . $language_file . " exist; lang() reads the folder, so the file is stale: remove one.\n");
+		exit(1);
+	}
+
+	$language_file = 'includes/local/tr/';
+
+	$shard_files = glob($language_folder . '/*.json');
+	$shard_files = is_array($shard_files) ? $shard_files : array();
+	sort($shard_files, SORT_STRING);
+
+	foreach ($shard_files as $shard_file) {
+
+		$shard_json = (string) file_get_contents($shard_file);
+		$shard_name = basename($shard_file, '.json');
+
+		foreach (pg_lang_shard_problems($shard_name, $shard_json) as $problem) {
+			$shard_problems[] = $language_file . $shard_name . '.json: ' . $problem;
+		}
+
+		$shard_duplicates = pg_json_duplicate_keys($shard_json);
+
+		foreach (is_array($shard_duplicates) ? $shard_duplicates : array() as $duplicate) {
+			$duplicate['file'] = $language_file . $shard_name . '.json';
+			$duplicates[] = $duplicate;
+		}
+
+	}
+
+	$translations = pg_lang_read_folder($language_folder);
+
+	if (!is_array($translations)) {
+		fwrite(STDERR, "The language folder includes/local/tr/ holds no shard.\n");
+		exit(1);
+	}
+
+} else {
+
+	if (!is_file($language_path)) {
+		fwrite(STDERR, "Language file not found: $language_path\n");
+		exit(1);
+	}
+
+	$language_json = file_get_contents($language_path);
+
+	$translations = json_decode($language_json, true);
+
+	if (!is_array($translations)) {
+		fwrite(STDERR, 'Language file is not valid JSON: ' . json_last_error_msg() . "\n");
+		exit(1);
+	}
+
+	$duplicates = pg_json_duplicate_keys($language_json);
+
+	if (!is_array($duplicates)) {
+		fwrite(STDERR, 'Could not scan ' . $language_file . " for duplicate keys.\n");
+		exit(1);
+	}
+
 }
 
 // -- helpers -----------------------------------------------------------------
@@ -283,8 +337,12 @@ foreach ($missing as $key => $where) {
 	echo '      not in ' . $language_file . ': ' . $key . "\n";
 }
 
+foreach ($shard_problems as $problem) {
+	echo 'SHARD ' . $problem . "\n";
+}
+
 foreach ($duplicates as $duplicate) {
-	echo 'DUPE  ' . $language_file . ':' . implode(', ', $duplicate['lines']) . "\n";
+	echo 'DUPE  ' . (isset($duplicate['file']) ? $duplicate['file'] : $language_file) . ':' . implode(', ', $duplicate['lines']) . "\n";
 	echo '      key written ' . count($duplicate['lines']) . ' times: ' . $duplicate['key'] . "\n";
 
 	if ($duplicate['values_differ']) {
@@ -295,8 +353,8 @@ foreach ($duplicates as $duplicate) {
 echo "\n";
 echo 'Scanned ' . $scanned . ' file(s); ' . count($used) . ' key(s) used, ' . count($translations) . ' key(s) defined.' . "\n";
 
-if ((count($missing) > 0) || (count($violations) > 0) || (count($duplicates) > 0)) {
-	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s), ' . count($duplicates) . ' duplicate key(s).' . "\n";
+if ((count($missing) > 0) || (count($violations) > 0) || (count($duplicates) > 0) || (count($shard_problems) > 0)) {
+	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s), ' . count($duplicates) . ' duplicate key(s), ' . count($shard_problems) . ' shard problem(s).' . "\n";
 	exit(1);
 }
 

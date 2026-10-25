@@ -423,7 +423,8 @@ $pg_settings_cards[] = '
                                                                                 </div>
                                                                                 <div class="pg-f-md">
                                                                                     <label class="form-label" for="parasut_client_secret">' . lang('Client Secret') . '</label>
-                                                                                    <input type="password" class="form-control" id="parasut_client_secret" name="parasut_client_secret" value="" autocomplete="new-password" placeholder="' . h($parasut_credential_placeholder) . '" />
+                                                                                    <input type="password" class="form-control" id="parasut_client_secret" name="parasut_client_secret" value="" autocomplete="new-password" placeholder="' . h($parasut_secret_placeholder) . '" />
+                                                                                    <div class="form-text">' . h($parasut_secret_help) . '</div>
                                                                                 </div>
                                                                                 <div class="col-12">
                                                                                     <div class="form-text mb-2">' . lang('2. Open the authorization page, sign in to Paraşüt and allow Pinegrap; Paraşüt then shows a code.') . '</div>
@@ -457,8 +458,8 @@ $pg_settings_cards[] = '
                                                                                 </div>
                                                                                 <div class="pg-f-md">
                                                                                     <label class="form-label" for="parasut_password">' . lang('Password') . '</label>
-                                                                                    <input type="password" class="form-control" id="parasut_password" name="parasut_password" value="" autocomplete="new-password" placeholder="' . h($parasut_credential_placeholder) . '" />
-                                                                                    <div class="form-text">' . h($parasut_credential_help) . '</div>
+                                                                                    <input type="password" class="form-control" id="parasut_password" name="parasut_password" value="" autocomplete="new-password" placeholder="' . h($parasut_password_placeholder) . '" />
+                                                                                    <div class="form-text">' . h($parasut_password_help) . '</div>
                                                                                 </div>
                                                                             </div>
                                                                         </details>
@@ -471,7 +472,7 @@ $pg_settings_cards[] = '
                                                                     <div class="pg-f-md">
                                                                         <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_default_product_id" name="parasut_default_product_id" value="' . h($parasut_default_product_id) . '" autocomplete="off" />
-                                                                        <div class="form-text">' . lang('Parasut product/service ID used for all invoice line items. Create a generic product in Parasut and enter its ID here.') . '</div>
+                                                                        <div class="form-text">' . lang('Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.') . '</div>
                                                                     </div>
                                                                     <div class="pg-f-md">
                                                                         <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
