@@ -70,7 +70,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, not started, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
 - workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule, the slice that keeps it, how its test reads keys without a database
-- workspace-flows.md: Plan (2026-10-24, F1 done #1503, F2 in #1529, F3a in #1551): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+- workspace-flows.md: Plan (2026-10-24, F1-F2 done #1503 #1529, F3a in #1551): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
