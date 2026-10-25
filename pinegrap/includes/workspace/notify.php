@@ -239,8 +239,21 @@ function ws_inbox_describe($viewer, $row)
             $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
 
             // Written by an application (Claude): its name, not a person's.
+            // A proposal an OAuth connection made (proposals.php) is named by
+            // the client, as the channel screen draws its message: every
+            // client writes through the one OAuth application.
             if ($message && ($message['sender_kind'] === 'app')) {
-                $actor = (string) (ws_app_sender((int) $message['sender_id'])['name'] ?? $actor);
+                $sender = ws_app_sender((int) $message['sender_id']);
+
+                if (function_exists('ws_proposals_by_reply') && function_exists('ws_proposal_sender')) {
+                    $agent = ws_proposals_by_reply(array((int) $message['id']))[(int) $message['id']] ?? '';
+
+                    if ($agent !== '') {
+                        $sender = ws_proposal_sender($sender, $agent);
+                    }
+                }
+
+                $actor = (string) ($sender['name'] ?? $actor);
             }
 
             return array(

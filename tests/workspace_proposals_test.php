@@ -355,3 +355,15 @@ function test_ws_bulk_step_names_the_proposer()
 	pg_assert_true(($set !== false) && ($set < $first), 'the change is named before the first record is written');
 	pg_assert_true(($finish !== false) && ($last !== false) && ($finish > $last) && (strpos(substr($code, $last, $finish - $last), 'ws_ai_voice_change(') !== false), 'and handed back after the last one');
 }
+
+// A mention an OAuth connection's proposal makes is announced under the
+// client, as its message is drawn, not under the OAuth application every
+// client writes through.
+function test_ws_inbox_mention_names_the_proposing_client()
+{
+	$mention = pg_test_ws_proposals_between(pg_test_ws_proposals_code('ws_inbox_describe'), "case 'mention':", "case '");
+
+	pg_assert_true($mention !== '', 'the mention is described');
+	pg_assert_contains('ws_proposals_by_reply(', $mention, 'the proposal behind the message is looked up');
+	pg_assert_contains('ws_proposal_sender(', $mention, 'and its sender drawn as on the channel screen');
+}
