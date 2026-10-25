@@ -610,8 +610,8 @@ function test_page_cache_panel_and_mcp_wiring()
 	$tools = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 	$hook = strpos($tools, 'api_send_hook(function');
 	$dirty = strpos($tools, 'pg_page_cache_mcp_dirties($route[\'method\'], $split[\'dry_run\'], $status_code)');
-	$result = strpos($tools, 'pg_mcp_tool_result($id, $status_code, $body, $modern);');
-	pg_assert_true(($hook !== false) && ($dirty !== false) && ($result !== false) && ($hook < $dirty) && ($dirty < $result), 'in the send hook');
+	$answer = strpos($tools, 'call_user_func($answer, $status_code, $body);');
+	pg_assert_true(($hook !== false) && ($dirty !== false) && ($answer !== false) && ($hook < $dirty) && ($dirty < $answer), 'in the send hook, before the answer is written');
 }
 
 function test_page_cache_announce_dirties()

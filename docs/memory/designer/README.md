@@ -37,12 +37,24 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
+- comments-widget-canvas.md: The comments widget on the canvas: visitor states (the e-mail one too), the thread flag twin, hide versus fade, picking a node, sample comments, token previews
+- comments-widget-conversion.md: Fixed comments block to the Comments widget and back (which widget is the design's, also on tabs not opened yet; featured filter on a new one), templates shipping the kind
+- comments-widget-email-design.md: Designing the comments widget for a comment e-mail page: the E-mail canvas state, the link to the comment the card must keep, the canvas note without it, mail-safe styles, save warnings
+- comments-widget-email.md: The comments widget on a comment e-mail page: the one comment mail.php names, when the fixed markup stays, absolute links and dates in the site's zone, no forms
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
-- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
+- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
+- comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
+- comments-widget-preview.md: The comments widget in the designer's Preview: the editor's unsaved comment settings, the page id and ?r= it draws with, an unsaved page, lists of recent comments, anonymous background renders
+- comments-widget-recent-editor.md: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
+- comments-widget-recent-gates.md: Which source pages a list of recent comments reads and why one adds nothing (sign-in pages included), who sees which comment, the record gate in SQL, 'mine' from the account's creation
+- comments-widget-recent-panel.md: The recent comments list's panel section: what it shows, the pages it offers and how each is labelled, tabs whose components are not loaded yet, notes, the stored page list
+- comments-widget-recent-reads.md: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the open idx_author question, page cache
+- comments-widget-recent.md: The Comments widget's recent mode (kind comments_recent): what a list shows, options, what it never does, tokens and flags, checks
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
+- comments-widget-save-warnings.md: Save warnings about a page's comments not drawn (block plus widget, two widgets, nested record widget, comments off; an e-mail page only two widgets): census, approximation, codes
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
-- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, tokens, flags, escaping, default layout, checks
+- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
@@ -134,6 +146,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-paste-clipboard.md: Designer Ctrl+V: internal node clipboard vs external markup, /*pinegrap-nodes*/ prefix, conditional keydown preventDefault, text sinks, paste target.
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
+- designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2): a session-less frame signed for one browser, link kinds, inert forms, no tracking, the resolver in includes/fn/link_resolve.php
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-save-shortcut.md: Ctrl+S in the visual editor: it presses the main Save/Publish button, its two listeners, which dialogs keep their own, and why a toolbar hint is changed only through _sdSetButtonTitle().
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
@@ -170,6 +183,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
+- no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
@@ -181,6 +195,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
 - palette-component-atomic.md: Palette components explode into a node tree; only btn, badge (atomic) and language_switcher (per request) carry render/toHTML; the two button models, their panel, children in a component button.
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
+- palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on designed record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
@@ -208,4 +223,5 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
+- wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.
