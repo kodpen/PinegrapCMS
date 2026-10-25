@@ -1309,16 +1309,22 @@ function pg_panel_designer($request, $action)
 
         // A page the user may not know is drawn as an unsaved one: a
         // comments widget then shows no thread of it. The comment settings
-        // are the page's as the editor holds them, saved or not.
+        // are the page's as the editor holds them, saved or not, on a page
+        // the user may edit; any other page keeps its stored ones
+        // (pg_designer_preview_input()).
         case 'preview_widgets':
             $pv_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
-            if ($pv_page > 0 && pg_designer_page_access($pv_page, $user) === 'hidden') $pv_page = 0;
+            $pv = pg_designer_preview_input(
+                $pv_page,
+                isset($request['comment_settings']) ? $request['comment_settings'] : null,
+                ($pv_page > 0) ? pg_designer_page_access($pv_page, $user) : 'edit'
+            );
             respond(array(
                 'status' => 'success',
                 'html'   => pg_designer_preview_widgets(
-                    $pv_page,
+                    $pv['page_id'],
                     (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
-                    (isset($request['comment_settings']) && is_array($request['comment_settings'])) ? $request['comment_settings'] : array()
+                    $pv['comment_settings']
                 ),
             ));
             break;

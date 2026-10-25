@@ -8702,6 +8702,30 @@ function _pg_preview_drop_tab_refs($value)
 }
 
 /**
+ * What the Preview may use of a request: the page and the editor's comment
+ * settings, by what the user may do with that page
+ * (pg_designer_page_access()). A page they may not know is drawn as an
+ * unsaved one (no thread). A page they may see but not edit is drawn with
+ * its stored comment settings: the editor's would switch its comments on, or
+ * change who may read them, on a page they cannot change. Pure.
+ *
+ * @param mixed  $page_id  the page the request names
+ * @param mixed  $settings the request's comment_settings
+ * @param string $access   'edit' | 'locked' | 'hidden'
+ * @return array page_id, comment_settings
+ */
+function pg_designer_preview_input($page_id, $settings, $access)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || $access === 'hidden') $page_id = 0;
+
+    return array(
+        'page_id'          => $page_id,
+        'comment_settings' => ($page_id > 0 && $access === 'edit' && is_array($settings)) ? $settings : array(),
+    );
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *

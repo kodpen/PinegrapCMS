@@ -11558,7 +11558,7 @@ const StyleDesigner = (function () {
                 // comment it answers; a threaded one under it.
                 flags: flags({ comment_is_root: !threaded, comment_is_reply: threaded, comment_has_quote: true }),
                 values: {
-                    __comment_name: _sdT('Daniel Reed'),
+                    __comment_name: _sdT('Michael Brooks'),
                     __comment_date: _sdT('1 hour ago'),
                     __comment_parent_name: _sdT('Jane Cooper'),
                     __comment_quote: _sdT('Has anyone tried this with the new version?'),
@@ -11570,7 +11570,7 @@ const StyleDesigner = (function () {
                 key: 'pending',
                 flags: flags({ comment_is_pending: true, comment_is_own_pending: !staff }),
                 values: {
-                    __comment_name: _sdT('Emma Hughes'),
+                    __comment_name: _sdT('Emily Turner'),
                     __comment_status: staff ? _sdT('Not Published') : _sdT('Your {var:1} is awaiting approval', label.toLowerCase()),
                     __comment_message_html: function () { return esc(_sdT('I will try this tonight.')); }
                 }
@@ -11579,7 +11579,7 @@ const StyleDesigner = (function () {
                 key: 'rated',
                 flags: flags({ comment_has_rating: _getCmtVal('pg_comments_rating') === '1', comment_has_file: true }),
                 values: {
-                    __comment_name: _sdT('Chris Park'),
+                    __comment_name: _sdT('Daniel Ross'),
                     __comment_rating: '4',
                     __comment_file_name: 'photo.jpg',
                     __comment_file_size: '120 KB',
@@ -11654,6 +11654,26 @@ const StyleDesigner = (function () {
             return _getCmtVal('pg_comments_label') || _sdT('Comment');
         }
         return null;
+    }
+
+    // Whether a token is one of the comments widget's text tokens. A rich-text
+    // node's slot is markup (its text is drawn as HTML), and the page fills it
+    // with the token's value escaped once (pg_sw_escape_token_values() before
+    // pg_binding_text_slot()); the canvas does the same, because the value can
+    // be the page's own words an operator typed (_sdCommentsPageToken(), a
+    // sample's status with the page's label). The HTML tokens
+    // (_SD_HTML_PREVIEW_TOKENS) are markup already.
+    var _sdCommentsTokenSet = null;
+    function _sdCommentsTextToken(tok) {
+        if (!tok || _sdIsHtmlPreviewToken(tok)) return false;
+        if (!_sdCommentsTokenSet) {
+            if (!Array.isArray(SW_COMMENTS_TOKEN_GROUPS)) return false;
+            _sdCommentsTokenSet = {};
+            SW_COMMENTS_TOKEN_GROUPS.forEach(function (g) {
+                g.tokens.forEach(function (t) { _sdCommentsTokenSet[t[0]] = true; });
+            });
+        }
+        return Object.prototype.hasOwnProperty.call(_sdCommentsTokenSet, tok);
     }
 
     // The page's comment settings as the editor holds them, saved or not,
@@ -13747,6 +13767,7 @@ const StyleDesigner = (function () {
             for (var prop in b) {
                 if (!b[prop]) continue;
                 var shown = _displayValueForBinding(prop, b[prop], node);
+                if (richText && prop === 'text' && _sdCommentsTextToken(b[prop])) shown = esc(shown);
                 out[prop] = (richText && prop === 'text') ? _sdBindTextSlot(node.props.text, shown) : shown;
             }
         }
@@ -30662,11 +30683,14 @@ const StyleDesigner = (function () {
                     'value="' + esc(_getCmtVal('pg_comments_message')) + '" maxlength="255">' +
                 _cmtHint(_sdT('Shown with the form.'))
             ) +
+            // Left empty, the widget prints the standard sentence
+            // (__comments_closed_message) and the fixed block prints none:
+            // each panel says what its own renderer does.
             row(_sdT('Closed message'),
                 '<input type="text" class="form-control form-control-sm" data-cmt-txt="pg_comments_closed_message" ' +
-                    'value="' + esc(_getCmtVal('pg_comments_closed_message')) + '" maxlength="255" placeholder="' +
-                    esc(_sdT('We\'re sorry. New comments are no longer being accepted.')) + '">' +
-                _cmtHint(_sdT('Shown while new comments are off.'))
+                    'value="' + esc(_getCmtVal('pg_comments_closed_message')) + '" maxlength="255"' +
+                    (opts.widget ? ' placeholder="' + esc(_sdT('We\'re sorry. New comments are no longer being accepted.')) + '"' : '') + '>' +
+                _cmtHint(opts.widget ? _sdT('Shown while new comments are off.') : _sdT('Shown while new comments are off. Leave it empty to show no message.'))
             ) +
             row(_sdT('Sender manages watchers'),
                 _cmtSwitch('pg_comments_watchers_managed', _getCmtVal('pg_comments_watchers_managed') === '1') +
@@ -49044,9 +49068,11 @@ const StyleDesigner = (function () {
 
     // The design's Comments widget: the first one placed on a page of the
     // design (inside a component placed there too), else one the design used
-    // by the usage list; 0 for none. Pure: the configs, the component trees
-    // and the usage come from the caller.
-    function _sdCommentsPickWidget(pageTrees, cfgOf, treeOf, usage, styleId) {
+    // by the usage list, else the first comments widget among `spare` (ids of
+    // widgets no page places now: the one a page went back to the fixed block
+    // from, the rows named after the design); 0 for none. Pure: the configs,
+    // the component trees, the usage and the spare ids come from the caller.
+    function _sdCommentsPickWidget(pageTrees, cfgOf, treeOf, usage, styleId, spare) {
         var isComments = function (sid) {
             var c = cfgOf(sid);
             return !!c && c.regionType === 'comments';
@@ -49077,7 +49103,31 @@ const StyleDesigner = (function () {
                     (usage[keys[i]] || []).some(function (u) { return parseInt(u.style_id, 10) === style; })) return sid;
             }
         }
+        var rest = Array.isArray(spare) ? spare : [];
+        for (var j = 0; j < rest.length; j++) {
+            var spareId = parseInt(rest[j], 10) || 0;
+            if (spareId > 0 && isComments(spareId)) return spareId;
+        }
         return 0;
+    }
+
+    // The comments widget rows named after the design (`name`, the name
+    // "Make designable" gives a widget it makes, also with the number the
+    // server adds to a name already taken), in list order. Pure.
+    function _sdCommentsNamedRows(items, name) {
+        var out = [];
+        if (!name) return out;
+        (Array.isArray(items) ? items : []).forEach(function (it) {
+            if (!it) return;
+            var n = String(it.name || '');
+            if (n !== name && !(n.indexOf(name) === 0 && /^ \[\d+\]$/.test(n.slice(name.length)))) return;
+            var cfg = null;
+            try { cfg = JSON.parse(String(it.system_region_config || '')); } catch (e) { cfg = null; }
+            if (!cfg || cfg.regionType !== 'comments') return;
+            var sid = parseInt(it.id, 10) || 0;
+            if (sid > 0) out.push(sid);
+        });
+        return out;
     }
 
     function _sdCommentsTreeOf(sid) {
@@ -49085,9 +49135,33 @@ const StyleDesigner = (function () {
         return (c && c.tree) ? c.tree : null;
     }
 
+    // The widget a page of this editor last went back to the fixed block
+    // from: "Make designable" places it again, even when no page places it
+    // any more and it has been renamed. Editor only, never saved.
+    var _sdCommentsSentBack = 0;
+
     function _sdCommentsDesignWidget() {
         return _sdCommentsPickWidget(_pgAllPageTrees(), _cfCfgOf, _sdCommentsTreeOf, _sharedUsage,
-            (_design && _design.styleId) ? _design.styleId : 0);
+            (_design && _design.styleId) ? _design.styleId : 0, [_sdCommentsSentBack]);
+    }
+
+    // The site's widget rows (shared_component list), for a widget of the
+    // design that no page places now. cb(items) once; [] when the server
+    // cannot be reached.
+    function _sdCommentsFetchRows(cb) {
+        var done = false;
+        var finish = function (items) { if (done) return; done = true; cb(items); };
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', _swApiBase(), true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var resp = null;
+            try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+            finish((resp && resp.status === 'success' && Array.isArray(resp.items)) ? resp.items : []);
+        };
+        xhr.onerror = function () { finish([]); };
+        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list', token: _swToken() }));
     }
 
     // A placement of a widget, and the fixed comments block.
@@ -49105,7 +49179,9 @@ const StyleDesigner = (function () {
     }
 
     // The fixed comments block becomes a placement of the design's Comments
-    // widget. With none, one is made from the starter layout, showing only
+    // widget: one a page places, the one a page went back from, or a row
+    // named after the design that no page places now (asked from the
+    // server). With none, one is made from the starter layout, showing only
     // the featured comments while there are some, as the block does. A page
     // shows one Comments widget.
     function _sdCommentsMakeDesignable(regionNode) {
@@ -49135,27 +49211,46 @@ const StyleDesigner = (function () {
             if (!created && (!cfg || cfg.featured !== 'filter')) msg += ' ' + esc(_sdT('Its display options are shared with the other pages that show it.'));
             sdToast(msg, 'success', 7000);
         };
-        var sid = _sdCommentsDesignWidget();
-        if (sid) {
+        var ownName = _swAutoName('comments', null, { designWide: true });
+        var reuse = function (sid) {
             var cached = _sharedCache[sid];
-            place(sid, (cached && cached.name) ? cached.name : _swAutoName('comments', null, { designWide: true }), false);
-            return;
-        }
-        var cfg = _swTypeDefaults({}, 'comments');
-        cfg.featured = 'filter';
-        _swCreateRow(_swAutoName('comments', null, { designWide: true }), cfg, _buildStarterTree('comments'), function (newId, newName) {
-            place(newId, newName, true);
+            place(sid, (cached && cached.name) ? cached.name : ownName, false);
+        };
+        var sid = _sdCommentsDesignWidget();
+        if (sid) { reuse(sid); return; }
+        _sdCommentsFetchRows(function (rows) {
+            // The block may have gone meanwhile (another tab, an undo).
+            if (!findParent(regionNode, tree)) return;
+            var named = _sdCommentsNamedRows(rows, ownName);
+            if (named.length) {
+                // Its name and settings, for the placement and the panel;
+                // its layout is fetched when it is drawn (place()).
+                var hitRow = null;
+                (rows || []).forEach(function (it) { if (!hitRow && it && (parseInt(it.id, 10) || 0) === named[0]) hitRow = it; });
+                if (!_sharedCache[named[0]] && hitRow) {
+                    _sharedCache[named[0]] = { name: hitRow.name || ownName, tree: null, system_region_config: hitRow.system_region_config || null };
+                }
+                reuse(named[0]);
+                return;
+            }
+            var cfg = _swTypeDefaults({}, 'comments');
+            cfg.featured = 'filter';
+            _swCreateRow(ownName, cfg, _buildStarterTree('comments'), function (newId, newName) {
+                place(newId, newName, true);
+            });
         });
     }
 
     // A placement of the Comments widget becomes the fixed comments block
-    // again; the widget stays in the design.
+    // again; the widget stays in the design, and "Make designable" places it
+    // again (_sdCommentsSentBack, the rows named after the design).
     function _sdCommentsBackToBlock(refNode) {
         if (!refNode || refNode.type !== 'shared_ref' || !_sdCommentsSwapOffered(refNode)) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var parent = findParent(refNode, tree);
         var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(refNode) : -1;
         if (idx === -1) return;
+        _sdCommentsSentBack = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
         saveState();
         var block = _sdCommentsBlockNode();
         parent.children.splice(idx, 1, block);

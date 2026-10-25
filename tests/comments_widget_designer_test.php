@@ -556,6 +556,41 @@ function test_comments_widget_designer_settings_rows()
 	}
 }
 
+// An empty closed message: the fixed block prints none, the widget prints
+// the standard sentence. Each panel says what its own renderer does.
+function test_comments_widget_designer_closed_message_by_renderer()
+{
+	$script = <<<'JS'
+function _sdT(s, v) { return (v === undefined) ? s : String(s).replace(/\{var(?::1)?\}/g, v); }
+function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : ''; }
+function sect(icon, title, body) { return '<section>' + body + '</section>'; }
+function row(label, ctrl) { return '<div class="row" data-label="' + label + '">' + ctrl + '</div>'; }
+function _getCmtVal(k) { return k === 'pg_comments' ? '1' : ''; }
+function _pgActivePage() { return { page_name: 'topic' }; }
+function _swPageOptions() { return ''; }
+var _allPagesCache = [];
+var closed = function (html) {
+    var at = html.indexOf('data-label="Closed message"');
+    return html.substring(at, html.indexOf('data-label="Sender manages watchers"'));
+};
+var out = { block: closed(_sdCommentSettingsSect({})), widget: closed(_sdCommentSettingsSect({ widget: true })) };
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentSettingsSect'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	$sentence = 'We&#39;re sorry. New comments are no longer being accepted.';
+	$plain = "We're sorry. New comments are no longer being accepted.";
+	pg_assert_true(strpos($res['block'], 'data-cmt-txt="pg_comments_closed_message"') !== false, 'the block has the box');
+	pg_assert_false(strpos($res['block'], $plain) !== false || strpos($res['block'], $sentence) !== false, 'the block offers no sentence it would not print');
+	pg_assert_contains('Leave it empty to show no message.', $res['block'], 'the block says an empty one prints nothing');
+	pg_assert_contains('placeholder="' . $plain . '"', $res['widget'], 'the widget shows the sentence it prints for an empty one');
+	pg_assert_false(strpos($res['widget'], 'Leave it empty to show no message.') !== false, 'and does not say it prints none');
+}
+
 // -- the canvas and the Preview ---------------------------------------------------
 
 // The editor's unsaved settings take the place of the stored ones for the
@@ -647,6 +682,25 @@ function test_comments_widget_designer_preview_wiring()
 	$case = substr($panel, (int) strpos($panel, "case 'preview_widgets':"), 900);
 	pg_assert_contains("comment_settings", $case, 'the endpoint reads the comment settings');
 	pg_assert_contains('pg_designer_page_access(', $case, 'the endpoint checks the page');
+	pg_assert_contains('pg_designer_preview_input(', $case, 'and decides what the Preview may use by the access');
+}
+
+// The Preview may draw a page the user may not edit, but only with its
+// stored comment settings: the editor's are taken for a page they may edit.
+// A page they may not know is drawn as an unsaved one.
+function test_comments_widget_designer_preview_input()
+{
+	if (!comments_widget_designer_test_has('pg_designer_preview_input')) {
+		return;
+	}
+
+	$settings = array('pg_comments' => '1', 'pg_comments_rating' => '1');
+
+	pg_assert_same(array('page_id' => 12, 'comment_settings' => $settings), pg_designer_preview_input(12, $settings, 'edit'), 'a page they may edit takes the editor\'s settings');
+	pg_assert_same(array('page_id' => 12, 'comment_settings' => array()), pg_designer_preview_input(12, $settings, 'locked'), 'a locked page keeps its stored settings');
+	pg_assert_same(array('page_id' => 0, 'comment_settings' => array()), pg_designer_preview_input(12, $settings, 'hidden'), 'a hidden page is drawn as an unsaved one');
+	pg_assert_same(array('page_id' => 12, 'comment_settings' => array()), pg_designer_preview_input('12', 'x', 'edit'), 'settings that are not a list are none');
+	pg_assert_same(array('page_id' => 0, 'comment_settings' => array()), pg_designer_preview_input(-3, $settings, 'edit'), 'no page below 1');
 }
 
 // The canvas twin of the thread flags gives what the server gives.
@@ -906,6 +960,56 @@ JS;
 
 	pg_assert_same(4, count(array_unique($names)), 'the one answered and three samples: four people');
 	pg_assert_same(4, count(array_unique($turkish)), 'four people in Turkish too: ' . implode(', ', $turkish));
+
+	// The designer's sample people (designer-block-sample-content.md), so a
+	// team block and the comments read as one site's people.
+	foreach ($names as $name) {
+		pg_assert_true(in_array($name, array('Jane Cooper', 'Michael Brooks', 'Emily Turner', 'Daniel Ross'), true), $name . ' is one of the sample people');
+	}
+}
+
+// A comments token fills a rich-text node's slot escaped, as the page fills
+// it: the page's own words (the intro, typed by an operator) and a sample's
+// status never reach the canvas as markup. A semantic node's text is a text
+// node, so it gets the words as they are; the HTML tokens stay markup.
+function test_comments_widget_designer_rich_text_slot_escapes_page_words()
+{
+	$script = <<<'JS'
+function _sdT(s, v) { return (v === undefined) ? s : String(s).replace(/\{var(?::1)?\}/g, v); }
+function esc(s) { return s ? String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : ''; }
+function _sdDecodeEntities(s) { return String(s); }
+var _cmt = { pg_comments_message: '<img src=x onerror="alert(1)">', pg_comments_label: '' };
+function _getCmtVal(k) { return _cmt[k] || ''; }
+var _sdCommentSample = null;
+var _SD_AVATAR_TOKENS = {};
+var _SD_RICH_TEXT_CONTENT = { heading: 1, link: 1, paragraph: 1, span: 1, text: 1 };
+var _SD_HTML_PREVIEW_TOKENS = { __comment_message_html: function () { return '<p>Comment text</p>'; } };
+var SW_COMMENTS_TOKEN_GROUPS = [{ label: 'Thread', tokens: [['__comments_intro', 'Intro'], ['__comments_label', 'Label']] },
+                                { label: 'Comment', tokens: [['__comment_status', 'Status'], ['__comment_message_html', 'Text']] }];
+var _sdCommentsTokenSet = null;
+function content(type, text, tok) { return { type: 'content', props: { contentType: type, text: text, _bindings: { text: tok } }, children: [] }; }
+var out = {};
+out.paragraph = _propsWithBindings(content('paragraph', 'Intro', '__comments_intro')).text;
+out.heading_markup = _propsWithBindings(content('heading', '<b>Intro</b>', '__comments_intro')).text;
+out.semantic = _propsWithBindings({ type: 'semantic', props: { tag: 'p', text: '', _bindings: { text: '__comments_intro' } }, children: [] }).text;
+out.html = _propsWithBindings(content('paragraph', 'x', '__comment_message_html')).text;
+_sdCommentSample = { values: { __comment_status: 'Your <b>answer</b> is awaiting approval' } };
+out.sample = _propsWithBindings(content('span', 'Status', '__comment_status')).text;
+_sdCommentSample = null;
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdBindTextSlot', '_propsWithBindings', '_displayValueForBinding',
+		'_sdCommentsPageToken', '_sdIsHtmlPreviewToken', '_sdCommentsTextToken'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;', $res['paragraph'], 'the intro fills a paragraph as text');
+	pg_assert_same('<b>&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</b>', $res['heading_markup'], 'inside the markup the heading keeps');
+	pg_assert_same('<img src=x onerror="alert(1)">', $res['semantic'], 'a semantic node gets the words as they are (a text node)');
+	pg_assert_same('<p>Comment text</p>', $res['html'], 'an HTML token stays markup');
+	pg_assert_same('Your &lt;b&gt;answer&lt;/b&gt; is awaiting approval', $res['sample'], 'a sample\'s status, with the page\'s label, is text');
 }
 
 
@@ -1133,15 +1237,34 @@ out.usage = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, { 7
 out.usage_other_design = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, { 8: [{ style_id: 4 }] }, 3);
 out.nothing = _sdCommentsPickWidget([], cfgOf, treeOf, {}, 3);
 out.loop = _sdCommentsPickWidget([{ tree: root([ref(10)]) }], cfgOf, treeOf, {}, 3);
+out.spare = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, {}, 3, [0, 7, 8, 6]);
+out.spare_after_placed = _sdCommentsPickWidget([{ tree: root([ref(5)]) }], cfgOf, treeOf, {}, 3, [8]);
+out.spare_none = _sdCommentsPickWidget([], cfgOf, treeOf, {}, 3, [7, 9, 0]);
+out.named = _sdCommentsNamedRows([
+    { id: '21', name: 'design-comments-widget', system_region_config: '{"regionType":"comments"}' },
+    { id: 22, name: 'design-comments-widget [2]', system_region_config: '{"regionType":"comments"}' },
+    { id: 23, name: 'design-comments-widget', system_region_config: '{"regionType":"form_item_view"}' },
+    { id: 24, name: 'topic-comments-widget', system_region_config: '{"regionType":"comments"}' },
+    { id: 25, name: 'design-comments-widget-old', system_region_config: '{"regionType":"comments"}' },
+    { id: 26, name: 'design-comments-widget', system_region_config: 'not json' },
+    null
+], 'design-comments-widget');
+out.named_none = _sdCommentsNamedRows(null, 'design-comments-widget');
 out.ref = _sdCommentsRefNode(5, 'design-comments-widget');
 out.block = _sdCommentsBlockNode();
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsRefNode', '_sdCommentsBlockNode'), $script);
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsRefNode', '_sdCommentsBlockNode'), $script);
 	if ($res === null) {
 		return;
 	}
+
+	pg_assert_same(8, $res['spare'], 'no placement: the first spare comments widget (not a record widget)');
+	pg_assert_same(5, $res['spare_after_placed'], 'a placed one comes first');
+	pg_assert_same(0, $res['spare_none'], 'no spare comments widget');
+	pg_assert_same(array(21, 22), $res['named'], 'the comments rows named after the design, also with a number');
+	pg_assert_same(array(), $res['named_none'], 'no rows');
 
 	pg_assert_same(5, $res['page'], 'a comments placement on a page; a record widget is ignored');
 	pg_assert_same(6, $res['header'], 'one inside a header');
@@ -1198,8 +1321,15 @@ function _swTypeDefaults(cfg, type) { cfg.regionType = type; cfg.featured = 'fir
 function _swAutoName(type, page, where) { return (where && where.designWide) ? 'design-' + type + '-widget' : 'page-' + type + '-widget'; }
 var created = [];
 function _swCreateRow(name, cfg, starter, cb) { created.push({ name: name, cfg: cfg, starter: starter.starter }); cb(77, name); }
+var rows = [];
+function _sdCommentsFetchRows(cb) { log.push('list'); cb(rows); }
+var _sdCommentsSentBack = 0;
 var _sharedCache = {}, _sharedUsage = {}, _design = { styleId: 3 };
-function _cfCfgOf(sid) { return (sid === 5 || sid === 77) ? { regionType: 'comments', featured: _sharedCache[sid] ? _sharedCache[sid].featured : 'filter' } : null; }
+function _cfCfgOf(sid) {
+    if (sid === 5 || sid === 77) return { regionType: 'comments', featured: _sharedCache[sid] ? _sharedCache[sid].featured : 'filter' };
+    var c = _sharedCache[sid];
+    return (c && c.system_region_config) ? JSON.parse(c.system_region_config) : null;
+}
 var tree, selectedNode = null, selectedNodes = [], otherPage = null;
 function _pgAllPageTrees() { return [{ tree: tree }].concat(otherPage ? [{ tree: otherPage }] : []); }
 function block() { return { _id: gid(), type: 'region', props: { regionType: 'comments_block', regionName: '' }, children: [] }; }
@@ -1207,7 +1337,7 @@ function page(kids) { return { type: 'root', props: {}, children: [{ type: 'cont
 var out = {};
 var run = function (setup, act) {
     log = []; created = []; _seq = 100; selectedNode = null; otherPage = null; _collab.mayEdit = true; _access = 'full';
-    _sharedCache = {};
+    _sharedCache = {}; rows = []; _sdCommentsSentBack = 0;
     var b = block();
     tree = page([b]);
     var ctx = { block: b };
@@ -1228,10 +1358,26 @@ out.already = run(function (c) {
 var ref = function () { return { _id: 'r1', type: 'shared_ref', props: { sharedId: 5, sharedName: 'w' }, children: [] }; };
 out.read_only_back = run(function (c) { c.ref = ref(); tree = page([c.ref]); _collab.mayEdit = false; }, function (c) { _sdCommentsBackToBlock(c.ref); });
 out.back = run(function (c) { c.ref = ref(); tree = page([c.ref]); }, function (c) { _sdCommentsBackToBlock(c.ref); });
+// Back, then Make designable again: the widget sent back is placed again,
+// even when no page places it any more and it was renamed.
+out.round_trip = run(function (c) {
+    c.ref = { _id: 'r2', type: 'shared_ref', props: { sharedId: 66, sharedName: 'Forum replies' }, children: [] };
+    tree = page([c.ref]);
+    _sharedCache[66] = { name: 'Forum replies', tree: null, system_region_config: '{"regionType":"comments","featured":"filter"}' };
+}, function (c) {
+    _sdCommentsBackToBlock(c.ref);
+    _sdCommentsMakeDesignable(tree.children[0].children[0]);
+});
+// A later visit: no page places the design's widget and nothing was sent
+// back here; its row, named after the design, is found and placed.
+out.named_row = run(function (c) {
+    rows = [{ id: '88', name: 'design-comments-widget', system_region_config: '{"regionType":"comments","featured":"filter"}' },
+            { id: '89', name: 'other-comments-widget', system_region_config: '{"regionType":"comments"}' }];
+}, function (c) { _sdCommentsMakeDesignable(c.block); });
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode',
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsNamedRows', '_sdCommentsTreeOf', '_sdCommentsDesignWidget', '_sdCommentsRefNode',
 		'_sdCommentsBlockNode', '_sdCommentsSwapOffered', '_sdCommentsMakeDesignable', '_sdCommentsBackToBlock'), $script);
 	if ($res === null) {
 		return;
@@ -1277,6 +1423,19 @@ JS;
 	pg_assert_false(strpos($res['back']['tree'], 'shared_ref') !== false, 'the placement is gone');
 	pg_assert_same('region', $res['back']['selected'], 'the block is selected');
 	pg_assert_same(1, count(array_keys($res['back']['log'], 'undo', true)), 'one undo step');
+
+	$trip = $res['round_trip'];
+	pg_assert_same(array(), $trip['created'], 'back and again: no second widget is made');
+	pg_assert_contains('"sharedId":66,"sharedName":"Forum replies"', $trip['tree'], 'the widget sent back is placed again');
+	pg_assert_false(strpos($trip['tree'], 'comments_block') !== false, 'in the block\'s place');
+	pg_assert_false(in_array('list', $trip['log'], true), 'found without asking the server');
+
+	$named = $res['named_row'];
+	pg_assert_same(array(), $named['created'], 'the design\'s unplaced widget is reused');
+	pg_assert_contains('"sharedId":88,"sharedName":"design-comments-widget"', $named['tree'], 'the row named after the design is placed');
+	pg_assert_true(in_array('list', $named['log'], true), 'after asking the server for the rows');
+	pg_assert_true(in_array('fetch:88', $named['log'], true), 'its layout is fetched to draw it');
+	pg_assert_same(1, count(array_keys($named['log'], 'undo', true)), 'one undo step');
 }
 
 // A template may ship a comments widget with the editor's starter layout.
