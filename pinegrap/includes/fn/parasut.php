@@ -1684,11 +1684,23 @@ function parasut_kept_warehouse_id($kept, $skip = '')
  * card keeps stock, and initial_stock_count gives a tracked card its opening
  * stock in the create itself.
  *
- * @param array $product  A products row: name, short_description, price
- *                        (minor units), inventory, inventory_quantity, tax_rate
+ * The opening stock is the stock before the document the card is opened
+ * for: Pinegrap's count plus what the sale behind that document already
+ * took out of it ($taken_out). The document then takes those goods out at
+ * Paraşüt, so they are counted out once; opened at the count alone, the
+ * same goods were counted out twice. Only that document's units are added:
+ * another order of the product placed before the card opened and documented
+ * after it is still taken out at Paraşüt from a card that never held it, so
+ * the card ends below Pinegrap's count by that order's units. Which earlier
+ * orders will ever be documented at Paraşüt cannot be told here.
+ *
+ * @param array $product    A products row: name, short_description, price
+ *                          (minor units), inventory, inventory_quantity, tax_rate
+ * @param int   $taken_out  Units of the product the documented sale took out of
+ *                          inventory_quantity (parasut_stock_taken_units()); 0 for none
  * @return array
  */
-function parasut_product_attributes($product)
+function parasut_product_attributes($product, $taken_out = 0)
 {
     $track_stock = !empty($product['inventory']);
 
@@ -1705,10 +1717,174 @@ function parasut_product_attributes($product)
     ];
 
     if ($track_stock) {
-        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']);
+        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']) + max(0, (int) $taken_out);
     }
 
     return $attributes;
+}
+
+/**
+ * Whether an order's sale took its stock-tracked lines out of Pinegrap's
+ * stock count (products.inventory_quantity). A checkout (submit_order.php),
+ * a counter sale (local_sale_complete()) and a marketplace import
+ * (mp_order_take_stock()) each do when the order is placed; a sale through
+ * the stock leaves 0, and a card opened at 0 plus the quantity ends at 0
+ * after the document too. A cart (incomplete) took nothing.
+ *
+ * A cancel through process_order_cancellation() puts nothing back, so a
+ * cancelled order still took its stock. The one exception is a marketplace
+ * order cancelled on the marketplace: mp_order_cancel() cancels it with no
+ * user (cancelled_by 0) and then puts its stock back
+ * (mp_order_return_stock()). The shop's own cancel of a marketplace order
+ * (order screen, order list, API, workspace) names the user and puts
+ * nothing back. A restored order has cancelled_by 0 again and reads as
+ * having taken its stock; one the marketplace cancelled was not taken again.
+ *
+ * @param array $order  orders row: status, type, cancelled_by
+ * @return bool
+ */
+function parasut_order_took_stock($order)
+{
+    $status = (string) ($order['status'] ?? '');
+
+    if (($status === '') || ($status === 'incomplete')) {
+        return false;
+    }
+
+    if (($status === 'cancelled') && ((string) ($order['type'] ?? '') === 'marketplace')) {
+        return (int) ($order['cancelled_by'] ?? 0) > 0;
+    }
+
+    return true;
+}
+
+/**
+ * The units of each Pinegrap product the rows come to: a product on two
+ * lines once. A stock count moves by whole units (erp_stock_whole()), so a
+ * row without a product, or whose quantity is not whole or not above zero,
+ * counts for nothing.
+ *
+ * @param array $rows  Order lines, invoice lines or stock moves: product_id, quantity
+ * @return array [product id => units]
+ */
+function parasut_stock_taken_units($rows)
+{
+    $units = array();
+
+    foreach ((array) $rows as $row) {
+        $product_id = is_array($row) ? (int) ($row['product_id'] ?? 0) : 0;
+        $quantity = is_array($row) ? (float) ($row['quantity'] ?? 0) : 0.0;
+
+        if (($product_id <= 0) || ($quantity <= 0) || (abs($quantity - round($quantity)) >= 0.00005)) {
+            continue;
+        }
+
+        $units[$product_id] = ($units[$product_id] ?? 0) + (int) round($quantity);
+    }
+
+    return $units;
+}
+
+/**
+ * What the order screen's Create Invoice takes out at Paraşüt that the
+ * order already took out of Pinegrap's count, per product. The sales
+ * invoice goes with the shipment included (Paraşüt's default) and takes
+ * the goods out itself, unless the order has its E-Shipment document: it
+ * then goes without shipment and moves no stock
+ * (parasut_order_invoice_with_shipment()).
+ *
+ * @param array $order  orders row: status, type, parasut_shipment_id
+ * @param array $lines  The invoice's lines (parasut_order_invoice_lines()): product_id, quantity
+ * @return array [product id => units]
+ */
+function parasut_order_stock_taken($order, $lines)
+{
+    if (trim((string) ($order['parasut_shipment_id'] ?? '')) !== '') {
+        return array();
+    }
+
+    return parasut_order_took_stock($order) ? parasut_stock_taken_units($lines) : array();
+}
+
+/**
+ * What an invoice the ERP driver writes at Paraşüt takes out there that its
+ * sale already took out of Pinegrap's count, per product: a product card the
+ * invoice opens starts from the stock before it (parasut_product_attributes()).
+ *
+ * - The caller's own answer ('stock_taken'), as the order screen's Create
+ *   Invoice gives it (parasut_order_stock_taken()).
+ * - An order's invoice: its lines, when the order took them
+ *   (parasut_order_took_stock()) and the invoice goes with the shipment.
+ *   One naming the order's shipment document goes without shipment and
+ *   moves no stock (erp_edoc_parasut_order_shipment_id()). The invoice
+ *   itself changes no count (erp_stock_post_invoice()).
+ * - A typed invoice: what its own sale moves took out, wanted and applied
+ *   to the count (erp_stock_apply_pending()). A move not applied yet has
+ *   not lowered the count; applied later, it brings Pinegrap to where the
+ *   invoice brings Paraşüt.
+ *
+ * Nothing is read without a line naming a product.
+ *
+ * @param array         $invoice  erp_invoices row (id, order_id, order_shipment_id), or 'stock_taken'
+ * @param array         $lines    The invoice's lines: product_id, quantity
+ * @param callable|null $read     function (string $what, int $id): 'order' => the orders row (status,
+ *                                type, cancelled_by) or null, 'moves' => the invoice's applied sale moves
+ *                                (product_id, quantity); null reads the database
+ * @return array [product id => units]
+ */
+function parasut_invoice_stock_taken($invoice, $lines, $read = null)
+{
+    if (isset($invoice['stock_taken']) && is_array($invoice['stock_taken'])) {
+        return $invoice['stock_taken'];
+    }
+
+    $units = parasut_stock_taken_units($lines);
+
+    if ($units === array()) {
+        return array();
+    }
+
+    if ($read === null) {
+        $read = '_parasut_stock_taken_read';
+    }
+
+    $order_id = (int) ($invoice['order_id'] ?? 0);
+
+    if ($order_id > 0) {
+        if (erp_edoc_parasut_order_shipment_id($invoice) !== '') {
+            return array();
+        }
+
+        $order = $read('order', $order_id);
+
+        return (is_array($order) && parasut_order_took_stock($order)) ? $units : array();
+    }
+
+    return parasut_stock_taken_units((array) $read('moves', (int) ($invoice['id'] ?? 0)));
+}
+
+/**
+ * The rows parasut_invoice_stock_taken() reads: an order's status, type and
+ * cancelled_by, or the sale moves of a typed invoice that changed the count.
+ * No stock tables (before 2026.4.4), no moves.
+ *
+ * @param string $what  'order' | 'moves'
+ * @param int    $id    orders.id | erp_invoices.id
+ * @return array|null
+ */
+function _parasut_stock_taken_read($what, $id)
+{
+    if ($what === 'order') {
+        return db_item("SELECT status, type, cancelled_by FROM orders WHERE id = '" . (int) $id . "' LIMIT 1");
+    }
+
+    if (($id <= 0) || !function_exists('erp_stock_ready') || !erp_stock_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT product_id, quantity FROM erp_stock_moves
+        WHERE invoice_id = '" . (int) $id . "' AND kind = 'sale' AND direction = 'out'
+          AND stock_wanted = 1 AND stock_applied = 1");
 }
 
 /**
@@ -1716,15 +1892,20 @@ function parasut_product_attributes($product)
  * Creates the product in Parasut on first call and persists the ID to the DB.
  *
  * A tracked product's opening stock is set by the create's
- * initial_stock_count. No /stock_updates request follows: Paraşüt answers it
+ * initial_stock_count: the stock before the document the card is opened
+ * for, which is the count plus $taken_out (parasut_product_attributes()).
+ * No /stock_updates request follows: Paraşüt answers it
  * 422 "Güncellenen stok miktarı bulunamadı." for a card opened so, and it
  * cannot seed stock from zero either (parasut_ensure_product_stock_tracking()).
  *
  * @param int    $product_id  Pinegrap products.id
  * @param string $token       Valid Parasut OAuth token
+ * @param int    $taken_out   Units the sale behind the document already took out of
+ *                            inventory_quantity and the document takes out at Paraşüt;
+ *                            used only when the card is opened
  * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string]
  */
-function parasut_sync_product($product_id, $token)
+function parasut_sync_product($product_id, $token, $taken_out = 0)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
@@ -1744,7 +1925,7 @@ function parasut_sync_product($product_id, $token)
     $body = [
         'data' => [
             'type' => 'products',
-            'attributes' => parasut_product_attributes($product),
+            'attributes' => parasut_product_attributes($product, $taken_out),
         ],
     ];
 
@@ -1890,19 +2071,32 @@ function parasut_product_stock_tracked($attributes)
  * returns "Güncellenen stok miktarı bulunamadı" ("no updated stock amount found") when there is
  * nothing to update.
  *
- * @param string      $parasut_product_id
- * @param int         $needed_qty        Minimum stock that must be present for the upcoming outflow.
- * @param string|null $seed_contact_id   Parasut contact id to attribute the inflow document to.
- * @param string|null $warehouse_id      Warehouse to credit the stock to.
- * @param string      $token
+ * $needed_qty is the whole quantity the outgoing document takes of the
+ * product: a product on two lines of an order is asked about once, for
+ * both (parasut_shipment_stock_needs()).
+ *
+ * @param string        $parasut_product_id
+ * @param int           $needed_qty       Minimum stock that must be present for the upcoming outflow.
+ * @param string|null   $seed_contact_id  Parasut contact id to attribute the inflow document to.
+ * @param string|null   $warehouse_id     Warehouse to credit the stock to.
+ * @param string        $token
+ * @param callable|null $request          function (string $method, string $path, array|null $body):
+ *                                        the _parasut_request() answer of $method _parasut_prefix() . $path;
+ *                                        null sends it with $token
  * @return array ['success' => bool, 'current_stock' => float, 'error' => string], and on a
  *               failed request 'answer' => its _parasut_request() answer, which says whether
  *               Paraşüt no longer holds the product, warehouse or contact (parasut_missing_record())
  */
-function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty, $seed_contact_id, $warehouse_id, $token)
+function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty, $seed_contact_id, $warehouse_id, $token, $request = null)
 {
+    if ($request === null) {
+        $request = function ($method, $path, $body = null) use ($token) {
+            return _parasut_request($method, _parasut_prefix() . $path, $body, $token);
+        };
+    }
+
     // 1) Fetch current product state.
-    $get = _parasut_request('GET', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), null, $token);
+    $get = $request('GET', '/products/' . urlencode($parasut_product_id), null);
     if ($get['http_code'] !== 200 || empty($get['body']['data'])) {
         return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product fetch failed: {var:1}', 'vars' => array(_parasut_extract_error($get)))), 'answer' => $get];
     }
@@ -1919,7 +2113,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                 'attributes' => ['inventory_tracking' => true],
             ],
         ];
-        $patch = _parasut_request('PUT', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), $patch_body, $token);
+        $patch = $request('PUT', '/products/' . urlencode($parasut_product_id), $patch_body);
         if (!in_array($patch['http_code'], [200, 201])) {
             return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product patch failed: {var:1}', 'vars' => array(_parasut_extract_error($patch)))), 'answer' => $patch];
         }
@@ -1955,7 +2149,7 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                 ],
             ],
         ];
-        $seed = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', $seed_body, $token);
+        $seed = $request('POST', '/shipment_documents', $seed_body);
         if (!in_array($seed['http_code'], [200, 201])) {
             return [
                 'success' => false,
@@ -1968,6 +2162,74 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
     }
 
     return ['success' => true, 'current_stock' => $current_stock, 'error' => ''];
+}
+
+/**
+ * What E-Shipment's document takes of each Paraşüt product: the quantities
+ * of its lines added up per product, in the order the products first come,
+ * each named by its first line. The stock step asks once per product for
+ * the total (parasut_ensure_product_stock_tracking()). Asked line by line,
+ * a product on two lines (two recipients) passed a stock that covered each
+ * line but not both, and a seed brought by the first line left the second
+ * unchecked.
+ *
+ * @param array $lines  ['parasut_product_id' => string, 'quantity' => int, 'name' => string] per stock-tracked line
+ * @return array  [['parasut_product_id' => string, 'quantity' => int, 'name' => string], ...]
+ */
+function parasut_shipment_stock_needs($lines)
+{
+    $needs = array();
+    $at = array();
+
+    foreach ((array) $lines as $line) {
+        $id = (string) ($line['parasut_product_id'] ?? '');
+
+        if (!isset($at[$id])) {
+            $at[$id] = count($needs);
+            $needs[] = array('parasut_product_id' => $id, 'quantity' => 0, 'name' => (string) ($line['name'] ?? ''));
+        }
+
+        $needs[$at[$id]]['quantity'] += (int) ($line['quantity'] ?? 0);
+    }
+
+    return $needs;
+}
+
+/**
+ * Why E-Shipment cannot write the order's document, or '': lines naming a
+ * product deleted from the catalogue since the order (order_items keeps the
+ * product_id, the products row is gone). Whether such a product kept stock
+ * and which Paraşüt product it was cannot be told any more, and left out it
+ * would be missing from the waybill without a word. A line with no product
+ * at all is not one of them.
+ *
+ * @param array $items  order_items rows: product_id, product_name, product_row_id
+ *                      (products.id through the LEFT JOIN, null when the row is gone)
+ * @return string
+ */
+function parasut_shipment_deleted_products_refusal($items)
+{
+    $names = array();
+
+    foreach ((array) $items as $item) {
+        $product_id = (int) ($item['product_id'] ?? 0);
+
+        if (($product_id <= 0) || ((int) ($item['product_row_id'] ?? 0) > 0)) {
+            continue;
+        }
+
+        $name = trim((string) ($item['product_name'] ?? ''));
+        $names[$product_id] = ($name !== '') ? '"' . $name . '"' : '#' . $product_id;
+    }
+
+    if ($names === array()) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Lines of this order name products deleted from the catalogue since the order was placed: {var:1}. Pinegrap cannot tell whether they kept stock or which Paraşüt product they were, so no shipment document was created. Write this shipment in Paraşüt by hand.',
+        'vars' => implode(', ', $names),
+    ));
 }
 
 /**
@@ -3381,7 +3643,9 @@ function parasut_create_invoice($order_id, &$notices = array())
     // with their products, the kurus each rate moves, the order's number and
     // day. The description stays the one these documents always carried.
     // Built again, on the same buyer card or a new one, when the create is
-    // sent once more.
+    // sent once more. A product card the build opens starts from the stock
+    // before the order when the invoice takes the order's goods out at
+    // Paraşüt (parasut_order_stock_taken()).
     $build_invoice_body = function ($contact_id) use ($order, $built, $order_number, $issue_date, $currency) {
         $invoice_body = erp_edoc_parasut_invoice_payload(array(
             'order_id' => (int) $order['id'],
@@ -3393,6 +3657,7 @@ function parasut_create_invoice($order_id, &$notices = array())
             'currency' => $currency,
             'exchange_rate' => 0,
             'notes' => '',
+            'stock_taken' => parasut_order_stock_taken($order, $built['lines']),
         ), $built['lines'], $contact_id);
 
         if (isset($invoice_body['error'])) {
@@ -3737,6 +4002,24 @@ function parasut_create_shipment($order_id, &$notices = array())
         }
     }
 
+    // A line whose product was deleted from the catalogue since the order is
+    // refused here: read as an untracked line, it was left off the waybill
+    // without a word. Only the guard above may have been to Paraşüt by now
+    // (it reads a kept shipment document and forgets one no longer there);
+    // E-Shipment's own token and every other request come after this.
+    $deleted_refusal = parasut_shipment_deleted_products_refusal(db_items("SELECT
+            order_items.product_id,
+            order_items.product_name,
+            products.id AS product_row_id
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . escape($order_id) . "'
+          AND order_items.saved_for_later = 0"));
+
+    if ($deleted_refusal !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $deleted_refusal];
+    }
+
     $token_result = parasut_get_token();
     if (!$token_result['success']) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
@@ -3828,13 +4111,24 @@ function parasut_create_shipment($order_id, &$notices = array())
             $kept['Warehouse'][] = (string) $default_warehouse_id;
         }
 
-        $stock_movements = [];
-        $skipped_count = 0;
+        $items = array();
         while ($item = mysqli_fetch_assoc($items_result)) {
+            $items[] = $item;
+        }
+
+        // The order took its stock-tracked lines out of Pinegrap's count when
+        // it was placed, and the document takes them out at Paraşüt: a card
+        // opened here starts from the stock before the order, the count plus
+        // the order's whole quantity of the product (parasut_product_attributes()).
+        $taken = parasut_order_took_stock($order) ? parasut_stock_taken_units($items) : array();
+
+        $stock_lines = array();
+        $skipped_count = 0;
+        foreach ($items as $item) {
             // Skip non-shippable items — Parasut shipment_documents can only contain
             // stock-tracked (inventory_tracking) products. Non-inventory items
             // (services, digital goods, etc.) are silently excluded from the e-irsaliye
-            // (the e-waybill).
+            // (the e-waybill). A line of a deleted product was refused above.
             if (empty($item['inventory'])) {
                 $skipped_count++;
                 continue;
@@ -3848,7 +4142,7 @@ function parasut_create_shipment($order_id, &$notices = array())
             if ($item_parasut_product_id !== '') {
                 $kept['Product'][] = $item_parasut_product_id;
             } elseif ($item['product_id']) {
-                $sync = parasut_sync_product($item['product_id'], $token);
+                $sync = parasut_sync_product($item['product_id'], $token, $taken[(int) $item['product_id']] ?? 0);
                 $item_parasut_product_id = $sync['success'] ? (string) $sync['parasut_product_id'] : '';
                 $sync_error = (string) $sync['error'];
             }
@@ -3863,12 +4157,19 @@ function parasut_create_shipment($order_id, &$notices = array())
                 ];
             }
 
-            // Guarantee the Parasut product has inventory_tracking=true AND enough
-            // stock. If stock is short, seed it via an inflow shipment_document
-            // (the documented Parasut way to add stock to a product via API).
+            $stock_lines[] = array('parasut_product_id' => $item_parasut_product_id, 'quantity' => $item_qty, 'name' => $item_name);
+        }
+
+        // Guarantee each Parasut product has inventory_tracking=true AND enough
+        // stock for the whole quantity the document takes of it, the lines of
+        // one product added up. If stock is short, seed it via an inflow
+        // shipment_document (the documented Parasut way to add stock to a
+        // product via API). Every line's card is open by now, so a failure
+        // here leaves no seed written ahead of a card that could not open.
+        foreach (parasut_shipment_stock_needs($stock_lines) as $need) {
             $ensure = parasut_ensure_product_stock_tracking(
-                $item_parasut_product_id,
-                $item_qty,
+                $need['parasut_product_id'],
+                $need['quantity'],
                 $parasut_contact_id,
                 $default_warehouse_id,
                 $token
@@ -3877,13 +4178,18 @@ function parasut_create_shipment($order_id, &$notices = array())
                 return [
                     'success' => false,
                     'parasut_shipment_id' => null,
-                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $ensure['error']))),
+                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($need['name'], $ensure['error']))),
                     'answer' => $ensure['answer'] ?? null,
                     'kept' => $kept,
                 ];
             }
+        }
 
-            $stock_movements[] = parasut_shipment_stock_movement($item_parasut_product_id, $default_warehouse_id, $item_qty);
+        // One stock movement per order line; the step above made each
+        // product ready for the sum of its lines.
+        $stock_movements = [];
+        foreach ($stock_lines as $stock_line) {
+            $stock_movements[] = parasut_shipment_stock_movement($stock_line['parasut_product_id'], $default_warehouse_id, $stock_line['quantity']);
         }
 
         if (empty($stock_movements)) {

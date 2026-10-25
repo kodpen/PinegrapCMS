@@ -802,10 +802,13 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
  * product (shipping, a charge, free text) goes on the store's default
  * product/service, the settings card's "Default Product/Service ID".
  *
- * @param array $line  An erp_invoice_items row
+ * @param array $line       An erp_invoice_items row
+ * @param int   $taken_out  Units of the line's product the invoice's sale already took out
+ *                          of Pinegrap's count (parasut_invoice_stock_taken()): a card
+ *                          opened now starts from the stock before the invoice
  * @return array ['id' => string, 'error' => string]
  */
-function erp_edoc_parasut_line_product($line)
+function erp_edoc_parasut_line_product($line, $taken_out = 0)
 {
     $product_id = (int) ($line['product_id'] ?? 0);
 
@@ -816,7 +819,7 @@ function erp_edoc_parasut_line_product($line)
             return array('id' => '', 'error' => (string) $token['error']);
         }
 
-        $sync = parasut_sync_product($product_id, (string) $token['token']);
+        $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out);
 
         if (!empty($sync['success']) && ((string) ($sync['parasut_product_id'] ?? '') !== '')) {
             return array('id' => (string) $sync['parasut_product_id'], 'error' => '');
@@ -1188,7 +1191,9 @@ function erp_edoc_parasut_legacy_invoice_check($value, $get)
  *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
  *                            order_number, order_date (Y-m-d) and
- *                            order_shipment_id (orders.parasut_shipment_id)
+ *                            order_shipment_id (orders.parasut_shipment_id); a caller
+ *                            that knows what the sale took out of stock gives
+ *                            stock_taken (parasut_invoice_stock_taken())
  * @param array  $lines
  * @param string $contact_id  The Paraşüt contact
  * @return array  The payload, or ['error' => string]
@@ -1203,8 +1208,12 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         return array('error' => erp_edoc_parasut_total_refusal($lines, (string) ($invoice['currency'] ?? '')));
     }
 
+    // What the invoice's sale already took out of Pinegrap's count, per
+    // product: a card a line opens starts from the stock before the invoice.
+    $taken = parasut_invoice_stock_taken($invoice, $lines);
+
     foreach ($lines as $index => $line) {
-        $product = erp_edoc_parasut_line_product($line);
+        $product = erp_edoc_parasut_line_product($line, (int) ($taken[(int) ($line['product_id'] ?? 0)] ?? 0));
 
         if ($product['error'] !== '') {
             return array('error' => $product['error']);
