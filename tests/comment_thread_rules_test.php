@@ -746,6 +746,38 @@ function test_comment_thread_rules_rows_columns()
 		'parent_id asked for before 11.0.31');
 }
 
+// The widget also asks which thread each row belongs to (a page-level read
+// holds every comment on the page): item_type and item_id come after
+// created_timestamp, and after parent_id when both are asked. The default
+// statement stays the block's.
+function test_comment_thread_rules_rows_thread_key()
+{
+	comment_thread_rules_test_db_stub();
+
+	$viewer = pg_comments_viewer_decision(false, null, false, 0, null);
+	$legacy = comment_thread_rules_test_squash(comment_thread_rules_test_legacy_statements('5', comment_thread_rules_test_legacy_where(false, '', '0', false, false, false, null), false)[2]);
+
+	$queries = array();
+	pg_comments_rows('5', null, $viewer, array('thread_key' => true), comment_thread_rules_test_fetch(array(), $queries));
+	pg_assert_same(
+		str_replace('comments.created_timestamp FROM comments', 'comments.created_timestamp, comments.item_type, comments.item_id FROM comments', $legacy),
+		comment_thread_rules_test_squash($queries[2]),
+		'the thread key after the time');
+
+	$queries = array();
+	pg_comments_rows('5', null, $viewer, array('parent_id' => true, 'thread_key' => true), comment_thread_rules_test_fetch(array(), $queries));
+	pg_assert_same(
+		str_replace('comments.created_timestamp FROM comments', 'comments.created_timestamp, 0 AS parent_id, comments.item_type, comments.item_id FROM comments', $legacy),
+		comment_thread_rules_test_squash($queries[2]),
+		'after parent_id when both are asked');
+
+	$queries = array();
+	pg_comments_rows('5', null, $viewer, array('thread_key' => false), comment_thread_rules_test_fetch(array(), $queries));
+	pg_assert_same($legacy, comment_thread_rules_test_squash($queries[2]), 'thread_key off');
+	pg_assert_same(2, substr_count($queries[0] . $queries[1], 'COUNT(*)'), 'the counts are not touched');
+	pg_assert_false(strpos($queries[0] . $queries[1], 'item_type') !== false, 'nor do they read the key');
+}
+
 // -- thread order ------------------------------------------------------------
 
 function comment_thread_rules_test_rows()

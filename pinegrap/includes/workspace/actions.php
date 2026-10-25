@@ -184,6 +184,63 @@ function ws_action_flow_refused($result)
 }
 
 /**
+ * Only what a start of a run may carry: the client's token, which makes a
+ * start sent twice (a double click, a request sent again after its answer
+ * was lost) one run. It comes as start_token: `token` of a panel request is
+ * the CSRF token api.php checks, and is never a run's. Passed on as it came,
+ * so ws_flow_run_start_check() refuses a token of the wrong shape instead of
+ * a new run starting without one.
+ *
+ * @param array $request
+ * @return array token, when one was sent
+ */
+function ws_action_flow_run_fields($request)
+{
+    return array_key_exists('start_token', $request) ? array('token' => $request['start_token']) : array();
+}
+
+/**
+ * A run as the canvas reads it: in the shape the API's run routes answer
+ * with (ws_api_flow_run_present()), so the screen and an application read a
+ * run alike. A single run carries its boxes and the graph of its version.
+ *
+ * @param array $viewer
+ * @param array $run  ws_flow_runs row with access
+ * @param int   $n    the number of the version it follows
+ * @param bool  $full its boxes and graph too
+ * @return array
+ */
+function ws_action_flow_run_present($viewer, $run, $n, $full = false)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+    return $full
+        ? ws_api_flow_run_present($viewer, $run, $n, ws_flow_run_steps($run['id']), ws_flow_run_graph($run))
+        : ws_api_flow_run_present($viewer, $run, $n);
+}
+
+/**
+ * The run as it stands now, read again, with its boxes; null when the person
+ * no longer reaches it.
+ *
+ * @param array $viewer
+ * @param int   $run_id
+ * @return array|null
+ */
+function ws_action_flow_run_answer($viewer, $run_id)
+{
+    $run = ws_flow_run_for($viewer, (int) $run_id);
+
+    if (!$run) {
+        return null;
+    }
+
+    $version = ws_flow_version($run['version_id']);
+
+    return ws_action_flow_run_present($viewer, $run, is_array($version) ? (int) $version['n'] : 0, true);
+}
+
+/**
  * The entry point api.php calls.
  *
  * @param string $action
@@ -614,6 +671,73 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
+
+        // The runs of a flow (includes/workspace/flow_runs.php), shown on the
+        // canvas: started, listed, read and cancelled through the runner's
+        // own checks, the ones the API's run routes make, and answered in
+        // the shape those routes give.
+        case 'ws_flow_run_start':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            $result = ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $result['run_id']), 'started' => (bool) $result['started']));
+
+        case 'ws_flow_runs_list':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            // A small page, newest first: the side panel of the canvas.
+            $page = ws_flow_runs_list($viewer, $flow, array('before_id' => (int) ($request['before_id'] ?? 0), 'limit' => 20));
+            $numbers = ws_flow_version_numbers($page['rows']);
+
+            return ws_action_ok(array(
+                'runs' => array_map(function ($run) use ($viewer, $numbers) {
+                    return ws_action_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0);
+                }, $page['rows']),
+                'next' => $page['next'],
+            ));
+
+        case 'ws_flow_run_get':
+            $run = ws_action_flow_run_answer($viewer, (int) ($request['run_id'] ?? 0));
+
+            if (!$run) {
+                return ws_action_error(lang('That run could not be found.'));
+            }
+
+            return ws_action_ok(array(
+                'run' => $run,
+                // The boxes of an open run move on with the screen's ws_tick
+                // (ws_scheduled_run()), which the canvas sends when this says
+                // something is due, as the channel screen does after ws_sync.
+                'due' => ws_flow_run_open($run['status']) && function_exists('ws_scheduled_due') && ws_scheduled_due(),
+            ));
+
+        case 'ws_flow_run_cancel':
+            $run = ws_flow_run_for($viewer, (int) ($request['run_id'] ?? 0));
+
+            if (!$run) {
+                return ws_action_error(lang('That run could not be found.'));
+            }
+
+            $result = ws_flow_run_cancel($viewer, $run);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
 
         // Personal notes (includes/workspace/notes.php): the person's own and
         // the ones shared with them; nobody else's, whatever their role.

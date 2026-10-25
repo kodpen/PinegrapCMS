@@ -1999,8 +1999,9 @@ function pg_pb_delete_product($product_id)
     db("DELETE FROM product_barcodes WHERE product_id = '$product_id'");
 
     // MySQL 5.7 may give the id to a new product after a restart, which must
-    // not inherit this one's prices.
+    // not inherit this one's prices, nor its place in visitors' favourites.
     pg_price_history_forget($product_id);
+    pg_wishlist_forget_product($product_id);
 
     // The "!= 0" guard is inherited from edit_products.php: product_id 0 means
     // "belongs to a page", and dropping that guard deletes every page form.
