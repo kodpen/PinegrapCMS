@@ -224,10 +224,8 @@ function test_ws_customer_identity_contact_group_rule()
 	pg_assert_same(array(12, 5), ws_customer_contacts_open(array('id' => 7, 'role' => 2), array(12, '5', 0, 12)), 'staff open every contact');
 	pg_assert_same(array(), ws_customer_contacts_open(array('id' => 7, 'role' => 3), array(0)), 'no contact, no query');
 
-	$open = workspace_customer_summary_test_source('ws_customer_contacts_open');
-
-	pg_assert_contains('contacts_contact_groups_xref', $open, 'the groups the contact is filed in');
-	pg_assert_contains('users_contact_groups_xref', $open, 'the groups given to the reader');
+	pg_assert_contains('ws_viewer_contacts_open(', workspace_customer_summary_test_source('ws_customer_contacts_open'), 'the Workspace\'s one contact-group rule');
+	pg_assert_contains('pg_contact_owner_sql(', workspace_customer_summary_test_source('ws_viewer_contacts_open'), 'the groups the contact is filed in and the groups given to the reader');
 
 	$source = workspace_customer_summary_test_source('ws_customer_identity');
 

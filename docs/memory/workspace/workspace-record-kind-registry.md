@@ -12,8 +12,8 @@ description: ws_record_kinds() (refs.php): one entry per Workspace record kind (
 - `right` and `scope` only open a kind. For role 3 each row still passes its kind's rule, as on the panel screen and in the API (api/api-user-role-rows.md); a summary or history row too.
 - form, page, file: edit access to the folder (`$folder_open` in `ws_refs_resolve()`, `ws_change_allowed()` per record; API `api_form_owner_filter()`, `api_form_submission_owned()`). A file in a public folder also resolves; only roles 0-1 change a design file.
 - calendar_event: an assigned calendar (`users_calendars_xref`, `ws_change_calendar_access()`; API `api_calendar_ids_visible()`).
-- contact: one of the person's contact groups (`validate_contact_access()`; API `api_customer_owner_filter()`). Not yet in the Workspace: `ws_refs_resolve()` and `ws_change_allowed()` ask only `contacts`.
-- erp_account: `manage_erp_readonly` reads, never changes (erp/erp-readonly-accountant-right.md). Not yet in the Workspace: `ws_viewer()` does not read it, so `ws_change_allowed()` lets the drawer and change cards write.
+- contact: one of the person's contact groups (`validate_contact_access()`; API `api_customer_owner_filter()`). Workspace: `ws_viewer_contacts_open()` (tags, customer summary), `pg_contact_owner_sql()` in `ws_ref_search()` and `ws_change_allowed()` (#1657).
+- erp_account: `manage_erp_readonly` reads, never changes (erp/erp-readonly-accountant-right.md); `ws_change_erp_readonly_refusal()` refuses the drawer and change cards (#1650).
 
 ## Do the old lists read it?
 - Not yet: `ws_record_type_keys()`, `ws_ref_types()`, `ws_change_types()`, `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_customer_types()`, `ws_ai_type_scope()` and `pg_audit_tables()` keep their own literals. A new kind is described in the registry first, then written into each list.

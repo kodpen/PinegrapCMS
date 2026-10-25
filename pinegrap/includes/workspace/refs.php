@@ -470,6 +470,47 @@ function ws_viewer_folder_open($viewer, $folder_id)
 }
 
 /**
+ * The contacts among these the reader may open. Staff open every contact;
+ * the user role opens those filed in a contact group given to the person, as
+ * on the contacts screens (validate_contact_access()) and in the external API
+ * (pg_contact_owner_sql()), and none without the contacts right. Asked of the
+ * reader, not of whoever is signed in.
+ *
+ * @param array $viewer
+ * @param int[] $contact_ids
+ * @return int[] the open ones, each once, in the order given
+ */
+function ws_viewer_contacts_open($viewer, $contact_ids)
+{
+    $ids = array();
+
+    foreach ((array) $contact_ids as $id) {
+        $id = (int) $id;
+
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+
+    $ids = array_values($ids);
+
+    if (empty($ids) || ((int) $viewer['role'] < 3)) {
+        return $ids;
+    }
+
+    if (empty($viewer['contacts'])) {
+        return array();
+    }
+
+    $open = array_flip(array_map('intval', (array) db_values("SELECT id FROM contacts
+        WHERE id IN ('" . implode("','", $ids) . "') AND " . pg_contact_owner_sql((int) $viewer['id'], 'contacts.id'))));
+
+    return array_values(array_filter($ids, function ($id) use ($open) {
+        return isset($open[$id]);
+    }));
+}
+
+/**
  * Whether sales quotes can be read: the ERP is on and its quotes table is
  * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
  * and the money helpers (erp_money_out_currency()) alone rather than the
@@ -622,8 +663,12 @@ function ws_refs_resolve($viewer, $tokens)
     }
 
     if (!empty($ids['contact'])) {
+        // A contact outside the reader's contact groups is drawn as for a
+        // reader without the contacts right: no name, address or link.
+        $contacts_open = !empty($viewer['contacts']) ? array_flip(ws_viewer_contacts_open($viewer, $ids['contact'])) : array();
+
         foreach ((array) db_items("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id IN (" . $in('contact') . ")") as $row) {
-            if ($viewer['contacts']) {
+            if (isset($contacts_open[(int) $row['id']])) {
                 $name = trim($row['first_name'] . ' ' . $row['last_name']);
                 $label = ($name !== '') ? $name : (($row['company'] !== '') ? $row['company'] : $row['email_address']);
                 $meta = ($name !== '' && $row['company'] !== '') ? $row['company'] : $row['email_address'];
@@ -1085,10 +1130,15 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             break;
 
         case 'contact':
+            // The user role finds only the contacts in its contact groups
+            // (ws_viewer_contacts_open()), so the limit is not spent on
+            // contacts the tags would not name.
+            $owner = ((int) $viewer['role'] >= 3) ? ' AND ' . pg_contact_owner_sql((int) $viewer['id'], 'contacts.id') : '';
+
             $found = db_values("SELECT id FROM contacts
                 WHERE (first_name LIKE '%" . $like . "%' OR last_name LIKE '%" . $like . "%'
                     OR CONCAT(first_name, ' ', last_name) LIKE '%" . $like . "%'
-                    OR company LIKE '%" . $like . "%' OR email_address LIKE '%" . $like . "%')
+                    OR company LIKE '%" . $like . "%' OR email_address LIKE '%" . $like . "%')" . $owner . "
                 ORDER BY id DESC LIMIT " . $limit);
             break;
 

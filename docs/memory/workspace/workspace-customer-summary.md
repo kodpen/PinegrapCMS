@@ -8,7 +8,7 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 
 ## Who is the customer?
 - The record `ws_channel_customer_of()` names, resolved for the reader by `ws_refs_resolve()`, with the ties of `ws_customer_link_tokens()` the reader may see. A record the reader may not see goes by kind and number ("Contact #12"), no detail, no url.
-- Role 3: a contact outside the reader's contact groups too (`ws_customer_contacts_open()`, the rule of `validate_contact_access()`; `ws_customer_refs_narrow()`). Panel tags and channel card still skip that rule.
+- Role 3: a contact outside the reader's contact groups too (`ws_viewer_contacts_open()`, the rule of `validate_contact_access()`, in `ws_refs_resolve()` (tags, channel card), #1657; `ws_customer_refs_narrow()`).
 - A deleted customer (or an erp_account, ERP off) is null: `ws_refs_resolve()` marks a gone record `gone`, apart from known false. `ws_customer_present()` still draws "Deleted record".
 - `contact_id`, `user_ids`, `erp_account_ids` (every tie, seen or not) are what the sections read by; never shown. Nothing is written.
 
