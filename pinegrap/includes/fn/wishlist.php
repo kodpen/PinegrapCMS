@@ -949,6 +949,12 @@ function pg_wishlist_trim_daily()
  * still come from the page cache, and the script asks the endpoint for the
  * visitor's list.
  *
+ * The rule that hides a heart until the script shows it (the
+ * data-pg-wishlist-hidden mark) goes in the page's head, so a heart never
+ * shows before it; when no </head> comes before the first heart it goes
+ * with the script. Two attributes outrank Bootstrap's display utilities,
+ * the responsive ones too, wherever their stylesheet sits.
+ *
  * @param string      $content page HTML
  * @param string|null $src     the script's address; null builds it from the
  *                             software directory and the file's time
@@ -982,10 +988,23 @@ function pg_wishlist_inject($content, $src = null, $url = null)
         ),
     );
 
+    $rule = '<style>[data-pg-wishlist][data-pg-wishlist-hidden]{display:none!important}</style>' . "\n";
+
     $file = '<script>window.pgWishlist = '
         . json_encode($settings, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         . ';</script>' . "\n"
         . '<script src="' . h($src) . '" defer></script>' . "\n";
+
+    // The first </head>, when it comes before the first heart: one after
+    // it is text of the page's, not its head.
+    $head  = stripos($content, '</head>');
+    $first = strpos($content, 'data-pg-wishlist="');
+
+    if ($head !== false && $first !== false && $head < $first) {
+        $content = substr_replace($content, $rule, $head, 0);
+    } else {
+        $file = $rule . $file;
+    }
 
     // The last </body>: an earlier one can belong to markup the page shows
     // as text or carries in an attribute.

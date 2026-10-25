@@ -8,18 +8,21 @@
  * (pg_wishlist_inject(), with window.pgWishlist: the endpoint's address and
  * the words the script may show).
  *
- * The server draws every heart hidden (d-none, marked
- * data-pg-wishlist-hidden so a d-none of the designer's is told apart) and
+ * The server draws every heart hidden (marked data-pg-wishlist-hidden, which
+ * the page's rule hides whatever display classes the designer gave it) and
  * empty, the same for every visitor, so the page can come from the page
  * cache. One request (wishlist.php?action=state, never cached) brings the
  * visitor's list and the session token; each heart of a product in the list
  * is pressed (aria-pressed, the active class, bi-heart-fill for a bi-heart
- * icon), and all of them lose the marked d-none. Without that answer they
- * stay hidden: a heart that could not save anything is not offered.
+ * icon), and all of them lose the mark; their classes are never touched.
+ * Without that answer they stay hidden: a heart that could not save anything
+ * is not offered. A page the browser brings back from its back/forward
+ * cache asks again, since the list and the token may have changed meanwhile.
  *
  * A click saves or removes the product: every heart of it on the page
  * follows at once, and goes back if the server refuses, whose words are
- * read out to a screen reader. The button stays a button throughout, usable
+ * read out to a screen reader (the page's own words when there are none,
+ * or no answer came at all). The button stays a button throughout, usable
  * from the keyboard. On a product page of a variant group, the variant the
  * visitor picks (pg_civ_variants.js, the pg-civ-product-change event)
  * becomes the product of the hearts inside that page's form.
@@ -44,7 +47,8 @@
     /**
      * The hearts of one document.
      *
-     * @param {Object} env document, fetch, config ({url, labels})
+     * @param {Object} env document, fetch, config ({url, labels}), and the
+     *                     window for its pageshow (optional)
      * @return {Object} start() and toggle(el), each answering a Promise
      */
     function create(env) {
@@ -101,23 +105,16 @@
         }
 
         // Shows a heart in its state, once the list is known and the heart
-        // has a product; hides it otherwise. Only a d-none marked
-        // data-pg-wishlist-hidden (the server's or the script's) is taken
-        // away: one the designer set (d-none d-md-inline-block) stays.
+        // has a product; hides it otherwise. Only the mark comes and goes:
+        // the designer's classes (d-none d-md-inline-block) decide the rest.
         function show(el) {
             var id = productOf(el);
             if (saved === null || !id) {
-                if (!el.classList.contains('d-none')) {
-                    el.classList.add('d-none');
-                    el.setAttribute(HIDDEN, '1');
-                }
+                el.setAttribute(HIDDEN, '1');
                 return;
             }
             paint(el, !!saved[id]);
-            if (el.hasAttribute(HIDDEN)) {
-                el.classList.remove('d-none');
-                el.removeAttribute(HIDDEN);
-            }
+            el.removeAttribute(HIDDEN);
         }
 
         function paintProduct(id, on) {
@@ -173,7 +170,8 @@
 
         // Saves (on) or removes a product. Resolves with the server's
         // {product_id, on}; rejects with an Error carrying the server's
-        // words (message) and the status.
+        // words (message) and the status, or no words and status 0 when no
+        // answer came (the browser's own error text is English).
         function write(id, on) {
             return send(address(''), {
                 method: 'POST',
@@ -193,6 +191,11 @@
                     error.status = response.status;
                     throw error;
                 });
+            }, function () {
+                // Offline or a dropped connection: no words of the server's.
+                var error = new Error('');
+                error.status = 0;
+                throw error;
             });
         }
 
@@ -258,6 +261,15 @@
             if (!hearts().length || !config.url) return Promise.resolve(false);
             doc.addEventListener('click', onClick);
             doc.addEventListener('pg-civ-product-change', onProductChange);
+            var view = env.window;
+            if (view && typeof view.addEventListener === 'function') {
+                // A page brought back from the back/forward cache runs no
+                // script again and keeps the list and the token of its first
+                // load: read both anew.
+                view.addEventListener('pageshow', function (event) {
+                    if (event && event.persisted) refresh();
+                });
+            }
             return refresh();
         }
 
@@ -275,6 +287,7 @@
 
     var page = create({
         document: root.document,
+        window: root,
         fetch: function (url, options) { return root.fetch(url, options); },
         config: root.pgWishlist || {}
     });
