@@ -613,9 +613,12 @@ function pg_sw_field_value($inner)
 // picture with an address (a file field left empty comes out as
 // <img src="">), a video, a frame, a drawing, a link or a form control?
 // The value a condition reads (its carrier, widgets_finish.php) is not shown
-// and does not count.
+// and does not count. A list inside a record (its span, widgets_lists.php)
+// counts: its rows are drawn by the finish pass, which judges the element
+// again when the list comes out empty.
 function pg_sw_has_content($html)
 {
+    if (strpos((string)$html, '<!--pg-list:' . pg_sw_marker_nonce() . ':') !== false) return true;
     $html = pg_sw_finish_strip_carriers((string)$html);
     $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     if (trim($text) !== '') return true;
@@ -2051,13 +2054,15 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $data_rows = db_items(
         "SELECT
             form_data.form_id,
+            form_data.id        AS data_id,
             form_data.data,
             form_data.name      AS data_name,
             form_data.file_id   AS data_file_id,
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
-            form_fields.wysiwyg AS field_wysiwyg,"
+            form_fields.wysiwyg AS field_wysiwyg,
+            form_fields.office_use_only AS field_office_use,"
             . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
             files.name          AS file_name
          FROM form_data
@@ -2065,6 +2070,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
          LEFT JOIN files       ON form_data.file_id       = files.id
          WHERE form_data.form_id IN ($form_ids_str)"
     );
+    // The rows of the lists inside each record (a field's values, the
+    // attachments), drawn by the finish pass for the records shown here.
+    pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records'])));
 
     // Index the form's own fields under every identifier a designer might
     // write for them. Values stay raw — escaping happens once, at replace time.
@@ -3210,13 +3218,15 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $data_rows = db_items(
             "SELECT
                 '" . (int)$form_row['id'] . "' AS form_id,
+                form_data.id        AS data_id,
                 form_data.data,
                 form_data.name      AS data_name,
                 form_data.file_id   AS data_file_id,
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
-                form_fields.wysiwyg AS field_wysiwyg,"
+                form_fields.wysiwyg AS field_wysiwyg,
+                form_fields.office_use_only AS field_office_use,"
                 . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
@@ -3224,6 +3234,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
              LEFT JOIN files       ON form_data.file_id       = files.id
              WHERE form_data.form_id = '" . (int)$form_row['id'] . "'"
         );
+        // The rows of the lists inside the record, drawn by the finish pass.
+        pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records'])));
 
         $indexed = pg_sw_index_form_data($data_rows);
         $custom  = isset($indexed[(int)$form_row['id']]) ? $indexed[(int)$form_row['id']] : array();
@@ -3352,17 +3364,19 @@ function _pg_sw_keep_for_not_found($nodes)
 }
 
 // A form_item_view tree as it shows when there is no record: the record
-// template (the loop_area's children; the whole widget when it has no
-// loop_area) cut by _pg_sw_keep_for_not_found(), the surround as designed.
-// Returns whether the tree still shows the no-record state anywhere - a
-// not-found message, an element shown only then. When it does not, the
-// renderer writes the message itself.
+// template (the main loop_area's children; the whole widget when it has no
+// main loop_area) cut by _pg_sw_keep_for_not_found(), the surround as
+// designed. A list inside a record (a loop_area with props.source) is not
+// the record template. Returns whether the tree still shows the no-record
+// state anywhere - a not-found message, an element shown only then. When it
+// does not, the renderer writes the message itself.
 function pg_sw_prune_record_layout(&$tree)
 {
     if (!is_array($tree)) return false;
     $cut = function (&$node) use (&$cut) {
         if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return false;
         foreach ($node['children'] as $i => $child) {
+            if (pg_sw_list_is_sourced($child)) continue;
             if (isset($child['type']) && $child['type'] === 'loop_area') {
                 $node['children'][$i]['children'] = _pg_sw_keep_for_not_found(isset($child['children']) ? $child['children'] : array());
                 return true;

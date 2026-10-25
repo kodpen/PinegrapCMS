@@ -1,0 +1,167 @@
+{
+    "note": "A widget tree without props.source, with what _split_widget_tree($tree, true) and _render_tree_node() of its first loop_area (indent 1) gave before lists existed.",
+    "tree": {
+        "type": "root",
+        "props": [],
+        "children": [
+            {
+                "type": "content",
+                "props": {
+                    "contentType": "heading",
+                    "tag": "h2",
+                    "text": "Posts",
+                    "cssClass": "head"
+                },
+                "children": []
+            },
+            {
+                "type": "semantic",
+                "props": {
+                    "tag": "ul",
+                    "cssClass": "list"
+                },
+                "children": [
+                    {
+                        "type": "loop_area",
+                        "props": {
+                            "limit": 3
+                        },
+                        "children": [
+                            {
+                                "type": "semantic",
+                                "props": {
+                                    "tag": "li",
+                                    "cssClass": "item"
+                                },
+                                "children": [
+                                    {
+                                        "type": "content",
+                                        "props": {
+                                            "contentType": "paragraph",
+                                            "text": "T",
+                                            "cssClass": "t",
+                                            "_bindings": {
+                                                "text": "title"
+                                            }
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "type": "loop_area",
+                                        "props": [],
+                                        "children": [
+                                            {
+                                                "type": "content",
+                                                "props": {
+                                                    "contentType": "paragraph",
+                                                    "text": "N",
+                                                    "_bindings": {
+                                                        "text": "__loop_index"
+                                                    }
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "split": {
+        "static_tree": {
+            "type": "root",
+            "props": [],
+            "children": [
+                {
+                    "type": "content",
+                    "props": {
+                        "contentType": "heading",
+                        "tag": "h2",
+                        "text": "Posts",
+                        "cssClass": "head"
+                    },
+                    "children": []
+                },
+                {
+                    "type": "content",
+                    "props": {
+                        "contentType": "custom_html",
+                        "html": "<!--pg-loop-before-->"
+                    },
+                    "children": []
+                },
+                {
+                    "type": "semantic",
+                    "props": {
+                        "tag": "ul",
+                        "cssClass": "list"
+                    },
+                    "children": [
+                        {
+                            "type": "content",
+                            "props": {
+                                "contentType": "custom_html",
+                                "html": "<!--pg-loop-slot-->"
+                            },
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "type": "content",
+                    "props": {
+                        "contentType": "custom_html",
+                        "html": "<!--pg-loop-after-->"
+                    },
+                    "children": []
+                }
+            ]
+        },
+        "loop_children": [
+            {
+                "type": "semantic",
+                "props": {
+                    "tag": "li",
+                    "cssClass": "item"
+                },
+                "children": [
+                    {
+                        "type": "content",
+                        "props": {
+                            "contentType": "paragraph",
+                            "text": "T",
+                            "cssClass": "t",
+                            "_bindings": {
+                                "text": "title"
+                            }
+                        },
+                        "children": []
+                    },
+                    {
+                        "type": "loop_area",
+                        "props": [],
+                        "children": [
+                            {
+                                "type": "content",
+                                "props": {
+                                    "contentType": "paragraph",
+                                    "text": "N",
+                                    "_bindings": {
+                                        "text": "__loop_index"
+                                    }
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "loop_parent": "ul"
+    },
+    "markup": "    <li class=\"item\">\n        <p class=\"t\" data-pg-bind=\"text:title\">^^title^^</p>\n        <p data-pg-bind=\"text:loop_index\">^^__loop_index^^</p>\n    </li>\n"
+}

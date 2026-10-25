@@ -1135,9 +1135,13 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
     return $html;
 }
 
-// Walk a widget tree (deep clone) and locate the FIRST loop_area node. Replaces it
-// in-place with a custom_html marker (`<!--pg-loop-slot-->`) so the static portion
-// of the widget renders normally with a placeholder where the loop output will land.
+// Walk a widget tree (deep clone) and locate the FIRST loop_area node without
+// props.source, the main loop. A loop_area with props.source is a list inside
+// a record (widgets_lists.php): it is skipped with everything in it, so a
+// tree whose only loop_area is a list splits as one without a loop. Replaces
+// the main loop in-place with a custom_html marker (`<!--pg-loop-slot-->`) so
+// the static portion of the widget renders normally with a placeholder where
+// the loop output will land.
 // Returns: array(
 //   'static_tree'    => deep-cloned tree with loop_area replaced by marker (or original
 //                       tree if no loop_area was found),
@@ -1158,10 +1162,12 @@ function _split_widget_tree($tree, $outside_markers = false)
     // Deep-clone via JSON round-trip — the tree is small (a single widget), so this is fine.
     $clone = json_decode(json_encode($tree), true);
 
-    // The path of child indexes from the root to the first loop_area.
+    // The path of child indexes from the root to the first loop_area that is
+    // not a list; a list holds no main loop.
     $find = function ($node, $path) use (&$find) {
         if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return null;
         foreach ($node['children'] as $i => $child) {
+            if (pg_sw_list_is_sourced($child)) continue;
             if (isset($child['type']) && $child['type'] === 'loop_area') return array_merge($path, array($i));
             $found = $find($child, array_merge($path, array($i)));
             if ($found !== null) return $found;
@@ -4452,6 +4458,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             break;
 
         case 'loop_area':
+            // A list inside a record (props.source): its row template is kept
+            // aside and a span stands here, which the widget's finish pass
+            // draws from the rows its renderer published (widgets_lists.php).
+            if (pg_sw_list_is_sourced($node)) {
+                $html .= pg_sw_list_span($node, $indent, $depth);
+                break;
+            }
             // Inside a static (non-loop) render path, loop_area is invisible — it
             // simply lets its children flow through as if the loop_area didn't exist.
             // The actual loop semantics (per-row repetition + token replacement) live
@@ -8807,11 +8820,13 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
     if (in_array($type, array('submitted_forms_list', 'form_list', 'blog_list'), true)) $type = 'form_list_view';
     if (!in_array($type, array('form_list_view', 'catalog_listing'), true)) return array();
 
-    // Mark every repetition of the first loop area.
+    // Mark every repetition of the first loop area, the main loop: a list
+    // inside a record (props.source) is skipped with everything in it.
     $marked = false;
     $mark = function (&$node) use (&$mark, &$marked) {
         if ($marked || !is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
         foreach ($node['children'] as $i => $child) {
+            if (pg_sw_list_is_sourced($child)) continue;
             if (is_array($child) && isset($child['type']) && $child['type'] === 'loop_area') {
                 $kids = (isset($child['children']) && is_array($child['children'])) ? $child['children'] : array();
                 if (empty($kids)) return;

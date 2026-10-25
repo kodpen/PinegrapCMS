@@ -28176,5 +28176,10 @@
     "First row (1 or empty)": "İlk satır (1 ya da boş)",
     "Last row (1 or empty)": "Son satır (1 ya da boş)",
     "Odd row (1 or empty)": "Tek numaralı satır (1 ya da boş)",
-    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)"
+    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)",
+    "Values of a field": "Bir alanın değerleri",
+    "Parts of a field, split at commas": "Bir alanın virgülle ayrılmış parçaları",
+    "Value for an address": "Adreste kullanılacak değer",
+    "File address": "Dosya adresi",
+    "File type": "Dosya türü"
 }
