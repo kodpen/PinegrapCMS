@@ -22,8 +22,8 @@ description: Which screens write a person's own e-mail marketing answer to conse
 
 ## Was it run?
 - Tests: `tests/privacy_test.php`, `member_opt_in_test.php`, `express_order_opt_in_test.php`.
-- Sandbox (MariaDB, legacy screens, hand-built widget posts): 28 of 29 cases passed: each writer's legacy path, repeated answers, rejected checkout submits, the no-row paths.
-- Failed: after a one-click refusal (then stored by token only) and a signed-in address change, re-ticking wrote nothing; the last row found was the older grant. Since then the one-click row carries the account and contact of the address; not re-run.
+- Sandbox (MariaDB, legacy screens, hand-built widget posts): all 29 cases passed: each writer's legacy path, repeated answers, rejected checkout submits, the no-row paths.
+- One-click (sandbox): the refusal carries the account and its contact, or the contact with user 0; a repeated POST adds none; a later unticked address change, signed in or at membership activation, adds none; re-ticking adds one `granted` `account` row.
 - Not run: social sign-up, rendered designed widgets, gateway returns, order_history_retrieve_order.php, profile, quick save, affiliate, POS, double opt-in. The legacy screen's first save writes a refused row per open list shown.
 
 ## Open for the owner?
