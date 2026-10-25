@@ -681,6 +681,7 @@
     "{var:1} is already wide enough": "{var:1} zaten yeterince geniş",
     "{var:1} is at or below its minimum stock.": "{var:1} minimum stoğunda ya da altında.",
     "{var:1} is away on {var:2}.": "{var:1}, {var:2} günü izinde.",
+    "{var:1} is back in stock": "{var:1} yeniden stokta",
     "{var:1} is below the smallest accepted value.": "{var:1} kabul edilen en küçük değerin altında.",
     "{var:1} is connected.": "{var:1} bağlandı.",
     "{var:1} is connected. From now on you can sign in with {var:1} too.": "{var:1} bağlandı. Artık {var:1} ile de giriş yapabilirsiniz.",

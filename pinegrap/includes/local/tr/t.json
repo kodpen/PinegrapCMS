@@ -3959,6 +3959,7 @@
     "This product has no barcode. Type the barcode it is listed under on {var:1}.": "Bu ürünün barkodu yok. {var:1} üzerindeki ilanının barkodunu yazın.",
     "This product has variants": "Bu ürünün varyantları var",
     "This product is already in the Recycle Bin.": "Bu ürün zaten Geri Dönüşüm Kutusunda.",
+    "This product is in stock now, so you can order it.": "Bu ürün şu anda stokta; sipariş verebilirsiniz.",
     "This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.": "Bu ürün Geri Dönüşüm Kutusunda. Değiştirmeden önce Katalog Yöneticisi'ndeki Geri Dönüşüm Kutusundan geri yükleyin.",
     "This product is no longer matched to the marketplace.": "Bu ürün artık pazaryeriyle eşleşmiş değil.",
     "This product is out of stock right now.": "Bu ürün şu anda stokta yok.",

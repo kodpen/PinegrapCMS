@@ -343,11 +343,19 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 
 	}
 
-	api_webhook_enqueue('inventory.changed', array(
+	$stock_event = array(
 		'product_id' => (int)$row['id'],
 		'quantity'   => (int)$row['inventory_quantity'],
 		'out_of_stock' => ((int)$row['out_of_stock'] === 1)
-	));
+	);
+
+	api_webhook_enqueue('inventory.changed', $stock_event);
+
+	// The announcement above skips pg_announce(), whose listeners hear the
+	// site's other stock writers; a product back in stock is told here.
+	if (function_exists('pg_stock_notify_heard')) {
+		pg_stock_notify_heard('inventory.changed', $stock_event);
+	}
 
 	// Crossing the low-stock line, announced once.
 	//
