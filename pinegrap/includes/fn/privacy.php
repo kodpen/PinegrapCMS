@@ -513,11 +513,16 @@ function pg_consent_log_answers(array $person, array $answers, $source)
 /**
  * The e-mail marketing answer a checkout records when it writes the box's
  * value to the contact, or array() when that value is not the buyer's own
- * answer. Pure. The screens post opt_in_displayed 'true' only when they drew
- * the box ('false' when the contact was opted in already, nothing from a
- * designed express order without it): without it the contact still gets a
- * value, but not one the buyer chose. While staff are ghosting, the box is
- * answered by the staff member, not by the customer.
+ * answer. Pure. The system screens and the shipped layouts post
+ * opt_in_displayed 'true' when they draw the box and 'false' when the
+ * contact was opted in already; a designed express order posts 'true' only
+ * while its tree draws the box, and nothing without it. Without 'true' the
+ * contact still gets a value, but not one the buyer chose. A custom billing
+ * information or express order layout edited to leave the box out still
+ * posts 'true', because the server prints the marker from the contact, not
+ * from the layout: its post looks like an unticked box, so its 0 is
+ * recorded as a refusal. While staff are ghosting, the box is answered by
+ * the staff member, not by the customer.
  *
  * @param mixed $opt_in_displayed  the posted opt_in_displayed
  * @param mixed $ghost             $_SESSION['software']['ghost']
