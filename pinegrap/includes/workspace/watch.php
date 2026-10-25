@@ -39,6 +39,8 @@
  * room - and an event caused by a scheduled action's own run carries that
  * run's chain depth, so two actions that cause each other's events stop at
  * WS_SCHEDULED_CHAIN_DEPTH. None of them is written into a watching channel.
+ * A box of a flow's run that waits for a task counts as waiting for its
+ * status change too, and the event wakes it (flow_runs.php).
  *
  * A submitted form tagged in a message (<#form:N>) is drawn with a small card
  * under the message: the first fields of the submission and a link to it,
@@ -235,14 +237,23 @@ function ws_event_depth($run_depth = null)
 }
 
 /**
- * The workspace's own events some active scheduled action waits for. Read
- * once a request, with one look at the actions' rules.
+ * The workspace's own events some active scheduled action, or a box of a
+ * flow's run, waits for. Read once a request, with one look at the actions'
+ * rules and one at the waiting boxes (flow_runs.php); a box that starts
+ * waiting drops what was read ($forget), so the next call reads again.
  *
+ * @param bool $forget drop what this request read
  * @return string[]
  */
-function ws_events_awaited()
+function ws_events_awaited($forget = false)
 {
     static $awaited = null;
+
+    if ($forget) {
+        $awaited = null;
+
+        return array();
+    }
 
     if ($awaited !== null) {
         return $awaited;
@@ -250,14 +261,20 @@ function ws_events_awaited()
 
     $awaited = array();
 
-    if (!function_exists('ws_scheduled_join_ready') || !ws_scheduled_join_ready()) {
-        return $awaited;
+    if (function_exists('ws_scheduled_join_ready') && ws_scheduled_join_ready()) {
+        foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
+            foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
+                if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ws_events_is_own($rule['event'] ?? '')) {
+                    $awaited[] = (string) $rule['event'];
+                }
+            }
+        }
     }
 
-    foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
-        foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-            if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ws_events_is_own($rule['event'] ?? '')) {
-                $awaited[] = (string) $rule['event'];
+    if (function_exists('ws_flow_waits_awaited')) {
+        foreach (ws_flow_waits_awaited() as $event) {
+            if (ws_events_is_own($event)) {
+                $awaited[] = $event;
             }
         }
     }
@@ -267,11 +284,12 @@ function ws_events_awaited()
 
 /**
  * Something that happened in the workspace, kept for the scheduled actions
- * that wait for it: one row in ws_events_in, worked off by the next run like
- * the site's events. Nothing is kept when no active action waits for this
- * event, or when the event is not one of the workspace's own (ws_events_own()).
+ * and the boxes of flows' runs that wait for it: one row in ws_events_in,
+ * worked off by the next run like the site's events. Nothing is kept when no
+ * active action and no waiting box waits for this event, or when the event
+ * is not one of the workspace's own (ws_events_own()).
  * The webhooks hear about the workspace through pg_announce(), on their own
- * terms; this is for the site's own scheduled actions only.
+ * terms; this is for the site's own scheduled actions and flows only.
  *
  * @param string $event
  * @param array  $payload channel_id, and the id of the task, the request or the message
@@ -515,8 +533,9 @@ function ws_events_due()
 /**
  * Works off the events the run has not taken yet, oldest first: each is
  * claimed (a conditional UPDATE, so two runs that meet do not both take it),
- * the scheduled actions waiting for it are queued and the channels watching
- * its record are told. The rows taken more than WS_EVENTS_KEEP ago are swept.
+ * the scheduled actions waiting for it are queued, the boxes of flows' runs
+ * waiting for it are woken and the channels watching its record are told.
+ * The rows taken more than WS_EVENTS_KEEP ago are swept.
  *
  * @param int $limit
  * @return int how many events were taken
@@ -546,6 +565,11 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
         $payload = is_array($payload) ? $payload : array();
 
         ws_events_start((int) $row['id'], (string) $row['event'], $payload);
+
+        // The boxes of the flows' runs waiting for it (flow_runs.php).
+        if (function_exists('ws_flow_wake')) {
+            ws_flow_wake((string) $row['event'], $payload);
+        }
 
         if (ws_watch_ready()) {
             ws_watch_write((string) $row['event'], $payload);

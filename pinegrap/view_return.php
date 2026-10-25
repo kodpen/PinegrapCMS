@@ -408,25 +408,27 @@ foreach (($state && !empty($state['parcels'])) ? $state['parcels'] : array() as 
         . '</li>';
 }
 
+// Whether the request came in time, read as GET /orders/{id}/returns reads
+// it (pg_return_timing()): the delivery as it is known today, the request's
+// own day.
 $window = $state ? $state['window'] : null;
 $requested_day = ((int) $return['requested_at'] > 0) ? date('Y-m-d', (int) $return['requested_at']) : '';
+$timing = pg_return_timing($window, $requested_day);
 $output_window = '';
 
-if ($window) {
-    $in_time = ($requested_day !== '') && (strcmp($requested_day, $window['deadline']) <= 0);
-
+if ($timing) {
     $output_window = '
                         <div class="row">
-                            <span class="col text-muted">' . h($window['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
-                            <span class="col text-end">' . h(pg_return_day_text($window['delivered'])) . '</span>
+                            <span class="col text-muted">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
+                            <span class="col text-end">' . h(pg_return_day_text($timing['delivered'])) . '</span>
                         </div>
                         <div class="row">
                             <span class="col text-muted">' . h(lang('Return period ends')) . ':</span>
-                            <span class="col text-end">' . h(pg_return_day_text($window['deadline'])) . '</span>
+                            <span class="col text-end">' . h(pg_return_day_text($timing['deadline'])) . '</span>
                         </div>
                         <div class="row">
                             <span class="col text-muted">' . h(lang('Asked')) . ':</span>
-                            <span class="col text-end">' . ($in_time
+                            <span class="col text-end">' . ($timing['in_time']
                                 ? '<span class="text-success">' . h(lang('within the return period')) . '</span>'
                                 : '<span class="text-danger">' . h(lang('after the return period')) . '</span>') . '</span>
                         </div>';
@@ -436,6 +438,49 @@ if ($window) {
 }
 
 $refund_due = pg_return_refund_due($return);
+
+// The refund the return keeps (11.0.34), once it was refunded: how much, how
+// it was made, the reference and a warning when the payment service gave no
+// clear answer. A refund recorded as 0 says the money went back from the
+// order screen rather than showing an amount of 0. A return refunded before
+// the refund was kept, whose refund could not be found again, says so.
+$output_refund = '';
+
+if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $return)) {
+    $refund_method = (string) $return['refund_method'];
+    $refund_reference = (string) $return['refund_reference'];
+
+    if (($refund_method === 'manual') && ((int) $return['refund_amount'] === 0)) {
+        $output_refund = '
+                        <div class="mt-3 small">
+                            <p class="mb-1">' . h(lang('Marked as refunded: the money went back from the order screen.')) . '</p>
+                            ' . (($refund_reference !== '') ? '<div class="row">
+                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col text-end text-break">' . h($refund_reference) . '</span>
+                            </div>' : '') . '
+                        </div>';
+    } elseif (in_array($refund_method, array('driver', 'manual'), true)) {
+        $output_refund = '
+                        <div class="mt-3 small">
+                            <div class="row">
+                                <span class="col text-muted">' . h(lang('Amount refunded')) . ':</span>
+                                <span class="col text-end fw-semibold">' . h(pg_return_money_text((int) $return['refund_amount'])) . '</span>
+                            </div>
+                            <div class="row">
+                                <span class="col text-muted">' . h(lang('Refund method')) . ':</span>
+                                <span class="col text-end">' . h(($refund_method === 'driver') ? lang('Through the payment service') : lang('Recorded, made another way')) . '</span>
+                            </div>
+                            ' . (($refund_reference !== '') ? '<div class="row">
+                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col text-end text-break">' . h($refund_reference) . '</span>
+                            </div>' : '') . '
+                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert alert-warning small mt-2 mb-0">' . h(lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\'s screen.')) . '</div>' : '') . '
+                        </div>';
+    } else {
+        $output_refund = '
+                        <p class="small text-muted mt-3 mb-0">' . h(lang('The amount and the way of this refund were not kept.')) . '</p>';
+    }
+}
 
 // Who asked: a person when one is known, else where the request came from.
 $sources = array(
@@ -560,6 +605,7 @@ echo
                         </div>
                         <ul class="list-unstyled small mb-0">' . $stamp_rows . '
                         </ul>
+                        ' . $output_refund . '
                         ' . (($refund_due !== '') ? '<div class="mt-3"><span class="text-muted">' . h(lang('Refund due by')) . ':</span> <span class="' . ((strcmp(date('Y-m-d'), $refund_due) > 0) ? 'text-danger fw-semibold' : 'fw-semibold') . '">' . h(pg_return_day_text($refund_due)) . '</span></div>' : '') . '
                         ' . $output_close . '
                     </div>

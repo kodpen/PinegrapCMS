@@ -166,7 +166,9 @@ function test_returns_events_workspace_catalog_entry()
 }
 
 // requested is announced once the request is written and the lock is let go;
-// approved and received by the move; refunded by the refund alone, after its
+// approved and received by the staff move once its lock is let go, after the
+// move's conditional UPDATE (pg_return_move() keeps the announce for a caller
+// that does not announce itself); refunded by the refund alone, after its
 // lock, so a refusal that puts the return back announces nothing.
 function test_returns_events_announce_points()
 {
@@ -184,8 +186,8 @@ function test_returns_events_announce_points()
 	$announce = strpos($move, "pg_return_announce('order.return.' . \$to");
 	$guard = strpos($move, 'mysqli_affected_rows(db::$con) !== 1');
 
-	pg_assert_contains("array('approved', 'received')", $move, 'the move announces approved and received');
-	pg_assert_true($announce !== false, 'pg_return_move() announces the move');
+	pg_assert_contains("array('approved', 'received')", $move, 'approved and received are the moves announced');
+	pg_assert_true($announce !== false, 'pg_return_move() keeps the announce for a caller that does not announce itself');
 	pg_assert_true(($announce !== false) && ($guard !== false) && ($announce > $guard), 'after the conditional UPDATE took the row: the losing side of two moves announces nothing');
 
 	$refund = returns_events_test_body($source, 'pg_return_refund');
