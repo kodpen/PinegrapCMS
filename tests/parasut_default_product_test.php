@@ -94,6 +94,32 @@ function test_parasut_default_product_a_card_not_opened_is_refused()
 	pg_assert_contains('"Deri Kalem Kılıfı"', $product['error']);
 }
 
+// A products read that failed is the database's error, not Paraşüt's: the
+// line is refused in words of its own, with the database's words, and
+// never sent to delete a card on Paraşüt's product list, which no request
+// opened. Not put on the default either, with one set or none.
+function test_parasut_default_product_a_failed_read_is_a_database_error()
+{
+	$line = array('product_id' => 543, 'description' => 'Deri Kalem Kılıfı');
+	$said = lang(array('string' => 'Product {var:1} could not be read from the database: {var:2}', 'vars' => array(543, "Unknown column 'parasut_product_id' in 'field list'")));
+	$unread = array('success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => $said, 'read_failed' => true);
+
+	foreach (array('9001', '') as $default) {
+		$product = erp_edoc_parasut_line_product_pick($line, $unread, $default);
+
+		pg_assert_same(array('id' => '', 'error' => lang(array(
+			'string' => 'Line "{var:1}" could not be written to Paraşüt because of a database error: {var:2}. The invoice was not written; send again once the database error is put right.',
+			'vars' => array('Deri Kalem Kılıfı', $said),
+		))), $product, 'default "' . $default . '"');
+		pg_assert_false($product['error'] === erp_edoc_parasut_line_product_pick($line, array_diff_key($unread, array('read_failed' => true)), $default)['error'], 'not the card-not-opened text');
+	}
+
+	// A line with no description is named by its product.
+	$product = erp_edoc_parasut_line_product_pick(array('product_id' => 543, 'description' => ' '), $unread, '9001');
+
+	pg_assert_contains('"#543"', $product['error']);
+}
+
 // A line without a product of its own goes on the default product/service:
 // no product (shipping, a charge, free text, a rounding line), or a product
 // whose catalogue row is gone. With no default set it is refused with the
@@ -145,7 +171,9 @@ function test_parasut_default_product_wiring()
 
 	pg_assert_contains("'Product {var:1} could not be read from the database: {var:2}'", $branch);
 	pg_assert_contains("'success' => false", $branch);
+	pg_assert_contains("'read_failed' => true", $branch, 'said to be the database\'s');
 	pg_assert_false(strpos($branch, "'missing' =>") !== false, 'not a missing row');
+	pg_assert_same(1, substr_count($sync, "'read_failed' => true"), 'only the failed read');
 
 	$line = parasut_default_product_test_source('includes/erp/edoc/parasut.php', 'erp_edoc_parasut_line_product');
 

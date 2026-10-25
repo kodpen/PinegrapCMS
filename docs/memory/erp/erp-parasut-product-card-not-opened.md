@@ -6,7 +6,7 @@ description: An invoice line whose own Paraşüt card is not opened is refused i
 ## Which lines go on the default product/service? (#1631)
 - `erp_edoc_parasut_line_product()` (the ERP driver and the legacy Create Invoice) asks `parasut_sync_product()` and hands its answer to the pure `erp_edoc_parasut_line_product_pick($line, $sync, $default)`.
 - The default (`PARASUT_DEFAULT_PRODUCT_ID`) takes only a line without a product of its own: `product_id` ≤ 0 (shipping, a charge, free text, a rounding line) or a products row deleted since (`parasut_sync_product()` answers `'missing' => true`). With no default set, such a line gets the "enter a default product/service" refusal.
-- A products read that failed (`mysqli_query()` false: a column the upgrade has not added, say) is not `missing`: the line is refused with the database's words. Before #1631 PHP 7 put it on the default and PHP 8 stopped with a TypeError.
+- A products read that failed (`mysqli_query()` false: a column the upgrade has not added, say) is not `missing` but `'read_failed' => true`: the line is refused as a database error ("Line … could not be written to Paraşüt because of a database error: …", #1682). Before #1631 PHP 7 put it on the default and PHP 8 stopped with a TypeError; until #1682 it got the card-not-opened text below, which blamed Paraşüt and sent the operator to delete a card no request had opened.
 
 ## What if Paraşüt does not open the card?
 - A failed create (a 422, a timeout, a 5xx, a second 429, a 2xx without an id) is refused before `POST sales_invoices`, naming the line, in Paraşüt's words (`parasut_refusal_words()`).
@@ -21,4 +21,4 @@ description: An invoice line whose own Paraşüt card is not opened is refused i
 - `erp_edoc_parasut_product_refusal()`, asked before the buyer card, sees only lines with `product_id` ≤ 0 and rounding lines: with no default set, a deleted product's line is refused only after the buyer card was found or opened.
 
 ## How was it checked?
-- Unit tests only (`tests/parasut_default_product_test.php`): the demo key expired on 2026-10-25. A failed create or products read refusing an invoice never ran live.
+- Unit tests only (`tests/parasut_default_product_test.php`): the demo key expired on 2026-10-25. A failed create or products read refusing an invoice never ran live; the failed read's flag is checked in the source.

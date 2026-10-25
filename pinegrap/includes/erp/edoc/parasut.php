@@ -839,7 +839,9 @@ function erp_edoc_parasut_line_product($line, $taken_out = 0)
  * open (a refused create, a timeout, a 5xx, a second 429) is refused in
  * Paraşüt's words before the invoice is written: on the default it would
  * carry the generic service's name into the invoice and its e-document,
- * and a stock-tracked product's goods would not leave its own card.
+ * and a stock-tracked product's goods would not leave its own card. A
+ * products row that could not be read ('read_failed') is refused too, as
+ * the database's error rather than Paraşüt's.
  *
  * @param array      $line     An erp_invoice_items row (product_id, description)
  * @param array|null $sync     parasut_sync_product()'s answer; null when no card was asked for
@@ -858,10 +860,20 @@ function erp_edoc_parasut_line_product_pick($line, $sync, $default)
         }
 
         $name = trim((string) ($line['description'] ?? ''));
+        $vars = array(($name !== '') ? $name : '#' . (int) $line['product_id'], parasut_refusal_words((string) ($sync['error'] ?? '')));
+
+        // The products row could not be read: no card was asked for, so
+        // there is nothing of Paraşüt's to put right or delete.
+        if (!empty($sync['read_failed'])) {
+            return array('id' => '', 'error' => lang(array(
+                'string' => 'Line "{var:1}" could not be written to Paraşüt because of a database error: {var:2}. The invoice was not written; send again once the database error is put right.',
+                'vars' => $vars,
+            )));
+        }
 
         return array('id' => '', 'error' => lang(array(
             'string' => 'Paraşüt did not open a product card for line "{var:1}": {var:2}. The invoice was not written. Put right what Paraşüt names and send again; when no answer came, first delete the card from Paraşüt\'s product list if it is there, or the next send opens a second one.',
-            'vars' => array(($name !== '') ? $name : '#' . (int) $line['product_id'], parasut_refusal_words((string) ($sync['error'] ?? ''))),
+            'vars' => $vars,
         )));
     }
 
@@ -1154,24 +1166,28 @@ function erp_edoc_parasut_kept_ids($invoice, $product_cards)
  *
  * The unsure mark of a create that got no answer
  * (parasut_order_invoice_unsure()) is no record to read: Paraşüt may hold
- * the invoice, so the send refuses before any request. A record id is read
+ * the invoice, so the send refuses before any request, naming the way out
+ * through the order screen's Create Invoice. A record id is read
  * and judged as the order screen's buttons judge it
  * (parasut_stored_record_state()): one Paraşüt holds refuses, naming it
  * and where its e-document is issued if it never went through (the legacy
- * create kept the id of such a record as well); only a 404 naming it as
- * not found ("Record was not found", SalesInvoice-<id>) is gone, its id
+ * create kept the id of such a record as well), or, when its total is not
+ * the invoice's, to delete it there and not issue it; only a 404 naming it
+ * as not found ("Record was not found", SalesInvoice-<id>) is gone, its id
  * for the caller to clear; any other answer (no connection, no token, the
  * 401 of a company number the token cannot reach, a 404 with no route)
  * refuses with Paraşüt's words.
  *
- * @param string   $value  orders.parasut_invoice_id
- * @param callable $get    function (string $path): the erp_edoc_parasut_request()
- *                         answer of GET $path under the company prefix
+ * @param string   $value    orders.parasut_invoice_id
+ * @param callable $get      function (string $path): the erp_edoc_parasut_request()
+ *                           answer of GET $path under the company prefix
+ * @param array    $invoice  The erp_invoices row being sent (grand_total); without it
+ *                           the record's total is not compared
  * @return array ['state' => 'none' | 'unsure' | 'kept' | 'gone' | 'unknown',
  *                'id' => string (the record read), 'refusal' => string ('' unless the
  *                send stops), 'notice' => string ('' unless gone)]
  */
-function erp_edoc_parasut_legacy_invoice_check($value, $get)
+function erp_edoc_parasut_legacy_invoice_check($value, $get, $invoice = array())
 {
     $value = trim((string) $value);
     $check = array('state' => 'none', 'id' => '', 'refusal' => '', 'notice' => '');
@@ -1180,9 +1196,12 @@ function erp_edoc_parasut_legacy_invoice_check($value, $get)
         return $check;
     }
 
+    // Only Create Invoice's own search settles the mark (it finishes the
+    // record it finds, or writes one when none is there), and the order
+    // screen draws that button only while no provider is on.
     if (parasut_order_invoice_unsure($value)) {
         $check['state'] = 'unsure';
-        $check['refusal'] = lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice: look for the record on Paraşüt\'s screen; if it is there, keep this invoice as a PDF document.');
+        $check['refusal'] = lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice. While the provider is on, nothing settles that try: set the e-Document Provider to Off in the E-Invoice settings, press Create Invoice on the order screen (it looks for that sales invoice at Paraşüt first and writes one only if none is there), then set the provider back to Paraşüt and send this invoice again. It goes only if the order screen did not invoice the sale; otherwise keep it as a PDF document.');
 
         return $check;
     }
@@ -1195,7 +1214,19 @@ function erp_edoc_parasut_legacy_invoice_check($value, $get)
     $transport = (trim((string) ($read['error'] ?? '')) !== '') || (trim((string) ($read['login_error'] ?? '')) !== '');
     $check['state'] = $transport ? 'unknown' : parasut_stored_record_state($read, 'sales_invoices');
 
-    if ($check['state'] === 'kept') {
+    // The order's invoice comes to the order's total, the figure Create
+    // Invoice checked its record against; a record kept with another total
+    // is one Paraşüt would not delete after that check, never to be issued.
+    $attributes = (array) ($read['body']['data']['attributes'] ?? array());
+    $other_total = isset($invoice['grand_total']) && (erp_edoc_parasut_totals($attributes) !== array())
+        && !erp_edoc_parasut_total_check($attributes, $invoice)['ok'];
+
+    if (($check['state'] === 'kept') && $other_total) {
+        $check['refusal'] = lang(array(
+            'string' => 'This order has a sales invoice at Paraşüt from the order screen (ID: {var:1}) whose total is not this invoice\'s: the order screen keeps such a record only when Paraşüt would not delete it after its total check, and its e-document must not be issued. This invoice was not sent there, so that the sale is not invoiced twice: delete that record on Paraşüt\'s screen, then send again.',
+            'vars' => array($value),
+        ));
+    } elseif ($check['state'] === 'kept') {
         $check['refusal'] = lang(array(
             'string' => 'This order was already invoiced at Paraşüt from the order screen (sales invoice ID: {var:1}), so this invoice was not sent there: the same sale would be invoiced twice. Keep this invoice as a PDF document; if that record\'s e-document did not go through, issue it from that invoice in Paraşüt. Or delete that record on Paraşüt\'s screen first and send again.',
             'vars' => array($value),
@@ -1833,7 +1864,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     if ((int) ($invoice['order_id'] ?? 0) > 0) {
         $legacy = erp_edoc_parasut_legacy_invoice_check((string) ($invoice['order_parasut_invoice_id'] ?? ''), function ($path) use ($context) {
             return erp_edoc_parasut_request('GET', $path, null, $context);
-        });
+        }, $invoice);
 
         if ($legacy['refusal'] !== '') {
             return $fail($legacy['refusal']);

@@ -41,12 +41,13 @@ function erp_edoc_parasut_legacy_invoiced_test_get($answer, &$asked)
 /**
  * The legacy invoice check, or a failed assertion when it does not exist.
  *
- * @param string $value  orders.parasut_invoice_id
- * @param array  $answer
- * @param array  $asked
+ * @param string     $value    orders.parasut_invoice_id
+ * @param array      $answer
+ * @param array      $asked
+ * @param array|null $invoice  The ERP invoice being sent; null leaves it out of the call
  * @return array|null
  */
-function erp_edoc_parasut_legacy_invoiced_test_check($value, $answer, &$asked)
+function erp_edoc_parasut_legacy_invoiced_test_check($value, $answer, &$asked, $invoice = null)
 {
 	if (!function_exists('erp_edoc_parasut_legacy_invoice_check')) {
 		pg_assert_true(false, 'erp_edoc_parasut_legacy_invoice_check() exists');
@@ -54,7 +55,36 @@ function erp_edoc_parasut_legacy_invoiced_test_check($value, $answer, &$asked)
 		return null;
 	}
 
-	return erp_edoc_parasut_legacy_invoice_check($value, erp_edoc_parasut_legacy_invoiced_test_get($answer, $asked));
+	if ($invoice === null) {
+		return erp_edoc_parasut_legacy_invoice_check($value, erp_edoc_parasut_legacy_invoiced_test_get($answer, $asked));
+	}
+
+	return erp_edoc_parasut_legacy_invoice_check($value, erp_edoc_parasut_legacy_invoiced_test_get($answer, $asked), $invoice);
+}
+
+/**
+ * The refusal for the unsure mark: it names the way out, since nothing
+ * clears the mark while the provider is on.
+ *
+ * @return string
+ */
+function erp_edoc_parasut_legacy_invoiced_test_unsure_text()
+{
+	return lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice. While the provider is on, nothing settles that try: set the e-Document Provider to Off in the E-Invoice settings, press Create Invoice on the order screen (it looks for that sales invoice at Paraşüt first and writes one only if none is there), then set the provider back to Paraşüt and send this invoice again. It goes only if the order screen did not invoice the sale; otherwise keep it as a PDF document.');
+}
+
+/**
+ * The refusal for a record Paraşüt holds whose total is the sale's.
+ *
+ * @param string $id
+ * @return string
+ */
+function erp_edoc_parasut_legacy_invoiced_test_kept_text($id)
+{
+	return lang(array(
+		'string' => 'This order was already invoiced at Paraşüt from the order screen (sales invoice ID: {var:1}), so this invoice was not sent there: the same sale would be invoiced twice. Keep this invoice as a PDF document; if that record\'s e-document did not go through, issue it from that invoice in Paraşüt. Or delete that record on Paraşüt\'s screen first and send again.',
+		'vars' => array($id),
+	));
 }
 
 /**
@@ -149,9 +179,46 @@ function test_erp_edoc_parasut_legacy_invoiced_unsure_mark_refuses_unread()
 		}
 
 		pg_assert_same('unsure', $check['state'], var_export($value, true));
-		pg_assert_same(lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice: look for the record on Paraşüt\'s screen; if it is there, keep this invoice as a PDF document.'), $check['refusal']);
+		pg_assert_same(erp_edoc_parasut_legacy_invoiced_test_unsure_text(), $check['refusal']);
 		pg_assert_same(array(), $asked, 'nothing read');
 	}
+}
+
+// While the ERP's provider is on the order screen draws no Create Invoice
+// (parasut_order_documents_in_erp()), and only that press's search settles
+// the mark, so the refusal names the way out with the screens' own labels:
+// the provider set to Off, Create Invoice pressed, the provider back on.
+// The ERP invoice it sent then answers for itself.
+function test_erp_edoc_parasut_legacy_invoiced_unsure_mark_names_the_way_out()
+{
+	$text = erp_edoc_parasut_legacy_invoiced_test_unsure_text();
+
+	foreach (array('e-Document Provider', 'Off', 'E-Invoice settings', 'Create Invoice') as $label) {
+		pg_assert_contains(lang($label), $text, 'names "' . $label . '"');
+	}
+
+	pg_assert_false(strpos($text, 'look for the record on Paraşüt\'s screen; if it is there') !== false, 'not the advice that left no way out');
+
+	$asked = array();
+	$check = erp_edoc_parasut_legacy_invoiced_test_check(ERP_EDOC_PARASUT_UNSURE, erp_edoc_parasut_legacy_invoiced_test_answers()['found'], $asked, array('grand_total' => 4794, 'currency' => 'TRY'));
+
+	if ($check === null) {
+		return;
+	}
+
+	pg_assert_same($text, $check['refusal'], 'the same with the invoice given');
+	pg_assert_same(array(), $asked, 'nothing read');
+
+	// The labels are the screens' own: the settings card's provider radio
+	// and the order screen's button.
+	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+	$commerce = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.php');
+	$view_order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+
+	pg_assert_contains('id="edoc_provider_none" value=""', $prep);
+	pg_assert_contains("<b>' . lang('Off') . '</b>", $prep);
+	pg_assert_contains("lang('e-Document Provider')", $commerce);
+	pg_assert_contains("lang('Create Invoice')", $view_order);
 }
 
 // A record Paraşüt holds is the sale's invoice: the send refuses naming it,
@@ -170,11 +237,57 @@ function test_erp_edoc_parasut_legacy_invoiced_kept_record_refuses_naming_it()
 	pg_assert_same('kept', $check['state']);
 	pg_assert_same('1104385591', $check['id']);
 	pg_assert_same(array('/sales_invoices/1104385591'), $asked);
+	pg_assert_same(erp_edoc_parasut_legacy_invoiced_test_kept_text('1104385591'), $check['refusal']);
+	pg_assert_same('', $check['notice']);
+
+	// The same when Paraşüt's total is the ERP invoice's, which is the
+	// order's (erp_invoice_from_order() refuses any other), or when the
+	// answer carries no total to compare.
+	$asked = array();
+	$check = erp_edoc_parasut_legacy_invoiced_test_check('1104385591', erp_edoc_parasut_legacy_invoiced_test_answers()['found'], $asked, array('grand_total' => 4794, 'currency' => 'TRY'));
+
+	pg_assert_same('kept', $check['state'], 'total agrees');
+	pg_assert_same(erp_edoc_parasut_legacy_invoiced_test_kept_text('1104385591'), $check['refusal'], 'total agrees');
+	pg_assert_same(array('/sales_invoices/1104385591'), $asked, 'read once');
+
+	$answer = erp_edoc_parasut_legacy_invoiced_test_answers()['found'];
+	unset($answer['body']['data']['attributes']['net_total']);
+	$asked = array();
+	$check = erp_edoc_parasut_legacy_invoiced_test_check('1104385591', $answer, $asked, array('grand_total' => 5000, 'currency' => 'TRY'));
+
+	pg_assert_same('kept', $check['state'], 'no total read');
+	pg_assert_same(erp_edoc_parasut_legacy_invoiced_test_kept_text('1104385591'), $check['refusal'], 'no total read');
+}
+
+// A record whose total is not the sale's is the one the order screen's
+// Create Invoice keeps when Paraşüt would not delete it after its total
+// check ("still at Paraşüt as id …, not issued"). Its e-document must not be
+// issued: the refusal says its total is not the invoice's and to delete it
+// there, never to issue it. The totals were named by the press that kept it;
+// the check prints none, so it reads nothing but the record.
+function test_erp_edoc_parasut_legacy_invoiced_kept_record_with_another_total()
+{
+	$asked = array();
+	$check = erp_edoc_parasut_legacy_invoiced_test_check('1104385591', erp_edoc_parasut_legacy_invoiced_test_answers()['found'], $asked, array('grand_total' => 5000, 'currency' => 'TRY'));
+
+	if ($check === null) {
+		return;
+	}
+
+	pg_assert_same('kept', $check['state']);
+	pg_assert_same('1104385591', $check['id']);
+	pg_assert_same(array('/sales_invoices/1104385591'), $asked, 'read once');
 	pg_assert_same(lang(array(
-		'string' => 'This order was already invoiced at Paraşüt from the order screen (sales invoice ID: {var:1}), so this invoice was not sent there: the same sale would be invoiced twice. Keep this invoice as a PDF document; if that record\'s e-document did not go through, issue it from that invoice in Paraşüt. Or delete that record on Paraşüt\'s screen first and send again.',
+		'string' => 'This order has a sales invoice at Paraşüt from the order screen (ID: {var:1}) whose total is not this invoice\'s: the order screen keeps such a record only when Paraşüt would not delete it after its total check, and its e-document must not be issued. This invoice was not sent there, so that the sale is not invoiced twice: delete that record on Paraşüt\'s screen, then send again.',
 		'vars' => array('1104385591'),
 	)), $check['refusal']);
+	pg_assert_false($check['refusal'] === erp_edoc_parasut_legacy_invoiced_test_kept_text('1104385591'), 'not the advice to issue its e-document');
 	pg_assert_same('', $check['notice']);
+
+	// One kurus apart is another total too.
+	$check = erp_edoc_parasut_legacy_invoiced_test_check('1104385591', erp_edoc_parasut_legacy_invoiced_test_answers()['found'], $asked, array('grand_total' => 4795, 'currency' => 'TRY'));
+
+	pg_assert_false($check['refusal'] === erp_edoc_parasut_legacy_invoiced_test_kept_text('1104385591'), 'a kurus apart');
 }
 
 // A record deleted on Paraşüt's screen (404 "Record was not found",
@@ -273,7 +386,7 @@ function test_erp_edoc_parasut_legacy_invoiced_send_refuses_the_unsure_mark_firs
 		'address' => 'Cumhuriyet Bulvarı 1', 'district' => 'Konak', 'city' => 'İzmir', 'country_code' => 'TR', 'provider_code' => '1074177903',
 	);
 
-	$unsure = lang('The order screen\'s Create Invoice got no answer from Paraşüt for this order, so Paraşüt may already hold its sales invoice. This invoice was not sent there, so that the sale is not invoiced twice: look for the record on Paraşüt\'s screen; if it is there, keep this invoice as a PDF document.');
+	$unsure = erp_edoc_parasut_legacy_invoiced_test_unsure_text();
 	$result = erp_edoc_parasut_send_invoice($invoice, $lines, array('party' => $party));
 
 	pg_assert_false($result['success']);
@@ -307,6 +420,7 @@ function test_erp_edoc_parasut_legacy_invoiced_send_asks_before_the_buyer_card()
 		"\$invoice['order_parasut_invoice_id'] = is_array(\$order) ? trim((string) \$order['parasut_invoice_id']) : '';",
 		"\$legacy = erp_edoc_parasut_legacy_invoice_check((string) (\$invoice['order_parasut_invoice_id'] ?? ''), function (\$path) use (\$context) {",
 		"return erp_edoc_parasut_request('GET', \$path, null, \$context);",
+		"}, \$invoice);",
 		"if (\$legacy['refusal'] !== '') {",
 		"return \$fail(\$legacy['refusal']);",
 		"if (\$legacy['state'] === 'gone') {",
