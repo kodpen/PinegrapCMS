@@ -2277,6 +2277,218 @@ function pg_catalog_bin_group($group_id, $user_id)
     return (string) $group['name'];
 }
 
+/**
+ * Runs one statement of a shared catalogue writer. The external API passes
+ * 'api' => true in $opts: its own helpers (includes/api/db.php) answer a
+ * failed query with the JSON 500 its contract promises, where db() prints
+ * output_error()'s HTML page into the response.
+ *
+ * @param string $sql
+ * @param string $answer 'exec' (a write), 'value' (one scalar or null) or 'rows' (a list of rows)
+ * @param array  $opts   api: run through the external API's helpers
+ * @return mixed
+ */
+function pg_catalog_query($sql, $answer, $opts = array())
+{
+    $api = !empty($opts['api']) && function_exists('api_query');
+
+    if ($answer === 'rows') {
+        return $api ? api_rows($sql) : (array) db_items($sql);
+    }
+
+    if ($answer === 'value') {
+        return $api ? api_value($sql) : db_value($sql);
+    }
+
+    return $api ? api_exec($sql) : db($sql);
+}
+
+/**
+ * Scores a product's or a product group's meta half now, rather than leaving
+ * it to the list screens or the nightly job: a client or a person who reads
+ * the record back next sees the score the write produced. A site whose SEO
+ * upgrade has not run is left alone.
+ *
+ * @param string $type 'product' or 'product_group'
+ * @param int    $id
+ */
+function pg_catalog_seo_rescore($type, $id)
+{
+    // The engine lives in the root seo.php, which only its screens, jobs and
+    // writers load.
+    if (!function_exists('pg_seo_schema_ready') && file_exists(PG_FUNCTIONS_DIR . '/seo.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/seo.php');
+    }
+
+    if (function_exists('pg_seo_schema_ready') && pg_seo_schema_ready()) {
+        pg_seo_recalculate($type, array((int) $id));
+    }
+}
+
+/**
+ * The id of the top of the catalogue, where a group with no parent named is
+ * filed (the catalogue screen files one there too); 0 on an empty catalogue.
+ *
+ * @param array $opts as pg_catalog_query()
+ * @return int
+ */
+function pg_catalog_group_top_id($opts = array())
+{
+    return (int) pg_catalog_query("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id ASC LIMIT 1", 'value', $opts);
+}
+
+/**
+ * The INSERT of a new browse group: variant selection on, no images, details
+ * or code. Built apart from the writer so the unit tests can hold it to the
+ * row POST /product-groups and the Workspace wrote before they shared it.
+ *
+ * @param array  $data         as pg_catalog_group_create(), full_description already prepared
+ * @param int    $user_id      who the row is stamped with
+ * @param int    $parent_id    resolved
+ * @param string $address_name from prepare_catalog_item_address_name()
+ * @return string
+ */
+function pg_catalog_group_insert_sql($data, $user_id, $parent_id, $address_name)
+{
+    $text = function ($key) use ($data) {
+        return e((string) ($data[$key] ?? ''));
+    };
+
+    return "INSERT INTO product_groups (name, enabled, parent_id, short_description, full_description, details, code,
+            keywords, image_name, display_type, address_name, title, meta_description, meta_keywords, attributes, user, timestamp)
+        VALUES (
+            '" . $text('name') . "',
+            '" . (!empty($data['enabled']) ? '1' : '0') . "',
+            '" . (int) $parent_id . "',
+            '" . $text('short_description') . "',
+            '" . $text('full_description') . "',
+            '', '',
+            '" . $text('keywords') . "',
+            '',
+            'browse',
+            '" . e((string) $address_name) . "',
+            '" . $text('title') . "',
+            '" . $text('meta_description') . "',
+            '" . $text('meta_keywords') . "',
+            '1',
+            '" . (int) $user_id . "',
+            UNIX_TIMESTAMP())";
+}
+
+/**
+ * One product filed in a group, first in its order.
+ *
+ * @param int $group_id
+ * @param int $product_id
+ * @return string
+ */
+function pg_catalog_group_xref_sql($group_id, $product_id)
+{
+    return "INSERT INTO products_groups_xref (product, product_group, sort_order)
+        VALUES ('" . (int) $product_id . "', '" . (int) $group_id . "', '0')";
+}
+
+/**
+ * A new product group, the one writer of POST /product-groups
+ * (api_product_groups_create()) and a Workspace create
+ * (ws_change_write_product_group()). add_product_group.php and the variant
+ * set builder (pg_pb_create_group()) keep their own code.
+ *
+ * The caller has checked everything first (the name free, the parent and the
+ * products there); this writes the row with an address made from the short
+ * description or the name and the rich text prepared as the editor prepares
+ * it, files the products, rebuilds the keyword clouds of the search results
+ * pages that gather the group, scores it for SEO and announces
+ * product_group.created once. The Site Log line is the caller's, in its own
+ * words.
+ *
+ * @param array     $data name (as given, the caller trims), enabled, parent_id
+ *                        (0: the top of the catalogue), short_description,
+ *                        full_description, keywords, title, meta_description,
+ *                        meta_keywords, product_ids
+ * @param array|int $user the person or the key's owner (an array with id) or a user id
+ * @param array     $opts api: run the statements through the external API's
+ *                        helpers (pg_catalog_query())
+ * @return int the new group's id; 0 when the row was not written
+ */
+function pg_catalog_group_create($data, $user, $opts = array())
+{
+    $user_id = is_array($user) ? (int) ($user['id'] ?? 0) : (int) $user;
+    $name = (string) ($data['name'] ?? '');
+    $short = (string) ($data['short_description'] ?? '');
+
+    $parent_id = (int) ($data['parent_id'] ?? 0);
+
+    if ($parent_id <= 0) {
+        $parent_id = pg_catalog_group_top_id($opts);
+    }
+
+    $data['full_description'] = prepare_rich_text_editor_content_for_input((string) ($data['full_description'] ?? ''));
+
+    $address = prepare_catalog_item_address_name(($short !== '') ? $short : $name);
+
+    pg_catalog_query(pg_catalog_group_insert_sql($data, $user_id, $parent_id, $address), 'exec', $opts);
+
+    $id = (int) mysqli_insert_id(db::$con);
+
+    if ($id <= 0) {
+        return 0;
+    }
+
+    foreach ((array) ($data['product_ids'] ?? array()) as $product_id) {
+        pg_catalog_query(pg_catalog_group_xref_sql($id, $product_id), 'exec', $opts);
+    }
+
+    pg_catalog_group_clouds($id, false, $opts);
+
+    pg_catalog_seo_rescore('product_group', $id);
+
+    pg_announce('product_group.created', array('id' => $id, 'name' => $name));
+
+    return $id;
+}
+
+/**
+ * The search results pages whose keyword cloud is built from a catalogue that
+ * takes in this group: their clouds are taken down, and built again unless
+ * the group is on its way out, the order the group screens follow, so a page
+ * never carries keywords from a group that is no longer there. Shared by the
+ * external API (api_product_group_clouds()) and the Workspace
+ * (ws_change_group_clouds()).
+ *
+ * @param int   $group_id
+ * @param bool  $clear_only take the clouds down (before the group is deleted)
+ * @param array $opts       as pg_catalog_query()
+ * @return array the pages that gather it, for a rebuild after
+ */
+function pg_catalog_group_clouds($group_id, $clear_only = false, $opts = array())
+{
+    if (!function_exists('get_product_groups_in_product_group_tree')) {
+        return array();
+    }
+
+    $pages = array();
+
+    foreach (pg_catalog_query("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'", 'rows', $opts) as $page) {
+        foreach ((array) get_product_groups_in_product_group_tree($page['product_group_id']) as $group) {
+            if ((int) $group['id'] === (int) $group_id) {
+                $pages[] = $page;
+                break;
+            }
+        }
+    }
+
+    foreach ($pages as $page) {
+        delete_tag_cloud_keywords_for_search_results_page($page['page_id']);
+
+        if (!$clear_only) {
+            update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
+        }
+    }
+
+    return $pages;
+}
+
 
 function get_effective_tax_rate($product_rate, $zone_rate)
 {
