@@ -6,7 +6,7 @@
 
 ## Why
 
-<!-- The problem this solves and why this approach. Link the decision issue if one applies. -->
+<!-- The problem this solves and why this approach. Name the owner decision in docs/memory/workflow/decisions-made.md if one applies. -->
 
 ## Side changes in the same flow
 
@@ -36,10 +36,6 @@ none
 
 - 
 
-## Linked issue
-
-Closes #
-
 ## Checklist
 
 - [ ] `php tools/lint.php` exits 0
@@ -49,5 +45,5 @@ Closes #
 - [ ] Schema changes go through the migration runner and are re-runnable
 - [ ] `.src.js` and `.min.js` updated together
 - [ ] `changelog.txt` not edited; the Changelog section above names its line or says "none"
-- [ ] Open issues/PRs checked for the same `file:line` ranges; overlaps noted above
+- [ ] Open PRs (drafts included) checked for the same files; overlaps noted above
 - [ ] When CI is green and nothing is left: the `ready` label, unsubscribe from the PR, stop (no merge of `development` into it after that)

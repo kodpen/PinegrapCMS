@@ -12,6 +12,7 @@ name: Install check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main, development]
 
@@ -21,6 +22,9 @@ permissions:
 jobs:
   install:
     name: install and upgrade on ${{ matrix.db }}
+    # A draft pull request claims a task (CLAUDE.md) and is not checked until
+    # it is marked ready; a merge train is a draft that is checked.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || startsWith(github.head_ref, 'merge-train/') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

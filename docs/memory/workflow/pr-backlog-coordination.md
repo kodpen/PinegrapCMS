@@ -4,11 +4,11 @@ description: The one session that merges PRs on development: which PRs it may pu
 ---
 
 ## Who merges PRs into development?
-- Owner (2026-10-24): about ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one once and fixes only blocking findings on the branch (`merge-review.md`), cleans body and comments, merges in a train (`merge-train.md`) and closes any claim of the PR still open.
+- About ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one once and fixes only blocking findings on the branch (`merge-review.md`), cleans body and comments and merges in a train (`merge-train.md`).
 
 ## Which PRs may the merging session push to?
 - A handed-over PR (the `ready` label) or one with no push for an hour while green (`merge-train.md`); before that the branch belongs to the session pushing to it.
-- No other session merges (owner, 2026-10-25: `working-mode.md`); the merging session re-checks a PR's merge state right before each merge, never trusting an earlier "clean".
+- No other session merges (`working-mode.md`); the merging session re-checks a PR's merge state right before each merge, never trusting an earlier "clean".
 
 ## In which order do they merge?
 - A PR that carries another open PR's commits waits for it; the PR that rewrites the memory tree merges last.
@@ -28,7 +28,7 @@ description: The one session that merges PRs on development: which PRs it may pu
 - Fix them on the PR that merges last.
 
 ## What happens to each PR before the merge?
-- Blocking review findings are fixed on the branch, minor ones go to the follow-up issue (`merge-review.md`); the body is rewritten in English, the Claude Code footer removed (`pr-footer-and-trailers.md`), CI must be green on the final head, its merge commit in the train carries the PR title and number (`merge-train.md`), and the PR's own claim is closed with the PR number.
-- Removing the footer is the merging session's job (owner, 2026-10-24): the sessions that opened the PRs need not touch it.
+- Blocking review findings are fixed on the branch, minor ones are left (`merge-review.md`); the body is rewritten in English, the Claude Code footer removed (`pr-footer-and-trailers.md`), CI must be green on the final head, and its merge commit in the train carries the PR title and number (`merge-train.md`).
+- Removing the footer is the merging session's job: the sessions that opened the PRs need not touch it.
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/owner-rules.md

@@ -1,5 +1,6 @@
 # Issue chooser settings. Free-form issues are disabled so that every report
-# arrives with the fields the maintainer (and the agents) need.
+# arrives with the fields the maintainer needs. Issues are for people using
+# Pinegrap; the work between development sessions goes through pull requests.
 blank_issues_enabled: false
 contact_links:
   - name: Questions and ideas
