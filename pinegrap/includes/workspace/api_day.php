@@ -402,6 +402,7 @@ function ws_api_search_record_scopes()
         'invoice'        => 'erp:read',
         'waybill'        => 'erp:read',
         'edoc'           => 'erp:read',
+        'erp_quote'      => 'erp:read',
         'receipt'        => 'erp_cash:read',
         'form'           => 'forms:read',
         'calendar_event' => 'calendars:read',
