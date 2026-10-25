@@ -642,6 +642,64 @@ function workspace_flows_parity_handed($code, $variable, array &$seen)
 	return $out;
 }
 
+// Checks that some PHP code uses the whole of an array variable (not one of
+// its keys) only in the two ways the step-option reader follows: as an
+// argument of its own to a Workspace function, which
+// workspace_flows_parity_handed() follows into (ws_scheduled_notify($viewer,
+// $action, $run)), or as a parameter in a Workspace function's own
+// signature. Any other use throws - copied to another variable, cast, looped
+// over, extract()ed, asked array_key_exists(), taken into a closure, put in
+// an array literal -, since the keys read through it would be missed.
+function workspace_flows_parity_whole_uses($code, $variable)
+{
+	$tokens = pg_test_source_tokens($code);
+	$count = count($tokens);
+	$open = array();
+
+	for ($i = 0; $i < $count; $i++) {
+		$token = $tokens[$i];
+
+		if (in_array($token, array('(', '[', '{'), true) || (is_array($token) && in_array($token[0], array(T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES), true))) {
+			$open[] = $i;
+			continue;
+		}
+
+		if (in_array($token, array(')', ']', '}'), true)) {
+			array_pop($open);
+			continue;
+		}
+
+		if (!is_array($token) || ($token[0] !== T_VARIABLE) || ($token[1] !== '$' . $variable)) {
+			continue;
+		}
+
+		$next = $i + 1;
+		pg_test_source_skip($tokens, $next);
+
+		// One of its keys, which workspace_flows_parity_reads() reads.
+		if (($tokens[$next] ?? null) === '[') {
+			continue;
+		}
+
+		// The innermost bracket around it: the call, or the signature, it is in.
+		$bracket = empty($open) ? -1 : end($open);
+		$call = (($bracket >= 0) && ($tokens[$bracket] === '(')) ? workspace_flows_parity_token_before($tokens, $bracket) : -1;
+		$named = ($call >= 0) && is_array($tokens[$call]) && ($tokens[$call][0] === T_STRING) && (strpos($tokens[$call][1], 'ws_') === 0);
+		$keyword = $named ? workspace_flows_parity_token_before($tokens, $call) : -1;
+		$declared = ($keyword >= 0) && is_array($tokens[$keyword]) && ($tokens[$keyword][0] === T_FUNCTION);
+		$previous = workspace_flows_parity_token_before($tokens, $i);
+		$alone = in_array($tokens[$previous] ?? null, array('(', ','), true) && in_array($tokens[$next] ?? null, array(')', ','), true);
+
+		if ($declared || ($named && $alone)) {
+			continue;
+		}
+
+		$around = implode('', array_map('pg_test_source_text', array_slice($tokens, max(0, $i - 8), 16)));
+
+		throw new RuntimeException('$' . $variable . ' is used whole in a way the step-option reader does not follow (' . trim(preg_replace('/\s+/', ' ', $around)) . '): read its keys as $' . $variable . '[\'key\'], hand the whole of it to a ws_ function, or teach workspace_flows_parity_read_step_options() to read that shape.');
+	}
+}
+
 // The values of an array variable some PHP code hands on to a Workspace
 // function under their own key in an array literal, as ws_approval_input(
 // ..., array('rule' => (string) ($action['rule'] ?? 'any'))) does:
@@ -1209,7 +1267,8 @@ function workspace_flows_parity_step_code()
 
 // The keys each step reads from its action, in all its code: step.key; and
 // the keys of the items of a list option, read in a loop over it:
-// step.key.item_key (report.metrics.param).
+// step.key.item_key (report.metrics.param). The action is followed only
+// where workspace_flows_parity_whole_uses() allows a use of the whole of it.
 function workspace_flows_parity_read_step_options()
 {
 	$out = array();
@@ -1218,6 +1277,7 @@ function workspace_flows_parity_read_step_options()
 		$keys = array();
 
 		foreach ($parts as $part) {
+			workspace_flows_parity_whole_uses($part[0], $part[1]);
 			$keys = array_merge($keys, workspace_flows_parity_reads($part[0], $part[1]));
 
 			foreach (workspace_flows_parity_loop_items($part[0], $part[1]) as $item) {
@@ -2766,4 +2826,49 @@ function test_workspace_flows_parity_limits_read_any_define()
 	}
 
 	pg_assert_contains('worked out by code', $thrown, 'a name worked out by code throws');
+}
+
+// The step-option reader follows a step's whole action only where it is an
+// argument of its own to a Workspace function or a parameter of one; any
+// other use throws, since the keys read through it would be missed.
+function test_workspace_flows_parity_whole_action_uses()
+{
+	$followed = array(
+		'ws_scheduled_notify($viewer, $action, $run); return $action[\'text\'];',
+		'function ws_scheduled_step($scheduled, array &$action = array()) { return $action["text"]; }',
+	);
+
+	foreach ($followed as $code) {
+		$thrown = '';
+
+		try {
+			workspace_flows_parity_whole_uses($code, 'action');
+		} catch (RuntimeException $exception) {
+			$thrown = $exception->getMessage();
+		}
+
+		pg_assert_same('', $thrown, 'followed: ' . $code);
+	}
+
+	$refused = array(
+		'$step = $action; if (!empty($step[\'silent\'])) {}',
+		'if (array_key_exists(\'silent\', $action)) {}',
+		'extract($action);',
+		'$step = (array) $action;',
+		'foreach ($action as $key => $value) {}',
+		'$send = function () use ($action) {};',
+		'ws_scheduled_notify($viewer, array($action), $run);',
+	);
+
+	foreach ($refused as $code) {
+		$thrown = '';
+
+		try {
+			workspace_flows_parity_whole_uses($code, 'action');
+		} catch (RuntimeException $exception) {
+			$thrown = $exception->getMessage();
+		}
+
+		pg_assert_contains('$action is used whole', $thrown, 'refused: ' . $code);
+	}
 }
