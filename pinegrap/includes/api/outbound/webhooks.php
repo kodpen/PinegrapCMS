@@ -39,13 +39,14 @@ function api_webhook_events() {
 		// A customer return (includes/fn/returns.php). id is the order's, as
 		// in every order.* event; return_id, status, source, reason and the
 		// lines follow. Announced from the return model, so every path that
-		// makes the move announces it: a request from My Account or the API,
-		// an approval on one return's screen or a bulk approval (one event per
-		// request it approves - a person ticks each one, it is not an import),
-		// the goods marked received, and the refund once its outcome stands.
+		// makes the move announces it: a request from My Account, the panel or
+		// the API, an approval on one return's screen or a bulk approval (one
+		// event per request it approves - a person ticks each one, it is not
+		// an import), the goods marked received, and the refund once its
+		// outcome stands.
 		// A rejection, the parcel sent back, a withdrawn request and a closing
 		// are not announced; the descriptions say so.
-		'order.return.requested' => 'A return was requested for an order: by the customer in My Account, or recorded through the API (a withdrawn request is not announced)',
+		'order.return.requested' => 'A return was requested for an order: by the customer in My Account, recorded by staff on the panel, or recorded through the API (a withdrawn request is not announced)',
 		'order.return.approved'  => 'A return request was approved, one event per request a bulk approval takes (a rejection is not announced)',
 		'order.return.received'  => 'The goods of a return arrived back at the shop (the customer saying the parcel left is not announced)',
 		'order.return.refunded'  => 'A received return was refunded through the payment service, or recorded as refunded another way; unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',

@@ -25,6 +25,7 @@ function panel_single_value_params_screens()
 		'add_email_campaign'         => array('page_id'),
 		'add_field'                  => array('page_id', 'product_group_id', 'product_id'),
 		'add_menu_item'              => array('menu_id'),
+		'add_return'                 => array('order_id', 'order_number', 'ship_to_id', 'reason', 'note'),
 		'add_submitted_form'         => array('page_id'),
 		'add_user'                   => array('contact_id'),
 		'browse_catalog_menu'        => array('current_page_id', 'product_group_id', 'previous_url_id'),
