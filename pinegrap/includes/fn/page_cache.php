@@ -1351,8 +1351,8 @@ function pg_page_cache_referer($raw)
  * user or an API client. Left out: the beacon, api.php (decided per action,
  * pg_page_cache_panel_dirties()), the chat and the update check, which poll,
  * the favourites, whose hearts a page's script fills in for each visitor,
- * and the workspace, whose page and product changes are announced
- * (pg_page_cache_announce_dirties()).
+ * a back-in-stock request, which no page shows, and the workspace, whose
+ * page and product changes are announced (pg_page_cache_announce_dirties()).
  *
  * @param string $method
  * @param string $script SCRIPT_NAME
@@ -1370,7 +1370,7 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
 
     $script = strtolower(basename(str_replace('\\', '/', (string) $script)));
 
-    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php'), true)
+    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php', 'stock_notify.php'), true)
         || (strpos($script, 'workspace') === 0)) {
         return false;
     }

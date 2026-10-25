@@ -57,6 +57,7 @@ function pg_privacy_export_sections()
         'comments'           => lang('Comments and reviews'),
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
+        'stock_notify'       => lang('Back-in-stock requests'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -921,6 +922,24 @@ function pg_privacy_export_collect(array $found)
             WHERE " . _pg_privacy_export_in('wishlist_items.user_id', $user_ids) . "
             ORDER BY wishlist_items.id",
             $user_ids
+        );
+    }
+
+    // Requests to be told when a product is back in stock, by the address
+    // typed or the account, with the product's SKU and name.
+    if (pg_stock_notify_ready()) {
+        $notify_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('stock_notify.user_id', $user_ids),
+            _pg_privacy_export_in('stock_notify.email_address', $emails),
+        ));
+
+        $sections['stock_notify'] = _pg_privacy_export_select(
+            "SELECT stock_notify.*, products.name AS product_sku, products.short_description AS product_name
+            FROM stock_notify
+            LEFT JOIN products ON products.id = stock_notify.product_id
+            WHERE " . $notify_where . "
+            ORDER BY stock_notify.id",
+            ($notify_where !== '') ? array(1) : array()
         );
     }
 
