@@ -11,7 +11,7 @@ description: Plan (2026-10-24, slice 0 built, answers 1-3 given): scheduled acti
 - Scheduled messages (kind `message`, any member) share the table, ?view=scheduled (a tab for staff), the rail slot.
 - `ws_scheduled_run()` / `ws_scheduled_due()` also drive approval expiry, read receipts, watch lines and the flow runner (#1551).
 - No API route (S1, S2 of plans/workspace-canvas-workflow-tables.md).
-- No such day (2027-02-29) passes `ws_scheduled_rule_input()`, runs on 1 March (pinned, not fixed).
+- `ws_scheduled_rule_input()` takes no such day as date (2027-02-29 runs 1 March) or until (2026-02-31: into March); pinned, not fixed.
 - Flows: manual, task, end boxes; the owner edits while staff, home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days (`ws_flow_runs_sweep()`); runs start at depth 0; `flow_id` unread.
 
 ## What is proposed? (not approved yet)
@@ -19,7 +19,7 @@ description: Plan (2026-10-24, slice 0 built, answers 1-3 given): scheduled acti
 - Two anchors: hidden (a flow's trigger box; lists, `ws_scheduled_action()` and S1 skip it, `ws_scheduled_report()` silent) and converted (slice 5; still an action to all of them). The new filter is not `ws_scheduled_actions_only()`, which feeds event and join starts.
 
 ## Slices (one PR each)
-0. Built: tests/workspace_flows_parity_test.php maps each parity row to its slice and box, or `form` and why (a new key without one fails); tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()` and `ws_scheduled_hours_hold()` (past midnight), which `ws_scheduled_rules_hold()` asks.
+0. Built: tests/workspace_flows_parity_test.php maps each parity row to its slice and box, or `form` and why (an unmapped key fails); tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()`, `ws_scheduled_hours_hold()` (past midnight, the site's zone).
 1. One screen, no schema: a Scheduled actions section in Flows (today's list, `scheduledCard()`, `scheduledForm()` via `shareKit()`); staff get one Flows rail entry; ?view=scheduled keeps their Messages tab; inbox links, the tour step land there; composer, note, @ai draft still open the form; without step 11.0.80 the old entry stays.
 2. "Show on canvas": a pure `ws_scheduled_graph()` draws an action read-only (when, condition, step, follow-ups by outcome; starters, started actions, self-retry as chips); edits stay in the form.
 3. Parity boxes (F4, F5), one per parity row: schedule, by hand or chain only, join, event triggers on the anchor; condition (no = skipped, reason kept); steps from steps.php (proposed, engine plan), every option; task without waiting; approval; skipped, failed, always outcomes; delay; retry; start a flow; depth through flow runs and their events.

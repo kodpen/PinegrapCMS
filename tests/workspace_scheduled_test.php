@@ -102,7 +102,9 @@ function test_workspace_scheduled_next_run_29_february()
 
 // A day that does not exist (29 February 2027) is not refused by the form's
 // check: strtotime() moves it to 1 March, so a single run happens on 1 March
-// and a yearly rule runs on 1 March every year. Pinned as it behaves.
+// and a yearly rule runs on 1 March every year. The last day (until) is
+// checked the same way: 31 February lets a daily rule run into March.
+// Pinned as it behaves.
 function test_workspace_scheduled_next_run_day_that_does_not_exist()
 {
 	workspace_scheduled_test_in_zone('Europe/Istanbul', function () {
@@ -120,6 +122,29 @@ function test_workspace_scheduled_next_run_day_that_does_not_exist()
 
 		$refused = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2026-13-01', 'time' => '09:00', 'repeat' => 'none'));
 		pg_assert_false($refused['ok'], 'a thirteenth month is refused');
+
+		// Wrong result too: a last day of 2026-02-31 is taken and kept as
+		// written, and the rule runs on 1, 2 and 3 March; it should be refused
+		// with "The last day is not valid.".
+		$until = ws_scheduled_rule_input(array(), array('type' => 'at', 'date' => '2026-02-20', 'time' => '09:00', 'repeat' => 'daily', 'until' => '2026-02-31'));
+		pg_assert_true($until['ok'], 'a last day of 2026-02-31 is taken (it should not be)');
+		pg_assert_same('2026-02-31', $until['rule']['until'] ?? null, 'and kept as written');
+
+		$runs = array();
+		$after = '2026-02-28 10:00:00';
+
+		for ($run = 0; $run < 5; $run++) {
+			$next = workspace_scheduled_test_next($until['rule'], $after);
+
+			if ($next === 0) {
+				break;
+			}
+
+			$runs[] = $next;
+			$after = $next . ':00';
+		}
+
+		pg_assert_same(array('2026-03-01 09:00', '2026-03-02 09:00', '2026-03-03 09:00'), $runs, 'a daily rule until 2026-02-31 runs three days into March');
 	});
 }
 
@@ -354,43 +379,47 @@ function test_workspace_scheduled_hours_hold_edges()
 	pg_assert_false(ws_scheduled_hours_hold('00:00', '23:59', 1439), '23:59 is the end of 00:00 - 23:59');
 }
 
-// ws_scheduled_rules_hold() asks the helper with the clock of now: a window
-// that starts this minute holds, one that ends this minute does not, and the
-// same past midnight. Asked again when the minute turns during the check.
+// ws_scheduled_rules_hold() asks the helper with the clock of now, in the
+// site's zone: a window that starts this minute holds, one that ends this
+// minute does not, and the same past midnight. Asia/Kolkata is five and a
+// half hours from UTC, so a clock read in UTC is wrong in its hour and its
+// minute. Asked again when the minute turns during the check.
 function test_workspace_scheduled_rules_hold_hours_now()
 {
-	$clock = function ($minute) {
-		$minute = (($minute % 1440) + 1440) % 1440;
+	workspace_scheduled_test_in_zone('Asia/Kolkata', function () {
+		$clock = function ($minute) {
+			$minute = (($minute % 1440) + 1440) % 1440;
 
-		return sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
-	};
+			return sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
+		};
 
-	for ($attempt = 0; $attempt < 3; $attempt++) {
-		$before = time();
-		$minute = (int) date('G', $before) * 60 + (int) date('i', $before);
-		$answers = array();
+		for ($attempt = 0; $attempt < 3; $attempt++) {
+			$before = time();
+			$minute = (int) date('G', $before) * 60 + (int) date('i', $before);
+			$answers = array();
 
-		foreach (array(
-			'starts now'                 => array($clock($minute), $clock($minute + 1)),
-			'ends now'                   => array($clock($minute - 1), $clock($minute)),
-			'past midnight, starts now'  => array($clock($minute), $clock($minute - 1)),
-			'past midnight, ends now'    => array($clock($minute + 1), $clock($minute)),
-			'all day but the next hour'  => array($clock($minute + 60), $clock($minute + 1)),
-		) as $name => $window) {
-			$answers[$name] = ws_scheduled_rules_hold(array(), array(array('type' => 'hours', 'from' => $window[0], 'to' => $window[1])));
+			foreach (array(
+				'starts now'                 => array($clock($minute), $clock($minute + 1)),
+				'ends now'                   => array($clock($minute - 1), $clock($minute)),
+				'past midnight, starts now'  => array($clock($minute), $clock($minute - 1)),
+				'past midnight, ends now'    => array($clock($minute + 1), $clock($minute)),
+				'all day but the next hour'  => array($clock($minute + 60), $clock($minute + 1)),
+			) as $name => $window) {
+				$answers[$name] = ws_scheduled_rules_hold(array(), array(array('type' => 'hours', 'from' => $window[0], 'to' => $window[1])));
+			}
+
+			$after = time();
+
+			if (date('H:i', $before) === date('H:i', $after)) {
+				break;
+			}
 		}
 
-		$after = time();
-
-		if (date('H:i', $before) === date('H:i', $after)) {
-			break;
-		}
-	}
-
-	pg_assert_true($answers['starts now']['ok'], 'a window that starts this minute');
-	pg_assert_false($answers['ends now']['ok'], 'a window that ends this minute');
-	pg_assert_true($answers['past midnight, starts now']['ok'], 'past midnight, starting this minute');
-	pg_assert_false($answers['past midnight, ends now']['ok'], 'past midnight, ending this minute');
-	pg_assert_true($answers['all day but the next hour']['ok'], 'all day but the next hour');
-	pg_assert_contains($clock($minute - 1) . ' – ' . $clock($minute), $answers['ends now']['reason'], 'the reason names the hours');
+		pg_assert_true($answers['starts now']['ok'], 'a window that starts this minute');
+		pg_assert_false($answers['ends now']['ok'], 'a window that ends this minute');
+		pg_assert_true($answers['past midnight, starts now']['ok'], 'past midnight, starting this minute');
+		pg_assert_false($answers['past midnight, ends now']['ok'], 'past midnight, ending this minute');
+		pg_assert_true($answers['all day but the next hour']['ok'], 'all day but the next hour');
+		pg_assert_contains($clock($minute - 1) . ' – ' . $clock($minute), $answers['ends now']['reason'], 'the reason names the hours');
+	});
 }
