@@ -719,6 +719,18 @@ function ws_bulk_step($change_id)
         $state['ai_tries'] = 0;
     }
 
+    // The records' lines name who proposed the change (ws_ai_voice(),
+    // ws_change_sentence()): Pinegrap AI or the application, not Claude.
+    // Only the first slice runs in the request that applied the change and
+    // set it; the others run from the screen's step, the tick or the job.
+    // What was set before is handed back once the slice is written.
+    $voice = function_exists('ws_ai_voice_change');
+    $voice_before = $voice ? ws_ai_voice_change() : null;
+
+    if ($voice) {
+        ws_ai_voice_change($change);
+    }
+
     foreach ($slice as $id) {
         $state['pos']++;
         $record = ws_change_record($type, $id);
@@ -777,6 +789,10 @@ function ws_bulk_step($change_id)
         if (count($state['lines']) < 30) {
             $state['lines'][] = '<#' . $types[$type]['tag'] . ':' . (int) $id . '>';
         }
+    }
+
+    if ($voice) {
+        ws_ai_voice_change(is_array($voice_before) ? $voice_before : false);
     }
 
     $state['errors'] = array_slice($state['errors'], -20);

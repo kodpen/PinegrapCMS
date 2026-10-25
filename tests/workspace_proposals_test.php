@@ -24,6 +24,19 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(__DIR__ . '/helpers/source_reader.php');
 
+// The code of a loaded function without its comments, so a check of what
+// it calls and in which order is not misled by a comment that names a call.
+function pg_test_ws_proposals_code($function)
+{
+	$code = '';
+
+	foreach (pg_test_source_tokens(pg_test_function_source($function)) as $token) {
+		$code .= pg_test_source_text($token);
+	}
+
+	return $code;
+}
+
 // An OAuth connection is kept under its client, since every client writes
 // through the one OAuth application; a key under its application; anything
 // else under none.
@@ -219,4 +232,20 @@ function test_ws_task_delegation_open_row()
 	pg_assert_same($sent, ws_task_delegation_open_row(array($sent, $proposal)), 'a run waiting for its approval is open');
 	pg_assert_same(null, ws_task_delegation_open_row(array($proposal, $earlier)), 'nothing open');
 	pg_assert_same(null, ws_task_delegation_open_row(array()));
+}
+
+// Every slice of a bulk change after the first is written in a request of
+// its own: each names who proposed the change on its records' lines
+// (ws_ai_voice()), and hands back the name it found once the slice is done.
+function test_ws_bulk_step_names_the_proposer()
+{
+	$code = pg_test_ws_proposals_code('ws_bulk_step');
+	$first = strpos($code, 'ws_change_write(');
+	$last = strrpos($code, 'ws_change_write(');
+	$set = strpos($code, 'ws_ai_voice_change(');
+	$finish = strpos($code, 'ws_bulk_finish(');
+
+	pg_assert_true($first !== false, 'the slice writes records');
+	pg_assert_true(($set !== false) && ($set < $first), 'the change is named before the first record is written');
+	pg_assert_true(($finish !== false) && ($last !== false) && ($finish > $last) && (strpos(substr($code, $last, $finish - $last), 'ws_ai_voice_change(') !== false), 'and handed back after the last one');
 }
