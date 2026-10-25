@@ -56994,6 +56994,9 @@ const StyleDesigner = (function () {
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
+        // The design's saved drafts as a clickable prototype, from a saved
+        // draft tab (_pgPrototypeUrl()).
+        var protoUrl = _pgPrototypeUrl(p);
         // A saved page of this design can go to another one; the chooser is
         // on the screen for designers only (pg_designer_target_modal()).
         var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
@@ -57024,6 +57027,7 @@ const StyleDesigner = (function () {
         }
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
+            (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
@@ -57076,10 +57080,11 @@ const StyleDesigner = (function () {
             if (!b || b.disabled) return;
             var act = b.dataset.act;
             _pgTabsCloseMenu();
-            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view'
+            if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
                 && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
+                case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
@@ -59512,6 +59517,18 @@ const StyleDesigner = (function () {
     function _pgPageViewUrl(p) {
         if (!p || !(p.page_id > 0) || !p.savedName) return '';
         return (window.OUTPUT_PATH || '/') + p.savedName;
+    }
+
+    // The prototype viewer (prototype.php) opened on a draft tab, or '': a
+    // tab never saved, a page on the site, drafts not available, or an
+    // operator the viewer does not admit (_design.prototypeUrl is '' then).
+    // A page picked from another design and not saved here yet still belongs
+    // to that design, whose prototype the viewer would open.
+    // The viewer draws what was last saved, never the editor's unsaved trees.
+    function _pgPrototypeUrl(p) {
+        if (!p || !(p.page_id > 0) || !p.page_draft || p.pickedPending || !_pgDraftsReady()) return '';
+        if (!_design || !_design.prototypeUrl || !(_design.styleId > 0)) return '';
+        return _design.prototypeUrl + '?page=' + encodeURIComponent(p.page_id);
     }
 
     // "View page" next to Save AND next to Preview on the canvas bar: both
