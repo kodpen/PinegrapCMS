@@ -941,7 +941,8 @@ function erp_import_temp_dir()
         @mkdir($directory, 0755, true);
     }
 
-    return (is_dir($directory) && is_writable($directory)) ? $directory : '';
+    // pg_dir_writable(), not is_writable(): Windows folders (see there)
+    return pg_dir_writable($directory) ? $directory : '';
 }
 
 /**

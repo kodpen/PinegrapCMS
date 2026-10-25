@@ -1776,8 +1776,152 @@ function parasut_order_contact_attributes($order, $id_number, $country = null)
 }
 
 /**
- * Find or create a Parasut contact for the given order row.
- * Stores the Parasut contact ID back to orders.parasut_contact_id.
+ * The number an order's buyer card is looked up by at Paraşüt before one is
+ * opened: the order's VKN/TCKN (_parasut_order_identity()) as digits, when
+ * it passes the tax authority's check digits (erp_edoc_tax_number_valid()).
+ * '' for a buyer without one, for the final consumer's 11111111111, which
+ * many buyers share, and for a number that fails the check. A real VKN/TCKN
+ * always passes. Buyers who typed a placeholder that fails it (00000000000,
+ * 2222222222, 12345678901) each keep a card of their own; a placeholder that
+ * passes it (1234567890, 4444444444) is looked up like a real number, and a
+ * card under it is taken only when it is the buyer's own
+ * (parasut_order_contact_card_is_buyers()). Needs the ERP's e-document
+ * registry (_parasut_order_invoice_load()).
+ *
+ * @param string $identity  _parasut_order_identity()
+ * @return string  Digits, or ''
+ */
+function parasut_order_contact_search_number($identity)
+{
+    $digits = preg_replace('/\D/', '', (string) $identity);
+
+    return erp_edoc_tax_number_valid($digits) ? $digits : '';
+}
+
+/**
+ * Whether a card found under the buyer's number is this buyer's: the same
+ * name and e-mail as the card the order would open
+ * (parasut_order_contact_attributes()), case and outer spaces aside, as the
+ * ERP's driver matches a final consumer's card
+ * (erp_edoc_parasut_final_consumer_card_matches()). A placeholder that
+ * passes the check digits is typed by strangers too, and a card is taken as
+ * it is: the invoice carries no buyer details of its own, so another buyer's
+ * card would put the e-Arşiv in their name and mail it to them.
+ *
+ * @param mixed $card        attributes of a listed card
+ * @param array $attributes  parasut_order_contact_attributes()
+ * @return bool
+ */
+function parasut_order_contact_card_is_buyers($card, $attributes)
+{
+    if (!is_array($card)) {
+        return false;
+    }
+
+    foreach (array('name', 'email') as $field) {
+        $have = mb_strtolower(trim((string) ($card[$field] ?? '')), 'UTF-8');
+        $want = mb_strtolower(trim((string) ($attributes[$field] ?? '')), 'UTF-8');
+
+        if ($have !== $want) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * The Paraşüt card an order of the order screen's buttons goes on.
+ *
+ * A buyer with a VKN/TCKN (parasut_order_contact_search_number()) keeps one
+ * card over all orders. The cards under the number are read the way the
+ * ERP's driver reads them before it opens one (erp_edoc_parasut_contact_for()):
+ * GET contacts?filter[tax_number], newest first, page by page up to
+ * ERP_EDOC_PARASUT_FIND_PAGES pages, and the first card that is not
+ * archived, carries exactly the number and is this buyer's
+ * (parasut_order_contact_card_is_buyers()) is taken as it is. A page that
+ * answers neither a list nor 404 (no card under the number) refuses: no card
+ * is opened while one may be unread. The driver's own function is not called
+ * because it opens a missing card with the ERP account's details and logs
+ * every request as an ERP e-document call.
+ *
+ * Without such a card, and for a buyer without a number or with the final
+ * consumer's, a card is opened with $attributes. Needs the driver loaded
+ * (_parasut_order_invoice_load()).
+ *
+ * @param string   $identity    _parasut_order_identity()
+ * @param array    $attributes  parasut_order_contact_attributes(), for a new card
+ * @param callable $request     function (string $method, string $path, array|null $body):
+ *                              the _parasut_request() answer of $method _parasut_prefix() . $path
+ * @return array ['id' => string, 'reused' => bool (an existing card), 'error' => string]
+ */
+function parasut_order_contact_for($identity, $attributes, $request)
+{
+    $number = parasut_order_contact_search_number($identity);
+    $page = 0;
+
+    while (($number !== '') && ($page < (int) ERP_EDOC_PARASUT_FIND_PAGES)) {
+        $page++;
+
+        // Paraşüt takes ten requests in any ten seconds, so a long list is
+        // mostly a wait, which PHP's time limit counts on Windows.
+        if ($page === 2) {
+            erp_edoc_parasut_allow_time();
+        }
+
+        // Newest first: the list's own order is by balance, which an invoice
+        // written meanwhile moves.
+        $found = $request('GET', '/contacts?filter[tax_number]=' . rawurlencode($number)
+            . '&sort=-id&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, null);
+
+        // 404: no card under the number.
+        if ((int) ($found['http_code'] ?? 0) === 404) {
+            break;
+        }
+
+        if (!erp_edoc_parasut_ok($found) || !is_array($found['body'] ?? null)) {
+            return array('id' => '', 'reused' => false, 'error' => lang(array(
+                'string' => 'Paraşüt would not search its contacts: {var:1}',
+                'vars' => array(_parasut_extract_error($found)),
+            )));
+        }
+
+        foreach ((array) ($found['body']['data'] ?? array()) as $item) {
+            $id = is_array($item) ? trim((string) ($item['id'] ?? '')) : '';
+            $card = (is_array($item) && is_array($item['attributes'] ?? null)) ? $item['attributes'] : array();
+
+            // The filter is the server's; a card whose number only begins
+            // the same way is another buyer's, and so is one under the same
+            // number with another name or e-mail.
+            if (($id !== '') && empty($card['archived'])
+                && (preg_replace('/\D/', '', (string) ($card['tax_number'] ?? '')) === $number)
+                && parasut_order_contact_card_is_buyers($card, $attributes)) {
+                return array('id' => $id, 'reused' => true, 'error' => '');
+            }
+        }
+
+        if ($page >= max(1, (int) ($found['body']['meta']['total_pages'] ?? 1))) {
+            break;
+        }
+    }
+
+    $created = $request('POST', '/contacts', array('data' => array('type' => 'contacts', 'attributes' => $attributes)));
+    $id = trim((string) ($created['body']['data']['id'] ?? ''));
+
+    if (!in_array((int) ($created['http_code'] ?? 0), array(200, 201), true) || ($id === '')) {
+        return array('id' => '', 'reused' => false, 'error' => lang(array(
+            'string' => 'Contact create failed: {var:1}',
+            'vars' => array(_parasut_extract_error($created)),
+        )));
+    }
+
+    return array('id' => $id, 'reused' => false, 'error' => '');
+}
+
+/**
+ * The Parasut contact an order goes on: the one the order already holds, else
+ * the card Paraşüt keeps for the buyer's VKN/TCKN, else a new one
+ * (parasut_order_contact_for()). Stores its id in orders.parasut_contact_id.
  *
  * @param array $order Full order row from DB (billing_* fields, contact_id, id)
  * @return array ['success' => bool, 'parasut_contact_id' => string|null, 'error' => string]
@@ -1796,26 +1940,23 @@ function parasut_sync_contact($order)
     }
 
     // The address is read by the ERP's accounts code (erp_account_country(),
-    // erp_address_from_checkout()); E-Shipment does not load it itself.
+    // erp_address_from_checkout()) and the search by the driver's; E-Shipment
+    // does not load them itself.
     _parasut_order_invoice_load();
 
-    $attributes = parasut_order_contact_attributes($order, _parasut_order_identity($order));
+    $identity = _parasut_order_identity($order);
 
-    $body = [
-        'data' => [
-            'type' => 'contacts',
-            'attributes' => $attributes,
-        ],
-    ];
+    // A repeat buyer with a VKN/TCKN goes on the card opened for an earlier
+    // order; a new card carries the order's own details.
+    $contact = parasut_order_contact_for($identity, parasut_order_contact_attributes($order, $identity), function ($method, $path, $body) use ($token) {
+        return _parasut_request($method, _parasut_prefix() . $path, $body, $token);
+    });
 
-    $result = _parasut_request('POST', _parasut_prefix() . '/contacts', $body, $token);
-
-    if (!in_array($result['http_code'], [200, 201]) || empty($result['body']['data']['id'])) {
-        $msg = _parasut_extract_error($result);
-        return ['success' => false, 'parasut_contact_id' => null, 'error' => lang(array('string' => 'Contact create failed: {var:1}', 'vars' => array($msg)))];
+    if ($contact['error'] !== '') {
+        return ['success' => false, 'parasut_contact_id' => null, 'error' => $contact['error']];
     }
 
-    $parasut_contact_id = (string) $result['body']['data']['id'];
+    $parasut_contact_id = $contact['id'];
 
     // Persist the Parasut contact ID on the order.
     db("UPDATE orders SET parasut_contact_id = '" . escape($parasut_contact_id) . "' WHERE id = '" . escape($order['id']) . "'");
