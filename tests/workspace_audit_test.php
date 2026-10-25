@@ -192,6 +192,9 @@ function test_workspace_audit_every_caller_goes_through_the_wrapper()
 		pg_assert_same(1, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file), $call), $file);
 	}
 
+	// A person's create from the drawer's new mode or a /product card.
+	pg_assert_same(1, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/quick_edit.php'), '$done = ws_change_write($viewer, $type, \'create\', null, $values, false);'), 'quick_edit.php create');
+
 	foreach (glob(PG_FUNCTIONS_DIR . '/includes/workspace/*.php') as $path) {
 		$source = (string) file_get_contents($path);
 

@@ -123,7 +123,7 @@ function test_workspace_command_every_name_is_in_the_help()
 		}
 	}
 
-	foreach (array_keys(ws_command_names()) as $name) {
+	foreach (array_keys(ws_command_table()) as $name) {
 		pg_assert_true(isset($listed['/' . $name]), '/' . $name . ' in a help entry');
 	}
 }
@@ -179,7 +179,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		}
 	}
 
-	foreach (ws_command_names() as $name => $command) {
+	foreach (ws_command_table() as $name => $command) {
 		pg_assert_same(array($command), $owners['/' . $name] ?? array(), '/' . $name . ' belongs to /' . $command . ' only');
 	}
 
@@ -187,7 +187,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -299,4 +299,58 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 	pg_assert_same('today', ws_command_suggestions('en')['dates'][0]['value'], 'English first day');
 	pg_assert_same('~30dk', ws_command_suggestions('tr')['estimates'][0]['value'], 'Turkish first estimate');
 	pg_assert_same('!acil', ws_command_suggestions('tr')['priorities'][0]['value'], 'Turkish first priority');
+}
+
+// /product (/ürün) answers to its names in any case, with or without the
+// Turkish letters; they live beside the table of the other commands, which
+// keeps its names.
+function test_workspace_command_product_names()
+{
+	pg_assert_same(array('command' => 'product', 'rest' => 'Mavi kupa 149,90'), ws_command_split('/ürün Mavi kupa 149,90'), '/ürün');
+	pg_assert_same(array('command' => 'product', 'rest' => 'x'), ws_command_split('/ÜRÜN x'), '/ÜRÜN in capitals');
+	pg_assert_same(array('command' => 'product', 'rest' => 'x'), ws_command_split('/urun x'), '/urun');
+	pg_assert_same(array('command' => 'product', 'rest' => 'x'), ws_command_split('/product x'), '/product');
+	pg_assert_same(array('urun', 'ürün', 'product'), ws_command_aliases('product'), 'the names of /product');
+	pg_assert_same(array(), array_keys(ws_command_names(), 'product', true), 'ws_command_names() keeps its own list');
+	pg_assert_same('', ws_command_unknown('/ürün Mavi kupa'), '/ürün is no unknown word');
+	pg_assert_same('/ürün', ws_command_closest('urn')[0] ?? '', '/urn is closest to /ürün');
+	pg_assert_true(ws_command_offered(null, 'product'), 'listed when nobody is named');
+}
+
+// The words after /product: the name, then a price as the last word (with
+// its currency beside it, or not) and a product group's tag anywhere.
+function test_workspace_command_parse_product()
+{
+	pg_assert_same(array('name' => 'Mavi kupa', 'price' => 14990, 'group_id' => 0), ws_command_parse_product('Mavi kupa 149,90'), 'a name and a price');
+	pg_assert_same(array('name' => 'Mavi kupa', 'price' => 14990, 'group_id' => 7), ws_command_parse_product('Mavi kupa 149,90 <#product_group:7>'), 'a group after the price');
+	pg_assert_same(array('name' => 'Mavi kupa', 'price' => 14990, 'group_id' => 7), ws_command_parse_product('<#product_group:7> Mavi kupa 149,90'), 'a group first');
+	pg_assert_same(array('name' => 'Mavi kupa', 'price' => 14990, 'group_id' => 0), ws_command_parse_product('Mavi kupa 149,90 TL'), 'a currency after the amount');
+	pg_assert_same(array('name' => 'Mavi kupa', 'price' => null, 'group_id' => 0), ws_command_parse_product('Mavi kupa'), 'no price');
+	pg_assert_same(array('name' => 'KUPA-01', 'price' => null, 'group_id' => 0), ws_command_parse_product('KUPA-01'), 'one word is the name, even a code');
+	pg_assert_same(array('name' => '500', 'price' => null, 'group_id' => 0), ws_command_parse_product('500'), 'a number alone is the name');
+	pg_assert_same(array('name' => 'Kupa 500', 'price' => 14990, 'group_id' => 0), ws_command_parse_product('Kupa 500 149,90'), 'a number in the name before the price');
+	pg_assert_same(array('name' => 'Kupa ₺', 'price' => null, 'group_id' => 0), ws_command_parse_product('Kupa ₺'), 'a currency with no amount');
+	pg_assert_same(array('name' => '', 'price' => null, 'group_id' => 7), ws_command_parse_product('<#product_group:7>'), 'a group and no name');
+	pg_assert_same(array('name' => '', 'price' => null, 'group_id' => 0), ws_command_parse_product(''), 'nothing');
+}
+
+// What a /product card creates: the name as the product's name and as the
+// words the store shows, the price and the group when written.
+function test_workspace_command_product_fields()
+{
+	pg_assert_same(
+		array('name' => 'Mavi kupa', 'short_description' => 'Mavi kupa', 'price' => 14990, 'group_ids' => array(7)),
+		ws_command_product_fields(array('name' => 'Mavi kupa', 'price' => 14990, 'group_id' => 7)),
+		'every part'
+	);
+	pg_assert_same(
+		array('name' => 'KUPA-01', 'short_description' => 'KUPA-01'),
+		ws_command_product_fields(array('name' => 'KUPA-01', 'price' => null, 'group_id' => 0)),
+		'a name only'
+	);
+	pg_assert_same(
+		array('name' => 'Bedava', 'short_description' => 'Bedava', 'price' => 0),
+		ws_command_product_fields(array('name' => 'Bedava', 'price' => 0, 'group_id' => 0)),
+		'a price of nothing is written'
+	);
 }

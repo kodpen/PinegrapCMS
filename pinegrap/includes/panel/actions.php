@@ -291,6 +291,7 @@ function pg_panel_actions()
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
+        'ws_record_create',
         'ws_task_get', 'ws_task_check', 'ws_task_save',
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
         'ws_conflicts', 'ws_calendar', 'ws_event_save', 'ws_event_get',
@@ -319,6 +320,8 @@ function pg_panel_actions()
         'ws_mcp_connect', 'ws_mcp_disconnect_me',
         'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
         'ws_flow_publish', 'ws_flow_pause', 'ws_flow_bin',
+        'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
+        'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }
