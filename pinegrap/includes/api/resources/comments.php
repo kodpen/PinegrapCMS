@@ -29,6 +29,11 @@
 // as a comment of its own. Removing a comment never removes its replies. The
 // list can be narrowed to the comments that answer none, or to the replies
 // to one comment.
+//
+// verified says the comment is a product review from a verified purchase
+// (comments.verified_order_id, includes/fn/reviews.php); store_reply is the
+// store's answer under it, written on the moderation screen. Both columns
+// arrive with 11.0.14 and read as none before it.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -43,7 +48,9 @@ function api_comment_select() {
 	// comment that answers none.
 	$replies = pg_comment_replies_ready();
 
-	return "SELECT comments.id, comments.page_id, comments.item_id, comments.item_type, comments.name,
+	return "SELECT " . (pg_reviews_ready() ? 'comments.verified_order_id,' : '0 AS verified_order_id,') . "
+			" . (pg_review_replies_ready() ? 'comments.seller_reply, comments.seller_reply_at,' : "'' AS seller_reply, 0 AS seller_reply_at,") . "
+			comments.id, comments.page_id, comments.item_id, comments.item_type, comments.name,
 			comments.message, comments.rating, comments.published, comments.publish_date_and_time,
 			comments.publish_cancel, comments.featured, comments.file_id, comments.created_user_id,
 			comments.created_timestamp, comments.last_modified_timestamp,
@@ -118,9 +125,25 @@ function api_comment_status($row) {
 
 }
 
+// The review part of a comment: verified, store_reply, store_reply_at. A
+// reply's time means nothing without its words.
+function api_comment_review_values($row) {
+
+	$reply = isset($row['seller_reply']) ? (string)$row['seller_reply'] : '';
+
+	return array(
+		'verified'       => (isset($row['verified_order_id']) && is_scalar($row['verified_order_id']) && ((int)$row['verified_order_id'] > 0)),
+		'store_reply'    => ($reply !== '') ? $reply : null,
+		'store_reply_at' => ($reply !== '') ? api_time(isset($row['seller_reply_at']) ? $row['seller_reply_at'] : 0) : null
+	);
+
+}
+
 function api_comment_present($row) {
 
 	$scheduled = api_comment_scheduled_at($row);
+
+	$review = api_comment_review_values($row);
 
 	$status = api_comment_status($row);
 
@@ -136,6 +159,9 @@ function api_comment_present($row) {
 		'name'            => (string)$row['name'],
 		'message'         => (string)$row['message'],
 		'rating'          => ((int)$row['rating'] > 0) ? (int)$row['rating'] : null,
+		'verified'        => $review['verified'],
+		'store_reply'     => $review['store_reply'],
+		'store_reply_at'  => $review['store_reply_at'],
 		'status'          => $status,
 		'publish_at'      => ($status === 'scheduled') ? api_time($scheduled) : null,
 		'cancel_if_newer' => ($status === 'scheduled') && ((int)$row['publish_cancel'] === 1),
@@ -162,6 +188,9 @@ function api_comment_schema() {
 		'name'            => 'string',
 		'message'         => 'string',
 		'rating'          => 'integer?',
+		'verified'        => 'boolean',
+		'store_reply'     => 'string?',
+		'store_reply_at'  => 'string?',
 		'status'          => 'string',
 		'publish_at'      => 'string?',
 		'cancel_if_newer' => 'boolean',
@@ -250,6 +279,15 @@ function api_comments_list($params) {
 	if (isset($params['featured'])) {
 
 		$where[] = "comments.featured = '" . ($params['featured'] ? '1' : '0') . "'";
+
+	}
+
+	// Before 11.0.14 no comment is a verified purchase.
+	if (isset($params['verified'])) {
+
+		$where[] = pg_reviews_ready()
+			? pg_review_verified_filter_sql($params['verified'] ? 'yes' : 'no')
+			: ($params['verified'] ? '0' : '1');
 
 	}
 
