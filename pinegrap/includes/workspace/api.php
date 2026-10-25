@@ -1090,7 +1090,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_decisions_list',
             'returns'     => array('list' => 'WorkspaceDecision'),
             'summary'     => 'List the decisions of every channel',
-            'description' => 'The decisions taken in every channel the owner of the application may read - every public channel and the private ones the owner is in, archived channels included - newest first, by the moment the message was marked as a decision (decided_at). notes adds the messages marked as notes. user_id keeps what that person wrote or marked; search looks in the text as it was written, tags included as tokens. claude_change is set when the decision records a record change Claude proposed and somebody applied. Page with next_cursor.',
+            'description' => 'The decisions taken in every channel the owner of the application may read - every public channel and the private ones the owner is in, archived channels included - newest first, by the moment the message was marked as a decision (decided_at). notes adds the messages marked as notes. user_id keeps what that person wrote or marked; search looks in the text as it was written, tags included as tokens. claude_change is set when the decision records a record change an assistant or an application proposed and somebody applied; its agent says which (claude, ai, mcp, oauth:<client id>, app:<application id>), as GET /workspace/changes lists it. Page with next_cursor.',
             'params'      => array(
                 array('name' => 'notes', 'in' => 'query', 'type' => 'bool', 'description' => 'The notes too.'),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1),

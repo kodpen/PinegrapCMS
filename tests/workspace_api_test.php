@@ -1961,3 +1961,26 @@ function test_ws_api_rehearsal_stops_before_the_write()
 
 	pg_assert_true(strpos($answer, 'ws_message_send_check(') < strpos($answer, 'ws_message_send($place[\'writer\']'), 'the answer in a channel is checked as a message first');
 }
+
+// A decision that records an applied change says who proposed it in its
+// claude_change, by the agent GET /workspace/changes lists the change under:
+// an application's proposal is never credited to Claude.
+function test_ws_api_decision_change_names_its_agent()
+{
+	$row = array(
+		'id' => 70, 'channel_id' => 3, 'kind' => 'decision', 'body' => 'Price changed.', 'sender_kind' => 'user', 'sender_id' => 4,
+		'marked_by' => 0, 'locked' => 1, 'file_id' => 0, 'file_name' => '', 'tl_at' => 1800000000, 'created_at' => 1800000000,
+	);
+	$people = array(4 => array('name' => 'Erdal'));
+	$change = array('type' => 'product', 'type_label' => 'Product', 'action' => 'update', 'record_id' => 12);
+
+	foreach (array('oauth:5', 'app:12', 'ai', 'claude') as $agent) {
+		$decision = ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change + array('agent_key' => $agent)));
+
+		pg_assert_same($agent, $decision['claude_change']['agent'] ?? null, $agent . ' is named');
+	}
+
+	pg_assert_same('claude', ws_api_decision_present(array('id' => 4), $row, array(), array(), $people, array(70 => $change))['claude_change']['agent'] ?? null, 'a change with no agent is Claude\'s');
+	pg_assert_same('string', ws_api_decision_change_schema()['agent'] ?? null, 'the field is declared');
+	pg_assert_contains('ws_change_agent_key(', ws_api_test_handler_source('ws_timeline_claude_changes'), 'the agent is the one GET /workspace/changes gives');
+}

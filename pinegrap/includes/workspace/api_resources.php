@@ -4048,11 +4048,14 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
 
     $change = null;
 
+    // Who proposed the change, as GET /workspace/changes lists it: Claude,
+    // Pinegrap AI, an MCP server's agent or an application.
     if (isset($changes[$id])) {
         $change = array(
             'type'      => $changes[$id]['type'],
             'action'    => $changes[$id]['action'],
             'record_id' => $changes[$id]['record_id'],
+            'agent'     => (string) ($changes[$id]['agent_key'] ?? 'claude'),
         );
     }
 
@@ -4099,7 +4102,7 @@ function ws_api_decision_schema()
 // from, and the file it carries.
 function ws_api_decision_change_schema()
 {
-    return array('type' => 'string', 'action' => 'string', 'record_id' => 'integer?');
+    return array('type' => 'string', 'action' => 'string', 'record_id' => 'integer?', 'agent' => 'string');
 }
 
 function ws_api_decision_file_schema()

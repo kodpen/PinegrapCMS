@@ -296,8 +296,10 @@ function ws_timeline_hidden($viewer, $filters)
  * these decisions, by the decision's message id.
  *
  * @param int[] $message_ids
- * @return array[] id => type, type_label, action, record_id, agent, proposer
- *                 (the application's name, '' for an assistant)
+ * @return array[] id => type, type_label, action, record_id, agent (ai or
+ *                 claude, for the screen's icon), agent_key (the agent GET
+ *                 /workspace/changes lists the change under), proposer (the
+ *                 application's name, '' for an assistant)
  */
 function ws_timeline_claude_changes($message_ids)
 {
@@ -323,6 +325,7 @@ function ws_timeline_claude_changes($message_ids)
             'action'     => (string) ($row['action'] ?? 'update'),
             'record_id'  => ((int) $row['record_id'] > 0) ? (int) $row['record_id'] : null,
             'agent'      => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+            'agent_key'  => function_exists('ws_change_agent_key') ? ws_change_agent_key((string) ($row['agent'] ?? '')) : 'claude',
             // An application's proposal (proposals.php) is named by the
             // application.
             'proposer'   => function_exists('ws_proposal_name') ? ws_proposal_name((string) ($row['agent'] ?? '')) : '',
