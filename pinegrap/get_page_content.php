@@ -5174,8 +5174,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $liveform->remove_form();
             }
             
-            // if there is any extra system content, then output it now
-            if (($extra_system_content != '') && ($primary_system_region == TRUE)) {
+            // if there is any extra system content (a comment e-mail's fixed comment markup), then output it now,
+            // unless a comments widget on this e-mail page drew that comment in its own layout in this pass
+            // (widgets_comments.php)
+            if (($extra_system_content != '') && ($primary_system_region == TRUE) && pg_comments_email_keeps_fixed_markup($email, $page_id, $pg_cw_pages)) {
                 $system_output .= $extra_system_content;
             }
 

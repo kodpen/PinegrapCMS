@@ -928,16 +928,14 @@ function api_products_barcode($params, $product_id = 0) {
 // Scores the product's meta half now rather than leaving it to the product
 // list or the nightly job: every column it reads may just have changed, and a
 // client that reads the product back in the next call should see the score its
-// own change produced.
+// own change produced. The catalogue's shared scorer
+// (pg_catalog_seo_rescore()), which the Workspace's product create and the
+// group writer use too.
 function api_products_rescore($product_id) {
 
 	api_seo_library();
 
-	if (pg_seo_schema_ready()) {
-
-		pg_seo_recalculate('product', array((int)$product_id));
-
-	}
+	pg_catalog_seo_rescore('product', $product_id);
 
 }
 

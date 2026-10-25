@@ -114,7 +114,7 @@ function test_parasut_sync_product_sends_the_attributes_and_no_stock_update()
 	$body = parasut_product_test_source('parasut_sync_product');
 
 	pg_assert_true($body !== '', 'parasut_sync_product() is found');
-	pg_assert_contains("'attributes' => parasut_product_attributes(\$product),", $body);
+	pg_assert_contains("'attributes' => parasut_product_attributes(\$product, \$taken_out),", $body);
 	pg_assert_contains("_parasut_request('POST', _parasut_prefix() . '/products', \$body, \$token);", $body);
 	pg_assert_false(strpos($body, 'stock_updates') !== false, 'no stock_updates request');
 	pg_assert_false(strpos($body, 'parasut_ensure_default_warehouse(') !== false, 'no warehouse lookup');

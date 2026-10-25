@@ -141,6 +141,11 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_page'    => (int)(isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0),
             'pg_comments_email_subject' => (string)(isset($p['pg_comments_email_subject']) ? $p['pg_comments_email_subject'] : ''),
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
+            'pg_comments_attachments'      => (int)(isset($p['pg_comments_attachments']) ? $p['pg_comments_attachments'] : 0),
+            'pg_comments_select_name'      => (int)(isset($p['pg_comments_select_name']) ? $p['pg_comments_select_name'] : 0),
+            'pg_comments_message'          => (string)(isset($p['pg_comments_message']) ? $p['pg_comments_message'] : ''),
+            'pg_comments_closed_message'   => (string)(isset($p['pg_comments_closed_message']) ? $p['pg_comments_closed_message'] : ''),
+            'pg_comments_watchers_managed' => (int)(isset($p['pg_comments_watchers_managed']) ? $p['pg_comments_watchers_managed'] : 0),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
             'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
             // The page's own canonical address and robots directives ('' and 0
@@ -192,6 +197,11 @@ function pg_designer_screen_render($ctx)
             'pg_comments_email_page'    => 0,
             'pg_comments_email_subject' => '',
             'pg_comments_notify_email'  => '',
+            'pg_comments_attachments'      => 0,
+            'pg_comments_select_name'      => 0,
+            'pg_comments_message'          => '',
+            'pg_comments_closed_message'   => '',
+            'pg_comments_watchers_managed' => 0,
             'page_meta_tags'        => '',
             'page_custom_jsonld'    => '',
             'page_canonical_url'    => '',
@@ -391,7 +401,7 @@ function pg_designer_screen_render($ctx)
                      pages this session actually holds the edit lock on; a POST
                      without it can only write pages nobody has claimed. -->
                 <input type="hidden" id="sd-collab-key" name="collab_key" value="">
-                <!-- Comments settings — driven by the options panel when a comments_block region is selected; per page -->
+                <!-- Comments settings — driven by the options panel when a comments_block region or a comments widget is selected; per page -->
                 <input type="hidden" name="pg_comments" value="0">
                 <input type="hidden" name="pg_comments_label" value="">
                 <input type="hidden" name="pg_comments_allow_new" value="1">
@@ -402,6 +412,11 @@ function pg_designer_screen_render($ctx)
                 <input type="hidden" name="pg_comments_email_page" value="0">
                 <input type="hidden" name="pg_comments_email_subject" value="">
                 <input type="hidden" name="pg_comments_notify_email" value="">
+                <input type="hidden" name="pg_comments_attachments" value="0">
+                <input type="hidden" name="pg_comments_select_name" value="0">
+                <input type="hidden" name="pg_comments_message" value="">
+                <input type="hidden" name="pg_comments_closed_message" value="">
+                <input type="hidden" name="pg_comments_watchers_managed" value="0">
                 <!-- Shared design assets — managed by the Assets panel; one set for every page -->
                 <input type="hidden" name="style_custom_css" id="sd-custom-css-field" value="' . h($style['style_custom_css']) . '">
                 <input type="hidden" name="style_custom_js" id="sd-custom-js-field" value="' . h($style['style_custom_js']) . '">
@@ -1463,7 +1478,7 @@ function pg_designer_components_card($user)
         if (!is_array($cfg)) $cfg = array();
 
         $type_cell = h($is_widget ? lang('System Widget') : lang('Shared Component'));
-        $kind = isset($cfg['regionType']) ? (string)$cfg['regionType'] : '';
+        $kind = pg_sw_widget_kind($cfg);
         if ($is_widget && $kind !== '') {
             $type_cell .= '<div class="small text-muted">' . h(isset($comp_types[$kind]) ? $comp_types[$kind] : $kind) . '</div>';
         }
