@@ -18,6 +18,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Call a panel function that logs with `$_SESSION['sessionusername']` inside `ws_api_as_owner()`, or its Site Log line has no name (`workspace-api-endpoint-rules.md`).
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
+- Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -40,6 +41,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
+- workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
