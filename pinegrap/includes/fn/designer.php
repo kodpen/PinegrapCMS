@@ -1048,7 +1048,8 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // The account widgets (widgets_account.php): each posts to the
             // processor of the legacy page type it stands in for. The login
             // region is the header's view of the session; the cart link
-            // (widgets_cart.php) sits beside it.
+            // (widgets_cart.php) sits beside it. Favourites
+            // (widgets_wishlist.php) lists the visitor's saved products.
             $account_renderers = array(
                 'login_region'      => '_render_system_widget_login_region',
                 'logout'            => '_render_system_widget_logout',
@@ -1060,6 +1061,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'account_security'  => '_render_system_widget_account_security',
                 'account_invoices'  => '_render_system_widget_account_invoices',
                 'account_email'     => '_render_system_widget_account_email',
+                'wishlist'          => '_render_system_widget_wishlist',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
@@ -2652,6 +2654,9 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.comments, page.comments_label, page.comments_allow_new_comments, page.comments_rating,
              page.comments_automatic_publish, page.comments_show_submitted_date_and_time,
              page.comments_require_login_to_comment,
+             page.comments_message, page.comments_disallow_new_comment_message,
+             page.comments_allow_file_attachments, page.comments_allow_user_to_select_name,
+             page.comments_watchers_managed_by_submitter,
              page.comments_watcher_email_page_id, page.comments_watcher_email_subject,
              page.comments_administrator_email_to_email_address,
              page.page_timestamp,
@@ -2719,6 +2724,14 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'pg_comments_email_page'    => (int)$r['comments_watcher_email_page_id'],
             'pg_comments_email_subject' => (string)$r['comments_watcher_email_subject'],
             'pg_comments_notify_email'  => (string)$r['comments_administrator_email_to_email_address'],
+            // Attachments, the member's choice of name, the message above the
+            // form, the one shown while new comments are off, and whether the
+            // record's sender manages who is told of new comments.
+            'pg_comments_attachments'      => !empty($r['comments_allow_file_attachments']) ? 1 : 0,
+            'pg_comments_select_name'      => !empty($r['comments_allow_user_to_select_name']) ? 1 : 0,
+            'pg_comments_message'          => (string)$r['comments_message'],
+            'pg_comments_closed_message'   => (string)$r['comments_disallow_new_comment_message'],
+            'pg_comments_watchers_managed' => !empty($r['comments_watchers_managed_by_submitter']) ? 1 : 0,
             'page_timestamp'        => (int)$r['page_timestamp'],
             // The page's own meta tags, as the column stores them ('' for
             // none): the editor posts the string back unchanged when they
@@ -3030,6 +3043,24 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
 }
 
 /**
+ * The columns, as SQL values, a new page's INSERT names because the page
+ * table gives them no default, unless the save writes them itself ($c_extra,
+ * column => value): the message shown while new comments are off is a text
+ * column, and a column named twice makes MySQL refuse the INSERT. Pure.
+ *
+ * @param array $c_extra the columns the save writes
+ * @return array column => SQL value
+ */
+function pg_designer_page_insert_defaults($c_extra)
+{
+    $out = array();
+    if (!is_array($c_extra) || !array_key_exists('comments_disallow_new_comment_message', $c_extra)) {
+        $out['comments_disallow_new_comment_message'] = "''";
+    }
+    return $out;
+}
+
+/**
  * Validate and persist ONE page of a visual design.
  *
  * Everything that used to be inline in edit_system_style.php's POST branch —
@@ -3042,7 +3073,12 @@ function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
  *   page_id (0 = create), page_name, tree_json, page_folder, page_title,
  *   page_meta_description, page_search, page_search_keywords, page_sitemap,
  *   page_home, page_noindex, page_nofollow, pg_comments, pg_comments_label,
- *   pg_comments_allow_new, pg_comments_rating, page_draft (1 = keep the page
+ *   pg_comments_allow_new, pg_comments_rating, the comment settings the
+ *   panel added later (pg_comments_auto_publish, pg_comments_show_date,
+ *   pg_comments_login, pg_comments_email_page, pg_comments_email_subject,
+ *   pg_comments_notify_email, pg_comments_attachments,
+ *   pg_comments_select_name, pg_comments_message, pg_comments_closed_message,
+ *   pg_comments_watchers_managed: written when sent), page_draft (1 = keep the page
  *   off the site in the drafts folder; page_folder is then the folder it is
  *   published to), page_publish_at and page_unpublish_at (when the page goes
  *   on the site and comes off it, pg_page_schedule_parse(); '' for none),
@@ -3120,6 +3156,17 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $errors[] = ($name !== '' ? $name . ': ' : '') . $vt['error'];
     }
     foreach ((array)$vt['warnings'] as $w) $warnings[] = $w;
+    // Comments the page will not draw as the operator may expect: a comments
+    // widget beside the fixed block, two of them, one whose record widget
+    // sits in another component, one on a page with comments off (the
+    // switch read as the save writes it). A page that is another page's
+    // comment e-mail page gets only the two-widgets warning; the saved
+    // page's id lets the warnings ask that once a widget is found.
+    if ($vt['ok'] && function_exists('pg_comments_save_warnings')) {
+        $cw_tree = json_decode(!empty($vt['cleaned_json']) ? $vt['cleaned_json'] : $tree_raw, true);
+        $cw_on   = array_key_exists('pg_comments', $page) && in_array($page['pg_comments'], array(1, '1', true), true);
+        foreach (pg_comments_save_warnings($cw_tree, $cw_on, $name, $page_id) as $w) $warnings[] = $w;
+    }
 
     // The page's own JSON-LD has to be something a search engine can read.
     // Checked here, so the dry run that checks every page refuses the save
@@ -3319,6 +3366,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if (array_key_exists('pg_comments_notify_email', $page)) {
         $c_extra['comments_administrator_email_to_email_address'] = e(mb_substr(trim((string)$page['pg_comments_notify_email']), 0, 100));
     }
+    // Attachments, the member's choice of name, the message above the form,
+    // the one shown while new comments are off, and the record's sender
+    // managing who is told of new comments (pg_comment_editor_keys()).
+    $c_more = array_intersect_key($page, array_flip(array('pg_comments_attachments', 'pg_comments_select_name',
+        'pg_comments_message', 'pg_comments_closed_message', 'pg_comments_watchers_managed')));
+    foreach (pg_comment_editor_columns($c_more) as $c_col => $c_val) {
+        $c_extra[$c_col] = is_int($c_val) ? $c_val : e($c_val);
+    }
     // The page's own meta tags (includes/fn/meta_tags.php) go the same way:
     // written when the editor sends them, left as stored when it does not.
     // They are content like the title, so a content-level operator writes
@@ -3348,6 +3403,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($c_extra as $c_col => $c_val) {
         $c_sql = ($c_val === null) ? 'NULL' : "'$c_val'";
         $sql_c_extra_set  .= "$c_col = $c_sql,\n";
+        $sql_c_extra_cols .= "$c_col, ";
+        $sql_c_extra_vals .= "$c_sql, ";
+    }
+    // A new page's columns that have no default and that this save did not
+    // write: named once, or MySQL refuses the INSERT.
+    foreach (pg_designer_page_insert_defaults($c_extra) as $c_col => $c_sql) {
         $sql_c_extra_cols .= "$c_col, ";
         $sql_c_extra_vals .= "$c_sql, ";
     }
@@ -3468,7 +3529,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         db("INSERT INTO page (
                 page_name, page_folder, page_type, layout_type, page_home, page_search,
                 page_search_keywords, page_timestamp, page_user, page_style, page_title,
-                page_meta_description, comments_disallow_new_comment_message, sitemap,
+                page_meta_description, sitemap,
                 $sql_noindex_cols
                 $sql_schedule_cols
                 $sql_tree_cols
@@ -3477,7 +3538,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             VALUES (
                 '" . e($name) . "', '$folder', 'standard', 'system', '" . e($home_str) . "', '$search',
                 '" . e($keywords) . "', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "', '$style_id', '" . e($title) . "',
-                '" . e($meta_desc) . "', '', '$sitemap',
+                '" . e($meta_desc) . "', '$sitemap',
                 $sql_noindex_vals
                 $sql_schedule_vals
                 $sql_tree_vals
@@ -7830,21 +7891,9 @@ function pg_design_template_prepare($template_id, $user)
             'page_search'           => isset($p['search']) ? (int)(bool)$p['search'] : 1,
             'page_sitemap'          => isset($p['sitemap']) ? (int)(bool)$p['sitemap'] : 1,
             'page_noindex'          => !empty($p['noindex']) ? 1 : 0,
-            'pg_comments'              => !empty($c) ? 1 : 0,
-            'pg_comments_label'        => isset($c['label']) ? (string)$c['label'] : '',
-            'pg_comments_allow_new'    => isset($c['allow_new']) ? (int)(bool)$c['allow_new'] : 1,
-            'pg_comments_rating'       => !empty($c['rating']) ? 1 : 0,
-            'pg_comments_auto_publish' => !empty($c['auto_publish']) ? 1 : 0,
-            'pg_comments_show_date'    => !empty($c['show_date']) ? 1 : 0,
-            'pg_comments_login'        => !empty($c['login']) ? 1 : 0,
-            // The comment e-mails: a page of the template ({{tab:<key>}}),
-            // its subject, the staff address ({{site_email}}).
-            'pg_comments_email_page'    => isset($c['email_page']) ? _pg_tpl_fill((string)$c['email_page'], $vars) : 0,
-            'pg_comments_email_subject' => isset($c['email_subject']) ? (string)$c['email_subject'] : '',
-            'pg_comments_notify_email'  => isset($c['notify_email']) ? _pg_tpl_fill((string)$c['notify_email'], $vars) : '',
             'formSettings'          => (isset($p['form']) && is_array($p['form'])) ? _pg_tpl_fill($p['form'], $vars) : null,
             'tree'                  => $tree,
-        );
+        ) + pg_design_template_page_comments($c, $vars);
     }
 
     // The folders, for the page settings' folder list.
@@ -7897,6 +7946,50 @@ function pg_design_template_prepare($template_id, $user)
     );
 }
 
+/**
+ * A template page's comment settings, as the editor's page fields
+ * (pg_comment_editor_keys()), from the page's 'comments' array. Pure.
+ *
+ * A page without the array has comments off; with it, on. Keys: label,
+ * allow_new (on unless given), rating, auto_publish, show_date, login,
+ * email_page (a page of the template, '{{tab:<key>}}'), email_subject,
+ * notify_email ('{{site_email}}' for the site's address), attachments,
+ * select_name, message (shown with the form) and closed_message (shown while
+ * new comments are off). Whether the record's sender manages the watchers
+ * is not a template key: it stays off.
+ *
+ * @param mixed $c    the page's 'comments' array
+ * @param array $vars the placeholders _pg_tpl_fill() fills
+ * @return array
+ */
+function pg_design_template_page_comments($c, $vars)
+{
+    $c = is_array($c) ? $c : array();
+    $vars = is_array($vars) ? $vars : array();
+    $text = function ($key) use ($c) {
+        return (isset($c[$key]) && is_scalar($c[$key])) ? (string)$c[$key] : '';
+    };
+
+    return array(
+        'pg_comments'              => !empty($c) ? 1 : 0,
+        'pg_comments_label'        => $text('label'),
+        'pg_comments_allow_new'    => isset($c['allow_new']) ? (int)(bool)$c['allow_new'] : 1,
+        'pg_comments_rating'       => !empty($c['rating']) ? 1 : 0,
+        'pg_comments_auto_publish' => !empty($c['auto_publish']) ? 1 : 0,
+        'pg_comments_show_date'    => !empty($c['show_date']) ? 1 : 0,
+        'pg_comments_login'        => !empty($c['login']) ? 1 : 0,
+        // The comment e-mails: a page of the template ({{tab:<key>}}), its
+        // subject, the staff address ({{site_email}}).
+        'pg_comments_email_page'    => isset($c['email_page']) ? _pg_tpl_fill((string)$c['email_page'], $vars) : 0,
+        'pg_comments_email_subject' => $text('email_subject'),
+        'pg_comments_notify_email'  => isset($c['notify_email']) ? _pg_tpl_fill((string)$c['notify_email'], $vars) : '',
+        'pg_comments_attachments'    => !empty($c['attachments']) ? 1 : 0,
+        'pg_comments_select_name'    => !empty($c['select_name']) ? 1 : 0,
+        'pg_comments_message'        => $text('message'),
+        'pg_comments_closed_message' => $text('closed_message'),
+    );
+}
+
 // The kinds of system widget a template leaves to the editor ('tree' =>
 // 'starter'). Their layouts are built by the editor's JavaScript
 // (StyleDesigner.starterTree()), so writing the template anywhere else needs
@@ -7920,7 +8013,9 @@ function pg_design_template_starter_kinds($tpl, $all = false)
             $wpage = isset($w['page']) ? (string)$w['page'] : '';
             if ($wpage !== '' && !isset($page_keys[$wpage])) continue;
         }
-        $kind = isset($w['config']['regionType']) ? (string)$w['config']['regionType'] : '';
+        // The kind, so a comments widget in the recent mode asks for the
+        // list's starter ('comments_recent'), not the thread's.
+        $kind = pg_sw_widget_kind(isset($w['config']) ? $w['config'] : null);
         if (preg_match('/^[a-z0-9_]{1,64}$/', $kind)) $kinds[$kind] = $kind;
     }
     return array_values($kinds);
@@ -7978,7 +8073,10 @@ function _pg_tpl_clean_starter($tree, $prefix)
  * anything is written.
  *
  * $opts:
- *   starters  array  regionType => tree, for the widgets left to the editor
+ *   starters  array  kind (pg_sw_widget_kind(), e.g. 'comments_recent' for a
+ *                    comments widget in the recent mode) => tree, for the
+ *                    widgets left to the editor
+ *                    (pg_design_template_starter_kinds())
  *   home      bool   make the template's home page - the page keyed 'home',
  *                    else its first page - the site's home page
  *   look      string the design's look (pg_design_looks()); left out: none
@@ -8047,7 +8145,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
     foreach ($tp['widgets'] as $w) {
         if (empty($w['starter'])) continue;
         $cfg  = json_decode((string)$w['system_region_config'], true);
-        $kind = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+        $kind = pg_sw_widget_kind($cfg);
         $tree = ($kind !== '' && isset($starters[$kind]))
             ? _pg_tpl_clean_starter($starters[$kind], 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_')
             : null;
@@ -8100,6 +8198,10 @@ function pg_design_template_install($template_id, $user, $opts = array())
             'pg_comments_email_page'    => isset($p['pg_comments_email_page']) ? $p['pg_comments_email_page'] : 0,
             'pg_comments_email_subject' => isset($p['pg_comments_email_subject']) ? (string)$p['pg_comments_email_subject'] : '',
             'pg_comments_notify_email'  => isset($p['pg_comments_notify_email']) ? (string)$p['pg_comments_notify_email'] : '',
+            'pg_comments_attachments'    => isset($p['pg_comments_attachments']) ? (int)$p['pg_comments_attachments'] : 0,
+            'pg_comments_select_name'    => isset($p['pg_comments_select_name']) ? (int)$p['pg_comments_select_name'] : 0,
+            'pg_comments_message'        => isset($p['pg_comments_message']) ? (string)$p['pg_comments_message'] : '',
+            'pg_comments_closed_message' => isset($p['pg_comments_closed_message']) ? (string)$p['pg_comments_closed_message'] : '',
             'form_settings'            => is_array($p['formSettings']) ? $p['formSettings'] : array(),
             'tree_json'                => pg_designer_tree_encode($tree),
         );
@@ -8609,6 +8711,30 @@ function _pg_preview_drop_tab_refs($value)
 }
 
 /**
+ * What the Preview may use of a request: the page and the editor's comment
+ * settings, by what the user may do with that page
+ * (pg_designer_page_access()). A page they may not know is drawn as an
+ * unsaved one (no thread). A page they may see but not edit is drawn with
+ * its stored comment settings: the editor's would switch its comments on, or
+ * change who may read them, on a page they cannot change. Pure.
+ *
+ * @param mixed  $page_id  the page the request names
+ * @param mixed  $settings the request's comment_settings
+ * @param string $access   'edit' | 'locked' | 'hidden'
+ * @return array page_id, comment_settings
+ */
+function pg_designer_preview_input($page_id, $settings, $access)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || $access === 'hidden') $page_id = 0;
+
+    return array(
+        'page_id'          => $page_id,
+        'comment_settings' => ($page_id > 0 && $access === 'edit' && is_array($settings)) ? $settings : array(),
+    );
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *
@@ -8622,11 +8748,21 @@ function _pg_preview_drop_tab_refs($value)
  * output_error() throws, no status code is written, nobody is redirected,
  * and it is drawn as a visitor who is not signed in would see it.
  *
- * @param int   $page_id the page, 0 when it has not been saved
- * @param array $widgets [{id, tree_json, system_region_config}]
+ * A comments widget draws the saved page's thread: the page is the drawn
+ * page (pg_sw_render_context()'s 'page_id'), the page's record widget (the
+ * stored one, the widget pg_sw_record_comment_context() reads) gets its
+ * newest record in ?r=, and the page's comment settings are the ones the
+ * editor holds ($comment_settings, the editor's pg_comments* fields, saved
+ * or not: pg_comments_preview_page()). A page not saved yet has no thread:
+ * the widget draws nothing.
+ *
+ * @param int   $page_id          the page, 0 when it has not been saved
+ * @param array $widgets          [{id, tree_json, system_region_config}]
+ * @param array $comment_settings the page's comment settings as the editor
+ *                                holds them (pg_comment_editor_keys())
  * @return array sid => html
  */
-function pg_designer_preview_widgets($page_id, $widgets)
+function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
     $overrides = array();
@@ -8652,6 +8788,18 @@ function pg_designer_preview_widgets($page_id, $widgets)
     pg_sw_preview_overrides($overrides);
 
     $out = array();
+    // The drawn page, for a widget whose data is the page's own (the comments
+    // widget's thread); a pass of its own, so the claims of the page drawn
+    // around this request are neither read nor cleared; the comment settings
+    // the editor holds for the page.
+    $saved_ctx      = pg_sw_render_context(array('email' => false, 'page_id' => $page_id));
+    $saved_comments = function_exists('pg_comments_widget_pages') ? pg_comments_widget_pages(array()) : null;
+    $saved_preview  = null;
+    $preview_set    = function_exists('pg_comments_preview_page') && $page_id > 0
+        && is_array($comment_settings) && !empty($comment_settings);
+    if ($preview_set) {
+        $saved_preview = pg_comments_preview_page(array('page_id' => $page_id, 'columns' => pg_comment_editor_columns($comment_settings)));
+    }
     try {
         foreach ($overrides as $sid => $ov) {
             $_GET = array();
@@ -8661,23 +8809,22 @@ function pg_designer_preview_widgets($page_id, $widgets)
             if (!is_array($cfg)) {
                 $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
             }
-            $type = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+            // The kind: a list of recent comments reads its own source
+            // pages and takes no record of this page.
+            $type = pg_sw_widget_kind($cfg);
 
             if ($type === 'form_item_view') {
-                $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-                // The newest record the widget's filters let through.
-                $code = '';
-                if ($form_pid > 0) {
-                    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), $page_id, true);
-                    $code = (string)db_value(
-                        "SELECT forms.reference_code FROM forms
-                         {$clause['join']}
-                         WHERE forms.page_id = '" . $form_pid . "'
-                           {$clause['where']}
-                         ORDER BY forms.id DESC
-                         LIMIT 1");
-                }
+                $code = _pg_preview_newest_record_code($cfg, $page_id);
                 if ($code !== '') $_GET['r'] = $code;
+            } elseif ($type === 'comments' && $page_id > 0) {
+                // A record page's thread is the shown record's: the newest
+                // one of the page's stored record widget, as that widget
+                // shows it here.
+                $fiv = pg_sw_page_widget($page_id, 'form_item_view');
+                if ($fiv) {
+                    $code = _pg_preview_newest_record_code($fiv['cfg'], $page_id);
+                    if ($code !== '') $_GET['r'] = $code;
+                }
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
                 $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);
                 $address = ($group > 0)
@@ -8706,8 +8853,37 @@ function pg_designer_preview_widgets($page_id, $widgets)
         pg_seo_rendering($saved_seo);
         pg_error_throws($saved_throw);
         pg_sw_preview_overrides(array());
+        pg_sw_render_context($saved_ctx);
+        if (is_array($saved_comments)) pg_comments_widget_pages($saved_comments);
+        if ($preview_set) {
+            pg_comments_preview_page(array());
+            if (is_array($saved_preview)) pg_comments_preview_page($saved_preview);
+        }
     }
     return $out;
+}
+
+/**
+ * The reference code of the newest record a form_item_view widget's form
+ * holds and its filters let through, as the Preview shows one ('' for none).
+ *
+ * @param array $cfg     the widget's settings
+ * @param int   $page_id the page it is drawn on
+ * @return string
+ */
+function _pg_preview_newest_record_code($cfg, $page_id)
+{
+    if (!is_array($cfg)) return '';
+    $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+    if ($form_pid <= 0) return '';
+    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), (int)$page_id, true);
+    return (string)db_value(
+        "SELECT forms.reference_code FROM forms
+         {$clause['join']}
+         WHERE forms.page_id = '" . $form_pid . "'
+           {$clause['where']}
+         ORDER BY forms.id DESC
+         LIMIT 1");
 }
 
 /**

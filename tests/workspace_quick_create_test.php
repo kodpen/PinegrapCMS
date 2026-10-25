@@ -171,7 +171,7 @@ function test_workspace_quick_create_form_from_the_catalogue()
 	pg_assert_true(isset($group['parent_id']), 'a group picks its parent');
 	pg_assert_same('product_group', $group['parent_id']['tag'], 'among product groups');
 	pg_assert_false(isset($group['product_ids']), 'a group\'s products are not picked here');
-	pg_assert_same(array('max_length' => 2000), $group['short_description']['limit'], 'the group\'s own limits');
+	pg_assert_same(array('max_length' => 100), $group['short_description']['limit'], 'the group\'s own limits');
 
 	foreach (ws_quick_create_types() as $type) {
 		$names = array_map(function ($meta) {
