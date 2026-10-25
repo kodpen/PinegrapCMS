@@ -14,7 +14,7 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 - A separate branch is allowed; the model was left to this plan.
 - jquery-multiselect-checkbox stays. edit_offer and the installer move to Stepper. Avatars move to v6 Avatar with theme colours. The password meter follows "Require Strong Password" (`config.strong_password`).
 - Parallel steps are allowed: steps without a dependency on each other (`bootstrap-6-panel-steps.md`) may be claimed by different sessions at once, one draft PR per step; two sessions never hold the same files.
-- Screenshot rounds may run an instance (`tools/setup_sandbox.sh`): B1b, the rehearsals of B8 and the form-adorn pilot (`workflow/sandbox-and-environment.md`). B1b waits on no open question.
+- Screenshot rounds may run an instance (`tools/setup_sandbox.sh`): B1b, the rehearsals of B8 and the form-adorn pilot (`workflow/sandbox-and-environment.md`).
 
 ## What is the model?
 - No long-lived branch: measured conflict rates rule it out (`bootstrap-6-findings.md`).
