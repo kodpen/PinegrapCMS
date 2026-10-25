@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, answer 4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -30,6 +30,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 3. History (4): (a) union read, (b) activity table → a.
 
 ## Which are answered?
+- 3. History (owner, 2026-10-26): (a) union read: no schema, older records count at once.
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?

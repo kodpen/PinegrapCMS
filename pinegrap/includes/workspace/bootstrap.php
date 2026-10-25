@@ -39,6 +39,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/pins.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/forward.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/blocks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer_history.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/guests.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/interact.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tasks.php');
