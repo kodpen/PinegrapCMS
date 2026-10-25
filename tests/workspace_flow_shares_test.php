@@ -237,6 +237,21 @@ function test_workspace_flow_shares_channels_are_read_once_a_request()
 	pg_assert_false(ws_flow_channel_readable(array('id' => 4, 'member' => true, 'role' => 0), 0), 'no channel');
 }
 
+// Whoever may change a flow reads its draft; whoever else reaches it reads
+// the draft only while no version is published (shared before it was), and
+// the live graph once one is.
+function test_workspace_flow_shares_draft_readers()
+{
+	pg_assert_true(ws_flow_draft_readable('edit', 5), 'an editor of a published flow');
+	pg_assert_true(ws_flow_draft_readable('edit', 0), 'an editor of a flow never published');
+	pg_assert_true(ws_flow_draft_readable('run', 0), 'a run share of a flow never published');
+	pg_assert_true(ws_flow_draft_readable('view', 0), 'a view share of a flow never published');
+	pg_assert_false(ws_flow_draft_readable('run', 5), 'a run share reads the live graph');
+	pg_assert_false(ws_flow_draft_readable('view', 5), 'a view share reads the live graph');
+	pg_assert_false(ws_flow_draft_readable('', 0), 'nobody else');
+	pg_assert_false(ws_flow_draft_readable('', 5));
+}
+
 // The table is probed by its exact name, and the list reads the shares of
 // every flow it lists in one statement.
 function test_workspace_flow_shares_probe_and_list()

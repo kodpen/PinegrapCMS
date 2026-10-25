@@ -527,6 +527,40 @@ function test_ws_api_flow_shares_routes()
 	pg_assert_true(!empty($params['target_type']['required']) && !empty($params['target_id']['required']), 'what is shared with is required');
 }
 
+// A share's fields are read as ws_flow_share_set() takes them: the kind and
+// the level as text, the id as a number, a view when no level is sent.
+function test_ws_api_flow_share_input()
+{
+	pg_assert_same(array('target_type' => '', 'target_id' => 0, 'level' => 'view'), ws_api_flow_share_input(array()), 'nothing sent');
+	pg_assert_same(array('target_type' => 'user', 'target_id' => 12, 'level' => 'run'), ws_api_flow_share_input(array('target_type' => 'user', 'target_id' => '12', 'level' => 'run')), 'the id as a number');
+	pg_assert_same(array('target_type' => 'channel', 'target_id' => 3, 'level' => 'view'), ws_api_flow_share_input(array('target_type' => 'channel', 'target_id' => 3)));
+}
+
+// A flow as the API answers it to a person shared at view or run: the live
+// graph of a published flow and no draft, and the draft of a flow never
+// published, read-only, without what stops it from being published (the
+// editors' alone, read with the record kinds, which need a database).
+function test_ws_api_flow_present_gives_the_draft_to_its_readers()
+{
+	$draft = json_encode(ws_flow_graph_empty());
+	$flow = array('id' => 9, 'name' => 'Onboarding', 'status' => 'live', 'owner_id' => 2, 'channel_id' => 3, 'draft_rev' => 4, 'draft' => $draft, 'created_at' => 1700000000, 'updated_at' => 1700000000);
+	$version = array('id' => 7, 'n' => 2, 'published_by' => 2, 'published_at' => 1700000000, 'graph' => $draft);
+
+	foreach (array('view', 'run') as $access) {
+		$shared = ws_api_flow_present($flow + array('access' => $access), $version, true);
+
+		pg_assert_same(null, $shared['draft'], $access . ': no draft of a published flow');
+		pg_assert_same(null, $shared['problems'], $access . ': no problems');
+		pg_assert_true(is_array($shared['graph']), $access . ': the live graph');
+
+		$unpublished = ws_api_flow_present(array('status' => 'draft') + $flow + array('access' => $access), null, true);
+
+		pg_assert_true(is_array($unpublished['draft']), $access . ': the draft of a flow never published');
+		pg_assert_same(null, $unpublished['problems'], $access . ': without its problems');
+		pg_assert_same(null, $unpublished['graph']);
+	}
+}
+
 // A start retried with its token after the flow was paused answers the run
 // the token started to whoever still reads it, as before the pause: the
 // handler asks for that run before it answers 404 for a flow the person may
