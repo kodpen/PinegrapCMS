@@ -910,6 +910,16 @@ function test_comments_recent_mode_off_tables()
 	foreach (array('has_comments', 'no_comments', 'has_more_pages', 'is_staff', 'is_signed_in', 'comment_is_pending', 'comment_on_record') as $flag) {
 		pg_assert_false(in_array($flag, $recent['flags'], true), 'recent: ' . $flag . ' kept');
 	}
+	// Every thread flag a list does not fill is off there (is_email too): a
+	// list leaves a node shown only when it out, so the canvas fades it.
+	if (comments_recent_test_has(array('pg_comments_widget_thread_flags', 'pg_comments_recent_flags'))) {
+		$list_flags = pg_comments_recent_flags(array());
+		foreach (array_keys(pg_comments_widget_thread_flags(array())) as $flag) {
+			if (!array_key_exists($flag, $list_flags)) {
+				pg_assert_true(in_array($flag, $recent['flags'], true), 'recent: the thread flag ' . $flag . ' is off');
+			}
+		}
+	}
 
 	pg_assert_same(array(), $thread['actions'], 'thread: every action');
 	pg_assert_same(array('__comment_thread_title', '__comment_thread_url', '__comment_label'), $thread['tokens'], 'thread: the three tokens of a list');
@@ -1349,4 +1359,37 @@ function test_comments_recent_page_ids_tab_round_trip()
 
 	$preview = _pg_preview_drop_tab_refs(array('recent_page_ids' => array('tab:new', 12)));
 	pg_assert_same(array(0, 12), $preview['recent_page_ids'], 'the Preview drops a tab not saved yet');
+}
+
+// A list of recent comments draws nothing in an e-mail, also in a comment
+// e-mail that names a comment: the thread renderer hands a list over before
+// its e-mail branch. Reached first, that branch drew the named comment in
+// the list's layout and claimed the e-mail page, so the page's own thread
+// widget drew nothing and the e-mail lost its fixed markup.
+function test_comments_recent_nothing_in_a_comment_email()
+{
+	if (!comments_recent_test_has(array('_render_system_widget_comments', '_render_system_widget_comments_recent', 'pg_comments_recent_default_tree', 'pg_comments_widget_pages', 'pg_sw_render_context'))) {
+		return;
+	}
+
+	$thread = comments_recent_test_php_body('_render_system_widget_comments');
+	$list = strpos($thread, "pg_sw_widget_kind(\$cfg) === 'comments_recent'");
+	$email = strpos($thread, "if (!empty(\$ctx['email'])) {");
+
+	// Out of order the e-mail branch would read the comment from the
+	// database, which the unit tests do not have.
+	if (!pg_assert_true(($list !== false) && ($email !== false) && ($list < $email), 'a list is handed over before the e-mail branch')) {
+		return;
+	}
+
+	$tree = json_encode(pg_comments_recent_default_tree());
+	$cfg = array('regionType' => 'comments', 'mode' => 'recent', 'recent_page_ids' => array(5));
+	$found = pg_comments_widget_pages(array());
+	$prev = pg_sw_render_context(array('email' => true, 'page_id' => 9, 'comment_id' => 12));
+	$html = _render_system_widget_comments($tree, 4, $cfg, 'preview');
+	$record = pg_comments_widget_pages($found);
+	pg_sw_render_context($prev);
+
+	pg_assert_same('', $html, 'a list in a comment e-mail draws nothing');
+	pg_assert_same(array(), $record, 'and claims nothing: a thread widget on the e-mail page still draws the comment');
 }
