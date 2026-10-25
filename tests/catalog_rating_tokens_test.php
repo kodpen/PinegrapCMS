@@ -82,8 +82,9 @@ function test_catalog_rating_columns()
 // The listing's card is drawn once for each rating state: an element shown
 // only with a rating is in the rated card alone, one shown only without it in
 // the other, a group row (no rating state of its own) draws neither unless
-// that leaves no token and no text, and a flag no catalog evaluates leaves
-// its element drawn.
+// that leaves nothing visible (a token only in an attribute, or the
+// add-to-cart button every group row loses, does not count), and a flag no
+// catalog evaluates leaves its element drawn.
 function test_catalog_rating_card_templates()
 {
 	$paragraph = function ($text, $flag) {
@@ -178,6 +179,19 @@ function test_catalog_rating_card_templates()
 		pg_assert_same($templates['unrated'], $templates['group'], $label . ': group rows take the card without a rating');
 	}
 
+	// Every group row loses the add-to-cart button, so a column that keeps
+	// only that button beside the two alternative cards shows nothing on a
+	// group row either.
+	$atc = array('type' => 'component', 'props' => array(
+		'componentType' => 'btn', 'btnElement' => 'button', 'btnType' => 'submit', 'text' => 'Add to Cart',
+		'_attrs' => array(array('name' => 'data-pg-catalog-atc', 'value' => '1')),
+	), 'children' => array());
+	$wrapper = array('type' => 'col', 'props' => array('xs' => '12', 'md' => '4'), 'children' => array_merge($alternatives, array($atc)));
+	$templates = _pg_catalog_card_templates(array($wrapper));
+
+	pg_assert_contains('data-pg-catalog-atc="1"', $templates['unrated'], 'a product card keeps its add-to-cart button');
+	pg_assert_same($templates['unrated'], $templates['group'], 'a column left with only the add-to-cart button takes the card without a rating');
+
 	// An image left beside the two cards is seen, so the group card keeps it.
 	$image = array('type' => 'content', 'props' => array('contentType' => 'image', 'src' => '^^__image_url^^'), 'children' => array());
 	$wrapper = array('type' => 'col', 'props' => array('xs' => '12'), 'children' => array_merge(array($image), $alternatives));
@@ -186,7 +200,8 @@ function test_catalog_rating_card_templates()
 	pg_assert_contains('<img', $templates['group'], 'the unflagged image stays');
 	pg_assert_false(strpos($templates['group'], 'Be the first') !== false, 'a group card with an image of its own has no "be the first" text');
 
-	// A wrapper that keeps a token or text of its own is a card for group rows.
+	// A wrapper that keeps a token in its text, or text of its own, is a card
+	// for group rows.
 	$wrapper = array('type' => 'col', 'props' => array('xs' => '12'), 'children' => array_merge(array($paragraph('^^__name^^', '')), $alternatives));
 	$templates = _pg_catalog_card_templates(array($wrapper));
 

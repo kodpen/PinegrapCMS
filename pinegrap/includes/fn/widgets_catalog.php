@@ -535,6 +535,21 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
 }
 
 /**
+ * Card HTML without its add-to-cart buttons (the bound catalog_add_to_cart
+ * button, data-pg-catalog-atc). A group row is not put in the cart: the
+ * visitor opens a product first, so every group row loses the button.
+ *
+ * @param string $html
+ * @return string
+ */
+function _pg_catalog_strip_add_to_cart($html)
+{
+    $html = (string)$html;
+    $out = preg_replace('/<button[^>]*data-pg-catalog-atc="1"[^>]*>.*?<\/button>/is', '', $html);
+    return ($out === null) ? $html : $out;
+}
+
+/**
  * Whether card HTML draws anything a visitor sees: text (a ^^token^^ in text
  * counts, it becomes a value) or an image, graphic, video or frame. A token
  * only in an attribute (a bound href, a class naming the row type) and the
@@ -583,9 +598,10 @@ function _pg_catalog_card_templates($nodes)
     // nothing visible a group row would be drawn as a blank box, and with no
     // card at all the listing skips child groups, so both fall back to the
     // card without a rating. A token in an attribute (href, class) does not
-    // make a wrapper visible.
+    // make a wrapper visible, and neither does the add-to-cart button, which
+    // every group row loses.
     $group   = trim(_pg_sw_resolve_visibility($html, array()));
-    $group_shows = _pg_catalog_html_shows($group);
+    $group_shows = _pg_catalog_html_shows(_pg_catalog_strip_add_to_cart($group));
     return array(
         'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
         'unrated' => $unrated,
@@ -2328,11 +2344,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 // Browse groups land on a sub-listing, select groups
                 // open a variant chooser — neither needs add-to-cart
                 // at the card level.
-                $g_rendered = preg_replace(
-                    '/<button[^>]*data-pg-catalog-atc="1"[^>]*>.*?<\/button>/is',
-                    '',
-                    $g_rendered
-                );
+                $g_rendered = _pg_catalog_strip_add_to_cart($g_rendered);
                 $g_rendered = preg_replace(
                     '/<form[^>]*id="pgAtcForm_[^"]*"[^>]*>.*?<\/form>/is',
                     '',
