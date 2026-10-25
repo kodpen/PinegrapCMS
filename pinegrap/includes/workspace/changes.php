@@ -106,11 +106,14 @@ function ws_changes_ready()
  * table. "key" is the table's id column when it is not id.
  *
  * A text limit (text, long, email, keywords, code) is never wider than its
- * column: sessions run non-strict, so MySQL would cut a longer value in
- * silence while the decision shows the whole text. A longer text value is
- * cut here, a longer keyword list refused, as ws_change_value() says.
- * tests/workspace_change_limits_test.php holds every limit to the column
- * the setup SQL defines.
+ * column, a TEXT type counted at four bytes a character: sessions run
+ * non-strict, so MySQL would cut a longer value in silence while the
+ * decision shows the whole text. The one exception is the channel summary,
+ * 20000 characters as the summary tab keeps (ws_channel_set_summary()) in a
+ * TEXT column of 65535 bytes. A longer text value is cut, a longer keyword
+ * list refused, by ws_change_value(). tests/workspace_change_limits_test.php
+ * holds every limit to its column, as the setup SQL or the upgrade step
+ * that made the table defines it.
  *
  * @return array
  */
