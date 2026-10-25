@@ -22,7 +22,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes and tracking_company, user.secret_key*, order_items.tax, orders.tracking_code, fixing a released migration, MySQL 5.7 support.
-- decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, Lorem ipsum, publish-only editing, robots.txt vs noindex, legacy layer, ERP limits.
+- decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, widget conditions, publish-only editing, robots.txt vs noindex, ERP limits.
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
