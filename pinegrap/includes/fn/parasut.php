@@ -1242,6 +1242,26 @@ function parasut_kept_warehouse_id($kept, $skip = '')
 }
 
 /**
+ * Paraşüt's code for a currency, or '' for one Paraşüt does not take. Its
+ * API definition lists TRL, USD, EUR and GBP for every document's currency;
+ * TRL is its own code for the lira (the ISO code is TRY). An empty code
+ * reads as the lira.
+ *
+ * @param string $currency  ISO code (TRY, EUR, ...)
+ * @return string  TRL | USD | EUR | GBP | ''
+ */
+function parasut_currency_code($currency)
+{
+    $currency = strtoupper(trim((string) $currency));
+
+    if (in_array($currency, array('', 'TRY', 'TL', 'TRL'), true)) {
+        return 'TRL';
+    }
+
+    return in_array($currency, array('USD', 'EUR', 'GBP'), true) ? $currency : '';
+}
+
+/**
  * The attributes of the Paraşüt product card opened for a Pinegrap product.
  *
  * The price goes as list_price, the card's sales price: Paraşüt answers a
@@ -1249,6 +1269,12 @@ function parasut_kept_warehouse_id($kept, $skip = '')
  * products have no product_type; inventory_tracking alone says whether the
  * card keeps stock, and initial_stock_count gives a tracked card its opening
  * stock in the create itself.
+ *
+ * products.price is held in the store's base currency, so the price is
+ * labelled with that currency in Paraşüt's code (parasut_currency_code()).
+ * For a currency Paraşüt does not take, the card opens without a sales
+ * price: a price labelled in another currency would be wrong, and invoice
+ * lines carry their own prices.
  *
  * The opening stock is the stock before the document the card is opened
  * for: Pinegrap's count plus what the sale behind that document already
@@ -1260,20 +1286,28 @@ function parasut_kept_warehouse_id($kept, $skip = '')
  * the card ends below Pinegrap's count by that order's units. Which earlier
  * orders will ever be documented at Paraşüt cannot be told here.
  *
- * @param array $product    A products row: name, short_description, price
- *                          (minor units), inventory, inventory_quantity, tax_rate
- * @param int   $taken_out  Units of the product the documented sale took out of
- *                          inventory_quantity (parasut_stock_taken_units()); 0 for none
+ * @param array       $product    A products row: name, short_description, price
+ *                                (minor units), inventory, inventory_quantity, tax_rate
+ * @param int         $taken_out  Units of the product the documented sale took out of
+ *                                inventory_quantity (parasut_stock_taken_units()); 0 for none
+ * @param string|null $currency   The store's base currency (ISO code); null reads
+ *                                BASE_CURRENCY_CODE, and with none defined the lira
  * @return array
  */
-function parasut_product_attributes($product, $taken_out = 0)
+function parasut_product_attributes($product, $taken_out = 0, $currency = null)
 {
     $track_stock = !empty($product['inventory']);
+
+    if ($currency === null) {
+        $currency = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+    }
+
+    $currency_code = parasut_currency_code($currency);
 
     $attributes = [
         'name' => $product['short_description'] ?: ($product['name'] ?: lang('No Product Name')),
         'list_price' => round($product['price'] / 100, 2),
-        'currency' => 'TRL',
+        'currency' => $currency_code,
         // Default rate on the Parasut product card. Invoice lines carry their own
         // rate and override this, so it only matters for documents raised inside
         // Parasut. A null products.tax_rate means "the zone decides", which has no
@@ -1281,6 +1315,10 @@ function parasut_product_attributes($product, $taken_out = 0)
         'vat_rate' => ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'],
         'inventory_tracking' => $track_stock,
     ];
+
+    if ($currency_code === '') {
+        unset($attributes['list_price'], $attributes['currency']);
+    }
 
     if ($track_stock) {
         $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']) + max(0, (int) $taken_out);
@@ -1469,15 +1507,24 @@ function _parasut_stock_taken_read($what, $id)
  * @param int    $taken_out   Units the sale behind the document already took out of
  *                            inventory_quantity and the document takes out at Paraşüt;
  *                            used only when the card is opened
- * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string]
+ * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string];
+ *               'missing' => true when the products row no longer exists (no request was sent)
  */
 function parasut_sync_product($product_id, $token, $taken_out = 0)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
+    if ($result === false) {
+        // A read that failed (a column the upgrade has not added yet, say)
+        // tells nothing about the row: not 'missing', so the line is refused
+        // rather than put on the default product/service.
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product {var:1} could not be read from the database: {var:2}', 'vars' => array($product_id, mysqli_error(db::$con))))];
+    }
     $product = mysqli_fetch_assoc($result);
     if (!$product) {
-        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product not found: {var:1}', 'vars' => array($product_id)))];
+        // The product was deleted from the catalogue: its line has no
+        // product of its own any more (erp_edoc_parasut_line_product_pick()).
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product not found: {var:1}', 'vars' => array($product_id))), 'missing' => true];
     }
 
     $track_stock = !empty($product['inventory']);

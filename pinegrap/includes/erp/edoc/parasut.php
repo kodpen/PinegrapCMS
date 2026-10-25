@@ -262,17 +262,19 @@ function erp_edoc_parasut_kurus($decimal)
 }
 
 /**
- * Paraşüt's code for a currency: TRL for the lira (its own convention, the
- * ISO code is TRY), the ISO code for the rest it knows (USD, EUR, GBP).
+ * Paraşüt's code for an invoice's currency: TRL for the lira (its own
+ * convention, the ISO code is TRY), the ISO code for the rest it knows (USD,
+ * EUR, GBP; parasut_currency_code()). Any other code is passed on as it is
+ * and Paraşüt answers for it.
  *
  * @param string $currency
  * @return string
  */
 function erp_edoc_parasut_currency($currency)
 {
-    $currency = strtoupper(trim((string) $currency));
+    $code = parasut_currency_code($currency);
 
-    return (($currency === '') || ($currency === 'TRY') || ($currency === 'TL')) ? 'TRL' : $currency;
+    return ($code !== '') ? $code : strtoupper(trim((string) $currency));
 }
 
 /* ---------------------------------------------------------------------------
@@ -800,7 +802,9 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
  * names a product; a Pinegrap product gets its own card once
  * (parasut_sync_product(), products.parasut_product_id), a line without a
  * product (shipping, a charge, free text) goes on the store's default
- * product/service, the settings card's "Default Product/Service ID".
+ * product/service, the settings card's "Default Product/Service ID". A
+ * product whose card Paraşüt did not open is refused, not put on the
+ * default (erp_edoc_parasut_line_product_pick()).
  *
  * @param array $line       An erp_invoice_items row
  * @param int   $taken_out  Units of the line's product the invoice's sale already took out
@@ -811,6 +815,7 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
 function erp_edoc_parasut_line_product($line, $taken_out = 0)
 {
     $product_id = (int) ($line['product_id'] ?? 0);
+    $sync = null;
 
     if (($product_id > 0) && function_exists('parasut_sync_product')) {
         $token = parasut_get_token();
@@ -820,13 +825,47 @@ function erp_edoc_parasut_line_product($line, $taken_out = 0)
         }
 
         $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out);
-
-        if (!empty($sync['success']) && ((string) ($sync['parasut_product_id'] ?? '') !== '')) {
-            return array('id' => (string) $sync['parasut_product_id'], 'error' => '');
-        }
     }
 
-    $default = defined('PARASUT_DEFAULT_PRODUCT_ID') ? trim((string) PARASUT_DEFAULT_PRODUCT_ID) : '';
+    return erp_edoc_parasut_line_product_pick($line, $sync, defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '');
+}
+
+/**
+ * Which Paraşüt product a line goes on, from the answer about its own card.
+ *
+ * The default product/service takes only a line without a product of its
+ * own: none named (shipping, a charge, free text, a rounding line) or one
+ * deleted from the catalogue since. A product whose card Paraşüt did not
+ * open (a refused create, a timeout, a 5xx, a second 429) is refused in
+ * Paraşüt's words before the invoice is written: on the default it would
+ * carry the generic service's name into the invoice and its e-document,
+ * and a stock-tracked product's goods would not leave its own card.
+ *
+ * @param array      $line     An erp_invoice_items row (product_id, description)
+ * @param array|null $sync     parasut_sync_product()'s answer; null when no card was asked for
+ * @param string     $default  The default product/service id (PARASUT_DEFAULT_PRODUCT_ID)
+ * @return array ['id' => string, 'error' => string]
+ */
+function erp_edoc_parasut_line_product_pick($line, $sync, $default)
+{
+    $own = ((int) ($line['product_id'] ?? 0) > 0) && is_array($sync) && empty($sync['missing']);
+
+    if ($own) {
+        $id = trim((string) ($sync['parasut_product_id'] ?? ''));
+
+        if (!empty($sync['success']) && ($id !== '')) {
+            return array('id' => $id, 'error' => '');
+        }
+
+        $name = trim((string) ($line['description'] ?? ''));
+
+        return array('id' => '', 'error' => lang(array(
+            'string' => 'Paraşüt did not open a product card for line "{var:1}": {var:2}. The invoice was not written. Put right what Paraşüt names and send again; when no answer came, first delete the card from Paraşüt\'s product list if it is there, or the next send opens a second one.',
+            'vars' => array(($name !== '') ? $name : '#' . (int) $line['product_id'], parasut_refusal_words((string) ($sync['error'] ?? ''))),
+        )));
+    }
+
+    $default = trim((string) $default);
 
     if ($default !== '') {
         return array('id' => $default, 'error' => '');
@@ -841,7 +880,8 @@ function erp_edoc_parasut_line_product($line, $taken_out = 0)
  * goes on the default product/service; with none set, the invoice used to
  * be refused only after the buyer's card had been opened at Paraşüt. A line
  * with a product finds or opens its own (erp_edoc_parasut_line_product()),
- * which only asking Paraşüt tells.
+ * which only asking Paraşüt tells; one Paraşüt does not open is refused
+ * then, never put on the default.
  *
  * @param array       $lines    erp_invoice_items rows (product_id, description)
  * @param string|null $default  The default product/service id; null reads the setting
