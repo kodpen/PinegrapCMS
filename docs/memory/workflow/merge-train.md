@@ -1,6 +1,6 @@
 ---
 name: merge-train
-description: Owner rule (2026-10-25) for the merging session: one merger, one train at a time, merge windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
+description: Rule (2026-10-25) for the merging session: one merger, one train at a time, merge windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 ---
 
 ## Why a train and not one PR at a time?

@@ -1,6 +1,6 @@
 ---
 name: merge-review
-description: Owner rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, lists minor ones in a follow-up issue, digs deeper only for access, payments, SQL, schema
+description: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, leaves minor ones (no follow-up issue), digs deeper only for access, payments, SQL, schema
 ---
 
 ## How deep is the review before a merge?
@@ -10,12 +10,12 @@ description: Owner rule (2026-10-25): the merging session reviews each PR once, 
 
 ## Which findings are fixed before merging?
 - Blocking ones only: a security hole, data loss, a wrong result on a real path, a broken install or upgrade, red CI. Fix it on the branch (small) or send the PR back (below).
-- Everything else (naming, style, a missing test for an edge case, a memory wording) goes to the follow-up issue: one open GitHub issue titled "Merge review follow-ups", one comment per PR listing its points with file:line. A later session takes items from there as its own small PR.
+- Everything else (naming, style, a missing test for an edge case, a memory wording) is left as it is: no follow-up issue, no comment. The next session in the area meets it in the code and fixes what is worth its own small PR.
 
 ## Who fixes a PR that is sent back?
-- The session that opened it is usually gone (one task, one session). A small blocker (a few lines, clear fix) is fixed by the merging session on the branch itself before the train. A larger one gets one comment on the PR naming it, the PR stays out of the train, and the owner or a new session takes it with a claim.
+- The session that opened it is usually gone (one task, one session). A small blocker (a few lines, clear fix) is fixed by the merging session on the branch itself before the train. A larger one gets one comment on the PR naming it, the PR stays out of the train, and a new session pushes the fix to that branch (nobody else is on it) and marks it ready again.
 
 ## What else stays the merging session's job?
-- The PR body cleanup and footer removal (`pr-footer-and-trailers.md`), the title of each PR's merge commit in the train (`<PR title> (#n)`), closing claims, the `changelog.txt` lines (`merge-train.md`), and marking the plan steps a PR finishes when its author could not write the PR number.
+- The PR body cleanup and footer removal (`pr-footer-and-trailers.md`), the title of each PR's merge commit in the train (`<PR title> (#n)`), the `changelog.txt` lines (`merge-train.md`), and marking the plan steps a PR finishes when its author could not write the PR number.
 
 Related: docs/memory/workflow/merge-train.md, docs/memory/workflow/working-mode.md

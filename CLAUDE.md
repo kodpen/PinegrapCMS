@@ -63,45 +63,46 @@ Branches: work from `development`, PRs to `development`, never to `main`.
 ## Claim work before starting it
 
 Several sessions work on `development` at once, and a plan file shows a step
-as taken only after its PR merges, so work is claimed on GitHub first. Use
-REST (`gh api repos/kodpen/pinegrapcms/…`); `gh issue`, `gh pr` (GraphQL) and
-the search API are blocked in cloud sessions.
+as taken only after its PR merges, so work is claimed on GitHub first: with a
+draft PR, never an issue. Issues are not used between sessions at all (no
+claim, hand-off, decision request or follow-up issue): what a session has to
+say goes in its PR, the plan file or its own reply. Use REST
+(`gh api repos/kodpen/pinegrapcms/…`); `gh issue`, `gh pr` (GraphQL) and the
+search API are blocked in cloud sessions.
 
 1. **Check.** Before starting a plan step or any task that ends in a PR, list
-   open claims and open PRs:
+   the open PRs, drafts included:
    ```bash
-   gh api 'repos/kodpen/pinegrapcms/issues?state=open&labels=sahiplenildi&per_page=100' --jq '.[]|"#\(.number) \(.title)"'
-   gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '.[]|"#\(.number) \(.head.ref) \(.title)"'
+   gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '.[]|"#\(.number) \(if .draft then "draft" else "open" end) \(.head.ref) \(.title)"'
    ```
    Open each one on the same plan file or area (`…/pulls/<n>/files` lists a
-   PR's files). If another session holds the same plan file (any step) or the
-   same files, do not start, even if it looks stale: tell the owner which
-   issue or PR holds it. Steps of one plan run in parallel only when the owner
-   assigns them so.
-2. **Claim.** Before writing code, open an issue labelled `sahiplenildi`:
-   title `[plan:<plan file name>] <steps> — <topic>` (`[iş] <topic>` outside a
-   plan); body: plan file and steps, branch, files or folders it will touch.
-   `gh api -X POST repos/kodpen/pinegrapcms/issues -f title='…' -f body='…' -f 'labels[]=sahiplenildi'`
-   Working from an existing issue (bug, hand-off)? Label that one instead.
-   Then list the claims again: if a lower-numbered claim on the same plan or
-   files appeared meanwhile, close yours (`state_reason=not_planned`, comment
-   naming the older one) and stop. Small fixes, memory-only edits and reviews
-   skip the claim, never the check.
-3. **Mark it done when the PR goes up.** The PR that finishes the claimed
-   steps marks them done in the plan file (each step with its PR number, the
-   status in `description`; after the last step the plan is finished, see
-   Memory) and has `Closes #<claim>` under "Linked issue". `Closes` does not
-   fire for PRs to `development`, so right after opening the PR, comment its
-   number on the claim and close it:
-   `gh api -X PATCH repos/kodpen/pinegrapcms/issues/<claim> -f state=closed -f state_reason=completed`
-   A claim delivered over several PRs gets each PR as a comment and is closed
-   with the last one.
+   PR's files). If another PR holds the same plan file (any step) or the same
+   files, do not start, even if it looks stale: tell the owner which PR holds
+   it. Steps of one plan run in parallel only when the owner assigns them so.
+   The queue limit (Working mode, rule 8) is checked here too.
+2. **Claim.** Branch from `origin/development`, push your first commit (the
+   failing test, or the first slice) and open a **draft** PR to `development`
+   titled `[plan:<plan file name>] <steps> — <topic>` (`[iş] <topic>` outside
+   a plan); its What section names the plan step and the files or folders it
+   will touch. The draft is the claim: it is in the list every session checks,
+   it does not count against the queue limit, and CI does not run on it until
+   it is marked ready. Then list the PRs again: if a lower-numbered draft on
+   the same plan or files appeared meanwhile, close yours and stop. Small
+   fixes, memory-only edits and reviews skip the draft, never the check.
+3. **Finish.** The PR that finishes the steps marks them done in the plan
+   file (each step with its PR number, the status in `description`; after the
+   last step the plan is finished, see Memory). Push the finished work, then
+   mark the draft ready (`gh pr ready <n>` on a machine; in a cloud session
+   `mcp__github__update_pull_request` with `draft: false`): CI runs on that,
+   and the PR counts in the queue from then on. When it is green, Working
+   mode rule 2.
 
-## Working mode (owner rules, 2026-10-25)
+## Working mode (2026-10-25)
 
 About fifteen sessions on four accounts share one merge queue. Quota spent
 waiting on it, refreshing PRs and re-running checks is quota not spent on
-work, so these rules bind every session. Details:
+work, so these rules bind every session (they are the sessions' working
+arrangement, not an owner decision: Fixed rules, 6). Details:
 `docs/memory/workflow/working-mode.md` and `session-checks.md` (every
 session), `merge-train.md` and `merge-train-landing.md` (the merging
 session).
@@ -151,8 +152,9 @@ session).
    session settles their conflicts (indexes and bundles by rebuilding them).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` PRs not counted, no session starts a new task. The check
-   is made at claim time, before any work; a session whose work is done
-   still opens its PR. About 6 to 8 working sessions at a time.
+   is made before the draft PR that claims the task, before any work; a
+   session whose work is done still marks its PR ready. About 6 to 8 working
+   sessions at a time.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 
 ## Fixed rules
@@ -177,10 +179,16 @@ session).
 5. **Schema changes only through a migration step** in the open version, with
    the idempotent helpers (`install_add_column()` family); never
    `db("ALTER TABLE …")`. Ask before any ADD/CREATE/DROP/MODIFY/CHANGE.
-6. **Owner decisions bind.** Places repeatedly reported as "dead code",
-   "unused field" or "missing check" are listed in
-   `docs/memory/workflow/decisions-made.md`; leave them. If you think one is
-   wrong, ask before changing it.
+6. **Owner decisions bind, and only the owner makes them.** An owner decision
+   is about the product's behaviour, taken so that the global usage structure
+   and the sites already running do not break, and it comes with its reason;
+   it is recorded in `docs/memory/workflow/decisions-made.md` with that
+   reason. Places repeatedly reported as "dead code", "unused field" or
+   "missing check" are listed there; leave them. If you think one is wrong,
+   ask the owner in your reply before changing it; a question never becomes
+   an issue. Rules on how sessions work (Working mode, the workflow memory)
+   are the sessions' own arrangements: never written as the owner's decision,
+   and changed by a PR that gives its reason.
 7. **Four silent traps:** table names are singular (`page`, `style`,
    `pregion`, `forms`) and a failed query returns `false` without throwing
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,
@@ -235,5 +243,5 @@ Also: a test in `tests/<topic>_test.php` for a pure function you add or change
 (red first when behaviour changes); a schema step rerun twice on a dev DB;
 `node --check` after touching `style_designer.js`. The PR says what changed,
 why, and what could not be verified (say so when no running instance was set
-up). A claimed task also marks its plan steps done and closes its claim
-(Claim work before starting it, step 3).
+up). A plan step's PR marks the step done in the plan file (Claim work before
+starting it, step 3).

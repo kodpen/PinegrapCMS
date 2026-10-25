@@ -6,7 +6,7 @@ description: Plan (2026-10-25, step 1 done #1632; 2 conversion, 3 rules open): s
 ## Why?
 - `pinegrap/includes/local/tr.json` holds about 28,300 keys in one object and every PR appends at its end, so any two PRs that add keys conflict (the last key's comma changes; both insert at the same place). 94 commits touched it in three days (2026-10-22..25). A conflicted PR gets no CI and has to be merged again by hand.
 
-## What did the owner decide (2026-10-25)?
+## What was decided (2026-10-25)?
 - Split the file. Design within that (2026-10-25): shard by the key's first character and keep each shard sorted. Sorting is what stops the conflicts: a new key lands among its alphabetical neighbours, so two PRs adding different keys touch different lines and git merges them. Shards keep each file small. Module shards were rejected: a key such as "Save" belongs to no module, and appending to a module file still conflicts.
 
 ## What is the target layout?
@@ -22,4 +22,4 @@ description: Plan (2026-10-25, step 1 done #1632; 2 conversion, 3 rules open): s
 - Whether `en.json` and future language files follow the same layout (the loader handles both forms).
 
 ## Where to start?
-- Step 2 (the conversion), merged alone in an empty merge window and agreed with the merging session first; then step 3. Claim it as `[plan:tr-json-split] 2 — convert tr.json to shards`, read `core/lang-files.md`, then follow the working mode (`workflow/working-mode.md`).
+- Step 2 (the conversion), merged alone in an empty merge window and agreed with the merging session first; then step 3. A draft PR titled `[plan:tr-json-split] 2 — convert tr.json to shards` claims it; read `core/lang-files.md`, then follow the working mode (`workflow/working-mode.md`).

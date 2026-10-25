@@ -8,7 +8,7 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Only the merging session lands PRs on `development`, in merge trains pushed fast-forward (owner, 2026-10-25: `working-mode.md`, `merge-train.md`, `merge-train-landing.md`); releases to `main` and version numbers stay the owner's.
 
 ## Who does git?
-- One hand does all repo actions (branch, commit, push, PR, issue): the session with git and GitHub access. An agent that only edits code leaves its change in the working tree and produces no bundle or hand-off file (no `dev/_handoff/`).
+- One hand does all repo actions (branch, commit, push, PR): the session with git and GitHub access. An agent that only edits code leaves its change in the working tree and produces no bundle or hand-off file (no `dev/_handoff/`).
 
 ## Commit author and messages?
 - Author `Erdal Güral <erdaltyy@gmail.com>`. Messages describe the change and its technical reason only, with no AI or session trace (see CLAUDE.md rule 2). Branch commits reach `development` as they are (the train lands by fast-forward, `merge-train-landing.md`): set the identity in the clone before the first commit (`git config user.name 'Erdal Güral' && git config user.email erdaltyy@gmail.com`) and fix a wrong one on your own branch (`git commit --amend --reset-author`) before the PR goes up. A PR with another author or a trailer is taken by squash and closed by hand (`merge-train.md`).
