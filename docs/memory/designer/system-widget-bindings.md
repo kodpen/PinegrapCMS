@@ -1,6 +1,6 @@
 ---
 name: system-widget-bindings
-description: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if), action binding list, href-bound UI rule, HTML token canvas previews.
+description: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.
 ---
 
 ## What is the rule for data flow in system widgets?
@@ -20,6 +20,7 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 | `_bindings.section=X` | semantic `<div>` | container filled with backend section HTML |
 | `_bindings.eo_visible_if=X` | any semantic container | dropped from node tree if backend flag is false |
 | `_bindings.show_if=X` + `_bindParams.show_if` | any node of a widget, every kind | drawn only when token X passes `{op, value}` (missing: not empty); the finish pass decides ([[widget-conditions]]) |
+| `_bindFormats.text=F` | any bound value of a widget | the value's format after the token: a date format or a text filter (`upper`, `number:2` …) ([[widget-fill-filters]]) |
 
 ## What do the action bindings do?
 - `add_to_cart` (catalog_item_view button); `catalog_add_to_cart` (catalog_listing card, per card).

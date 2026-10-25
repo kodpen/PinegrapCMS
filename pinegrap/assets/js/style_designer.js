@@ -11788,18 +11788,15 @@ const StyleDesigner = (function () {
             return n.type === 'component' && p.componentType === 'btn';
         };
         // The node itself reaches the comment's permalink. A bound address
-        // wins over a typed one, and a format written after it
-        // (_bindFormats) leaves the token unanswered, as _apply_bindings()
-        // writes it.
+        // wins over a typed one; a format on an href binding is ignored,
+        // as _apply_bindings() ignores it.
         var linksHere = function (n) {
             var p = propsOf(n);
             var b = bindingsOf(n);
             if (b.action === 'comment_share') return linkLike(n);
             if (linkLike(n)) {
                 var bound = str(b.href).replace(/[^a-z0-9_\-]/gi, '');
-                var formats = (p._bindFormats && typeof p._bindFormats === 'object') ? p._bindFormats : {};
-                var format = str(formats.href).replace(/[^A-Za-z0-9 \/.:,\-]/g, '');
-                if (bound !== '' ? (bound === '__comment_url' && format === '') : (p.href === token)) return true;
+                if (bound !== '' ? (bound === '__comment_url') : (p.href === token)) return true;
             }
             return n.type === 'content' && (str(p.text).indexOf('href="' + token + '"') !== -1 || str(p.html).indexOf('href="' + token + '"') !== -1);
         };
@@ -36069,8 +36066,133 @@ const StyleDesigner = (function () {
         });
         out.registered_date_and_time = true;   // my_account
         out.__comment_datetime = true;         // comments
+        // Calendar widgets: typed by _pg_sw_calendar_event_times(), so a
+        // date format formats the date itself.
+        out.__event_date = true;
+        out.__event_start_date = true;
+        out.__event_end_date = true;
         return out;
     })();
+
+    // The text formats a bound value can take (props._bindFormats.text), the
+    // filters pg_sw_fill_filters() reads on the server (widgets_fill.php), in
+    // the order the Format row lists them. A third item marks a filter that
+    // takes a number (name:N). The server's 'url' encodes an address and is
+    // not listed.
+    var _SD_TEXT_FILTERS = [
+        ['',           _sdT('As it is')],
+        ['upper',      _sdT('CAPITAL LETTERS')],
+        ['lower',      _sdT('lower-case letters')],
+        ['capitalize', _sdT('First letter capital')],
+        ['number',     _sdT('A number, with decimals'), 1],
+        ['truncate',   _sdT('Shortened to a number of characters'), 1],
+        ['yesno',      _sdT('Yes or No')],
+        ['nl2br',      _sdT('Line breaks kept')]
+    ];
+    // The range the server clamps a filter's number to, and the number a
+    // filter starts with when it is picked.
+    var _SD_FILTER_ARG = {
+        number: { min: 0, max: 6, start: 2 },
+        truncate: { min: 1, max: 1000, start: 100 }
+    };
+    // The widget kinds whose fill reads a text format. An allow-list: in a
+    // fill that replaces ^^token^^ alone the format would print after the
+    // value, so a kind offers the Format row only once its fill reads it.
+    // The shop kinds (catalog, catalog detail, cart, express order, order
+    // view) are not read yet.
+    var _SD_FILTER_KINDS = {
+        form_list_view: 1, form_item_view: 1, my_account: 1, login_form: 1, login_region: 1,
+        cart_link: 1, forgot_password: 1, search_results: 1, registration: 1, membership: 1,
+        custom_form: 1, calendar_view: 1, calendar_event_view: 1, account_profile: 1,
+        change_password: 1, set_password: 1, email_preferences: 1, address_book: 1,
+        account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
+        language_switcher: 1, comments: 1
+    };
+
+    // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
+    // 'upper' or 'number:2' (the number clamped to the filter's range), null
+    // for anything else: '', a date format, a word the list does not hold, a
+    // number missing or one too many.
+    function _sdParseFilter(value) {
+        var m = /^([a-z][a-z0-9]*)(?::([0-9]+))?$/.exec(String(value == null ? '' : value).trim());
+        if (!m) return null;
+        var filter = null;
+        for (var i = 1; i < _SD_TEXT_FILTERS.length; i++) {
+            if (_SD_TEXT_FILTERS[i][0] === m[1]) filter = _SD_TEXT_FILTERS[i];
+        }
+        if (!filter) return null;
+        var hasArg = (m[2] !== undefined && m[2] !== '');
+        if (hasArg !== !!filter[2]) return null;
+        if (!hasArg) return { name: m[1], arg: null };
+        var r = _SD_FILTER_ARG[m[1]];
+        var n = (m[2].replace(/^0+/, '').length > 9) ? r.max : parseInt(m[2], 10);
+        return { name: m[1], arg: Math.max(r.min, Math.min(r.max, n)) };
+    }
+
+    // Whether a format is a chain of filter words rather than a date format.
+    function _sdIsFilterChain(value) {
+        var words = String(value == null ? '' : value).trim().split(/ +/);
+        return words[0] !== '' && words.every(function (w) { return !!_sdParseFilter(w); });
+    }
+
+    // The kind of the widget a node is in, as _swNameKind() reads its
+    // settings: a widget saved without one and the old form-list aliases
+    // (submitted_forms_list, form_list, blog_list) are form lists, as
+    // pg_sw_finish_kind() reads them on the server; '' is the empty widget.
+    function _sdFillKindOf(node) {
+        var sid = _isInsideSystemWidget(node);
+        if (!sid || !_sharedCache[sid]) return '';
+        var cfg = null;
+        try { cfg = JSON.parse(_sharedCache[sid].system_region_config); } catch (e) { return ''; }
+        if (!cfg || typeof cfg !== 'object') return '';
+        return _swNameKind(cfg);
+    }
+
+    // The Format row under a node's bound text: a date format for a date
+    // value, a text filter for any other. '' outside a widget, in a kind
+    // whose fill does not read a format, and for a date in the form views
+    // and my_account, whose binding rows carry the date format already.
+    function _sdFormatRows(node) {
+        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        var kind = _sdFillKindOf(node);
+        if (!_SD_FILTER_KINDS[kind]) return '';
+        var token = node.props._bindings && node.props._bindings.text;
+        if (!token) return '';
+        // Row position tokens (__loop_*) are filled by the finish pass after
+        // the fills and lose a format suffix there, so they get no format row.
+        if (/^__loop_/.test(token)) return '';
+        var hint = '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                       esc(_sdT('The format shows on the page and in Preview; the first card on the canvas shows the value without it. A value with formatting of its own (rich text, a link list) is shown as it is. A condition compares the value before its format.')) +
+                   '</div>';
+
+        if (SW_DATE_FIELD_TOKENS[token] || _sdFormFieldIsDate(token, node)) {
+            if (kind === 'form_list_view' || kind === 'form_item_view' || kind === 'my_account') return '';
+            return row(esc(_sdT('Date format')), _sdBindFormatRow('text', token, node) + hint);
+        }
+
+        var current = (node.props._bindFormats && node.props._bindFormats.text != null) ? String(node.props._bindFormats.text) : '';
+        var parsed  = _sdParseFilter(current);
+        // A value the list cannot show (a chain written by hand, a date
+        // format left from a date field) is shown as it is and kept until
+        // another choice.
+        var written = (current !== '' && !parsed);
+        var opts = '';
+        _SD_TEXT_FILTERS.forEach(function (f) {
+            var on = !written && (parsed ? parsed.name : '') === f[0];
+            opts += '<option value="' + esc(f[0]) + '"' + (on ? ' selected' : '') + '>' + esc(f[1]) + '</option>';
+        });
+        if (written) {
+            opts += '<option value="' + esc(current) + '" data-written="1" selected>' + esc(_sdT('Written: {var}', current)) + '</option>';
+        }
+        var r = (parsed && parsed.arg !== null) ? _SD_FILTER_ARG[parsed.name] : null;
+        var label = '';
+        _SD_TEXT_FILTERS.forEach(function (f) { if (parsed && f[0] === parsed.name) label = f[1]; });
+        var arg = '<input type="number" class="form-control form-control-sm mt-1 sd-sw-bindfilter-arg"' +
+                    (r ? ' min="' + r.min + '" max="' + r.max + '" value="' + parsed.arg + '" aria-label="' + esc(label) + '"'
+                       : ' style="display:none"') + '>';
+        return row(esc(_sdT('Format')),
+            '<select class="form-select form-select-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
+    }
 
     // Catalog token palette (regionType='catalog_listing'). Grouped by purpose
     // so the binding dropdown stays scannable even with 30+ tokens. Token names
@@ -37968,7 +38090,7 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node);
+        var extra = _sdBindingActionRows(node) + _sdFormatRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -39084,6 +39206,7 @@ const StyleDesigner = (function () {
         if (!node || !node.props || !propName) return;
         var p = node.props;
         if (!p._bindings) p._bindings = {};
+        var before = p._bindings[propName] || '';
         if (value) {
             p._bindings[propName] = value;
             // Remove any same-named _attrs entry so a stale literal value
@@ -39099,12 +39222,17 @@ const StyleDesigner = (function () {
             delete p._bindings[propName];
             if (Object.keys(p._bindings).length === 0) delete p._bindings;
         }
-        // A format belongs to the date field it was written for. Once the
-        // prop points somewhere else, the format is not the designer's
-        // intent any more, so it does not linger in the saved tree.
-        if (p._bindFormats && !(value && SW_DATE_FIELD_TOKENS[value])) {
-            delete p._bindFormats[propName];
-            if (Object.keys(p._bindFormats).length === 0) delete p._bindFormats;
+        // A format belongs to the value it was written for. It stays while
+        // the prop keeps its token (the code view and the panel may set the
+        // same one again); once the prop points somewhere else it is not the
+        // designer's intent any more and does not linger in the saved tree,
+        // except a date format moving on to another date field.
+        if (p._bindFormats && p._bindFormats[propName] != null && (!value || value !== before)) {
+            var keepDate = !!(value && SW_DATE_FIELD_TOKENS[value]) && !_sdIsFilterChain(p._bindFormats[propName]);
+            if (!keepDate) {
+                delete p._bindFormats[propName];
+                if (Object.keys(p._bindFormats).length === 0) delete p._bindFormats;
+            }
         }
         // Mark the containing shared component as dirty so the edit is flushed
         var sid = _isInsideSystemWidget(node);
@@ -39206,6 +39334,7 @@ const StyleDesigner = (function () {
                 if (!prop) return;
                 var _wasDateField = !!(selectedNode && selectedNode.props && selectedNode.props._bindings
                                        && SW_DATE_FIELD_TOKENS[selectedNode.props._bindings[prop]]);
+                var _hadFormatRow = (prop === 'text') && _sdFormatRows(selectedNode) !== '';
                 var customInp = document.querySelector('.sd-sw-bind-custom[data-bind-prop="' + prop + '"]');
                 // Show the caption pair only while "View / Expand" is the
                 // chosen token; seed the defaults the first time so the button
@@ -39234,8 +39363,10 @@ const StyleDesigner = (function () {
                         renderProperties();
                     }
                     // The format box belongs to date fields only, so moving on
-                    // or off one changes what the row shows.
-                    else if (!!SW_DATE_FIELD_TOKENS[this.value] !== _wasDateField
+                    // or off one changes what the row shows; the Format row
+                    // shows the format of the token the text has now.
+                    else if ((!!SW_DATE_FIELD_TOKENS[this.value] !== _wasDateField
+                              || (prop === 'text' && (_hadFormatRow || _sdFormatRows(selectedNode) !== '')))
                              && typeof renderProperties === 'function') {
                         renderProperties();
                     }
@@ -39277,6 +39408,8 @@ const StyleDesigner = (function () {
                 var prop = this.dataset.bindProp;
                 if (!prop) return;
                 var value = this.value.replace(/[^A-Za-z0-9 \/.:,\-\\]/g, '');
+                // One undo step for the whole word typed.
+                saveState(_sdEditRun('bindfmt:' + prop));
                 if (!selectedNode.props._bindFormats) selectedNode.props._bindFormats = {};
                 if (value) {
                     selectedNode.props._bindFormats[prop] = value;
@@ -39291,6 +39424,66 @@ const StyleDesigner = (function () {
                 renderCanvas();
             });
         });
+
+        // Text format (the Format row, _sdFormatRows()): one filter, written
+        // as name or name:N into props._bindFormats.text, which the server
+        // reads after the token (widgets_fill.php).
+        var filterSel = document.querySelector('.sd-sw-bindfilter');
+        var filterArg = document.querySelector('.sd-sw-bindfilter-arg');
+        function _sdWriteTextFormat(value) {
+            if (!selectedNode || !selectedNode.props) return;
+            var p = selectedNode.props;
+            // The same format again (a number typed as it stood) is no edit
+            // and no undo step.
+            if (((p._bindFormats && p._bindFormats.text) || '') === (value || '')) return;
+            saveState(_sdEditRun('bindfmt:text'));
+            if (value) {
+                if (!p._bindFormats || typeof p._bindFormats !== 'object') p._bindFormats = {};
+                p._bindFormats.text = value;
+            } else if (p._bindFormats) {
+                delete p._bindFormats.text;
+                if (Object.keys(p._bindFormats).length === 0) delete p._bindFormats;
+            }
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+        }
+        if (filterSel) {
+            filterSel.addEventListener('change', function () {
+                var opt = this.options[this.selectedIndex];
+                var written = !!(opt && opt.getAttribute('data-written'));
+                var r = written ? null : _SD_FILTER_ARG[this.value];
+                var argShown = !!(filterArg && filterArg.style.display !== 'none');
+                _sdWriteTextFormat(written ? this.value : (r ? this.value + ':' + r.start : this.value));
+                // The panel is drawn again only when the number box comes or
+                // goes; between two filters with a number it is set in place.
+                if (!!r !== argShown) {
+                    if (typeof renderProperties === 'function') renderProperties();
+                } else if (r && filterArg) {
+                    filterArg.min = r.min;
+                    filterArg.max = r.max;
+                    filterArg.value = r.start;
+                    filterArg.setAttribute('aria-label', opt ? opt.textContent : '');
+                }
+            });
+        }
+        if (filterArg) {
+            filterArg.addEventListener('input', function () {
+                var name = filterSel ? filterSel.value : '';
+                var r = _SD_FILTER_ARG[name];
+                var n = parseInt(this.value, 10);
+                if (!r || isNaN(n)) return;
+                _sdWriteTextFormat(name + ':' + Math.max(r.min, Math.min(r.max, n)));
+            });
+            // Once the typing is done, the box shows the number stored: a
+            // number out of range is kept at its end, an empty box shows the
+            // number it had.
+            filterArg.addEventListener('change', function () {
+                var p = selectedNode && selectedNode.props;
+                var stored = _sdParseFilter(p && p._bindFormats ? p._bindFormats.text : '');
+                if (stored && stored.arg !== null && this.value !== String(stored.arg)) this.value = stored.arg;
+            });
+        }
 
         // EO field binding dropdown — express_order specific. Sets
         // node.props._bindings.eo_field which the PHP walker

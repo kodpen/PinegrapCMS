@@ -382,6 +382,9 @@ function _pg_sw_badge_html($row, $badge_column, $label_column)
 // form field of the same name. Values go through prepare_form_data_for_output()
 // so a date obeys the format the designer wrote, a signature prints as the
 // drawing, and everything else is escaped the way the classic screens escape it.
+// A format that is a text filter chain (%%upper%%, %%number:2%%;
+// widgets_fill.php) works on that output, a date in its default format
+// included, and on an $extra value.
 //
 // Each token is replaced once per match rather than globally, because the same
 // identifier may appear twice with two different formats and a global replace
@@ -411,14 +414,20 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         $name         = mb_strtolower($variable[1], 'UTF-8');
 
         // A format typed into the rich-text editor may carry HTML entities, and
-        // date() would read those as format characters.
-        $date_format = isset($variable[3]) ? unhtmlspecialchars($variable[3]) : '';
+        // date() would read those as format characters. The suffix is a text
+        // filter chain (pg_sw_fill_parse()) or, as before filters existed, a
+        // date format.
+        $mods        = isset($variable[3]) ? unhtmlspecialchars($variable[3]) : '';
+        $filters     = pg_sw_fill_parse($mods);
+        $date_format = ($filters === null) ? $mods : '';
 
         // Values the renderer already finished — ids, URLs, widget state.
         if (array_key_exists($name, $extra)) {
+            $value = (string)$extra[$name];
+            if ($filters !== null) $value = pg_sw_fill_value($value, $mods);
             $template = preg_replace(
                 '/' . preg_quote($whole_string, '/') . '/',
-                addcslashes((string)$extra[$name], '\\$'),
+                addcslashes($value, '\\$'),
                 $template,
                 1
             );
@@ -510,6 +519,11 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
                     break;
             }
         }
+
+        // A text filter works on what the field shows: a date in its format,
+        // a counter as a number. A value with markup (rich text, a badge, a
+        // relative date) comes back as it is.
+        if ($filters !== null) $data = pg_sw_fill_value($data, $mods);
 
         $template = preg_replace(
             '/' . preg_quote($whole_string, '/') . '/',
@@ -4085,9 +4099,15 @@ function _pg_member_form_wrap($rendered, $action, $hidden, $class)
     return $open . $rendered . $script . '</form>';
 }
 
-// Replace ^^tokens^^ (longest key first) and strip whatever is left.
+// Replace ^^tokens^^ (longest key first) and strip whatever is left. A
+// template with a format after a token (^^x^^%%upper%%) is filled in one
+// typed pass instead (pg_sw_fill_typed()), so the format is read, never
+// printed; one without fills as it always did.
 function _pg_member_apply_tokens($rendered, $values)
 {
+    if (is_string($rendered) && strpos($rendered, '^^%%') !== false) {
+        return pg_sw_sweep_tokens(pg_sw_fill_typed($rendered, $values));
+    }
     $keys = array_keys($values);
     usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
     foreach ($keys as $k) {
@@ -4943,9 +4963,14 @@ function _pg_sw_resolve_visibility($html, $flags)
 
 // Fill ^^token^^ slots from an already-escaped map in one pass. strtr() never
 // rescans what it wrote, so a value that itself reads "^^x^^" stays literal.
-function _pg_sw_fill_tokens($html, $values)
+// A template with a format after a token (^^x^^%%upper%%) goes through the
+// typed pass, which never rescans either and reads the format; $typed names
+// the keys that hold a date (key => array('type', 'data')) for a date
+// format. A template without one fills through strtr() as it always did.
+function _pg_sw_fill_tokens($html, $values, $typed = array())
 {
     if (!is_string($html) || $html === '' || !$values) return $html;
+    if (strpos($html, '^^%%') !== false) return pg_sw_fill_typed($html, $values, $typed);
     $map = array();
     foreach ($values as $k => $v) $map['^^' . $k . '^^'] = (string)$v;
     return strtr($html, $map);
@@ -7632,12 +7657,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
         '__submit_label'    => h(lang('Submit')),
     );
 
-    $keys = array_keys($values);
-    usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
-    foreach ($keys as $k) {
-        $rendered = str_replace('^^' . $k . '^^', $values[$k], $rendered);
-    }
-    return pg_sw_sweep_tokens($rendered);
+    return _pg_member_apply_tokens($rendered, $values);
 }
 
 // ============================================================================
@@ -7816,6 +7836,28 @@ function _pg_sw_calendar_event_values($event, $detail, $link_base, $date_format,
         // The event's series as an .ics file, from the event page.
         '__event_ical_url'       => ($link_base !== '') ? $link_base . '?id=' . (int)$event['id'] . '&icalendar=true' : '',
     );
+}
+
+// The dates of one event occurrence as the typed fill reads them
+// (pg_sw_fill_typed()): a date format after one of these tokens formats the
+// occurrence itself, as the form views format a date field, not the words
+// the widget wrote. A timed event is a date and time, so 'd.m.Y H:i' shows
+// when it starts; an all-day event is a date, whose time letters read
+// 00:00. The end only when it is known.
+function _pg_sw_calendar_event_times($start_ts, $end_ts = null, $all_day = false)
+{
+    $type   = $all_day ? 'date' : 'date and time';
+    $layout = $all_day ? 'Y-m-d' : 'Y-m-d H:i:s';
+    $times  = array();
+    if ($start_ts) {
+        $start = array('type' => $type, 'data' => date($layout, $start_ts));
+        $times['__event_date']       = $start;
+        $times['__event_start_date'] = $start;
+    }
+    if ($end_ts) {
+        $times['__event_end_date'] = array('type' => $type, 'data' => date($layout, $end_ts));
+    }
+    return $times;
 }
 
 // The month (or week) grid for section=month_grid: a Bootstrap table, one
@@ -8074,7 +8116,15 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     if ($loop_template !== '' && $static_html !== '') {
         foreach ($rows as $i => $vals) {
             if ($vals['__event_url'] === '') $vals['__event_url'] = '#';
-            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals)));
+            // A date format after the event's date formats the occurrence
+            // itself, with its start time unless it lasts all day.
+            $row_event = $row_events[$i];
+            $times = _pg_sw_calendar_event_times(
+                strtotime($row_event['event_start_date'] . ' ' . $row_event['event_start_time']),
+                null,
+                (int)$row_event['all_day'] === 1
+            );
+            $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals), $times));
             $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
             // The pencil on every occurrence, for whoever may edit the event.
             // The month grid's one-line entries get none: they link to the
@@ -8154,6 +8204,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
         '__event_ical_url' => '',
     );
     $reserve_form = '';
+    $times = array();
     if (!$shown) {
         $values['__not_found_message'] = (!empty($cfg['not_found_message']) && is_string($cfg['not_found_message']))
             ? $cfg['not_found_message'] : lang('The requested calendar event could not be found.');
@@ -8161,6 +8212,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
         $start_ts = strtotime($event['start_date_and_time']);
         $end_ts   = strtotime($event['end_date_and_time']);
         $all_day  = ((int)$event['all_day'] === 1);
+        $times    = _pg_sw_calendar_event_times($start_ts, $end_ts, $all_day);
 
         $values = array_merge($values, array(
             '__event_title'       => (string)$event['name'],
@@ -8221,7 +8273,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 
     $html = trim(_render_tree_node($tree, 0, 0));
     $values = pg_sw_escape_token_values($values, array('__event_description', '__event_notes'));
-    $html = str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+    $html = str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values, $times)));
     // The pencil on the event, for whoever may edit it.
     if ($shown && pg_sw_edit_chips_on()) {
         $html = _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence, $event_calendars);

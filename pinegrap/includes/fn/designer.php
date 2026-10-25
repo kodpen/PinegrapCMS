@@ -5291,8 +5291,10 @@ function _apply_bindings($props, $rich_text = false)
         // A date field may carry the format the classic screens read:
         // ^^submitted_date_and_time^^%%d.m.Y%%. Only the characters date()
         // understands survive, so the suffix cannot break out of the token.
+        // A link's address takes no format: a format on an href binding is
+        // ignored, so the address is printed as the field holds it.
         $suffix = '';
-        if (isset($formats[$prop_name]) && $formats[$prop_name] !== '') {
+        if ($prop_name !== 'href' && isset($formats[$prop_name]) && $formats[$prop_name] !== '') {
             $format = preg_replace('/[^A-Za-z0-9 \/.:,\\-]/', '', (string)$formats[$prop_name]);
             if ($format !== '') $suffix = '%%' . $format . '%%';
         }

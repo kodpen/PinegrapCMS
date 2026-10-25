@@ -741,7 +741,7 @@ function test_comments_widget_email_draws_comment_twin()
 		'share as a link' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', '_bindings' => array('action' => 'comment_share'))), false), true),
 		'share on a div' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'div', 'text' => 'x', '_bindings' => array('action' => 'comment_share'))), false), false),
 		'<a> bound to the address' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_url'))), false), true),
-		'<a> bound with a format' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_url'), '_bindFormats' => array('href' => 'Y'))), false), false),
+		'<a> bound with a format (ignored on an href)' => array(comments_widget_email_test_card($n('semantic', array('tag' => 'a', 'text' => 'x', '_bindings' => array('href' => '__comment_url'), '_bindFormats' => array('href' => 'Y'))), false), true),
 		'link reading the address' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', 'href' => '^^__comment_url^^')), false), true),
 		'link reading it, bound elsewhere' => array(comments_widget_email_test_card($n('content', array('contentType' => 'link', 'text' => 'x', 'href' => '^^__comment_url^^', '_bindings' => array('href' => '__comment_parent_url'))), false), false),
 		'button component bound to it' => array(comments_widget_email_test_card($n('component', array('componentType' => 'btn', 'text' => 'x', '_bindings' => array('href' => '__comment_url'))), false), true),

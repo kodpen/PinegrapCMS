@@ -11,7 +11,7 @@ How the e-mail draws the widget: [[comments-widget-email]].
 
 ## Which card does an e-mail draw?
 - The server keeps its draw only when the comment carries a link to itself (`pg_comments_email_drew()`); else the widget prints nothing and the fixed markup goes out.
-- A link to the comment: the Share control on a link, an `<a>` or a button component drawn as a link (a `<button>` is stripped); a link whose address is bound to `__comment_url` (no format after it) or reads `^^__comment_url^^`; a content node's markup with `href="^^__comment_url^^"`.
+- A link to the comment: the Share control on a link, an `<a>` or a button component drawn as a link (a `<button>` is stripped); a link whose address is bound to `__comment_url` (a format on an href binding is ignored) or reads `^^__comment_url^^`; a content node's markup with `href="^^__comment_url^^"`.
 - Lost below what the e-mail strips, a comments section, another control or small form, a thread flag false in an e-mail, or a comment flag other than `comment_is_root` (it holds for some comments only, or for none: `comment_is_reply`, `comment_has_replies`).
 - The list is lost below a false thread flag, a comment flag, a comments section or the share, reply, watch or open-or-close control. No loop area, an empty one, or one inside a stripped form: the server's default card, which has the Share link.
 - A node bound to a list's own token (`__comment_thread_title|thread_url`, `__comment_label`) goes with what it holds, as the thread drops it (`_sdCommentsModeOffBindings('thread')`).
