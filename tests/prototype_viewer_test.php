@@ -434,6 +434,34 @@ function test_prototype_html_hrefs_lists_link_addresses_outside_scripts()
 	pg_assert_same(array('/a', '/c?x=1&y=2'), $hrefs);
 }
 
+function test_prototype_rewrite_reads_only_real_link_tags()
+{
+	// Markup written inside another tag's attribute value (a popover's
+	// content, a custom element's setting) is that attribute's text, not a
+	// link: rewriting it with double quotes would end the outer value.
+	$popover = '<span data-bs-toggle="popover" data-bs-html="true" data-bs-content="<a href=\'/pricing\'>Pricing</a>">Info</span>';
+	$custom = '<my_widget data-x="<a href=\'/about\'>About</a>"></my_widget>';
+	$end_tag = '</div title="<a href=\'/pricing\'>">';
+
+	pg_assert_same($popover . $custom . $end_tag, prototype_viewer_test_rewrite($popover . $custom . $end_tag));
+	pg_assert_same(array(), pg_proto_html_hrefs($popover . $custom . $end_tag));
+
+	// A link after them is still a link.
+	$out = prototype_viewer_test_rewrite($popover . '<a href="/pricing">P</a>');
+	pg_assert_same($popover . '<a href="/pinegrap/prototype.php?page=12" target="_top" data-pg-proto="prototype">P</a>', $out);
+
+	// An unquoted value may hold a quote; the browser ends that tag at its
+	// ">", and so does the rewrite, so the link that follows is read.
+	$apostrophe = '<img alt=it\'s src=/x.png><p>Don\'t <a href="/pricing">P</a></p>';
+	pg_assert_contains('<a href="/pinegrap/prototype.php?page=12" target="_top" data-pg-proto="prototype">P</a>', prototype_viewer_test_rewrite($apostrophe));
+	pg_assert_same(array('/pricing'), pg_proto_html_hrefs($apostrophe));
+
+	// A link with no attributes, or written with a slash before them, and
+	// a self-closing tag pass through without a warning.
+	pg_assert_same('<a>none</a><br/><hr />', prototype_viewer_test_rewrite('<a>none</a><br/><hr />'));
+	pg_assert_same(array('/pricing'), pg_proto_html_hrefs('<a/href="/pricing">P</a>'));
+}
+
 function test_prototype_frame_signature_round_trip()
 {
 	$sig = pg_proto_frame_sign(7, 12, 3, 1000900, 'k', 'red-shirt', 'ab12');

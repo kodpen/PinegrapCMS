@@ -646,11 +646,29 @@ function pg_proto_html_parts($html)
 }
 
 /**
+ * Every tag of a piece of markup, read the way a browser tokenizes it:
+ * group 1 is the name as written ("/name" for an end tag), group 2 what
+ * follows up to the ">" that ends the tag. A quote opens a quoted value only
+ * after "=", and a quoted value runs to its own closing quote, so a "<a"
+ * written inside another tag's attribute value (a popover's content, a
+ * custom element's setting) is part of that tag and never read as a link.
+ * Every repeat is possessive: markup that does not close cannot make the
+ * match backtrack.
+ *
+ * @return string a preg pattern
+ */
+function pg_proto_tag_pattern()
+{
+    return '~<(/?[a-z][^\s/>]*+)((?:[\s/]++|(?:=[^\s/>=]*+|[^\s/>=]++)(?:\s*+=\s*+(?:"[^"]*+"|\'[^\']*+\'|[^\s"\'>][^\s>]*+)?)?)*+)>~i';
+}
+
+/**
  * The attributes of one start tag, in order: name (lower case), value
  * (decoded; null for an attribute written without one) and the text it was
  * written as.
  *
- * @param string $inner the tag without "<a" and ">"
+ * @param string $inner the tag without "<", its name and ">" (group 2 of
+ *                      pg_proto_tag_pattern())
  * @return array[]
  */
 function pg_proto_tag_attributes($inner)
@@ -701,12 +719,16 @@ function pg_proto_html_hrefs($html)
             continue;
         }
 
-        if (!preg_match_all('~<a(\s(?:[^>"\']|"[^"]*"|\'[^\']*\')*)>~i', $part, $tags)) {
+        if (!preg_match_all(pg_proto_tag_pattern(), $part, $tags, PREG_SET_ORDER)) {
             continue;
         }
 
-        foreach ($tags[1] as $inner) {
-            foreach (pg_proto_tag_attributes($inner) as $attribute) {
+        foreach ($tags as $tag) {
+            if (strtolower($tag[1]) !== 'a') {
+                continue;
+            }
+
+            foreach (pg_proto_tag_attributes(isset($tag[2]) ? $tag[2] : '') as $attribute) {
                 if (($attribute['name'] === 'href') && ($attribute['value'] !== null)) {
                     $hrefs[] = $attribute['value'];
                     break;
@@ -739,6 +761,12 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
     }
 
     $rewrite_tag = function ($match) use ($classify, $strings) {
+        // Only a link is rewritten; every other tag is matched so that what
+        // its attribute values hold is never taken for a link.
+        if ((strtolower($match[1]) !== 'a') || !isset($match[2]) || (trim($match[2]) === '')) {
+            return $match[0];
+        }
+
         $attributes = pg_proto_tag_attributes($match[2]);
         $href = null;
 
@@ -845,7 +873,7 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
             continue;
         }
 
-        $rewritten = preg_replace_callback('~<(a)(\s(?:[^>"\']|"[^"]*"|\'[^\']*\')*)>~i', $rewrite_tag, $part);
+        $rewritten = preg_replace_callback(pg_proto_tag_pattern(), $rewrite_tag, $part);
 
         if ($rewritten !== null) {
             $parts[$index] = $rewritten;
