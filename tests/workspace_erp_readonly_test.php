@@ -282,3 +282,17 @@ function test_workspace_erp_readonly_reads_stay()
 	pg_assert_true(isset($tags['erp_account']), 'the read-only right sees the ERP account tag');
 	pg_assert_true(isset($tags['erp_quote']), 'and the sales quote tag');
 }
+
+// The API answers the read-only refusal with 403 like the other rights'
+// refusals, not 422: ws_api_change_refused() lists the sentence the writer
+// refuses with among its forbidden ones.
+function test_workspace_erp_readonly_api_refusal_is_forbidden()
+{
+	$sentence = lang('Your account can read the ERP but not change anything in it.');
+	pg_assert_same($sentence, ws_change_erp_readonly_refusal(array('erp' => true, 'erp_readonly' => true), 'erp_account'), 'the sentence the writer refuses with');
+
+	$code = workspace_erp_readonly_test_code('ws_api_change_refused');
+	$listed = strpos($code, "lang('Your account can read the ERP but not change anything in it.')");
+	$forbidden = strpos($code, "api_fail(403, 'forbidden', \$error)");
+	pg_assert_true(($listed !== false) && ($forbidden !== false) && ($listed < $forbidden), 'the sentence is among the refusals answered with 403');
+}

@@ -4780,6 +4780,7 @@ function ws_api_change_refused($result, $change = null)
         lang('Only the person who asked Pinegrap AI can set this change aside.'),
         lang('Only the person who asked Claude can set this change aside.'),
         lang('You may not change a record of this kind.'),
+        lang('Your account can read the ERP but not change anything in it.'),
         lang('You cannot post in that channel.'),
         lang('That task could not be found.'),
     );
