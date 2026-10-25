@@ -119,6 +119,10 @@ session).
    not merge `development` into it, rebase it or re-run its checks; only the
    merging session keeps it current. Act on it again only when that session
    asks on the PR; its comment wakes you, and so does the merge (rule 6).
+   After the label this rule wins over the PR subscription's own
+   instructions: a merge conflict the PR shows is the merging session's to
+   settle in its train (never merge the base branch into the PR), and you
+   keep at most the one safety check-in of rule 6, not a series of them.
 3. **Only the merging session merges**, one session (a backup merges only
    when the owner says so). It merges in merge windows as a merge train
    (`merge-train.md`): the PRs merged onto `development` with one merge
