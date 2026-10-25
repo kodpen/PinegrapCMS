@@ -45,6 +45,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   Group:       ^^__category_id^^, ^^__category_name^^, ^^__featured^^, ^^__is_new^^
 //   Custom:      ^^__custom_field_1^^ … ^^__custom_field_4^^
 //   Reward/SEO:  ^^__reward_points^^, ^^__seo_score^^
+//   Reviews:     ^^__rating_avg^^, ^^__rating_count^^ ('' without a verified,
+//                starred review); "Show only when" has_rating / no_rating
+//                per card (_pg_catalog_card_templates())
 //
 // Group-context tokens (featured, is_new, sort_order) are populated from
 // products_groups_xref. When product_group_id = 0 (all products), they are
@@ -184,6 +187,114 @@ function _pg_catalog_binding_disabled($node, $context)
     return false;
 }
 
+// The favourite heart (assets/js/pg_wishlist.js), on a button bound to
+// `catalog_wishlist` (a listing card) or `wishlist` (the product page):
+//   - a plain <button type="button">: the product page's heart sits inside
+//     the add-to-cart form and must never submit it
+//   - data-pg-wishlist = $product, the token the row or the page fills in
+//     with the product's id
+//   - aria-pressed="false", and an aria-label when the button has no words
+//     of its own (an icon alone)
+//   - data-pg-wishlist-hidden, which the script takes away once it knows
+//     the visitor's list: a page without the script, or whose state request
+//     fails, shows no control that does nothing. The page's rule on the
+//     mark (pg_wishlist_inject()) hides it whatever display classes the
+//     designer gave the button; a d-none would lose to a d-md-* class from
+//     md up. The button's classes are left as they are.
+//     $hidden is false for the editor's Preview and the canvas cards the
+//     server draws, where no script runs and the heart shows as designed.
+// No token and no form: the script reads the visitor's list and the session
+// token from wishlist.php?action=state, so the page is the same for every
+// visitor and stays cacheable. A component button and a <button> are
+// hearts; the editor offers the actions on nothing else.
+// Answers whether the node was made a heart.
+function _pg_catalog_wishlist_heart(&$node, $product, $hidden = true)
+{
+    if (!is_array($node) || !isset($node['type'])) return false;
+
+    $is_btn = ($node['type'] === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn');
+    $is_tag = ($node['type'] === 'semantic' && isset($node['props']['tag']) && strtolower((string)$node['props']['tag']) === 'button');
+    if (!$is_btn && !$is_tag) return false;
+
+    $managed = array('data-pg-wishlist' => 1, 'aria-pressed' => 1, 'aria-label' => 1, 'data-pg-wishlist-hidden' => 1);
+    if ($is_tag) $managed['type'] = 1;
+
+    $existing = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    $kept     = array();
+    $label    = '';
+    foreach ($existing as $a) {
+        if (!is_array($a) || !isset($a['name'])) continue;
+        $name = strtolower((string)$a['name']);
+        // A name the button already has (the designer's, or ours from an
+        // earlier pass) is kept and written again last.
+        if ($name === 'aria-label') $label = trim(isset($a['value']) ? (string)$a['value'] : '');
+        if (isset($managed[$name])) continue;
+        $kept[] = $a;
+    }
+
+    if ($is_btn) {
+        $node['props']['btnElement'] = 'button';
+        $node['props']['btnType']    = 'button';
+        $node['props']['href']       = '';
+        // A freshly dropped button still says "Click Me": it gets the words
+        // of the action instead, as add-to-cart does.
+        $text = isset($node['props']['text']) && is_string($node['props']['text']) ? trim($node['props']['text']) : '';
+        if ($text === 'Click Me' || $text === 'Button') $node['props']['text'] = lang('Add to favourites');
+    } else {
+        $kept[] = array('name' => 'type', 'value' => 'button');
+    }
+
+    $kept[] = array('name' => 'data-pg-wishlist', 'value' => (string)$product);
+    $kept[] = array('name' => 'aria-pressed',     'value' => 'false');
+    if ($label === '' && !_pg_catalog_node_has_words($node)) $label = lang('Add to favourites');
+    if ($label !== '') $kept[] = array('name' => 'aria-label', 'value' => $label);
+
+    // Hidden by the mark alone, also when the designer's classes hold a
+    // d-none of their own (d-none d-md-inline-block): from md up their
+    // d-md-* would show it before the script knows the list.
+    if ($hidden) $kept[] = array('name' => 'data-pg-wishlist-hidden', 'value' => '1');
+    $node['props']['_attrs'] = $kept;
+
+    return true;
+}
+
+// Whether a node or anything inside it carries words a screen reader reads
+// as its name: its text, the text of a child (a visually hidden label), a
+// bound text or the words of a custom HTML piece. An icon has none.
+function _pg_catalog_node_has_words($node)
+{
+    if (!is_array($node)) return false;
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    foreach (array('text', 'html') as $key) {
+        if (isset($props[$key]) && is_string($props[$key]) && trim(strip_tags($props[$key])) !== '') return true;
+    }
+    if (!empty($props['_bindings']['text'])) return true;
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            if (_pg_catalog_node_has_words($child)) return true;
+        }
+    }
+    return false;
+}
+
+// Whether a node is a heart bound to $action that the page must not draw:
+// the wishlist table is not there yet, so the script could neither read nor
+// save the list.
+function _pg_catalog_wishlist_dropped($node, $context, $action)
+{
+    if (!empty($context['wishlist_ready']) || !is_array($node)) return false;
+    $b = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    return isset($b['action']) && $b['action'] === $action;
+}
+
+// Takes the hearts out of a rendered card: a product group's card has no
+// single product to save.
+function _pg_catalog_wishlist_strip($html)
+{
+    if (strpos($html, 'data-pg-wishlist=') === false) return $html;
+    return preg_replace('/<button\b[^>]*\sdata-pg-wishlist="[^"]*"[^>]*>.*?<\/button>/is', '', $html);
+}
+
 function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = null)
 {
     if (!is_array($node)) return;
@@ -296,6 +407,14 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
             );
             return;  // wrapper preserved; no further recursion into the now-replaced inner.
         }
+    }
+
+    // ── Favourite heart, per card ───────────────────────────────────────
+    // The row's product fills the mark (^^__id^^); a product group's card
+    // loses the heart in the group loop. See _pg_catalog_wishlist_heart().
+    if (isset($bindings['action']) && $bindings['action'] === 'catalog_wishlist'
+        && _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']))) {
+        $bindings_used['action_catalog_wishlist'] = true;
     }
 
     // ── Component btn: action bindings ──────────────────────────────────
@@ -469,6 +588,7 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
         $kept_children = array();
         foreach ($node['children'] as $child) {
             if (is_array($child) && _pg_catalog_binding_disabled($child, $context)) continue;
+            if (_pg_catalog_wishlist_dropped($child, $context, 'catalog_wishlist')) continue;
             $kept_children[] = $child;
         }
         $node['children'] = $kept_children;
@@ -478,6 +598,257 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
         }
         unset($child);
     }
+}
+
+// ============================================================================
+// The rating of a product in the catalog widgets.
+//
+// products.rating_avg and rating_count hold the published, starred reviews of
+// verified purchases (includes/fn/reviews.php). Both tokens are empty while
+// there is none, so a bound element collapses and no rating is shown without
+// verified reviews behind it; has_rating / no_rating ("Show only when") read
+// the same count, for a wrapper around the stars or a "(12)" label.
+// ============================================================================
+
+/**
+ * The SELECT columns the rating is read from. A column the table does not
+ * have fails the whole query (a listing would show "No products found"), so
+ * before the 11.0.14 columns exist the query reads zeros under the same names.
+ *
+ * @param bool   $ready        pg_reviews_ready()
+ * @param string $alias_prefix prefix of the column aliases ('product_' in the variant query)
+ * @return string
+ */
+function _pg_catalog_rating_columns($ready, $alias_prefix = '')
+{
+    $avg   = $alias_prefix . 'rating_avg';
+    $count = $alias_prefix . 'rating_count';
+
+    return $ready
+        ? 'products.rating_avg AS ' . $avg . ', products.rating_count AS ' . $count
+        : '0 AS ' . $avg . ', 0 AS ' . $count;
+}
+
+/**
+ * The rating tokens of one product: the average with one decimal in the
+ * site's number format, and the number of reviews behind it.
+ *
+ * @param float|int|string|null $rating_avg   products.rating_avg
+ * @param int|string|null       $rating_count products.rating_count
+ * @return array '__rating_avg' and '__rating_count', both '' without a review
+ */
+function _pg_catalog_rating_values($rating_avg, $rating_count)
+{
+    $count = (int)$rating_count;
+
+    if ($count <= 0) {
+        return array('__rating_avg' => '', '__rating_count' => '');
+    }
+
+    return array(
+        '__rating_avg'   => pg_format_number($rating_avg, 1),
+        '__rating_count' => (string)$count,
+    );
+}
+
+/**
+ * Card HTML without its add-to-cart buttons (the bound catalog_add_to_cart
+ * button, data-pg-catalog-atc). A group row is not put in the cart: the
+ * visitor opens a product first, so every group row loses the button.
+ *
+ * @param string $html
+ * @return string
+ */
+function _pg_catalog_strip_add_to_cart($html)
+{
+    $html = (string)$html;
+    $out = preg_replace('/<button[^>]*data-pg-catalog-atc="1"[^>]*>.*?<\/button>/is', '', $html);
+    return ($out === null) ? $html : $out;
+}
+
+/**
+ * Whether card HTML draws anything a visitor sees: text (a ^^token^^ in text
+ * counts, it becomes a value) or an image, graphic, video or frame. A token
+ * only in an attribute (a bound href, a class naming the row type) and the
+ * contents of script, style and template elements draw nothing.
+ *
+ * @param string $html
+ * @return bool
+ */
+function _pg_catalog_html_shows($html)
+{
+    $html = (string)$html;
+    $seen = preg_replace('~<(script|style|template)\b[^>]*>.*?</\1\s*>~is', '', $html);
+    if ($seen === null) $seen = $html;
+    $seen = strip_tags($seen, '<img><svg><picture><video><audio><iframe><object><embed><canvas>');
+    return trim(str_replace("\xC2\xA0", ' ', html_entity_decode($seen, ENT_QUOTES, 'UTF-8'))) !== '';
+}
+
+/**
+ * The listing's card drawn once for each rating state. has_rating and
+ * no_rating describe the product of a card, so only the card is marked: an
+ * element outside it, or one carrying a flag no catalog evaluates, is drawn
+ * as before. Each product row takes the template of its state. A group row
+ * has no rating state of its own, so its card draws neither flag's elements;
+ * when that leaves nothing visible (two alternative cards, one per state,
+ * side by side or inside one column or link) it takes the card without a
+ * rating, so child groups are still drawn and can be clicked.
+ *
+ * @param array $nodes the loop_area's children, or the whole tree when it has none
+ * @return array 'rated', 'unrated' and 'group' card HTML
+ */
+function _pg_catalog_card_templates($nodes)
+{
+    $card = array('type' => 'root', 'props' => array(), 'children' => $nodes);
+    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating'));
+
+    $html = '';
+    foreach ($card['children'] as $child) {
+        $html .= _render_tree_node($child, 0, 0);
+    }
+
+    // Resolved on the card alone, before any product's values go in, so a
+    // span never holds a description long enough to exhaust PCRE.
+    $unrated = trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true)));
+    // No flag is set, so every marked span is cut. What is left can be empty
+    // wrappers only (a column or a link around two alternative cards): with
+    // nothing visible a group row would be drawn as a blank box, and with no
+    // card at all the listing skips child groups, so both fall back to the
+    // card without a rating. A token in an attribute (href, class) does not
+    // make a wrapper visible, and neither does the add-to-cart button, which
+    // every group row loses.
+    $group   = trim(_pg_sw_resolve_visibility($html, array()));
+    $group_shows = _pg_catalog_html_shows(_pg_catalog_strip_add_to_cart($group));
+    return array(
+        'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
+        'unrated' => $unrated,
+        'group'   => $group_shows ? $group : $unrated,
+    );
+}
+
+/**
+ * Whether the variants of a select group differ in rating: some have a
+ * verified, starred review and some none. Only then does the product page
+ * keep both has_rating / no_rating states for the variant script to switch.
+ *
+ * @param array $products the variant payload's products ('rating_count' is '' without a review)
+ * @return bool
+ */
+function _pg_catalog_rating_states_differ($products)
+{
+    $rated = false;
+    $unrated = false;
+    foreach ((array)$products as $vp) {
+        if (is_array($vp) && isset($vp['rating_count']) && (string)$vp['rating_count'] !== '') {
+            $rated = true;
+        } else {
+            $unrated = true;
+        }
+    }
+    return $rated && $unrated;
+}
+
+/**
+ * $html with each element at its top level carrying
+ * data-pg-rating-flag="<flag>", plus `hidden` when $hidden. The attribute
+ * goes into the element's own opening tag, so no box is added around it: a
+ * flagged column stays the direct child of its row, a flex or grid item
+ * stays the item and a paragraph keeps its content. A run of text at the top
+ * level has no tag of its own and goes into a <span> with the same
+ * attributes; comments and whitespace stay as they are.
+ *
+ * @param string $html   the content of one has_rating / no_rating span
+ * @param string $flag   'has_rating' or 'no_rating'
+ * @param bool   $hidden whether that state is off for the product drawn first
+ * @return string|null null when the markup does not balance (an element that
+ *                     is not closed, a closing tag with no opening one, a tag
+ *                     or comment that does not end): no element end to find
+ */
+function _pg_catalog_rating_flag_mark($html, $flag, $hidden)
+{
+    $html  = (string)$html;
+    $attrs = ' data-pg-rating-flag="' . preg_replace('/[^a-z0-9_]/', '', (string)$flag) . '"' . ($hidden ? ' hidden' : '');
+    // The rest of a tag after its name; a quoted attribute value may hold '>'.
+    $tag_rest = '(?=[\s\/>])(?:[^>"\']|"[^"]*"|\'[^\']*\')*>';
+    $void = array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr');
+    $out = '';
+    $len = strlen($html);
+    $pos = 0;
+    while ($pos < $len) {
+        if (substr($html, $pos, 4) === '<!--') {
+            $close = strpos($html, '-->', $pos + 4);
+            if ($close === false) return null;
+            $out .= substr($html, $pos, $close + 3 - $pos);
+            $pos = $close + 3;
+            continue;
+        }
+        if (preg_match('/\G<\/[a-zA-Z]/', $html, $m, 0, $pos)) return null;
+        if (preg_match('/\G<[a-zA-Z]/', $html, $m, 0, $pos)) {
+            if (!preg_match('/\G<([a-zA-Z][a-zA-Z0-9-]*)' . $tag_rest . '/', $html, $open, 0, $pos)) return null;
+            $name = $open[1];
+            $end  = $pos + strlen($open[0]);
+            if (!in_array(strtolower($name), $void, true) && substr($open[0], -2) !== '/>') {
+                // Tags of the same name, counted from this one until it is
+                // closed. The lookahead in $tag_rest keeps <path> from
+                // counting as <p>.
+                if (!preg_match_all('/<(\/?)' . preg_quote($name, '/') . $tag_rest . '/i', $html, $tags, PREG_SET_ORDER | PREG_OFFSET_CAPTURE, $pos)) return null;
+                $end   = null;
+                $depth = 0;
+                foreach ($tags as $t) {
+                    if ($t[1][0] === '/') {
+                        $depth--;
+                    } elseif (substr($t[0][0], -2) !== '/>') {
+                        $depth++;
+                    }
+                    if ($depth === 0) {
+                        $end = $t[0][1] + strlen($t[0][0]);
+                        break;
+                    }
+                }
+                if ($end === null) return null;
+            }
+            $at = $pos + 1 + strlen($name);
+            $out .= substr($html, $pos, $at - $pos) . $attrs . substr($html, $at, $end - $at);
+            $pos = $end;
+            continue;
+        }
+        // Text up to the next tag or comment; a '<' that opens neither is text.
+        $next = preg_match('/<(?:!--|\/?[a-zA-Z])/', $html, $m, PREG_OFFSET_CAPTURE, $pos + 1) ? $m[0][1] : $len;
+        $text = substr($html, $pos, $next - $pos);
+        $out .= (trim($text) === '') ? $text : '<span' . $attrs . '>' . $text . '</span>';
+        $pos = $next;
+    }
+    return $out;
+}
+
+/**
+ * The product page's has_rating / no_rating elements kept in both states,
+ * for a variant group whose variants differ in rating: pg_civ_variants.js
+ * shows the state of the variant picked. Each marked span loses its
+ * markers, and every element at its top level carries
+ * data-pg-rating-flag="<flag>", plus `hidden` when the flag is off for the
+ * product drawn first; text at its top level goes into a span of its own
+ * (_pg_catalog_rating_flag_mark()). Markup that does not balance has no
+ * element end to mark and is kept or cut for the product drawn first, like
+ * a span of any other flag.
+ *
+ * @param string $html  HTML marked by _pg_sw_mark_visibility()
+ * @param array  $flags flag => bool for the product drawn first
+ * @return string
+ */
+function _pg_catalog_rating_flags_keep($html, $flags)
+{
+    if (!is_string($html) || strpos($html, '<!--pg-vis:') === false) return $html;
+    return preg_replace_callback('/<!--pg-vis:([a-z0-9_]+):(\d+)-->(.*?)<!--\/pg-vis:\2-->/s', function ($m) use ($flags) {
+        $on = !empty($flags[$m[1]]);
+        if ($m[1] !== 'has_rating' && $m[1] !== 'no_rating') {
+            return $on ? _pg_catalog_rating_flags_keep($m[3], $flags) : '';
+        }
+        $inner  = _pg_catalog_rating_flags_keep($m[3], $flags);
+        $marked = _pg_catalog_rating_flag_mark($inner, $m[1], !$on);
+        if ($marked === null) return $on ? $inner : '';
+        return $marked;
+    }, $html);
 }
 
 function _render_system_widget_catalog_listing($product_group_id, $tree_json, $widget_id, $cfg = array())
@@ -766,21 +1137,28 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // dropped from the output entirely (see _pg_catalog_binding_disabled).
         'search_ui_enabled'    => $search_enabled,
         'filters_ui_enabled'   => ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled),
+        // The favourite heart: left out without the wishlist table, drawn
+        // as designed in the editor's Preview (_pg_catalog_wishlist_heart()).
+        'wishlist_ready'       => pg_wishlist_ready(),
+        'wishlist_preview'     => (bool)pg_sw_preview_overrides(),
     ), $_pg_bindings_used);
 
     $split = _split_widget_tree($tree_decoded);
 
+    // The card comes in two states, with and without a rating (has_rating /
+    // no_rating); $loop_template is the one without. A group row has no
+    // rating state and takes $loop_template_group, which draws neither (or
+    // the card without a rating when only empty wrappers would be left).
     if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
+        $_pg_cards     = _pg_catalog_card_templates(array($tree_decoded));
         $static_html   = '';
     } else {
-        $loop_template = '';
-        foreach ($split['loop_children'] as $child) {
-            $loop_template .= _render_tree_node($child, 0, 0);
-        }
-        $loop_template = trim($loop_template);
+        $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
+    $loop_template       = $_pg_cards['unrated'];
+    $loop_template_rated = $_pg_cards['rated'];
+    $loop_template_group = $_pg_cards['group'];
 
     // ── Resolve order_by → SQL clause (whitelist!) ────────────────────────
     // Catalog's sort_order lives on products_groups_xref (per-group), so a
@@ -1018,7 +1396,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // tokens leaking through bound containers.
     $no_products = false;
 
-    if ($loop_template === '') {
+    // A card drawn only for a product with a rating is empty without one,
+    // and still a card.
+    if ($loop_template === '' && $loop_template_rated === '') {
         $no_products = true;
     }
 
@@ -1066,6 +1446,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                              xref.featured  AS xref_featured,
                              xref.new_date  AS xref_new_date";
         }
+        $rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
         $products = db_items(
             "SELECT
                  products.id, products.name, products.address_name,
@@ -1076,7 +1457,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  $xref_select
@@ -1262,6 +1643,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                                 ? (int)round(($disc_save_cents / $original_price_cents) * 100) : 0;
         $price_block_html     = _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol);
 
+        $rating = _pg_catalog_rating_values(
+            isset($p['rating_avg']) ? $p['rating_avg'] : 0,
+            isset($p['rating_count']) ? $p['rating_count'] : 0
+        );
+
         $values = array(
             // Basic
             '__id'                  => (string)$pid,
@@ -1362,6 +1748,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__reward_points'       => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'           => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
 
+            // Reviews — empty while no verified, starred review is published.
+            '__rating_avg'          => $rating['__rating_avg'],
+            '__rating_count'        => $rating['__rating_count'],
+
             // NOTE: `__add_to_cart_button` (a whole server-built form with the
             // caption, icon and Bootstrap classes baked in) has been removed.
             // The card's add-to-cart button is designer-owned: drop a real
@@ -1389,7 +1779,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // in pg_sw_raw_token_keys() and pass through untouched.
         $values = pg_sw_escape_token_values($values);
 
-        $rendered = $loop_template;
+        // The card of this product's rating state (has_rating / no_rating).
+        $rendered = ($rating['__rating_count'] !== '') ? $loop_template_rated : $loop_template;
         // Replace longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^'.
         $keys = array_keys($values);
         usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
@@ -1839,6 +2230,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // image, short_description, address, url); product-only tokens
     // (price, inventory, mpn, gallery, …) collapse to empty via the final
     // ^^…^^ strip below — the designer template stays usable for both.
+    // Elements shown only with or only without a rating (has_rating /
+    // no_rating) are left out of a group card ($loop_template_group), unless
+    // that leaves nothing visible: then it is the card without a rating.
     //
     // ^^__row_type^^ ('group' / 'product') lets the designer add type-aware
     // CSS / wrapper markup if they want a visual distinction.
@@ -1848,7 +2242,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // first, then files). True interleaved sort across both is a future step.
     $child_groups_html = '';
     $has_children = 0;
-    if ($group_navigation !== 'none' && $loop_template !== '') {
+    if ($group_navigation !== 'none' && $loop_template_group !== '') {
         // At ROOT (no active group) → show TOP-LEVEL groups (parent_id = 0).
         // When DRILLED INTO a parent → show that parent's direct children.
         // Both cases use the same loop_template so the designer's card
@@ -2053,7 +2447,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
                 $g_values = pg_sw_escape_token_values($g_values);
 
-                $g_rendered = $loop_template;
+                $g_rendered = $loop_template_group;
                 // Longest keys first so '__short_description' is replaced before '__description'.
                 $g_keys = array_keys($g_values);
                 usort($g_keys, function ($a, $b) { return strlen($b) - strlen($a); });
@@ -2071,16 +2465,16 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 // Browse groups land on a sub-listing, select groups
                 // open a variant chooser — neither needs add-to-cart
                 // at the card level.
-                $g_rendered = preg_replace(
-                    '/<button[^>]*data-pg-catalog-atc="1"[^>]*>.*?<\/button>/is',
-                    '',
-                    $g_rendered
-                );
+                $g_rendered = _pg_catalog_strip_add_to_cart($g_rendered);
                 $g_rendered = preg_replace(
                     '/<form[^>]*id="pgAtcForm_[^"]*"[^>]*>.*?<\/form>/is',
                     '',
                     $g_rendered
                 );
+                // The favourite heart too: the list keeps products, and a
+                // group's card carries the group's id, no product of it. A
+                // select group's page has the heart of the variant chosen.
+                $g_rendered = _pg_catalog_wishlist_strip($g_rendered);
 
                 // Same treatment the product loop forty lines up already gets:
                 // without it every group card repeats the same ids, and a
@@ -2444,6 +2838,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 //   - On a btn component:
 //       _bindings.action === 'add_to_cart'
 //         → renders as <button type="submit"> inside the auto-wrapped form.
+//   - On a btn component or a semantic <button>:
+//       _bindings.action === 'wishlist'
+//         → the favourite heart, a <button type="button"> that never
+//           submits the form (_pg_catalog_wishlist_heart()).
 //   - On a semantic <input> node:
 //       _bindings.value === 'quantity'
 //         → renders as <input type="number" name="quantity" min="1" …>
@@ -3760,6 +4158,14 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         $node['props']['_attrs'][] = array('name' => 'data-pg-civ-action', 'value' => 'add_to_cart');
     }
 
+    // ── Button: favourite heart ──────────────────────────────────────────────
+    // The product shown fills the mark (^^__id^^). On a select group's page
+    // pg_civ_variants.js announces the variant picked, and pg_wishlist.js
+    // moves the heart to it. type="button": it sits in the add-to-cart form.
+    if (isset($bindings['action']) && $bindings['action'] === 'wishlist') {
+        _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']));
+    }
+
     // ── Input: recipient_name (free-form new recipient) ─────────────────────
     // The new-recipient input is HIDDEN by default — only revealed when the
     // user picks "+ Yeni alıcı ekle" from the recipient_select dropdown. The
@@ -3923,6 +4329,7 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         $kept = array();
         foreach ($node['children'] as &$child) {
             if (is_array($child) && _civ_should_skip_node($child, $context)) continue;
+            if (_pg_catalog_wishlist_dropped($child, $context, 'wishlist')) continue;
             _apply_catalog_item_view_bindings($child, $context);
             $kept[] = $child;
         }
@@ -3951,6 +4358,13 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   ^^__gallery_image_1^^  — first extra gallery image URL (products_images_xref row 1)
 //   ^^__gallery_image_2^^  — …row 2
 //   ^^__gallery_image_3^^, ^^__gallery_image_4^^, ^^__gallery_image_5^^
+//   The rating (^^__rating_avg^^, ^^__rating_count^^) is in the variant
+//   payload too. "Show only when" has_rating / no_rating is resolved after
+//   the product is read (the tree is drawn before): the state that does not
+//   fit is cut, unless the variant script is on the page and the variants
+//   differ in rating; then both states stay, the one that is off hidden,
+//   and the script shows the state of the variant picked
+//   (_pg_catalog_rating_flags_keep()).
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
@@ -4109,6 +4523,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'multi_recipient_active' => $_civ_multi_recip,
             'recipient_options'      => $_civ_recip_opts,
             'gallery'                => $_civ_gallery,
+            // The favourite heart, as in the listing.
+            'wishlist_ready'         => pg_wishlist_ready(),
+            'wishlist_preview'       => (bool)pg_sw_preview_overrides(),
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($_civ_remuxed !== false) $tree_json = $_civ_remuxed;
@@ -4124,6 +4541,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // run, and the detail page then showed every message the session carried
     // rather than its own.
     _pg_inject_messages_node($tree_decoded, 'catalog_detail');
+    // "Show only when" has_rating / no_rating: the tree is drawn before the
+    // product is read, so the elements are marked here and kept or cut once
+    // the rating is known (below). Another widget's flag stays drawn.
+    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating'));
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -4189,6 +4610,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $select_group_name       = '';
     $select_group_short_desc = '';
 
+    $_civ_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
+
     $p = null;
     if ($product_address_name !== '') {
         $p = db_item(
@@ -4201,7 +4624,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
              FROM products
@@ -4269,7 +4692,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.out_of_stock_message,
                          products.mpn, products.gtin, products.brand, products.weight,
                          products.shippable, products.taxable, products.reward_points,
-                         products.seo_score,
+                         products.seo_score, $_civ_rating_cols,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
                      FROM products
@@ -4292,7 +4715,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
              FROM products
@@ -4360,6 +4783,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // Pull every enabled product in the group along with their
         // attribute → option assignments. One JOIN-rich query keeps it to
         // a single round-trip.
+        $_civ_var_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready(), 'product_');
         $_civ_var_rows = db_items(
             "SELECT
                  products.id            AS product_id,
@@ -4383,6 +4807,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.custom_field_2 AS product_cf2,
                  products.custom_field_3 AS product_cf3,
                  products.custom_field_4 AS product_cf4,
+                 $_civ_var_rating_cols,
                  pa.id          AS attr_id,
                  pa.name        AS attr_name,
                  pa.label       AS attr_label,
@@ -4433,6 +4858,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                     $_p_image_url   = !empty($_vr['product_image'])
                         ? $base_path . encode_url_path((string)$_vr['product_image'])
                         : '';
+                    $_p_rating      = _pg_catalog_rating_values($_vr['product_rating_avg'], $_vr['product_rating_count']);
                     $vproducts[$_pid] = array(
                         'id'              => $_pid,
                         'name'            => (string)$_vr['product_name'],
@@ -4477,6 +4903,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         // (or untracked) variant announce "not available" the
                         // moment the visitor switched to it.
                         'out_of_stock_message' => $_p_oos_notice ? _pg_rich_text_to_inline($_vr['product_oos_msg']) : '',
+                        // This variant's rating; empty without a verified,
+                        // starred review, so the bound element collapses.
+                        'rating_avg'      => $_p_rating['__rating_avg'],
+                        'rating_count'    => $_p_rating['__rating_count'],
                         'attrs'           => array(),
                     );
                 }
@@ -4602,6 +5032,34 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         );
     }
 
+    // ── Rating: its tokens and "Show only when" ──────────────────────────
+    // has_rating / no_rating read the same count as the two tokens, so an
+    // element shown only with a rating never wraps an empty one. The spans
+    // marked before the split are kept or cut here, before the variant
+    // picker looks for its anchors and before any value is filled in.
+    $_civ_rating = _pg_catalog_rating_values(
+        ($p && isset($p['rating_avg'])) ? $p['rating_avg'] : 0,
+        ($p && isset($p['rating_count'])) ? $p['rating_count'] : 0
+    );
+    $_civ_flags = array(
+        'has_rating' => $_civ_rating['__rating_count'] !== '',
+        'no_rating'  => $_civ_rating['__rating_count'] === '',
+    );
+    // With the variant script on the page and variants that differ in
+    // rating, a switch can change the state: both states stay, each element
+    // marked with its flag and the one that does not fit $p hidden, and the
+    // script shows the state of the variant picked. Otherwise the state that
+    // does not fit is cut here.
+    $_civ_variants_scripted = $is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs']);
+    $_civ_rating_switch     = $_civ_variants_scripted && _pg_catalog_rating_states_differ($variant_data['products']);
+    if ($_civ_rating_switch) {
+        $loop_template = _pg_catalog_rating_flags_keep($loop_template, $_civ_flags);
+        $static_html   = _pg_catalog_rating_flags_keep($static_html, $_civ_flags);
+    } else {
+        $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
+        $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
+    }
+
     // ── Build token map ───────────────────────────────────────────────────
     // The same keys are produced regardless of found/not-found so the designer's
     // template renders consistently. ^^__not_found_message^^ distinguishes the two states.
@@ -4660,6 +5118,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__custom_field_4'       => '',
             '__reward_points'        => '0',
             '__seo_score'            => '0',
+            '__rating_avg'           => $_civ_rating['__rating_avg'],
+            '__rating_count'         => $_civ_rating['__rating_count'],
             '__not_found_message'            => $not_found_message,
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
@@ -4935,6 +5395,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // Reward / SEO
             '__reward_points'        => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'            => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
+
+            // Reviews — empty while no verified, starred review is published.
+            '__rating_avg'           => $_civ_rating['__rating_avg'],
+            '__rating_count'         => $_civ_rating['__rating_count'],
 
             // not_found: empty when product is found so the designer's not-found region
             // renders blank. The token is exposed so conditional visibility can be bound.
@@ -5271,20 +5735,29 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     //   • refresh the product_id hidden input + Sepete Ekle disabled state
     //   • optional API call to confirm stock + grab any field not preloaded
     $_civ_variant_script = '';
-    if ($is_select_group && !empty($variant_data['products']) && !empty($variant_data['attrs'])) {
+    if ($_civ_variants_scripted) {
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '4';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '5';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
 
+    // Both rating states kept: the one that is off carries `hidden`, which a
+    // design's display utility (Bootstrap's d-flex is !important) or its own
+    // display rule would beat. Two attribute selectors with !important win
+    // over both. Printed before the elements so the first paint obeys it.
+    $_civ_rating_css = $_civ_rating_switch
+        ? '<style>[data-pg-rating-flag][hidden]{display:none!important}</style>'
+        : '';
+
     // No auto-prepended messages placeholder — designer controls placement
     // via a Messages content node inside the widget tree.
     return _pg_widget_layout_css_once()
+         . $_civ_rating_css
          . '<form action="' . h($_civ_action) . '" method="post" data-pg-civ-form="1">'
          . $_civ_hidden
          . $_civ_html

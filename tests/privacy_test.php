@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for includes/fn/privacy.php: the e-mail form the person token is made
- * from, the token itself, and the consent log's row, person condition and
- * current answers.
+ * from, the token itself, and the consent log's row, person condition,
+ * current answers and the answers a screen records.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -184,6 +184,13 @@ function test_consent_log_person_where()
 	pg_assert_same("(contact_id = '12')", pg_consent_log_person_where(array('person_token' => "x' OR '1'='1", 'user_id' => "0 OR 1=1", 'contact_id' => '12abc')), 'only what is an identifier');
 	pg_assert_same('', pg_consent_log_person_where(array('email' => 'ali@example.com')), 'no token without a key');
 	pg_assert_same('', pg_consent_log_person_where(array()), 'nobody');
+
+	$previous = str_repeat('1e', 32);
+
+	pg_assert_same("(person_token = '" . $token . "' OR person_token = '" . $previous . "' OR user_id = '5')", pg_consent_log_person_where(array('person_token' => $token, 'previous_token' => $previous, 'user_id' => 5)), 'the address before a save');
+	pg_assert_same("(person_token = '" . $token . "')", pg_consent_log_person_where(array('person_token' => $token, 'previous_token' => $token)), 'an unchanged address once');
+	pg_assert_same("(person_token = '" . $previous . "')", pg_consent_log_person_where(array('previous_token' => $previous)), 'only the address before');
+	pg_assert_same('', pg_consent_log_person_where(array('previous_token' => "x' OR '1'='1", 'previous_email' => 'ali@example.com')), 'no earlier token');
 }
 
 // The newest row of each channel and purpose wins, by time and then id, whatever the order.
@@ -213,4 +220,97 @@ function test_consent_log_record_without_table()
 	pg_assert_false(pg_consent_log_ready(), 'not ready without a database');
 	pg_assert_same(0, pg_consent_log_record(array('channel' => 'cookie', 'purpose' => 'marketing', 'status' => 'granted', 'source' => 'banner')), 'nothing written');
 	pg_assert_same(array(), pg_consent_log_rows(array('user_id' => 1)), 'nothing read');
+}
+
+// An answer is recorded when nothing is recorded yet, after a pending request, or when it differs from the last one.
+function test_consent_log_change_records_only_a_new_answer()
+{
+	pg_assert_same('granted', pg_consent_log_change(null, true), 'nothing recorded, yes');
+	pg_assert_same('refused', pg_consent_log_change(null, false), 'nothing recorded, no');
+	pg_assert_same('granted', pg_consent_log_change('granted', true), 'not a row');
+	pg_assert_same('refused', pg_consent_log_change(array('id' => 1), false), 'a row without a status');
+
+	$pending = array('id' => 2, 'status' => 'pending');
+
+	pg_assert_same('granted', pg_consent_log_change($pending, true), 'a pending request answered yes');
+	pg_assert_same('refused', pg_consent_log_change($pending, false), 'a pending request answered no');
+
+	pg_assert_same('', pg_consent_log_change(array('status' => 'granted'), true), 'yes again');
+	pg_assert_same('', pg_consent_log_change(array('status' => 'refused'), false), 'no again');
+	pg_assert_same('refused', pg_consent_log_change(array('status' => 'granted'), false), 'withdrawn');
+	pg_assert_same('granted', pg_consent_log_change(array('status' => 'refused'), true), 'given after a refusal');
+}
+
+// One row per changed answer, in the order asked; a key that is no channel and purpose is skipped.
+function test_consent_log_changes_lists_changed_answers()
+{
+	$current = pg_consent_log_current(array(
+		array('id' => 1, 'created_at' => 100, 'channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted'),
+		array('id' => 2, 'created_at' => 100, 'channel' => 'email', 'purpose' => 'group:4', 'status' => 'refused'),
+		array('id' => 3, 'created_at' => 100, 'channel' => 'email', 'purpose' => 'group:5', 'status' => 'pending'),
+	));
+
+	$answers = array(
+		'email:marketing' => true,
+		'email:group:4'   => true,
+		'email:group:5'   => false,
+		'email:group:6'   => false,
+		'sms:marketing'   => true,
+		'fax:marketing'   => true,
+		'email'           => true,
+		'email:'          => true,
+		'email:group:0'   => true,
+		'sms:group:3'     => true,
+		'marketing'       => false,
+		7                 => true,
+	);
+
+	pg_assert_same(array(
+		array('channel' => 'email', 'purpose' => 'group:4', 'status' => 'granted'),
+		array('channel' => 'email', 'purpose' => 'group:5', 'status' => 'refused'),
+		array('channel' => 'email', 'purpose' => 'group:6', 'status' => 'refused'),
+		array('channel' => 'sms', 'purpose' => 'marketing', 'status' => 'granted'),
+	), pg_consent_log_changes($current, $answers), 'changed, pending and new answers');
+
+	pg_assert_same(array(), pg_consent_log_changes($current, array('email:marketing' => true)), 'the same answer again');
+	pg_assert_same(array(array('channel' => 'email', 'purpose' => 'marketing', 'status' => 'refused')), pg_consent_log_changes($current, array('email:marketing' => false)), 'withdrawn');
+	pg_assert_same(array(array('channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted')), pg_consent_log_changes(array(), array('email:marketing' => true)), 'nothing recorded yet');
+	pg_assert_same(array(), pg_consent_log_changes($current, array()), 'no answers');
+}
+
+// Without the table (no connection here) nothing is read or written, and nothing is thrown.
+function test_consent_log_answers_without_table()
+{
+	pg_assert_same(0, pg_consent_log_answers(array('email' => 'ali@example.com', 'user_id' => 4, 'contact_id' => 9), array('email:marketing' => true, 'email:group:3' => false), 'account'), 'nothing written');
+	pg_assert_same(0, pg_consent_log_answers(array('user_id' => 4), array(), 'signup'), 'no answers');
+	pg_assert_same(0, pg_consent_log_answers(array(), array('email:marketing' => false), 'unsubscribe'), 'nobody');
+}
+
+// A checkout records the opt-in it wrote to the contact only when the box was on the screen and the buyer, not staff ghosting, answered it.
+function test_consent_checkout_answers_only_the_buyers_own()
+{
+	pg_assert_same(array('email:marketing' => true), pg_consent_checkout_answers('true', false, 1), 'shown, ticked');
+	pg_assert_same(array('email:marketing' => false), pg_consent_checkout_answers('true', false, 0), 'shown, unticked');
+	pg_assert_same(array('email:marketing' => true), pg_consent_checkout_answers('true', false, '1'), 'the value as written to the contact');
+	pg_assert_same(array(), pg_consent_checkout_answers('false', false, 1), 'not shown: the default');
+	pg_assert_same(array(), pg_consent_checkout_answers('', false, 0), 'no marker posted');
+	pg_assert_same(array(), pg_consent_checkout_answers(array('true'), false, 1), 'marker posted as an array');
+	pg_assert_same(array(), pg_consent_checkout_answers('true', true, 0), 'staff ghosting');
+	pg_assert_same(array(), pg_consent_checkout_answers('true', 1, 1), 'staff ghosting, flag as a number');
+}
+
+// The checkout's person: the billing address only when it is one, the account and the contact as numbers.
+function test_consent_checkout_person()
+{
+	pg_assert_same(array('email' => 'ali@example.com', 'user_id' => 4, 'contact_id' => 9), pg_consent_checkout_person('ali@example.com', '4', '9'), 'member');
+	pg_assert_same(array('email' => 'ali@example.com', 'user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person('ali@example.com', '', 9), 'guest');
+	pg_assert_same(array('user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person('ali@', '', '9'), 'an address the checkout refuses');
+	pg_assert_same(array('user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person(null, null, '9'), 'no address');
+}
+
+// Without the table (no connection here) a checkout answer writes nothing and throws nothing.
+function test_consent_log_checkout_without_table()
+{
+	pg_assert_same(0, pg_consent_log_checkout('ali@example.com', 4, 9, 'true', false, 1), 'asked');
+	pg_assert_same(0, pg_consent_log_checkout('ali@example.com', 4, 9, 'false', false, 1), 'not asked');
 }

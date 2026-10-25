@@ -16,6 +16,7 @@ description: Every Workspace write in the external API takes X-Dry-Run; the pane
 ## Which rehearsals have a catch?
 - Change apply: a proposal for one record is laid against the record as it is now (`409 stale` when it moved, but the proposal is NOT marked stale as the real call does). A call of an MCP server's tool and a change to many records (`bulk`) are only checked up to taking the proposal; what they meet while running is not rehearsed.
 - Claude answer: rehearsed in all four places (editor, note, task run, channel); the channel answer runs `ws_message_send_check()`. Claim, answer and fail stay for Claude's application only.
+- Change proposal (`workspace-change-proposals.md`): every check runs, the read scopes and the hourly limit included; nothing is posted, no request or card is kept.
 - Delegate: the run checks (assistant switched on, one run per task, per-person limit) run in the rehearsal; Claude is not fired.
 - Task create detail carries `warnings` (capacity, department), so a client can show them before creating.
 
