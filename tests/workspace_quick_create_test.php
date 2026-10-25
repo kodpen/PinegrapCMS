@@ -281,6 +281,49 @@ function test_workspace_quick_create_card_writes_what_it_showed()
 	pg_assert_contains('var channelId = (options.channelId > 0) ? options.channelId', $form, 'and the new mode keeps the decision there');
 }
 
+// A card's button sends the text the card was drawn from, so a draft typed
+// into the box after the card appeared was never sent: once the card has
+// written, the box is emptied only while it still holds the sent text.
+// "All fields" made from the drawer clears the line the same way.
+function test_workspace_quick_create_card_keeps_a_new_draft()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$sent = workspace_quick_create_test_js($js, 'clearSent');
+	$send = workspace_quick_create_test_js($js, 'send');
+	$card = workspace_quick_create_test_js($js, 'drawCreatePreview');
+
+	pg_assert_contains('if (this.tokens(this.inputText()) === sent) {', $sent, 'the box is emptied only while it holds the sent text');
+	pg_assert_contains('this.clearInput();', $sent, 'and then it is emptied');
+	pg_assert_contains("if (options && (typeof options.body === 'string')) {\n                    self.clearSent(options.body);", $send, 'a request with the card\'s text keeps a new draft');
+	pg_assert_contains('self.clearSent(drawn);', $card, '"All fields" keeps a new draft too');
+	pg_assert_false(strpos($card, 'self.clearInput();') !== false, 'and never empties the box outright');
+}
+
+// "All fields" hands the drawer the card's decision tick, as it hands the
+// "On sale" tick: the new mode starts its own tick from it.
+function test_workspace_quick_create_all_fields_keeps_the_decision_tick()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$card = workspace_quick_create_test_js($js, 'drawCreatePreview');
+	$form = workspace_quick_create_test_js($js, 'quickCreateSection');
+
+	pg_assert_contains('decision: decision.checked,', $card, '"All fields" passes the card\'s decision tick');
+	pg_assert_contains('decision.checked = options.decision !== false;', $form, 'the new mode starts its tick from it, ticked when none is given');
+}
+
+// The quantity's help in the new mode names the other way stock gets
+// tracked: "Track Inventory" set to Yes tracks it from 0 with no quantity
+// (ws_change_write_product()), so "left empty, not tracked" alone is wrong.
+function test_workspace_quick_create_quantity_help_names_track_inventory()
+{
+	$label = workspace_quick_create_test_kind('product')['fields']['track_stock'][2];
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/quick_edit.php');
+	$line = preg_match("/'qc_quantity_help'\s*=>[^\n]*/", $source, $match) ? $match[0] : '';
+
+	pg_assert_same("lang('Track Inventory')", $label, 'the stock tracking field\'s label');
+	pg_assert_contains($label, $line, 'the quantity help names that field');
+}
+
 // The drawer's new mode, the palette's entry and the /product card.
 function test_workspace_quick_create_screen_wiring()
 {

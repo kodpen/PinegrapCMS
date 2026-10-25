@@ -11579,6 +11579,15 @@
             this.autosize();
         },
 
+        // Empties the box only while it still holds the text that was sent.
+        // A card's button sends the text the card was drawn from, so a draft
+        // typed into the box after the card appeared was never sent and stays.
+        clearSent: function (sent) {
+            if (this.tokens(this.inputText()) === sent) {
+                this.clearInput();
+            }
+        },
+
         // What was typed before the caret: the pickers read it. Chips and
         // cards of the rich box count as U+FFFC.
         beforeCaret: function () {
@@ -11929,7 +11938,14 @@
                     toast(t(result.command.created ? 'qc_created' : 'qe_saved'), 'success');
                 }
 
-                self.clearInput();
+                // A card's button names the text it sends; a different one in
+                // the box was not sent and is kept.
+                if (options && (typeof options.body === 'string')) {
+                    self.clearSent(options.body);
+                } else {
+                    self.clearInput();
+                }
+
                 self.reply = null;
                 self.replyMore = null;
                 self.pending = null;
@@ -12167,13 +12183,16 @@
                     values: values,
                     labels: command.labels || {},
                     // The decision goes where the card's own Create puts it:
-                    // this composer's channel, also a discussion beside one.
+                    // this composer's channel, also a discussion beside one,
+                    // and only if the card's decision tick is still ticked.
                     channelId: self.channel.id,
-                    // Made from the drawer: the line that asked for it goes.
+                    decision: decision.checked,
+                    // Made from the drawer: the line that asked for it goes,
+                    // a draft typed since the card appeared stays.
                     onCreated: function () {
                         self.pending = null;
                         clear(self.previewBox);
-                        self.clearInput();
+                        self.clearSent(drawn);
                         self.autosize();
                     }
                 });
@@ -18796,7 +18815,9 @@
     // sale" is ticked; once written, the drawer shows the new record.
     // options.values fill the form (a /product card's), options.labels name
     // the records they pick, options.channelId is the channel its decision
-    // goes to (the card's composer), options.onCreated is told the new record.
+    // goes to (the card's composer), options.decision false starts the
+    // decision tick unticked (the card's own tick), options.onCreated is
+    // told the new record.
     function openRecordNew(type, options) {
         var node = offcanvas('ws-record', t('workspace'));
         var body = clear(node.querySelector('.offcanvas-body'));
@@ -18921,7 +18942,8 @@
             var tick = el('div', 'form-check form-check-sm mt-1 mb-2');
             decision = el('input', 'form-check-input');
             decision.type = 'checkbox';
-            decision.checked = true;
+            // A /product card hands over its own tick; otherwise ticked.
+            decision.checked = options.decision !== false;
             decision.id = nextId('ws-qc-decision-');
             var decisionLabel = el('label', 'form-check-label small', t('qe_decision'));
             decisionLabel.htmlFor = decision.id;

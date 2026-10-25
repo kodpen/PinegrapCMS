@@ -180,7 +180,9 @@ function ws_quick_edit_js_strings()
         'qc_all_fields'    => lang('All fields'),
         'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
         'qc_name_help'     => lang('The product\'s own code (SKU): no two products share one.'),
-        'qc_quantity_help' => lang('Left empty, the stock is not tracked.'),
+        // A quantity turns tracking on; so does "Track Inventory" under More
+        // fields with no quantity, which tracks the stock from 0.
+        'qc_quantity_help' => lang(array('string' => 'Left empty, the stock is not tracked, unless {var:1} is set to Yes: then it is tracked from 0.', 'vars' => array(lang('Track Inventory')))),
     );
 }
 

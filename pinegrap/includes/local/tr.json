@@ -28177,7 +28177,7 @@
     "All fields": "Tüm alanlar",
     "Left unticked, nobody sees it in the store yet.": "İşaretlenmezse mağazada henüz kimse görmez.",
     "The product's own code (SKU): no two products share one.": "Ürünün kendi kodu (SKU): iki ürün aynı kodu taşıyamaz.",
-    "Left empty, the stock is not tracked.": "Boş bırakılırsa stok takip edilmez.",
+    "Left empty, the stock is not tracked, unless {var:1} is set to Yes: then it is tracked from 0.": "Boş bırakılırsa stok takip edilmez; {var:1} Evet yapılırsa stok 0'dan takip edilir.",
     "You may not create this kind of record.": "Bu türde kayıt oluşturamazsınız.",
     "{var:1} ({var:2}) was added in the Workspace: {var:3}": "{var:1} ({var:2}) Çalışma Alanı'nda eklendi: {var:3}",
     "{var:1} was added. {var:2}": "{var:1} eklendi. {var:2}",
