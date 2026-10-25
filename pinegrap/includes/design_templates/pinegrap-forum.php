@@ -2751,7 +2751,7 @@ $pages[] = array(
             $heading('h2', lang('Account and e-mails'), 'h4 fw-bold mb-3'),
             $el('div', 'accordion', lang('FAQ'), array(
                 $faq(7, lang('How do I change the name others see on my topics?'), array(
-                    lang('The name on your topics comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name.'),
+                    lang('The name on your topics and replies comes from your profile. Open My Account, choose My Profile and change your first and last name: every topic you started shows the new name, and your next replies are signed with it.'),
                 ), lang('display name, profile, rename, username')),
                 $faq(8, lang('I forgot my password. What now?'), array(
                     lang('Choose Forgot Password on the sign-in page and enter your e-mail address. We send you a link to set a new password.'),
@@ -3047,10 +3047,9 @@ $pages[] = array(
 );
 
 // The member's own topics: the ones they started, the most recently active
-// first (the page's one list with page links). Live topics only: a topic
-// the moderators hid opens nowhere, so it leaves this page too. No list of
-// the topics they follow: a form list's watcher filter finds only a legacy
-// form item view page, never a designed topic page, so it would stay empty.
+// first (the page's one list with page links), and the ones they follow.
+// Both hold live topics only: a topic the moderators hid opens nowhere, so
+// it leaves this page too.
 $pages[] = array(
     'key'     => 'my_topics',
     'name'    => lang('my-topics'),
@@ -3060,22 +3059,26 @@ $pages[] = array(
     'sitemap' => false,
     'noindex' => true,
     'tree'    => $page(array(
-        $page_header(lang('My topics'), lang('The topics you started, the most recently active first.'), array(
+        $page_header(lang('My topics'), lang('The topics you started and the topics you follow, the most recently active first.'), array(
             $breadcrumb(array(array(lang('My Account'), '{{page:my_account}}'), array(lang('My topics'), ''))),
         )),
         $band(lang('Content'), array(
             $row(array(
                 $col(array(
-                    $el('section', '', lang('Started'), array(
+                    $el('section', 'mb-5', lang('Started'), array(
                         $sec_head(lang('Topics you started'), lang('Start a topic'), '{{page:new_topic}}', 'pf-started'),
                         $widget('my_topics_started'),
                     ), array('_attrs' => array($attr('aria-labelledby', 'pf-started')))),
+                    $el('section', '', lang('Followed'), array(
+                        $sec_head(lang('Topics you follow'), '', '', 'pf-followed'),
+                        $widget('my_topics_followed'),
+                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-followed')))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', '', lang('Side Column'), array(
                         $side_card(lang('Following'), lang('How following works'), array(
                             $para(lang('Every reply to a topic you started comes to you by e-mail.'), 'small'),
-                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: its new replies then come to you by e-mail.'), 'small mb-0'),
+                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), 'small mb-0'),
                         ), 'pf-card pf-tint mb-4'),
                         $side_card(lang('Missing Topic'), lang('A topic is missing?'), array(
                             $para(lang('A topic the moderators hid no longer shows anywhere, this page included. If you think that was a mistake, write to them.'), 'small text-body-secondary mb-3'),
@@ -3233,7 +3236,7 @@ $staff_notes = array(
     lang('To take a topic off the site, open it with the pencil on its row or Moderate on its page, set its Status to Hidden and save: it leaves every list and its page at once, and Open brings it back. A hidden topic opens only in the control panel.'),
     lang('Mark a topic Solved, pin it or make it an announcement the same way, in its Status, Pinned and Announcement fields. Closed is only a word on the topic: to stop new replies, use the moderators\' button under its replies.'),
     lang('Replies are published at once; feedback on a guide waits until a moderator publishes it. Edit, publish or delete them under Comments in the control panel, or with the pencil on each one on its page.'),
-    lang('A topic shows the name in its author\'s profile. A reply, a message and a note are signed with the writer\'s user name, and so are yours: give moderators user names members may see.'),
+    lang('A topic shows the first and last name in its author\'s profile, and a member\'s reply or message is signed with that name, or with Member when the profile has none. Your replies, messages and notes are signed with the name in the form\'s name box, filled in from your own profile: fill in your first and last name under My Profile.'),
     lang('A guide arrives as Awaiting review. Open it on the docs desk, write to its author under it and set its Status: In review while you read it, Changes requested once you wrote what to change, Live on the site to put it in the docs, Withdrawn to take it out, Not accepted to decline it. A Status alone sends no e-mail: say what you did in a message under the guide.'),
     lang('Before you publish a guide, check its links and remove pictures that load from other sites: both are printed as written, for every reader. Readers can open its attachment once it is published.'),
     lang('Give each guide an order of two digits in its section, such as 10, 20 and 30: the order is compared as text, so 100 would come before 20, and a guide without one comes first. Featured shows a published guide on the home page and in the docs.'),
@@ -4495,6 +4498,13 @@ $own = function ($submitter, $watcher) {
 $widgets['my_topics_started'] = $topic_list('my_topics', 20, 0, array(),
     lang('You have not started a topic yet. Ask a question or start a discussion: the community will help.'),
     array($topic_rows($topic_sample(2))), $own(true, false));
+// The live topics the member follows: the ones under whose reply form they
+// ticked the box, the twenty most recently active. A follower is kept per
+// topic page, the list's detail page, whose record view shows the topics'
+// form (pg_sw_list_watcher_page_id()).
+$widgets['my_topics_followed'] = $topic_list('my_topics', 20, 20, array(),
+    lang('You follow no topic yet. Tick the box under the reply form when you reply, and the topic appears here.'),
+    array($topic_rows($topic_sample(7))), $own(false, true));
 
 // A list of the docs desk or the moderators' desks: the records in their
 // state on the desk. No live rule: these lists sit on the member's own page
@@ -5205,7 +5215,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',
