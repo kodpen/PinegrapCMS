@@ -28549,5 +28549,7 @@
     "Off — a list of recent comments has no form or thread controls": "Kapalı — son yorumlar listesinde form ya da yorum dizisi denetimleri yok",
     "Off — filled only in a list of recent comments": "Kapalı — yalnızca son yorumlar listesinde dolar",
     "Off — no page is chosen under Comments from": "Kapalı — Yorumların geldiği sayfalar altında sayfa seçilmedi",
-    "{var} — loading its widgets…": "{var} — bileşenleri yükleniyor…"
+    "{var} — loading its widgets…": "{var} — bileşenleri yükleniyor…",
+    "Drawn in a comment e-mail": "Bir yorum e-postasında gösteriliyor",
+    "E-mails send the fixed comment markup instead: the comment card needs a link to the comment that every comment shows, such as the Share link.": "E-postalar bunun yerine sabit yorum içeriğini gönderir: yorum kartında her yorumda görünen, yoruma giden bir bağlantı olmalı (örneğin Paylaş bağlantısı)."
 }

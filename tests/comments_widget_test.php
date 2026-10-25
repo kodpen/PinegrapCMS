@@ -411,8 +411,10 @@ function test_comments_widget_thread_flags_table()
 	$open = pg_comments_widget_thread_flags(comments_widget_test_facts());
 	$keys = array('comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'is_signed_in', 'is_signed_out', 'has_comments', 'no_comments',
 		'featured_view', 'has_featured', 'is_staff', 'name_is_typed', 'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on',
-		'has_more_pages', 'is_replying', 'is_watching', 'not_watching', 'can_manage_watchers');
-	pg_assert_same($keys, array_keys($open), 'exactly the 22 thread flags');
+		'has_more_pages', 'is_replying', 'is_watching', 'not_watching', 'can_manage_watchers', 'is_email');
+	pg_assert_same($keys, array_keys($open), 'exactly the 23 thread flags');
+	pg_assert_false($open['is_email'], 'a live page is no e-mail');
+	pg_assert_false(pg_comments_widget_thread_flags(comments_widget_test_facts(array('signed_in' => true, 'staff' => true)))['is_email'], 'whoever reads it');
 	pg_assert_false($open['has_more_pages'] || $open['is_replying'] || $open['is_watching'] || $open['not_watching'] || $open['can_manage_watchers'], 'one page, not replying, watching off');
 	pg_assert_true($open['comments_open'] && $open['can_comment'] && $open['is_signed_out'] && $open['has_comments'] && $open['name_is_typed'], 'open, signed out');
 	pg_assert_false($open['comments_closed'] || $open['must_sign_in'] || $open['is_signed_in'] || $open['no_comments'], 'open, signed out: the rest');
