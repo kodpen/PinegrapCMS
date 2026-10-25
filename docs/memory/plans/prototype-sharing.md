@@ -1,6 +1,6 @@
 ---
 name: prototype-sharing
-description: Plan (2026-10-24, slice 2 done #1579, 4 in #1578; answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team, a link later
+description: Plan (2026-10-24, slice 2 done #1579, 4 done #1578; answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team, a link later
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -8,7 +8,7 @@ description: Plan (2026-10-24, slice 2 done #1579, 4 in #1578; answers 1, 2, 4, 
 
 ## What is there today?
 - A draft is a page in the private Drafts folder; each changing save is a revision. Roles 0-2 open a saved draft at its address and click on by page name; role 3 needs folder rights, signed out goes to sign-in. Preview renders widgets in the background, not signed out.
-- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel; flows have no shares (F7, in #1578).
+- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes and flows (#1578) share to a person or channel.
 - Details: plans/prototype-sharing-code.md.
 
 ## What is proposed? (not approved yet)
@@ -22,7 +22,7 @@ description: Plan (2026-10-24, slice 2 done #1579, 4 in #1578; answers 1, 2, 4, 
 1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
 2. Done #1579: prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver.
 3. Share links (schema): dialog, list, revoke, password, WAF offence; only the frame's admission changes, the per-view signature stays.
-4. F7 flow shares (schema 11.0.83), in #1578.
+4. Done #1578: F7 flow shares (schema 11.0.83).
 5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
 ## Which questions are answered? (owner, 2026-10-24: 1 a, 2 c, 4 a, 6 a; 3, 5, 7 open)

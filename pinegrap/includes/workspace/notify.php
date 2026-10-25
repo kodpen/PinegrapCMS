@@ -39,12 +39,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
+ *                         | flow_shared (a flow was shared with one: flow_shares.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
  *                         separate: always a row of its own, never folded into an
  *                         unread row of the same kind and ids (a run of a flow that
- *                         ended, whose ids are all 0: flow_runs.php)
+ *                         ended, a flow shared, whose ids are all 0: flow_runs.php,
+ *                         flow_shares.php)
  * @return int the inbox row
  */
 function ws_notify($user_id, $kind, $data)
@@ -351,6 +353,20 @@ function ws_inbox_describe($viewer, $row)
 
             return array(
                 'title' => lang('A run of your flow ended'),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . 'workspace_flows.php',
+                'icon'  => 'bi-diagram-3',
+            );
+
+        // A flow was shared with the person (flow_shares.php): the sentence
+        // that names the flow and what they may do with it sits beside the
+        // inbox row; the flows screen lists it under the heading
+        // "Shared with me and my channels".
+        case 'flow_shared':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} shared a flow with you', 'vars' => $actor)),
                 'body'  => $notice ? (string) $notice['text'] : '',
                 'url'   => $base . 'workspace_flows.php',
                 'icon'  => 'bi-diagram-3',
