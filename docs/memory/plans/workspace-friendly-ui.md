@@ -17,7 +17,7 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, ava
 
 ## What are the slices?
 - U1 Tokens and shape — done (PR #531, memory docs/memory/workspace/workspace-ui-scale.md): the token scale, every radius on it, keyboard-only focus rings, rounder drawers, home cards and context menus, the composer's shadows, dark nav tones. The accent RGB stays typed beside the hex (CSS cannot derive it); the two sit together.
-- U2 Avatar component: `avatar()` gets `.ws-avatar` and size classes, an initials fallback drawn client-side when no URL, a presence dot (data already in the member list), tones that work in dark mode.
+- U2 Avatar component: now done with Bootstrap 6 Avatar (text initials, theme colours, status dot) inside the Bootstrap 6 plan (`bootstrap-6-components.md`); claim it there, not here.
 - U3 Channel identity: the channel colour on the header icon and a thin colour stripe; group colour chips in the sidebar section titles.
 - U4 Empty states and loading: friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
 - U5 Motion: send-button pop, reaction bounce, new-message slide-in, all inside `@media (prefers-reduced-motion: no-preference)`.

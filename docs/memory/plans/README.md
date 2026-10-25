@@ -13,6 +13,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
+- bootstrap-6-components.md: First-stage swaps of own panel widgets for native Bootstrap 6 components (Bootstrap 6 plan): targets, conditions found in research, what stays as it is
+- bootstrap-6-findings.md: Research of 2026-10-25 behind the Bootstrap 6 panel plan: what old browsers lose, work size, conflict hot spots, the visual editor split, third-party coupling
+- bootstrap-6-panel-steps.md: Steps B0-B12 of the Bootstrap 6 panel plan with dependencies and status; B0 in progress, the rest open; claim as [plan:bootstrap-6-panel-steps]
+- bootstrap-6-panel.md: Plan (approved 2026-10-25, step B0 in progress): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch; owner decisions, model, order
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
