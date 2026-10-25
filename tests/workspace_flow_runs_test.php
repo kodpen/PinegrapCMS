@@ -657,15 +657,29 @@ function test_workspace_flow_runs_deleted_flow_stops()
 
 // A retried start answers the run its token started even when the flow was
 // paused, or its owner left, meanwhile: the token is looked up before those
-// refusals.
+// refusals. A person who may no longer run the flow (it was paused) still
+// gets the run back while they read it, as GET /workspace/flow-runs/{id}
+// gives it to them; anybody else gets the 404 of a flow they cannot see,
+// never a refusal of the token's shape.
 function test_workspace_flow_runs_token_answers_before_refusals()
 {
 	$check = ws_flow_runs_test_source('ws_flow_run_start_check');
 
 	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'Only a published flow that is live can be run.'), 'before the live check');
 	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'ws_can_schedule($owner)'), 'before the owner check');
-	pg_assert_true(strpos($check, 'ws_flow_access($viewer, $flow)') < strpos($check, 'start_key = '), 'after the access check');
 	pg_assert_contains('ws_flow_start_key($token)', $check);
+
+	pg_assert_contains('ws_flow_run_for_token(', $check, 'the run a token started, without the right to run the flow');
+	pg_assert_true(strpos($check, 'ws_flow_run_for_token(') < strpos($check, 'That flow could not be found.'), 'before the 404');
+	pg_assert_true(strpos($check, 'ws_flow_access($viewer, $flow)') < strpos($check, 'The token of a run is'), 'the token\'s shape is judged only for a flow the person may run');
+
+	// Only a run the person reads comes back: the same gate as reading it.
+	$token = ws_flow_runs_test_source('ws_flow_run_for_token');
+
+	pg_assert_contains('ws_flow_start_token_valid($token)', $token);
+	pg_assert_contains('ws_flow_run_for($viewer', $token);
+	pg_assert_same('read', ws_flow_run_access_from('', true, true), 'the starter of a run of a paused flow reads it');
+	pg_assert_same('', ws_flow_run_access_from('', false, true), 'somebody else does not');
 }
 
 // A box tried again that finds the task its first try opened looks at it at

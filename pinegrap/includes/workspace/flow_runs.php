@@ -918,18 +918,42 @@ function ws_flow_runs_list($viewer, $flow, $filters = array(), $keep = null)
 }
 
 /**
+ * The run a start token named for a flow, as the person reaches it
+ * (ws_flow_run_for()): null for no token, a token of the wrong shape, one
+ * that started no run of the flow, or a run they may not read.
+ *
+ * @param array $viewer
+ * @param int   $flow_id
+ * @param mixed $token   as the client sent it
+ * @return array|null the run, with access and flow
+ */
+function ws_flow_run_for_token($viewer, $flow_id, $token)
+{
+    if (((int) $flow_id <= 0) || !ws_flow_start_token_valid($token)) {
+        return null;
+    }
+
+    $run_id = (int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . (int) $flow_id . "' AND start_key = '" . e(ws_flow_start_key($token)) . "'");
+
+    return ($run_id > 0) ? ws_flow_run_for($viewer, $run_id) : null;
+}
+
+/**
  * Whether the person may start a run of the flow now: the checks of
  * ws_flow_run_start(), made on their own so that the API's dry run meets the
  * same refusals. The flow is live with a version that is started by hand,
  * the person may run it, its owner is still on the staff (the run acts with
  * their rights), and it is neither too busy nor started too often. A token
  * already used for this flow is no refusal: it names the run it started, and
- * is looked up right after the access check, so a start retried after the
- * flow was paused or its owner left still answers the run it started.
+ * is looked up before the other refusals, so a start retried after the flow
+ * was paused or its owner left still answers the run it started. A person
+ * who may no longer run the flow (it was paused) gets that run back while
+ * they may read it (ws_flow_run_for_token()); anybody else gets the 404 of a
+ * flow they cannot see, never a refusal of the token's shape.
  *
- * @param array $viewer
- * @param array $flow
- * @param array $data token (optional, ws_flow_start_token_valid())
+ * @param array      $viewer
+ * @param array|null $flow
+ * @param array      $data   token (optional, ws_flow_start_token_valid())
  * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none)
  */
 function ws_flow_run_start_check($viewer, $flow, $data = array())
@@ -938,11 +962,33 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (ws_flow_access($viewer, $flow) === '') {
-        return ws_flow_refusal(lang('That flow could not be found.'), 404);
-    }
-
     $token = $data['token'] ?? '';
+
+    // The run a token started, answered as its version stands.
+    $found = function ($run, $start_key) {
+        $version = ws_flow_version($run['version_id']);
+        $graph = is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_empty();
+
+        return array(
+            'ok'        => true,
+            'error'     => '',
+            'status'    => 200,
+            'field'     => '',
+            'start_key' => $start_key,
+            'version'   => is_array($version) ? $version : array('id' => 0, 'n' => 0),
+            'graph'     => $graph,
+            'trigger'   => ws_flow_trigger_node($graph),
+            'existing'  => (int) $run['id'],
+        );
+    };
+
+    $access = ws_flow_access($viewer, $flow);
+
+    if ($access === '') {
+        $retried = is_array($flow) ? ws_flow_run_for_token($viewer, (int) $flow['id'], $token) : null;
+
+        return $retried ? $found($retried, ws_flow_start_key($token)) : ws_flow_refusal(lang('That flow could not be found.'), 404);
+    }
 
     if (($token !== '') && ($token !== null) && !ws_flow_start_token_valid($token)) {
         return ws_flow_refusal(lang(array('string' => 'The token of a run is 1-{var:1} letters, digits and . _ : - characters.', 'vars' => WS_FLOW_TOKEN_MAX)), 422, 'token');
@@ -953,15 +999,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
     $ok = array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'start_key' => $start_key);
 
     if ($existing) {
-        $version = ws_flow_version($existing['version_id']);
-        $graph = is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_empty();
-
-        return $ok + array(
-            'version'  => is_array($version) ? $version : array('id' => 0, 'n' => 0),
-            'graph'    => $graph,
-            'trigger'  => ws_flow_trigger_node($graph),
-            'existing' => (int) $existing['id'],
-        );
+        return $found($existing, $start_key);
     }
 
     $version = (((string) $flow['status'] === 'live') && ((int) $flow['version_id'] > 0)) ? ws_flow_version($flow['version_id']) : null;
