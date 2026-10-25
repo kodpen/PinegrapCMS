@@ -22,3 +22,4 @@ description: A record's fields edited by a person from the record drawer with no
 
 ## What else saves through it?
 - The `/price` and `/stock` channel commands (docs/memory/workspace/workspace-record-commands.md). No new API route: `/products/{id}`, `/products/{id}/inventory` and the record routes cover a client's needs (owner default, 2026-10-19).
+- A new product or product group (the drawer's new mode, the search box, `/product`) is made by `ws_quick_create_save()` in the same file, written and kept the same way: docs/memory/workspace/workspace-quick-create.md.
