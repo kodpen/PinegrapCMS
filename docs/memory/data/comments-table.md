@@ -1,6 +1,6 @@
 ---
 name: comments-table
-description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes idx_parent and idx_thread, copy cost on MyISAM, code that copies or exports rows.
+description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 ---
 
 ## What identifies a comment's thread?
@@ -13,13 +13,16 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 
 ## Which indexes were added with it, and why?
 - `idx_parent (parent_id)`: the replies to one comment.
-- `idx_thread (page_id, item_type, item_id, created_timestamp)`: one thread in the order it was written. Before it, a thread was read through the `page_id` key and every comment on the page was sorted, which a forum topic with thousands of replies pays on each view.
+- `idx_thread (page_id, item_type, item_id, created_timestamp)`: one thread in the order it was written. Before it, a thread was read through the `page_id` key and every comment on the page was sorted, on each view.
 - Approved with the column under fixed rule 5 (2026-10-23).
+
+## Which indexes serve a list of recent comments?
+- `idx_thread` (page threads skip `item_id`, `published` by hint), `created_timestamp`, `idx_author` for a member's own (11.0.36, [[comments-author-index]]); `submitted_form_info.newest_comment_id` ranks records ([[comments-widget-recent-reads]]).
 
 ## What does the step cost on a big site?
 - The column goes in with `install_add_columns_instant()` (InnoDB on MySQL 8.0.12+ / MariaDB 10.3.2+: a moment), else `install_add_column()`. An index on InnoDB is built in place.
 - The starter dumps create `comments` as MyISAM, and 2026.4.8 moves it to InnoDB unless it is over 250,000 rows or 128 MB (`table-engines-and-row-size.md`). A table still on MyISAM is copied whole by each of the three ALTERs.
-- On the first run 11.0.14 has already copied that table up to four times (three columns, one index) in the same pass. So before the column copy and before each index the step asks `install_pass_spent()`: once the pass has run a statement (counted from the pass start, earlier steps included) and the 30 s budget is spent, it pauses (`install_pause()`) and the ALTER runs in the next pass, a new request when the screen runs one version per request. A pass that ran nothing never pauses, so each pass moves on. One ALTER already started still runs to its end.
+- On the first run 11.0.14 has already copied that table up to four times in the same pass. So before the column copy and each index the step asks `install_pass_spent()`: once the pass has run a statement (earlier steps included) and the 30 s budget is spent, it pauses (`install_pause()`) and the ALTER runs in the next pass. A pass that ran nothing never pauses, so each pass moves on. An ALTER already started runs to its end.
 - `comments` is on the 2026.11.0 row of `install_heavy_tables()` for the preflight warning (`release/migration-long-steps.md`).
 
 ## Which code copies or exports whole rows?

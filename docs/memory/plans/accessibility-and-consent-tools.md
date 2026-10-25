@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19; designer checks #628 #642, statement blo
 2. Nightly a11y job, storage, SEO screen tab, API filter (M).
 3. Statement block: done (PR #688; palette Blocks › Legal › "Legal: Accessibility Statement", `legal-accessibility-statement`, six sections). PDF export of the checklist report comes with step 2's report.
 4. Consent notice: done (PR #619).
-5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the plan's one `[NEW]` changelog line goes in with the report.
+5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the report's PR body names the plan's one `[NEW]` line for the merging session.
 
 ## Open questions?
 - Level AA checks (full WCAG 2.2 AA) are a later phase; Level A plus the Turkish checklist first.

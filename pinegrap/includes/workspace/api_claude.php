@@ -570,7 +570,9 @@ function ws_api_claude_record($params)
     // record is looked up, so the refusal says nothing about the record.
     api_require_scope(ws_ai_type_scope((string) $types[$type]['tag']));
 
-    if (!ws_change_allowed($asker, $type, $record_id)) {
+    // Read as a reader: the ERP's read-only right reads an ERP account here
+    // as on the ERP screens, while change_types leaves it out.
+    if (!ws_change_allowed(ws_change_reader($asker), $type, $record_id)) {
         api_fail_not_found(lang('Record'));
     }
 
@@ -920,23 +922,38 @@ function ws_api_claude_fail($params)
     api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
 }
 
-function ws_api_channel_context($params)
+/**
+ * The reader and the channel of a read an assistant makes before it answers
+ * (the channel context, the channel's customer). Claude reads a channel or a
+ * discussion the owner of its application is not in through the person who
+ * asked it there, as that person reads it: their tags, their tasks, their
+ * rights (ws_claude_channel_asker()). Every other channel is read the way
+ * every endpoint reads one, by the owner, with the 404 of every channel route
+ * and Claude's own limit (ws_api_channel_or_404()).
+ *
+ * @param int $id the channel
+ * @return array the viewer, the channel row
+ */
+function ws_api_assistant_channel_reader($id)
 {
     $owner = ws_api_viewer();
-    $channel = ws_channel((int) $params['id']);
+    $channel = ws_channel((int) $id);
 
-    // Claude reads a channel or a discussion the owner of its application is
-    // not in through the person who asked it there, as that person reads it:
-    // their tags, their tasks (ws_claude_channel_asker()). Every other
-    // channel is read the way every endpoint reads one, by the owner.
     $viewer = ($channel && ws_api_is_claude() && ws_claude_channel_allowed($channel) && !ws_app_reads_channel($owner, $channel))
         ? ws_claude_channel_asker($channel)
         : null;
 
     if (!$viewer) {
         $viewer = $owner;
-        $channel = ws_api_channel_or_404($viewer, $params['id']);
+        $channel = ws_api_channel_or_404($viewer, $id);
     }
+
+    return array($viewer, $channel);
+}
+
+function ws_api_channel_context($params)
+{
+    list($viewer, $channel) = ws_api_assistant_channel_reader($params['id']);
 
     $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
 

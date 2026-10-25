@@ -115,6 +115,36 @@ function test_page_revisions_settings_from_row()
 	pg_assert_same(array(), pg_page_revision_settings_from_row(null));
 }
 
+// Every page column the designer's save writes, besides the tree, is in the
+// snapshot: a publish that changes only one of them (a comment setting the
+// panel sets) records a revision. The style, the tree and the schedule are
+// recorded elsewhere or not at all.
+function test_page_revisions_settings_cover_the_designer_save()
+{
+	$fn = new ReflectionFunction('pg_designer_save_page');
+	$lines = file($fn->getFileName());
+	$body = implode('', array_slice($lines, $fn->getStartLine() - 1, $fn->getEndLine() - $fn->getStartLine() + 1));
+
+	$columns = array();
+	preg_match_all("/\\\$(?:c_extra|own)\\['([a-z_]+)'\\]\\s*=/", $body, $m);
+	$columns = array_merge($columns, $m[1]);
+	pg_assert_true(preg_match('/\$own = array\((.*?)\);/s', $body, $own) === 1, 'the save lists its own columns');
+	preg_match_all("/'([a-z_]+)'\s*=>/", isset($own[1]) ? $own[1] : '', $m);
+	$columns = array_merge($columns, $m[1]);
+	foreach (pg_comment_editor_keys() as $key => $def) {
+		$columns = array_merge($columns, $def['columns']);
+	}
+	$columns = array_values(array_diff(array_unique($columns), array('page_style', 'page_tree_json', 'publish_at', 'unpublish_at')));
+
+	pg_assert_true(in_array('comments_allow_file_attachments', $columns, true), 'the comment settings are among them');
+	pg_assert_true(in_array('canonical_url', $columns, true), 'and the robots and meta columns');
+
+	$snapshot = pg_page_revision_settings_from_row(array_fill_keys($columns, 'x'));
+	foreach ($columns as $column) {
+		pg_assert_true(array_key_exists($column, $snapshot), $column . ' is in the revision\'s settings');
+	}
+}
+
 // The newest revision spares a save that changed nothing it records: the
 // tree and the settings decide, the drawn HTML does not (the renderer gives
 // a navbar or carousel a fresh id on every draw, so its hash differs between

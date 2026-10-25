@@ -1,16 +1,15 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, V1 in #1457, V2 in #1494, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 done #1457, V2 done #1494, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
 - Answer a voice recording with a quick voice recording; the assistants use voice messages too.
 
 ## What is there today?
-- Audio is a file message: `ws_attach` → `ws_message_send_file()`; `ws_file_kind()` makes `.weba .ogg .opus .m4a` audio, `.webm` video; `filePreview` (assets/js/workspace.js) draws an `<audio>`. No microphone in the composer; the chat bubble (assets/js/chat_backend.src.js) records `.webm`.
-- `ws_attach` and API `files.create` take no `parent_id` and never call `ws_message_ask_assistants()`.
+- Recording, playing and the quick voice reply are built (#1457, #1494): workspace/workspace-voice-recording.md. Uploads never call `ws_message_ask_assistants()`.
 - Assistants, MCP, webhooks, push, search and recaps (`ws_recap_transcript()`: `[file: name]`) read only `body`.
-- get_file.php: no MIME for weba/webm/ogg/oga/opus/aac (sent as attachment), no `Range` (Safari needs 206).
+- get_file.php: no `Range` (Safari needs 206).
 - Not blocked: `Permissions-Policy: microphone=(self)` (`waf_send_security_headers()`, waf.php), keep `(self)`; CSP `media-src` has `blob:`.
 
 ## What is proposed? (not approved yet)
@@ -20,9 +19,9 @@ description: Plan (2026-10-23, V1 in #1457, V2 in #1494, answers open): voice me
 - Each slice ships its API; no new scope (one would go into `ws_owner_scopes()`).
 
 ## Slices
-1. V1 record, send, play (no schema; `files.create` takes them already).
+1. Done (#1457): V1 record, send, play (no schema; `files.create` takes them already).
 2. V1b `Range` 206 in get_file.php (no schema, no `lang()`).
-3. V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
+3. Done (#1494): V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
 4. V3 transcripts (schema, ask first): table `ws_voice` (proposed: duration, peaks, transcript, status), settings card, `ws_voice_transcribe()` (proposed) run like `ws_ai_kick`/`ws_ai_job()`, then `ws_message_touch()`; `file.voice` (proposed) in `ws_api_message_file_schema()` (MCP reads it); `workspace.message.transcribed` (proposed) with `channel_id`, public channels only.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
@@ -35,4 +34,4 @@ description: Plan (2026-10-23, V1 in #1457, V2 in #1494, answers open): voice me
 5. Cap 2 or 5 minutes → 5.
 
 ## Where to start?
-- V1: MediaRecorder 32 kbit/s mono, `.weba`/`.ogg`/`.m4a` from the type made, never `.webm`; mic hidden without `getUserMedia` or while a reply bar is open; timer, Stop sends, Discard; sent by `uploadFiles()`. Player: measured duration (Chrome's WebM has none), speed 1-2×. get_file.php gets the missing audio MIME entries.
+- V1b: `Range`/206 in get_file.php (Safari); then V3 (schema, ask first).

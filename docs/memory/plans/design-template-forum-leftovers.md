@@ -1,6 +1,6 @@
 ---
 name: design-template-forum-leftovers
-description: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix #1545 done): step 4 and the comments widget move left
+description: Forum template plan (1a 1c #1473, 1b #1489, 2 #1474, 3 #1501, 5 #1526, watcher fix #1545, 4A-4B #1619, comments index #1638 done): the template move (D) and record filters (4C) left
 ---
 
 The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the template's own memory is [[design-template-forum]].
@@ -20,8 +20,10 @@ The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the t
 - The watcher fix (#1545): the form list's watcher filter accepts a designed page whose form_item_view shows the list's form ([[form-list-viewer-filter]]); My topics lists Topics you follow, the "How following works" card says they appear there; the staff note and the FAQ say a reply is signed with the profile's name (#1490); template 1.0.1.
 
 ## What is left?
-4. Recent comments mode of the comments widget: newest comments across the records a detail page shows, published for everyone, awaiting approval for staff, the viewer's own; record title and link tokens. After designable-comments 18.
-- Then the template moves to the comments widget in its own PR, and gains My replies (members) and replies awaiting approval (dashboard).
+- 4A-4B, done (#1619): the comments widget's recent mode ([[comments-widget-recent]]): newest comments of up to five chosen pages, `published` for everyone, `mine` for the member, `pending` for editors; thread title and link tokens; canvas states and samples.
+- D. The template moves to the comments widget in its own PR: the topic and doc pages place the thread widget instead of `comments_block`; Latest replies on the home page (`published`), My replies on the account area (`mine`), Replies awaiting approval on the staff dashboard (`pending`); the comment e-mail pages may place the widget (designable-comments 19). Template version bump.
+- 4C. Record filters for a list (category pages: latest replies of one board): stored under their own key `recent_filters`, the form list's filter editor shown whenever that key is not empty, one record source only. Then the board pages gain their Latest replies list.
+- Done (#1638, schema 11.0.36, owner-approved): index `idx_author (created_user_id, created_timestamp)` on `comments` for slow `mine` reads ([[comments-widget-recent-reads]]).
 
 ## Where to start?
-- Step 4 after designable-comments E.
+- D after #1619 (it builds on #1618 and #1567); 4C after D, or in parallel if the files allow.

@@ -133,6 +133,108 @@ function pg_comments_widget_drawn($page_id, $pages = null)
 }
 
 // ============================================================================
+// Who a thread is drawn for, and the editor's Preview
+// ============================================================================
+
+/**
+ * Who the widget draws a thread for. Pure.
+ *
+ * A live visitor's request reads and writes the visitor's session: the
+ * add-comment form state, the CAPTCHA, the CSRF token, the visitor's own
+ * pending comments. The search index and a background render (the editor's
+ * Preview, the SEO pass: pg_seo_rendering()) draw what a visitor who is not
+ * signed in reads, and never touch the session of the user whose request
+ * runs them.
+ *
+ * @param mixed $search     the page is drawn for the search index
+ * @param mixed $background a background render
+ * @param mixed $staff      edit access to the page
+ * @param mixed $signed_in  a signed-in visitor
+ * @return array 'staff', 'signed_in', 'session' (bool)
+ */
+function pg_comments_widget_audience($search, $background, $staff, $signed_in)
+{
+    $anonymous = (bool) $search || (bool) $background;
+
+    return array(
+        'staff' => (bool) $staff && !$anonymous,
+        'signed_in' => (bool) $signed_in && !$anonymous,
+        'session' => !$anonymous,
+    );
+}
+
+/**
+ * The comment settings the editor holds for the page it previews, saved or
+ * not: array('page_id' => int, 'columns' => column => value), the columns as
+ * pg_comment_editor_columns() gives them. pg_designer_preview_widgets() sets
+ * it around the Preview and clears it after.
+ *
+ * Pass an array with a page id to set it; pass anything else to clear it;
+ * either way the previous value comes back. Pass nothing to read (null when
+ * none is set).
+ *
+ * @param mixed $set
+ * @return array|null
+ */
+function pg_comments_preview_page($set = null)
+{
+    static $preview = null;
+
+    if (func_num_args() === 0) {
+        return $preview;
+    }
+
+    $old = $preview;
+    $page_id = (is_array($set) && isset($set['page_id']) && is_scalar($set['page_id']) && !is_bool($set['page_id'])) ? (int) $set['page_id'] : 0;
+    $preview = ($page_id > 0)
+        ? array('page_id' => $page_id, 'columns' => (isset($set['columns']) && is_array($set['columns'])) ? $set['columns'] : array())
+        : null;
+
+    return $old;
+}
+
+/**
+ * A page row with the editor's unsaved comment settings in place of the
+ * stored ones, for the page the Preview draws (pg_comments_preview_page()).
+ * Pure.
+ *
+ * Only a comment setting column (pg_comment_editor_keys()) that the row
+ * holds is replaced, as a string, the way the row reads it from the
+ * database. Another page's row, or no override, comes back as it is.
+ *
+ * @param mixed $row      the page row
+ * @param mixed $override array('page_id', 'columns'), or null
+ * @return mixed
+ */
+function pg_comments_page_override($row, $override)
+{
+    if (!is_array($row) || !is_array($override) || !isset($override['page_id'], $override['columns']) || !is_array($override['columns'])) {
+        return $row;
+    }
+
+    if (!isset($row['page_id']) || !is_scalar($override['page_id']) || ((int) $override['page_id'] <= 0)
+        || ((int) $override['page_id'] !== (int) $row['page_id'])) {
+        return $row;
+    }
+
+    $allowed = array();
+
+    foreach (pg_comment_editor_keys() as $def) {
+        foreach ($def['columns'] as $column) {
+            $allowed[$column] = true;
+        }
+    }
+
+    foreach ($override['columns'] as $column => $value) {
+        if (isset($allowed[$column]) && array_key_exists($column, $row) && is_scalar($value)) {
+            $row[$column] = (string) $value;
+        }
+    }
+
+    return $row;
+}
+
+// ============================================================================
 // Display options, the order a thread is drawn in, the featured links
 // ============================================================================
 
@@ -445,17 +547,21 @@ function pg_comments_widget_view_urls($path, $params)
  * 'chosen', 'fixed'), rating_on, files_on, watching_on, pages (the thread's
  * pages, default 1), replying (the form answers a comment), is_watcher,
  * submitter_notified (the record's submitter, told of new comments anyway),
- * manage_watchers (may manage the thread's watchers). The search index
- * stores what a visitor who is not signed in reads: no form, no sign-in
- * note, no staff, no watch box.
+ * manage_watchers (may manage the thread's watchers), email (drawn in a
+ * comment e-mail). The search index stores what a visitor who is not
+ * signed in reads: no form, no sign-in note, no staff, no watch box.
  *
  * - is_watching / not_watching: watching on for the page, signed in and not
  *   the record's submitter (who is told anyway and is not asked, as on the
  *   classic block); one of them by is_watcher.
  * - can_manage_watchers: watching on, signed in, manage_watchers.
+ * - is_email: the widget draws one comment in a comment e-mail
+ *   (_pg_comments_widget_email()). The e-mail has no visitor and no form:
+ *   every visitor, form, open-or-closed, featured and paging flag is false;
+ *   has_comments, rating_on, files_on and watching_on follow the facts.
  *
  * @param mixed $facts
- * @return array the 22 thread flags
+ * @return array the 23 thread flags
  */
 function pg_comments_widget_thread_flags($facts)
 {
@@ -465,10 +571,11 @@ function pg_comments_widget_thread_flags($facts)
     };
 
     $search = $on('search_index');
+    $email = $on('email');
     $allow_new = $on('allow_new');
-    $signed_in = $on('signed_in') && !$search;
-    $must_sign_in = $allow_new && !$on('signed_in') && $on('require_login') && !$search;
-    $can_comment = $allow_new && !$must_sign_in && !$search;
+    $signed_in = $on('signed_in') && !$search && !$email;
+    $must_sign_in = $allow_new && !$on('signed_in') && $on('require_login') && !$search && !$email;
+    $can_comment = $allow_new && !$must_sign_in && !$search && !$email;
     $count = (isset($facts['count']) && is_scalar($facts['count']) && !is_bool($facts['count'])) ? (int) $facts['count'] : 0;
     $mode = (isset($facts['featured_mode']) && is_string($facts['featured_mode'])) ? $facts['featured_mode'] : 'first';
     $name_mode = (isset($facts['name_mode']) && is_string($facts['name_mode'])) ? $facts['name_mode'] : '';
@@ -476,28 +583,29 @@ function pg_comments_widget_thread_flags($facts)
     $can_watch = $on('watching_on') && $signed_in && !$on('submitter_notified');
 
     $comments_thread_flags = array(
-        'comments_open' => $allow_new,
-        'comments_closed' => !$allow_new,
+        'comments_open' => $allow_new && !$email,
+        'comments_closed' => !$allow_new && !$email,
         'can_comment' => $can_comment,
         'must_sign_in' => $must_sign_in,
         'is_signed_in' => $signed_in,
-        'is_signed_out' => !$signed_in,
+        'is_signed_out' => !$signed_in && !$email,
         'has_comments' => ($count > 0),
         'no_comments' => ($count === 0),
-        'featured_view' => $on('featured_view'),
-        'has_featured' => ($mode !== 'none') && $on('has_featured'),
-        'is_staff' => $on('staff') && !$search,
+        'featured_view' => $on('featured_view') && !$email,
+        'has_featured' => ($mode !== 'none') && $on('has_featured') && !$email,
+        'is_staff' => $on('staff') && !$search && !$email,
         'name_is_typed' => $can_comment && ($name_mode === 'typed'),
         'name_is_chosen' => $can_comment && ($name_mode === 'chosen'),
         'name_is_fixed' => $can_comment && ($name_mode === 'fixed'),
         'rating_on' => $on('rating_on'),
         'files_on' => $on('files_on'),
         'watching_on' => $on('watching_on'),
-        'has_more_pages' => ($pages > 1),
+        'has_more_pages' => ($pages > 1) && !$email,
         'is_replying' => $can_comment && $on('replying'),
         'is_watching' => $can_watch && $on('is_watcher'),
         'not_watching' => $can_watch && !$on('is_watcher'),
         'can_manage_watchers' => $on('watching_on') && $signed_in && $on('manage_watchers'),
+        'is_email' => $email,
     );
 
     return $comments_thread_flags;
@@ -976,6 +1084,360 @@ function pg_comments_nested_record_decision($top, $children, $types)
     }
 
     return false;
+}
+
+/**
+ * What one tree places: the shared components and widgets (id => number of
+ * placements) and the fixed comments blocks (regions of type comments_block).
+ * A placement is not walked into: what a component places is its own tree's
+ * (pg_comments_component_census()). Pure.
+ *
+ * @param mixed $tree
+ * @return array 'refs' => id => placements, 'blocks' => int
+ */
+function pg_comments_tree_census($tree)
+{
+    $census = array('refs' => array(), 'blocks' => 0);
+    _pg_comments_census_walk($tree, $census, 0);
+
+    return $census;
+}
+
+/**
+ * pg_comments_tree_census()'s walk.
+ *
+ * @param mixed $node
+ * @param array $census
+ * @param int   $depth
+ */
+function _pg_comments_census_walk($node, &$census, $depth)
+{
+    if (!is_array($node) || ($depth > 200)) {
+        return;
+    }
+
+    $type = (isset($node['type']) && is_string($node['type'])) ? $node['type'] : '';
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+
+    if ($type === 'shared_ref') {
+        $sid = (isset($props['sharedId']) && is_scalar($props['sharedId']) && !is_bool($props['sharedId'])) ? (int) $props['sharedId'] : 0;
+
+        if ($sid > 0) {
+            $census['refs'][$sid] = (isset($census['refs'][$sid]) ? $census['refs'][$sid] : 0) + 1;
+        }
+
+        return;
+    }
+
+    if (($type === 'region') && isset($props['regionType']) && ($props['regionType'] === 'comments_block')) {
+        $census['blocks']++;
+    }
+
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            _pg_comments_census_walk($child, $census, $depth + 1);
+        }
+    }
+}
+
+/**
+ * The shared components and widgets a page reaches from its own placements
+ * ($ids), each read once, breadth first: one query per level, at most 8
+ * levels and 500 components, as pg_comments_page_nested_record() always read
+ * them.
+ *
+ * @param mixed $ids the component ids the page places
+ * @return array id => array('type' => its kind (pg_sw_widget_kind(): '' for
+ *               none, 'comments_recent' for a list of recent comments),
+ *               'census' => pg_comments_tree_census() of its tree)
+ */
+function pg_comments_component_census($ids)
+{
+    $out = array();
+    $asked = array();
+    $level = array();
+
+    foreach ((is_array($ids) ? $ids : array()) as $id) {
+        $id = (is_scalar($id) && !is_bool($id)) ? (int) $id : 0;
+
+        if ($id > 0) {
+            $level[$id] = true;
+        }
+    }
+
+    $level = array_keys($level);
+    $read = 0;
+
+    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
+        $now = array();
+
+        foreach ($level as $id) {
+            if (!isset($asked[$id])) {
+                $asked[$id] = true;
+                $now[] = (int) $id;
+            }
+        }
+
+        if (!$now) {
+            break;
+        }
+
+        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $now) . ")");
+        $next = array();
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) $row['id'];
+            $cfg = json_decode((string) $row['system_region_config'], true);
+            $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
+            // The kind, so a list of recent comments ('comments_recent') is
+            // not counted as a second thread.
+            $out[$id] = array(
+                'type' => pg_sw_widget_kind($cfg),
+                'census' => $census,
+            );
+
+            foreach (array_keys($census['refs']) as $child) {
+                if (!isset($asked[$child])) {
+                    $next[$child] = true;
+                }
+            }
+
+            if (++$read >= 500) {
+                break;
+            }
+        }
+
+        $level = array_keys($next);
+    }
+
+    return $out;
+}
+
+/**
+ * What a page shows of comments, from its own tree's census ($top,
+ * pg_comments_tree_census()) and the components it reaches ($components,
+ * pg_comments_component_census()). Pure.
+ *
+ * - widgets: the page's own placements of comments widgets, each counted,
+ *   and the comments widgets placed in each component the page reaches
+ *   (each component read once, at most 8 levels down). Two placements of one
+ *   component that holds a comments widget count that widget once: the
+ *   number is an approximation that errs on the low side.
+ * - blocks: the fixed comments blocks of the page and of the components it
+ *   reaches.
+ * - nested_record: a form_item_view widget below the top level
+ *   (pg_comments_nested_record_decision()).
+ * - top_record: a form_item_view widget placed on the page itself, the one
+ *   whose record the thread is then.
+ *
+ * @param mixed $top
+ * @param mixed $components
+ * @return array 'widgets' (int), 'blocks' (int), 'nested_record' (bool),
+ *               'top_record' (bool)
+ */
+function pg_comments_page_census_facts($top, $components)
+{
+    $top = is_array($top) ? $top : array();
+    $components = is_array($components) ? $components : array();
+    $refs_of = function ($census) {
+        $refs = (is_array($census) && isset($census['refs']) && is_array($census['refs'])) ? $census['refs'] : array();
+        $out = array();
+
+        foreach ($refs as $id => $count) {
+            if ((int) $id > 0) {
+                $out[(int) $id] = (is_scalar($count) && !is_bool($count)) ? max(0, (int) $count) : 0;
+            }
+        }
+
+        return $out;
+    };
+    $blocks_of = function ($census) {
+        return (is_array($census) && isset($census['blocks']) && is_scalar($census['blocks'])) ? max(0, (int) $census['blocks']) : 0;
+    };
+    $types = array();
+    $children = array();
+
+    foreach ($components as $id => $component) {
+        $id = (int) $id;
+        $types[$id] = (is_array($component) && isset($component['type']) && is_string($component['type'])) ? $component['type'] : '';
+        $children[$id] = $refs_of(is_array($component) && isset($component['census']) ? $component['census'] : null);
+    }
+
+    $type = function ($id) use ($types) {
+        return isset($types[$id]) ? $types[$id] : '';
+    };
+    $top_refs = $refs_of($top);
+    $widgets = 0;
+    $blocks = $blocks_of($top);
+    $top_record = false;
+    $queue = array();
+    $seen = array();
+
+    foreach ($top_refs as $id => $count) {
+        if ($type($id) === 'comments') {
+            $widgets += $count;
+        }
+
+        if ($type($id) === 'form_item_view') {
+            $top_record = true;
+        }
+
+        $seen[$id] = true;
+        $queue[] = array($id, 0);
+    }
+
+    for ($i = 0; $i < count($queue); $i++) {
+        list($id, $depth) = $queue[$i];
+
+        if (isset($components[$id]['census'])) {
+            $blocks += $blocks_of($components[$id]['census']);
+        }
+
+        if (($depth >= 8) || !isset($children[$id])) {
+            continue;
+        }
+
+        foreach ($children[$id] as $child => $count) {
+            if ($type($child) === 'comments') {
+                $widgets += $count;
+            }
+
+            if (!isset($seen[$child])) {
+                $seen[$child] = true;
+                $queue[] = array($child, $depth + 1);
+            }
+        }
+    }
+
+    $child_ids = array();
+
+    foreach ($children as $id => $list) {
+        $child_ids[$id] = array_keys($list);
+    }
+
+    return array(
+        'widgets' => $widgets,
+        'blocks' => $blocks,
+        'nested_record' => pg_comments_nested_record_decision(array_keys($top_refs), $child_ids, $types),
+        'top_record' => $top_record,
+    );
+}
+
+/**
+ * The save warnings a page's comments call for, in order. Pure.
+ *
+ * None without a comments widget. Then: 'block' (the fixed comments block
+ * too: the widget claims the page and the block prints nothing), 'widgets'
+ * (more than one: only the first draws), 'nested_record' (a form_item_view
+ * below the top level and none on the page: the widget fails closed),
+ * 'off' (comments are off for the page).
+ *
+ * A comment e-mail page ('email_page': another page names it as its
+ * submitter or watcher e-mail page) draws no thread of its own: its widget
+ * draws the comment an e-mail names, whatever its own comment settings,
+ * fixed block or record widget. Only 'widgets' applies to it.
+ *
+ * @param mixed $facts pg_comments_page_census_facts() plus 'comments_on'
+ *                     and 'email_page'
+ * @return string[]
+ */
+function pg_comments_save_warning_codes($facts)
+{
+    if (!is_array($facts)) {
+        return array();
+    }
+
+    $widgets = (isset($facts['widgets']) && is_scalar($facts['widgets'])) ? (int) $facts['widgets'] : 0;
+
+    if ($widgets <= 0) {
+        return array();
+    }
+
+    if (!empty($facts['email_page'])) {
+        return ($widgets > 1) ? array('widgets') : array();
+    }
+
+    $codes = array();
+
+    if (!empty($facts['blocks'])) {
+        $codes[] = 'block';
+    }
+
+    if ($widgets > 1) {
+        $codes[] = 'widgets';
+    }
+
+    if (!empty($facts['nested_record']) && empty($facts['top_record'])) {
+        $codes[] = 'nested_record';
+    }
+
+    if (empty($facts['comments_on'])) {
+        $codes[] = 'off';
+    }
+
+    return $codes;
+}
+
+/**
+ * The words of a save warning (pg_comments_save_warning_codes()), '' for an
+ * unknown code. Pure but for the translation.
+ *
+ * @param string $code
+ * @param mixed  $page_name
+ * @param mixed  $widgets   the number of comments widgets on the page
+ * @return string
+ */
+function pg_comments_save_warning_text($code, $page_name, $widgets)
+{
+    $name = is_scalar($page_name) ? (string) $page_name : '';
+    $count = is_scalar($widgets) ? (int) $widgets : 0;
+
+    switch ($code) {
+        case 'block':
+            return lang(array('string' => 'The page "{var:1}" shows a Comments widget and the fixed comments block: only the widget draws the comments.', 'vars' => array($name)));
+        case 'widgets':
+            return lang(array('string' => 'The page "{var:1}" shows {var:2} Comments widgets: only the first draws the comments.', 'vars' => array($name, $count)));
+        case 'nested_record':
+            return lang(array('string' => 'The page "{var:1}" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.', 'vars' => array($name)));
+        case 'off':
+            return lang(array('string' => 'Comments are off for the page "{var:1}": its Comments widget draws nothing. Turn them on in the widget\'s comment settings.', 'vars' => array($name)));
+    }
+
+    return '';
+}
+
+/**
+ * The warnings a page's save gives about comments that are not drawn as the
+ * operator may expect: the page's tree (as it is saved), whether the page
+ * takes comments, its name and, for a saved page, its id. Reads the
+ * components the page reaches only when it places any, and asks whether a
+ * saved page is a comment e-mail page (pg_comments_is_email_page()) only
+ * once a comments widget is found.
+ *
+ * @param mixed  $tree
+ * @param mixed  $comments_on
+ * @param string $page_name
+ * @param mixed  $page_id     0 for a page not saved yet
+ * @return string[]
+ */
+function pg_comments_save_warnings($tree, $comments_on, $page_name, $page_id = 0)
+{
+    $census = pg_comments_tree_census($tree);
+
+    if (!$census['refs']) {
+        return array();
+    }
+
+    $facts = pg_comments_page_census_facts($census, pg_comments_component_census(array_keys($census['refs'])))
+        + array('comments_on' => (bool) $comments_on);
+    $facts['email_page'] = ($facts['widgets'] > 0) && pg_comments_is_email_page($page_id);
+    $out = array();
+
+    foreach (pg_comments_save_warning_codes($facts) as $code) {
+        $out[] = pg_comments_save_warning_text($code, $page_name, $facts['widgets']);
+    }
+
+    return $out;
 }
 
 /**
@@ -2732,7 +3194,13 @@ function pg_comments_default_tree()
  *   comment_watchers, comment_pagination markup, '' when off (the container
  *   is then dropped);
  * - slots: the form's internal slots, already escaped;
- * - edit_chips: draw the edit pencil on each comment.
+ * - edit_chips: draw the edit pencil on each comment;
+ * - recent: a list of recent comments (widgets_comments_recent.php): each
+ *   comment stands on another page, so no row gets its anchor
+ *   (id="c-<id>", data-pg-comment-depth) or its anchor links, the output has
+ *   no #software_comments anchor, and the fallback rows go in a list-group;
+ * - default_tree: the default layout whose loop_area is the fallback
+ *   (pg_comments_default_tree() when none is given).
  *
  * Each value is escaped once (pg_comments_widget_escape()) and filled in one
  * strtr() pass, so a visitor's text never forms a token. A stored layout
@@ -2763,6 +3231,7 @@ function pg_comments_widget_draw($tree, $data)
     };
 
     $widget_id = isset($data['widget_id']) ? (int) $data['widget_id'] : 0;
+    $recent = !empty($data['recent']);
     $thread_values = $list('thread_values');
     $sections = $list('sections') + array('comment_captcha' => '', 'comment_rating_input' => '', 'comment_publish' => '',
         'comment_watchers' => '', 'comment_pagination' => '');
@@ -2809,7 +3278,7 @@ function pg_comments_widget_draw($tree, $data)
     $rows = ($designed_loop && !is_array($loop_children)) ? array() : $list('rows');
 
     if ($fallback) {
-        $default = _split_widget_tree(pg_comments_default_tree());
+        $default = _split_widget_tree((isset($data['default_tree']) && is_array($data['default_tree'])) ? $data['default_tree'] : pg_comments_default_tree());
         $loop_children = $default['loop_children'];
     }
 
@@ -2839,17 +3308,26 @@ function pg_comments_widget_draw($tree, $data)
         $html = _pg_sw_resolve_visibility($loop_tpl, $comments_row_flags + $comments_thread_flags + $internal);
 
         // The date takes the design's format the way a record's date field
-        // does, before any visitor text is in the markup.
+        // does, before any visitor text is in the markup. An e-mail fills
+        // it itself: the record rules would write a relative time, and the
+        // signed-in sender's own time zone, into mail read later elsewhere.
         if (($datetime !== '') && (strpos($html, '^^__comment_datetime^^') !== false)) {
-            $html = pg_sw_apply_tokens($html, array('__comment_datetime' => $datetime), array(), array(),
-                array('__comment_datetime' => array('label' => '', 'sql' => '', 'type' => 'date and time', 'join' => array())));
+            if (!empty($comments_thread_flags['is_email'])) {
+                $html = pg_comments_email_fill_datetime($html, $datetime);
+            } else {
+                $html = pg_sw_apply_tokens($html, array('__comment_datetime' => $datetime), array(), array(),
+                    array('__comment_datetime' => array('label' => '', 'sql' => '', 'type' => 'date and time', 'join' => array())));
+            }
         }
 
         $html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, pg_comments_widget_escape($values + $thread_values)));
         $html = pg_sw_hide_empty_fields($html);
         $html = pg_sw_uniquify_row_ids($html, $widget_id, $id);
-        $html = pg_comments_row_root_id($html, $id, isset($row['depth']) ? (int) $row['depth'] : 0);
-        $html = pg_comments_row_anchor_links($html, $widget_id, $id);
+
+        if (!$recent) {
+            $html = pg_comments_row_root_id($html, $id, isset($row['depth']) ? (int) $row['depth'] : 0);
+            $html = pg_comments_row_anchor_links($html, $widget_id, $id);
+        }
 
         $edit_url = (isset($values['__comment_edit_url']) && is_scalar($values['__comment_edit_url'])) ? (string) $values['__comment_edit_url'] : '';
 
@@ -2865,7 +3343,7 @@ function pg_comments_widget_draw($tree, $data)
     $static = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_comments_widget_escape($thread_values) + $slots));
 
     if ($fallback && ($rows_html !== '')) {
-        $rows_html = '<div class="pg-comments-list">' . $rows_html . '</div>';
+        $rows_html = '<div class="pg-comments-list' . ($recent ? ' list-group list-group-flush' : '') . '">' . $rows_html . '</div>';
     }
 
     // The page links, when the design placed no comment_pagination section
@@ -2898,7 +3376,573 @@ function pg_comments_widget_draw($tree, $data)
 
     // After the rows are in: a box the design marked pg-hide-if-empty around
     // the list goes when there are none.
-    return '<a id="software_comments"></a>' . pg_sw_hide_empty_fields($html);
+    return ($recent ? '' : '<a id="software_comments"></a>') . pg_sw_hide_empty_fields($html);
+}
+
+// ============================================================================
+// The comment e-mails
+// ============================================================================
+
+/**
+ * Whether a comments widget on a comment e-mail page may draw this comment
+ * for this e-mail. Pure.
+ *
+ * Only the submitter and watcher e-mails (includes/fn/mail.php) name a
+ * comment, and only to an e-mail page that places a comments widget. The
+ * widget draws it when all of these hold, else it prints nothing and the
+ * e-mail keeps its fixed comment markup:
+ * - the e-mail page is a page id (_pg_comments_widget_page_key()) and the
+ *   comment has an id;
+ * - the comment is published;
+ * - it belongs to a page's own thread (item type '') or to a form record's
+ *   ('submitted_form'): product, product group and event threads keep the
+ *   fixed markup, as the widget does not draw per-item threads;
+ * - $page is the row of the page the comment was posted on;
+ * - the e-mail page is that page's watcher e-mail page, or, for a record's
+ *   comment, its submitter e-mail page. A comment named to any other page is
+ *   not drawn there.
+ *
+ * @param mixed $comment       the comment's row (pg_comments_email_rows())
+ * @param mixed $page          its thread page's row
+ * @param mixed $email_page_id the e-mail page being drawn
+ * @return bool
+ */
+function pg_comments_email_decision($comment, $page, $email_page_id)
+{
+    $email_page = _pg_comments_widget_page_key($email_page_id);
+
+    if (($email_page <= 0) || !is_array($comment) || !is_array($page)) {
+        return false;
+    }
+
+    if ((_pg_comments_row_int($comment, 'id') <= 0) || (_pg_comments_row_text($comment, 'published') !== '1')) {
+        return false;
+    }
+
+    $type = _pg_comments_row_text($comment, 'item_type');
+
+    if (!in_array($type, array('', 'submitted_form'), true)) {
+        return false;
+    }
+
+    $page_id = _pg_comments_row_int($page, 'page_id');
+
+    if (($page_id <= 0) || ($page_id !== _pg_comments_row_int($comment, 'page_id'))) {
+        return false;
+    }
+
+    $settings = pg_comments_settings($page);
+
+    return ($settings['watcher_email_page_id'] === $email_page)
+        || (($type === 'submitted_form') && ($settings['submitter_email_page_id'] === $email_page));
+}
+
+/**
+ * The one comment of a comment e-mail as the flat layout draws it: depth 0,
+ * its own top-level comment, no replies drawn, quoting the comment it
+ * answers when that one is given ($parent: a row with another id). The
+ * featured mark counts unless the widget's featured mode is 'none'. The
+ * shape of pg_comments_widget_order()'s entries. Pure.
+ *
+ * @param mixed $row           the comment's row
+ * @param mixed $parent        the row of the comment it answers, or null
+ * @param mixed $featured_mode pg_comments_widget_options()'s 'featured'
+ * @return array
+ */
+function pg_comments_email_entry($row, $parent, $featured_mode)
+{
+    $row = is_array($row) ? $row : array();
+    $id = _pg_comments_row_int($row, 'id');
+    $parent_id = is_array($parent) ? _pg_comments_row_int($parent, 'id') : 0;
+
+    if ($parent_id === $id) {
+        $parent_id = 0;
+    }
+
+    return array(
+        'row' => $row,
+        'id' => $id,
+        'parent_id' => $parent_id,
+        'depth' => 0,
+        'root_id' => $id,
+        'replies' => 0,
+        'featured' => ($featured_mode !== 'none') && _pg_comments_setting_is($row, 'featured', 1),
+        'quoted' => ($parent_id > 0),
+    );
+}
+
+/**
+ * The tokens of a comment e-mail's comment about its place in the thread,
+ * raw (the token escape does h()): pg_comments_widget_link_values()'s keys,
+ * every link absolute. Pure but for the translation.
+ *
+ * - __comment_url: $base . pg_comment_view_query($query, id) . '#c-<id>',
+ *   the address of the fixed e-mail's "View or Reply" link: every comment
+ *   shows, and a comments widget opens the page of the thread that holds it.
+ * - __comment_reply_url: $base . $query with reply_to=<id>, ending at
+ *   #software_add_comment, when the comment may be answered there
+ *   ($reply_ok), else ''.
+ * - __comment_parent_id, __comment_parent_name (Anonymous when it has no
+ *   name), __comment_parent_url (its permalink, built the same way): '' for
+ *   a comment that answers none given ($parent null).
+ * - __comment_quote: the start of the answered comment's words when the
+ *   entry quotes it, else ''.
+ * - __comment_depth, __comment_reply_count: as text.
+ *
+ * @param mixed $base     the thread page's absolute address
+ *                        (URL_SCHEME . HOSTNAME_SETTING . PATH . its name)
+ * @param mixed $query    what the page needs to show the item
+ *                        (get_query_string_for_page_url(): '' or '?r=...')
+ * @param mixed $entry    pg_comments_email_entry()
+ * @param mixed $parent   the answered comment's row, or null
+ * @param bool  $reply_ok pg_comments_email_reply_ok()
+ * @return array
+ */
+function pg_comments_email_link_values($base, $query, $entry, $parent, $reply_ok)
+{
+    $entry = is_array($entry) ? $entry : array();
+    $base = (is_scalar($base) && !is_bool($base)) ? (string) $base : '';
+    $query = (is_scalar($query) && !is_bool($query)) ? (string) $query : '';
+    $id = _pg_comments_row_int($entry, 'id');
+    $parent_id = is_array($parent) ? _pg_comments_row_int($parent, 'id') : 0;
+    $parent_id = ($parent_id === $id) ? 0 : $parent_id;
+    $parent_name = ($parent_id > 0) ? _pg_comments_row_text($parent, 'name') : '';
+    $permalink = function ($comment_id) use ($base, $query) {
+        return $base . pg_comment_view_query($query, $comment_id) . '#c-' . $comment_id;
+    };
+
+    $comment_links = array(
+        '__comment_url' => ($id > 0) ? $permalink($id) : '',
+        '__comment_reply_url' => ($reply_ok && ($id > 0))
+            ? $base . $query . ((mb_strpos($query, '?') === false) ? '?' : '&') . 'reply_to=' . $id . '#software_add_comment'
+            : '',
+        '__comment_parent_id' => ($parent_id > 0) ? (string) $parent_id : '',
+        '__comment_parent_name' => ($parent_id > 0) ? (($parent_name !== '') ? $parent_name : lang('Anonymous')) : '',
+        '__comment_parent_url' => ($parent_id > 0) ? $permalink($parent_id) : '',
+        '__comment_quote' => (!empty($entry['quoted']) && ($parent_id > 0)) ? pg_comments_quote_excerpt(_pg_comments_row_text($parent, 'message')) : '',
+        '__comment_depth' => (string) _pg_comments_row_int($entry, 'depth'),
+        '__comment_reply_count' => (string) _pg_comments_row_int($entry, 'replies'),
+    );
+
+    return $comment_links;
+}
+
+/**
+ * Whether a comment e-mail offers a reply link: the thread page takes
+ * comments and new ones on this thread, replies are stored (11.0.31,
+ * pg_comment_replies_ready()), and the thread page itself draws the
+ * comments widget, whose form takes ?reply_to= (the classic block ignores
+ * it, so a reply would post as a comment of its own there). The page checks
+ * ?reply_to= again when the visitor arrives. Pure.
+ *
+ * @param mixed $enabled       the thread page's comments are on
+ * @param mixed $allow_new     the thread takes new comments
+ * @param mixed $replies_ready
+ * @param mixed $widget_thread the thread page draws it in a comments widget
+ * @return bool
+ */
+function pg_comments_email_reply_ok($enabled, $allow_new, $replies_ready, $widget_thread)
+{
+    return (bool) $enabled && (bool) $allow_new && (bool) $replies_ready && (bool) $widget_thread;
+}
+
+/**
+ * The thread tokens of a comment e-mail, raw: one comment, the thread
+ * page's label, intro and closed message; the visitor's (the featured and
+ * sign-in links, the name they post as, the comment they answer, the
+ * watcher count) are ''. Pure but for the translation.
+ *
+ * @param mixed $settings pg_comments_settings() of the thread page
+ * @return array
+ */
+function pg_comments_email_thread_values($settings)
+{
+    $settings = is_array($settings) ? $settings : array();
+    $text = function ($key) use ($settings) {
+        return (isset($settings[$key]) && is_scalar($settings[$key]) && !is_bool($settings[$key])) ? (string) $settings[$key] : '';
+    };
+    $label = $text('label');
+
+    return array(
+        '__comments_title' => '1 ' . get_comment_label(array('label' => $label, 'number' => 1)),
+        '__comments_count' => '1',
+        '__comments_label' => get_comment_label(array('label' => $label)),
+        '__comments_label_plural' => get_comment_label(array('label' => $label, 'number' => 2)),
+        '__comments_intro' => $text('message'),
+        '__comments_closed_message' => ($text('closed_message') !== '') ? $text('closed_message') : lang("We're sorry. New comments are no longer being accepted."),
+        '__comments_show_all_url' => '',
+        '__comments_show_featured_url' => '',
+        '__login_url' => '',
+        '__comment_author_name' => '',
+        '__reply_to_name' => '',
+        '__watcher_count_text' => '',
+    );
+}
+
+/**
+ * A comment's stars for an e-mail (^^__comment_stars_html^^): the same span
+ * and words as pg_comments_stars_html(), with star characters in place of
+ * the drawings, which mail clients leave out. '' for a rating outside 1-5.
+ * Pure but for the translation.
+ *
+ * @param mixed $rating
+ * @return string
+ */
+function pg_comments_stars_text_html($rating)
+{
+    $n = _pg_comments_rating_value($rating);
+
+    if ($n === 0) {
+        return '';
+    }
+
+    return '<span class="pg-comment-stars" role="img" aria-label="' . h(lang(array('string' => 'Rated {var:1} out of 5', 'vars' => $n))) . '">'
+        . str_repeat('&#9733;', $n) . str_repeat('&#9734;', 5 - $n) . '</span>';
+}
+
+/**
+ * The values a comment e-mail's comment takes in place of a live page's,
+ * raw. Pure but for the translation.
+ *
+ * - __comment_date, __comment_seller_reply_date: the absolute dates the
+ *   sender gives ($dates 'date', 'seller_reply_date'), whatever the page's
+ *   date setting: "a moment ago" is wrong once the e-mail is read later.
+ * - __comment_file_url: the file on the site's address ($site_base, raw:
+ *   URL_SCHEME . HOSTNAME_SETTING . PATH) when the comment has one, else
+ *   ''.
+ * - __comment_stars_html: text stars (pg_comments_stars_text_html()).
+ * - __comment_staff_name, __comment_edit_url, __comment_status: '', for
+ *   nobody is staff in an e-mail and only a published comment is drawn.
+ *
+ * @param mixed $row       the comment's row
+ * @param mixed $flags     pg_comments_widget_row_flags()
+ * @param mixed $site_base the site's absolute address
+ * @param mixed $dates     'date', 'seller_reply_date'
+ * @return array
+ */
+function pg_comments_email_row_values($row, $flags, $site_base, $dates)
+{
+    $flags = is_array($flags) ? $flags : array();
+    $dates = is_array($dates) ? $dates : array();
+    $site_base = (is_scalar($site_base) && !is_bool($site_base)) ? (string) $site_base : '';
+    $date = function ($key) use ($dates) {
+        return (isset($dates[$key]) && is_scalar($dates[$key]) && !is_bool($dates[$key])) ? (string) $dates[$key] : '';
+    };
+    $file_name = _pg_comments_row_text($row, 'file_name');
+
+    return array(
+        '__comment_date' => $date('date'),
+        '__comment_seller_reply_date' => $date('seller_reply_date'),
+        '__comment_file_url' => (!empty($flags['comment_has_file']) && ($file_name !== '') && ($site_base !== '')) ? $site_base . encode_url_path($file_name) : '',
+        '__comment_stars_html' => !empty($flags['comment_has_rating']) ? pg_comments_stars_text_html(_pg_comments_row_text($row, 'rating')) : '',
+        '__comment_staff_name' => '',
+        '__comment_edit_url' => '',
+        '__comment_status' => '',
+    );
+}
+
+/**
+ * Fill every ^^__comment_datetime^^ of a comment e-mail's row markup with
+ * the comment's time ($datetime, 'Y-m-d H:i:s' in the site's zone), escaped
+ * as the token escape writes a value. Pure but for the translation of the
+ * default format.
+ *
+ * The design's %%format%% is kept, written with date() in the site's time
+ * zone; no format and the 'relative' one take the default display shape
+ * (pg_sw_default_date_format()). The record date rules
+ * (prepare_form_data_for_output()) are not used: they would freeze a
+ * relative time at sending ("a moment ago" once the e-mail is read later)
+ * and, for a signed-in sender with a zone of their own, write the tooltip
+ * and any zone format (T, e) in the sender's zone, not the recipients'
+ * site's. A $datetime that does not read as a time leaves the markup alone
+ * for the token sweep.
+ *
+ * @param mixed $html
+ * @param mixed $datetime
+ * @return mixed the markup, or $html when it is not a string
+ */
+function pg_comments_email_fill_datetime($html, $datetime)
+{
+    if (!is_string($html) || !is_string($datetime) || ($datetime === '')) {
+        return $html;
+    }
+
+    $timestamp = strtotime($datetime);
+
+    if ($timestamp === false) {
+        return $html;
+    }
+
+    return preg_replace_callback('/\^\^__comment_datetime\^\^(?:%%(.*?)%%)?/', function ($match) use ($timestamp) {
+        // A format typed into the rich-text editor may carry HTML entities,
+        // which date() would read as format characters.
+        $format = isset($match[1]) ? unhtmlspecialchars($match[1]) : '';
+
+        if (($format === '') || ($format === 'relative')) {
+            $format = pg_sw_default_date_format('date and time');
+        }
+
+        return h(date($format, $timestamp));
+    }, $html);
+}
+
+/**
+ * Whether the e-mail branch leaves a node out of the widget's tree: a
+ * semantic form, input, select, textarea or button, a button component
+ * drawn as a button or an input, a node shown only while the form answers
+ * a comment (is_replying), and the control that stops answering
+ * (comment_reply_cancel). An e-mail holds no form and no control that needs
+ * the page's script; links stay. Pure. The canvas twin is
+ * _sdCommentsEmailDrops() in assets/js/style_designer.js.
+ *
+ * @param mixed $node
+ * @return bool
+ */
+function pg_comments_email_drops($node)
+{
+    if (!is_array($node)) {
+        return false;
+    }
+
+    $type = (isset($node['type']) && is_string($node['type'])) ? $node['type'] : '';
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+    $bindings = (isset($props['_bindings']) && is_array($props['_bindings'])) ? $props['_bindings'] : array();
+
+    if ($type === 'semantic') {
+        $tag = (isset($props['tag']) && is_string($props['tag'])) ? strtolower($props['tag']) : '';
+
+        if (in_array($tag, array('form', 'input', 'select', 'textarea', 'button'), true)) {
+            return true;
+        }
+    }
+
+    if (($type === 'component') && isset($props['componentType']) && ($props['componentType'] === 'btn')) {
+        $element = (isset($props['btnElement']) && is_string($props['btnElement'])) ? $props['btnElement'] : 'a';
+
+        if (($element === 'button') || ($element === 'input')) {
+            return true;
+        }
+    }
+
+    if (isset($bindings['eo_visible_if']) && ($bindings['eo_visible_if'] === 'is_replying')) {
+        return true;
+    }
+
+    return isset($bindings['action']) && ($bindings['action'] === 'comment_reply_cancel');
+}
+
+/**
+ * Whether a node is a control _pg_member_drop_controls() reads: a semantic
+ * input, select, textarea or button, or a button component.
+ *
+ * @param mixed $node
+ * @return bool
+ */
+function _pg_comments_email_is_control($node)
+{
+    if (!is_array($node) || !isset($node['type'])) {
+        return false;
+    }
+
+    if ($node['type'] === 'semantic') {
+        $tag = (isset($node['props']['tag']) && is_string($node['props']['tag'])) ? strtolower($node['props']['tag']) : '';
+        return in_array($tag, array('input', 'select', 'textarea', 'button'), true);
+    }
+
+    return ($node['type'] === 'component') && isset($node['props']['componentType']) && ($node['props']['componentType'] === 'btn');
+}
+
+/**
+ * Take out of a comments widget's tree, before an e-mail draws it, every
+ * node pg_comments_email_drops() names. Pure.
+ *
+ * Forms, the "Replying to" box and the cancel control go with what they
+ * hold; fields and buttons go with their <label for> and the wrapper they
+ * leave empty (_pg_member_drop_controls()); a wrapper a form leaves empty
+ * goes too. The flags already hide most of them in an e-mail: this also
+ * removes what a flag keeps for the page's script (a "Replying to" box with
+ * the hidden attribute, which mail clients ignore) and any control a
+ * design placed outside a form.
+ *
+ * @param mixed $tree
+ * @return void
+ */
+function pg_comments_email_strip(&$tree)
+{
+    if (!is_array($tree)) {
+        return;
+    }
+
+    _pg_comments_email_strip_walk($tree, 0);
+    _pg_member_drop_controls($tree, function ($tag, $attrs, $node) {
+        return pg_comments_email_drops($node);
+    });
+}
+
+/**
+ * pg_comments_email_strip()'s walk over one node's children: the nodes it
+ * drops that are not controls (forms, replying boxes, a cancel link) leave,
+ * and a semantic wrapper they leave empty is marked as
+ * _pg_member_drop_controls() marks one, so it leaves too.
+ *
+ * @param array $node
+ * @param int   $depth
+ * @return void
+ */
+function _pg_comments_email_strip_walk(&$node, $depth)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children']) || ($depth > 200)) {
+        return;
+    }
+
+    $kept = array();
+
+    foreach ($node['children'] as $child) {
+        if (pg_comments_email_drops($child) && !_pg_comments_email_is_control($child)) {
+            continue;
+        }
+
+        _pg_comments_email_strip_walk($child, $depth + 1);
+        $kept[] = $child;
+    }
+
+    if (!$kept && isset($node['type']) && ($node['type'] === 'semantic')) {
+        $node['props']['_pg_member_empty'] = true;
+    }
+
+    $node['children'] = array_values(array_filter($kept, function ($child) {
+        return !(is_array($child) && !empty($child['props']['_pg_member_empty']));
+    }));
+}
+
+/**
+ * What pg_comments_widget_draw() takes to draw one comment in a comment
+ * e-mail, from the comment, the published comment it answers (or null), its
+ * thread page's row and the widget's options. Pure but for the translation.
+ *
+ * Nobody reads it: no staff, no pending comment, no own comment, no form,
+ * no watch or staff control, no server section; the reply link only when
+ * the comment may be answered ($env 'reply_ok'). The facts the renderer
+ * reads go in $env: widget_id, allow_new (pg_comments_allow_new()),
+ * reply_ok (pg_comments_email_reply_ok()), base and query
+ * (pg_comments_email_link_values()), site (the site's absolute address),
+ * dates (pg_comments_email_row_values()), badge_label (the site's).
+ * ^^__comment_datetime^^ is always given: the comment's time, which the
+ * draw writes with pg_comments_email_fill_datetime() (flag is_email).
+ *
+ * @param mixed $comment the comment's row
+ * @param mixed $parent  the answered comment's row, or null
+ * @param mixed $page    the thread page's row
+ * @param mixed $cfg     the widget's system_region_config
+ * @param mixed $env
+ * @return array
+ */
+function pg_comments_email_draw_data($comment, $parent, $page, $cfg, $env)
+{
+    $comment = is_array($comment) ? $comment : array();
+    $parent = is_array($parent) ? $parent : null;
+    $env = is_array($env) ? $env : array();
+    $settings = pg_comments_settings($page);
+    $options = pg_comments_widget_options($cfg);
+    $allow_new = !empty($env['allow_new']);
+    $reply_ok = !empty($env['reply_ok']);
+    $badge_label = (isset($env['badge_label']) && is_scalar($env['badge_label'])) ? (string) $env['badge_label'] : '';
+    $entry = pg_comments_email_entry($comment, $parent, $options['featured']);
+
+    $thread_flags = pg_comments_widget_thread_flags(array(
+        'email' => true,
+        'allow_new' => $allow_new,
+        'count' => 1,
+        'featured_mode' => $options['featured'],
+        'rating_on' => $settings['rating'],
+        'files_on' => $settings['attachments'],
+        'watching_on' => ($settings['watcher_email_page_id'] > 0),
+    ));
+    $row_flags = pg_comments_widget_row_flags($comment, $entry['featured'],
+        array('is_staff' => false, 'sees_pending' => false, 'own_ids' => array(), 'rating_on' => $settings['rating'], 'badge_label' => $badge_label),
+        array('depth' => 0, 'quoted' => $entry['quoted'], 'replies' => 0));
+    $created = (int) _pg_comments_row_text($comment, 'created_timestamp');
+    $label_lower = mb_strtolower(get_comment_label(array('label' => $settings['label'])));
+
+    $values = array_merge(
+        pg_comments_widget_row_values($comment, $row_flags, array('is_staff' => false, 'sees_pending' => false, 'show_date' => false, 'label_lower' => $label_lower, 'badge_label' => $badge_label)),
+        pg_comments_email_row_values($comment, $row_flags, isset($env['site']) ? $env['site'] : '', isset($env['dates']) ? $env['dates'] : array()),
+        pg_comments_email_link_values(isset($env['base']) ? $env['base'] : '', isset($env['query']) ? $env['query'] : '', $entry, $entry['quoted'] ? $parent : null, $reply_ok));
+
+    return array(
+        'widget_id' => isset($env['widget_id']) ? (int) $env['widget_id'] : 0,
+        'thread_flags' => $thread_flags,
+        'thread_values' => pg_comments_email_thread_values($settings),
+        'rows' => array(array(
+            'id' => $entry['id'],
+            'flags' => $row_flags,
+            'values' => $values,
+            'datetime' => ($created > 0) ? date('Y-m-d H:i:s', $created) : '',
+            'depth' => 0,
+            'reply_ok' => $reply_ok,
+        )),
+        'form' => array('can_comment' => false),
+        'controls' => array(
+            'can_reply' => $reply_ok,
+            'replying' => false,
+            'cancel_url' => '',
+            'share_copied' => '',
+            'share_prompt' => '',
+            'can_watch' => false,
+            'is_watcher' => false,
+            'is_staff' => false,
+            'allow_new' => $allow_new,
+        ),
+        'sections' => array(),
+        'slots' => array(),
+        'edit_chips' => false,
+    );
+}
+
+/**
+ * Whether a comment e-mail's draw holds the comment: its row's anchor
+ * (id="c-<id>", pg_comments_row_root_id()) and a link to its permalink
+ * ($comment_url, as the token escape writes it into an href). A design
+ * whose list a flag leaves out of an e-mail, or whose comment carries no
+ * link to itself (the Share link, or a link bound to ^^__comment_url^^),
+ * does not count: the renderer then prints nothing and the e-mail keeps
+ * its fixed markup, with the comment and its "View or Reply" link. Pure.
+ *
+ * @param mixed $html
+ * @param mixed $comment_id
+ * @param mixed $comment_url the raw __comment_url
+ * @return bool
+ */
+function pg_comments_email_drew($html, $comment_id, $comment_url)
+{
+    $id = _pg_comments_widget_page_key($comment_id);
+
+    if (!is_string($html) || ($html === '') || ($id <= 0) || !is_string($comment_url) || ($comment_url === '')) {
+        return false;
+    }
+
+    return (strpos($html, ' id="c-' . $id . '"') !== false)
+        && (strpos($html, 'href="' . h($comment_url) . '"') !== false);
+}
+
+/**
+ * Whether get_page_content() adds a comment e-mail's fixed comment markup
+ * ($extra_system_content) to the e-mail page's System region: always,
+ * unless the page is drawn for an e-mail and a comments widget on it drew
+ * that comment in this pass ($pages, the record the widget pass handed
+ * back, pg_comments_widget_pages()). Only the e-mail branch
+ * (_pg_comments_widget_email()) claims an e-mail page, and only after it
+ * drew the comment with its link, so an e-mail page without a comments
+ * widget keeps the markup as before. Pure.
+ *
+ * @param mixed $email   the page is drawn for an e-mail
+ * @param mixed $page_id the page drawn
+ * @param mixed $pages
+ * @return bool
+ */
+function pg_comments_email_keeps_fixed_markup($email, $page_id, $pages)
+{
+    return !($email && is_array($pages) && pg_comments_widget_drawn($page_id, $pages));
 }
 
 // ============================================================================
@@ -2906,85 +3950,319 @@ function pg_comments_widget_draw($tree, $data)
 // ============================================================================
 
 /**
- * Whether a page places a form_item_view widget below its top level
- * (pg_comments_nested_record_decision()). One query per level of nesting, at
- * most 8 levels and 500 components; cached per page for the request.
+ * What a page shows of comments (pg_comments_page_census_facts(): widgets,
+ * blocks, nested_record, top_record), from the page's stored tree
+ * (pg_page_tree_json(), with its design's fallback) and the components it
+ * reaches (pg_comments_component_census(): one query per level of nesting,
+ * at most 8 levels and 500 components, none when the page places no
+ * component); cached per page for the request, at most 256 pages. No page
+ * (an id that is not above 0) shows nothing.
  *
  * @param mixed $page_id
- * @return bool
+ * @return array
  */
-function pg_comments_page_nested_record($page_id)
+function pg_comments_page_facts($page_id)
 {
     static $cache = array();
-    $page_id = (int) $page_id;
+    $page_id = (is_scalar($page_id) && !is_bool($page_id)) ? (int) $page_id : 0;
 
     if ($page_id <= 0) {
-        return false;
+        return array('widgets' => 0, 'blocks' => 0, 'nested_record' => false, 'top_record' => false);
     }
 
     if (isset($cache[$page_id])) {
         return $cache[$page_id];
     }
 
-    $top_ids = array();
-    $tree = json_decode((string) pg_page_tree_json($page_id), true);
-
-    if (is_array($tree)) {
-        _vt_collect_shared_ids($tree, $top_ids);
+    if (count($cache) >= 256) {
+        $cache = array();
     }
 
-    $top = array_keys($top_ids);
-    $children = array();
-    $types = array();
-    $seen = array();
-    $level = $top;
-    $read = 0;
+    $census = pg_comments_tree_census(json_decode((string) pg_page_tree_json($page_id), true));
+    $components = $census['refs'] ? pg_comments_component_census(array_keys($census['refs'])) : array();
 
-    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
-        $ids = array();
+    return $cache[$page_id] = pg_comments_page_census_facts($census, $components);
+}
 
-        foreach ($level as $id) {
-            if (!isset($seen[$id])) {
-                $seen[$id] = true;
-                $ids[] = (int) $id;
-            }
-        }
+/**
+ * Whether a page places a form_item_view widget below its top level
+ * (pg_comments_page_facts()'s 'nested_record').
+ *
+ * @param mixed $page_id
+ * @return bool
+ */
+function pg_comments_page_nested_record($page_id)
+{
+    $facts = pg_comments_page_facts($page_id);
 
-        if (!$ids) {
-            break;
-        }
+    return $facts['nested_record'];
+}
 
-        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $ids) . ")");
-        $next = array();
+/**
+ * Whether a page places a comments widget, on the page itself or in a
+ * component it reaches (pg_comments_page_facts()'s 'widgets'). mail.php
+ * asks it of a comment e-mail page before naming the comment to it; the
+ * e-mail branch asks it of the thread page before offering a reply link.
+ *
+ * @param mixed $page_id
+ * @return bool
+ */
+function pg_comments_page_has_widget($page_id)
+{
+    $facts = pg_comments_page_facts($page_id);
 
-        foreach ((is_array($rows) ? $rows : array()) as $row) {
-            $id = (int) $row['id'];
-            $cfg = json_decode((string) $row['system_region_config'], true);
-            $types[$id] = (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '';
-            $placed = array();
-            $component = json_decode((string) $row['tree_json'], true);
+    return ($facts['widgets'] > 0);
+}
 
-            if (is_array($component)) {
-                _vt_collect_shared_ids($component, $placed);
-            }
+/**
+ * Whether another page names this one as its submitter or watcher comment
+ * e-mail page: one count over the page table.
+ *
+ * @param mixed $page_id
+ * @return bool
+ */
+function pg_comments_is_email_page($page_id)
+{
+    $id = _pg_comments_widget_page_key($page_id);
 
-            $children[$id] = array_keys($placed);
-
-            foreach ($children[$id] as $child) {
-                if (!isset($seen[$child])) {
-                    $next[$child] = true;
-                }
-            }
-
-            if (++$read >= 500) {
-                break;
-            }
-        }
-
-        $level = array_keys($next);
+    if ($id <= 0) {
+        return false;
     }
 
-    return $cache[$page_id] = pg_comments_nested_record_decision($top, $children, $types);
+    return ((int) db_value(
+        "SELECT COUNT(*)
+        FROM page
+        WHERE
+            (comments_submitter_email_page_id = '" . $id . "')
+            OR (comments_watcher_email_page_id = '" . $id . "')") > 0);
+}
+
+/**
+ * The row of the page whose thread a comments widget draws: its name,
+ * folder, type and comment settings, or null when there is no such page.
+ *
+ * @param int $page_id
+ * @return array|null
+ */
+function _pg_comments_widget_page_row($page_id)
+{
+    $page = db_item(
+        "SELECT
+            page_id,
+            page_name,
+            page_folder,
+            page_type,
+            comments,
+            comments_label,
+            comments_message,
+            comments_rating,
+            comments_allow_new_comments,
+            comments_disallow_new_comment_message,
+            comments_automatic_publish,
+            comments_allow_user_to_select_name,
+            comments_require_login_to_comment,
+            comments_allow_file_attachments,
+            comments_show_submitted_date_and_time,
+            comments_administrator_email_to_email_address,
+            comments_administrator_email_conditional_administrators,
+            comments_submitter_email_page_id,
+            comments_watcher_email_page_id,
+            comments_watchers_managed_by_submitter
+        FROM page
+        WHERE page_id = '" . (int) $page_id . "'
+        LIMIT 1");
+
+    return is_array($page) ? $page : null;
+}
+
+/**
+ * The comment a comment e-mail names and the comment it answers, as
+ * pg_comments_rows() reads a thread's rows, with its thread (page_id,
+ * item_type, item_id) and parent_id (0 before 11.0.31): 'comment' and
+ * 'parent', each a row or null. The parent is read only when the comment
+ * answers another one. Whether either may be shown is the caller's to
+ * decide.
+ *
+ * @param mixed $comment_id
+ * @return array 'comment', 'parent'
+ */
+function pg_comments_email_rows($comment_id)
+{
+    $out = array('comment' => null, 'parent' => null);
+    $id = _pg_comments_widget_page_key($comment_id);
+
+    if ($id <= 0) {
+        return $out;
+    }
+
+    $out['comment'] = _pg_comments_email_row($id);
+    $parent_id = ($out['comment'] !== null) ? _pg_comments_row_int($out['comment'], 'parent_id') : 0;
+
+    if (($parent_id > 0) && ($parent_id !== $id)) {
+        $out['parent'] = _pg_comments_email_row($parent_id);
+    }
+
+    return $out;
+}
+
+/**
+ * One comment's row for pg_comments_email_rows(), or null.
+ *
+ * @param int $id
+ * @return array|null
+ */
+function _pg_comments_email_row($id)
+{
+    $row = db_item(
+        "SELECT
+            comments.id,
+            comments.page_id,
+            comments.item_type,
+            comments.item_id,
+            comments.name,
+            comments.message,
+            files.name as file_name,
+            files.size as file_size,
+            comments.published,
+            comments.publish_date_and_time,
+            comments.publish_cancel,
+            comments.featured,
+            comments.rating,
+            " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+            " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
+            user.user_username as username,
+            user.user_role,
+            user.user_id,
+            user.user_badge,
+            user.user_badge_label,
+            comments.created_timestamp,
+            " . (pg_comment_replies_ready() ? "comments.parent_id" : "0 AS parent_id") . "
+        FROM comments
+        LEFT JOIN files ON comments.file_id = files.id
+        LEFT JOIN user ON comments.created_user_id = user.user_id
+        WHERE comments.id = '" . (int) $id . "'
+        LIMIT 1");
+
+    return (is_array($row) && !empty($row['id'])) ? $row : null;
+}
+
+/**
+ * The comments widget in a comment e-mail: the one comment the sender names
+ * (pg_sw_render_context()'s 'comment_id', which only mail.php's submitter
+ * and watcher e-mails pass, to an e-mail page that places the widget),
+ * drawn in the widget's layout for nobody.
+ *
+ * Nothing is drawn, and nothing claimed, for a comment the e-mail page may
+ * not draw (pg_comments_email_decision(): unpublished, a product, product
+ * group or event thread, an e-mail page that is not the thread page's), nor
+ * when the draw leaves the comment or its link out (pg_comments_email_drew():
+ * a list shown only to a visitor, a design without a link to the comment):
+ * the e-mail then keeps its fixed comment markup. Once drawn, the e-mail
+ * page is claimed, so get_page_content() leaves that markup out and a
+ * second comments widget on the page prints nothing.
+ *
+ * The request is the poster's, a moderator's, the job's or an API app's, so
+ * the branch reads no session, no form state, no CAPTCHA, no token, no
+ * address and no viewer: links are built from the thread page's row on the
+ * configured host, dates are absolute, every form and control is stripped
+ * (pg_comments_email_strip()).
+ *
+ * @param array $tree      the widget's decoded tree
+ * @param int   $widget_id
+ * @param array $cfg       its system_region_config
+ * @param array $ctx       pg_sw_render_context()
+ * @return string
+ */
+function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
+{
+    $email_page = _pg_comments_widget_page_key(isset($ctx['page_id']) ? $ctx['page_id'] : 0);
+    $comment_id = _pg_comments_widget_page_key(isset($ctx['comment_id']) ? $ctx['comment_id'] : 0);
+
+    if (($email_page <= 0) || ($comment_id <= 0)) {
+        return '';
+    }
+
+    $read = pg_comments_email_rows($comment_id);
+    $comment = $read['comment'];
+
+    if ($comment === null) {
+        return '';
+    }
+
+    $page = _pg_comments_widget_page_row(_pg_comments_row_int($comment, 'page_id'));
+
+    if (!pg_comments_email_decision($comment, $page, $email_page)) {
+        return '';
+    }
+
+    $settings = pg_comments_settings($page);
+    $thread_page = (int) $page['page_id'];
+    $type = _pg_comments_row_text($comment, 'item_type');
+    $item = _pg_comments_row_int($comment, 'item_id');
+
+    // The comment it answers is quoted only when everybody may read it:
+    // published and in the same thread.
+    $parent = null;
+
+    if ($read['parent'] !== null) {
+        $check = pg_comment_parent_ok(_pg_comments_row_int($read['parent'], 'id'), $read['parent'], $thread_page, $type, $item, array());
+
+        if ($check['accept'] && ($check['parent_id'] > 0)) {
+            $parent = $read['parent'];
+        }
+    }
+
+    $allow_new = pg_comments_allow_new($thread_page, $type, $item, $settings['allow_new']);
+
+    // A reply link only where the thread page's own comments widget takes
+    // ?reply_to=; a page that keeps its classic block ignores it.
+    $reply_ok = pg_comments_email_reply_ok($settings['enabled'], $allow_new, pg_comment_replies_ready(),
+        pg_comments_page_has_widget($thread_page) && !pg_comments_widget_classic_thread($page['page_type'], ($type === 'submitted_form')));
+
+    // Absolute dates in the site's time zone, as the fixed markup writes
+    // them: the e-mail is read later, by people in other zones. Plain text:
+    // the token escape would print the <time> tag around them as words.
+    $created = (int) _pg_comments_row_text($comment, 'created_timestamp');
+    $reply_at = (int) _pg_comments_row_text($comment, 'seller_reply_at');
+    $absolute = function ($timestamp) {
+        return get_absolute_time(array('timestamp' => $timestamp, 'size' => 'long', 'timezone_type' => 'site', 'format' => 'plain_text'));
+    };
+
+    // Mailed links use the configured hostname, never the Host header of
+    // the request that sends the e-mail.
+    $site = URL_SCHEME . HOSTNAME_SETTING . PATH;
+
+    $data = pg_comments_email_draw_data($comment, $parent, $page, $cfg, array(
+        'widget_id' => (int) $widget_id,
+        'allow_new' => $allow_new,
+        'reply_ok' => $reply_ok,
+        'base' => $site . encode_url_path((string) $page['page_name']),
+        'query' => get_query_string_for_page_url(($type === 'submitted_form') ? 'form item view' : (string) $page['page_type'], $item, $type),
+        'site' => $site,
+        'dates' => array(
+            'date' => ($created > 0) ? $absolute($created) : '',
+            'seller_reply_date' => ($reply_at > 0) ? $absolute($reply_at) : '',
+        ),
+        'badge_label' => defined('BADGE_LABEL') ? (string) BADGE_LABEL : '',
+    ));
+
+    // As on the page, a node bound to a token only a list of recent
+    // comments fills leaves with what it holds.
+    pg_comments_email_strip($tree);
+    pg_comments_drop_mode_bindings($tree, 'thread');
+    $html = pg_comments_widget_draw($tree, $data);
+
+    // Claimed only once the comment and its link are in: the claim is what
+    // leaves the fixed markup out of the e-mail.
+    if (!pg_comments_email_drew($html, $comment_id, $data['rows'][0]['values']['__comment_url'])) {
+        return '';
+    }
+
+    if (!pg_comments_widget_claim($email_page)) {
+        return '';
+    }
+
+    return $html;
 }
 
 /**
@@ -3013,6 +4291,9 @@ function pg_comments_widget_login_url($page_id)
 
 /**
  * One comment's token values, raw (pg_comments_widget_draw() escapes them).
+ * A thread and a list of recent comments both draw them;
+ * ^^__comment_excerpt^^ is the start of the comment's own words
+ * (pg_comments_quote_excerpt()).
  *
  * $env: is_staff, sees_pending, show_date, label_lower, badge_label.
  *
@@ -3054,6 +4335,7 @@ function pg_comments_widget_row_values($row, $flags, $env)
         '__comment_name' => ($name !== '') ? $name : lang('Anonymous'),
         '__comment_staff_name' => $is_staff ? _pg_comments_row_text($row, 'username') : '',
         '__comment_message_html' => convert_text_to_html(_pg_comments_row_text($row, 'message')),
+        '__comment_excerpt' => pg_comments_quote_excerpt(_pg_comments_row_text($row, 'message')),
         '__comment_date' => !empty($env['show_date']) ? get_relative_time(array('timestamp' => $created, 'format' => 'plain_text')) : '',
         '__comment_rating' => $has_rating ? (string) (int) _pg_comments_row_text($row, 'rating') : '',
         '__comment_stars_html' => $has_rating ? pg_comments_stars_html((int) _pg_comments_row_text($row, 'rating')) : '',
@@ -3076,9 +4358,11 @@ function pg_comments_widget_row_values($row, $flags, $env)
  * The thread is the page's own, or on a page whose top-level form_item_view
  * widget shows a record, that record's (pg_sw_record_comment_context()); the
  * page's comment settings decide everything else, as on the classic block.
- * It prints nothing in an e-mail, without a page, for a second comments
- * widget on the same page, with comments off, for a record the visitor may
- * not see, and on a page with a record widget below its top level. The page
+ * In a comment e-mail it draws only the comment the e-mail names
+ * (_pg_comments_widget_email()). It prints nothing without a page, for a
+ * second comments widget on the same page, with comments off, for a record
+ * the visitor may not see, and on a page with a record widget below its top
+ * level. The page
  * is claimed before those refusals, so the classic block never draws a
  * second copy of the thread, even when the widget prints nothing. A page
  * that keeps its classic block (pg_comments_widget_classic_thread(): a
@@ -3125,11 +4409,20 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
-    // The comment e-mails keep their fixed markup for now.
     $ctx = pg_sw_render_context();
 
+    // A list of recent comments is drawn from its source pages, never from
+    // the drawn page: it claims no thread and reads no form state. It goes
+    // first, also in an e-mail, where it draws nothing: the e-mail branch
+    // below would draw the named comment in the list's layout and claim the
+    // e-mail page, so the page's own comments widget would draw nothing.
+    if (pg_sw_widget_kind($cfg) === 'comments_recent') {
+        return _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode);
+    }
+
+    // A comment e-mail draws the one comment its sender names, for nobody.
     if (!empty($ctx['email'])) {
-        return '';
+        return _pg_comments_widget_email($tree, (int) $widget_id, $cfg, $ctx);
     }
 
     $page_id = isset($ctx['page_id']) ? (int) $ctx['page_id'] : 0;
@@ -3138,35 +4431,15 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
-    $page = db_item(
-        "SELECT
-            page_id,
-            page_name,
-            page_folder,
-            page_type,
-            comments,
-            comments_label,
-            comments_message,
-            comments_rating,
-            comments_allow_new_comments,
-            comments_disallow_new_comment_message,
-            comments_automatic_publish,
-            comments_allow_user_to_select_name,
-            comments_require_login_to_comment,
-            comments_allow_file_attachments,
-            comments_show_submitted_date_and_time,
-            comments_administrator_email_to_email_address,
-            comments_administrator_email_conditional_administrators,
-            comments_submitter_email_page_id,
-            comments_watcher_email_page_id,
-            comments_watchers_managed_by_submitter
-        FROM page
-        WHERE page_id = '" . $page_id . "'
-        LIMIT 1");
+    $page = _pg_comments_widget_page_row($page_id);
 
     if (!is_array($page)) {
         return '';
     }
+
+    // The editor's Preview draws the page with the comment settings the
+    // editor holds, saved or not.
+    $page = pg_comments_page_override($page, pg_comments_preview_page());
 
     // The thread: the record the page's form_item_view widget shows, else
     // the page's own. The read thread of a page that shows no record is
@@ -3212,19 +4485,22 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     // Who reads it. The search index stores what a visitor who is not signed
-    // in reads.
+    // in reads; a background render (the editor's Preview, the SEO pass)
+    // draws the same and leaves the session of the user whose request runs
+    // it alone: no form state read or used up, no CAPTCHA issued, no token.
     $search = defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
-    $staff = (check_edit_access($page['page_folder']) == true);
+    $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+    $audience = pg_comments_widget_audience($search, $background, check_edit_access($page['page_folder']) == true, _pg_acct_signed_in());
     $record_form = ($record !== null)
         ? array('form_editor_user_id' => $record['form']['form_editor_user_id'], 'form_editor_username' => $record['form']['form_editor_username'])
         : null;
-    $viewer = pg_comments_viewer($staff, $record_form, $search);
-    $is_staff = $staff && !$search;
-    $signed_in = _pg_acct_signed_in() && !$search;
-    $user_id = (defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
-    $role = defined('USER_ROLE') ? USER_ROLE : '';
-    $email = defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '';
-    $form_editor = !empty($viewer['form_editor']) && !$search;
+    $viewer = pg_comments_viewer($audience['staff'], $audience['session'] ? $record_form : null, !$audience['session']);
+    $staff = $is_staff = $audience['staff'];
+    $signed_in = $audience['signed_in'];
+    $user_id = ($audience['session'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
+    $role = ($audience['session'] && defined('USER_ROLE')) ? USER_ROLE : '';
+    $email = ($audience['session'] && defined('USER_EMAIL_ADDRESS')) ? (string) USER_EMAIL_ADDRESS : '';
+    $form_editor = !empty($viewer['form_editor']) && $audience['session'];
 
     // Which comments, and which page of them. A page asked for by number
     // (?comments_page=) wins; else the page that holds the comment the
@@ -3272,12 +4548,15 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
     }
 
-    $lf = new liveform('add_comment', $page_id);
+    $lf = $audience['session'] ? new liveform('add_comment', $page_id) : null;
     $field = function ($name) use ($lf) {
-        $value = $lf->get_field_value($name);
+        $value = $lf ? $lf->get_field_value($name) : null;
         return is_scalar($value) ? (string) $value : '';
     };
-    $in_session = isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    $in_session = $lf && isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    // The CSRF token of the forms; none in a render that is not the
+    // visitor's own.
+    $token = $audience['session'] ? get_token_field() : '';
 
     $facts = array(
         'allow_new' => $allow_new,
@@ -3488,7 +4767,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $sections = array(
-        'comment_captcha' => $captcha_on ? (string) get_captcha_fields($lf) : '',
+        'comment_captcha' => ($captcha_on && $lf) ? (string) get_captcha_fields($lf) : '',
         'comment_rating_input' => ($settings['rating'] && $can_comment) ? pg_comments_rating_input_html($field('rating')) : '',
         'comment_publish' => '',
         'comment_watchers' => '',
@@ -3555,7 +4834,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $typed = (new liveform('add_or_remove_watcher', $page_id))->get_field_value('username_or_email_address');
         $sections['comment_watchers'] = pg_comments_watchers_html(array(
             'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
-            'token_field' => get_token_field(),
+            'token_field' => $token,
             'send_to' => get_request_uri(),
             'page_id' => $page_id,
             'item_type' => $post_type,
@@ -3570,11 +4849,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'can_comment' => $can_comment,
         'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php',
         'hidden_html' => $can_comment
-            ? pg_comments_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
+            ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0)
             : '',
         'multipart' => $settings['attachments'],
         'label_slot' => 'pg_comment_form_label',
-        'watcher_checked' => !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
+        'watcher_checked' => !$lf || !$lf->field_in_session('page_id') || ($field('watcher') === '1'),
         // A staff comment from a form without the publish options follows
         // the page's setting, as the classic form's default does.
         'publish_default' => $can_publish ? ($settings['auto_publish'] ? 'now' : 'manual') : '',
@@ -3601,18 +4880,21 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'is_watcher' => $is_watcher,
         'watch_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_or_remove_watcher.php',
         'watch_hidden_html' => $can_watch
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $is_watcher ? 'remove' : 'add')
             : '',
         'is_staff' => $is_staff,
         'allow_new' => $allow_new,
         'allow_action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/allow_or_disallow_new_comments.php',
         'allow_hidden_html' => $is_staff
-            ? pg_comments_small_form_hidden_html(get_token_field(), get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
+            ? pg_comments_small_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, $allow_new ? 'disallow' : 'allow')
             : '',
     );
 
-    // The widget's Messages node prints only the add_comment form's errors;
-    // the ones in the small forms print their own handler's.
+    // A node bound to a token only a list of recent comments fills prints
+    // nothing in a thread. The widget's Messages node prints only the
+    // add_comment form's errors; the ones in the small forms print their own
+    // handler's.
+    pg_comments_drop_mode_bindings($tree, 'thread');
     _pg_inject_messages_node($tree, 'add_comment');
     pg_comments_stamp_form_messages($tree);
 
@@ -3628,9 +4910,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'edit_chips' => $is_staff && pg_sw_edit_chips_on(),
     ));
 
-    $lf->remove_form();
+    if ($lf) {
+        $lf->remove_form();
+    }
 
-    if ($watching_on) {
+    if ($watching_on && $audience['session']) {
         (new liveform('add_or_remove_watcher', $page_id))->remove_form();
     }
 
