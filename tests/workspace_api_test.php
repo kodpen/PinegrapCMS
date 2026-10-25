@@ -400,8 +400,22 @@ function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
 	pg_assert_true(strpos($reachable, 'ws_flow_share_rows(') !== false, 'the shares are read');
 	pg_assert_true(strpos($reachable, 'ws_api_flow_claude_channel($viewer, (int) $share[\'target_id\'])') !== false, 'a share channel counts only where Claude may be asked');
 	pg_assert_true(strpos($reachable, "(string) \$flow['status'] === 'live'") !== false, 'the home counts for a live flow');
-	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_channel')), 'ws_claude_channel_allowed(') !== false);
-	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_run_reachable')), 'ws_claude_channel_allowed(') !== false);
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'ws_claude_channel_allowed(') !== false);
+
+	// Both lists ask this for every row, so a channel is read once a
+	// request: whether the person reads it (ws_flow_channel_readable()) and
+	// whether Claude may be asked there (ws_api_flow_claude_allowed()).
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_allowed')), 'static $') !== false, 'kept for the request');
+
+	foreach (array('ws_api_flow_claude_channel', 'ws_api_flow_run_reachable') as $name) {
+		$source = $strip(ws_api_test_handler_source($name));
+
+		pg_assert_true(strpos($source, 'ws_api_flow_claude_allowed(') !== false, $name . ' asks whether Claude may be asked there');
+		pg_assert_true(strpos($source, 'ws_channel(') === false, $name . ' reads no channel row itself');
+	}
+
+	pg_assert_true(strpos($strip(ws_api_test_handler_source('ws_api_flow_claude_channel')), 'ws_flow_channel_readable(') !== false, 'a channel the key owner reads');
+	pg_assert_false(ws_api_flow_claude_allowed(0), 'no channel');
 }
 
 // A run opens tasks in the flow owner's name: starting and cancelling one

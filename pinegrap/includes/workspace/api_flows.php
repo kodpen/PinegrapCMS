@@ -190,6 +190,32 @@ function ws_api_flow_claude_reaches($ways)
 }
 
 /**
+ * May Claude be asked in this channel (ws_claude_channel_allowed())?
+ * Answered once a request per channel: the flows and runs lists ask it for
+ * every row, and ws_channel() reads the row each time.
+ *
+ * @param int $channel_id
+ * @return bool
+ */
+function ws_api_flow_claude_allowed($channel_id)
+{
+    static $allowed = array();
+
+    $channel_id = (int) $channel_id;
+
+    if ($channel_id <= 0) {
+        return false;
+    }
+
+    if (!isset($allowed[$channel_id])) {
+        $channel = ws_channel($channel_id);
+        $allowed[$channel_id] = is_array($channel) && ws_claude_channel_allowed($channel);
+    }
+
+    return $allowed[$channel_id];
+}
+
+/**
  * Is this a public or private channel the owner of the key reads, where
  * Claude may be asked?
  *
@@ -199,9 +225,7 @@ function ws_api_flow_claude_reaches($ways)
  */
 function ws_api_flow_claude_channel($viewer, $channel_id)
 {
-    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
-
-    return ws_flow_share_channel_readable($viewer, $channel) && ws_claude_channel_allowed($channel);
+    return ws_flow_channel_readable($viewer, (int) $channel_id) && ws_api_flow_claude_allowed((int) $channel_id);
 }
 
 /**
@@ -260,10 +284,7 @@ function ws_api_flow_run_reachable($viewer, $flow, $run)
         return true;
     }
 
-    $channel_id = ws_flow_run_channel_id($run);
-    $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
-
-    return $channel && ws_claude_channel_allowed($channel);
+    return ws_api_flow_claude_allowed(ws_flow_run_channel_id($run));
 }
 
 /**
