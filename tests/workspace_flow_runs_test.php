@@ -698,6 +698,169 @@ function test_workspace_flow_runs_adopted_task_is_looked_at_at_once()
 	pg_assert_contains("addcslashes(\$marker, '\\\\%_')", $find, 'a backslash in the line is no escape');
 }
 
+// The boxes of a run as the walk reads them: one entry per box, the row
+// read last standing for it (a later pass of the box), its status and
+// outcome kept as they are.
+function test_workspace_flow_runs_step_states()
+{
+	pg_assert_same(array(), ws_flow_step_states(array()));
+	pg_assert_same(array(), ws_flow_step_states(null));
+
+	$rows = array(
+		array('id' => 1, 'node_id' => 'a', 'status' => 'done', 'outcome' => 'done', 'pass' => 0),
+		array('id' => 2, 'node_id' => 'a', 'status' => 'ready', 'outcome' => '', 'pass' => 1),
+		array('id' => 3, 'node_id' => 'b', 'status' => 'waiting', 'outcome' => ''),
+		array('id' => 4, 'node_id' => 7, 'status' => 'done', 'outcome' => 'next'),
+	);
+
+	pg_assert_same(array(
+		'a' => array('status' => 'ready', 'outcome' => ''),
+		'b' => array('status' => 'waiting', 'outcome' => ''),
+		'7' => array('status' => 'done', 'outcome' => 'next'),
+	), ws_flow_step_states($rows));
+
+	// The order of the rows decides, as ws_flow_run_steps() reads them.
+	pg_assert_same(array('status' => 'done', 'outcome' => 'done'), ws_flow_step_states(array($rows[1], $rows[0]))['a']);
+}
+
+// One call carries out at most WS_FLOW_BOXES_PER_RUN boxes of a run, also
+// when one batch holds more of it (a fork), and WS_FLOW_ADVANCE_MAX in all;
+// the next batch is read without the runs that had their share. A box
+// another request took is passed over and counts for nothing, a batch that
+// starts nothing ends the call, and nothing starts once the deadline has
+// passed.
+function test_workspace_flow_runs_advance_budgets()
+{
+	// The ready boxes, oldest first: five of run 1, two of run 2, four each
+	// of runs 3 to 12. A batch is twenty, as the query reads them.
+	$make = function ($counts) {
+		$ready = array();
+		$id = 0;
+
+		foreach ($counts as $run => $count) {
+			for ($i = 0; $i < $count; $i++) {
+				$id++;
+				$ready[$id] = array('id' => $id, 'run_id' => $run);
+			}
+		}
+
+		return $ready;
+	};
+	$ready = $make(array(1 => 5, 2 => 2) + array_fill(3, 10, 4));
+	$asked = array();
+	$select = function ($full) use (&$ready, &$asked) {
+		$asked[] = array_values($full);
+
+		return array_slice(array_values(array_filter($ready, function ($row) use ($full) {
+			return !isset($full[$row['run_id']]);
+		})), 0, 20);
+	};
+	$claim = function ($row) use (&$ready) {
+		if (!isset($ready[$row['id']])) {
+			return false;
+		}
+
+		unset($ready[$row['id']]);
+
+		return true;
+	};
+	$carried = array();
+	$carry = function ($row) use (&$carried) {
+		$carried[] = $row;
+	};
+
+	$ran = ws_flow_advance_boxes($select, $claim, $carry, microtime(true) + 60);
+	$per_run = array_count_values(array_column($carried, 'run_id'));
+
+	pg_assert_same(WS_FLOW_ADVANCE_MAX, $ran, 'no more than the call\'s share');
+	pg_assert_same($ran, count($carried));
+	pg_assert_same(WS_FLOW_BOXES_PER_RUN, max($per_run), 'no more than a run\'s share');
+	pg_assert_same(WS_FLOW_BOXES_PER_RUN, $per_run[1], 'run 1 had its share from the first batch');
+	pg_assert_true(isset($ready[4], $ready[5]), 'its other boxes were not taken: they wait for the next call');
+	pg_assert_same(2, $per_run[2]);
+	pg_assert_true(in_array(1, $asked[1], true), 'the next batch is read without the run that had its share');
+
+	// A box another request took is passed over; the run's share is still
+	// there for its other boxes.
+	$ready = $make(array(1 => 4));
+	$carried = array();
+	$taken = function ($row) use (&$ready) {
+		if ((int) $row['id'] === 1) {
+			return false;
+		}
+
+		unset($ready[$row['id']]);
+
+		return true;
+	};
+	$once = function ($full) use (&$ready) {
+		return array_values($ready);
+	};
+
+	pg_assert_same(3, ws_flow_advance_boxes($once, $taken, $carry, microtime(true) + 60));
+	pg_assert_same(array(2, 3, 4), array_column($carried, 'id'), 'the box the other request took is not carried out');
+
+	// A batch that starts nothing ends the call; nothing starts after the
+	// deadline, and nothing is even taken.
+	$asked = array();
+	$ready = $make(array(1 => 1));
+	$never = function ($row) {
+		return false;
+	};
+
+	pg_assert_same(0, ws_flow_advance_boxes($select, $never, $carry, microtime(true) + 60));
+	pg_assert_same(1, count($asked), 'one batch, then the call ends');
+
+	$claims = 0;
+	$counted = function ($row) use (&$claims) {
+		$claims++;
+
+		return true;
+	};
+
+	pg_assert_same(0, ws_flow_advance_boxes($select, $counted, $carry, 0.0), 'a deadline passed');
+	pg_assert_same(0, $claims);
+
+	// ws_flow_advance() reads each batch without the runs that had their
+	// share, takes each box with the conditional claim, and carries it out
+	// as the claim left it.
+	$advance = ws_flow_runs_test_source('ws_flow_advance');
+
+	pg_assert_contains('ws_flow_advance_boxes(', $advance);
+	pg_assert_contains('run_id NOT IN (', $advance);
+	pg_assert_contains('ws_flow_step_claim($row)', $advance);
+	pg_assert_contains('ws_flow_step_run($row)', $advance);
+}
+
+// Runs that ended more than WS_FLOW_RUNS_KEEP ago are swept with their boxes,
+// never an open one; the boxes go first, so a sweep that stops half way
+// leaves no box whose run is gone. The Workspace's scheduled job sweeps.
+function test_workspace_flow_runs_sweep()
+{
+	$sweep = ws_flow_runs_test_source('ws_flow_runs_sweep');
+
+	pg_assert_true((bool) preg_match('/FROM ws_flow_runs\s+WHERE status IN \(([^)]*)\)/', $sweep, $found), 'the sweep picks runs by their status');
+
+	$listed = array_map(function ($status) {
+		return trim(trim($status), "'");
+	}, explode(',', $found[1]));
+	$ended = array_values(array_filter(array_keys(ws_flow_run_statuses()), function ($status) {
+		return !ws_flow_run_open($status);
+	}));
+
+	sort($listed);
+	sort($ended);
+
+	pg_assert_same($ended, $listed, 'every ended status and no open one');
+	pg_assert_contains('time() - WS_FLOW_RUNS_KEEP', $sweep);
+
+	$steps = strpos($sweep, 'DELETE FROM ws_flow_run_steps');
+	$runs = strpos($sweep, 'DELETE FROM ws_flow_runs ');
+
+	pg_assert_true(($steps !== false) && ($runs !== false) && ($steps < $runs), 'the boxes before their runs');
+	pg_assert_contains('ws_flow_runs_sweep(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_recurring_job.php'));
+}
+
 // Every run that ends is a line of its own in its owner's inbox: an unread
 // line about another run is never written over.
 function test_workspace_flow_runs_each_end_is_its_own_line()

@@ -1361,8 +1361,8 @@ function ws_flow_runs_heal($run_id = 0)
  * has come look at their task, then the ready boxes are claimed and carried
  * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run and
  * WS_FLOW_ADVANCE_MAX in all, and none started once the time budget is
- * spent. A box that ends makes the next ones ready, which a later round of
- * the same call takes.
+ * spent (ws_flow_advance_boxes()). A box that ends makes the next ones
+ * ready, which a later round of the same call takes.
  *
  * @param int $budget seconds: WS_FLOW_BUDGET_TICK on a screen, WS_FLOW_BUDGET_JOB in a job
  * @param int $run_id only this run (the one just started), 0 for all
@@ -1383,31 +1383,68 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
     ws_flow_runs_heal((int) $run_id);
     $result['woke'] = ws_flow_steps_recheck($only, $deadline);
 
-    $per_run = array();
-    $full = array();
-
-    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
-        $rows = (array) db_items("SELECT * FROM ws_flow_run_steps
-            WHERE status = 'ready' AND ready_at <= '" . time() . "'" . $only
-            . (!empty($full) ? " AND run_id NOT IN (" . implode(',', $full) . ")" : '') . "
-            ORDER BY ready_at, id LIMIT 20");
-        $started = 0;
-
-        foreach ($rows as $row) {
-            if (($result['ran'] >= WS_FLOW_ADVANCE_MAX) || (microtime(true) >= $deadline)) {
-                return $result;
-            }
-
-            $id = (int) $row['run_id'];
-
-            if (isset($full[$id]) || !ws_flow_step_claim($row)) {
-                continue;
-            }
-
+    $result['ran'] = ws_flow_advance_boxes(
+        function ($full) use ($only) {
+            return (array) db_items("SELECT * FROM ws_flow_run_steps
+                WHERE status = 'ready' AND ready_at <= '" . time() . "'" . $only
+                . (!empty($full) ? " AND run_id NOT IN (" . implode(',', array_map('intval', $full)) . ")" : '') . "
+                ORDER BY ready_at, id LIMIT 20");
+        },
+        function ($row) {
+            return ws_flow_step_claim($row);
+        },
+        function ($row) {
             // The row as the claim left it: a box on its second try knows it
             // is one (ws_flow_step_task() looks for the first try's task).
             $row['status'] = 'running';
             $row['attempt'] = (int) $row['attempt'] + 1;
+
+            ws_flow_step_run($row);
+        },
+        $deadline
+    );
+
+    return $result;
+}
+
+/**
+ * The ready boxes one call of ws_flow_advance() carries out, oldest first: a
+ * batch read at a time ($select, told the runs that had their share so that
+ * it leaves them out), each box taken ($claim) and carried out ($carry) in
+ * turn. At most WS_FLOW_BOXES_PER_RUN boxes of one run, also when one batch
+ * holds more of it, and WS_FLOW_ADVANCE_MAX in all; none started once the
+ * deadline has passed. A box another request took counts for nothing; a
+ * batch that starts no box ends the call. A box that ends makes the next
+ * ones ready, which a later batch takes. Pure but for its callables.
+ *
+ * @param callable $select   function (int[] $full): array[], ready rows of runs not in $full
+ * @param callable $claim    function (array $row): bool, whether this request took the box
+ * @param callable $carry    function (array $row), carries out a box taken
+ * @param float    $deadline microtime(true) after which no box is started
+ * @return int how many boxes were carried out
+ */
+function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
+{
+    $ran = 0;
+    $per_run = array();
+    $full = array();
+
+    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
+        $started = 0;
+
+        foreach ((array) $select($full) as $row) {
+            if (($ran >= WS_FLOW_ADVANCE_MAX) || (microtime(true) >= $deadline)) {
+                return $ran;
+            }
+
+            $id = (int) $row['run_id'];
+
+            // A run that had its share is passed over before its box is
+            // taken: a box taken and then left would wait in running until
+            // the stale pass.
+            if (isset($full[$id]) || !$claim($row)) {
+                continue;
+            }
 
             $per_run[$id] = ($per_run[$id] ?? 0) + 1;
 
@@ -1415,10 +1452,10 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
                 $full[$id] = $id;
             }
 
-            $result['ran']++;
+            $ran++;
             $started++;
 
-            ws_flow_step_run($row);
+            $carry($row);
         }
 
         if ($started === 0) {
@@ -1426,7 +1463,7 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
         }
     }
 
-    return $result;
+    return $ran;
 }
 
 /**
