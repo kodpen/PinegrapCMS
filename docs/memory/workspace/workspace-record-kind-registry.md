@@ -13,7 +13,7 @@ description: ws_record_kinds() (refs.php): one entry per Workspace record kind (
 
 ## What holds them together?
 - tests/workspace_record_kinds_registry_test.php, list by list: a name the list has that the registry lacks, or one the registry gives it that it lacks, fails with the list's name. A difference kept on purpose sits in that list's `except` in `workspace_record_kinds_registry_test_lists()` with its reason; a reason that no longer matches a difference fails as out of date.
-- Read from source (database probes): the catalogue through `pg_test_ws_change_types()`, the `$tables` map of `ws_change_audit_target()`, the `$scopes` map of `ws_ai_type_scope()`.
+- Read from source: the catalogue through `pg_test_ws_change_types()` (its schema probes need a database); the `$tables` map of `ws_change_audit_target()` and the `$scopes` map of `ws_ai_type_scope()` only because they are local variables: both functions are pure, and the test also calls them directly.
 - Also checked: the order is `ws_record_type_keys()`'s; the prefixes are `ws_ref_types()`'s; the right alone shows the tag, every other right without it does not; a change is tagged as its kind and asks its right; `ws_change_audit_target()` records the change on `audit`; a drawer kind is changed through the kind of its own name.
 
 ## Which differences are kept on purpose?

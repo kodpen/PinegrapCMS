@@ -12,10 +12,11 @@
  * workspace_record_kinds_registry_test_lists(); a reason that no longer
  * matches a difference fails as out of date.
  *
- * Lists built by a function that needs a database are read from source
- * (tests/helpers/source_reader.php): the change catalogue ws_change_types()
- * (its schema probes keep tests from calling it), the table map of
- * ws_change_audit_target() and the scope map of ws_ai_type_scope().
+ * Three lists are read from source (tests/helpers/source_reader.php): the
+ * change catalogue ws_change_types(), because its schema probes need a
+ * database; the table map of ws_change_audit_target() and the scope map of
+ * ws_ai_type_scope(), because they are local to their functions, which
+ * are pure and are also called directly below.
  *
  * tests/workspace_record_kinds_test.php lays the record kinds against the
  * lists that have no column here (search, bulk, events, screens...).
