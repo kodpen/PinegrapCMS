@@ -11,7 +11,7 @@ description: Plan (approved 2026-10-19, not started, after shipping-management):
 - First driver: one shipping aggregator (single API, many carriers, contracted rates without a carrier contract), chosen by the owner from the current Turkish aggregators; then Yurtiçi Kargo and Aras Kargo direct APIs. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), label reprint, status refresh; the chosen carrier comes from the shipping method's `carrier` or the order's method code.
 - Status write-back: the daily/hourly job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, the campaign e-mail and SMS (`sms-and-iys.md`) fire exactly once. Carrier webhooks are used when the driver offers them.
-- Return labels: the same driver creates a return shipment for `customer-returns-flow.md` with the named return carrier.
+- Return labels: the same driver creates a return shipment for customer returns (`commerce/order-returns-panel.md`) with the named return carrier.
 - UPS/FedEx/USPS rate code and box packing stay untouched; label creation for them is a later driver on the same interface.
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is handled inside the marketplace connector, not here.
 
