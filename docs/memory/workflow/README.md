@@ -38,6 +38,6 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - session-checks.md: Owner rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries
-- unit-test-runner.md: tools/test.php: what it loads, which errors fail a test (vendored deprecations pass), runs on other PHP versions, reading code behind a database probe, peak memory, editor JavaScript under Node
+- unit-test-runner.md: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node
 - workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)
 - working-mode.md: Working rules (2026-10-25) for every session: one open PR, no stacked branches, no issues, ready label when green, PR size, queue limit before the claim, changelog via the PR body, one task a session
