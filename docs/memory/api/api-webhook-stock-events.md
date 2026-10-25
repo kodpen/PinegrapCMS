@@ -8,6 +8,9 @@ description: pg_product_stock_changed(): rules, callers, quiet writers, the out_
 - `$before`: prior stock (checkout, local sale: read just before the decrement), `null`: untracked so far; `$after`: stock left, `null` reads it back (checkout decrements in SQL). Returns it (next `$before` for a product met twice: two recipients).
 - Pure, tested (`tests/product_stock_events_test.php`): `pg_product_stock_events()` (events, payloads); `pg_product_stock_delta()`: whether a whole-row save moved stock (same count or tracking off: no; tracking on with a count: from no level).
 
+## Who listens in the site?
+- `pg_stock_notify_heard()` (from `pg_announce()` and the stock API): back-in-stock mails ([[back-in-stock-notices]]).
+
 ## What do the payloads carry?
 - `inventory.changed`: `product_id`, `quantity`, `out_of_stock` (stock API keys), `source` (below).
 - `stock.low`: `product_id`, `name`, `quantity`, `threshold`; only on the crossing (`before > threshold` or no level before), threshold set, product tracked.
@@ -24,8 +27,8 @@ description: pg_product_stock_changed(): rules, callers, quiet writers, the out_
 - Tracked, none left: `out_of_stock = '1'`, `out_of_stock_timestamp` only on the way in; else `'0'`. Product screen: `pg_pb_apply_stock_flag()`; file manager quick edit: `pg_product_out_of_stock_sql()` (pure, tested); bulk edits only clear it; checkout, local sale set it from the stock left, `out_stock` bell once (`commerce/order-completion-stock-and-spots.md`).
 
 ## What was wrong before?
-- #871, PR #1141: checkout, local sale only queued the marketplace (`updated_since`/`inventory.changed` syncs sold old stock); product screen only stamped; bulk edit, barcode silent.
+- #871, PR #1141: checkout, local sale only queued the marketplace (syncs sold old stock); product screen only stamped; bulk edit, barcode silent.
 - #1161, PR #1186: marketplace order import/cancellation, ERP stock count: unstamped, unannounced.
-- #1163, PR #1188: checkout (read before payment), local sale had a stale `$before` (parallel sales: `stock.low` twice; restock meanwhile: none); local sale flagged by one line's quantity (a product on two lines); a no-op barcode scan announced.
-- #1164, PR #1190: product screen save, list quick edit announced no `product.updated` (subscribers, Workspace rules missed name/price/description saves).
-- #1162: file manager quick/bulk edit silent; a quick edit to 0 kept the old `out_of_stock`.
+- #1163, PR #1188: checkout, local sale had a stale `$before` (parallel sales: `stock.low` twice; restock meanwhile: none); local sale flagged by one line's quantity; a no-op barcode scan announced.
+- #1164, PR #1190: product screen save, list quick edit announced no `product.updated` (Workspace rules missed saves).
+- #1162: file manager quick/bulk edit silent; a quick edit to 0 kept `out_of_stock`.

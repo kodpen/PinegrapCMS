@@ -19,6 +19,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, w
 - `link_resolve` (what an href leads to, pure, with the SEO name maps) and `prototype` (loaded by prototype.php only): [[designer-prototype-viewer]].
 - `prototype_links` (share links; loaded where needed, by prototype.php before init.php too): [[designer-prototype-share-links]].
 - `widgets_wishlist`: the Favourites system widget, the visitor's saved products with add to cart and remove: [[wishlist-widget]].
+- `stock_notify`: back-in-stock requests, the `inventory.changed` listener that mails them, the request endpoint (`stock_notify.php`): [[back-in-stock-notices]].
 
 ## Where does a module added later go?
 - Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].
