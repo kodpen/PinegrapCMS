@@ -255,10 +255,11 @@ function test_ws_api_card_decisions_are_no_tools()
 	}
 }
 
-// An AI app or an integration changes a record by proposing it: one route in
-// a channel and its twin on a task, both MCP tools under workspace:write that
-// take the same changes as an assistant's answer, rehearse, and are marked as
-// writes that only add (a card), not as destructive ones.
+// An AI app or an integration may propose a record change instead of writing
+// it: one route in a channel and its twin on a task, both MCP tools under
+// workspace:write that take the same changes as an assistant's answer,
+// rehearse, and are marked as writes that only add (a card), not as
+// destructive ones.
 function test_ws_api_change_proposals_are_tools()
 {
 	$routes = array();
