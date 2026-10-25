@@ -36399,7 +36399,9 @@ const StyleDesigner = (function () {
         var isBtnLike = (node.type === 'component' && node.props.componentType === 'btn')
                      || (isSem && (tag === 'button' || tag === 'a'))
                      || (node.type === 'content' && node.props.contentType === 'link');
-        // A real button: an action that submits a form needs one.
+        // A real button: an action that submits a form needs one, and so
+        // does the favourite heart, which the server makes a button of
+        // (_pg_catalog_wishlist_heart()) and would leave a link as it is.
         var isRealButton = (node.type === 'component' && node.props.componentType === 'btn')
                         || (isSem && tag === 'button');
         var isForm     = (isSem && tag === 'form');
@@ -36423,6 +36425,7 @@ const StyleDesigner = (function () {
             var aOpts = [['', _sdT('None')]];
             if (region === 'catalog_item_view') {
                 aOpts.push(['add_to_cart', _sdT('Add to Cart (catalog_item_view)')]);
+                if (isRealButton) aOpts.push(['wishlist', _sdT('Favourite (heart)')]);
             }
             if (region === 'shopping_cart') {
                 aOpts.push(['cart_update',      _sdT('Update Cart (shopping_cart)')]);
@@ -36444,6 +36447,7 @@ const StyleDesigner = (function () {
                 aOpts.push(['clear_filters',       _sdT('Clear Filters (catalog_listing)')]);
                 aOpts.push(['submit_search',       _sdT('Submit the Search (catalog_listing)')]);
                 aOpts.push(['catalog_add_to_cart', _sdT('Add to Cart — per card (catalog_listing loop)')]);
+                if (isRealButton) aOpts.push(['catalog_wishlist', _sdT('Favourite (heart) — per card (catalog_listing loop)')]);
             }
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
@@ -50376,6 +50380,26 @@ const StyleDesigner = (function () {
         ]);
     }
 
+    // The favourite heart of a catalog card or a product page: an outline
+    // button with a heart icon and words for a screen reader, bound to
+    // `catalog_wishlist` (listing card) or `wishlist` (product page). The
+    // server marks it with the product and draws it hidden; the page's
+    // script (pg_wishlist.js) shows it, filled for a saved product. A
+    // product group's card has none. Starters only: the design templates
+    // build their own cards.
+    function _sdWishlistHeart(action) {
+        return createNode('component', { componentType: 'btn',
+            btnElement: 'button', btnType: 'button',
+            variant: 'secondary', outline: true, size: 'sm',
+            text: '', customName: _sdT('Favourite'),
+            _bindings: { action: action } }, [
+            createNode('semantic', { tag: 'i', cssClass: 'bi bi-heart', customName: _sdT('Icon'),
+                _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+            createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', customName: _sdT('Screen Reader Text'),
+                text: _sdT('Add to favourites') })
+        ]);
+    }
+
     // `opts.formFields` — the chosen form's fields (list_form_fields rows).
     // Only the two form views read it; every other kind ignores it.
     function _buildStarterTree(regionType, opts) {
@@ -50415,7 +50439,7 @@ const StyleDesigner = (function () {
 
             case 'catalog_listing': {
                 // Per-product card (col-sm-6 col-md-4 grid) inside loop_area.
-                // Card layout: image → title → price → View + Add to Cart.
+                // Card layout: image → title → price → View + heart + Add to Cart.
                 // The View link goes to the configured detail page (per-card
                 // permalink); Add to Cart is the one-click add-to-cart form
                 var loopArea = createNode('loop_area', {}, [
@@ -50457,6 +50481,7 @@ const StyleDesigner = (function () {
                                         _labelDetail: _sdT('View'),
                                         _labelExpand: _sdT('Expand'),
                                         _bindings: { href: '__detail_url', text: '__link_label' } }),
+                                    _sdWishlistHeart('catalog_wishlist'),
                                     // Bindable Add to Cart button.
                                     // Backend wraps this card in a mini-form pointing
                                     // at catalog_detail.php when this binding is present.
@@ -50589,6 +50614,8 @@ const StyleDesigner = (function () {
                 // the box:
                 //   - quantity input  → _bindings.value = 'quantity'
                 //   - Add to Cart btn → _bindings.action = 'add_to_cart'
+                // and the favourite heart beside them (_bindings.action =
+                // 'wishlist'), a plain button that never submits the form.
                 // Backend (`_apply_catalog_item_view_bindings`) converts these
                 // into the right HTML attrs/wrapping at render time.
                 // (Messages content node is no longer added here — the
@@ -50705,7 +50732,8 @@ const StyleDesigner = (function () {
                                 _bindings: { value: 'quantity' } }),
                             createNode('component', { componentType: 'btn',
                                 text: _sdT('Add to Cart'), variant: 'primary', size: '', href: '#',
-                                _bindings: { action: 'add_to_cart' } })
+                                _bindings: { action: 'add_to_cart' } }),
+                            _sdWishlistHeart('wishlist')
                         ])
                     ])
                 ]);
