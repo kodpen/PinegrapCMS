@@ -347,7 +347,8 @@ function ws_inbox_describe($viewer, $row)
 
         // A flow was shared with the person (flow_shares.php): the sentence
         // that names the flow and what they may do with it sits beside the
-        // inbox row; the flows screen lists it under "Shared with me".
+        // inbox row; the flows screen lists it under the heading
+        // "Shared with me and my channels".
         case 'flow_shared':
             $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
 
