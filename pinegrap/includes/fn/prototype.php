@@ -1278,6 +1278,23 @@ function pg_proto_note_html($message, $lang)
 }
 
 /**
+ * Whether a frame whose page could not be drawn names the reason. A
+ * person's frame does: only a signed-in administrator, designer or manager
+ * opens it. A share link's frame does not: anyone holding the link opens it
+ * signed out, and a PHP error's message can name a server file and line
+ * ("... called in /home/site/... on line 812"); the reason then goes to the
+ * error log only. A page that came out empty has no reason to hide.
+ *
+ * @param bool   $link_mode whether the frame was made for a share link
+ * @param string $error     the error's message, '' for an empty page
+ * @return bool
+ */
+function pg_proto_frame_names_failure($link_mode, $error)
+{
+    return !$link_mode || ((string) $error === '');
+}
+
+/**
  * The answer when no page is drawn: a short note (pg_proto_note_html()),
  * with the status it carries.
  *

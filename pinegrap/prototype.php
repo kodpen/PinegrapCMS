@@ -198,6 +198,7 @@ if ($pg_proto_frame) {
     // missing address.
     $html = '';
     $error = '';
+    $thrown = null;
 
     pg_seo_rendering(true);
     ob_start();
@@ -206,6 +207,7 @@ if ($pg_proto_frame) {
         $html = (string) get_page_content($pg_proto_page['id'], '', '', 'preview', false, array(), false, 'desktop');
     } catch (Throwable $t) {
         $error = $t->getMessage();
+        $thrown = $t;
     } finally {
         pg_seo_rendering(false);
         // Whatever a renderer printed on the way is not part of the page.
@@ -213,6 +215,22 @@ if ($pg_proto_frame) {
     }
 
     if (($error !== '') || (trim($html) === '')) {
+        // A share link's frame opens for anyone holding the link, signed
+        // out, and a PHP error's message can name a server file and line:
+        // the reason goes to the error log (its address is the page's
+        // public one, set above) and the frame only says what happened.
+        if (($thrown !== null) && !pg_proto_frame_names_failure(isset($parsed['l']), $error)) {
+            pg_error_write(pg_error_entry(
+                'error',
+                get_class($thrown),
+                'Prototype link #' . (int) $parsed['l'] . ', page ' . (int) $pg_proto_page['id'] . ' could not be drawn: ' . $error,
+                $thrown->getFile(),
+                $thrown->getLine(),
+                pg_error_trace_short($thrown->getTrace())));
+
+            pg_proto_frame_refuse(lang('The page could not be drawn.'), 500);
+        }
+
         pg_proto_frame_refuse(lang(array('string' => 'The page could not be drawn: {var:1}', 'vars' => array(($error !== '') ? $error : lang('it is empty.')))), 500);
     }
 
@@ -518,11 +536,12 @@ if ($pg_proto_method === 'POST') {
 // in for this browser.
 pg_proto_link_session_mark($pg_proto_link);
 
-// A use is a person opening the prototype, not a preview a messenger draws
-// of the link or a HEAD request.
+// A use is a person opening the prototype by the shared address, not a move
+// to another page inside it, a preview a messenger draws of the link or a
+// HEAD request.
 $pg_proto_client = function_exists('waf_classify_bot') ? waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '') : array('class' => 'human');
 
-if (pg_proto_link_counts_use($pg_proto_method, $pg_proto_client['class'])) {
+if (pg_proto_link_counts_use($pg_proto_method, $pg_proto_client['class'], $pg_proto_page_id)) {
     pg_proto_link_record_use($pg_proto_link, $pg_proto_now);
 }
 

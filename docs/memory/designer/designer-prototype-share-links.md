@@ -8,7 +8,7 @@ description: Share links of a design's prototype (prototype_links, 11.0.35): mak
 - Revoked with its design: every style delete path calls `pg_proto_links_revoke_design()` (a later design may get the id: InnoDB on MySQL 5.7 after a restart).
 
 ## Who makes, lists and revokes them?
-- Roles 0-1: tab menu "Share prototype" (`_pgPrototypeShareDialog()`); designer sub-actions `prototype_link*` (not in `$content_ok`); API `GET|POST /design/designs/{id}/prototype-links`, `POST …/{link_id}/revoke` (designer owner, dry run, `'mcp' => false`). The API gives the address on create only; the password untrimmed (`api_design_prototype_link_password()`). A list, boolean, NUL byte or spaces alone are refused.
+- Roles 0-1: tab menu "Share prototype" (`_pgPrototypeShareDialog()`); designer sub-actions `prototype_link*` (not in `$content_ok`); API `GET|POST /design/designs/{id}/prototype-links`, `POST …/{link_id}/revoke` (designer owner, dry run, `'mcp' => false`). The API gives the address on create (and its replay) only; the password untrimmed (`api_design_prototype_link_password()`). A list, boolean, NUL byte or spaces alone are refused.
 - Site Log names a link `#id (hint…)`, never the token.
 
 ## Who opens one?
@@ -22,14 +22,13 @@ description: Share links of a design's prototype (prototype_links, 11.0.35): mak
 
 ## How is the token kept out of logs?
 - prototype.php loads the module before init.php (gate `PG_PROTOTYPE_ENTRY`) and writes `link=***` into every copy of the address (`pg_proto_link_redact_server()`). Secure Mode's redirects use `PG_SECURE_MODE_REDIRECT_URL` (the address as it came). Not covered: the web server's access log; a team link's sign-in `send_to`.
-- API create's Idempotency-Key record: `url` null (`'idempotency_redact'`), password HMAC-keyed (`'secret'`).
+- API create's Idempotency-Key record: `url` null (`'idempotency_redact'`), read back from the row on a replay (`api_design_prototype_link_restore()`: owner checked again; null when the key cannot read it); password HMAC-keyed (`'secret'`).
 
 ## How is the frame admitted?
-- `pg_proto_link_frame_sign()` (prefix `prototype-link-frame:`) over design, page, sub, record, link id, expiry. Never the token: the design's scripts (an analytics tag) read the frame's address and links. The frame reads the link by `l`, checks it still opens.
-- A plain click on a prototype link is posted to the viewer (`go`), which opens it on its own `?link=<token>` address: no session needed (gone after 24 idle minutes, or cookies refused).
-- A new tab takes the href, `prototype.php?l=<id>` (`pg_proto_link_frame_base()`), opened only for a session marked past the gates (`pg_proto_link_session_mark()`: the token's hash): 303 to `?link=<token>` when the token reads back, else served by its id; unmarked: a 403 note, no offence.
+- Signed by link id, never the token; its clicks, new tabs and a page that fails: designer-prototype-share-link-frame.md.
 
 ## When is a use counted?
-- `uses`, `last_used_at` on a human GET (`waf_classify_bot()`), once per session; never HEAD, a bot or the password form.
+- `uses`, `last_used_at` on a human GET (`waf_classify_bot()`) of the shared address, once per session; never HEAD, a bot or the password form.
+- Not on a move inside (frame click, bar's list, previous/next: `page` named, `pg_proto_link_counts_use()`): each is a new GET, and with cookies refused every one counted. A copied `?link=…&page=N` counts nothing.
 
-Related: docs/memory/designer/designer-prototype-viewer.md, docs/memory/plans/prototype-sharing.md
+Related: docs/memory/designer/designer-prototype-share-link-frame.md, docs/memory/designer/designer-prototype-viewer.md, docs/memory/plans/prototype-sharing.md

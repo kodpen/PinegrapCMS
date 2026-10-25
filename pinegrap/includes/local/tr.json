@@ -28164,6 +28164,7 @@
     "This prototype address is not valid.": "Bu prototip adresi geçerli değil.",
     "This page is no longer a draft of the design.": "Bu sayfa artık tasarımın bir taslağı değil.",
     "The page could not be drawn: {var:1}": "Sayfa çizilemedi: {var:1}",
+    "The page could not be drawn.": "Sayfa çizilemedi.",
     "it is empty.": "sayfa boş.",
     "This link leads nowhere: the page it names does not exist.": "Bu bağlantı hiçbir yere gitmiyor: adını verdiği sayfa yok.",
     "This link leads to a draft of another design.": "Bu bağlantı başka bir tasarımın taslağına gidiyor.",

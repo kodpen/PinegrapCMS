@@ -610,6 +610,24 @@ function test_prototype_links_note_page_fits_a_phone_and_says_its_language()
 	pg_assert_contains("echo pg_proto_note_html(\$message, lang(array('info' => '')));", $source);
 }
 
+// A share link's frame opens for anyone holding the link, signed out: a
+// page that could not be drawn says so without the reason, which can name a
+// server file and line, and the reason goes to the error log. A person's
+// frame (roles 0-2) still names it.
+function test_prototype_links_frame_failure_names_no_reason_to_a_link_holder()
+{
+	$error = 'f(): Argument #1 ($a) must be of type array, null given, called in /home/site/public_html/pinegrap/includes/fn/x.php on line 812';
+
+	pg_assert_true(pg_proto_frame_names_failure(false, $error), 'a person\'s frame');
+	pg_assert_false(pg_proto_frame_names_failure(true, $error), 'a share link\'s frame');
+	pg_assert_true(pg_proto_frame_names_failure(true, ''), 'an empty page has no reason to hide');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	pg_assert_contains("pg_proto_frame_names_failure(isset(\$parsed['l']), \$error)", $source);
+	pg_assert_contains("pg_proto_frame_refuse(lang('The page could not be drawn.'), 500);", $source);
+	pg_assert_contains('pg_error_write(pg_error_entry(', $source);
+}
+
 function prototype_links_test_ctx($viewer)
 {
 	return array(
@@ -639,12 +657,25 @@ function prototype_links_test_ctx($viewer)
 
 function test_prototype_links_use_counts_on_a_human_get_only()
 {
-	pg_assert_true(pg_proto_link_counts_use('GET', 'human'));
-	pg_assert_true(pg_proto_link_counts_use('get', 'human'));
-	pg_assert_false(pg_proto_link_counts_use('HEAD', 'human'), 'HEAD');
-	pg_assert_false(pg_proto_link_counts_use('POST', 'human'), 'the password form');
-	pg_assert_false(pg_proto_link_counts_use('GET', 'good'), 'a known bot, a link preview');
-	pg_assert_false(pg_proto_link_counts_use('GET', 'empty'), 'no user agent');
+	pg_assert_true(pg_proto_link_counts_use('GET', 'human', 0));
+	pg_assert_true(pg_proto_link_counts_use('get', 'human', 0));
+	pg_assert_false(pg_proto_link_counts_use('HEAD', 'human', 0), 'HEAD');
+	pg_assert_false(pg_proto_link_counts_use('POST', 'human', 0), 'the password form');
+	pg_assert_false(pg_proto_link_counts_use('GET', 'good', 0), 'a known bot, a link preview');
+	pg_assert_false(pg_proto_link_counts_use('GET', 'empty', 0), 'no user agent');
+}
+
+// A use is the shared address opened, which never names a page. A move
+// inside the prototype (a click in the frame, the bar's list, previous and
+// next) names one and is a new request of its own: without a kept session
+// (cookies refused) each of them would count again.
+function test_prototype_links_use_counts_the_shared_address_not_a_move_inside()
+{
+	pg_assert_false(pg_proto_link_counts_use('GET', 'human', 12), 'a page inside the prototype');
+	pg_assert_false(pg_proto_link_counts_use('GET', 'human', 1), 'any page named');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	pg_assert_contains("pg_proto_link_counts_use(\$pg_proto_method, \$pg_proto_client['class'], \$pg_proto_page_id)", $source);
 }
 
 function test_prototype_links_summary_says_where_a_link_stands()
@@ -870,10 +901,41 @@ function test_prototype_links_api_create_keeps_no_secret_in_its_idempotency_reco
 	pg_assert_same(array('url'), isset($create['idempotency_redact']) ? $create['idempotency_redact'] : null);
 	pg_assert_true(!empty($params['password']['secret']), 'the password is a secret field');
 
-	// A replay answers url null, so the schema says it may be.
+	// A replay answers url null only where the site's key cannot read the
+	// token back, so the schema says it may be.
 	$created = api_design_prototype_link_created_schema();
 	pg_assert_same('string?', $created['url']);
 	pg_assert_contains('Idempotency-Key', $create['description']);
+}
+
+// A retry answered from the Idempotency-Key record gets the first answer:
+// the address is read back from the link's row (sealed with the site key)
+// for the link and design the record names, never for another one.
+function test_prototype_links_api_create_replay_reads_the_address_back()
+{
+	$routes = prototype_links_test_api();
+	$create = $routes['design.prototype_links.create'];
+
+	pg_assert_same('api_design_prototype_link_restore', isset($create['idempotency_restore']) ? $create['idempotency_restore'] : null);
+	pg_assert_true(function_exists('api_design_prototype_link_restore'), 'the restore function is declared');
+
+	$url = 'https://example.com/pinegrap/prototype.php?link=' . prototype_links_test_token();
+	$stored = array('url' => null, 'link' => array('id' => 12, 'design_id' => 7, 'audience' => 'anyone'));
+	$row = array('id' => '12', 'style_id' => '7');
+
+	pg_assert_same(array('url' => $url, 'link' => $stored['link']), api_design_prototype_link_replayed($stored, $row, $url), 'the first answer again');
+	pg_assert_same($stored, api_design_prototype_link_replayed($stored, $row, ''), 'the token does not read back: url stays null');
+	pg_assert_same($stored, api_design_prototype_link_replayed($stored, null, $url), 'no such link');
+	pg_assert_same($stored, api_design_prototype_link_replayed($stored, array('id' => '13', 'style_id' => '7'), $url), 'another link');
+	pg_assert_same($stored, api_design_prototype_link_replayed($stored, array('id' => '12', 'style_id' => '8'), $url), 'another design');
+	pg_assert_same('text', api_design_prototype_link_replayed('text', $row, $url), 'not an answer of this route');
+	pg_assert_same(array('link' => $stored['link']), api_design_prototype_link_replayed(array('link' => $stored['link']), $row, $url), 'no url field to fill');
+
+	// The replay runs before the handler: its owner check is made again.
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/design.php');
+	preg_match('~function api_design_prototype_link_restore\(.*?\n}\n~s', $api, $restore);
+	pg_assert_contains('pg_designer_is_full(', isset($restore[0]) ? $restore[0] : '');
+	pg_assert_contains('pg_proto_link_token(', isset($restore[0]) ? $restore[0] : '');
 }
 
 // The API hands the plan the password as sent: text untrimmed, a number as

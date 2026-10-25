@@ -293,7 +293,7 @@ function api_run() {
 
 			$hash = api_idempotency_hash(api_idempotency_input($route, $params));
 
-			api_idempotency_context((int)$app['id'], $key, $hash, isset($route['idempotency_redact']) ? (array)$route['idempotency_redact'] : array());
+			api_idempotency_context((int)$app['id'], $key, $hash, isset($route['idempotency_redact']) ? (array)$route['idempotency_redact'] : array(), isset($route['idempotency_restore']) ? (string)$route['idempotency_restore'] : '');
 
 			api_idempotency_replay((int)$app['id'], $key, $hash);
 

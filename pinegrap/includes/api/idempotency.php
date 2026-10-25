@@ -190,7 +190,9 @@ function api_idempotency_replay($app_id, $key, $body_hash) {
 
 			api_extra_headers('Idempotent-Replay', 'true');
 
-			api_send((int)$row['status_code'], $stored);
+			$context = api_idempotency_context();
+
+			api_send((int)$row['status_code'], api_idempotency_restored($stored, $context['restore']));
 
 		}
 
@@ -240,17 +242,18 @@ function api_idempotency_replay($app_id, $key, $body_hash) {
 
 }
 
-// What this request is running under, set once the replay check has passed.
-// api_send() reads it on the way out, which is why a handler never has to
-// remember to record its own answer. $redact is the route's
-// 'idempotency_redact' list (api_idempotency_redacted()).
-function api_idempotency_context($app_id = null, $key = null, $body_hash = null, $redact = array()) {
+// What this request is running under, set before the replay check. api_send()
+// reads it on the way out, which is why a handler never has to remember to
+// record its own answer. $redact is the route's 'idempotency_redact' list
+// (api_idempotency_redacted()), $restore its 'idempotency_restore' function
+// (api_idempotency_restored()).
+function api_idempotency_context($app_id = null, $key = null, $body_hash = null, $redact = array(), $restore = '') {
 
-	static $context = array('app_id' => 0, 'key' => '', 'hash' => '', 'redact' => array());
+	static $context = array('app_id' => 0, 'key' => '', 'hash' => '', 'redact' => array(), 'restore' => '');
 
 	if ($app_id !== null) {
 
-		$context = array('app_id' => (int)$app_id, 'key' => (string)$key, 'hash' => (string)$body_hash, 'redact' => array_values((array)$redact));
+		$context = array('app_id' => (int)$app_id, 'key' => (string)$key, 'hash' => (string)$body_hash, 'redact' => array_values((array)$redact), 'restore' => is_string($restore) ? $restore : '');
 
 	}
 
@@ -263,8 +266,8 @@ function api_idempotency_context($app_id = null, $key = null, $body_hash = null,
 // share link's address, would otherwise sit readable in api_idempotency for
 // the day the row lives (api_maintenance_purge()), for anyone who can read
 // the database and without the site's key. A retry answered from the record
-// gets the rest of the answer with that field null; the route's description
-// says where the secret can be had again.
+// gets that field again only where the route's 'idempotency_restore'
+// function reads it back (api_idempotency_restored()), null otherwise.
 function api_idempotency_redacted($response, $keys) {
 
 	if (!is_array($response)) {
@@ -284,6 +287,28 @@ function api_idempotency_redacted($response, $keys) {
 	}
 
 	return $response;
+
+}
+
+// The recorded answer as a replay sends it. A route that keeps a field out of
+// the record ('idempotency_redact') may name a function
+// ('idempotency_restore') that reads it back from where it is kept sealed,
+// such as a share link's address from its row, so the retry gets the first
+// answer, which the Idempotency-Key header promises. The function is handed
+// the record and returns it; an answer that is not an object leaves the
+// record as it is. It runs before the handler, so it makes the route's own
+// checks again.
+function api_idempotency_restored($stored, $restore) {
+
+	if (!is_string($restore) || ($restore === '') || !function_exists($restore)) {
+
+		return $stored;
+
+	}
+
+	$restored = call_user_func($restore, $stored);
+
+	return is_array($restored) ? $restored : $stored;
 
 }
 

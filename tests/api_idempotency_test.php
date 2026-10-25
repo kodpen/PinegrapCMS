@@ -133,5 +133,42 @@ function test_api_idempotency_record_leaves_out_a_routes_redacted_fields()
 	pg_assert_contains("api_idempotency_secret_input(\$route, \$params,", $source);
 
 	$bootstrap = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/bootstrap.php');
-	pg_assert_contains("api_idempotency_context((int)\$app['id'], \$key, \$hash, isset(\$route['idempotency_redact']) ? (array)\$route['idempotency_redact'] : array());", $bootstrap);
+	pg_assert_contains("api_idempotency_context((int)\$app['id'], \$key, \$hash, isset(\$route['idempotency_redact']) ? (array)\$route['idempotency_redact'] : array(), isset(\$route['idempotency_restore']) ? (string)\$route['idempotency_restore'] : '');", $bootstrap);
+}
+
+// A route's 'idempotency_restore' function, as a test stands one in: fills
+// the field the record left out.
+function api_idempotency_test_restore($stored)
+{
+	$stored['url'] = 'read back';
+
+	return $stored;
+}
+
+// One that answers something that is not an object.
+function api_idempotency_test_restore_text($stored)
+{
+	return 'text';
+}
+
+// What the record left out ('idempotency_redact') a replay fills in again
+// through the route's 'idempotency_restore' function, so the retry gets the
+// first answer; a route without one, or a function that answers anything
+// but an object, leaves the record as it is.
+function test_api_idempotency_replay_restores_a_routes_redacted_fields()
+{
+	$stored = array('url' => null, 'link' => array('id' => 4));
+
+	pg_assert_same(array('url' => 'read back', 'link' => array('id' => 4)), api_idempotency_restored($stored, 'api_idempotency_test_restore'));
+	pg_assert_same($stored, api_idempotency_restored($stored, ''), 'no restore function');
+	pg_assert_same($stored, api_idempotency_restored($stored, 'api_idempotency_test_no_such_function'), 'a name that is not a function');
+	pg_assert_same($stored, api_idempotency_restored($stored, 'api_idempotency_test_restore_text'), 'an answer that is not an object');
+
+	$context = api_idempotency_context(3, 'k1', 'h1', array('url'), 'api_idempotency_test_restore');
+	pg_assert_same('api_idempotency_test_restore', $context['restore']);
+	$context = api_idempotency_context(3, 'k1', 'h1', array('url'));
+	pg_assert_same('', $context['restore'], 'none unless the route names one');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/idempotency.php');
+	pg_assert_contains("api_send((int)\$row['status_code'], api_idempotency_restored(\$stored, \$context['restore']));", $source);
 }

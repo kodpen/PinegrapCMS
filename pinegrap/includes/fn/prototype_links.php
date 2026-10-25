@@ -452,15 +452,20 @@ function pg_proto_link_attempt_sql($link_id, $now)
 /**
  * Whether a visit of the viewer counts as a use of the link: a GET (not a
  * HEAD, not the password form) from a person, not a bot or a messenger
- * drawing a preview of the link (waf_classify_bot()).
+ * drawing a preview of the link (waf_classify_bot()), of the shared address
+ * itself. A move inside the prototype (a click in the frame, the bar's list,
+ * previous and next) names a page and is a request of its own, so without a
+ * kept session (cookies refused) each one would count again; the address
+ * handed out never names one (pg_proto_link_url()).
  *
  * @param string $method
  * @param string $client_class waf_classify_bot()['class']
+ * @param int    $page_id      the page the address names, 0 for none
  * @return bool
  */
-function pg_proto_link_counts_use($method, $client_class)
+function pg_proto_link_counts_use($method, $client_class, $page_id)
 {
-    return (strtoupper((string) $method) === 'GET') && ((string) $client_class === 'human');
+    return (strtoupper((string) $method) === 'GET') && ((string) $client_class === 'human') && ((int) $page_id === 0);
 }
 
 /**
@@ -1184,8 +1189,9 @@ function pg_proto_links_revoke_design($style_ids, $user_id = 0)
 }
 
 /**
- * Counts a use of a link: once per browser session, with its time; a later
- * view in the same session moves the time on, at most once a minute.
+ * Counts a use of a link: once per browser session, with its time; the
+ * address opened again in the same session moves the time on, at most once
+ * a minute.
  *
  * @param array $row
  * @param int   $now

@@ -1315,8 +1315,9 @@ function api_design_revisions_restore($params) {
 // listed, made and revoked by an application whose owner is an administrator
 // or a designer, as in the editor's Share prototype dialog. None of the three
 // routes is an MCP tool ('mcp' => false): no AI app mints a public link to
-// pages that are not on the site. The address of a link is answered once,
-// when it is made; the editor can show it again to a designer.
+// pages that are not on the site. The address of a link is answered when it
+// is made, and to a retry of that request; the editor can show it again to a
+// designer.
 function api_design_prototype_links_ready() {
 
 	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
@@ -1391,15 +1392,74 @@ function api_design_prototype_link_schema() {
 
 }
 
-// What a new link answers with: its address, shown this once (null on a
-// retry answered from its Idempotency-Key record, which keeps no address),
-// and the link.
+// What a new link answers with: its address (null on a retry answered from
+// its Idempotency-Key record when the site's key cannot read the token back,
+// api_design_prototype_link_restore()), and the link.
 function api_design_prototype_link_created_schema() {
 
 	return array(
 		'url'  => 'string?',
 		'link' => 'DesignPrototypeLink'
 	);
+
+}
+
+// A create answer read from its Idempotency-Key record, which keeps url null
+// ('idempotency_redact'), with the address filled in again: $row is the link
+// the record names and $url its address read back ('' when it cannot be).
+// Only for that link, still of the design the record names.
+function api_design_prototype_link_replayed($stored, $row, $url) {
+
+	if (!is_array($stored) || !array_key_exists('url', $stored) || ($stored['url'] !== null) || !isset($stored['link']['id'], $stored['link']['design_id'])) {
+
+		return $stored;
+
+	}
+
+	if (!is_array($row) || ((int)$row['id'] !== (int)$stored['link']['id']) || ((int)$row['style_id'] !== (int)$stored['link']['design_id']) || ((string)$url === '')) {
+
+		return $stored;
+
+	}
+
+	$stored['url'] = (string)$url;
+
+	return $stored;
+
+}
+
+// The create route's 'idempotency_restore' function: a retry answered from
+// its record gets the address the first answer carried, read back from the
+// link's row, where the token is sealed with the site key
+// (pg_proto_link_token()), so the record never holds it. The replay runs
+// before the handler, so the owner check is made again here; url stays null
+// for an owner who is no longer an administrator or a designer, and when the
+// token cannot be read back (no key, or a key changed since).
+function api_design_prototype_link_restore($stored) {
+
+	if (!is_array($stored) || !isset($stored['link']['id'])) {
+
+		return $stored;
+
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+
+	$app = api_current_app();
+
+	if (!pg_proto_links_ready() || !pg_designer_is_full($app['owner'])) {
+
+		return $stored;
+
+	}
+
+	$row = pg_proto_link_get($stored['link']['id']);
+
+	$token = is_array($row) ? pg_proto_link_token($row) : '';
+
+	return api_design_prototype_link_replayed($stored, $row, ($token !== '') ? pg_proto_link_url($token) : '');
 
 }
 
