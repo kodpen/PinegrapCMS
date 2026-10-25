@@ -639,7 +639,8 @@ function test_prototype_php_gates_the_viewer_and_the_frame()
 	// every cookie is dropped, and a real address asked for by another
 	// browser is refused before a forged one is counted.
 	pg_assert_contains('pg_proto_frame_bind(', $source);
-	pg_assert_true(strpos($source, 'session_name()') < strpos($source, '$_COOKIE = array();'));
+	$kept = strpos($source, 'session_name()');
+	pg_assert_true(($kept !== false) && ($kept < strpos($source, '$_COOKIE = array();')));
 	pg_assert_true((strpos($source, "'unbound'") !== false) && (strpos($source, "'unbound'") < strpos($source, 'pg_proto_frame_offence();')));
 	// Drawn as a background render with no page cache, never through
 	// get_page.php's private gate.

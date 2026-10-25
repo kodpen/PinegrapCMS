@@ -78,6 +78,7 @@ if ($pg_proto_frame) {
 
     $parsed = pg_proto_frame_parse($_GET);
     $state = pg_proto_frame_state($parsed, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', time(), $pg_proto_client);
+    unset($pg_proto_client);
 
     if ($state === 'expired') {
         pg_proto_frame_refuse(lang('This prototype view has expired. Reload the page to draw it again.'), 403);
