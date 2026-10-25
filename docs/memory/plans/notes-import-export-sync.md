@@ -1,6 +1,6 @@
 ---
 name: notes-import-export-sync
-description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Evernote .enex import done; Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
+description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, Evernote .enex and Google Keep import done; HTML reader, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 ---
 
 ## What is this plan?
@@ -18,7 +18,8 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Eve
 - N1 Export — done (PR #528, memory docs/memory/workspace/workspace-notes-export.md): `.md` with front matter, the zip vault, the print page.
 - N2 Import, Markdown/zip — done (PR #553, memory docs/memory/workspace/workspace-notes-import.md): `.md`/`.txt` or a `.zip` (Obsidian, Notion, Joplin, Bear, our own vault), preview, batches, linked files, `[[wikilinks]]`, an export of ours updating its note.
 - N2 Import, Evernote `.enex` — done (PR #644, memory docs/memory/workspace/workspace-notes-import-enex.md): read as a stream at upload and laid out in the stage as Markdown and attachment files, so the preview, batches and `finish` stayed as they were.
-- N2 Import, other formats: Google Keep Takeout JSON, single `.html`, each laid out in the stage the same way.
+- N2 Import, Google Keep Takeout zip — done (PR #1656, memory docs/memory/workspace/workspace-notes-import-keep.md): the Keep notes of the zip laid out in the stage the same way.
+- N2 Import, other formats: single `.html`, laid out in the stage the same way.
 - N3 Sync API: paging and `created_at` done (issue #511); left: `DELETE /workspace/notes/{id}`, deletion records, a per-note `revision` (today `base` has one-second resolution and only refuses another person's change). Schema asks: `ws_notes.revision`, `ws_note_deletions`, `ws_note_sources` (user_id, provider, external_id, hash) for re-import de-duplication.
 - N4 Outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
 
@@ -29,4 +30,4 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Eve
 4. Format priority (default: Markdown/zip → enex → Keep → HTML).
 
 ## Where to start?
-- The N3 bugs and schema next (ask the owner about the three tables first), then the Keep and HTML readers (`notes_enex.php` is the pattern), then N4.
+- The N3 bugs and schema next (ask the owner about the three tables first), then the HTML reader (`notes_enex.php` and `notes_keep.php` are the pattern), then N4.

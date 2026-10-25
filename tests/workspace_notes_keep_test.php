@@ -117,3 +117,123 @@ function test_workspace_notes_keep_body()
 
 	pg_assert_same("**Bold** and plain\nSecond", ws_note_keep_body($rich), 'the rich text keeps its bold');
 }
+
+// A zip of the given files in a stage folder of its own, listed the way
+// ws_note_import_stage() lists one; the caller removes the folder.
+function workspace_notes_keep_test_zip($files)
+{
+	$dir = sys_get_temp_dir() . '/pg_keep_test_' . bin2hex(random_bytes(4));
+	mkdir($dir, 0755);
+
+	$archive = new ZipArchive();
+	$archive->open($dir . '/source.zip', ZipArchive::CREATE);
+
+	foreach ($files as $name => $bytes) {
+		$archive->addFromString($name, $bytes);
+	}
+
+	$archive->close();
+	$archive->open($dir . '/source.zip');
+
+	$entries = array();
+
+	for ($index = 0; $index < $archive->numFiles; $index++) {
+		$stat = $archive->statIndex($index);
+		$entries[] = array($stat['name'], (int) $stat['size'], (int) $stat['mtime'], $index);
+	}
+
+	return array($dir, $archive, $entries);
+}
+
+function workspace_notes_keep_test_remove($dir, $archive)
+{
+	$archive->close();
+
+	foreach (array_merge((array) glob($dir . '/files/*'), (array) glob($dir . '/*')) as $path) {
+		if (is_file($path)) {
+			unlink($path);
+		}
+	}
+
+	if (is_dir($dir . '/files')) {
+		rmdir($dir . '/files');
+	}
+
+	rmdir($dir);
+}
+
+function test_workspace_notes_keep_stage_reads_a_takeout()
+{
+	$picture = random_bytes(5000);
+
+	list($dir, $archive, $entries) = workspace_notes_keep_test_zip(array(
+		'Takeout/Keep/Alışveriş.json' => workspace_notes_keep_test_json(array(
+			'title'       => 'Alışveriş',
+			'listContent' => array(array('text' => 'Süt', 'isChecked' => true)),
+			'labels'      => array(array('name' => 'ev')),
+			'attachments' => array(array('filePath' => 'a1.jpeg', 'mimetype' => 'image/jpeg'), array('filePath' => 'gone.png', 'mimetype' => 'image/png')),
+		)),
+		'Takeout/Keep/Alışveriş.html'                    => '<html>not read</html>',
+		'Takeout/Keep/a1.jpg'                            => $picture,
+		'Takeout/Keep/2023-10-01T10_00_00.000+03_00.json' => workspace_notes_keep_test_json(array('textContent' => "First line\nSecond line")),
+		'Takeout/Keep/Çöp.json'                          => workspace_notes_keep_test_json(array('title' => 'Çöp', 'textContent' => 'binned', 'isTrashed' => true)),
+		'Takeout/Keep/Labels.txt'                        => "ev\n",
+	));
+
+	$read = ws_note_keep_stage($dir, $archive, $entries);
+
+	pg_assert_true($read['keep'], 'a Takeout of Keep notes');
+	pg_assert_true($read['ok'], 'read: ' . $read['error']);
+
+	$paths = array_map(function ($row) {
+		return $row[0];
+	}, $read['entries']);
+
+	pg_assert_same(array('Alışveriş.md', 'attachments/1/a1.jpeg', 'First line.md'), $paths, 'the notes and the picture; the HTML copy, the labels list and the binned note are not read');
+
+	$stage = array('dir' => $dir, 'zip' => false, 'entries' => $read['entries']);
+
+	pg_assert_same(1, $read['entries'][1][4], 'the picture is marked as an attachment');
+	pg_assert_same($picture, ws_note_import_read($stage, 1, strlen($picture)), 'the picture found under its other extension and copied whole');
+	pg_assert_same(array(0, 2), ws_note_import_index($stage)['notes']);
+
+	$list = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 0, WS_NOTE_IMPORT_TEXT_MAX)), $paths[0], 0);
+
+	pg_assert_same('Alışveriş', $list['title']);
+	pg_assert_same(1696150000, $list['created']);
+	pg_assert_same("- [x] Süt\n\n[a1.jpeg](attachments/1/a1.jpeg)\n[gone.png](attachments/1/gone.png)\n\n#ev", $list['body'], 'the checklist, then the pictures (the missing one keeps its link), then the label');
+
+	$untitled = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 2, WS_NOTE_IMPORT_TEXT_MAX)), $paths[2], 0);
+
+	pg_assert_same('First line', $untitled['title'], 'an untitled note is named by its first line');
+	pg_assert_same("First line\nSecond line", $untitled['body']);
+
+	workspace_notes_keep_test_remove($dir, $archive);
+}
+
+function test_workspace_notes_keep_stage_leaves_other_zips()
+{
+	list($dir, $archive, $entries) = workspace_notes_keep_test_zip(array(
+		'vault/note.md'      => "# Note\n",
+		'vault/package.json' => '{"name":"x","version":"1.0"}',
+	));
+
+	$read = ws_note_keep_stage($dir, $archive, $entries);
+
+	pg_assert_false($read['keep'], 'a zip without a Keep note is read as it is');
+	pg_assert_false(is_dir($dir . '/files'), 'and nothing is written for it');
+
+	workspace_notes_keep_test_remove($dir, $archive);
+
+	list($dir, $archive, $entries) = workspace_notes_keep_test_zip(array(
+		'Takeout/Keep/Çöp.json' => workspace_notes_keep_test_json(array('textContent' => 'binned', 'isTrashed' => true)),
+	));
+
+	$read = ws_note_keep_stage($dir, $archive, $entries);
+
+	pg_assert_true($read['keep']);
+	pg_assert_false($read['ok'], 'only binned notes: nothing to bring in');
+	pg_assert_same(lang('The Google Keep export holds no notes outside the bin.'), $read['error']);
+
+	workspace_notes_keep_test_remove($dir, $archive);
+}

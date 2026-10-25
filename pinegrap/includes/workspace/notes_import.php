@@ -5,7 +5,8 @@
  * Workspace - notes brought in from other note apps, in three steps:
  *
  *   1. The upload (one .zip, Markdown and text files, or Evernote exports,
- *      which notes_enex.php lays out as such files) is staged under
+ *      which notes_enex.php lays out as such files, as notes_keep.php does
+ *      the notes of a Google Keep Takeout zip) is staged under
  *      data/temp and read through: what every file would become is shown to
  *      the person before anything is written (ws_note_import_plan()).
  *   2. The files they keep ticked are written a batch at a time: a new note
@@ -436,9 +437,10 @@ function ws_note_import_upload_error($name, $error, $file_max)
 
 /**
  * Stages an upload: one .zip, Markdown and text files, or Evernote exports,
- * moved under data/temp with the list of what they hold. An Evernote export
- * is laid out as note and attachment files right away (notes_enex.php);
- * nothing is written as a note yet.
+ * moved under data/temp with the list of what they hold. An Evernote export,
+ * and a zip of Google Keep notes, is laid out as note and attachment files
+ * right away (notes_enex.php, notes_keep.php); nothing is written as a note
+ * yet.
  *
  * @param array  $viewer
  * @param array  $files the upload, one entry a file: name, tmp_name, size, error
@@ -550,6 +552,10 @@ function ws_note_import_stage($viewer, $files, $token = '')
     $entries = array();
     $files = array_values($files);
 
+    // Whether the stage reads its entries out of source.zip, or out of
+    // files/ (loose files, and exports laid out as such files).
+    $read_zip = ($zips > 0);
+
     if ($exports > 0) {
         $sources = array();
 
@@ -610,7 +616,20 @@ function ws_note_import_stage($viewer, $files, $token = '')
             }
         }
 
+        // A Google Takeout of Keep notes is laid out as an upload of
+        // Markdown files (notes_keep.php); any other zip is read as it is.
+        $keep = ws_note_keep_stage($dir, $archive, $entries);
         $archive->close();
+
+        if ($keep['keep']) {
+            if (!$keep['ok']) {
+                return $fail($keep['error'], $dir);
+            }
+
+            $entries = $keep['entries'];
+            $read_zip = false;
+            @unlink($path);
+        }
     } else {
         if (!@mkdir($dir . '/files', 0755)) {
             ws_note_import_log_failure('creating the files folder of the stage');
@@ -633,7 +652,7 @@ function ws_note_import_stage($viewer, $files, $token = '')
         'dir'     => $dir,
         'user'    => (int) $viewer['id'],
         'created' => time(),
-        'zip'     => ($zips > 0),
+        'zip'     => $read_zip,
         'name'    => mb_substr(ws_note_import_entry_name(pg_basename(str_replace('\\', '/', (string) $files[0]['name']))), 0, 120),
         'entries' => $entries,
     );

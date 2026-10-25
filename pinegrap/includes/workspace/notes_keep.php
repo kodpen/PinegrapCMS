@@ -228,3 +228,220 @@ function ws_note_keep_body($note)
 
     return implode("\n\n", $parts);
 }
+
+/* ---------------------------------------------------------------------------
+   The Takeout zip laid out in the stage.
+   --------------------------------------------------------------------------- */
+
+/**
+ * The entry of the zip an attachment of a note names: the path beside the
+ * note, in any case, else a file of the same name with another extension in
+ * that folder (Takeout names a picture .jpeg in the note and .jpg in the zip,
+ * or the other way round).
+ *
+ * @param array  $lookup path, lower and stem maps of the zip's entries
+ * @param string $dir    the folder the note sits in
+ * @param string $path   the attachment's filePath
+ * @return array|null the entry: name, size, time, index
+ */
+function ws_note_keep_attachment($lookup, $dir, $path)
+{
+    $full = ws_note_import_path($dir, $path);
+
+    if ($full === '') {
+        return null;
+    }
+
+    if (isset($lookup['path'][$full])) {
+        return $lookup['path'][$full];
+    }
+
+    if (isset($lookup['lower'][mb_strtolower($full)])) {
+        return $lookup['lower'][mb_strtolower($full)];
+    }
+
+    foreach ($lookup['stem'][mb_strtolower(ws_note_import_dir_of($full) . '/' . pg_file_name_stem($full))] ?? array() as $row) {
+        if (!in_array(strtolower((string) pathinfo((string) $row[0], PATHINFO_EXTENSION)), array('json', 'html'), true)) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Lays out the Keep notes of an uploaded zip in its stage: every note a
+ * Markdown file, every attachment a file of its own, as the files of an
+ * upload. A zip without a Keep note is left alone (keep false) and read as
+ * an upload of Markdown files; one with Keep notes is read for them only.
+ *
+ * @param string     $dir     the stage folder (its files/ is made here)
+ * @param ZipArchive $archive the uploaded zip, open
+ * @param array      $entries the zip's entries as ws_note_import_stage()
+ *                            lists them: name, size, time, index
+ * @return array keep, ok, error, entries (as ws_note_import_stage() keeps
+ *               them; an attachment's row carries a fifth value, 1)
+ */
+function ws_note_keep_stage($dir, $archive, $entries)
+{
+    $out = array('keep' => false, 'ok' => false, 'error' => '', 'entries' => array());
+    $lookup = array('path' => array(), 'lower' => array(), 'stem' => array());
+    $notes = array();
+
+    foreach ($entries as $row) {
+        $path = (string) $row[0];
+
+        $lookup['path'][$path] = $row;
+        $lookup['lower'][mb_strtolower($path)] = $row;
+        $lookup['stem'][mb_strtolower(ws_note_import_dir_of($path) . '/' . pg_file_name_stem($path))][] = $row;
+    }
+
+    foreach ($entries as $row) {
+        if ((strtolower((string) pathinfo((string) $row[0], PATHINFO_EXTENSION)) !== 'json') || ((int) $row[1] > WS_NOTE_IMPORT_TEXT_MAX)) {
+            continue;
+        }
+
+        $error = '';
+        $bytes = pg_zip_entry_contents($archive, (int) $row[3], WS_NOTE_IMPORT_TEXT_MAX, $error);
+        $note = is_string($bytes) ? ws_note_keep_parse($bytes) : null;
+
+        if ($note) {
+            $notes[] = array($row, $note);
+        }
+    }
+
+    if (empty($notes)) {
+        return $out;
+    }
+
+    $out['keep'] = true;
+
+    if (!is_dir($dir . '/files') && !@mkdir($dir . '/files', 0755)) {
+        ws_note_import_log_failure('creating the files folder of a Google Keep import');
+        $out['error'] = lang('The file could not be saved.');
+
+        return $out;
+    }
+
+    $context = array(
+        'dir'      => $dir,
+        'next'     => 0,
+        'notes'    => 0,
+        'taken'    => array(),
+        'entries'  => array(),
+        'file_max' => function_exists('ws_upload_max_bytes') ? ws_upload_max_bytes() : 20971520,
+        'error'    => '',
+    );
+
+    foreach ($notes as $pair) {
+        if ($pair[1]['trashed']) {
+            continue;
+        }
+
+        if (!ws_note_keep_add($archive, $lookup, $pair[0], $pair[1], $context)) {
+            $out['error'] = $context['error'];
+
+            return $out;
+        }
+    }
+
+    if ($context['notes'] === 0) {
+        $out['error'] = lang('The Google Keep export holds no notes outside the bin.');
+
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['entries'] = $context['entries'];
+
+    return $out;
+}
+
+/**
+ * One Keep note added to the stage: its attachments copied out of the zip
+ * into attachments/<n>/, linked at the end of its text, and the Markdown
+ * file. An attachment the zip lacks keeps its link, which the import reports
+ * as missing; one past what a note keeps is counted only, as for a zip.
+ *
+ * @param ZipArchive $archive
+ * @param array      $lookup  ws_note_keep_stage()'s maps of the entries
+ * @param array      $row     the note's entry
+ * @param array      $note    ws_note_keep_parse()
+ * @param array      $context ws_note_keep_stage()'s; error is set when false is returned
+ * @return bool
+ */
+function ws_note_keep_add($archive, $lookup, $row, $note, &$context)
+{
+    if ((count($context['entries']) + 1 + count($note['files'])) > WS_NOTE_IMPORT_ENTRIES_MAX) {
+        $context['error'] = lang(array('string' => 'The export holds more than {var:1} notes and attachments.', 'vars' => WS_NOTE_IMPORT_ENTRIES_MAX));
+
+        return false;
+    }
+
+    $number = ++$context['notes'];
+    $title = ws_note_keep_title($note);
+    $name = ws_note_export_name($title, $number, $context['taken']) . '.md';
+    $time = ($note['updated'] > 0) ? $note['updated'] : (($note['created'] > 0) ? $note['created'] : (int) $row[2]);
+    $folder = 'attachments/' . $number . '/';
+    $dir = ws_note_import_dir_of((string) $row[0]);
+    $taken = array();
+    $links = array();
+    $rows = array();
+
+    foreach ($note['files'] as $index => $file) {
+        $file_name = ws_note_enex_file_name($file['path'], $file['mime'], $index + 1, $taken);
+        $links[] = '[' . $file_name . '](' . ws_note_import_link_path($folder . $file_name) . ')';
+        $source = ws_note_keep_attachment($lookup, $dir, $file['path']);
+
+        if (!$source) {
+            continue;
+        }
+
+        if ((int) $source[1] > $context['file_max']) {
+            $rows[] = array($folder . $file_name, (int) $source[1], $time, $context['next']++, 1);
+            continue;
+        }
+
+        $error = '';
+        $bytes = pg_zip_entry_contents($archive, (int) $source[3], $context['file_max'], $error);
+
+        if (!is_string($bytes)) {
+            continue;
+        }
+
+        $file_number = $context['next']++;
+
+        if (@file_put_contents($context['dir'] . '/files/' . $file_number . '.txt', $bytes) === false) {
+            ws_note_import_log_failure('writing an attachment of a Google Keep import');
+            $context['error'] = lang('The file could not be saved.');
+
+            return false;
+        }
+
+        $rows[] = array($folder . $file_name, strlen($bytes), $time, $file_number, 1);
+    }
+
+    $body = ws_note_keep_body($note);
+
+    if (!empty($links)) {
+        $body = ltrim($body . "\n\n" . implode("\n", $links));
+    }
+
+    $text = ws_note_enex_file(array('title' => $title, 'created' => $note['created'], 'updated' => $note['updated'], 'tags' => $note['tags']), $body);
+    $file_number = $context['next']++;
+
+    if (@file_put_contents($context['dir'] . '/files/' . $file_number . '.txt', $text) === false) {
+        ws_note_import_log_failure('writing a note of a Google Keep import');
+        $context['error'] = lang('The file could not be saved.');
+
+        return false;
+    }
+
+    $context['entries'][] = array($name, strlen($text), $time, $file_number);
+
+    foreach ($rows as $attachment) {
+        $context['entries'][] = $attachment;
+    }
+
+    return true;
+}
