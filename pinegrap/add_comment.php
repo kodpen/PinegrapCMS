@@ -926,20 +926,10 @@ if (count($administrator_email_addresses) > 0) {
             URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment_id . "\n";
     }
 
-    $query_string = get_query_string_for_page_url($page_type, $item_id, $item_type);
+    // Every comment shows, featured or not, and a comments widget opens the
+    // page of the thread that holds this one (pg_comment_view_query()).
+    $query_string = pg_comment_view_query(get_query_string_for_page_url($page_type, $item_id, $item_type), $comment_id);
 
-    // If this is the first item that is being added to the query string, then add question mark.
-    if (mb_strpos($query_string, '?') === false) {
-        $query_string .= '?';
-        
-    // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-    } else {
-        $query_string .= '&';
-    }
-
-    // Add comments parameter now.
-    $query_string .= 'comments=all';
-    
     // build the view comment link
     $body .=
         "\n" .
@@ -1020,52 +1010,11 @@ $query =
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 
-// If there are featured comments, then add comments parameter to query string.
-if ($row[0] > 0) {
-    // Get current URL parts in order to prepare URL to send visitor to.
-    $url_parts = parse_url(pg_safe_redirect_path($send_to));
-
-    // Put query string parameters into an array in order to prepare new query string.
-    parse_str(isset($url_parts['query']) ? $url_parts['query'] : '', $query_string_parameters);
-
-    $query_string = '';
-
-    // Loop through the query string parameters in order to build query string.
-    foreach ($query_string_parameters as $name => $value) {
-        // If this is not the comments view query string parameter, then add it.
-        if ($name != 'comments') {
-            // If this is the first item that is being added to the query string, then add question mark.
-            if ($query_string == '') {
-                $query_string = '?';
-                
-            // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-            } else {
-                $query_string .= '&';
-            }
-            
-            $query_string .= urlencode($name) . '=' . urlencode($value);
-        }
-    }
-
-    // If this is the first item that is being added to the query string, then add question mark.
-    if ($query_string == '') {
-        $query_string = '?';
-        
-    // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-    } else {
-        $query_string .= '&';
-    }
-
-    // Add comments parameter now.
-    $query_string .= 'comments=all';
-
-    // Send user back to view comment on page.
-    header('Location: ' . URL_SCHEME . HOSTNAME . $url_parts['path'] . $query_string . '#c-' . $comment_id);
-
-} else  {
-    // Send user back to view comment on page.
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to) . '#c-' . $comment_id);
-}
+// Send the writer back to the new comment: the page they posted from,
+// without the comment they answered and the page of the thread they were on,
+// naming the new comment (a comments widget opens the page that holds it),
+// and showing every comment while featured comments exist.
+header('Location: ' . URL_SCHEME . HOSTNAME . pg_comment_return_url(pg_safe_redirect_path($send_to), $comment_id, ($row[0] > 0)) . '#c-' . $comment_id);
 
 // remove liveform
 $liveform->remove_form();

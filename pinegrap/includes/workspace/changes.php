@@ -105,6 +105,16 @@ function ws_changes_ready()
  * starting with "__" is read by ws_change_record() rather than from the
  * table. "key" is the table's id column when it is not id.
  *
+ * A text limit (text, long, email, keywords, code) is never wider than its
+ * column, a TEXT type counted at four bytes a character: sessions run
+ * non-strict, so MySQL would cut a longer value in silence while the
+ * decision shows the whole text. The one exception is the channel summary,
+ * 20000 characters as the summary tab keeps (ws_channel_set_summary()) in a
+ * TEXT column of 65535 bytes. A longer text value is cut, a longer keyword
+ * list refused, by ws_change_value(). tests/workspace_change_limits_test.php
+ * holds every limit to its column, as the setup SQL or the upgrade step
+ * that made the table defines it.
+ *
  * @return array
  */
 function ws_change_types()
@@ -296,11 +306,11 @@ function ws_change_types()
             'fields'   => array(
                 'name'              => array('text', 100, lang('Name'), 'name'),
                 'title'             => array('text', 255, lang('Title'), 'title'),
-                'short_description' => array('long', 2000, lang('Short description'), 'short_description'),
+                'short_description' => array('long', 100, lang('Short description'), 'short_description'),
                 'full_description'  => array('long', 20000, lang('Full description'), 'full_description'),
                 'meta_description'  => array('text', 255, lang('Meta description'), 'meta_description'),
                 'meta_keywords'     => array('text', 2000, lang('Meta keywords'), 'meta_keywords'),
-                'keywords'          => array('text', 2000, lang('Search keywords'), 'keywords'),
+                'keywords'          => array('text', 255, lang('Search keywords'), 'keywords'),
                 'enabled'           => array('bool', 0, lang('Enabled'), 'enabled'),
             ),
             'create'   => array(
@@ -353,7 +363,7 @@ function ws_change_types()
             'names'   => array('page_name'),
             'fields'  => array(
                 'title'            => array('text', 255, lang('Title'), 'page_title'),
-                'meta_description' => array('text', 1000, lang('Meta description'), 'page_meta_description'),
+                'meta_description' => array('text', 255, lang('Meta description'), 'page_meta_description'),
                 'search'           => array('bool', 0, lang('In site search'), 'page_search'),
                 'search_keywords'  => array('keywords', 1000, lang('Search keywords'), 'page_search_keywords'),
                 'sitemap'          => array('bool', 0, lang('In the site map'), 'sitemap'),
@@ -424,9 +434,9 @@ function ws_change_types()
             'required' => array('name'),
             'names'    => array('name'),
             'fields'   => array(
-                'name'              => array('text', 255, lang('Name'), 'name'),
-                'short_description' => array('long', 1000, lang('Short description'), 'short_description'),
-                'location'          => array('text', 255, lang('Location'), 'location'),
+                'name'              => array('text', 100, lang('Name'), 'name'),
+                'short_description' => array('long', 255, lang('Short description'), 'short_description'),
+                'location'          => array('text', 100, lang('Location'), 'location'),
                 'start_time'        => array('datetime', 0, lang('Start'), 'start_time'),
                 'end_time'          => array('datetime', 0, lang('End'), 'end_time'),
                 'all_day'           => array('bool', 0, lang('All day'), 'all_day'),
@@ -1245,6 +1255,16 @@ function ws_change_allowed($viewer, $type, $record_id = 0)
         return !empty($viewer['member']);
     }
 
+    // A contact, for the user role: one filed in a contact group given to
+    // the person, as on the contacts screens and in the external API
+    // (pg_contact_owner_sql()). An id outside and an id of no contact are
+    // refused alike, so a refusal tells nothing about a contact out of reach.
+    if (($type === 'contact') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
+        return (bool) db_value("SELECT 1 FROM contacts
+            WHERE contacts.id = '" . (int) $record_id . "' AND " . pg_contact_owner_sql((int) $viewer['id'], 'contacts.id') . "
+            LIMIT 1");
+    }
+
     // An event: in one of the person's calendars.
     if (($type === 'calendar_event') && ($record_id > 0) && ((int) $viewer['role'] >= 3)) {
         foreach ((array) db_values("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int) $record_id . "'") as $calendar_id) {
@@ -1630,13 +1650,16 @@ function ws_change_delete_blocked($type, $record)
  * task: a note proposed for it goes on that task unless it names another,
  * and nothing is proposed for a channel or for many records at once.
  *
- * @param mixed $changes    the answer's changes, as sent
- * @param int   $asker_id   the person who asked, who will apply them
- * @param int   $channel_id the channel the request came from
- * @param int   $task_id    the task the request came from
+ * @param mixed $changes      the answer's changes, as sent
+ * @param int   $asker_id     the person who asked, who will apply them
+ * @param int   $channel_id   the channel the request came from
+ * @param int   $task_id      the task the request came from
+ * @param bool  $for_proposal an application's proposal (proposals.php):
+ *                            nobody asked, so a refusal speaks of the person
+ *                            it is proposed to, not of an answer
  * @return array ok, error, rows (type, action, record_id, fields, reason, snapshot)
  */
-function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
+function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $for_proposal = false)
 {
     $out = array('ok' => true, 'error' => '', 'rows' => array());
 
@@ -1683,7 +1706,7 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
         if ($action === 'bulk') {
             $bulk = is_array($change['bulk'] ?? null) ? $change['bulk'] : array();
             $bulk['type'] = $type;
-            $checked = ws_bulk_input($asker, $bulk);
+            $checked = ws_bulk_input($asker, $bulk, $for_proposal);
 
             if (!$checked['ok']) {
                 return $refuse($checked['error']);
@@ -1714,7 +1737,9 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
 
         // Nobody gets a button for a change they could not make themselves.
         if (!ws_change_allowed($asker, $type, $record_id)) {
-            return $refuse(lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
+            return $refuse($for_proposal
+                ? lang(array('string' => 'The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.', 'vars' => $types[$type]['label']))
+                : lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
         }
 
         $record = null;
@@ -2175,8 +2200,15 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
     $can_post = array();
     $out = array();
 
+    // The applications that proposed some of them (proposals.php): their
+    // cards are headed by the application's name, not Claude's.
+    $proposers = function_exists('ws_proposers_map') ? ws_proposers_map(array_map(function ($row) {
+        return (int) $row['request_id'];
+    }, $rows)) : array();
+
     foreach ($rows as $row) {
         $type = (string) $row['record_type'];
+        $proposer = (string) ($proposers[(int) $row['request_id']] ?? '');
 
         // A call of an MCP server's tool that writes (mcp_ask.php) is not a
         // kind of record, but waits on the same card.
@@ -2254,6 +2286,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'can_apply'    => $pending && $may && !empty($can_post[$place]),
                 'no_right'     => $pending && $asker && !$may,
                 'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
+                'proposer'     => $proposer,
             );
 
             continue;
@@ -2386,6 +2419,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
             'can_apply'    => $pending && $may && !empty($can_post[$place]),
             'no_right'     => $pending && $asker && !$may,
             'can_dismiss'  => $pending && !empty($can_post[$place]) && ($asker || ((int) $viewer['role'] < 3)),
+            'proposer'     => $proposer,
         );
     }
 
@@ -2424,15 +2458,21 @@ function ws_change_apply_check($viewer, $change_id)
         return $fail(lang('Somebody has already decided about this proposal.'));
     }
 
-    // Proposed by Claude or by Pinegrap AI (ai.php): the sentences written
-    // while it is applied name the one that proposed it.
+    // Proposed by Claude, by Pinegrap AI (ai.php) or by an application
+    // (proposals.php): the sentences written while it is applied name the one
+    // that proposed it.
     $by_ai = function_exists('ws_ai_proposed') && ws_ai_proposed($change);
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
 
     if (function_exists('ws_ai_voice_change')) {
         ws_ai_voice_change($change);
     }
 
     if ((int) $change['requested_by'] !== (int) $viewer['id']) {
+        if ($proposer !== '') {
+            return $fail(lang(array('string' => 'Only the person {var:1} proposed this change to can apply it.', 'vars' => $proposer)));
+        }
+
         return $fail($by_ai ? lang('Only the person who asked Pinegrap AI can apply this change.') : lang('Only the person who asked Claude can apply this change.'));
     }
 
@@ -2542,6 +2582,12 @@ function ws_change_apply_record_check($viewer, $change)
         }
 
         if ($moved) {
+            $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+            if ($proposer !== '') {
+                return $fail(lang(array('string' => 'The record changed after {var:1} proposed this, so it was not applied. Ask {var:1} again.', 'vars' => $proposer)), true);
+            }
+
             return $fail($by_ai
                 ? lang('The record changed after Pinegrap AI proposed this, so it was not applied. Ask Pinegrap AI again.')
                 : lang('The record changed after Claude proposed this, so it was not applied. Ask Claude again.'), true);
@@ -2998,6 +3044,12 @@ function ws_change_dismiss_check($viewer, $change_id)
     }
 
     if (((int) $change['requested_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
+        $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+        if ($proposer !== '') {
+            return $fail(lang(array('string' => 'Only the person {var:1} proposed this change to can set it aside.', 'vars' => $proposer)));
+        }
+
         return $fail((function_exists('ws_ai_proposed') && ws_ai_proposed($change))
             ? lang('Only the person who asked Pinegrap AI can set this change aside.')
             : lang('Only the person who asked Claude can set this change aside.'));
@@ -3079,7 +3131,11 @@ function ws_change_source($source = null)
 /**
  * The sentence a writer leaves on the record itself, in the name of whoever
  * made the change: the assistant that proposed it, the scheduled action, or
- * the person who edited the record from the drawer.
+ * the person who edited the record from the drawer. A change an application
+ * proposed (proposals.php) is named by the person who applied it: the
+ * sentence leaves the site (an order's cancellation reason goes with the
+ * refund and into the customer's e-mail), and an OAuth client chose its own
+ * name when it registered.
  *
  * @param string $by_assistant the sentence written for Claude's proposal
  * @param string $by_scheduled the sentence with {var:1} for the action's name
@@ -3097,6 +3153,16 @@ function ws_change_sentence($by_assistant, $by_scheduled, $var = null, $by_perso
 
     if ($named !== '') {
         return lang(array('string' => $named, 'vars' => ($var === null) ? (string) $source['name'] : array($var, (string) $source['name'])));
+    }
+
+    $change = function_exists('ws_ai_voice_change') ? ws_ai_voice_change() : null;
+
+    if (($by_person !== '') && function_exists('ws_change_proposer') && (ws_change_proposer($change) !== '')) {
+        // The person the application proposed it to is the one who applied
+        // it (ws_change_apply_check()).
+        $person = ws_person_name((int) ($change['requested_by'] ?? 0));
+
+        return lang(array('string' => $by_person, 'vars' => ($var === null) ? $person : array($var, $person)));
     }
 
     $text = ($var === null) ? lang($by_assistant) : lang(array('string' => $by_assistant, 'vars' => $var));
@@ -3128,7 +3194,8 @@ function ws_change_log($what)
 
 /**
  * The search results pages that gather a group rebuild their keyword cloud,
- * as the product group screens do after a change to the group.
+ * as the product group screens do after a change to the group: the shared
+ * rebuild (pg_catalog_group_clouds()).
  *
  * @param int  $group_id
  * @param bool $clear_only take the clouds down (before the group is deleted)
@@ -3136,30 +3203,31 @@ function ws_change_log($what)
  */
 function ws_change_group_clouds($group_id, $clear_only = false)
 {
-    if (!function_exists('get_product_groups_in_product_group_tree')) {
-        return array();
-    }
+    return pg_catalog_group_clouds($group_id, $clear_only);
+}
 
-    $pages = array();
-
-    foreach ((array) db_items("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'") as $page) {
-        foreach ((array) get_product_groups_in_product_group_tree($page['product_group_id']) as $group) {
-            if ((int) $group['id'] === (int) $group_id) {
-                $pages[] = $page;
-                break;
-            }
-        }
-    }
-
-    foreach ($pages as $page) {
-        delete_tag_cloud_keywords_for_search_results_page($page['page_id']);
-
-        if (!$clear_only) {
-            update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
-        }
-    }
-
-    return $pages;
+/**
+ * What a proposed product group create hands the catalogue's group writer
+ * (pg_catalog_group_create()): the one parent the proposal names (0: the top
+ * of the catalogue) and its products.
+ *
+ * @param array $values field => value of the checked proposal
+ * @return array
+ */
+function ws_change_group_create_data($values)
+{
+    return array(
+        'name'              => $values['name'],
+        'enabled'           => !empty($values['enabled']),
+        'parent_id'         => (int) (((array) ($values['parent_id'] ?? array()))[0] ?? 0),
+        'short_description' => (string) ($values['short_description'] ?? ''),
+        'full_description'  => (string) ($values['full_description'] ?? ''),
+        'keywords'          => (string) ($values['keywords'] ?? ''),
+        'title'             => (string) ($values['title'] ?? ''),
+        'meta_description'  => (string) ($values['meta_description'] ?? ''),
+        'meta_keywords'     => (string) ($values['meta_keywords'] ?? ''),
+        'product_ids'       => array_map('intval', (array) ($values['product_ids'] ?? array())),
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -3230,6 +3298,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
         if ($id <= 0) {
             return array('ok' => false, 'error' => lang('The product could not be created.'), 'id' => 0);
         }
+
+        // Scored now, as POST /products scores a new product, so the drawer
+        // and the product list show its score at once.
+        pg_catalog_seo_rescore('product', $id);
 
         ws_change_log(lang(array('string' => 'Product ({var:1}) was added in the Workspace, on Claude\'s proposal.', 'vars' => $values['name'])));
         pg_announce('product.created', array('id' => $id, 'name' => (string) $values['name']));
@@ -3693,52 +3765,15 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
     $fields = ws_change_types()['product_group']['fields'];
 
     if ($action === 'create') {
-        $parent = (int) (((array) ($values['parent_id'] ?? array()))[0] ?? 0);
-
-        // Under the top of the catalogue when no parent is named.
-        if ($parent <= 0) {
-            $parent = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id LIMIT 1");
-        }
-
-        $short = (string) ($values['short_description'] ?? '');
-        $address = function_exists('prepare_catalog_item_address_name') ? prepare_catalog_item_address_name(($short !== '') ? $short : $values['name']) : '';
-        $full = (string) ($values['full_description'] ?? '');
-
-        if (function_exists('prepare_rich_text_editor_content_for_input')) {
-            $full = prepare_rich_text_editor_content_for_input($full);
-        }
-
-        db("INSERT INTO product_groups (name, enabled, parent_id, short_description, full_description, details, code, keywords, image_name,
-                display_type, address_name, title, meta_description, meta_keywords, attributes, user, timestamp)
-            VALUES (
-                '" . e($values['name']) . "',
-                '" . (!empty($values['enabled']) ? '1' : '0') . "',
-                '" . $parent . "',
-                '" . e($short) . "',
-                '" . e($full) . "',
-                '', '',
-                '" . e((string) ($values['keywords'] ?? '')) . "',
-                '',
-                'browse',
-                '" . e($address) . "',
-                '" . e((string) ($values['title'] ?? '')) . "',
-                '" . e((string) ($values['meta_description'] ?? '')) . "',
-                '" . e((string) ($values['meta_keywords'] ?? '')) . "',
-                '1',
-                '" . (int) $viewer['id'] . "',
-                UNIX_TIMESTAMP())");
-
-        $id = (int) mysqli_insert_id(db::$con);
+        // The catalogue's one group writer, which POST /product-groups shares:
+        // the row, its products, the search clouds, the SEO score and the
+        // product_group.created announcement.
+        $id = pg_catalog_group_create(ws_change_group_create_data($values), $viewer);
 
         if ($id <= 0) {
             return array('ok' => false, 'error' => lang('The product group could not be created.'), 'id' => 0);
         }
 
-        foreach ((array) ($values['product_ids'] ?? array()) as $product_id) {
-            db("INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . (int) $product_id . "', '" . $id . "', '0')");
-        }
-
-        ws_change_group_clouds($id);
         ws_change_log(lang(array('string' => 'product group ({var:1}) was created', 'vars' => $values['name'])));
 
         return array('ok' => true, 'error' => '', 'id' => $id);
@@ -4286,6 +4321,14 @@ function ws_change_write_task_note($viewer, $action, $record, $values)
     $app_id = (function_exists('ws_ai_proposed') && ws_ai_proposed($change))
         ? (int) ws_ai_config()['app_id']
         : (function_exists('ws_claude_config') ? (int) ws_claude_config()['app_id'] : 0);
+
+    // Proposed by an application (proposals.php): written in its name, not
+    // Claude's.
+    $agent = function_exists('ws_change_proposal_agent') ? ws_change_proposal_agent($change) : '';
+
+    if ($agent !== '') {
+        $app_id = ws_proposal_app_id($agent);
+    }
 
     $done = ws_task_note_add($viewer, $task, ws_tokens_normalise((string) ($values['text'] ?? '')), $app_id);
 

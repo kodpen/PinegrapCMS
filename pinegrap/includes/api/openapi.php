@@ -620,6 +620,7 @@ function api_openapi_objects()
         'OrderDocument' => 'api_order_document_schema',
         'OrderReturn'  => 'api_order_return_schema',
         'OrderReturnRefund' => 'api_order_return_refund_schema',
+        'OrderReturnWithdrawal' => 'api_order_return_withdrawal_schema',
         'Customer'     => 'api_customer_schema',
         'Page'         => 'api_page_schema',
         'Folder'       => 'api_folder_schema',

@@ -57,6 +57,42 @@ function _eo_tree_has_messages_node($tree)
     return false;
 }
 
+// True when the tree carries the e-mail marketing box: a form control the
+// visitor answers whose name is `opt_in`, by its eo_field binding (which
+// sets the name at render) or, without one, by its own name attribute.
+// Hidden inputs and buttons ask nothing. Run on the tree after the
+// visibility and section bindings, so a box in a dropped container or in a
+// section replaced by server HTML does not count. The renderer posts
+// opt_in_displayed=true only then, so an answer is known to be the visitor's.
+function _eo_tree_asks_opt_in($tree)
+{
+    if (!is_array($tree)) return false;
+    if (isset($tree['type']) && $tree['type'] === 'semantic'
+        && isset($tree['props']['tag'])
+        && in_array(strtolower((string)$tree['props']['tag']), array('input','select','textarea'), true)) {
+        $name = isset($tree['props']['_bindings']['eo_field'])
+            ? (string)$tree['props']['_bindings']['eo_field'] : '';
+        $type = '';
+        if (!empty($tree['props']['_attrs']) && is_array($tree['props']['_attrs'])) {
+            foreach ($tree['props']['_attrs'] as $a) {
+                if (!is_array($a) || !isset($a['name'], $a['value'])) continue;
+                if ($a['name'] === 'name' && $name === '') $name = (string)$a['value'];
+                if ($a['name'] === 'type') $type = strtolower((string)$a['value']);
+            }
+        }
+        if ($name === 'opt_in'
+            && !in_array($type, array('hidden', 'submit', 'reset', 'button', 'image'), true)) {
+            return true;
+        }
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $child) {
+            if (_eo_tree_asks_opt_in($child)) return true;
+        }
+    }
+    return false;
+}
+
 // ── Designer bindings: substitute section HTML into the tree in place ───────
 // For every node carrying `props._bindings.section='eo_X'`, replace its
 // children with a single custom_html content node whose body IS the section's

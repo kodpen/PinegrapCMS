@@ -52,6 +52,7 @@ function test_mail_link_hostname_mail_screens_use_hostname_setting()
 		'includes/fn/form_subscription.php',
 		'includes/fn/mail.php',
 		'includes/fn/widgets_account.php',
+		'includes/fn/widgets_comments.php',
 	);
 
 	foreach ($files as $file) {

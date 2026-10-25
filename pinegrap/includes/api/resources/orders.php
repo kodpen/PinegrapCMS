@@ -945,8 +945,10 @@ function api_order_document_schema() {
 // is the approval's or the rejection's. carrier is null until staff named the
 // carrier the goods go back with (a key such as yurtici when the site knows
 // it, otherwise the text given). reason_label is null for a code this version
-// has no name for. refund is api_order_return_refund_present()'s.
-function api_order_return_present($row, $reasons = null) {
+// has no name for. refund is api_order_return_refund_present()'s, withdrawal
+// api_order_return_withdrawal_present()'s, from $windows: the deliveries'
+// withdrawal windows, prepared once per request by api_order_return_windows().
+function api_order_return_present($row, $reasons = null, $windows = array()) {
 
 	if ($reasons === null) {
 
@@ -988,8 +990,70 @@ function api_order_return_present($row, $reasons = null) {
 		'received_at'     => api_time($row['received_at']),
 		'refunded_at'     => api_time($row['refunded_at']),
 		'closed_at'       => api_time($row['closed_at']),
-		'refund'          => api_order_return_refund_present($row)
+		'refund'          => api_order_return_refund_present($row),
+		'withdrawal'      => api_order_return_withdrawal_present($row, $windows)
 	);
+
+}
+
+// Whether a return came in time, as the panel's side column shows it
+// (pg_return_timing()): the day its delivery was delivered, or is taken to
+// have been (delivered_estimated: worked out from the ship date or the
+// expected delivery date), the last day of the withdrawal period, and whether
+// the request was made by then. Read from the delivery as it is known today,
+// so a delivery date learned later moves the deadline and can change the
+// answer. null when no date is known for the delivery, when the delivery is
+// gone, or when $windows was not prepared for it.
+function api_order_return_withdrawal_present($row, $windows) {
+
+	$ship_to_id = (int)$row['ship_to_id'];
+
+	$window = (is_array($windows) && isset($windows[$ship_to_id])) ? $windows[$ship_to_id] : null;
+
+	$requested_day = ((int)$row['requested_at'] > 0) ? date('Y-m-d', (int)$row['requested_at']) : '';
+
+	$timing = pg_return_timing($window, $requested_day);
+
+	if ($timing === null) {
+
+		return null;
+
+	}
+
+	return array(
+		'delivered_on'        => $timing['delivered'],
+		'delivered_estimated' => $timing['estimated'],
+		'deadline'            => $timing['deadline'],
+		'requested_in_time'   => $timing['in_time']
+	);
+
+}
+
+// The withdrawal window of each delivery the returns name, read once per
+// delivery (pg_return_delivery_state() as of today), so a page of an order's
+// returns asks for each delivery once. ship_to_id => pg_return_window(), or
+// null when the delivery has no date or is gone.
+function api_order_return_windows($rows) {
+
+	$windows = array();
+
+	foreach ((array)$rows as $row) {
+
+		$ship_to_id = (int)$row['ship_to_id'];
+
+		if (array_key_exists($ship_to_id, $windows)) {
+
+			continue;
+
+		}
+
+		$state = pg_return_delivery_state((int)$row['order_id'], $ship_to_id);
+
+		$windows[$ship_to_id] = is_array($state) ? $state['window'] : null;
+
+	}
+
+	return $windows;
 
 }
 
@@ -1048,11 +1112,15 @@ function api_orders_returns($params) {
 
 	$reasons = pg_return_reasons();
 
+	$rows = pg_returns_of_order($id);
+
+	$windows = api_order_return_windows($rows);
+
 	$out = array();
 
-	foreach (pg_returns_of_order($id) as $row) {
+	foreach ($rows as $row) {
 
-		$out[] = api_order_return_present($row, $reasons);
+		$out[] = api_order_return_present($row, $reasons, $windows);
 
 	}
 
@@ -1144,6 +1212,25 @@ function api_orders_returns_refuse($result, $ship_to) {
 
 	}
 
+	// The customer's timing rules, checked only with customer_rules.
+	if ($code === 'not_sent') {
+
+		api_fail(409, 'not_sent', $result['error']);
+
+	}
+
+	if ($code === 'delivery_date_unknown') {
+
+		api_fail(409, 'delivery_date_unknown', $result['error']);
+
+	}
+
+	if ($code === 'window_closed') {
+
+		api_fail(409, 'return_period_ended', $result['error']);
+
+	}
+
 	// No delivery was named and none could be taken for granted.
 	if (($code === 'delivery_not_in_order') && ($ship_to === 'several')) {
 
@@ -1165,14 +1252,16 @@ function api_orders_returns_refuse($result, $ship_to) {
 //
 // Recorded the way My Account records a customer's request
 // (pg_return_create()), with source api and the application's owner as the
-// person who asked. A request recorded for the shop skips the customer's
-// timing rules, as a staff member's does: the withdrawal period, that the
-// goods have left, that a delivery date is known. Staff decide on the panel,
-// which shows whether the request came in time; a delivery not yet sent is
-// normally cancelled instead. The other checks are the model's, run once
-// before the rehearsal stops (pg_return_create_check()) and again by
-// pg_return_create() itself, which checks the lines once more under the
-// order's lock.
+// person who asked. By default a request recorded for the shop skips the
+// customer's timing rules, as a staff member's does: the withdrawal period,
+// that the goods have left, that a delivery date is known. Staff decide on
+// the panel, which shows whether the request came in time (and so does the
+// answer's withdrawal); a delivery not yet sent is normally cancelled
+// instead. An app acting for the customer sends customer_rules and is held
+// to them, refused with 409 not_sent, delivery_date_unknown or
+// return_period_ended. The checks are the model's, run once before the
+// rehearsal stops (pg_return_create_check()) and again by pg_return_create()
+// itself, which checks the lines once more under the order's lock.
 //
 // A new request rings the staff's bell and writes an activity line, as one
 // from My Account does. Unlike My Account it also writes an audit line (the
@@ -1229,9 +1318,13 @@ function api_orders_returns_create($params) {
 
 	$note = isset($params['note']) ? $params['note'] : '';
 
+	// customer_rules holds the request to the customer's timing rules, for an
+	// app acting for the customer; the source stays api, so the repeat is
+	// still looked for among this app owner's requests.
 	$options = array(
-		'source'  => 'api',
-		'user_id' => (int)$app['owner']['id']
+		'source'         => 'api',
+		'user_id'        => (int)$app['owner']['id'],
+		'customer_rules' => (isset($params['customer_rules']) && $params['customer_rules'])
 	);
 
 	$checked = pg_return_create_check($id, $ship_to_id, $lines['quantities'], $params['reason'], $note, $options);
@@ -1250,7 +1343,7 @@ function api_orders_returns_create($params) {
 
 		if ($repeated !== null) {
 
-			api_ok(api_order_return_present($repeated));
+			api_ok(api_order_return_present($repeated, null, api_order_return_windows(array($repeated))));
 
 		}
 
@@ -1289,7 +1382,7 @@ function api_orders_returns_create($params) {
 
 	if ($created['repeat']) {
 
-		api_ok(api_order_return_present($row));
+		api_ok(api_order_return_present($row, null, api_order_return_windows(array($row))));
 
 	}
 
@@ -1310,7 +1403,7 @@ function api_orders_returns_create($params) {
 
 	}
 
-	api_ok(api_order_return_present($row), 201);
+	api_ok(api_order_return_present($row, null, api_order_return_windows(array($row))), 201);
 
 }
 
@@ -1341,7 +1434,21 @@ function api_order_return_schema() {
 		'received_at'     => 'string?',
 		'refunded_at'     => 'string?',
 		'closed_at'       => 'string?',
-		'refund'          => 'OrderReturnRefund?'
+		'refund'          => 'OrderReturnRefund?',
+		'withdrawal'      => 'OrderReturnWithdrawal?'
+	);
+
+}
+
+// What api_order_return_withdrawal_present() returns, declared for the
+// OpenAPI document.
+function api_order_return_withdrawal_schema() {
+
+	return array(
+		'delivered_on'        => 'string',
+		'delivered_estimated' => 'boolean',
+		'deadline'            => 'string',
+		'requested_in_time'   => 'boolean'
 	);
 
 }

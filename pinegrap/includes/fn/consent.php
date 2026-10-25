@@ -287,6 +287,12 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_PAGE_CACHE_MARKER, true, lang('Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.'));
     }
 
+    // A visitor who is not signed in keeps their favourites under this
+    // cookie, set only when they save a product (pg_wishlist_owner()).
+    if (function_exists('pg_wishlist_ready') && pg_wishlist_ready()) {
+        $catalogue['necessary'][] = array(PG_WISHLIST_COOKIE, true, lang('Remembers the products you saved to your favourites before signing in.'));
+    }
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {
@@ -504,6 +510,7 @@ function pg_consent_ui_keys()
         'For a signed-in user, remembers whether pages show their editing tools.',
         'Remembers the language you chose for the site.',
         'Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.',
+        'Remembers the products you saved to your favourites before signing in.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',

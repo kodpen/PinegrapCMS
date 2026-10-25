@@ -1450,6 +1450,8 @@ function _pg_acct_staff_url($staff_page_id)
 //
 // Tokens: ^^__profile_url^^, ^^__email_preferences_url^^,
 // ^^__change_password_url^^, ^^__address_book_url^^ (shop sites),
+// ^^__my_account_wishlist_url^^ (shop sites: the first page carrying a
+// Favourites widget, which has no legacy page type),
 // ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
 // the staff page's folder lets in). Section: order_history (the member's
 // orders, newest first, each linking to the order view page). Flags:
@@ -1458,12 +1460,13 @@ function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
     $links = array(
-        '__profile_url'           => '',
-        '__email_preferences_url' => '',
-        '__change_password_url'   => '',
-        '__address_book_url'      => '',
-        '__logout_url'            => '',
-        '__staff_url'             => '',
+        '__profile_url'             => '',
+        '__email_preferences_url'   => '',
+        '__change_password_url'     => '',
+        '__address_book_url'        => '',
+        '__my_account_wishlist_url' => '',
+        '__logout_url'              => '',
+        '__staff_url'               => '',
     );
     $out = array('links' => $links, 'sections' => array('order_history' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false));
@@ -1472,7 +1475,10 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
     $links['__email_preferences_url'] = _pg_acct_page_url(0, 'email preferences');
     $links['__change_password_url']   = _pg_acct_page_url(0, 'change password');
-    if ($shop) $links['__address_book_url'] = _pg_acct_page_url(0, 'update address book');
+    if ($shop) {
+        $links['__address_book_url']        = _pg_acct_page_url(0, 'update address book');
+        $links['__my_account_wishlist_url'] = pg_wishlist_widget_page_url();
+    }
     // A designed logout page asks first; without one the token signs out at once.
     $logout = pg_sw_page_type_widget_url('logout');
     $links['__logout_url'] = ($logout !== '') ? $logout
