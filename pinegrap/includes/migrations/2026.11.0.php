@@ -62,6 +62,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_flow_shares(); // 11.0.83
 	upgrade_2026_11_0_comment_record_counts();  // 11.0.33
 	upgrade_2026_11_0_order_return_refund();    // 11.0.34
+	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 
 }
 
@@ -1827,6 +1828,25 @@ function upgrade_2026_11_0_workspace_flow_shares() {
 
 }
 
+// comments.idx_author: a member's own comments, newest first, without a scan
+// of the table. The comments widget's recent mode lists "mine" through
+// created_user_id ordered by created_timestamp; without the index an account
+// with no comments in the chosen pages read every row (about 0.3 s on a large
+// site). The ALTER asks the pass first, like 11.0.31 on the same table.
+function upgrade_2026_11_0_comment_author_index() {
+
+	if (install_pass_spent() && !install_index_exists('comments', 'idx_author')) {
+
+		install_pause(lang('comments: the index for a member\'s own comments follows in the next pass'));
+
+	}
+
+	install_add_index('comments', 'idx_author', "INDEX idx_author (created_user_id, created_timestamp)");
+
+	install_note('Comments: a member\'s own comments are found faster, for example in a list of their latest replies.');
+
+}
+
 // The comment counts of form records shown on pages built in the visual
 // designer (2026.11.0, 11.0.33; data only, no table changes;
 // includes/fn/comments.php).
@@ -1853,6 +1873,7 @@ function upgrade_2026_11_0_workspace_flow_shares() {
 // so when a later step of this version pauses and the version runs again,
 // the recount is not started over. A file older than ten minutes belongs to
 // a run that was given up on and is not read.
+
 function upgrade_2026_11_0_comment_record_counts() {
 
 	if (!function_exists('pg_comment_refresh_record_info')) {

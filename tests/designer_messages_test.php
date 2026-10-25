@@ -207,6 +207,49 @@ function test_designer_messages_comments_keeps_an_add_comment_node()
 	}
 }
 
+// A list of recent comments drawn before a topic's thread: its Messages node
+// is named 'comments_recent', which nothing posts to, so a refused comment's
+// error stays for the thread drawn after it, which prints it and uses it up.
+function test_designer_messages_recent_comments_leave_add_comment()
+{
+	if (!function_exists('pg_comments_recent_default_tree')) {
+		pg_assert_true(false, 'pg_comments_recent_default_tree() exists');
+		return;
+	}
+
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('software' => array('liveforms' => array(
+		'add_comment' => array(12 => array('message' => array('error' => true, 'error_message' => 'A comment is required.'))),
+	)));
+
+	$list = pg_comments_recent_default_tree();
+	$names = array();
+	_test_msg_form_names($list, $names);
+	pg_assert_same(array(), $names, 'the default list has no Messages node');
+
+	// One an older layout carries is named for the list, not left unnamed.
+	$list['children'][0]['children'][] = array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => ''), 'children' => array());
+	_pg_inject_messages_node($list, 'comments_recent');
+	$names = array();
+	_test_msg_form_names($list, $names);
+	pg_assert_same(array('comments_recent'), $names, 'stamped comments_recent');
+
+	$first = _render_tree_node($list, 0);
+	pg_assert_same(false, strpos($first, 'A comment is required.'), 'the list prints no comment error');
+	pg_assert_true(isset($_SESSION['software']['liveforms']['add_comment']), 'and leaves it');
+
+	$thread = pg_comments_default_tree();
+	_pg_inject_messages_node($thread, 'add_comment');
+	pg_assert_contains('A comment is required.', _render_tree_node($thread, 0), 'the thread drawn after it prints it');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['add_comment']), 'and uses it up');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
 // Every system widget renderer names its Messages node, and none with an
 // empty name.
 function test_designer_messages_every_renderer_names_its_node()

@@ -5,7 +5,7 @@ description: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/t
 
 ## How does an MCP tool call read dry_run?
 - `pg_mcp_arguments()` (`includes/mcp/tools.php`) reads it with `api_dry_run_value()` (`includes/api/dry_run.php`), the same rule as the `X-Dry-Run` header and `?dry_run=`: `1`, `true`, `yes`, `on` in any case and with spaces around are a rehearsal; `0`, `false`, `no`, `off`, an empty string, `null` and a missing argument are a write.
-- Anything else (`"maybe"`, `2`, an array) is `null`, and `pg_mcp_tool_call()` refuses the call with 400 `invalid_dry_run` ("dry_run must be true or false.", field `dry_run`) right after the scope check, as the API refuses an unreadable header. Nothing runs.
+- Anything else (`"maybe"`, `2`, an array) is `null`, and `pg_mcp_route_run()` (the runner behind `pg_mcp_tool_call()`) refuses the call with 400 `invalid_dry_run` ("dry_run must be true or false.", field `dry_run`) right after the scope check, as the API refuses an unreadable header. Nothing runs.
 - The tool's input schema still declares `dry_run` as a boolean; the wider reading is for clients and models that send text.
 
 ## Why?

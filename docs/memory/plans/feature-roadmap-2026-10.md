@@ -1,6 +1,6 @@
 ---
 name: feature-roadmap-2026-10
-description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
+description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 ---
 
 ## What was decided on 2026-10-19?
@@ -16,9 +16,7 @@ description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approv
 4. Watch, re-check each quarter: `storefront-api-agentic-commerce`, `addon-hook-system` (after the payment driver layer), `visitor-ai-assistant`, `subscriptions-iyzico-stripe`, `designer-interactions-collections`.
 
 ## Who takes what?
-- Commerce session: checkout legal documents, price history, returns flow, conversion pack, payment driver layer, subscriptions.
-- Platform session: ops alerts, image pipeline, accessibility and consent, privacy pack, passkeys, Docker, SEO toolkit.
-- ERP session: auto invoice / e-Arşiv. API session: marketplaces, agent feeds, storefront API. SMS + İYS and carrier labels each get their own session. Designer items go to the running designer session.
+- Each plan step is one task for one session (workflow/working-mode.md): claim it, one PR, hand over, end. Areas follow the memory-folder table in CLAUDE.md.
 
 ## Which rules bind every plan?
 - Owner rules (`docs/memory/workflow/owner-rules.md`), CLAUDE.md fixed rules, `workflow/decisions-made.md`. Schema only through 2026.11.0 migration steps. Express-order totals (`get_express_order.php`, `get_order_preview.php`) never change. A plan-driven feature gets one `[NEW]` changelog line when it ships; plans get none.

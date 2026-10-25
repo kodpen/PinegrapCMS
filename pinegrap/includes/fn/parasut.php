@@ -1394,28 +1394,305 @@ function _parasut_order_buttons_on($enabled, $company_id, $client_id)
 }
 
 /**
+ * The order statuses the order screen's Paraşüt buttons go for: a finished
+ * sale, as the ERP invoices it (erp_order_billable_statuses(): complete, and
+ * exported for a complete order exported since). The ERP code is loaded as
+ * Create Invoice loads it (_parasut_order_invoice_load()); without it the
+ * same two.
+ *
+ * @return string[]
+ */
+function parasut_order_billable_statuses()
+{
+    if (!function_exists('erp_order_billable_statuses') && defined('PG_FUNCTIONS_DIR') && is_file(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php')) {
+        _parasut_order_invoice_load();
+    }
+
+    return function_exists('erp_order_billable_statuses') ? erp_order_billable_statuses() : array('complete', 'exported');
+}
+
+/**
+ * Why Create Invoice or E-Shipment may not go for an order of this status,
+ * or '' when it may: only a finished sale gets a legal document and has its
+ * goods counted out of Paraşüt's stock. A cancelled order keeps its total, so
+ * nothing else on the way stops it, and an unfinished checkout already holds
+ * its buyer. The words are the ERP's for its invoice and delivery note.
+ *
+ * @param string|null   $status    orders.status
+ * @param string        $action    'invoice' | 'shipment'
+ * @param string[]|null $billable  The statuses that may go; null asks parasut_order_billable_statuses()
+ * @return string
+ */
+function parasut_order_status_refusal($status, $action, $billable = null)
+{
+    $billable = is_array($billable) ? $billable : parasut_order_billable_statuses();
+    $status = (string) $status;
+
+    if (in_array($status, $billable, true)) {
+        return '';
+    }
+
+    $cancelled = in_array($status, array('cancelled', 'canceled'), true);
+
+    if ($action === 'shipment') {
+        return $cancelled
+            ? lang('A cancelled order gets no delivery note.')
+            : lang('The order has not been completed yet; the delivery note is written once it is.');
+    }
+
+    return $cancelled
+        ? lang('A cancelled order is not invoiced.')
+        : lang('An order is invoiced once it is complete.');
+}
+
+/**
+ * What the order's ERP invoice holds at an e-document provider:
+ * - 'parasut': the Paraşüt sales invoice its Paraşüt provider wrote (the
+ *   service keeps it in edoc_external_id, the driver in parasut_invoice_id);
+ * - 'unsure': the driver's mark of a send that got no answer, so Paraşüt may
+ *   hold the record (erp_edoc_parasut_unsure_read());
+ * - 'other': a record of another provider, the sale's e-document at GİB;
+ * - 'none': no ERP invoice, or one never handed to a provider.
+ *
+ * @param array|null $row  erp_invoices row (full_number, edoc_provider, edoc_external_id,
+ *                         parasut_invoice_id) of the order's sales invoice; null for none
+ * @return array ['state' => string, 'id' => string (the Paraşüt id when 'parasut'),
+ *                'number' => string (the ERP invoice's number)]
+ */
+function parasut_order_erp_invoice_record($row)
+{
+    if (!is_array($row)) {
+        return array('state' => 'none', 'id' => '', 'number' => '');
+    }
+
+    $provider = trim((string) ($row['edoc_provider'] ?? ''));
+    $external = trim((string) ($row['edoc_external_id'] ?? ''));
+    $kept = trim((string) ($row['parasut_invoice_id'] ?? ''));
+    $number = trim((string) ($row['full_number'] ?? ''));
+
+    if (($external !== '') && ($provider === 'parasut')) {
+        return array('state' => 'parasut', 'id' => $external, 'number' => $number);
+    }
+
+    if (($kept !== '') && !parasut_order_invoice_unsure($kept)) {
+        return array('state' => 'parasut', 'id' => $kept, 'number' => $number);
+    }
+
+    if ($kept !== '') {
+        return array('state' => 'unsure', 'id' => '', 'number' => $number);
+    }
+
+    if ($external !== '') {
+        return array('state' => 'other', 'id' => '', 'number' => $number);
+    }
+
+    return array('state' => 'none', 'id' => '', 'number' => '');
+}
+
+/**
+ * parasut_order_erp_invoice_record() of the order's ERP sales invoice that is
+ * not cancelled, the one the ERP counts as the order's (erp_invoice_for_order()).
+ * The ERP's tables are installed whether the module is on or not; its rows
+ * stay when the module or its provider is switched off.
+ *
+ * @param int $order_id  orders.id
+ * @return array As parasut_order_erp_invoice_record()
+ */
+function parasut_order_erp_invoice($order_id)
+{
+    if (!function_exists('waf_table_has_column') || !waf_table_has_column('erp_invoices', 'edoc_external_id') || !waf_table_has_column('erp_invoices', 'parasut_invoice_id')) {
+        return parasut_order_erp_invoice_record(null);
+    }
+
+    $row = db_item("SELECT full_number, edoc_provider, edoc_external_id, parasut_invoice_id FROM erp_invoices
+        WHERE order_id = '" . (int) $order_id . "' AND direction = 'sales' AND doc_type = 'invoice'
+          AND status <> 'cancelled'
+        ORDER BY id ASC
+        LIMIT 1");
+
+    return parasut_order_erp_invoice_record(is_array($row) ? $row : null);
+}
+
+/**
+ * Why the order's ERP invoice stops Create Invoice or E-Shipment, or '' when
+ * it does not. An ERP invoice the provider took to Paraşüt, or to GİB through
+ * another provider, is the sale's invoice: once the provider is switched off
+ * the buttons are drawn again, and Create Invoice would issue a second one.
+ * E-Shipment judges a Paraşüt record as the order's own invoice
+ * (parasut_shipment_invoice_id()); only a send that got no answer stops it,
+ * as the order's own unsure mark does, while the order has no invoice id of
+ * its own. An ERP invoice with no provider record (on paper) stops neither.
+ *
+ * @param array  $record          parasut_order_erp_invoice_record()
+ * @param string $action          'invoice' | 'shipment'
+ * @param string $own_invoice_id  orders.parasut_invoice_id
+ * @return string
+ */
+function parasut_order_erp_invoice_refusal($record, $action, $own_invoice_id = '')
+{
+    $state = (string) ($record['state'] ?? 'none');
+    $number = (string) ($record['number'] ?? '');
+
+    if ($action === 'shipment') {
+        if (($state !== 'unsure') || (trim((string) $own_invoice_id) !== '')) {
+            return '';
+        }
+
+        return lang(array(
+            'string' => 'The send of this order\'s ERP invoice {var:1} to Paraşüt got no answer, so it is not known whether a sales invoice carrying the shipment is there. No shipment document was created.',
+            'vars' => array($number),
+        ));
+    }
+
+    if ($state === 'parasut') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP: its invoice {var:1} went to Paraşüt as sales invoice {var:2}. A second sales invoice was not created.',
+            'vars' => array($number, (string) $record['id']),
+        ));
+    }
+
+    if ($state === 'unsure') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP, and the send of its invoice {var:1} to Paraşüt got no answer, so Paraşüt may hold it. A second sales invoice was not created.',
+            'vars' => array($number),
+        ));
+    }
+
+    if ($state === 'other') {
+        return lang(array(
+            'string' => 'This order was invoiced through the ERP: its invoice {var:1} went to GİB through the ERP\'s e-document provider. A second invoice was not created in Paraşüt.',
+            'vars' => array($number),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Why a press of Create Invoice or E-Shipment is refused before anything is
+ * asked of Paraşüt, or '' when it may go: the order's status first
+ * (parasut_order_status_refusal()), then its ERP invoice
+ * (parasut_order_erp_invoice_refusal()). Asked by the writers themselves: a
+ * page opened before the order was cancelled, or before the provider was
+ * switched off, still posts to them.
+ *
+ * @param array         $order       orders row (status, parasut_invoice_id)
+ * @param string        $action      'invoice' | 'shipment'
+ * @param array         $erp_record  parasut_order_erp_invoice()
+ * @param string[]|null $billable    As parasut_order_status_refusal()
+ * @return string
+ */
+function parasut_order_press_refusal($order, $action, $erp_record, $billable = null)
+{
+    $refusal = parasut_order_status_refusal($order['status'] ?? '', $action, $billable);
+
+    if ($refusal !== '') {
+        return $refusal;
+    }
+
+    return parasut_order_erp_invoice_refusal($erp_record, $action, (string) ($order['parasut_invoice_id'] ?? ''));
+}
+
+/**
+ * The sales invoice E-Shipment judges (parasut_shipment_invoice_link()): the
+ * order's own (orders.parasut_invoice_id, the unsure mark included), else the
+ * Paraşüt record of its ERP invoice. The ERP's unsure mark is handed on too,
+ * so that the link refuses it should the press reach it; another provider's
+ * record is no Paraşüt invoice to name.
+ *
+ * @param string $own_invoice_id  orders.parasut_invoice_id
+ * @param array  $erp_record      parasut_order_erp_invoice()
+ * @return array ['invoice_id' => string, 'erp' => bool (the id is the ERP invoice's, not the order's column)]
+ */
+function parasut_shipment_invoice_id($own_invoice_id, $erp_record)
+{
+    $own = trim((string) $own_invoice_id);
+
+    if ($own !== '') {
+        return array('invoice_id' => $own, 'erp' => false);
+    }
+
+    $state = (string) ($erp_record['state'] ?? 'none');
+
+    if ($state === 'parasut') {
+        return array('invoice_id' => (string) $erp_record['id'], 'erp' => true);
+    }
+
+    if ($state === 'unsure') {
+        return array('invoice_id' => (defined('ERP_EDOC_PARASUT_UNSURE') ? ERP_EDOC_PARASUT_UNSURE : '?'), 'erp' => true);
+    }
+
+    return array('invoice_id' => '', 'erp' => false);
+}
+
+/**
  * Return the company's first Parasut stock location ID.
  * Fetches from the API once and caches it in config.parasut_default_warehouse_id.
  *
+ * $skip is a warehouse Paraşüt has just answered as not found and whose id
+ * was cleared from the setting: PARASUT_DEFAULT_WAREHOUSE_ID was read at
+ * init and still holds it, so it is passed over and the first warehouse
+ * fetched again (parasut_kept_warehouse_id()).
+ *
  * @param string $token  Valid Parasut OAuth token
- * @return array ['success' => bool, 'warehouse_id' => string|null, 'error' => string]
+ * @param string $skip   A warehouse id not to use
+ * @return array ['success' => bool, 'warehouse_id' => string|null, 'error' => string,
+ *                'kept' => bool (the id is the setting's, used without asking Paraşüt)]
  */
-function parasut_ensure_default_warehouse($token)
+function parasut_ensure_default_warehouse($token, $skip = '')
 {
-    if (defined('PARASUT_DEFAULT_WAREHOUSE_ID') && PARASUT_DEFAULT_WAREHOUSE_ID !== '') {
-        return ['success' => true, 'warehouse_id' => PARASUT_DEFAULT_WAREHOUSE_ID, 'error' => ''];
+    $kept = parasut_kept_warehouse_id(defined('PARASUT_DEFAULT_WAREHOUSE_ID') ? PARASUT_DEFAULT_WAREHOUSE_ID : '', $skip);
+
+    if ($kept !== '') {
+        return ['success' => true, 'warehouse_id' => $kept, 'error' => '', 'kept' => true];
     }
 
     $result = _parasut_request('GET', _parasut_prefix() . '/warehouses?page[size]=1', null, $token);
 
     if ($result['http_code'] !== 200 || empty($result['body']['data'])) {
-        return ['success' => false, 'warehouse_id' => null, 'error' => lang(array('string' => 'Could not fetch stock locations: {var:1}', 'vars' => array(_parasut_extract_error($result))))];
+        return ['success' => false, 'warehouse_id' => null, 'error' => lang(array('string' => 'Could not fetch stock locations: {var:1}', 'vars' => array(_parasut_extract_error($result)))), 'kept' => false];
     }
 
     $warehouse_id = (string) $result['body']['data'][0]['id'];
     db("UPDATE config SET parasut_default_warehouse_id = '" . escape($warehouse_id) . "'");
 
-    return ['success' => true, 'warehouse_id' => $warehouse_id, 'error' => ''];
+    return ['success' => true, 'warehouse_id' => $warehouse_id, 'error' => '', 'kept' => false];
+}
+
+/**
+ * The warehouse id the Paraşüt settings keep (config.parasut_default_warehouse_id,
+ * typed on the settings card or filled by the first lookup), '' when the
+ * first warehouse has to be fetched: none is kept, or the one kept is $skip.
+ *
+ * @param string|null $kept  PARASUT_DEFAULT_WAREHOUSE_ID
+ * @param string      $skip  A warehouse Paraşüt answered as not found
+ * @return string
+ */
+function parasut_kept_warehouse_id($kept, $skip = '')
+{
+    $kept = trim((string) $kept);
+
+    return (($kept !== '') && ($kept !== trim((string) $skip))) ? $kept : '';
+}
+
+/**
+ * Paraşüt's code for a currency, or '' for one Paraşüt does not take. Its
+ * API definition lists TRL, USD, EUR and GBP for every document's currency;
+ * TRL is its own code for the lira (the ISO code is TRY). An empty code
+ * reads as the lira.
+ *
+ * @param string $currency  ISO code (TRY, EUR, ...)
+ * @return string  TRL | USD | EUR | GBP | ''
+ */
+function parasut_currency_code($currency)
+{
+    $currency = strtoupper(trim((string) $currency));
+
+    if (in_array($currency, array('', 'TRY', 'TL', 'TRL'), true)) {
+        return 'TRL';
+    }
+
+    return in_array($currency, array('USD', 'EUR', 'GBP'), true) ? $currency : '';
 }
 
 /**
@@ -1427,18 +1704,44 @@ function parasut_ensure_default_warehouse($token)
  * card keeps stock, and initial_stock_count gives a tracked card its opening
  * stock in the create itself.
  *
- * @param array $product  A products row: name, short_description, price
- *                        (minor units), inventory, inventory_quantity, tax_rate
+ * products.price is held in the store's base currency, so the price is
+ * labelled with that currency in Paraşüt's code (parasut_currency_code()).
+ * For a currency Paraşüt does not take, the card opens without a sales
+ * price: a price labelled in another currency would be wrong, and invoice
+ * lines carry their own prices.
+ *
+ * The opening stock is the stock before the document the card is opened
+ * for: Pinegrap's count plus what the sale behind that document already
+ * took out of it ($taken_out). The document then takes those goods out at
+ * Paraşüt, so they are counted out once; opened at the count alone, the
+ * same goods were counted out twice. Only that document's units are added:
+ * another order of the product placed before the card opened and documented
+ * after it is still taken out at Paraşüt from a card that never held it, so
+ * the card ends below Pinegrap's count by that order's units. Which earlier
+ * orders will ever be documented at Paraşüt cannot be told here.
+ *
+ * @param array       $product    A products row: name, short_description, price
+ *                                (minor units), inventory, inventory_quantity, tax_rate
+ * @param int         $taken_out  Units of the product the documented sale took out of
+ *                                inventory_quantity (parasut_stock_taken_units()); 0 for none
+ * @param string|null $currency   The store's base currency (ISO code); null reads
+ *                                BASE_CURRENCY_CODE, and with none defined the lira
  * @return array
  */
-function parasut_product_attributes($product)
+function parasut_product_attributes($product, $taken_out = 0, $currency = null)
 {
     $track_stock = !empty($product['inventory']);
+
+    if ($currency === null) {
+        $currency = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+    }
+
+    $currency_code = parasut_currency_code($currency);
 
     $attributes = [
         'name' => $product['short_description'] ?: ($product['name'] ?: lang('No Product Name')),
         'list_price' => round($product['price'] / 100, 2),
-        'currency' => 'TRL',
+        'currency' => $currency_code,
         // Default rate on the Parasut product card. Invoice lines carry their own
         // rate and override this, so it only matters for documents raised inside
         // Parasut. A null products.tax_rate means "the zone decides", which has no
@@ -1447,11 +1750,179 @@ function parasut_product_attributes($product)
         'inventory_tracking' => $track_stock,
     ];
 
+    if ($currency_code === '') {
+        unset($attributes['list_price'], $attributes['currency']);
+    }
+
     if ($track_stock) {
-        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']);
+        $attributes['initial_stock_count'] = max(0, (int) $product['inventory_quantity']) + max(0, (int) $taken_out);
     }
 
     return $attributes;
+}
+
+/**
+ * Whether an order's sale took its stock-tracked lines out of Pinegrap's
+ * stock count (products.inventory_quantity). A checkout (submit_order.php),
+ * a counter sale (local_sale_complete()) and a marketplace import
+ * (mp_order_take_stock()) each do when the order is placed; a sale through
+ * the stock leaves 0, and a card opened at 0 plus the quantity ends at 0
+ * after the document too. A cart (incomplete) took nothing.
+ *
+ * A cancel through process_order_cancellation() puts nothing back, so a
+ * cancelled order still took its stock. The one exception is a marketplace
+ * order cancelled on the marketplace: mp_order_cancel() cancels it with no
+ * user (cancelled_by 0) and then puts its stock back
+ * (mp_order_return_stock()). The shop's own cancel of a marketplace order
+ * (order screen, order list, API, workspace) names the user and puts
+ * nothing back. A restored order has cancelled_by 0 again and reads as
+ * having taken its stock; one the marketplace cancelled was not taken again.
+ *
+ * @param array $order  orders row: status, type, cancelled_by
+ * @return bool
+ */
+function parasut_order_took_stock($order)
+{
+    $status = (string) ($order['status'] ?? '');
+
+    if (($status === '') || ($status === 'incomplete')) {
+        return false;
+    }
+
+    if (($status === 'cancelled') && ((string) ($order['type'] ?? '') === 'marketplace')) {
+        return (int) ($order['cancelled_by'] ?? 0) > 0;
+    }
+
+    return true;
+}
+
+/**
+ * The units of each Pinegrap product the rows come to: a product on two
+ * lines once. A stock count moves by whole units (erp_stock_whole()), so a
+ * row without a product, or whose quantity is not whole or not above zero,
+ * counts for nothing.
+ *
+ * @param array $rows  Order lines, invoice lines or stock moves: product_id, quantity
+ * @return array [product id => units]
+ */
+function parasut_stock_taken_units($rows)
+{
+    $units = array();
+
+    foreach ((array) $rows as $row) {
+        $product_id = is_array($row) ? (int) ($row['product_id'] ?? 0) : 0;
+        $quantity = is_array($row) ? (float) ($row['quantity'] ?? 0) : 0.0;
+
+        if (($product_id <= 0) || ($quantity <= 0) || (abs($quantity - round($quantity)) >= 0.00005)) {
+            continue;
+        }
+
+        $units[$product_id] = ($units[$product_id] ?? 0) + (int) round($quantity);
+    }
+
+    return $units;
+}
+
+/**
+ * What the order screen's Create Invoice takes out at Paraşüt that the
+ * order already took out of Pinegrap's count, per product. The sales
+ * invoice goes with the shipment included (Paraşüt's default) and takes
+ * the goods out itself, unless the order has its E-Shipment document: it
+ * then goes without shipment and moves no stock
+ * (parasut_order_invoice_with_shipment()).
+ *
+ * @param array $order  orders row: status, type, parasut_shipment_id
+ * @param array $lines  The invoice's lines (parasut_order_invoice_lines()): product_id, quantity
+ * @return array [product id => units]
+ */
+function parasut_order_stock_taken($order, $lines)
+{
+    if (trim((string) ($order['parasut_shipment_id'] ?? '')) !== '') {
+        return array();
+    }
+
+    return parasut_order_took_stock($order) ? parasut_stock_taken_units($lines) : array();
+}
+
+/**
+ * What an invoice the ERP driver writes at Paraşüt takes out there that its
+ * sale already took out of Pinegrap's count, per product: a product card the
+ * invoice opens starts from the stock before it (parasut_product_attributes()).
+ *
+ * - The caller's own answer ('stock_taken'), as the order screen's Create
+ *   Invoice gives it (parasut_order_stock_taken()).
+ * - An order's invoice: its lines, when the order took them
+ *   (parasut_order_took_stock()) and the invoice goes with the shipment.
+ *   One naming the order's shipment document goes without shipment and
+ *   moves no stock (erp_edoc_parasut_order_shipment_id()). The invoice
+ *   itself changes no count (erp_stock_post_invoice()).
+ * - A typed invoice: what its own sale moves took out, wanted and applied
+ *   to the count (erp_stock_apply_pending()). A move not applied yet has
+ *   not lowered the count; applied later, it brings Pinegrap to where the
+ *   invoice brings Paraşüt.
+ *
+ * Nothing is read without a line naming a product.
+ *
+ * @param array         $invoice  erp_invoices row (id, order_id, order_shipment_id), or 'stock_taken'
+ * @param array         $lines    The invoice's lines: product_id, quantity
+ * @param callable|null $read     function (string $what, int $id): 'order' => the orders row (status,
+ *                                type, cancelled_by) or null, 'moves' => the invoice's applied sale moves
+ *                                (product_id, quantity); null reads the database
+ * @return array [product id => units]
+ */
+function parasut_invoice_stock_taken($invoice, $lines, $read = null)
+{
+    if (isset($invoice['stock_taken']) && is_array($invoice['stock_taken'])) {
+        return $invoice['stock_taken'];
+    }
+
+    $units = parasut_stock_taken_units($lines);
+
+    if ($units === array()) {
+        return array();
+    }
+
+    if ($read === null) {
+        $read = '_parasut_stock_taken_read';
+    }
+
+    $order_id = (int) ($invoice['order_id'] ?? 0);
+
+    if ($order_id > 0) {
+        if (erp_edoc_parasut_order_shipment_id($invoice) !== '') {
+            return array();
+        }
+
+        $order = $read('order', $order_id);
+
+        return (is_array($order) && parasut_order_took_stock($order)) ? $units : array();
+    }
+
+    return parasut_stock_taken_units((array) $read('moves', (int) ($invoice['id'] ?? 0)));
+}
+
+/**
+ * The rows parasut_invoice_stock_taken() reads: an order's status, type and
+ * cancelled_by, or the sale moves of a typed invoice that changed the count.
+ * No stock tables (before 2026.4.4), no moves.
+ *
+ * @param string $what  'order' | 'moves'
+ * @param int    $id    orders.id | erp_invoices.id
+ * @return array|null
+ */
+function _parasut_stock_taken_read($what, $id)
+{
+    if ($what === 'order') {
+        return db_item("SELECT status, type, cancelled_by FROM orders WHERE id = '" . (int) $id . "' LIMIT 1");
+    }
+
+    if (($id <= 0) || !function_exists('erp_stock_ready') || !erp_stock_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT product_id, quantity FROM erp_stock_moves
+        WHERE invoice_id = '" . (int) $id . "' AND kind = 'sale' AND direction = 'out'
+          AND stock_wanted = 1 AND stock_applied = 1");
 }
 
 /**
@@ -1459,26 +1930,41 @@ function parasut_product_attributes($product)
  * Creates the product in Parasut on first call and persists the ID to the DB.
  *
  * A tracked product's opening stock is set by the create's
- * initial_stock_count. No /stock_updates request follows: Paraşüt answers it
+ * initial_stock_count: the stock before the document the card is opened
+ * for, which is the count plus $taken_out (parasut_product_attributes()).
+ * No /stock_updates request follows: Paraşüt answers it
  * 422 "Güncellenen stok miktarı bulunamadı." for a card opened so, and it
  * cannot seed stock from zero either (parasut_ensure_product_stock_tracking()).
  *
  * @param int    $product_id  Pinegrap products.id
  * @param string $token       Valid Parasut OAuth token
- * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string]
+ * @param int    $taken_out   Units the sale behind the document already took out of
+ *                            inventory_quantity and the document takes out at Paraşüt;
+ *                            used only when the card is opened
+ * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string];
+ *               'missing' => true when the products row no longer exists (no request was sent)
  */
-function parasut_sync_product($product_id, $token)
+function parasut_sync_product($product_id, $token, $taken_out = 0)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
+    if ($result === false) {
+        // A read that failed (a column the upgrade has not added yet, say)
+        // tells nothing about the row: not 'missing', so the line is refused
+        // rather than put on the default product/service.
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product {var:1} could not be read from the database: {var:2}', 'vars' => array($product_id, mysqli_error(db::$con))))];
+    }
     $product = mysqli_fetch_assoc($result);
     if (!$product) {
-        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product not found: {var:1}', 'vars' => array($product_id)))];
+        // The product was deleted from the catalogue: its line has no
+        // product of its own any more (erp_edoc_parasut_line_product_pick()).
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product not found: {var:1}', 'vars' => array($product_id))), 'missing' => true];
     }
 
     $track_stock = !empty($product['inventory']);
 
-    // Already synced — return cached ID.
+    // Already synced — return cached ID. A card Paraşüt no longer holds is
+    // forgotten by the press its create was refused for (_parasut_forget_kept_id()).
     if ($product['parasut_product_id']) {
         return ['success' => true, 'parasut_product_id' => $product['parasut_product_id'], 'track_stock' => $track_stock, 'error' => ''];
     }
@@ -1486,7 +1972,7 @@ function parasut_sync_product($product_id, $token)
     $body = [
         'data' => [
             'type' => 'products',
-            'attributes' => parasut_product_attributes($product),
+            'attributes' => parasut_product_attributes($product, $taken_out),
         ],
     ];
 
@@ -1632,19 +2118,34 @@ function parasut_product_stock_tracked($attributes)
  * returns "Güncellenen stok miktarı bulunamadı" ("no updated stock amount found") when there is
  * nothing to update.
  *
- * @param string      $parasut_product_id
- * @param int         $needed_qty        Minimum stock that must be present for the upcoming outflow.
- * @param string|null $seed_contact_id   Parasut contact id to attribute the inflow document to.
- * @param string|null $warehouse_id      Warehouse to credit the stock to.
- * @param string      $token
- * @return array ['success' => bool, 'current_stock' => float, 'error' => string]
+ * $needed_qty is the whole quantity the outgoing document takes of the
+ * product: a product on two lines of an order is asked about once, for
+ * both (parasut_shipment_stock_needs()).
+ *
+ * @param string        $parasut_product_id
+ * @param int           $needed_qty       Minimum stock that must be present for the upcoming outflow.
+ * @param string|null   $seed_contact_id  Parasut contact id to attribute the inflow document to.
+ * @param string|null   $warehouse_id     Warehouse to credit the stock to.
+ * @param string        $token
+ * @param callable|null $request          function (string $method, string $path, array|null $body):
+ *                                        the _parasut_request() answer of $method _parasut_prefix() . $path;
+ *                                        null sends it with $token
+ * @return array ['success' => bool, 'current_stock' => float, 'error' => string], and on a
+ *               failed request 'answer' => its _parasut_request() answer, which says whether
+ *               Paraşüt no longer holds the product, warehouse or contact (parasut_missing_record())
  */
-function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty, $seed_contact_id, $warehouse_id, $token)
+function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty, $seed_contact_id, $warehouse_id, $token, $request = null)
 {
+    if ($request === null) {
+        $request = function ($method, $path, $body = null) use ($token) {
+            return _parasut_request($method, _parasut_prefix() . $path, $body, $token);
+        };
+    }
+
     // 1) Fetch current product state.
-    $get = _parasut_request('GET', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), null, $token);
+    $get = $request('GET', '/products/' . urlencode($parasut_product_id), null);
     if ($get['http_code'] !== 200 || empty($get['body']['data'])) {
-        return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product fetch failed: {var:1}', 'vars' => array(_parasut_extract_error($get))))];
+        return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product fetch failed: {var:1}', 'vars' => array(_parasut_extract_error($get)))), 'answer' => $get];
     }
     $attrs = $get['body']['data']['attributes'] ?? [];
     $is_tracked = parasut_product_stock_tracked($attrs);
@@ -1659,9 +2160,9 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                 'attributes' => ['inventory_tracking' => true],
             ],
         ];
-        $patch = _parasut_request('PUT', _parasut_prefix() . '/products/' . urlencode($parasut_product_id), $patch_body, $token);
+        $patch = $request('PUT', '/products/' . urlencode($parasut_product_id), $patch_body);
         if (!in_array($patch['http_code'], [200, 201])) {
-            return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product patch failed: {var:1}', 'vars' => array(_parasut_extract_error($patch))))];
+            return ['success' => false, 'current_stock' => 0, 'error' => lang(array('string' => 'Product patch failed: {var:1}', 'vars' => array(_parasut_extract_error($patch)))), 'answer' => $patch];
         }
         $current_stock = 0; // freshly enabled — no stock yet.
     }
@@ -1695,18 +2196,87 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
                 ],
             ],
         ];
-        $seed = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', $seed_body, $token);
+        $seed = $request('POST', '/shipment_documents', $seed_body);
         if (!in_array($seed['http_code'], [200, 201])) {
             return [
                 'success' => false,
                 'current_stock' => $current_stock,
                 'error' => lang(array('string' => 'Stock seeding (inflow) failed: {var:1}', 'vars' => array(_parasut_extract_error($seed)))),
+                'answer' => $seed,
             ];
         }
         $current_stock += $seed_qty;
     }
 
     return ['success' => true, 'current_stock' => $current_stock, 'error' => ''];
+}
+
+/**
+ * What E-Shipment's document takes of each Paraşüt product: the quantities
+ * of its lines added up per product, in the order the products first come,
+ * each named by its first line. The stock step asks once per product for
+ * the total (parasut_ensure_product_stock_tracking()). Asked line by line,
+ * a product on two lines (two recipients) passed a stock that covered each
+ * line but not both, and a seed brought by the first line left the second
+ * unchecked.
+ *
+ * @param array $lines  ['parasut_product_id' => string, 'quantity' => int, 'name' => string] per stock-tracked line
+ * @return array  [['parasut_product_id' => string, 'quantity' => int, 'name' => string], ...]
+ */
+function parasut_shipment_stock_needs($lines)
+{
+    $needs = array();
+    $at = array();
+
+    foreach ((array) $lines as $line) {
+        $id = (string) ($line['parasut_product_id'] ?? '');
+
+        if (!isset($at[$id])) {
+            $at[$id] = count($needs);
+            $needs[] = array('parasut_product_id' => $id, 'quantity' => 0, 'name' => (string) ($line['name'] ?? ''));
+        }
+
+        $needs[$at[$id]]['quantity'] += (int) ($line['quantity'] ?? 0);
+    }
+
+    return $needs;
+}
+
+/**
+ * Why E-Shipment cannot write the order's document, or '': lines naming a
+ * product deleted from the catalogue since the order (order_items keeps the
+ * product_id, the products row is gone). Whether such a product kept stock
+ * and which Paraşüt product it was cannot be told any more, and left out it
+ * would be missing from the waybill without a word. A line with no product
+ * at all is not one of them.
+ *
+ * @param array $items  order_items rows: product_id, product_name, product_row_id
+ *                      (products.id through the LEFT JOIN, null when the row is gone)
+ * @return string
+ */
+function parasut_shipment_deleted_products_refusal($items)
+{
+    $names = array();
+
+    foreach ((array) $items as $item) {
+        $product_id = (int) ($item['product_id'] ?? 0);
+
+        if (($product_id <= 0) || ((int) ($item['product_row_id'] ?? 0) > 0)) {
+            continue;
+        }
+
+        $name = trim((string) ($item['product_name'] ?? ''));
+        $names[$product_id] = ($name !== '') ? '"' . $name . '"' : '#' . $product_id;
+    }
+
+    if ($names === array()) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Lines of this order name products deleted from the catalogue since the order was placed: {var:1}. Pinegrap cannot tell whether they kept stock or which Paraşüt product they were, so no shipment document was created. Write this shipment in Paraşüt by hand.',
+        'vars' => implode(', ', $names),
+    ));
 }
 
 /**
@@ -2185,15 +2755,25 @@ function parasut_order_invoice_unsure($value)
 /**
  * The order screen's badge for the order's Paraşüt invoice, beside Create
  * Invoice ($in_button) or in the Order Information card's status row:
- * "Sent" with the record's id, "Not Sent" in the row, and for the unsure
- * mark a warning that the last create got no answer, so Paraşüt is to be
- * checked. The mark is never shown as "Sent" or as an id.
+ * "Sent" with the record's id once the e-document's conversion was seen to
+ * finish, "Not Sent" in the row, and for the unsure mark a warning that the
+ * last create got no answer, so Paraşüt is to be checked. The mark is never
+ * shown as "Sent" or as an id.
  *
- * @param string|null $value      orders.parasut_invoice_id
+ * The sales invoice's id is kept also when its e-document failed, was
+ * rejected or was still being processed when the press stopped waiting
+ * (parasut_create_invoice()); only a finished conversion sets
+ * orders.parasut_exported, the order's $edoc_confirmed. Without it the badge
+ * says the sales invoice exists and the e-document is not confirmed. The
+ * spreadsheet export sets the flag as well, and a conversion that finished
+ * after the press stays unconfirmed here: Paraşüt has the last word.
+ *
+ * @param string|null $value           orders.parasut_invoice_id
  * @param bool        $in_button
+ * @param bool        $edoc_confirmed  orders.parasut_exported
  * @return string HTML
  */
-function parasut_order_invoice_status_badge($value, $in_button = false)
+function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_confirmed = false)
 {
     $value = trim((string) $value);
 
@@ -2201,6 +2781,15 @@ function parasut_order_invoice_status_badge($value, $in_button = false)
         return ($in_button ? ' ' : '')
             . '<span class="badge bg-warning text-dark' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
             . h(lang('Check Paraşüt')) . '</span>';
+    }
+
+    if (($value !== '') && !$edoc_confirmed) {
+        $title = h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.'));
+
+        return $in_button
+            ? ' <span class="badge bg-warning text-dark ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
+            : '<span class="badge bg-warning text-dark" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
+                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
     if ($value !== '') {
@@ -2211,6 +2800,53 @@ function parasut_order_invoice_status_badge($value, $in_button = false)
     }
 
     return $in_button ? '' : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+}
+
+/**
+ * The status row's badge for an order the ERP invoiced through an
+ * e-document provider (parasut_order_erp_invoice_record()): the ERP
+ * invoice's number, with the Paraşüt id its provider wrote, or the warning
+ * to check Paraşüt after a send that got no answer.
+ *
+ * @param array $record  parasut_order_erp_invoice_record(), state not 'none'
+ * @return string HTML
+ */
+function parasut_order_erp_invoice_badge($record)
+{
+    $state = (string) ($record['state'] ?? 'none');
+    $facts = array(h((string) ($record['number'] ?? '')));
+
+    if ($state === 'parasut') {
+        $facts[] = lang('Parasut ID') . ': ' . h((string) $record['id']);
+    } elseif ($state === 'unsure') {
+        $facts[] = h(lang('Check Paraşüt'));
+    }
+
+    return '<span class="badge bg-success">' . h(lang('Invoiced through the ERP')) . '</span>'
+        . ' <small class="text-muted">' . implode(' · ', $facts) . '</small>';
+}
+
+/**
+ * The Order Information card's invoice row: the ERP's invoice when the order
+ * was invoiced through its provider, with the order's own record beside it
+ * if it has one; otherwise the order's own (parasut_order_invoice_status_badge()).
+ *
+ * @param string|null $value           orders.parasut_invoice_id
+ * @param bool        $edoc_confirmed  orders.parasut_exported
+ * @param array       $erp_record      parasut_order_erp_invoice()
+ * @return string HTML
+ */
+function parasut_order_invoice_row_badge($value, $edoc_confirmed, $erp_record)
+{
+    $own = parasut_order_invoice_status_badge($value, false, $edoc_confirmed);
+
+    if ((string) ($erp_record['state'] ?? 'none') === 'none') {
+        return $own;
+    }
+
+    $erp = parasut_order_erp_invoice_badge($erp_record);
+
+    return (trim((string) $value) === '') ? $erp : $erp . '<br>' . $own;
 }
 
 /**
@@ -2510,6 +3146,315 @@ function _parasut_order_forget_record($order_id, $column, $id)
 }
 
 /**
+ * The record Paraşüt's answer names as one it does not hold: a 404 with an
+ * error titled "Record was not found" whose detail is <Model>-<id>
+ * (Product-1079203184, Warehouse-…, Contact-…, ShipmentDocument-…), the
+ * reading parasut_stored_record_state() makes of a read. A create naming a
+ * record deleted at Paraşüt, or one of another Paraşüt company, is answered
+ * so and writes nothing. Every other answer names none: a 404 without the
+ * record (a path Paraşüt has no route for: "No route matches."), the 401
+ * "No access to company: <n>" of a company the token's user cannot reach,
+ * a transport error whatever came with it, any other code.
+ *
+ * @param array|null $result  _parasut_request() or erp_edoc_parasut_request() answer
+ * @return array|null ['type' => 'Product', 'id' => '1079203184']
+ */
+function parasut_missing_record($result)
+{
+    $result = (array) $result;
+
+    foreach (array('curl_error', 'error', 'login_error') as $transport) {
+        if (trim((string) ($result[$transport] ?? '')) !== '') {
+            return null;
+        }
+    }
+
+    $errors = $result['body']['errors'] ?? null;
+
+    if (((int) ($result['http_code'] ?? 0) !== 404) || !is_array($errors)) {
+        return null;
+    }
+
+    foreach ($errors as $error) {
+        if (!is_array($error)) {
+            continue;
+        }
+
+        $title = is_string($error['title'] ?? null) ? trim($error['title']) : '';
+        $detail = is_string($error['detail'] ?? null) ? trim($error['detail']) : '';
+
+        if (($title === 'Record was not found') && preg_match('/^([A-Za-z]+)-([0-9]+)$/', $detail, $named)) {
+            return array('type' => $named[1], 'id' => $named[2]);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * What a press does about the record its create was answered as not found
+ * (parasut_missing_record()). 'forget' when it is an id the press took from
+ * what Pinegrap keeps rather than asked Paraşüt for ($kept), on the first
+ * answer only: the id is forgotten and the create sent once more. A record
+ * deleted at Paraşüt, or a shop moved to another Paraşüt company, leaves
+ * such ids behind and no panel screen clears them. 'default_product' when
+ * it is the default product/service, a setting the operator typed, which is
+ * never forgotten. '' for anything else: the press refuses as before.
+ *
+ * @param array|null $missing          parasut_missing_record()
+ * @param array      $kept             'Product', 'Contact', 'Warehouse', 'ShipmentDocument' => the ids
+ *                                     the press took from what is kept
+ * @param string     $default_product  The default product/service id (PARASUT_DEFAULT_PRODUCT_ID)
+ * @param bool       $resent           The answer is the resend's
+ * @return string 'forget' | 'default_product' | ''
+ */
+function parasut_stale_kept_action($missing, $kept, $default_product, $resent)
+{
+    if (!is_array($missing) || !isset($missing['type'], $missing['id'])) {
+        return '';
+    }
+
+    $type = (string) $missing['type'];
+    $id = trim((string) $missing['id']);
+
+    if (($type === 'Product') && ($id !== '') && ($id === trim((string) $default_product))) {
+        return 'default_product';
+    }
+
+    if ($resent || ($id === '') || !isset($kept[$type])) {
+        return '';
+    }
+
+    foreach ((array) $kept[$type] as $kept_id) {
+        if (trim((string) $kept_id) === $id) {
+            return 'forget';
+        }
+    }
+
+    return '';
+}
+
+/**
+ * A create at Paraşüt that is sent once more when Paraşüt answers that it
+ * does not hold a record whose id the press took from what Pinegrap keeps
+ * (parasut_stale_kept_action()). The id is forgotten ($forget readies the
+ * create again: the id cleared, the card or the body made again), the
+ * screen told (parasut_stale_kept_notice()), and the create sent once
+ * more; what that try answers is the outcome, a second such 404 included.
+ * Paraşüt writes nothing on that 404, so the record is not written twice.
+ * When $forget cannot ready the create, nothing goes again: the notice
+ * says so, and $forget's reason is the refusal. The resend starts PHP's
+ * time limit afresh (erp_edoc_parasut_allow_time()): it repeats the try's
+ * requests under Paraşüt's rate limit, and on Windows the limit counts
+ * that wait. A create that names the default product/service refuses in
+ * words naming the setting, which is not forgotten.
+ *
+ * @param callable $send             function (): array with 'answer' => the answer of the request
+ *                                   that decides the try (null when none went) and 'kept' => what
+ *                                   the try took from what is kept (parasut_stale_kept_action());
+ *                                   the rest is the caller's
+ * @param string   $default_product  The default product/service id
+ * @param callable $forget           function (string $type, string $id): forgets the id and readies
+ *                                   the create again; '' or why it cannot go again
+ * @return array ['sent' => what the last $send() returned, 'notices' => array of sentences,
+ *                'refusal' => string ('' unless the default product was named or $forget refused)]
+ */
+function parasut_send_once_more($send, $default_product, $forget)
+{
+    $notices = array();
+    $sent = (array) call_user_func($send);
+
+    for ($resent = false; ; $resent = true) {
+        $missing = parasut_missing_record($sent['answer'] ?? null);
+        $action = parasut_stale_kept_action($missing, (array) ($sent['kept'] ?? array()), $default_product, $resent);
+
+        if ($action === 'default_product') {
+            return array('sent' => $sent, 'notices' => $notices, 'refusal' => parasut_default_product_gone_refusal($missing['id']));
+        }
+
+        if ($action !== 'forget') {
+            return array('sent' => $sent, 'notices' => $notices, 'refusal' => '');
+        }
+
+        $refusal = (string) call_user_func($forget, (string) $missing['type'], (string) $missing['id']);
+        $notices[] = parasut_stale_kept_notice($missing['type'], $missing['id'], $refusal === '');
+
+        if ($refusal !== '') {
+            return array('sent' => $sent, 'notices' => $notices, 'refusal' => $refusal);
+        }
+
+        // The helper is the driver's; E-Shipment loads the driver only when
+        // it looks a buyer card up.
+        if (!function_exists('erp_edoc_parasut_allow_time')) {
+            _parasut_order_invoice_load();
+        }
+
+        erp_edoc_parasut_allow_time();
+
+        $sent = (array) call_user_func($send);
+    }
+}
+
+/**
+ * What the order screen and the ERP say about a kept id Paraşüt no longer
+ * holds: that it was forgotten, and whether the create was tried once more
+ * without it; not how that try went (the outcome says so). When the create
+ * could not be readied again, the refusal beside the notice says why.
+ *
+ * @param string $type   'Product', 'Warehouse', 'Contact' or 'ShipmentDocument'
+ * @param string $id
+ * @param bool   $tried  The create was sent once more without the id
+ * @return string  '' for another type
+ */
+function parasut_stale_kept_notice($type, $id, $tried = true)
+{
+    $vars = array((string) $id);
+
+    if ($type === 'Product') {
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
+    }
+
+    if ($type === 'Warehouse') {
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
+    }
+
+    if ($type === 'Contact') {
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten and Pinegrap tried once more without it.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten, but the document could not be sent once more without it.', 'vars' => $vars));
+    }
+
+    if ($type === 'ShipmentDocument') {
+        return $tried
+            ? lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten and Pinegrap tried once more without it, as an ordinary invoice of the order with the shipment included.', 'vars' => $vars))
+            : lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten, but the invoice could not be sent once more without it.', 'vars' => $vars));
+    }
+
+    return '';
+}
+
+/**
+ * The refusal of a create Paraşüt answered as not holding the default
+ * product/service, which the operator typed on the settings card and
+ * which is never cleared. An invoice names it for a line without a card of
+ * its own; E-Shipment names it only through a product whose own card is
+ * that id, which goes on a new card once the setting holds another id.
+ *
+ * @param string $id
+ * @return string
+ */
+function parasut_default_product_gone_refusal($id)
+{
+    return lang(array(
+        'string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
+        'vars' => array((string) $id),
+    ));
+}
+
+/**
+ * The statement that forgets a kept id Paraşüt no longer holds, only where
+ * it is still held: every product keeping that card (the next
+ * parasut_sync_product() opens a new one), the default warehouse setting,
+ * the order's buyer card. '' for another type, for an id that is not a
+ * Paraşüt record id (digits, as parasut_missing_record() reads it) or, for
+ * a buyer card, no order. An order's shipment document is cleared by
+ * _parasut_order_forget_record().
+ *
+ * @param string $type      'Product', 'Warehouse' or 'Contact'
+ * @param string $id
+ * @param int    $order_id  orders.id (Contact)
+ * @return string
+ */
+function parasut_forget_kept_id_sql($type, $id, $order_id = 0)
+{
+    $id = trim((string) $id);
+
+    if (!preg_match('/^[0-9]+$/', $id)) {
+        return '';
+    }
+
+    if ($type === 'Product') {
+        return "UPDATE products SET parasut_product_id = '' WHERE TRIM(parasut_product_id) = '" . $id . "'";
+    }
+
+    if ($type === 'Warehouse') {
+        return "UPDATE config SET parasut_default_warehouse_id = '' WHERE TRIM(parasut_default_warehouse_id) = '" . $id . "'";
+    }
+
+    if (($type === 'Contact') && ((int) $order_id > 0)) {
+        return "UPDATE orders SET parasut_contact_id = '' WHERE id = '" . (int) $order_id . "' AND TRIM(parasut_contact_id) = '" . $id . "'";
+    }
+
+    return '';
+}
+
+/**
+ * Forgets a kept id Paraşüt answered as not found
+ * (parasut_forget_kept_id_sql(), _parasut_order_forget_record()).
+ *
+ * @param string $type      'Product', 'Warehouse', 'Contact' or 'ShipmentDocument'
+ * @param string $id
+ * @param int    $order_id  orders.id (Contact, ShipmentDocument)
+ * @return void
+ */
+function _parasut_forget_kept_id($type, $id, $order_id = 0)
+{
+    if ($type === 'ShipmentDocument') {
+        if ((int) $order_id > 0) {
+            _parasut_order_forget_record($order_id, 'parasut_shipment_id', $id);
+        }
+
+        return;
+    }
+
+    $sql = parasut_forget_kept_id_sql($type, $id, $order_id);
+
+    if ($sql !== '') {
+        db($sql);
+    }
+}
+
+/**
+ * The Paraşüt product cards Pinegrap keeps for these products
+ * (products.parasut_product_id), which parasut_sync_product() hands back
+ * without asking Paraşüt. Read before a body is built: a card the build
+ * opens is not a kept one.
+ *
+ * @param array $product_ids  products.id
+ * @return array  Card ids
+ */
+function parasut_kept_product_cards($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if ((int) $product_id > 0) {
+            $ids[(int) $product_id] = (int) $product_id;
+        }
+    }
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $cards = array();
+
+    foreach ((array) db_items("SELECT parasut_product_id FROM products WHERE id IN (" . implode(', ', $ids) . ")") as $row) {
+        $card = trim((string) ($row['parasut_product_id'] ?? ''));
+
+        if ($card !== '') {
+            $cards[$card] = $card;
+        }
+    }
+
+    return array_values($cards);
+}
+
+/**
  * Create a Paraşüt sales invoice for an order and turn it into its
  * e-document: an e-invoice for a buyer registered with GİB, an e-archive
  * invoice otherwise (_parasut_resolve_edoc_kind()).
@@ -2529,11 +3474,16 @@ function _parasut_order_forget_record($order_id, $column, $id)
  * without shipment, naming the shipment document
  * (parasut_order_invoice_with_shipment()). An invoice or shipment document
  * the order keeps the id of is read first (parasut_stored_record_check()):
- * one deleted on Paraşüt's screen since is left out and its id cleared.
+ * one deleted on Paraşüt's screen since is left out and its id cleared. The
+ * buyer card and product cards Pinegrap kept are sent without a read; one
+ * Paraşüt answers the create it no longer holds is forgotten and the
+ * invoice sent once more (parasut_send_once_more()). Only a finished sale is
+ * invoiced, and not one the ERP already invoiced through its e-document
+ * provider (parasut_order_press_refusal()).
  *
  * @param int   $order_id  orders.id
  * @param array $notices   Receives what the order screen shows beside the outcome:
- *                         each record the press left out because Paraşüt no longer holds it
+ *                         each record the press left out or forgot because Paraşüt no longer holds it
  * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
  *                'edoc_state' => string, 'error' => string]
  */
@@ -2557,6 +3507,16 @@ function parasut_create_invoice($order_id, &$notices = array())
     }
 
     _parasut_order_invoice_load();
+
+    // Only a finished sale is invoiced, and not one the ERP already invoiced
+    // through its e-document provider: once the provider is switched off the
+    // button is back on the screen, and orders.parasut_invoice_id knows
+    // nothing of the ERP's record. Refused before anything is asked of
+    // Paraşüt; a page opened before the order was cancelled still posts here.
+    $refusal = parasut_order_press_refusal($order, 'invoice', parasut_order_erp_invoice((int) $order['id']));
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $refusal];
+    }
 
     // One sales invoice per order. The id is kept as soon as the sales invoice
     // exists, also when its e-document failed or is still being converted; a
@@ -2709,6 +3669,16 @@ function parasut_create_invoice($order_id, &$notices = array())
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => $edoc['error']];
     }
 
+    // The buyer card the order kept and the product cards its lines'
+    // products kept are sent without asking Paraşüt. They are noted before
+    // anything is built, so that a card the build opens is not taken for a
+    // kept one (parasut_stale_kept_action()).
+    $kept_contact = trim((string) ($order['parasut_contact_id'] ?? ''));
+    $kept = array(
+        'Contact' => ($kept_contact !== '') ? array($kept_contact) : array(),
+        'Product' => parasut_kept_product_cards(array_column($built['lines'], 'product_id')),
+    );
+
     // Sync (or retrieve) the Parasut contact.
     $contact_result = parasut_sync_contact($order);
     if (!$contact_result['success']) {
@@ -2719,28 +3689,42 @@ function parasut_create_invoice($order_id, &$notices = array())
     // The body the ERP's driver writes for an invoice of the order: its lines
     // with their products, the kurus each rate moves, the order's number and
     // day. The description stays the one these documents always carried.
-    $invoice_body = erp_edoc_parasut_invoice_payload(array(
-        'order_id' => (int) $order['id'],
-        'order_number' => $order_number,
-        'order_date' => (((int) ($order['order_date'] ?? 0)) > 0) ? $issue_date : '',
-        'full_number' => '',
-        'issue_date' => $issue_date,
-        'due_date' => $issue_date,
-        'currency' => $currency,
-        'exchange_rate' => 0,
-        'notes' => '',
-    ), $built['lines'], $parasut_contact_id);
+    // Built again, on the same buyer card or a new one, when the create is
+    // sent once more. A product card the build opens starts from the stock
+    // before the order when the invoice takes the order's goods out at
+    // Paraşüt (parasut_order_stock_taken()).
+    $build_invoice_body = function ($contact_id) use ($order, $built, $order_number, $issue_date, $currency) {
+        $invoice_body = erp_edoc_parasut_invoice_payload(array(
+            'order_id' => (int) $order['id'],
+            'order_number' => $order_number,
+            'order_date' => (((int) ($order['order_date'] ?? 0)) > 0) ? $issue_date : '',
+            'full_number' => '',
+            'issue_date' => $issue_date,
+            'due_date' => $issue_date,
+            'currency' => $currency,
+            'exchange_rate' => 0,
+            'notes' => '',
+            'stock_taken' => parasut_order_stock_taken($order, $built['lines']),
+        ), $built['lines'], $contact_id);
+
+        if (isset($invoice_body['error'])) {
+            return $invoice_body;
+        }
+
+        $invoice_body['data']['attributes']['description'] = lang('Order') . ' #' . $order_number;
+
+        // An order E-Shipment already sent took its goods out of Paraşüt's stock
+        // with the shipment document: the invoice goes without shipment and
+        // names that document, so the goods are not counted out twice.
+        $invoice_body = parasut_order_invoice_with_shipment($invoice_body, (string) ($order['parasut_shipment_id'] ?? ''));
+
+        return $invoice_body;
+    };
+    $invoice_body = $build_invoice_body($parasut_contact_id);
 
     if (isset($invoice_body['error'])) {
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => $invoice_body['error']];
     }
-
-    $invoice_body['data']['attributes']['description'] = lang('Order') . ' #' . $order_number;
-
-    // An order E-Shipment already sent took its goods out of Paraşüt's stock
-    // with the shipment document: the invoice goes without shipment and
-    // names that document, so the goods are not counted out twice.
-    $invoice_body = parasut_order_invoice_with_shipment($invoice_body, (string) ($order['parasut_shipment_id'] ?? ''));
 
     $sales_invoice_id = '';
     $attributes = array();
@@ -2791,15 +3775,53 @@ function parasut_create_invoice($order_id, &$notices = array())
         // record, and so may one whose process dies waiting. The order row
         // already holds the date and the buyer card the request carries, so
         // the mark is the bare one.
-        db("UPDATE orders SET parasut_invoice_id = '" . escape(ERP_EDOC_PARASUT_UNSURE) . "' WHERE id = '" . escape($order_id) . "'");
+        $inv_result = array();
+        $create = function () use ($order_id, $token, $kept, &$invoice_body, &$inv_result, &$sales_invoice_id) {
+            db("UPDATE orders SET parasut_invoice_id = '" . escape(ERP_EDOC_PARASUT_UNSURE) . "' WHERE id = '" . escape($order_id) . "'");
 
-        $inv_result = _parasut_request('POST', _parasut_prefix() . '/sales_invoices', $invoice_body, $token);
-        $sales_invoice_id = parasut_order_invoice_id_after_create($inv_result);
+            $inv_result = _parasut_request('POST', _parasut_prefix() . '/sales_invoices', $invoice_body, $token);
+            $sales_invoice_id = parasut_order_invoice_id_after_create($inv_result);
 
-        // A definite answer replaces the mark: the record's id, kept from
-        // here on whatever the later steps do, or nothing after a refusal.
-        if ($sales_invoice_id !== ERP_EDOC_PARASUT_UNSURE) {
-            db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+            // A definite answer replaces the mark: the record's id, kept from
+            // here on whatever the later steps do, or nothing after a refusal.
+            if ($sales_invoice_id !== ERP_EDOC_PARASUT_UNSURE) {
+                db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+            }
+
+            return array('answer' => $inv_result, 'kept' => $kept);
+        };
+
+        // A kept buyer card or product card that Paraşüt answers it no longer
+        // holds (404, nothing written: deleted there, or the shop moved to
+        // another Paraşüt company) is forgotten, the card made again and the
+        // invoice sent once more. The default product/service is a setting:
+        // it refuses in words that name it.
+        $default_product = defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '';
+        $sent = parasut_send_once_more($create, $default_product, function ($type, $id) use ($order_id, $build_invoice_body, &$order, &$parasut_contact_id, &$invoice_body) {
+            _parasut_forget_kept_id($type, $id, $order_id);
+
+            if ($type === 'Contact') {
+                $order['parasut_contact_id'] = '';
+                $contact_result = parasut_sync_contact($order);
+
+                if (!$contact_result['success']) {
+                    return (string) $contact_result['error'];
+                }
+
+                $parasut_contact_id = $contact_result['parasut_contact_id'];
+            }
+
+            $invoice_body = $build_invoice_body($parasut_contact_id);
+
+            return isset($invoice_body['error']) ? (string) $invoice_body['error'] : '';
+        });
+
+        foreach ($sent['notices'] as $notice) {
+            $notices[] = $notice;
+        }
+
+        if ($sent['refusal'] !== '') {
+            return ['success' => false, 'parasut_invoice_id' => null, 'error' => $sent['refusal']];
         }
 
         if ($sales_invoice_id === '') {
@@ -2929,16 +3951,21 @@ function parasut_create_invoice($order_id, &$notices = array())
 /**
  * Create a Parasut shipment document (e-irsaliye) for the given order.
  *
- * After Create Invoice it goes only for a sales invoice issued without
- * shipment, which the document names; one that carries the shipment, the
- * unsure mark or an invoice that cannot be read refuses it before anything
- * is written (parasut_shipment_invoice_link()). A shipment document or
+ * Only a finished sale is shipped (parasut_order_press_refusal()). After
+ * Create Invoice, or after the ERP's Paraşüt provider sent the order's ERP
+ * invoice (parasut_shipment_invoice_id()), it goes only for a sales invoice
+ * issued without shipment, which the document names; one that carries the
+ * shipment, the unsure mark or an invoice that cannot be read refuses it
+ * before anything is written (parasut_shipment_invoice_link()). A shipment document or
  * invoice the order keeps the id of and that was deleted on Paraşüt's
  * screen since is left out and its id cleared (parasut_stored_record_check()).
+ * The buyer card, default warehouse and product cards Pinegrap kept are
+ * sent without a read; one Paraşüt answers it no longer holds is forgotten
+ * and the try made once more (parasut_send_once_more()).
  *
  * @param int   $order_id  orders.id
  * @param array $notices   Receives what the order screen shows beside the outcome:
- *                         each record the press left out because Paraşüt no longer holds it
+ *                         each record the press left out or forgot because Paraşüt no longer holds it
  * @return array ['success' => bool, 'parasut_shipment_id' => string|null, 'error' => string]
  */
 function parasut_create_shipment($order_id, &$notices = array())
@@ -2955,6 +3982,17 @@ function parasut_create_shipment($order_id, &$notices = array())
 
     if (!$order) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
+    }
+
+    // Only a finished sale has its goods counted out: a cancelled order, or
+    // a checkout that never finished but already holds its buyer, is refused
+    // before anything is asked of Paraşüt, as is an order whose ERP invoice
+    // was sent to Paraşüt and got no answer. A page opened before the order
+    // was cancelled still posts here.
+    $erp_invoice = parasut_order_erp_invoice((int) $order['id']);
+    $refusal = parasut_order_press_refusal($order, 'shipment', $erp_invoice);
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $refusal];
     }
 
     // One outgoing shipment document per order, refused before anything is
@@ -3011,16 +4049,37 @@ function parasut_create_shipment($order_id, &$notices = array())
         }
     }
 
+    // A line whose product was deleted from the catalogue since the order is
+    // refused here: read as an untracked line, it was left off the waybill
+    // without a word. Only the guard above may have been to Paraşüt by now
+    // (it reads a kept shipment document and forgets one no longer there);
+    // E-Shipment's own token and every other request come after this.
+    $deleted_refusal = parasut_shipment_deleted_products_refusal(db_items("SELECT
+            order_items.product_id,
+            order_items.product_name,
+            products.id AS product_row_id
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . escape($order_id) . "'
+          AND order_items.saved_for_later = 0"));
+
+    if ($deleted_refusal !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $deleted_refusal];
+    }
+
     $token_result = parasut_get_token();
     if (!$token_result['success']) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
     }
     $token = $token_result['token'];
 
-    // The order's sales invoice from Create Invoice, judged before anything
-    // is written: one that carries the shipment already took the goods out
-    // of stock, one issued without shipment is named by the document.
-    $invoice_link = parasut_shipment_invoice_link((string) ($order['parasut_invoice_id'] ?? ''), function ($path) use ($token) {
+    // The order's sales invoice from Create Invoice, or else the one the
+    // ERP's Paraşüt provider wrote for the order's ERP invoice, judged before
+    // anything is written: one that carries the shipment already took the
+    // goods out of stock, one issued without shipment is named by the
+    // document.
+    $invoice_to_judge = parasut_shipment_invoice_id((string) ($order['parasut_invoice_id'] ?? ''), $erp_invoice);
+    $invoice_link = parasut_shipment_invoice_link($invoice_to_judge['invoice_id'], function ($path) use ($token) {
         return _parasut_request('GET', _parasut_prefix() . $path, null, $token);
     });
 
@@ -3030,147 +4089,248 @@ function parasut_create_shipment($order_id, &$notices = array())
 
     // An invoice deleted on Paraşüt's screen since: the document goes
     // unlinked, as for an order never invoiced, and the order forgets it.
+    // The ERP invoice's record is the ERP's, left as it is.
     if ((string) ($invoice_link['gone'] ?? '') !== '') {
-        _parasut_order_forget_record($order_id, 'parasut_invoice_id', $invoice_link['gone']);
+        if (!$invoice_to_judge['erp']) {
+            _parasut_order_forget_record($order_id, 'parasut_invoice_id', $invoice_link['gone']);
+        }
         $notices[] = parasut_stored_record_gone_notice('sales_invoices', $invoice_link['gone']);
     }
 
-    // Sync contact.
-    $contact_result = parasut_sync_contact($order);
-    if (!$contact_result['success']) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $contact_result['error']];
-    }
-    $parasut_contact_id = $contact_result['parasut_contact_id'];
+    // The buyer card, the warehouse, the product cards and the document. An
+    // id Pinegrap kept for the order's buyer card, the default warehouse or
+    // a product's card is sent without asking Paraşüt. When Paraşüt answers
+    // that it no longer holds one (404, nothing written: deleted there, or
+    // the shop moved to another Paraşüt company), the id is forgotten and
+    // the try made once more (parasut_send_once_more()): the card opened
+    // again, the first warehouse fetched again. The stock step's product
+    // read and inflow seed count too: they come before the shipment
+    // document. An inflow an earlier line seeded in the first try is not
+    // seeded again: that product now has stock movements, and
+    // parasut_ensure_product_stock_tracking() returns before seeding.
+    $skip_warehouse = '';
+    $send = function () use ($order_id, $token, $invoice_link, &$order, &$skip_warehouse) {
+        // What this try takes from what Pinegrap keeps rather than asks
+        // Paraşüt for (parasut_stale_kept_action()).
+        $kept = array('Contact' => array(), 'Warehouse' => array(), 'Product' => array());
 
-    // Fetch order items (join products to get display name and Parasut product ID).
-    $items_query = "SELECT
-                        order_items.product_id,
-                        order_items.quantity,
-                        order_items.product_name,
-                        products.short_description,
-                        products.parasut_product_id,
-                        products.inventory
-                    FROM order_items
-                    LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.order_id = '" . escape($order_id) . "'
-                      AND order_items.saved_for_later = 0";
-    $items_result = mysqli_query(db::$con, $items_query) or output_error('Query failed.');
-
-    $default_parasut_product_id = defined('PARASUT_DEFAULT_PRODUCT_ID') ? PARASUT_DEFAULT_PRODUCT_ID : '';
-
-    // Warehouse is required on every stock movement AND to seed stock for newly
-    // tracked products — fetch it once up front.
-    $warehouse_result = parasut_ensure_default_warehouse($token);
-    $default_warehouse_id = $warehouse_result['success'] ? $warehouse_result['warehouse_id'] : '';
-    if (!$default_warehouse_id) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'No Parasut warehouse available: {var:1}', 'vars' => array(($warehouse_result['error'] ?? ''))))];
-    }
-
-    $stock_movements = [];
-    $skipped_count = 0;
-    while ($item = mysqli_fetch_assoc($items_result)) {
-        // Skip non-shippable items — Parasut shipment_documents can only contain
-        // stock-tracked (inventory_tracking) products. Non-inventory items
-        // (services, digital goods, etc.) are silently excluded from the e-irsaliye
-        // (the e-waybill).
-        if (empty($item['inventory'])) {
-            $skipped_count++;
-            continue;
+        if (trim((string) ($order['parasut_contact_id'] ?? '')) !== '') {
+            $kept['Contact'][] = trim((string) $order['parasut_contact_id']);
         }
 
-        $item_name = $item['short_description'] ?: ($item['product_name'] ?: lang('No Product Name'));
-        $item_qty = max(1, (int) $item['quantity']);
+        // Sync contact.
+        $contact_result = parasut_sync_contact($order);
+        if (!$contact_result['success']) {
+            return ['success' => false, 'parasut_shipment_id' => null, 'error' => $contact_result['error']];
+        }
+        $parasut_contact_id = $contact_result['parasut_contact_id'];
 
-        $item_parasut_product_id = (string) $item['parasut_product_id'];
-        $sync_error = '';
-        if (($item_parasut_product_id === '') && $item['product_id']) {
-            $sync = parasut_sync_product($item['product_id'], $token);
-            $item_parasut_product_id = $sync['success'] ? (string) $sync['parasut_product_id'] : '';
-            $sync_error = (string) $sync['error'];
+        // A card opened here is the order's from now on (parasut_sync_contact()
+        // stored it): a try made once more goes on it rather than opening a
+        // second one.
+        $order['parasut_contact_id'] = $parasut_contact_id;
+
+        // Fetch order items (join products to get display name and Parasut product ID).
+        $items_query = "SELECT
+                            order_items.product_id,
+                            order_items.quantity,
+                            order_items.product_name,
+                            products.short_description,
+                            products.parasut_product_id,
+                            products.inventory
+                        FROM order_items
+                        LEFT JOIN products ON order_items.product_id = products.id
+                        WHERE order_items.order_id = '" . escape($order_id) . "'
+                          AND order_items.saved_for_later = 0";
+        $items_result = mysqli_query(db::$con, $items_query) or output_error('Query failed.');
+
+        $default_parasut_product_id = defined('PARASUT_DEFAULT_PRODUCT_ID') ? PARASUT_DEFAULT_PRODUCT_ID : '';
+
+        // Warehouse is required on every stock movement AND to seed stock for newly
+        // tracked products — fetch it once up front.
+        $warehouse_result = parasut_ensure_default_warehouse($token, $skip_warehouse);
+        $default_warehouse_id = $warehouse_result['success'] ? $warehouse_result['warehouse_id'] : '';
+        if (!$default_warehouse_id) {
+            return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'No Parasut warehouse available: {var:1}', 'vars' => array(($warehouse_result['error'] ?? ''))))];
         }
 
-        // A stock movement names its product, so a line Paraşüt has no product
-        // for cannot go on the document.
-        if ($item_parasut_product_id === '') {
+        if (!empty($warehouse_result['kept'])) {
+            $kept['Warehouse'][] = (string) $default_warehouse_id;
+        }
+
+        $items = array();
+        while ($item = mysqli_fetch_assoc($items_result)) {
+            $items[] = $item;
+        }
+
+        // The order took its stock-tracked lines out of Pinegrap's count when
+        // it was placed, and the document takes them out at Paraşüt: a card
+        // opened here starts from the stock before the order, the count plus
+        // the order's whole quantity of the product (parasut_product_attributes()).
+        $taken = parasut_order_took_stock($order) ? parasut_stock_taken_units($items) : array();
+
+        $stock_lines = array();
+        $skipped_count = 0;
+        foreach ($items as $item) {
+            // Skip non-shippable items — Parasut shipment_documents can only contain
+            // stock-tracked (inventory_tracking) products. Non-inventory items
+            // (services, digital goods, etc.) are silently excluded from the e-irsaliye
+            // (the e-waybill). A line of a deleted product was refused above.
+            if (empty($item['inventory'])) {
+                $skipped_count++;
+                continue;
+            }
+
+            $item_name = $item['short_description'] ?: ($item['product_name'] ?: lang('No Product Name'));
+            $item_qty = max(1, (int) $item['quantity']);
+
+            $item_parasut_product_id = (string) $item['parasut_product_id'];
+            $sync_error = '';
+            if ($item_parasut_product_id !== '') {
+                $kept['Product'][] = $item_parasut_product_id;
+            } elseif ($item['product_id']) {
+                $sync = parasut_sync_product($item['product_id'], $token, $taken[(int) $item['product_id']] ?? 0);
+                $item_parasut_product_id = $sync['success'] ? (string) $sync['parasut_product_id'] : '';
+                $sync_error = (string) $sync['error'];
+            }
+
+            // A stock movement names its product, so a line Paraşüt has no product
+            // for cannot go on the document.
+            if ($item_parasut_product_id === '') {
+                return [
+                    'success' => false,
+                    'parasut_shipment_id' => null,
+                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $sync_error))),
+                ];
+            }
+
+            $stock_lines[] = array('parasut_product_id' => $item_parasut_product_id, 'quantity' => $item_qty, 'name' => $item_name);
+        }
+
+        // Guarantee each Parasut product has inventory_tracking=true AND enough
+        // stock for the whole quantity the document takes of it, the lines of
+        // one product added up. If stock is short, seed it via an inflow
+        // shipment_document (the documented Parasut way to add stock to a
+        // product via API). Every line's card is open by now, so a failure
+        // here leaves no seed written ahead of a card that could not open.
+        foreach (parasut_shipment_stock_needs($stock_lines) as $need) {
+            $ensure = parasut_ensure_product_stock_tracking(
+                $need['parasut_product_id'],
+                $need['quantity'],
+                $parasut_contact_id,
+                $default_warehouse_id,
+                $token
+            );
+            if (!$ensure['success']) {
+                return [
+                    'success' => false,
+                    'parasut_shipment_id' => null,
+                    'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($need['name'], $ensure['error']))),
+                    'answer' => $ensure['answer'] ?? null,
+                    'kept' => $kept,
+                ];
+            }
+        }
+
+        // One stock movement per order line; the step above made each
+        // product ready for the sum of its lines.
+        $stock_movements = [];
+        foreach ($stock_lines as $stock_line) {
+            $stock_movements[] = parasut_shipment_stock_movement($stock_line['parasut_product_id'], $default_warehouse_id, $stock_line['quantity']);
+        }
+
+        if (empty($stock_movements)) {
             return [
                 'success' => false,
                 'parasut_shipment_id' => null,
-                'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $sync_error))),
+                'error' => lang('This order has no shippable (stock-tracked) items. The e-waybill cannot be created.'),
             ];
         }
 
-        // Guarantee the Parasut product has inventory_tracking=true AND enough
-        // stock. If stock is short, seed it via an inflow shipment_document
-        // (the documented Parasut way to add stock to a product via API).
-        $ensure = parasut_ensure_product_stock_tracking(
-            $item_parasut_product_id,
-            $item_qty,
-            $parasut_contact_id,
-            $default_warehouse_id,
-            $token
-        );
-        if (!$ensure['success']) {
-            return [
-                'success' => false,
-                'parasut_shipment_id' => null,
-                'error' => lang(array('string' => 'Stock preparation failed for {var:1}: {var:2}', 'vars' => array($item_name, $ensure['error']))),
-            ];
+        // orders.order_date is a UNIX timestamp; fall back to today when it is missing or zero.
+        $ts = (int) ($order['order_date'] ?? 0);
+        if ($ts <= 0) {
+            $ts = time();
         }
+        $issue_date = date('Y-m-d', $ts);
 
-        $stock_movements[] = parasut_shipment_stock_movement($item_parasut_product_id, $default_warehouse_id, $item_qty);
-    }
-
-    if (empty($stock_movements)) {
-        return [
-            'success' => false,
-            'parasut_shipment_id' => null,
-            'error' => lang('This order has no shippable (stock-tracked) items. The e-waybill cannot be created.'),
-        ];
-    }
-
-    // orders.order_date is a UNIX timestamp; fall back to today when it is missing or zero.
-    $ts = (int) ($order['order_date'] ?? 0);
-    if ($ts <= 0) {
-        $ts = time();
-    }
-    $issue_date = date('Y-m-d', $ts);
-
-    $body = [
-        'data' => [
-            'type' => 'shipment_documents',
-            'attributes' => [
-                'description' => lang('Order') . ' #' . $order['order_number'],
-                'issue_date' => $issue_date,
-                // inflow: false = outgoing (giden irsaliye, sale/shipment to customer)
-                //         true  = incoming (gelen irsaliye, purchase from supplier)
-                'inflow' => false,
-            ],
-            'relationships' => [
-                'contact' => [
-                    'data' => ['type' => 'contacts', 'id' => $parasut_contact_id],
+        $body = [
+            'data' => [
+                'type' => 'shipment_documents',
+                'attributes' => [
+                    'description' => lang('Order') . ' #' . $order['order_number'],
+                    'issue_date' => $issue_date,
+                    // inflow: false = outgoing (giden irsaliye, sale/shipment to customer)
+                    //         true  = incoming (gelen irsaliye, purchase from supplier)
+                    'inflow' => false,
                 ],
-                'stock_movements' => ['data' => $stock_movements],
+                'relationships' => [
+                    'contact' => [
+                        'data' => ['type' => 'contacts', 'id' => $parasut_contact_id],
+                    ],
+                    'stock_movements' => ['data' => $stock_movements],
+                ],
             ],
-        ],
-    ];
-    $body = parasut_shipment_with_invoice($body, $invoice_link['invoice_id']);
+        ];
+        $body = parasut_shipment_with_invoice($body, $invoice_link['invoice_id']);
 
-    $result = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', $body, $token);
+        $result = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', $body, $token);
 
-    // One request, one outcome. A failed create is reported as it stands and is
-    // never retried here with a reshaped body: shipment_documents has no
-    // idempotency key, so a retry that succeeds leaves a second stock document
-    // in Parasut that this code cannot see and the operator has to delete by hand.
-    if (!in_array($result['http_code'], [200, 201]) || empty($result['body']['data']['id'])) {
-        $msg = _parasut_extract_error($result);
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang(array('string' => 'Shipment create failed: {var:1}', 'vars' => array($msg)))];
+        // One request, one outcome. A failed create is reported as it stands and is
+        // never retried here with a reshaped body: shipment_documents has no
+        // idempotency key, so a retry that succeeds leaves a second stock document
+        // in Parasut that this code cannot see and the operator has to delete by hand.
+        // The one exception is a 404 naming a kept id as not found, which wrote
+        // nothing: the answer goes back, and the try is made once more without it.
+        if (!in_array($result['http_code'], [200, 201]) || empty($result['body']['data']['id'])) {
+            $msg = _parasut_extract_error($result);
+            return [
+                'success' => false,
+                'parasut_shipment_id' => null,
+                'error' => lang(array('string' => 'Shipment create failed: {var:1}', 'vars' => array($msg))),
+                'answer' => $result,
+                'kept' => $kept,
+            ];
+        }
+
+        $shipment_id = (string) $result['body']['data']['id'];
+
+        db("UPDATE orders SET parasut_shipment_id = '" . escape($shipment_id) . "' WHERE id = '" . escape($order_id) . "'");
+
+        return ['success' => true, 'parasut_shipment_id' => $shipment_id, 'error' => ''];
+    };
+
+    // The default product/service is a setting, never forgotten: a product
+    // card that is that id refuses in words naming it, as in Create Invoice
+    // and the ERP driver. No shipment line goes on the default; once the
+    // setting holds another id, that product's card is forgotten and a new
+    // one opened like any other kept card.
+    $default_product = defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '';
+    $sent = parasut_send_once_more($send, $default_product, function ($type, $id) use ($order_id, &$order, &$skip_warehouse) {
+        _parasut_forget_kept_id($type, $id, $order_id);
+
+        if ($type === 'Contact') {
+            $order['parasut_contact_id'] = '';
+        } elseif ($type === 'Warehouse') {
+            $skip_warehouse = $id;
+        }
+
+        return '';
+    });
+
+    foreach ($sent['notices'] as $notice) {
+        $notices[] = $notice;
     }
 
-    $shipment_id = (string) $result['body']['data']['id'];
+    if ($sent['refusal'] !== '') {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $sent['refusal']];
+    }
 
-    db("UPDATE orders SET parasut_shipment_id = '" . escape($shipment_id) . "' WHERE id = '" . escape($order_id) . "'");
-
-    return ['success' => true, 'parasut_shipment_id' => $shipment_id, 'error' => ''];
+    return [
+        'success' => !empty($sent['sent']['success']),
+        'parasut_shipment_id' => $sent['sent']['parasut_shipment_id'] ?? null,
+        'error' => (string) ($sent['sent']['error'] ?? ''),
+    ];
 }
 
 /**

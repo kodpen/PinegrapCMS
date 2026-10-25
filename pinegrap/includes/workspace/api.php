@@ -37,6 +37,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
@@ -140,6 +141,14 @@ function ws_openapi_objects()
         'WorkspaceChannelContext' => 'ws_api_channel_context_schema',
         'WorkspaceContextThread'  => 'ws_api_context_thread_schema',
         'WorkspaceContextMessage' => 'ws_api_context_message_schema',
+        'WorkspaceChannelCustomer' => 'ws_api_channel_customer_schema',
+        'WorkspaceCustomerRecord'  => 'ws_api_customer_record_schema',
+        'WorkspaceCustomerOrders'  => 'ws_api_customer_orders_schema',
+        'WorkspaceCustomerOrder'   => 'ws_api_customer_order_schema',
+        'WorkspaceCustomerAccount' => 'ws_api_customer_account_schema',
+        'WorkspaceCustomerQuotes'  => 'ws_api_customer_quotes_schema',
+        'WorkspaceCustomerQuote'   => 'ws_api_customer_quote_schema',
+        'WorkspaceCustomerForm'    => 'ws_api_customer_form_schema',
         'WorkspaceChangeType'     => 'ws_api_claude_change_type_schema',
         'WorkspaceRecord'         => 'ws_api_claude_record_schema',
         'WorkspaceRecordLine'     => 'ws_api_claude_record_line_schema',
@@ -344,6 +353,23 @@ function ws_api_routes()
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // The channel's customer (customer.php, api_customer.php): a read an
+        // assistant makes before it answers, as the channel context is, so it
+        // stays an MCP tool.
+        array(
+            'id'          => 'workspace.channels.customer',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/customer',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_customer',
+            'returns'     => 'WorkspaceChannelCustomer',
+            'summary'     => 'Who a channel\'s customer is, and where they stand',
+            'description' => 'The customer the channel is about - the contact, user or current account chosen for it (customer_type and customer_id on the channel) - with the records tied to it through its contact that the owner of the application may see, and where the customer stands. orders: how many orders the customer placed (by its contact, the users tied to it and its current accounts; a cart not ordered yet is not one, and a counter sale counts for its buyer, never for the user who rang it up) and the latest five. erp_accounts: each current account tied to it with its balance in the site\'s currency, positive when the account owes. sales_quotes: how many open sales quotes its current accounts have (open and not past their date) and the latest five. forms: the latest five forms its contact submitted, in folders the owner may edit. Money is in minor units; total_text and balance_text write it out as the panel does, a sales quote in its own currency. A section is null where the owner holds no right to it (the ecommerce right for orders, the ERP right for the balance and the sales quotes - read only is enough - and the forms right for forms) or the key not the scope the API reads that kind of record with (orders:read, erp:read, forms:read), and where it holds nothing. A record the owner may not see (for an owner with the user role, also a contact outside the contact groups given to it), or the key may not read (customers:read for a contact, erp:read for a current account; no scope reads a user account, so a user always), is named by its kind and number only, with no detail and url null. customer is null for a channel about nobody, or whose customer was deleted. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there is open, as the person who asked reads it, as GET /workspace/channels/{id}/context does.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

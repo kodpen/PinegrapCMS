@@ -13,7 +13,7 @@ description: Design of the open Trendyol steps (hardening, schema, 2b-ii, 5a-5c,
 - Old accounts with `pull_orders=1`: a memory line, no data step.
 
 ## B. Schema? (owner asked for it; recheck the label)
-- Step `upgrade_2026_11_0_marketplace_columns()`, label 11.0.34 (free on 2026-10-24): `marketplace_product_map.commission` DECIMAL(6,2) NULL and `invoice_sent` INT UNSIGNED DEFAULT 0 on the imported order's map row. Widen the one `[SCHEME]` line. Code checks the columns first (`mp_commission_ready()`, `mp_invoice_sent_ready()`).
+- Step `upgrade_2026_11_0_marketplace_columns()`, label 11.0.34 (free on 2026-10-24): `marketplace_product_map.commission` DECIMAL(6,2) NULL and `invoice_sent` INT UNSIGNED DEFAULT 0 on the imported order's map row. Name the marketplace columns for the `[SCHEME]` line in the PR body (the merging session writes it). Code checks the columns first (`mp_commission_ready()`, `mp_invoice_sent_ready()`).
 
 ## 2b-ii. Listing update?
 - The approval read stores the commission; the matched list shows "Commission 7.83 %".

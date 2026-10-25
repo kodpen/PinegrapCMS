@@ -14,6 +14,11 @@
  * request (request_id 0), so the record's history reads the same whoever
  * made the change: an assistant's proposal that was applied, or a person.
  *
+ * A person also makes a new product or product group here
+ * (ws_quick_create_*): the drawer's new mode, opened from the search box or
+ * a /product card, and the /product command. Off sale unless ticked, it is
+ * written and kept the same way, as an applied create.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -166,6 +171,18 @@ function ws_quick_edit_js_strings()
         // The card /price and /stock answer with (commands.php).
         'qe_command_title' => lang('The change that will be written'),
         'qe_record'        => lang('Record'),
+        // The drawer's new mode and the card /product answers with.
+        'qc_new_product'   => lang('New product'),
+        'qc_new_group'     => lang('New product group'),
+        'qc_create'        => lang('Create'),
+        'qc_created'       => lang('Created.'),
+        'qc_command_title' => lang('The product that will be created'),
+        'qc_all_fields'    => lang('All fields'),
+        'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
+        'qc_name_help'     => lang('The product\'s own code (SKU): no two products share one.'),
+        // A quantity turns tracking on; so does "Track Inventory" under More
+        // fields with no quantity, which tracks the stock from 0.
+        'qc_quantity_help' => lang(array('string' => 'Left empty, the stock is not tracked, unless {var:1} is set to Yes: then it is tracked from 0.', 'vars' => array(lang('Track Inventory')))),
     );
 }
 
@@ -193,7 +210,9 @@ function ws_quick_edit_check($viewer, $type, $id)
     }
 
     if (!ws_change_allowed($viewer, $type, (int) $id)) {
-        return $fail(lang('You may not change this record.'), 'rights');
+        $readonly = ws_change_erp_readonly_refusal($viewer, $type);
+
+        return $fail(($readonly !== '') ? $readonly : lang('You may not change this record.'), 'rights');
     }
 
     $record = ws_change_record($type, (int) $id);
@@ -426,4 +445,362 @@ function ws_quick_edit_log_name($viewer)
     $user = (string) ($_SESSION['sessionusername'] ?? '');
 
     return ($user !== '') ? $user : ws_person_name($viewer['id']);
+}
+
+/* ---------------------------------------------------------------------------
+   A new record, made by a person: the drawer's new mode (opened from the
+   search box or a /product card) and the /product command (commands.php).
+   It goes through changes.php as an assistant's create does when it is
+   applied - typed, bounded, checked (a name already taken), written by the
+   kind's writer through ws_change_write() - in the person's name, and is
+   kept in ws_ai_changes as an applied create with no request.
+   --------------------------------------------------------------------------- */
+
+/**
+ * The kinds of record a person makes from the Workspace: the catalogue's
+ * creates. Each starts off sale (a group switched off) unless the person
+ * ticks it.
+ *
+ * @return string[]
+ */
+function ws_quick_create_types()
+{
+    return array('product', 'product_group');
+}
+
+/**
+ * The fields of a kind's create the drawer does not draw: a group's
+ * products are put in from each product (its groups) or with a proposal,
+ * not picked one by one in an empty group's form.
+ *
+ * @param string $type
+ * @return string[]
+ */
+function ws_quick_create_left_out($type)
+{
+    return ($type === 'product_group') ? array('product_ids') : array();
+}
+
+/**
+ * The fields the drawer's new mode shows first; the rest wait behind "More
+ * fields".
+ *
+ * @param string $type
+ * @return string[]
+ */
+function ws_quick_create_short_list($type)
+{
+    $lists = array(
+        'product'       => array('name', 'short_description', 'price', 'enabled', WS_QUICK_EDIT_STOCK_FIELD, 'group_ids'),
+        'product_group' => array('name', 'short_description', 'enabled', 'parent_id'),
+    );
+
+    return $lists[$type] ?? array();
+}
+
+/**
+ * What a field of a new record holds when the person leaves it alone: what
+ * the kind's writer starts the row with. ws_change_write_product() makes a
+ * product taxable and shippable and leaves the rest off; a group is
+ * switched off unless the values say otherwise (ws_change_group_create_data());
+ * a text, an amount or a number is empty, a list of records holds none. The
+ * drawer sends only what differs from it.
+ *
+ * @param string $type
+ * @param string $name
+ * @param array  $field the catalogue's [kind, limit, label, column]
+ * @return mixed
+ */
+function ws_quick_create_default($type, $name, $field)
+{
+    if ((string) $field[0] === 'bool') {
+        return ($type === 'product') && in_array((string) $name, array('taxable', 'shippable'), true);
+    }
+
+    return ((string) $field[0] === 'ids') ? array() : '';
+}
+
+/**
+ * The create form of a kind as the drawer's new mode draws it: each field as
+ * ws_quick_edit_field_meta() describes it, with the value it starts with
+ * (ws_quick_create_default()) and, for a list of records, the tag its picker
+ * searches. Reads no database.
+ *
+ * @param string $type
+ * @param array  $kind the kind of the catalogue (ws_change_types()[$type])
+ * @return array[]
+ */
+function ws_quick_create_form($type, $kind)
+{
+    $out = array();
+
+    foreach (ws_change_fields_for($kind, 'create') as $name => $field) {
+        if (in_array($name, ws_quick_create_left_out($type), true)) {
+            continue;
+        }
+
+        $meta = ws_quick_edit_field_meta($type, $name, $field);
+        $meta['value'] = ws_quick_create_default($type, $name, $field);
+
+        if ((string) $field[0] === 'ids') {
+            $meta['tag'] = (string) $field[1];
+        }
+
+        $out[] = $meta;
+    }
+
+    return $out;
+}
+
+/**
+ * The change a save hands changes.php: a create of the kind, off sale
+ * (switched off) unless the person ticked it. A field left empty is no
+ * field, as a new record has nothing to empty.
+ *
+ * @param string $type
+ * @param mixed  $fields name => value
+ * @return array type, action, id, fields
+ */
+function ws_quick_create_change($type, $fields)
+{
+    $out = array();
+
+    foreach ((is_array($fields) ? $fields : array()) as $name => $value) {
+        if (($value === null) || ($value === '') || ($value === array())) {
+            continue;
+        }
+
+        $out[(string) $name] = $value;
+    }
+
+    if (!array_key_exists('enabled', $out)) {
+        $out['enabled'] = false;
+    }
+
+    return array('type' => (string) $type, 'action' => 'create', 'id' => 0, 'fields' => $out);
+}
+
+/**
+ * The drawer's title for a new record of a kind.
+ *
+ * @param string $type
+ * @return string
+ */
+function ws_quick_create_title($type)
+{
+    return ($type === 'product_group') ? lang('New product group') : lang('New product');
+}
+
+/**
+ * Why this person cannot make a record of this kind, or ok.
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @return array ok, error, code (rights, request)
+ */
+function ws_quick_create_check($viewer, $type)
+{
+    if (!function_exists('ws_changes_ready') || !ws_changes_ready()) {
+        return array('ok' => false, 'error' => lang('This site cannot take proposed changes yet: its database has to be upgraded.'), 'code' => 'request');
+    }
+
+    $types = ws_change_types();
+
+    if (!in_array($type, ws_quick_create_types(), true) || !isset($types[$type]) || !in_array('create', $types[$type]['actions'], true)) {
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'code' => 'request');
+    }
+
+    // The e-commerce right, as add_product.php asks it.
+    if (!ws_change_allowed($viewer, $type, 0)) {
+        return array('ok' => false, 'error' => lang('You may not create this kind of record.'), 'code' => 'rights');
+    }
+
+    return array('ok' => true, 'error' => '', 'code' => '');
+}
+
+/**
+ * The empty form of a new record, as the drawer's new mode draws it.
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @return array ok, error, code, title, label, tag, fields, short, required
+ */
+function ws_quick_create_fields($viewer, $type)
+{
+    $check = ws_quick_create_check($viewer, $type);
+
+    if (!$check['ok']) {
+        return $check;
+    }
+
+    $types = ws_change_types();
+
+    return array(
+        'ok'       => true,
+        'error'    => '',
+        'code'     => '',
+        'title'    => ws_quick_create_title($type),
+        'label'    => (string) $types[$type]['label'],
+        'tag'      => (string) $types[$type]['tag'],
+        'fields'   => ws_quick_create_form($type, $types[$type]),
+        'short'    => ws_quick_create_short_list($type),
+        'required' => array_values((array) ($types[$type]['required'] ?? array())),
+    );
+}
+
+/**
+ * A new record's fields checked as a save checks them, nothing written: the
+ * person's right, a required field named by its label, then changes.php's
+ * typing, bounds and rules (ws_changes_input(): a name already taken, a
+ * group that is gone or in the Recycle Bin). The /product card asks it
+ * before it is drawn.
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @param mixed  $fields     name => value
+ * @param int    $channel_id the channel it is made from, or 0
+ * @return array ok, error, row (ws_changes_input()'s), values (name => value)
+ */
+function ws_quick_create_input($viewer, $type, $fields, $channel_id = 0)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'row' => null, 'values' => array());
+    };
+
+    $check = ws_quick_create_check($viewer, $type);
+
+    if (!$check['ok']) {
+        return $fail($check['error']);
+    }
+
+    $types = ws_change_types();
+    $change = ws_quick_create_change($type, $fields);
+
+    foreach ((array) ($types[$type]['required'] ?? array()) as $name) {
+        if (!isset($change['fields'][$name]) || !is_scalar($change['fields'][$name]) || (trim((string) $change['fields'][$name]) === '')) {
+            $field = ws_change_field($types[$type], $name);
+
+            return $fail(lang(array('string' => '{var:1} is required', 'vars' => array(($field !== null) ? (string) $field[2] : $name))));
+        }
+    }
+
+    $input = ws_changes_input(array($change), (int) $viewer['id'], (int) $channel_id);
+
+    if (!$input['ok'] || empty($input['rows'])) {
+        return $fail(preg_replace('/^changes\[[0-9]+\]: /', '', (string) $input['error']));
+    }
+
+    $row = $input['rows'][0];
+    $values = array();
+
+    foreach ($row['fields'] as $item) {
+        $values[$item['name']] = $item['to'];
+    }
+
+    return array('ok' => true, 'error' => '', 'row' => $row, 'values' => $values);
+}
+
+/**
+ * Makes a new product or product group from what a person filled in: the
+ * drawer's new mode or a confirmed /product card.
+ *
+ * Off sale (switched off) unless "On sale" ("Enabled") was ticked. Written
+ * by the kind's writer through ws_change_write() - a product by
+ * ws_change_write_product() (scored for SEO, product.created), a group by
+ * pg_catalog_group_create() (scored, product_group.created) - with the
+ * sentences in the person's name and one activity log line of its own. Kept
+ * in ws_ai_changes as an applied create with no request (request_id 0,
+ * message_id 0), as a drawer edit is kept. With $decision and a channel the
+ * person may post in, a locked decision "{tag} was added. …" goes there. It
+ * is not linked as the row's decision_message_id: the decision timeline
+ * would show it as an assistant's proposal.
+ *
+ * @param array  $viewer
+ * @param string $type       product | product_group
+ * @param array  $fields     name => value; what is left out keeps the
+ *                           writer's starting value
+ * @param int    $channel_id the channel it was made from, or 0
+ * @param bool   $decision   keep it in that channel as a decision
+ * @return array ok, error, id, name, tag, lines (what it holds, in words),
+ *               decision_id
+ */
+function ws_quick_create_save($viewer, $type, $fields, $channel_id = 0, $decision = false)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'name' => '', 'tag' => '', 'lines' => array(), 'decision_id' => 0);
+    };
+
+    $input = ws_quick_create_input($viewer, $type, $fields, $channel_id);
+
+    if (!$input['ok']) {
+        return $fail($input['error']);
+    }
+
+    $types = ws_change_types();
+    $values = $input['values'];
+    $person = ws_person_name($viewer['id']);
+
+    // The writer's log line and sentences would name an assistant; this
+    // logs its own line below.
+    $GLOBALS['ws_change_log_quiet'] = true;
+    ws_change_source(array('kind' => 'person', 'name' => $person));
+    $done = ws_change_write($viewer, $type, 'create', null, $values, false);
+    ws_change_source(false);
+    $GLOBALS['ws_change_log_quiet'] = false;
+
+    $id = (int) ($done['id'] ?? 0);
+
+    if (empty($done['ok']) || ($id <= 0)) {
+        return $fail(!empty($done['error']) ? (string) $done['error'] : lang('Invalid request.'));
+    }
+
+    // What it holds, in words: the decision tags the records a list names
+    // (drawn as chips), the activity log gives their numbers.
+    $lines = array();
+    $logged = array();
+
+    foreach ($input['row']['fields'] as $item) {
+        $field = ws_change_field($types[$type], (string) $item['name']);
+
+        if ($field === null) {
+            continue;
+        }
+
+        $shown = $field[2] . ': “' . ws_change_show($type, $item['name'], $item['to'], 120) . '”';
+        $lines[] = ((string) $field[0] === 'ids') ? $field[2] . ': ' . ws_change_ids_tokens($field, $item['to']) : $shown;
+        $logged[] = $shown;
+    }
+
+    $now = time();
+
+    // Kept with the proposals that were applied, as a create with no request
+    // behind it.
+    db("INSERT INTO ws_ai_changes (request_id, channel_id, message_id, requested_by, record_type, action, record_id, fields, reason, status, decided_by, decided_at, created_at)
+        VALUES ('0', '" . (int) $channel_id . "', '0', '" . (int) $viewer['id'] . "', '" . e($type) . "', 'create', '" . $id . "',
+            '" . e(json_encode($input['row']['fields'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "', '', 'applied',
+            '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
+
+    $name = ws_change_record_name($type, $values);
+    $tag = '<#' . $types[$type]['tag'] . ':' . $id . '>';
+
+    log_activity(lang(array('string' => '{var:1} ({var:2}) was added in the Workspace: {var:3}', 'vars' => array($types[$type]['label'], $name, implode(', ', $logged)))), ws_quick_edit_log_name($viewer));
+
+    $decision_id = 0;
+    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
+
+    if ($decision && $channel && ws_can_post_channel($viewer, $channel)) {
+        $body = lang(array('string' => '{var:1} was added. {var:2}', 'vars' => array($tag, implode(' · ', $lines))));
+        $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision'));
+
+        if ($sent['ok']) {
+            $decision_id = (int) $sent['message_id'];
+            db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $decision_id . "'");
+
+            if (function_exists('ws_thread_copy_sync')) {
+                ws_thread_copy_sync($decision_id);
+            }
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'id' => $id, 'name' => $name, 'tag' => $tag, 'lines' => $lines, 'decision_id' => $decision_id);
 }
