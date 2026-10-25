@@ -1,11 +1,11 @@
 ---
 name: erp-parasut-product-card-opening-stock
-description: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#PR); what each caller adds, and the orders still counted out twice
+description: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#1630); what each caller adds, and the orders still counted out twice
 ---
 
-## Which stock does a tracked card open with? (#PR)
+## Which stock does a tracked card open with? (#1630)
 - `initial_stock_count` = `inventory_quantity` (never below 0) + `$taken_out` (`parasut_product_attributes()`): the units the sale behind the document already took out of the count and the document takes out at Paraşüt. Checkout (`submit_order.php`), counter sale (`local_sale.php`) and marketplace import lower the count when the order is placed.
-- Before #PR it opened at the count after the sale and the document took the same goods out again (10 in stock, order of 2: Pinegrap 8, Paraşüt 6). An untracked card is unchanged.
+- Before #1630 it opened at the count after the sale and the document took the same goods out again (10 in stock, order of 2: Pinegrap 8, Paraşüt 6). An untracked card is unchanged.
 
 ## What does each caller add?
 - E-Shipment, Create Invoice with the shipment included (Paraşüt's default), the driver's invoice of an order: the document's units of the product, when the order took them.
@@ -18,7 +18,7 @@ description: The stock a tracked Paraşüt product card opens with: Pinegrap's c
 - Not a marketplace order the marketplace cancelled: `mp_order_cancel()` cancels it with user 0 (`cancelled_by` 0), then restocks (`mp_order_return_stock()`). The shop's cancel of one names its user and restocks nothing.
 
 ## What is still counted out twice, or not at all?
-- Only the opening document's units are added. Another order placed before the card opened and documented after it is taken out at Paraşüt from a card that never held it: stock 10, order A 2 (8), order B 3 (5); Create Invoice A opens the card at 7 and leaves 5, Create Invoice B leaves 2 while Pinegrap shows 5 (before #PR: 0). Which earlier orders will ever be documented at Paraşüt cannot be told; adding every undocumented one would overstate the card by all orders never sent there.
+- Only the opening document's units are added. Another order placed before the card opened and documented after it is taken out at Paraşüt from a card that never held it: stock 10, order A 2 (8), order B 3 (5); Create Invoice A opens the card at 7 and leaves 5, Create Invoice B leaves 2 while Pinegrap shows 5 (before #1630: 0). Which earlier orders will ever be documented at Paraşüt cannot be told; adding every undocumented one would overstate the card by all orders never sent there.
 - A marketplace-cancelled order the shop restored: `cancelled_by` is 0 again, it reads as taken, nothing took its stock again: card overstated by its units. So is a product switched to tracking after the order.
 - A driver invoice whose named shipment document is found deleted (404, sent again with the shipment): a card its first try opened kept the count alone.
 

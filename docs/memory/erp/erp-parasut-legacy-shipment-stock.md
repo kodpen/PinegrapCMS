@@ -1,11 +1,11 @@
 ---
 name: erp-parasut-legacy-shipment-stock
-description: E-Shipment's stock step: every line's product card opened first, then each Paraşüt product made ready once for the order's total; one movement per order line (#PR)
+description: E-Shipment's stock step: every line's product card opened first, then each Paraşüt product made ready once for the order's total; one movement per order line (#1630)
 ---
 
-## How does E-Shipment check the stock? (#PR)
+## How does E-Shipment check the stock? (#1630)
 - `parasut_create_shipment()` first opens the product card of every stock-tracked line (opening stock: erp-parasut-product-card-opening-stock.md). It then adds the lines' quantities up per Paraşüt product (`parasut_shipment_stock_needs()`) and calls `parasut_ensure_product_stock_tracking()` once per product with the total: tracking switched on if off, a card without movements and short of the total seeded by an inflow document for the shortfall.
-- Before #PR each line opened its card and checked its own quantity. One product on two lines (two recipients, commerce/order-completion-stock-and-spots.md): a card at 3 passed 2 and 2, nothing was seeded and the document took 4; a seed for the first line covered that line only.
+- Before #1630 each line opened its card and checked its own quantity. One product on two lines (two recipients, commerce/order-completion-stock-and-spots.md): a card at 3 passed 2 and 2, nothing was seeded and the document took 4; a seed for the first line covered that line only.
 - When the step fails for one product, the cards of later lines are already open (with the right opening stock). No seed is written ahead of a card that then fails to open.
 - A card with movements is not seeded. The code assumes Paraşüt lets its stock go below zero (a code comment; not checked live).
 
