@@ -27,9 +27,10 @@ description: changelog.txt format (English, only plan-driven major features as [
 - Only these four tags. Versions released together may share a heading (`2026.1.21 / 2026.1.22`).
 
 ## When do I touch it?
-- A plan-driven major feature: add its `[NEW]` line to the open version.
-- Any fix: make sure the open version has the `[FIX]` line (or `[SECURITY]` for a security fix); add it once if missing, otherwise leave the file alone.
-- A schema change: make sure the open version has its `[SCHEME]` line and that it names the area.
+- A PR does not edit it (owner, 2026-10-25: every schema PR conflicted on the one `[SCHEME]` line). Its body names what the file needs and the merging session writes it when it lands the PR (`workflow/merge-train.md`):
+  - a plan-driven major feature: its `[NEW]` line for the open version;
+  - any fix: the open version's `[FIX]` line (or `[SECURITY]` for a security fix), added once if missing;
+  - a schema change: the area to name in the open version's `[SCHEME]` line.
 - In the open version the file describes the final state: a fix to something added in the same version changes nothing here.
 
 ## Where do details go?
