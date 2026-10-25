@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-scheduled-merge
-description: Plan (2026-10-24, slice 0 built, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
+description: Plan (2026-10-24, slice 0 #1590, answers 1-3 given): scheduled actions move into Flows, no feature lost; one screen, a read-only graph, boxes for every part, opt-in convert
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -20,7 +20,7 @@ description: Plan (2026-10-24, slice 0 built, answers 1-3 given): scheduled acti
 - Two anchors: hidden (a flow's trigger box; lists, `ws_scheduled_action()` and S1 skip it, `ws_scheduled_report()` silent) and converted (slice 5; still an action to all of them). The new filter is not `ws_scheduled_actions_only()`, which feeds event and join starts.
 
 ## Slices (one PR each)
-0. Built: tests/workspace_flows_parity_test.php maps each parity key to its slice and box, or `form` and why; tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()`, `ws_scheduled_hours_hold()` (past midnight, the site's zone).
+0. #1590: tests/workspace_flows_parity_test.php maps each parity key to its slice and box, or `form` and why; tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()`, `ws_scheduled_hours_hold()` (past midnight, the site's zone).
 1. One screen, no schema: a Scheduled actions section in Flows (today's list, `scheduledCard()`, `scheduledForm()` via `shareKit()`); staff get one Flows rail entry; ?view=scheduled keeps their Messages tab (the scheduled_message line opens it); other links, the tour step land in Flows; composer, note, @ai draft still open the form; without step 11.0.80 the old entry stays.
 2. "Show on canvas": a pure `ws_scheduled_graph()` draws an action read-only (when, condition, step, follow-ups; starters, started actions, self-retry as chips); edits stay in the form.
 3. Parity boxes (F4, F5), one per parity row: schedule, by hand or chain only, join, event triggers on the anchor; condition (no = skipped, reason kept); steps from steps.php (engine plan), every option; task without waiting; approval; outcomes; delay; retry; start a flow; depth.
