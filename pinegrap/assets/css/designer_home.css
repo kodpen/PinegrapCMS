@@ -696,7 +696,7 @@ button.sdh-page:hover {
   bottom: .5rem;
   padding: .1rem .45rem;
   color: var(--bs-secondary-color);
-  background: rgba(var(--bs-body-bg-rgb), .82);
+  background: color-mix(in srgb, var(--pg-bg-body) 82%, transparent);
   border-radius: 999px;
   box-shadow: 0 0 0 1px var(--bs-border-color-translucent);
 }

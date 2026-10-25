@@ -1249,9 +1249,9 @@ echo pg_page_shell(array(
 .mp-row code { font-size: 11px; opacity: .7; }
 .mp-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--bs-border-color); display: inline-block; white-space: nowrap; }
-.mp-pill.on { color: var(--bs-success); border-color: rgba(var(--bs-success-rgb), .35); }
+.mp-pill.on { color: var(--bs-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .mp-pill.off { opacity: .6; }
-.mp-pill.bad { color: var(--bs-danger); border-color: rgba(var(--bs-danger-rgb), .35); }
+.mp-pill.bad { color: var(--bs-danger); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
 .mp-tab { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 10px 14px;
 	text-decoration: none; color: inherit; display: block; }
 .mp-tab.sel { border-color: var(--bs-primary); background: var(--bs-tertiary-bg); }

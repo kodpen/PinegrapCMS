@@ -3010,7 +3010,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			padding: 7px;
 			border-radius: 24px;
 			border: 1px solid var(--bs-border-color);
-			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		.pg-wizard-on .pg-step-panel { display: none; }
 		.pg-wizard-on .pg-step-panel.active { display: block; }
@@ -3054,19 +3054,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			background: var(--bs-body-bg);
 			cursor: pointer;
 		}
-		.pg-source.selected { border-color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .08); }
+		.pg-source.selected { border-color: var(--bs-primary); background: color-mix(in srgb, var(--pg-primary) 8%, transparent); }
 		.pg-source.disabled { opacity: .55; cursor: not-allowed; }
 		.pg-design-points li { display: flex; gap: .4rem; margin-top: .2rem; }
 		.pg-design-custom { padding: 1rem; border: 1px solid var(--bs-border-color); border-radius: 1rem; background: var(--bs-tertiary-bg); }
 		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bs-border-color); cursor: pointer; }
 		.pg-design-swatch i { flex: 1; }
 		.btn-check:checked + .pg-design-swatch { border-color: var(--bs-body-bg); box-shadow: 0 0 0 2px var(--bs-emphasis-color); }
-		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .35), 0 0 0 1px var(--bs-border-color); }
+		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-primary) 35%, transparent), 0 0 0 1px var(--bs-border-color); }
 		.pg-design-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-body-bg); }
 		.pg-design-frame iframe { position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform-origin: 0 0; background: #fff; }
 		.pg-design-frame.pg-mobile { aspect-ratio: auto; height: 34rem; background: var(--bs-secondary-bg); }
 		.pg-design-frame.pg-mobile iframe { left: 50%; width: 390px; height: 100%; margin-left: -195px; transform: none; box-shadow: 0 0 0 1px var(--bs-border-color); }
-		.pg-design-frame-wait { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(var(--bs-body-bg-rgb), .7); font-size: .875rem; }
+		.pg-design-frame-wait { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent); font-size: .875rem; }
 		.pg-design-frame.pg-loading .pg-design-frame-wait { display: flex; }
 		.pg-radio {
 			width: 20px;
@@ -3136,13 +3136,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			padding: .7rem .9rem;
 			font-size: .85rem;
 		}
-		.pg-install .alert-primary { background: rgba(var(--bs-primary-rgb), .10); color: var(--bs-body-color); }
+		.pg-install .alert-primary { background: color-mix(in srgb, var(--pg-primary) 10%, transparent); color: var(--bs-body-color); }
 		.pg-install .alert-primary i { color: var(--bs-primary); }
-		.pg-install .alert-warning { background: rgba(var(--bs-warning-rgb), .13); color: var(--bs-body-color); }
+		.pg-install .alert-warning { background: color-mix(in srgb, var(--pg-warning) 13%, transparent); color: var(--bs-body-color); }
 		.pg-install .alert-warning i { color: var(--bs-warning-text-emphasis); }
-		.pg-install .alert-danger { background: rgba(var(--bs-danger-rgb), .12); color: var(--bs-body-color); }
+		.pg-install .alert-danger { background: color-mix(in srgb, var(--pg-danger) 12%, transparent); color: var(--bs-body-color); }
 		.pg-install .alert-danger i { color: var(--bs-danger); }
-		.pg-install .alert-success { background: rgba(var(--bs-success-rgb), .12); color: var(--bs-body-color); }
+		.pg-install .alert-success { background: color-mix(in srgb, var(--pg-success) 12%, transparent); color: var(--bs-body-color); }
 		.pg-install .alert-success i { color: var(--bs-success); }
 		.pg-install .alert-secondary { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
 
@@ -3156,8 +3156,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		/* the question about replacing an existing site */
 		.pg-danger-panel {
-			border: 1px solid rgba(var(--bs-danger-rgb), .35);
-			background: rgba(var(--bs-danger-rgb), .08);
+			border: 1px solid color-mix(in srgb, var(--pg-danger) 35%, transparent);
+			background: color-mix(in srgb, var(--pg-danger) 8%, transparent);
 			border-radius: 1rem;
 			padding: .85rem .95rem;
 			margin-top: .9rem;
@@ -6665,7 +6665,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 				padding: 8px;
 				border-radius: 26px;
 				border: 1px solid var(--bs-border-color);
-				background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+				background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 			}
 		</style>
 		<main id="content" class="container">
@@ -6769,7 +6769,7 @@ function start_install_stream() {
 			padding: 8px;
 			border-radius: 26px;
 			border: 1px solid var(--bs-border-color);
-			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		#pg_stream_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
 	</style>
@@ -7930,7 +7930,7 @@ function output_install_lock_screen() {
 			padding: 10px;
 			border-radius: 32px;
 			border: 1px solid var(--bs-border-color);
-			background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), .12), rgba(var(--bs-warning-rgb), .16));
+			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		.install-lock-ghost {
 			height: 54px;
