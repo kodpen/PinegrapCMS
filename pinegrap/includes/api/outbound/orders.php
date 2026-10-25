@@ -223,6 +223,10 @@ function mp_import_claimed($account, $package, $map_id) {
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
 
+	// Before the status below, so a receiver hears of the order before an
+	// order.shipped or order.delivered of the same pass.
+	mp_order_announce('marketplace.order.imported', $account, $map_id, (string)$package['remote_status']);
+
 	// A package can also arrive already shipped or delivered, with its tracking
 	// number. The feed is not guaranteed to hand it back, so what a known
 	// package would get on its next poll it gets now.
@@ -512,6 +516,14 @@ function mp_order_cancel($account, $package, $map) {
 	}
 
 	mp_order_return_stock($order_id);
+
+	// Only a cancellation this call made: 'already' means somebody else
+	// cancelled the order first, and a shipped one returned above.
+	if ($outcome['status'] === 'success') {
+
+		mp_order_announce('marketplace.order.cancelled', $account, (int)$map['id'], (string)$package['remote_status']);
+
+	}
 
 }
 
@@ -1096,5 +1108,59 @@ function mp_order_failed($map_id, $message) {
 			last_error = '" . e(mb_substr((string)$message, 0, 500)) . "',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e((int)$map_id) . "'");
+
+}
+
+
+/* ------------------------------------------------------------------- events */
+
+// What a marketplace.order.* event carries. id is the order's, as in every
+// order.* event; then the account, its provider and the marketplace's own
+// order and package ids, and the package's status as the event saw it (the map
+// row may not have caught up yet, so the caller can name it). Nothing else of
+// the account goes out: its credentials never leave this file. An extra field
+// (the tracking link of a shipment) is added after the base fields and never
+// replaces one.
+function mp_order_event_payload($account, $map, $order_number, $remote_status = '', $extra = array()) {
+
+	$payload = array(
+		'id'                => (int)$map['order_id'],
+		'order_number'      => (string)$order_number,
+		'account_id'        => (int)$account['id'],
+		'provider'          => (string)$account['provider'],
+		'remote_order_id'   => (string)$map['remote_order_id'],
+		'remote_package_id' => (string)$map['remote_package_id'],
+		'remote_status'     => ((string)$remote_status !== '') ? (string)$remote_status : (string)$map['remote_status']
+	);
+
+	return $payload + (array)$extra;
+
+}
+
+// Announce a marketplace.order.* event for one map row. Queued, never sent
+// here, and silent without the API (pg_announce()), so an event is never the
+// reason an import, a cancellation or a shipment report fails. A row without
+// an order (a package cancelled before its import) has nothing to announce.
+function mp_order_announce($event, $account, $map_id, $remote_status = '', $extra = array()) {
+
+	if (!function_exists('pg_announce')) {
+
+		return;
+
+	}
+
+	$map = db_item("SELECT order_id, remote_order_id, remote_package_id, remote_status
+		FROM marketplace_order_map
+		WHERE id = '" . e((int)$map_id) . "'");
+
+	if (!$map || ((int)$map['order_id'] <= 0)) {
+
+		return;
+
+	}
+
+	$order_number = (string)db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$map['order_id']) . "'");
+
+	pg_announce($event, mp_order_event_payload($account, $map, $order_number, $remote_status, $extra));
 
 }

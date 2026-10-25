@@ -50,6 +50,15 @@ function api_webhook_events() {
 		'order.return.approved'  => 'A return request was approved, one event per request a bulk approval takes (a rejection is not announced)',
 		'order.return.received'  => 'The goods of a return arrived back at the shop (the customer saying the parcel left is not announced)',
 		'order.return.refunded'  => 'A received return was refunded through the payment service, or recorded as refunded another way; unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',
+		// A marketplace package (includes/api/outbound/orders.php, sync.php).
+		// id is the order's, as in every order.* event; the account, the
+		// provider and the marketplace's own order and package ids follow.
+		// Each is announced where it happens here, not when a later pull
+		// sees it again: an order written for a package, a cancellation the
+		// order took now, a shipment the shop reported with its own carrier.
+		'marketplace.order.imported'  => 'A marketplace package was imported as an order, one event per package (a package cancelled before its first import writes no order and is not announced)',
+		'marketplace.order.cancelled' => 'A marketplace cancelled an imported order and the order was cancelled here; order.cancelled is sent as well (not for one that had already shipped)',
+		'marketplace.order.shipped'   => 'An order the shop ships with its own carrier was reported shipped to the marketplace, with its tracking link (a parcel of the marketplace\'s own carrier arrives as order.shipped)',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this
