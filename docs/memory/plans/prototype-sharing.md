@@ -1,6 +1,6 @@
 ---
 name: prototype-sharing
-description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team (F7), a link later
+description: Plan (2026-10-24, slice 4 #1578, answers 1, 2, 4, 6 given): a design's drafts play as a clickable prototype shared by a view-only link; flows shared with the team (F7), a link later
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -8,7 +8,7 @@ description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design'
 
 ## What is there today?
 - A draft is a whole page in the private Drafts folder; every changing save is a revision. Roles 0-2 open a saved draft at its address ("Open on Site") and click on by page name; role 3 needs folder rights, signed out goes to sign-in. Preview renders widgets in the background, not signed out.
-- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel; flows have no shares.
+- Token links: short links (once, timed), guests (a view-only channel share, one link each), calendar and product feeds (address shown again). Notes share to a person or channel.
 - Details: plans/prototype-sharing-code.md.
 
 ## What is proposed? (not approved yet)
@@ -22,7 +22,7 @@ description: Plan (2026-10-24, not started, answers 1, 2, 4, 6 given): a design'
 1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
 2. prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver; Open on Site already shows them saved drafts.
 3. Share links (schema): dialog, list, revoke, password, WAF offence.
-4. F7 flow shares (schema).
+4. PR #1578: F7 flow shares (schema 11.0.83).
 5. Later (ask): outside flow link, run state, comments (designer node notes exist).
 
 ## Which questions are answered? (owner, 2026-10-24: 1 a, 2 c, 4 a, 6 a; 3, 5, 7 open)
