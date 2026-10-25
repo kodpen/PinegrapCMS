@@ -149,6 +149,33 @@ function ws_code_fence_close($line)
 }
 
 /**
+ * The lines of every block of code in a text, its fences included, as
+ * ws_render_body() reads them: from an opening fence up to its closing one,
+ * or to the end. The screen keeps them as written, so a reader that groups
+ * lists and quotes (ws_text_blocks()) must leave them out.
+ *
+ * @param string[] $lines
+ * @return bool[] line index => true, for the lines of a block of code only
+ */
+function ws_code_fence_lines($lines)
+{
+    $out = array();
+    $open = false;
+
+    foreach (array_values((array) $lines) as $index => $line) {
+        if ($open) {
+            $out[$index] = true;
+            $open = !ws_code_fence_close($line);
+        } elseif (ws_code_fence_open($line) !== null) {
+            $out[$index] = true;
+            $open = true;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * A block of code as the conversation shows it: kept as written, in a box of
  * its own height that scrolls, with a button that copies it.
  *
@@ -354,6 +381,41 @@ function ws_text_blocks($lines)
         }
 
         $out[] = $block;
+    }
+
+    return $out;
+}
+
+/**
+ * The words of each line ws_text_blocks() puts in a list or a quote, after
+ * its mark, by the line's index. A reader is shown an item's words alone
+ * (a sum in "- 10 - 4 =" is 10 - 4), so a plain text reader works out the
+ * same words (ws_calc_plain()). Running text and the empty lines a list
+ * skips between two items are not in it.
+ *
+ * @param string[] $lines
+ * @return string[] line index => the item's words
+ */
+function ws_text_block_items($lines)
+{
+    $lines = array_values((array) $lines);
+    $out = array();
+    $at = 0;
+
+    foreach (ws_text_blocks($lines) as $block) {
+        if ($block['kind'] === 'text') {
+            $at += count($block['lines']);
+            continue;
+        }
+
+        foreach ($block['lines'] as $words) {
+            while (($block['kind'] !== 'quote') && isset($lines[$at]) && (trim((string) $lines[$at]) === '')) {
+                $at++;
+            }
+
+            $out[$at] = $words;
+            $at++;
+        }
     }
 
     return $out;
@@ -696,7 +758,8 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
  * the API reads (text), an excerpt, a device banner or an e-mail line.
  * Running text folds into one line; each item of a list and each line of a
  * quote keeps a line of its own ("- item", "1. item", "> line"), so a list
- * still reads as one. ws_plain_excerpt() folds those too.
+ * still reads as one. The lines of a block of code are no items: they fold
+ * as written. ws_plain_excerpt() folds those too.
  *
  * @param array  $viewer
  * @param string $body
@@ -725,6 +788,17 @@ function ws_plain_text($viewer, $body, $refs = null)
     $text = preg_replace('/^\s*[-*]\s\[ \]\s+/mu', '☐ ', $text);
     $text = preg_replace('/^\s*[-*]\s\[[xX]\]\s+/mu', '☑ ', $text);
     $text = preg_replace('/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/m', '', $text);
+
+    // The lines of a block of code are no list or quote below: each starts
+    // with \x02, which no item does; a fence is that mark alone, so a list
+    // around the block ends there, as on the screen.
+    $lines = preg_split('/\r\n|\r|\n/', $text);
+
+    foreach (array_keys(ws_code_fence_lines($lines)) as $index) {
+        $lines[$index] = preg_match('/^\s*```/', $lines[$index]) ? "\x02" : "\x02" . $lines[$index];
+    }
+
+    $text = implode("\n", $lines);
     $text = preg_replace('/^\s*```.*$/m', '', $text);
     $text = preg_replace('/^\s*:::\s+(.+)$/mu', '$1:', $text);
     $text = preg_replace('#\[([^\]\n]{1,300})\]\(((?:https?://|mailto:)[^\s()<>"]{1,1000})\)#i', '$1', $text);
@@ -751,7 +825,7 @@ function ws_plain_text($viewer, $body, $refs = null)
     $lines = array();
 
     foreach ($pieces as $piece) {
-        $piece = trim(preg_replace('/\s+/u', ' ', $piece));
+        $piece = trim(preg_replace('/\s+/u', ' ', str_replace("\x02", '', $piece)));
 
         if ($piece !== '') {
             $lines[] = $piece;

@@ -1794,6 +1794,17 @@ function ws_calc_plain($body)
     $calc = ws_calc_body_scope($lines);
     $out = array();
 
+    // An item of a list or a quoted line is worked out from its words after
+    // the mark, as the screen draws it (ws_text_blocks_html()): the bullet's
+    // "-" is no minus sign. The lines of a block of code are no items.
+    $grouped = $lines;
+
+    foreach (array_keys(ws_code_fence_lines($lines)) as $index) {
+        $grouped[$index] = '```';
+    }
+
+    $items = ws_text_block_items($grouped);
+
     for ($i = 0; $i < $count; $i++) {
         $language = ws_code_fence_open($lines[$i]);
 
@@ -1870,7 +1881,7 @@ function ws_calc_plain($body)
         }
 
         // A line that ends with "=" reads with what it comes to.
-        $inline = ws_calc_inline($lines[$i]);
+        $inline = ws_calc_inline(isset($items[$i]) ? $items[$i] : $lines[$i]);
         $out[] = $lines[$i] . (($inline !== null) ? ' ' . $inline['display'] : '');
     }
 

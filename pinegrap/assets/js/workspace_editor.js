@@ -1379,8 +1379,43 @@
         return state;
     }
 
-    // Code holds its words as they are: the selection's text in one <code>,
-    // or the code the selection is in back to plain text.
+    // The words of a range on one line in one <code>, put in its place; null
+    // when it holds no words. A double-click takes the space after the word
+    // too; it stays outside.
+    function codeSpan(range) {
+        var text = range.toString().replace(/\n/g, ' ');
+        var core = text.trim();
+
+        if (core === '') {
+            return null;
+        }
+
+        var piece = document.createDocumentFragment();
+        var fresh = el('code', '', core);
+        var lead = /^\s*/.exec(text)[0];
+        var trail = /\s*$/.exec(text)[0];
+
+        if (lead !== '') {
+            piece.appendChild(document.createTextNode(lead));
+        }
+
+        piece.appendChild(fresh);
+
+        if (trail !== '') {
+            piece.appendChild(document.createTextNode(trail));
+        }
+
+        range.deleteContents();
+        range.insertNode(piece);
+
+        return fresh;
+    }
+
+    // Code holds its words as they are: the words selected in a <code>, or
+    // the code the selection is in back to plain text. Code is a span on one
+    // line: over several items or lines (touched()) each gets a span of its
+    // own, as the other marks stay in each item; one span across them took
+    // the words out of their items into a new item between them.
     function toggleCode(surface, range, backward) {
         var code = insideCode(range);
 
@@ -1397,35 +1432,74 @@
             return false;
         }
 
-        var text = range.toString().replace(/\n/g, ' ');
-        var core = text.trim();
+        isolateBreaks(surface);
+        range = selectionRange();
 
-        if (core === '') {
+        if (!range || range.collapsed) {
             return false;
         }
 
-        // A double-click takes the space after the word too; it stays outside.
-        var working = range.cloneRange();
-        var piece = document.createDocumentFragment();
-        var fresh = el('code', '', core);
-        var lead = /^\s*/.exec(text)[0];
-        var trail = /\s*$/.exec(text)[0];
+        // Every word selected in code already (spans in several items): the
+        // code comes off each.
+        if (marksAt(surface, range).code) {
+            var plains = Array.prototype.filter.call(surface.querySelectorAll('code'), function (node) {
+                return range.intersectsNode(node);
+            }).map(function (node) {
+                var words = document.createTextNode(node.textContent);
 
-        if (lead !== '') {
-            piece.appendChild(document.createTextNode(lead));
+                node.parentNode.replaceChild(words, node);
+
+                return words;
+            });
+
+            if (plains.length) {
+                select(plains[0], 0, plains[plains.length - 1], plains[plains.length - 1].nodeValue.length, backward);
+            }
+
+            return plains.length > 0;
         }
 
-        piece.appendChild(fresh);
+        var made = [];
 
-        if (trail !== '') {
-            piece.appendChild(document.createTextNode(trail));
+        // From the last, so the places of those before it stay as they were.
+        touched(surface, range).reverse().forEach(function (unit) {
+            var bounds = document.createRange();
+
+            if (unit.item) {
+                bounds.selectNodeContents(unit.item);
+            } else if (unit.line.nodes.length) {
+                bounds.setStartBefore(unit.line.nodes[0]);
+                bounds.setEndAfter(unit.line.nodes[unit.line.nodes.length - 1]);
+            } else {
+                return;
+            }
+
+            var part = range.cloneRange();
+
+            if (part.compareBoundaryPoints(Range.START_TO_START, bounds) < 0) {
+                part.setStart(bounds.startContainer, bounds.startOffset);
+            }
+
+            if (part.compareBoundaryPoints(Range.END_TO_END, bounds) > 0) {
+                part.setEnd(bounds.endContainer, bounds.endOffset);
+            }
+
+            var fresh = codeSpan(part);
+
+            if (fresh) {
+                made.unshift(fresh);
+            }
+        });
+
+        if (!made.length) {
+            return false;
         }
-
-        working.deleteContents();
-        working.insertNode(piece);
 
         // Still selected, so the bar can take it off again.
-        select(fresh.firstChild, 0, fresh.firstChild, fresh.firstChild.nodeValue.length, backward);
+        var first = made[0].firstChild;
+        var last = made[made.length - 1].firstChild;
+
+        select(first, 0, last, last.nodeValue.length, backward);
 
         return true;
     }
@@ -1854,10 +1928,57 @@
         return (node.nodeType === 1) && (BLOCKS.test(node.tagName) || node.classList.contains('ws-rich-block'));
     }
 
+    // A line the browser made a block of its own, a <div> or a <p> straight
+    // in the box (a text dropped with "\n" in it, its own insertParagraph),
+    // made a line of the box's own: its nodes in its place, a line break
+    // before and after it where words stand. A card is no such line.
+    function unwrapLines(surface) {
+        var line = function (child) {
+            return (child.nodeType === 1) && /^(DIV|P)$/.test(child.tagName) && !child.classList.contains('ws-rich-block') && !child.hasAttribute('data-ws-skip');
+        };
+
+        if (!Array.prototype.some.call(surface.childNodes, line)) {
+            return;
+        }
+
+        var held = holdSelection(surface);
+        var block;
+
+        while ((block = Array.prototype.filter.call(surface.childNodes, line)[0])) {
+            var nodes = Array.prototype.slice.call(block.childNodes);
+
+            if (!nodes.length) {
+                nodes = [el('br')];
+            }
+
+            nodes.forEach(function (node) {
+                surface.insertBefore(node, block);
+            });
+
+            surface.removeChild(block);
+
+            var before = sibling(nodes[0], false);
+            var after = sibling(nodes[nodes.length - 1], true);
+
+            if (before && !isBlock(before) && !isBreak(before)) {
+                surface.insertBefore(el('br'), nodes[0]);
+            }
+
+            if (after && !isBlock(after) && !isBreak(after) && !isBreak(nodes[nodes.length - 1])) {
+                surface.insertBefore(el('br'), nodes[nodes.length - 1].nextSibling);
+            }
+        }
+
+        putSelection(surface, held);
+    }
+
     // Every line break of the box's own lines made a node straight in the
     // surface: a "\n" in a text its own text node, a break inside a mark
-    // lifted out of it. A line is then a run of the surface's children.
+    // lifted out of it, a <div> line of the browser's unwrapped. A line is
+    // then a run of the surface's children.
     function isolateBreaks(surface) {
+        unwrapLines(surface);
+
         var texts = [];
         var breaks = [];
         var walker = document.createTreeWalker(surface, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
@@ -2074,8 +2195,10 @@
 
         list.removeChild(item);
 
-        if (!nodes.length) {
-            nodes = [el('br')];
+        // An empty line keeps a line break, so that it stands a line high
+        // and shows the caret (an empty text alone has no line).
+        if (!nodes.some(function (node) { return isBreak(node) || hasWords(node); })) {
+            nodes.push(el('br'));
         }
 
         nodes.forEach(function (node) {
@@ -2125,9 +2248,63 @@
         return other;
     }
 
-    // Two lists of a kind side by side joined, empty ones gone. true when
-    // anything changed.
-    function joinLists(surface) {
+    // A node between two lists that is no more than an empty line: a line
+    // break, an empty text, a mark with no words in it.
+    function emptyLine(node) {
+        return (node.nodeType === 3) ? (node.nodeValue.replace(/[\s\u200b]/g, '') === '') : (isBreak(node) || !hasWords(node));
+    }
+
+    // Whether the selection (held, or the browser's) stands on the nodes of
+    // a gap between two lists, or between them in the box.
+    function caretAmong(surface, gap, held) {
+        var selection = window.getSelection();
+        var points = held ? [held.anchor, held.focus]
+            : ((selection && selection.rangeCount) ? [[selection.anchorNode, selection.anchorOffset], [selection.focusNode, selection.focusOffset]] : []);
+        var first = Array.prototype.indexOf.call(surface.childNodes, gap[0]);
+        var last = Array.prototype.indexOf.call(surface.childNodes, gap[gap.length - 1]) + 1;
+
+        return points.some(function (point) {
+            if (point[0] === surface) {
+                return (point[1] >= first) && (point[1] <= last);
+            }
+
+            return gap.some(function (node) { return (node === point[0]) || node.contains(point[0]); });
+        });
+    }
+
+    // The list of the same kind after a list with nothing but empty lines
+    // between them, and those nodes: { next, gap }. The readers keep one
+    // list across empty lines (ws_text_blocks()), so the box joins them too:
+    // a split it drew, with the numbers starting again, was saved as one
+    // list. Not a quote, which an empty line ends, and not while the caret
+    // stands on those lines (someone is writing there; they are joined at
+    // the next change once it has left). null when there is none.
+    function listAfter(surface, list, held) {
+        var gap = [];
+        var next = list.nextSibling;
+
+        while (next && !((next.nodeType === 1) && LIST_TAGS.test(next.tagName)) && emptyLine(next)) {
+            gap.push(next);
+            next = next.nextSibling;
+        }
+
+        if (!next || (next.nodeType !== 1) || (next.tagName !== list.tagName)) {
+            return null;
+        }
+
+        // Side by side: only empty texts between them, which stay.
+        if (gap.every(function (node) { return (node.nodeType === 3) && (node.nodeValue === ''); })) {
+            return { next: next, gap: [] };
+        }
+
+        return ((list.tagName === 'BLOCKQUOTE') || caretAmong(surface, gap, held)) ? null : { next: next, gap: gap };
+    }
+
+    // Two lists of a kind side by side, or with only empty lines between
+    // them (listAfter()), joined; empty ones gone. held: the selection
+    // holdSelection() kept, when the nodes moved since. true when anything
+    // changed.
+    function joinLists(surface, held) {
         var changed = false;
         var child = surface.firstChild;
 
@@ -2142,14 +2319,18 @@
                     continue;
                 }
 
-                var next = sibling(child, true);
+                var after = listAfter(surface, child, held);
 
-                if (next && (next.nodeType === 1) && (next.tagName === child.tagName)) {
-                    while (next.firstChild) {
-                        child.appendChild(next.firstChild);
+                if (after) {
+                    after.gap.forEach(function (node) {
+                        surface.removeChild(node);
+                    });
+
+                    while (after.next.firstChild) {
+                        child.appendChild(after.next.firstChild);
                     }
 
-                    surface.removeChild(next);
+                    surface.removeChild(after.next);
                     changed = true;
                     continue;
                 }
@@ -2163,9 +2344,10 @@
 
     // The lists of a box kept whole after the browser's own editing (a
     // deletion across items, a drop): words standing in a list outside an
-    // item put in one, empty lists gone, two of a kind side by side joined.
-    // Nothing is touched where nothing needs it: a composition (an IME)
-    // must not see its nodes moved.
+    // item put in one, empty lists gone, two of a kind side by side or with
+    // only empty lines between them joined (listAfter()). Nothing is touched
+    // where nothing needs it: a composition (an IME) must not see its nodes
+    // moved.
     function normaliseLists(surface) {
         if (surface.wsComposing || !hasLists(surface)) {
             return false;
@@ -2178,10 +2360,8 @@
             return (child.nodeType === 1) && LIST_TAGS.test(child.tagName);
         });
         var wrong = lists.some(function (list) {
-            var next = sibling(list, true);
-
             return !Array.prototype.some.call(list.childNodes, isItem) || Array.prototype.some.call(list.childNodes, stray)
-                || (next && (next.nodeType === 1) && (next.tagName === list.tagName));
+                || !!listAfter(surface, list, null);
         });
 
         if (!wrong) {
@@ -2209,7 +2389,7 @@
             });
         });
 
-        joinLists(surface);
+        joinLists(surface, held);
         putSelection(surface, held);
 
         return true;
@@ -2254,7 +2434,7 @@
             }
         });
 
-        joinLists(surface);
+        joinLists(surface, held);
         putSelection(surface, held);
 
         return true;
@@ -2276,7 +2456,7 @@
             liftItem(surface, unit.item);
         });
 
-        joinLists(surface);
+        joinLists(surface, held);
         putSelection(surface, held);
 
         return items.length > 0;
@@ -2308,34 +2488,92 @@
         }
     }
 
-    // Enter in an item: the words after the caret go to a new item below it.
-    // On an empty item the list ends there: the item becomes a line of the
-    // box's own. keep: the list never ends (the lines of a pasted text).
-    function itemEnter(surface, keep) {
-        var range = selectionRange();
+    // A selection that starts in an item deleted, as typing over it would
+    // delete it, the caret where it started. Over two items or lines the
+    // words left after it join the start item: Range.deleteContents() keeps
+    // them apart and leaves the caret between the two blocks, in no item.
+    function takeSelection(surface, range, item) {
+        var end = itemAt(surface, range.endContainer);
 
-        if (!range || !surface.contains(range.startContainer) || !itemAt(surface, range.startContainer)) {
-            return false;
-        }
-
-        if (!range.collapsed) {
+        if (end && (end.item === item)) {
             range.deleteContents();
             range.collapse(true);
+            return;
         }
 
-        var where = itemAt(surface, range.startContainer);
+        // The end's line a run of the box's children (a "\n" or a <div> of
+        // the browser's made a line break of its own).
+        isolateBreaks(surface);
+        range = selectionRange();
+        end = itemAt(surface, range.endContainer);
+
+        var top = range.endContainer;
+
+        if (top === surface) {
+            top = surface.childNodes[range.endOffset] || null;
+        } else {
+            while (top.parentNode !== surface) {
+                top = top.parentNode;
+            }
+        }
+
+        range.deleteContents();
+
+        var at = textPoint(item, item.childNodes.length);
+        var moved = [];
+        var stop = null;
+
+        if (end) {
+            moved = Array.prototype.slice.call(end.item.childNodes);
+        } else if (top && (top.parentNode === surface)) {
+            // What is left of the end's line, up to its line break.
+            for (stop = top; stop && !isBreak(stop) && !isBlock(stop); stop = stop.nextSibling) {
+                moved.push(stop);
+            }
+        }
+
+        moved.forEach(function (node) {
+            item.appendChild(node);
+        });
+
+        if (end && end.item.parentNode) {
+            end.item.parentNode.removeChild(end.item);
+        } else if (stop && isBreak(stop)) {
+            stop.parentNode.removeChild(stop);
+        }
+
+        select(at[0], at[1], at[0], at[1]);
+    }
+
+    // Enter in an item: the words after the caret go to a new item below it.
+    // On an empty last item the list ends there: the item becomes a line of
+    // the box's own. An empty item with items after it stays one: the
+    // readers keep one list across an empty line (ws_text_blocks()); a quote,
+    // which an empty line does end, ends anywhere. keep: the list never ends
+    // (the lines of a pasted text). A selection goes first, as typing over
+    // it would take it, and the item it leaves goes on, emptied or not.
+    // true when the box changed.
+    function itemEnter(surface, keep) {
+        var range = selectionRange();
+        var where = (range && surface.contains(range.startContainer)) ? itemAt(surface, range.startContainer) : null;
 
         if (!where) {
             return false;
         }
 
+        if (!range.collapsed) {
+            takeSelection(surface, range, where.item);
+            range = selectionRange();
+            keep = true;
+        }
+
         var item = where.item;
 
-        if (!keep && itemEmpty(item)) {
+        if (!keep && itemEmpty(item) && ((item.parentNode.tagName === 'BLOCKQUOTE') || (lastItem(item.parentNode) === item))) {
             var held = holdSelection(surface);
 
             liftItem(surface, item);
-            joinLists(surface);
+            joinLists(surface, held);
             putSelection(surface, held);
 
             return true;
@@ -2349,7 +2587,7 @@
         var next = item.cloneNode(false);
 
         next.appendChild(tail.extractContents());
-        where.list.insertBefore(next, item.nextSibling);
+        item.parentNode.insertBefore(next, item.nextSibling);
         fillEmpty(item);
         fillEmpty(next);
         caretToStart(next);
@@ -2694,9 +2932,45 @@
         return true;
     }
 
+    // The words of a pasted line that goes into an item of a list: its own
+    // mark ("- ", "1. ", "> ") left off, as the item writes its own
+    // (listText()); "- milk" pasted into an item was saved "- - milk".
+    function itemWords(line) {
+        var item = listLine(line);
+
+        return item ? item.text : line;
+    }
+
+    // Plain text put in at the selection, a line at a time: in an item of a
+    // list each line an item of its own (itemEnter()) without its own mark,
+    // elsewhere a line break between two lines.
+    function insertPlain(text, singleLine, surface) {
+        if (singleLine) {
+            command('insertText', text.replace(/\s*\n\s*/g, ' '));
+            return;
+        }
+
+        var lists = !!(surface && surface.wsEditor);
+
+        text.split('\n').forEach(function (line, index) {
+            if ((index > 0) && !(lists && itemEnter(surface, true))) {
+                lineBreak();
+            }
+
+            var range = selectionRange();
+
+            if (lists && range && surface.contains(range.startContainer) && itemAt(surface, range.startContainer)) {
+                line = itemWords(line);
+            }
+
+            if (line !== '') {
+                command('insertText', line);
+            }
+        });
+    }
+
     // Plain text only: formatting pasted from elsewhere would not survive as
     // markup anyway. Files are left to the conversation's own paste handler.
-    // In an item of a list each pasted line is an item of its own.
     function pastePlain(event, singleLine, surface) {
         var data = event.clipboardData;
 
@@ -2705,23 +2979,7 @@
         }
 
         event.preventDefault();
-
-        var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
-
-        if (singleLine) {
-            command('insertText', text.replace(/\s*\n\s*/g, ' '));
-            return;
-        }
-
-        text.split('\n').forEach(function (line, index) {
-            if ((index > 0) && !(surface && surface.wsEditor && itemEnter(surface, true))) {
-                lineBreak();
-            }
-
-            if (line !== '') {
-                command('insertText', line);
-            }
-        });
+        insertPlain(String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n'), singleLine, surface);
     }
 
     function lineBreak() {
@@ -2789,9 +3047,11 @@
         surface.addEventListener('drop', function (event) {
             var data = event.dataTransfer;
 
+            // Line by line as a paste: a "\n" typed in made Chrome put the
+            // lines in <div>s, and an item takes the lines as items.
             if (data && !(data.files && data.files.length) && data.getData('text/plain')) {
                 event.preventDefault();
-                command('insertText', String(data.getData('text/plain')).replace(/\s*\n\s*/g, singleLine ? ' ' : '\n'));
+                insertPlain(String(data.getData('text/plain')).replace(/\s*\n\s*/g, '\n'), singleLine, surface);
             }
         });
 
@@ -3310,10 +3570,29 @@
 
                 typed.setStart(start[0], start[1]);
                 typed.setEnd(caret.startContainer, caret.startOffset);
-                typed.deleteContents();
+
+                var typedMarks = typed.extractContents();
+                var last = typedMarks.lastChild;
+
                 select(typed.startContainer, typed.startOffset, typed.startContainer, typed.startOffset);
 
-                return toggleList(self.node, kind);
+                if (toggleList(self.node, kind)) {
+                    return true;
+                }
+
+                // No line to make an item of after all: the characters typed
+                // go back as they were, the caret after them.
+                (selectionRange() || typed).insertNode(typedMarks);
+
+                if (last && (last.nodeType === 3)) {
+                    select(last, last.nodeValue.length, last, last.nodeValue.length);
+                } else if (last) {
+                    var spot = Array.prototype.indexOf.call(last.parentNode.childNodes, last) + 1;
+
+                    select(last.parentNode, spot, last.parentNode, spot);
+                }
+
+                return false;
             });
         },
 

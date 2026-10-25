@@ -1018,8 +1018,18 @@ function ws_guest_render($body)
     $text = preg_replace('/^\s*- \[( |x)\]\s*/mi', '• ', $text);
     $text = preg_replace('/^\s*:::.*$/m', '', $text);
 
+    // The lines of a block of code stay as written, no list or quote: each
+    // starts with \x02, which no item does, taken off again below.
+    $lines = explode("\n", str_replace(array("\r\n", "\r"), "\n", $text));
+
+    foreach (array_keys(ws_code_fence_lines($lines)) as $index) {
+        $lines[$index] = "\x02" . $lines[$index];
+    }
+
+    $text = implode("\n", $lines);
+
     $inline = function ($words) {
-        $html = htmlspecialchars($words, ENT_QUOTES, 'UTF-8');
+        $html = htmlspecialchars(str_replace("\x02", '', $words), ENT_QUOTES, 'UTF-8');
 
         // Addresses are set aside first, so the marks below cannot reach into
         // them; then the marks the staff's screen reads the same way

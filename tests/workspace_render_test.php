@@ -229,3 +229,52 @@ function test_workspace_render_approval_mail_reads_lists_as_lines()
 	// A line break stays one; an empty line stays one.
 	pg_assert_same("line one\nline two\n\nafter a gap", ws_approval_guest_details_text("**Title**\nline one\nline two\n\nafter a gap"));
 }
+
+// A sum in a list item or a quoted line is worked out from its words after
+// the mark, on the screen and in the plain text the API, MCP, the
+// assistants, webhooks and banners read (ws_calc_plain(), ws_plain_text()):
+// the bullet's "-" is no minus sign, "1." no figure.
+function test_workspace_render_sum_in_an_item_reads_alike()
+{
+	$body = "Budget:\n- rent 1500 - 200 =\n- 10 - 4 =\n1. 2+3 =\n> 7 - 2 =";
+
+	pg_assert_true((bool) preg_match_all('#<span class="ws-calc[^"]*"[^>]*>([^<]*)</span>#', workspace_render_test_html($body), $shown), 'the screen shows results');
+	pg_assert_same(4, count($shown[1]));
+	pg_assert_true(strpos($shown[1][0], '-') === false, 'the screen works out 1500 - 200');
+	pg_assert_same(array('6', '5', '5'), array_slice($shown[1], 1), 'the screen works out the words of each item');
+
+	$plain = "Budget:\n- rent 1500 - 200 = " . $shown[1][0] . "\n- 10 - 4 = 6\n1. 2+3 = 5\n> 7 - 2 = 5";
+
+	pg_assert_same($plain, ws_calc_plain($body), 'what Pinegrap AI, the MCP agent and Claude read of a note');
+	pg_assert_same($plain, workspace_render_test_plain($body), 'what the API, the assistants and the banners read');
+
+	// A number that starts no list is running text in both.
+	$text = "He came\n3. 2+3 =";
+
+	pg_assert_true((bool) preg_match('#<span class="ws-calc[^"]*"[^>]*>([^<]*)</span>#', workspace_render_test_html($text), $one), 'a result on the screen');
+	pg_assert_same("He came\n3. 2+3 = " . $one[1], ws_calc_plain($text));
+
+	// A numbered line after a block of code starts no list, as on the screen.
+	pg_assert_same("1. a\n```\nx\n```\n2. 2+3 = " . $one[1], ws_calc_plain("1. a\n```\nx\n```\n2. 2+3 ="));
+}
+
+// The lines of a block of code are no list or quote in any reader: the
+// screen keeps them as written, and so do the plain text, the guest page and
+// the approval mail.
+function test_workspace_render_code_lines_are_no_list()
+{
+	$body = "Run:\n```\n1. init\n10. deploy\n* note\n> not quoted\n```";
+
+	pg_assert_same('Run: 1. init 10. deploy * note > not quoted', workspace_render_test_plain($body), 'folded as running text, as before lists');
+
+	$guest = ws_guest_render($body);
+
+	pg_assert_true((strpos($guest, '<ol>') === false) && (strpos($guest, '<ul>') === false) && (strpos($guest, '<blockquote>') === false), 'the guest page draws no list: ' . $guest);
+	pg_assert_same("Run:<br>\n```<br>\n1. init<br>\n10. deploy<br>\n* note<br>\n&gt; not quoted<br>\n```", $guest);
+	pg_assert_same("Run:\n```\n1. init\n10. deploy\n* note\n> not quoted\n```", ws_approval_guest_details_text("**Deploy**\n" . $body));
+
+	// A list on either side of a block of code is a list, numbered as written.
+	pg_assert_same("1. a\n10. x 2. b", workspace_render_test_plain("1. a\n```\n10. x\n```\n2. b"));
+	pg_assert_same("- a\nx\n- b", workspace_render_test_plain("- a\n```\nx\n```\n- b"));
+	pg_assert_same("<ul><li>a</li></ul>\n```<br>\n- x<br>\n```\n<ul><li>b</li></ul>", ws_guest_render("- a\n```\n- x\n```\n- b"));
+}

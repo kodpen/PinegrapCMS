@@ -101,7 +101,15 @@ function workspace_editor_lists_test_run($steps)
 		$script .= $part;
 	}
 
-	foreach (array('fenceOpen', 'fenceInfo', 'fenceClose', 'tableRow', 'tableAlignments', 'tableCells', 'startsBlock', 'listLine', 'parseBlocks', 'listText') as $name) {
+	$functions = array('fenceOpen', 'fenceInfo', 'fenceClose', 'tableRow', 'tableAlignments', 'tableCells', 'startsBlock', 'listLine', 'parseBlocks', 'listText');
+
+	foreach ($steps as $step) {
+		if (($step[0] === 'words') && !in_array('itemWords', $functions, true)) {
+			$functions[] = 'itemWords';
+		}
+	}
+
+	foreach ($functions as $name) {
 		$part = workspace_editor_lists_test_function($source, $name);
 		pg_assert_true($part !== '', $name . ' is found');
 		$script .= $part;
@@ -113,6 +121,7 @@ function workspace_editor_lists_test_run($steps)
 		. "  if (step[0] === 'line') { return listLine(step[1]); }\n"
 		. "  if (step[0] === 'blocks') { return parseBlocks(step[1]); }\n"
 		. "  if (step[0] === 'text') { return listText(step[1], step[2]); }\n"
+		. "  if (step[0] === 'words') { return itemWords(step[1]); }\n"
 		. "  return null;\n"
 		. "})));\n";
 
@@ -408,4 +417,133 @@ function test_workspace_editor_lists_copied_text_keeps_marks()
 	pg_assert_true(($marks !== false) && ($read !== false) && ($marks < $read), 'marks written in before the text is read');
 	pg_assert_contains("'blockquote:not([class])'", $body);
 	pg_assert_contains("'> '", $body);
+}
+
+// Enter (Shift+Enter in the composer) over a selection in or across items:
+// the selection goes first, as typing over it would take it; the item it
+// leaves goes on and is never read as an empty item that ends the list; the
+// words left after it on another item or line join the start item, where
+// the new item starts. Every path that changed the box answers true, so the
+// change is a step of the undo and the box tells its listeners (a note
+// saves, the composer grows).
+function test_workspace_editor_lists_enter_over_a_selection()
+{
+	$source = workspace_editor_lists_test_source();
+	$enter = workspace_editor_lists_test_function($source, 'itemEnter');
+	$take = workspace_editor_lists_test_function($source, 'takeSelection');
+
+	pg_assert_true(($enter !== '') && ($take !== ''), 'both found');
+	pg_assert_same(1, substr_count($enter, 'return false;'), 'false only before anything changed');
+	pg_assert_true(strpos($enter, 'return false;') < (int) strpos($enter, 'takeSelection(surface, range, where.item);'), 'the selection is taken after the only refusal');
+	pg_assert_true(strpos($enter, 'deleteContents') === false, 'no deletion of its own');
+	pg_assert_contains('keep = true;', $enter, 'an item emptied by the selection does not end the list');
+	pg_assert_contains('item.parentNode.insertBefore(next, item.nextSibling);', $enter);
+
+	pg_assert_contains('range.deleteContents();', $take);
+	pg_assert_contains('end.item', $take, 'the words left in the end item join the start item');
+	pg_assert_contains('textPoint(item, item.childNodes.length)', $take, 'the caret at the end of what stays of the start item');
+	pg_assert_true((strpos($take, 'command(') === false) && (strpos($take, 'execCommand') === false), 'no execCommand');
+}
+
+// "- " typed on a line the browser made a block of its own (a <div> from a
+// dropped text or its own insertParagraph) makes it an item, and the list
+// buttons act on it: isolateBreaks() makes such a block a line of the box's
+// own. Where no list is made after all, the characters typed go back.
+function test_workspace_editor_lists_block_lines_are_lines()
+{
+	$source = workspace_editor_lists_test_source();
+	$breaks = workspace_editor_lists_test_function($source, 'isolateBreaks');
+	$unwrap = workspace_editor_lists_test_function($source, 'unwrapLines');
+	$check = workspace_editor_lists_test_method($source, 'listCheck');
+
+	pg_assert_contains('unwrapLines(surface);', $breaks);
+	pg_assert_contains('/^(DIV|P)$/', $unwrap);
+	pg_assert_contains("'ws-rich-block'", $unwrap, 'a card stays a card');
+	pg_assert_contains('holdSelection(surface)', $unwrap, 'the caret stays on the moved nodes');
+	pg_assert_true((strpos($unwrap, 'command(') === false) && (strpos($unwrap, 'execCommand') === false), 'no execCommand');
+
+	$extract = strpos($check, 'typed.extractContents()');
+	$toggle = strpos($check, 'if (toggleList(self.node, kind))');
+	$back = strpos($check, '.insertNode(typedMarks)');
+
+	pg_assert_true(($extract !== false) && ($toggle !== false) && ($back !== false) && ($extract < $toggle) && ($toggle < $back), 'the typed characters go back when no list is made');
+}
+
+// Code over several items or lines puts a span of code in each, as bold,
+// italic and strike stay in each item (textsIn()): one span across them took
+// the words out of their items into a new item between them.
+function test_workspace_editor_lists_code_stays_in_each_item()
+{
+	$source = workspace_editor_lists_test_source();
+	$code = workspace_editor_lists_test_function($source, 'toggleCode');
+	$span = workspace_editor_lists_test_function($source, 'codeSpan');
+
+	pg_assert_true(($code !== '') && ($span !== ''), 'both found');
+	pg_assert_contains('touched(surface, range)', $code);
+	pg_assert_contains('codeSpan(part)', $code);
+	pg_assert_true(strpos($code, 'range.toString()') === false, 'the words of the whole selection are never one span');
+	pg_assert_contains('range.toString()', $span);
+}
+
+// A bulleted or numbered list never shows a split the readers fold: they
+// keep one list across empty lines (ws_text_blocks()). Enter on an empty
+// item ends the list only at its last item (a quote, which an empty line
+// does end, anywhere), and two lists of a kind with only empty lines between
+// them are joined, unless the caret stands on those lines.
+function test_workspace_editor_lists_no_split_the_readers_fold()
+{
+	pg_assert_same(array(array('kind' => 'number', 'lines' => array('a', 'b'))), ws_text_blocks(array('1. a', '', '1. b')), 'the readers keep one list');
+	pg_assert_same(array(
+		array('kind' => 'quote', 'lines' => array('a')),
+		array('kind' => 'text', 'lines' => array('')),
+		array('kind' => 'quote', 'lines' => array('b')),
+	), ws_text_blocks(array('> a', '', '> b')), 'an empty line ends a quote');
+
+	$source = workspace_editor_lists_test_source();
+	$enter = workspace_editor_lists_test_function($source, 'itemEnter');
+	$join = workspace_editor_lists_test_function($source, 'joinLists');
+	$after = workspace_editor_lists_test_function($source, 'listAfter');
+	$normal = workspace_editor_lists_test_function($source, 'normaliseLists');
+
+	pg_assert_contains("((item.parentNode.tagName === 'BLOCKQUOTE') || (lastItem(item.parentNode) === item))", $enter);
+	pg_assert_contains('listAfter(surface, child, held)', $join);
+	pg_assert_contains("(list.tagName === 'BLOCKQUOTE')", $after, 'not across a quote');
+	pg_assert_contains('caretAmong(surface, gap, held)', $after, 'not where someone is writing');
+	pg_assert_contains('listAfter(surface, list, null)', $normal);
+	pg_assert_contains('joinLists(surface, held);', $normal);
+}
+
+// A line pasted or dropped into an item of a list leaves its own mark off:
+// the item writes its own (listText()), and "- milk" was saved "- - milk".
+// A drop goes line by line as a paste does: its "\n" in insertText made
+// Chrome put the lines in <div>s.
+function test_workspace_editor_lists_pasted_marks_left_off()
+{
+	$source = workspace_editor_lists_test_source();
+	$insert = workspace_editor_lists_test_function($source, 'insertPlain');
+	$paste = workspace_editor_lists_test_function($source, 'pastePlain');
+	$bind = workspace_editor_lists_test_function($source, 'bindSurface');
+	$drop = (string) substr($bind, (int) strpos($bind, "addEventListener('drop'"), 600);
+
+	pg_assert_contains('itemWords(line)', $insert);
+	pg_assert_contains('itemAt(surface, ', $insert);
+	pg_assert_contains('insertPlain(', $paste);
+	pg_assert_contains('insertPlain(', $drop, 'a drop goes in as a paste does');
+	pg_assert_true(strpos($drop, "command('insertText'") === false, 'no "\n" typed into the box');
+
+	$answer = workspace_editor_lists_test_run(array(
+		array('words', '- milk'),
+		array('words', '* bread'),
+		array('words', '2. pay'),
+		array('words', '> said'),
+		array('words', 'milk'),
+		array('words', '- [ ] task'),
+		array('words', '01. Intro'),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('milk', 'bread', 'pay', 'said', 'milk', '- [ ] task', '01. Intro'), $answer);
 }

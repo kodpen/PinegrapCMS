@@ -13,7 +13,7 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 - All words of the selection marked: the mark comes off (`liftOut()`), else it goes on; chips, cards and `[data-ws-skip]` stay. Same marks side by side are joined after any mark change or typed letters (`joinMarks()`), or `<i>y</i><i>def</i>` writes `_y__def_`. The selection stays in its direction (`selectionBackward()`, `setBaseAndExtent()`), so Shift+Arrow moves the same end after a mark.
 - A caret with nothing selected: B, I, S wait (`surface.wsMarks`) for the next letters (`beforeinput` insertText, `typeMarked()`), forgotten when the caret moves.
 - A composed word (IME, dead keys, Android keyboards compose every word) never comes as insertText: `surface.wsComposing` keeps the marks waiting through it; on `compositionend` `composedMarked()` types the word again with `typeMarked()`, in the typing's undo step. Nodes are not changed mid-composition (it breaks the IME).
-- Code puts the selection in one `<code>`, or the code around the caret back to text. Link opens the tip; `linkRange()` links a selection.
+- Code: a `<code>` per line or item selected (off if all is code), or the caret's code back to text. Link opens the tip; `linkRange()` links a selection.
 - Ctrl/Cmd+B, I, Shift+X, E, K, the selection bar, the browser's `formatBold/Italic/StrikeThrough` and table and checklist cells go through `formatSurface()`.
 
 ## How do undo and the pressed state follow?
