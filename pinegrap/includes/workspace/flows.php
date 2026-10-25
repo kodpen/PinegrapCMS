@@ -30,8 +30,9 @@
  * person's own decision, since a published flow later acts in their name.
  *
  * The canvas that draws a flow is workspace_flows.php with
- * assets/js/workspace_flow.js. The runner and the boxes beyond start, task
- * and end come later on the same tables (ws_flow_runs, ws_flow_run_steps).
+ * assets/js/workspace_flow.js. Its runs are carried out by
+ * includes/workspace/flow_runs.php. The boxes beyond start, task and end come
+ * later on the same tables (ws_flow_runs, ws_flow_run_steps).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1023,8 +1024,8 @@ function ws_flow_pause($viewer, $flow)
 }
 
 /**
- * Whether the person may delete the flow: theirs to change. Nothing else
- * holds it back while flows have no runs.
+ * Whether the person may delete the flow: theirs to change. Its open runs do
+ * not hold it back: they end with it.
  *
  * @param array $viewer
  * @param array $flow
@@ -1044,8 +1045,10 @@ function ws_flow_bin_check($viewer, $flow)
 }
 
 /**
- * Deletes a flow: it is marked binned and nobody reaches it any more. The row
- * and its versions are kept for the runs that will point at them.
+ * Deletes a flow: it is marked binned and nobody reaches it any more, its
+ * runs included, so its open runs are cancelled (the tasks they opened stay
+ * as they are). The row and its versions are kept for the runs that point
+ * at them.
  *
  * @param array $viewer
  * @param array $flow
@@ -1063,6 +1066,8 @@ function ws_flow_bin($viewer, $flow)
 
     db("UPDATE ws_flows SET status = 'binned', binned_at = '" . $now . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . $now . "'
         WHERE id = '" . (int) $flow['id'] . "' AND status <> 'binned'");
+
+    ws_flow_runs_cancel_for_flow($flow);
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was deleted', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
@@ -1338,6 +1343,50 @@ function ws_flow_js_strings()
         'fl_key_zoom'         => lang('+ and −: zoom; 0: fit everything on the screen'),
         'fl_key_pan'          => lang('Space and drag, or drag the empty canvas: move the view; Ctrl and the wheel: zoom'),
         'fl_key_escape'       => lang('Esc: clear the selection'),
+        // The runs of a flow, shown on the canvas (flow_runs.php).
+        'fl_run'              => lang('Run'),
+        'fl_run_help'         => lang('Run the live version of this flow'),
+        'fl_run_ask'          => ws_js_template('Run “{var:1}” now? Version {var:2} starts, and its first tasks open at once in the name of the owner of the flow.', 2),
+        'fl_run_do'           => lang('Start the run'),
+        'fl_run_started'      => lang('The run has started.'),
+        'fl_run_again'        => lang('This run had started already.'),
+        'fl_runs'             => lang('Flow runs'),
+        'fl_runs_title'       => lang('Runs of this flow'),
+        'fl_runs_none'        => lang('This flow has not run yet.'),
+        'fl_runs_more'        => lang('Show older runs'),
+        'fl_runs_failed'      => lang('The runs could not be loaded.'),
+        'fl_run_name'         => ws_js_template('Run {var:1}', 1),
+        'fl_run_version'      => ws_js_template('Version {var:1}', 1),
+        'fl_run_by'           => ws_js_template('Started by {var:1}', 1),
+        'fl_run_at'           => ws_js_template('Started at {var:1}', 1),
+        'fl_run_ended'        => ws_js_template('Ended at {var:1}', 1),
+        'fl_run_open'         => lang('Still going'),
+        'fl_run_shown'        => ws_js_template('Run {var:1} of version {var:2} is shown as it went. Nothing can be changed while it is open.', 2),
+        'fl_run_close'        => lang('Close the run'),
+        'fl_run_lost'         => lang('The run is no longer followed; it is shown as it was last read.'),
+        'fl_run_unreached'    => lang('The run could not be read just now; it will be tried again shortly.'),
+        'fl_run_all'          => lang('All runs'),
+        'fl_run_cancel'       => lang('Cancel the run'),
+        'fl_run_cancel_ask'   => lang('Cancel this run? Its open boxes are skipped; the tasks it opened stay as they are.'),
+        'fl_run_cancelled'    => lang('The run was cancelled.'),
+        'fl_run_task'         => lang('Open the task'),
+        'fl_run_task_of'      => ws_js_template('Open the task of {var:1}', 1),
+        'fl_run_result'       => lang('Result'),
+        'fl_run_pick'         => lang('Select a box to see how it went in this run.'),
+        'fl_run_boxes'        => lang('The boxes of this run'),
+        'fl_run_pair'         => ws_js_template('{var:1}: {var:2}', 2),
+        'fl_run_running'      => lang('Running'),
+        'fl_run_waiting'      => lang('Waiting'),
+        'fl_run_done'         => lang('Done'),
+        'fl_run_failed'       => lang('Failed'),
+        'fl_run_cancelled_state' => lang('Cancelled'),
+        'fl_step_ready'       => lang('Ready'),
+        'fl_step_running'     => lang('Running'),
+        'fl_step_waiting'     => lang('Waiting'),
+        'fl_step_done'        => lang('Done'),
+        'fl_step_failed'      => lang('Failed'),
+        'fl_step_skipped'     => lang('Skipped'),
+        'fl_step_none'        => lang('Not reached yet'),
     );
 }
 

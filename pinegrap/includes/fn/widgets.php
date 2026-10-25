@@ -1015,9 +1015,11 @@ function pg_sw_should_count_record_view($seen, $method, $automated)
 // (t and a store a tracking or affiliate code in the session and a cookie,
 // o a special-offer code, rss/pdf/email/icalendar switch the output,
 // pg_lang the language, highlight marks text, send_to redirects), and the
-// widgets read the rest (page_number, query, r, ...). The names starting
-// with utm_ or pg_ are refused in pg_sw_url_param_name(). The editor keeps
-// a copy (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
+// widgets read the rest (page_number, query, r, ...; the comments widget
+// comments, comment, comments_page and reply_to, and add_comment.php's
+// redirect adds comment= to every page). The names starting with utm_ or
+// pg_ are refused in pg_sw_url_param_name(). The editor keeps a copy
+// (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
 // A designed form control's _cf.url_param obeys the same names.
 function pg_sw_url_param_reserved()
 {
@@ -1027,8 +1029,8 @@ function pg_sw_url_param_reserved()
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact',
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact',
     );
 }
 
@@ -4776,14 +4778,16 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
 // Bootstrap pagination for a widget list: previous / next, a window of two
 // pages around the current one, the first and the last. '' for a single page.
 // Links keep every other query parameter (search text, filters).
-function pg_sw_pagination_html($page_param, $current_page, $total_pages)
+function pg_sw_pagination_html($page_param, $current_page, $total_pages, $fragment = '')
 {
     $current_page = (int)$current_page;
     $total_pages  = (int)$total_pages;
     if ($total_pages <= 1) return '';
 
-    $link = function ($n, $label, $aria = '') use ($page_param) {
-        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . '"'
+    // $fragment: the anchor every link lands on (the comments widget's
+    // #software_comments); without one the links are as they always were.
+    $link = function ($n, $label, $aria = '') use ($page_param, $fragment) {
+        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . (($fragment !== '') ? '#' . h($fragment) : '') . '"'
              . ($aria !== '' ? ' aria-label="' . h($aria) . '"' : '') . '>' . $label . '</a></li>';
     };
     $html = '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
@@ -5967,17 +5971,18 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 /**
  * What the page is being drawn for, as the system widgets need to know it.
  *
- * get_page_content() sets it around the widget pass: 'email' when the page is
- * the body of an e-mail, plus the dynamic properties the sender passed with
- * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
- * order receipt. A widget on an e-mail page has no address to read ?r= or
- * ?order_id= from, and the recipient is chosen by the server, so the checks
- * that keep a visitor to their own records do not apply there. 'page_id' is
- * the page being drawn: a widget whose data is the page's own (the comments
- * widget's thread) reads it here, never through _pg_sw_current_page_id(),
- * which is 0 on the live home page, in e-mails and in the search index, and
- * is cached for the whole request. Pass an array to set (the previous
- * context comes back, for restoring); pass nothing to read.
+ * get_page_content() sets 'email' for its whole render (true when the page is
+ * the body of an e-mail), and around its widget pass adds 'page_id' and the
+ * dynamic properties the sender passed with it - 'form_id' for a form's
+ * confirmation or notification, 'order_id' for an order receipt. A widget on
+ * an e-mail page has no address to read ?r= or ?order_id= from, and the
+ * recipient is chosen by the server, so the checks that keep a visitor to
+ * their own records do not apply there. 'page_id' is the page being drawn: a
+ * widget whose data is the page's own (the comments widget's thread) reads it
+ * here, never through _pg_sw_current_page_id(), which is 0 on the live home
+ * page, in e-mails and in the search index, and is cached for the whole
+ * request. Pass an array to set (the previous context comes back, for
+ * restoring); pass nothing to read.
  *
  * @param array|null $set
  * @return array
@@ -7673,16 +7678,36 @@ function pg_sw_calendar_event_page_allows($page_id, $event_id)
     return _pg_sw_calendar_event_allowed($widget['cfg'], $event_id);
 }
 
-function _pg_sw_calendar_event_allowed($cfg, $event_id)
+// $event_calendars: the event's calendars when the caller has read them
+// already (_pg_sw_calendar_event_calendar_ids()).
+function _pg_sw_calendar_event_allowed($cfg, $event_id, $event_calendars = null)
 {
-    $event_calendars = array();
-    foreach ((array)db_items("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int)$event_id . "'") as $r) {
-        $event_calendars[] = (int)$r['calendar_id'];
-    }
+    if (!is_array($event_calendars)) $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
     if (!$event_calendars) return false;
     $allowed = array();
     foreach (_pg_sw_calendars($cfg) as $c) $allowed[] = (int)$c['id'];
     return count(array_intersect($event_calendars, $allowed)) > 0;
+}
+
+// The calendars an event is in.
+function _pg_sw_calendar_event_calendar_ids($event_id)
+{
+    $ids = array();
+    foreach ((array)db_items("SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . (int)$event_id . "'") as $r) {
+        $ids[] = (int)$r['calendar_id'];
+    }
+    return $ids;
+}
+
+// The edit pencil on one occurrence of an event, for whoever may edit the
+// event (pg_sw_can_edit_calendar_event()). The edit screen gets the
+// occurrence's number, as the legacy event page's edit button gives it: with
+// reservations kept per occurrence, it shows that occurrence's spots.
+function _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence_number, $calendar_ids)
+{
+    if (!pg_sw_can_edit_calendar_event($calendar_ids)) return $html;
+    $params = ((int)$recurrence_number > 0) ? array('recurrence_number' => (int)$recurrence_number) : array();
+    return pg_sw_add_edit_chip($html, pg_sw_backend_edit_url('edit_calendar_event.php', $event_id, $params), lang('Edit the event'), 'calendar');
 }
 
 // One event occurrence as row values (raw). $event is a get_calendar() row;
@@ -7904,11 +7929,13 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     $has_grid = ($view !== 'upcoming') && (strpos($probe, '"section":"month_grid"') !== false);
     $needs_detail = $has_grid || (bool)preg_match('/__event_(end_time|date_range|location|time_range)/', $probe);
     $rows = array();
+    $row_events = array();
     $by_day = array();
     foreach ($events as $ev) {
         $detail = $needs_detail ? get_calendar_event($ev['id'], $ev['recurrence_number']) : null;
         $vals = _pg_sw_calendar_event_values($ev, $detail, $link_base, $date_format, $calendar_names);
         $rows[] = $vals;
+        $row_events[] = $ev;
         $first  = strtotime($ev['event_start_date']);
         $last   = $first;
         $end_ts = is_array($detail) ? strtotime($detail['end_date_and_time']) : false;
@@ -7983,7 +8010,14 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         foreach ($rows as $i => $vals) {
             if ($vals['__event_url'] === '') $vals['__event_url'] = '#';
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
+            $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
+            // The pencil on every occurrence, for whoever may edit the event.
+            // The month grid's one-line entries get none: they link to the
+            // event page, which carries it.
+            $ev = $row_events[$i];
+            $loop_rendered .= _pg_sw_calendar_event_edit_chip($row_html, $ev['id'],
+                isset($ev['recurrence_number']) ? $ev['recurrence_number'] : 0,
+                isset($ev['calendars']) ? (array)$ev['calendars'] : array());
         }
     }
 
@@ -8037,7 +8071,14 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
     $event_id   = (isset($_GET['id']) && is_scalar($_GET['id'])) ? (int)$_GET['id'] : 0;
     $recurrence = (isset($_GET['recurrence_number']) && is_scalar($_GET['recurrence_number'])) ? max(0, (int)$_GET['recurrence_number']) : 0;
     $event = ($event_id > 0) ? get_calendar_event($event_id, $recurrence) : false;
-    $shown = is_array($event) && (int)$event['published'] === 1 && _pg_sw_calendar_event_allowed($cfg, $event_id);
+    // The event's calendars, read once: for the widget's own calendars and
+    // for the pencil's rights.
+    $event_calendars = array();
+    $shown = false;
+    if (is_array($event) && (int)$event['published'] === 1) {
+        $event_calendars = _pg_sw_calendar_event_calendar_ids($event_id);
+        $shown = _pg_sw_calendar_event_allowed($cfg, $event_id, $event_calendars);
+    }
 
     $values = array(
         '__event_title' => '', '__event_date_range' => '', '__event_start_date' => '', '__event_start_time' => '',
@@ -8115,7 +8156,12 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 
     $html = trim(_render_tree_node($tree, 0, 0));
     $values = pg_sw_escape_token_values($values, array('__event_description', '__event_notes'));
-    return str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+    $html = str_replace('<!--pg-loop-slot-->', '', pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, $values)));
+    // The pencil on the event, for whoever may edit it.
+    if ($shown && pg_sw_edit_chips_on()) {
+        $html = _pg_sw_calendar_event_edit_chip($html, $event_id, $recurrence, $event_calendars);
+    }
+    return $html;
 }
 
 // ============================================================================
@@ -8132,16 +8178,31 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // opens the record's edit screen, which brings them back here.
 
 /**
- * Whether this request draws edit chips: a signed-in user, and not a page
- * drawn for the search index or the SEO score inside their request.
+ * Whether a render draws edit chips, from values already read: a signed-in
+ * user's own page view only. A page drawn for the search index or the SEO
+ * score (the designer's canvas and Preview too) draws none, and so does a
+ * page drawn as an e-mail body: a campaign, a form's confirmation or an order
+ * receipt goes to other people even when an editor's request builds it.
+ *
+ * @param bool $signed_in         a user is signed in
+ * @param bool $background_render search index or SEO render
+ * @param bool $email             the page is an e-mail body
  */
+function pg_sw_edit_chips_rule($signed_in, $background_render, $email)
+{
+    return (bool)$signed_in && !$background_render && !$email;
+}
+
+/** Whether this render draws edit chips (pg_sw_edit_chips_rule()). */
 function pg_sw_edit_chips_on()
 {
-    if ((function_exists('pg_seo_rendering') && pg_seo_rendering())
-        || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
-        return false;
-    }
-    return defined('USER_LOGGED_IN') && USER_LOGGED_IN === true && defined('USER_ID') && (int)USER_ID > 0;
+    $ctx = pg_sw_render_context();
+    return pg_sw_edit_chips_rule(
+        defined('USER_LOGGED_IN') && USER_LOGGED_IN === true && defined('USER_ID') && (int)USER_ID > 0,
+        (function_exists('pg_seo_rendering') && pg_seo_rendering())
+            || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true),
+        !empty($ctx['email'])
+    );
 }
 
 /** Products and product groups: the rule the legacy catalog pencil used. */
@@ -8170,13 +8231,67 @@ function pg_sw_can_edit_submitted_forms($custom_form_page_id)
     return $folder_ok[$pid];
 }
 
-/** A control-panel edit screen for one record, returning to this page. */
-function pg_sw_backend_edit_url($script, $id)
+/**
+ * The rule edit_calendar_event.php applies, from values already read: staff
+ * (role 0-2) always; a user (role 3) only with the calendars right, one of
+ * the event's calendars among their own and, for a published event, the
+ * right to publish events.
+ *
+ * @param int   $role               USER_ROLE
+ * @param bool  $manage_calendars   user_manage_calendars
+ * @param bool  $publish_events     user_publish_calendar_events
+ * @param array $user_calendar_ids  the user's calendars (users_calendars_xref)
+ * @param array $event_calendar_ids the event's calendars
+ * @param bool  $published          whether the event is published
+ */
+function pg_sw_calendar_event_edit_rule($role, $manage_calendars, $publish_events, $user_calendar_ids, $event_calendar_ids, $published)
+{
+    if ((int)$role < 3) return true;
+    if (!$manage_calendars || ($published && !$publish_events)) return false;
+    $mine = array_map('intval', (array)$user_calendar_ids);
+    foreach ((array)$event_calendar_ids as $cid) {
+        if (in_array((int)$cid, $mine, true)) return true;
+    }
+    return false;
+}
+
+/**
+ * Calendar events: whether the signed-in user may open edit_calendar_event.php
+ * for an event in these calendars. A page shows only published events, so a
+ * user (role 3) also needs the right to publish events. Their rights and
+ * calendars are read once per request.
+ */
+function pg_sw_can_edit_calendar_event($event_calendar_ids, $published = true)
+{
+    static $own = null;
+    if (!pg_sw_edit_chips_on()) return false;
+    $role = defined('USER_ROLE') ? (int)USER_ROLE : 3;
+    if ($role < 3) return true;
+    if ($own === null) {
+        $own = array('manage' => false, 'publish' => false, 'calendars' => array());
+        $row = db_item("SELECT user_manage_calendars, user_publish_calendar_events FROM user WHERE user_id = '" . (int)USER_ID . "' LIMIT 1");
+        if (is_array($row) && $row['user_manage_calendars'] === 'yes') {
+            $own['manage']  = true;
+            $own['publish'] = ($row['user_publish_calendar_events'] === 'yes');
+            foreach ((array)db_items("SELECT calendar_id FROM users_calendars_xref WHERE user_id = '" . (int)USER_ID . "'") as $r) {
+                $own['calendars'][] = (int)$r['calendar_id'];
+            }
+        }
+    }
+    return pg_sw_calendar_event_edit_rule($role, $own['manage'], $own['publish'], $own['calendars'], $event_calendar_ids, $published);
+}
+
+/**
+ * A control-panel edit screen for one record, returning to this page.
+ * $params are further query parameters of the screen, before send_to.
+ */
+function pg_sw_backend_edit_url($script, $id, $params = array())
 {
     $back = function_exists('get_request_uri') ? (string)get_request_uri() : '';
     return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
          . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
          . '/' . $script . '?id=' . (int)$id
+         . ($params ? '&' . http_build_query($params, '', '&') : '')
          . ($back !== '' ? '&send_to=' . urlencode($back) : '');
 }
 
