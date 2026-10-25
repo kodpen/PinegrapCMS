@@ -326,23 +326,78 @@ function test_widget_fill_apply_tokens()
 
 function test_widget_fill_calendar_event_times()
 {
-	$start = mktime(10, 0, 0, 11, 3, 2026);
-	$end = mktime(12, 0, 0, 11, 5, 2026);
-	$day = array('type' => 'date', 'data' => '2026-11-03');
+	// A timed event carries its time, so time letters show when it starts.
+	$start = mktime(14, 0, 0, 10, 5, 2026);
+	$end = mktime(16, 30, 0, 10, 7, 2026);
+	$at = array('type' => 'date and time', 'data' => '2026-10-05 14:00:00');
+	pg_assert_same(array(
+		'__event_date'       => $at,
+		'__event_start_date' => $at,
+		'__event_end_date'   => array('type' => 'date and time', 'data' => '2026-10-07 16:30:00'),
+	), _pg_sw_calendar_event_times($start, $end));
+	pg_assert_same(array('__event_date' => $at, '__event_start_date' => $at), _pg_sw_calendar_event_times($start), 'no end');
+	pg_assert_same(array('__event_date' => $at, '__event_start_date' => $at), _pg_sw_calendar_event_times($start, false), 'an end strtotime() could not read');
+
+	// An all-day event is a date.
+	$day = array('type' => 'date', 'data' => '2026-10-05');
+	$all_day = _pg_sw_calendar_event_times(mktime(0, 0, 0, 10, 5, 2026), mktime(0, 0, 0, 10, 6, 2026), true);
 	pg_assert_same(array(
 		'__event_date'       => $day,
 		'__event_start_date' => $day,
-		'__event_end_date'   => array('type' => 'date', 'data' => '2026-11-05'),
-	), _pg_sw_calendar_event_times($start, $end));
-	pg_assert_same(array('__event_date' => $day, '__event_start_date' => $day), _pg_sw_calendar_event_times($start), 'no end');
-	pg_assert_same(array('__event_date' => $day, '__event_start_date' => $day), _pg_sw_calendar_event_times($start, false), 'an end strtotime() could not read');
-
-	$both = _pg_sw_calendar_event_times($start, $end);
-	pg_assert_same('<b>2026-11-05</b>', _pg_sw_fill_tokens('<b>^^__event_end_date^^%%Y-m-d%%</b>', array('__event_end_date' => 'Thursday, 5 November 2026'), $both));
+		'__event_end_date'   => array('type' => 'date', 'data' => '2026-10-06'),
+	), $all_day, 'all day');
+	_widget_fill_constants();
+	pg_assert_same('<b>05.10.2026</b>', _pg_sw_fill_tokens('<b>^^__event_date^^%%d.m.Y%%</b>', array('__event_date' => '5 Oct'), $all_day));
 
 	foreach (array('_render_system_widget_calendar_view', '_render_system_widget_calendar_event_view') as $renderer) {
-		pg_assert_contains('_pg_sw_calendar_event_times(', _widget_fill_php_function($renderer), $renderer . ' types its dates');
+		$code = _widget_fill_php_function($renderer);
+		pg_assert_contains('_pg_sw_calendar_event_times(', $code, $renderer . ' types its dates');
+		pg_assert_contains('all_day', substr($code, strpos($code, '_pg_sw_calendar_event_times(')), $renderer . ' says whether the event is all day');
 	}
+	pg_assert_contains("event_start_time", _widget_fill_php_function('_render_system_widget_calendar_view'), 'the calendar row types the start with its time');
+}
+
+// A date and time with a format reads USER_LOGGED_IN and USER_TIMEZONE,
+// which the tests after this one must not find defined, so the timed
+// fills run in a PHP process of their own.
+function test_widget_fill_calendar_event_times_formatted()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+	$file = @tempnam(sys_get_temp_dir(), 'pgfill');
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('USER_LOGGED_IN', false);\n"
+		. "define('USER_TIMEZONE', '');\n"
+		. "define('DATE_FORMAT', 'day_month');\n"
+		. "define('TIME_FORMAT', 'twenty_four_hours');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. '$t = _pg_sw_calendar_event_times(mktime(14, 0, 0, 10, 5, 2026), mktime(16, 30, 0, 10, 7, 2026));' . "\n"
+		. 'echo json_encode(array(' . "\n"
+		. '  _pg_sw_fill_tokens(\'<b>^^__event_date^^%%d.m.Y H:i%%</b>\', array(\'__event_date\' => \'5 Oct\'), $t),' . "\n"
+		. '  _pg_sw_fill_tokens(\'<b>^^__event_end_date^^%%d.m.Y H:i%%</b>\', array(\'__event_end_date\' => \'7 Oct\'), $t),' . "\n"
+		. '  _pg_sw_fill_tokens(\'<b>^^__event_start_date^^%%Y-m-d%%</b>\', array(\'__event_start_date\' => \'5 Oct\'), $t),' . "\n"
+		. '  _pg_sw_fill_tokens(\'<b>^^__event_date^^%%relative%%</b>\', array(\'__event_date\' => \'5 Oct\'), $t)' . "\n"
+		. '));' . "\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+
+	pg_assert_same(0, $code, 'filled: ' . $printed);
+	$answer = json_decode($printed, true);
+	pg_assert_true(is_array($answer) && count($answer) === 4, 'four fills: ' . $printed);
+	pg_assert_same('<b>05.10.2026 14:00</b>', $answer[0], 'a 14:00 start with its time');
+	pg_assert_same('<b>07.10.2026 16:30</b>', $answer[1], 'the end with its time');
+	pg_assert_same('<b>2026-10-05</b>', $answer[2], 'a date format without time letters');
+	pg_assert_contains('<', substr($answer[3], 3, -4), 'relative: the tooltip HTML');
+	pg_assert_false(strpos($answer[3], '%%') !== false, 'relative: no suffix');
 }
 
 // -- the editor ---------------------------------------------------------------
@@ -444,7 +499,8 @@ function _widget_fill_run_js($script)
 	$dates = _widget_fill_js_literal($js, 'SW_DATE_FIELD_TOKENS');
 	$bindfmt = _widget_fill_js_function($js, '_sdBindFormatRow');
 	$setter = _widget_fill_js_function($js, '_sdNodeSetBinding');
-	pg_assert_true($block !== '' && $dates !== '' && $bindfmt !== '' && $setter !== '', 'the editor code is found');
+	$kind = _widget_fill_js_function($js, '_swNameKind');
+	pg_assert_true($block !== '' && $dates !== '' && $bindfmt !== '' && $setter !== '' && $kind !== '', 'the editor code is found');
 
 	$stubs = "function _sdT(k, v) { if (v === undefined) return k; var l = Array.isArray(v) ? v : [v]; return k.replace(/\\{var\\}/g, String(l[0])); }\n"
 		. "function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;'); }\n"
@@ -455,7 +511,7 @@ function _widget_fill_run_js($script)
 		. "var SW_STANDARD_FIELD_OPTIONS = [['submitted_date_and_time', 'Submitted', 'date'], ['reference_code', 'Reference', 'text']];\n";
 
 	$file = tempnam(sys_get_temp_dir(), 'pgfill');
-	file_put_contents($file, $stubs . $dates . ";\n" . $block . $bindfmt . $setter . "\n" . $script);
+	file_put_contents($file, $stubs . $dates . ";\n" . $block . $bindfmt . $setter . $kind . "\n" . $script);
 	$out = array();
 	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	unlink($file);
@@ -470,7 +526,7 @@ function _widget_fill_run_js($script)
 function test_widget_fill_editor_twins()
 {
 	$inputs = array('upper', 'number:2', 'number', 'truncate:x', 'd.m.Y', 'relative', '', 'number:9', 'truncate:0', 'upper:1', 'nl2br', 'Upper');
-	$script = "var kinds = { 1: 'catalog_listing', 2: 'calendar_view', 3: 'form_list_view', 4: 'wishlist', 6: 'comments' };\n"
+	$script = "var kinds = { 1: 'catalog_listing', 2: 'calendar_view', 3: 'form_list_view', 4: 'wishlist', 6: 'comments', 7: 'blog_list', 8: 'submitted_forms_list', 9: 'form_list', 10: '' };\n"
 		. "Object.keys(kinds).forEach(function (sid) { _sharedCache[sid] = { system_region_config: JSON.stringify({ regionType: kinds[sid] }) }; });\n"
 		. "_sharedCache[5] = { system_region_config: '{}' };\n"
 		. "function node(sid, token, fmt) { var p = {}; if (token) p._bindings = { text: token }; if (fmt !== undefined) p._bindFormats = { text: fmt }; return { sid: sid, props: p }; }\n"
@@ -483,6 +539,9 @@ function test_widget_fill_editor_twins()
 		. "out.formListNumber = _sdFormatRows(node(3, 'section', 'number:3'));\n"
 		. "out.written = _sdFormatRows(node(3, 'section', 'upper truncate:5'));\n"
 		. "out.oldFormList = _sdFormatRows(node(5, 'section', 'upper'));\n"
+		. "out.aliases = [7, 8, 9].map(function (sid) { return _sdFormatRows(node(sid, 'section', 'upper')); });\n"
+		. "out.aliasDate = _sdFormatRows(node(7, 'submitted_date_and_time'));\n"
+		. "out.emptyKind = _sdFormatRows(node(10, 'section'));\n"
 		. "out.unknownKind = _sdFormatRows(node(4, '__product_name'));\n"
 		. "out.commentsDate = _sdFormatRows(node(6, '__comment_datetime'));\n"
 		. "out.noBinding = _sdFormatRows(node(3, ''));\n"
@@ -523,11 +582,18 @@ function test_widget_fill_editor_twins()
 	pg_assert_contains('data-written="1" selected>Written: upper truncate:5</option>', $answer['written'], 'a hand-written chain is shown and kept');
 	pg_assert_false(strpos($answer['written'], '<option value="" selected>') !== false, 'not shown as as it is');
 	pg_assert_contains('<option value="upper" selected>', $answer['oldFormList'], 'a widget saved without a kind is a form list');
+	foreach (array('blog_list', 'submitted_forms_list', 'form_list') as $i => $alias) {
+		pg_assert_contains('<option value="upper" selected>', $answer['aliases'][$i], $alias . ' is a form list');
+	}
+	pg_assert_same('', $answer['aliasDate'], 'an alias draws its date row in the binding rows, as the form list');
+	pg_assert_same('', $answer['emptyKind'], 'the empty widget offers nothing');
 	pg_assert_same('', $answer['unknownKind'], 'a kind the list does not name offers nothing');
 	pg_assert_contains('label="Date format"', $answer['commentsDate'], 'the comment date');
 	pg_assert_same('', $answer['noBinding']);
 	pg_assert_same('', $answer['outside']);
 	pg_assert_contains('A condition compares the value before its format.', $answer['formList'], 'the hint');
+	pg_assert_contains('the first card on the canvas shows the value without it', $answer['formList'], 'the hint names the card the canvas draws');
+	pg_assert_contains('A value with formatting of its own', $answer['formList'], 'the hint names values a filter leaves');
 
 	foreach ($inputs as $i => $input) {
 		$php = pg_sw_fill_parse($input);

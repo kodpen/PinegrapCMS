@@ -7782,18 +7782,22 @@ function _pg_sw_calendar_event_values($event, $detail, $link_base, $date_format,
 
 // The dates of one event occurrence as the typed fill reads them
 // (pg_sw_fill_typed()): a date format after one of these tokens formats the
-// date itself, as the form views format a date field, not the words the
-// widget wrote. The end only when it is known.
-function _pg_sw_calendar_event_times($start_ts, $end_ts = null)
+// occurrence itself, as the form views format a date field, not the words
+// the widget wrote. A timed event is a date and time, so 'd.m.Y H:i' shows
+// when it starts; an all-day event is a date, whose time letters read
+// 00:00. The end only when it is known.
+function _pg_sw_calendar_event_times($start_ts, $end_ts = null, $all_day = false)
 {
-    $times = array();
+    $type   = $all_day ? 'date' : 'date and time';
+    $layout = $all_day ? 'Y-m-d' : 'Y-m-d H:i:s';
+    $times  = array();
     if ($start_ts) {
-        $start = array('type' => 'date', 'data' => date('Y-m-d', $start_ts));
+        $start = array('type' => $type, 'data' => date($layout, $start_ts));
         $times['__event_date']       = $start;
         $times['__event_start_date'] = $start;
     }
     if ($end_ts) {
-        $times['__event_end_date'] = array('type' => 'date', 'data' => date('Y-m-d', $end_ts));
+        $times['__event_end_date'] = array('type' => $type, 'data' => date($layout, $end_ts));
     }
     return $times;
 }
@@ -8054,8 +8058,14 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     if ($loop_template !== '' && $static_html !== '') {
         foreach ($rows as $i => $vals) {
             if ($vals['__event_url'] === '') $vals['__event_url'] = '#';
-            // A date format after the event's date formats the date itself.
-            $times = _pg_sw_calendar_event_times(strtotime($row_events[$i]['event_start_date']));
+            // A date format after the event's date formats the occurrence
+            // itself, with its start time unless it lasts all day.
+            $row_event = $row_events[$i];
+            $times = _pg_sw_calendar_event_times(
+                strtotime($row_event['event_start_date'] . ' ' . $row_event['event_start_time']),
+                null,
+                (int)$row_event['all_day'] === 1
+            );
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($vals), $times));
             $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
             // The pencil on every occurrence, for whoever may edit the event.
@@ -8144,7 +8154,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
         $start_ts = strtotime($event['start_date_and_time']);
         $end_ts   = strtotime($event['end_date_and_time']);
         $all_day  = ((int)$event['all_day'] === 1);
-        $times    = _pg_sw_calendar_event_times($start_ts, $end_ts);
+        $times    = _pg_sw_calendar_event_times($start_ts, $end_ts, $all_day);
 
         $values = array_merge($values, array(
             '__event_title'       => (string)$event['name'],

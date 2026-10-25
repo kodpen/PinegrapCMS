@@ -28179,5 +28179,5 @@
     "Yes or No": "Evet veya Hayır",
     "Line breaks kept": "Satır sonları korunur",
     "Written: {var}": "Elle yazılan: {var}",
-    "The format shows on the page and in Preview, not on the canvas. A condition compares the value before its format.": "Biçim sayfada ve Önizleme'de görünür, tuvalde görünmez. Bir koşul, değeri biçimlenmeden önceki hâliyle karşılaştırır."
+    "The format shows on the page and in Preview; the first card on the canvas shows the value without it. A value with formatting of its own (rich text, a link list) is shown as it is. A condition compares the value before its format.": "Biçim sayfada ve Önizleme'de görünür; tuvaldeki ilk kart değeri biçimsiz gösterir. Kendi biçimi olan bir değer (zengin metin, bağlantı listesi) olduğu gibi gösterilir. Bir koşul, değeri biçimlenmeden önceki hâliyle karşılaştırır."
 }

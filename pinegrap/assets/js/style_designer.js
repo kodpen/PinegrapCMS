@@ -34777,15 +34777,17 @@ const StyleDesigner = (function () {
         return words[0] !== '' && words.every(function (w) { return !!_sdParseFilter(w); });
     }
 
-    // The kind of the widget a node is in, as its settings name it: a widget
-    // saved without one is a form list, as on the server.
+    // The kind of the widget a node is in, as _swNameKind() reads its
+    // settings: a widget saved without one and the old form-list aliases
+    // (submitted_forms_list, form_list, blog_list) are form lists, as
+    // pg_sw_finish_kind() reads them on the server; '' is the empty widget.
     function _sdFillKindOf(node) {
         var sid = _isInsideSystemWidget(node);
         if (!sid || !_sharedCache[sid]) return '';
         var cfg = null;
         try { cfg = JSON.parse(_sharedCache[sid].system_region_config); } catch (e) { return ''; }
         if (!cfg || typeof cfg !== 'object') return '';
-        return cfg.regionType ? String(cfg.regionType) : 'form_list_view';
+        return _swNameKind(cfg);
     }
 
     // The Format row under a node's bound text: a date format for a date
@@ -34799,7 +34801,7 @@ const StyleDesigner = (function () {
         var token = node.props._bindings && node.props._bindings.text;
         if (!token) return '';
         var hint = '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                       esc(_sdT('The format shows on the page and in Preview, not on the canvas. A condition compares the value before its format.')) +
+                       esc(_sdT('The format shows on the page and in Preview; the first card on the canvas shows the value without it. A value with formatting of its own (rich text, a link list) is shown as it is. A condition compares the value before its format.')) +
                    '</div>';
 
         if (SW_DATE_FIELD_TOKENS[token] || _sdFormFieldIsDate(token, node)) {
@@ -37942,6 +37944,14 @@ const StyleDesigner = (function () {
                 var n = parseInt(this.value, 10);
                 if (!r || isNaN(n)) return;
                 _sdWriteTextFormat(name + ':' + Math.max(r.min, Math.min(r.max, n)));
+            });
+            // Once the typing is done, the box shows the number stored: a
+            // number out of range is kept at its end, an empty box shows the
+            // number it had.
+            filterArg.addEventListener('change', function () {
+                var p = selectedNode && selectedNode.props;
+                var stored = _sdParseFilter(p && p._bindFormats ? p._bindFormats.text : '');
+                if (stored && stored.arg !== null && this.value !== String(stored.arg)) this.value = stored.arg;
             });
         }
 
