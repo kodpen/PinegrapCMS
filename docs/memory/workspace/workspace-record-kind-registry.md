@@ -4,9 +4,16 @@ description: ws_record_kinds() (refs.php): one entry per Workspace record kind (
 ---
 
 ## What is it?
-- `ws_record_kinds()` in includes/workspace/refs.php: one entry per kind of `ws_record_type_keys()`, in its order. Pure: no database, no reader's rights (what a person may see is still `ws_ref_types()` and each kind's checks).
-- Per kind: `prefixes` (words typed after #), `right` (the `ws_viewer()` right of its tag and of its change, '' for every member), `scope` (what `ws_ai_type_scope()` asks; workspace:read when no API scope reads the kind), `change` (its `ws_change_types()` kind, '' for the tag-only ERP documents), `audit` (the `pg_audit_tables()` table its Workspace write is recorded on, '' for none), `quick_edit` (drawer), `customer` (a customer channel can be about it).
-- A reader that needs a kind's scope, right or change (CRM summary and history rows, plans/workspace-crm-seams.md) reads it here.
+- `ws_record_kinds()` in includes/workspace/refs.php: one entry per kind of `ws_record_type_keys()`, in its order. Pure: no database, no reader's rights (those are `ws_ref_types()` and the row rules below).
+- Per kind: `prefixes` (words typed after #), `right` (the `ws_viewer()` right of its tag and of its change, '' when none is asked), `scope` (what `ws_ai_type_scope()` asks; workspace:read when no API scope reads the kind), `change` (its `ws_change_types()` kind, '' for the tag-only ERP documents), `audit` (the `pg_audit_tables()` table its Workspace write is recorded on, '' for none), `quick_edit` (drawer), `customer` (a customer channel can be about it).
+- A reader that needs a kind's scope, right or change (CRM summary and history rows, plans/workspace-crm-seams.md) reads it here, then applies the kind's row rule.
+
+## Which row rules come on top of right and scope?
+- `right` and `scope` only open a kind. For role 3 each row still passes its kind's rule, as on the panel screen and in the API (api/api-user-role-rows.md); a summary or history row too.
+- form, page, file: edit access to the folder (`$folder_open` in `ws_refs_resolve()`, `ws_change_allowed()` per record; API `api_form_owner_filter()`, `api_form_submission_owned()`). A file in a public folder also resolves; only roles 0-1 change a design file.
+- calendar_event: an assigned calendar (`users_calendars_xref`, `ws_change_calendar_access()`; API `api_calendar_ids_visible()`).
+- contact: one of the person's contact groups (`validate_contact_access()`; API `api_customer_owner_filter()`). Not yet in the Workspace: `ws_refs_resolve()` and `ws_change_allowed()` ask only `contacts`.
+- erp_account: `manage_erp_readonly` reads, never changes (erp/erp-readonly-accountant-right.md). Not yet in the Workspace: `ws_viewer()` does not read it, so `ws_change_allowed()` lets the drawer and change cards write.
 
 ## Do the old lists read it?
 - Not yet: `ws_record_type_keys()`, `ws_ref_types()`, `ws_change_types()`, `ws_change_audit_target()`, `ws_quick_edit_types()`, `ws_customer_types()`, `ws_ai_type_scope()` and `pg_audit_tables()` keep their own literals. A new kind is described in the registry first, then written into each list.

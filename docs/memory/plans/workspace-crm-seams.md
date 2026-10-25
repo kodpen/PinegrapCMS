@@ -12,8 +12,8 @@ description: Plan (2026-10-23, 1 built, answers open): CRM seams: customer summa
 - `merge_contacts()` (includes/fn/contacts.php) moves only groups, `opt_in`; other links keep the old id. No pipeline, custom fields, activity; `lead_source` is text.
 
 ## Slices
-Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right.
-1. Built: record-kind registry `ws_record_kinds()` (refs.php; workspace/workspace-record-kind-registry.md): per kind prefixes, right, scope, change kind, audit table, drawer, customer; drift test beside #1512's (tests/workspace_record_kinds_test.php), lists stay.
+Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right, row rule.
+1. Built: record-kind registry `ws_record_kinds()` (refs.php; workspace/workspace-record-kind-registry.md): per kind prefixes, right, scope, change kind, audit table, drawer, customer; drift test, lists stay.
 2. Summary: `ws_customer_identity()`, `ws_customer_summary()` (new): last orders, `erp_accounts.balance`, open sales quotes (`erp_quote_rows()`, ERP right), cart quotes (ecommerce right) as separate rows, last submissions; `GET /workspace/channels/{id}/customer` (new, `ws_can_read_channel()`); later MCP resource `pinegrap://workspace/channels/{id}/customer` (MCP plan).
 3. Panel: channel customer section shows it [2].
 4. History: `ws_customer_history()` (new): read-only union: orders, invoices, sales and cart quotes, submissions, `ws_record_refs()` per tied record; route [2].
@@ -31,4 +31,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 4. Summary route (2): (a) per channel, (b) per record → a.
 
 ## Where to start?
-- Slice 2 (read core/personal-data-export.md); a row's scope and right come from `ws_record_kinds()`.
+- Slice 2 (read core/personal-data-export.md); `ws_record_kinds()` gives a kind's scope and right, each row also passes its kind's row rule (workspace/workspace-record-kind-registry.md).
