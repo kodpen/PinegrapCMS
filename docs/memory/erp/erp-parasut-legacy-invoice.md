@@ -6,6 +6,7 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: it
 ## How does "Create Invoice" build the invoice? (#1268, #1274)
 - Lines of the order's ERP invoice (`parasut_order_invoice_lines()`: `erp_order_lines()` on the charged lines, the ERP code loaded with or without the ERP on; erp-discounted-order-vat.md, erp-order-charges-vat.md). Written by the driver's `erp_edoc_parasut_invoice_payload()` in the base currency.
 - Refused before any request (`parasut_order_invoice_refusal()`): lines not the order's total plus the gift card less `charges_left`, a rate Paraşüt does not take, a line below zero (#1297), an unreachable rate total, a line without a product. A sales invoice whose `net_total` differs is deleted before the e-document (the order's id cleared); one that cannot be deleted stays on the order.
+- Before them, the order's status and its ERP invoice (`parasut_order_press_refusal()`, #PR): erp-parasut-legacy-order-gates.md.
 - Stores with the buttons on settle their checkout charges like ERP stores (`pg_order_charges_settle_rates()`).
 - Dev, demo company: #1182 (discount) 150.32, #1181 625.82, #1180 57.92, #1176 (57.93) 57.92.
 

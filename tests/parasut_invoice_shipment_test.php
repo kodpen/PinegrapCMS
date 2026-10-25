@@ -210,15 +210,16 @@ function test_parasut_create_invoice_sends_without_shipment_after_e_shipment()
 	pg_assert_true(($posted !== false) && ($built < $posted), 'before the create');
 }
 
-// E-Shipment judges the order's invoice after the guard of a shipped order
-// and before anything is written at Paraşüt: the buyer card, the product,
-// its tracking and opening stock, the document. The document names the
-// invoice the judgement gave.
+// E-Shipment judges the order's invoice (its own, or the Paraşüt record of
+// its ERP invoice: parasut_order_gates_test.php) after the guard of a
+// shipped order and before anything is written at Paraşüt: the buyer card,
+// the product, its tracking and opening stock, the document. The document
+// names the invoice the judgement gave.
 function test_parasut_create_shipment_judges_the_invoice_before_any_write()
 {
 	$body = parasut_invoice_shipment_test_source('parasut_create_shipment');
 	$guard = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
-	$link = strpos($body, "parasut_shipment_invoice_link((string) (\$order['parasut_invoice_id'] ?? ''),");
+	$link = strpos($body, "parasut_shipment_invoice_link(\$invoice_to_judge['invoice_id'],");
 	$refused = strpos($body, "if (\$invoice_link['error'] !== '') {");
 
 	pg_assert_true(($guard !== false) && ($link !== false) && ($guard < $link), 'after the guard of a shipped order');
