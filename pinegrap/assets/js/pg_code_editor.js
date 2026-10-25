@@ -15,6 +15,7 @@
  *   PgCodeEditor.open(host, opts).then(function (ed) { ... })  load + create
  *   PgCodeEditor.attach(textarea, opts)                        like fromTextArea
  *   PgCodeEditor.addCompletionSource(language, source)         registry
+ *   PgCodeEditor.addCompletionRanker(language, ranker)         registry
  *   PgCodeEditor.addExtension(function (opts) { return ext })  registry
  *
  * An editor instance (see pgCeCreate) offers getValue / setValue,
@@ -50,6 +51,7 @@
     };
     var _loading = null;     // Promise while the bundle is on its way
     var _completions = {};   // language → [source]
+    var _rankers = {};       // language → [ranker]
     var _extensions = [];    // function (opts) → extension (or array / null)
     var _own = null;         // this script's URL, for the bundle default
 
@@ -118,6 +120,21 @@
         _completions[lang].push(source);
     }
 
+    // A ranker moves completion options up or down the list:
+    // function (option, context, { tree, node, language }) → number, added
+    // to the option's boost (the sum is kept within the engine's -99..99).
+    // It sees every option offered where `language` is spoken, the engine's
+    // own (CSS properties, HTML tags) included: inside an HTML editor a
+    // 'css' ranker ranks what is offered in <style> and style="", a
+    // 'javascript' one what is offered in <script> and on…="". It applies
+    // to editors already open from their next completion.
+    function addCompletionRanker(language, ranker) {
+        var lang = _normLanguage(language);
+        if (typeof ranker !== 'function') return;
+        if (!_rankers[lang]) _rankers[lang] = [];
+        _rankers[lang].push(ranker);
+    }
+
     // An extension factory: function (opts, cm) → extension | extension[] |
     // null. Called for every editor created after the registration.
     function addExtension(factory) {
@@ -179,7 +196,9 @@
             '.pg-ce-lock-marker': { display: 'inline-block', color: dark ? 'rgba(240,140,60,.9)' : 'rgba(205,100,20,.9)', lineHeight: '1' },
             '.pg-ce-lock-marker svg': { width: '9px', height: '9px', verticalAlign: '-1px' },
             '.pg-ce-lock-marker-partly': { opacity: '.6' },
-            '.pg-ce-line-gutter .cm-gutterElement': { position: 'relative', width: '18px' }
+            '.pg-ce-line-gutter .cm-gutterElement': { position: 'relative', width: '18px' },
+            // A colour option's swatch in the completion list.
+            '.pg-ce-swatch': { display: 'inline-block', width: '10px', height: '10px', marginRight: '5px', verticalAlign: '-1px', borderRadius: '2px', border: '1px solid rgba(128,128,128,.55)' }
         }, { dark: !!dark });
         var style = cm.language.HighlightStyle.define([
             { tag: t.tagName, color: c.tag, fontWeight: '600' },
@@ -223,18 +242,137 @@
         }
     }
 
-    // The registered completion sources of a language, as language data so
-    // they only fire in that language (inside <style> the CSS ones).
+    // ── Completion ───────────────────────────────────────────────────────
+    // The registered completion sources, as language data so they only fire
+    // where their language is spoken: an HTML editor also carries the CSS
+    // ones (for <style> and style="") and the JavaScript ones (for <script>
+    // and on…=""), and its HTML ones stay out of those regions.
     function _completionExtensions(cm, lang) {
-        var list = _completions[lang] || [];
-        if (!list.length) return [];
-        var langObj = _languageObject(cm, lang);
-        return list.map(function (source) {
-            return langObj.data.of({ autocomplete: function (context) {
-                var tree = cm.language.syntaxTree(context.state);
-                return source(context, { tree: tree, node: tree.resolveInner(context.pos, -1) });
-            } });
+        var langs = (lang === 'html') ? ['html', 'css', 'javascript'] : [lang];
+        var out = [];
+        langs.forEach(function (name) {
+            var langObj = _languageObject(cm, name);
+            (_completions[name] || []).forEach(function (source) {
+                out.push(langObj.data.of({ autocomplete: function (context) {
+                    var tree = cm.language.syntaxTree(context.state);
+                    return source(context, { tree: tree, node: tree.resolveInner(context.pos, -1) });
+                } }));
+            });
         });
+        return out;
+    }
+
+    // The language spoken around a node: the innermost top node that
+    // carries language data (a <style> block, a style="" attribute, a
+    // <script>) names it. null when none does.
+    function _regionLanguage(cm, node) {
+        var names = ['html', 'css', 'javascript', 'json'];
+        for (var n = node; n; n = n.parent) {
+            if (!n.type.isTop) continue;
+            var data = n.type.prop(cm.language.languageDataProp);
+            if (!data) continue;
+            for (var i = 0; i < names.length; i++) {
+                if (_languageObject(cm, names[i]).data === data) return names[i];
+            }
+        }
+        return null;
+    }
+
+    // The registered rankers of the region's language applied to a
+    // result: each option a ranker moves is copied with its new boost, the
+    // others are passed on as they are.
+    function _rankResult(cm, context, result) {
+        if (!result || !result.options || !result.options.length) return result;
+        var tree = cm.language.syntaxTree(context.state);
+        tree.resolveInner(0, 0);
+        var node = tree.resolveInner(context.pos, -1);
+        var lang = _regionLanguage(cm, node);
+        var rankers = lang ? _rankers[lang] : null;
+        if (!rankers || !rankers.length) return result;
+        var info = { tree: tree, node: node, language: lang };
+        var options = result.options.map(function (option) {
+            var boost = 0;
+            for (var i = 0; i < rankers.length; i++) {
+                var b;
+                try { b = Number(rankers[i](option, context, info)); } catch (e) { b = 0; }
+                if (isFinite(b)) boost += b;
+            }
+            if (!boost) return option;
+            var copy = {};
+            for (var k in option) { if (Object.prototype.hasOwnProperty.call(option, k)) copy[k] = option[k]; }
+            copy.boost = Math.max(-99, Math.min(99, (option.boost || 0) + boost));
+            return copy;
+        });
+        var out = {};
+        for (var key in result) { if (Object.prototype.hasOwnProperty.call(result, key)) out[key] = result[key]; }
+        out.options = options;
+        return out;
+    }
+
+    // The engine asks its completion sources through these slots: slot i
+    // runs the i-th source of the language data at the cursor (the engine's
+    // own and the registered ones, in the order the engine would ask them)
+    // and hands its result through the rankers. 16 slots are far more than
+    // any region has (three to four).
+    //
+    // Before each source the tree's lookup cache is reset to the top
+    // (`resolveInner(0, 0)`). resolveInner() starts from the node it found
+    // last, and from the value of a style="" or on…="" attribute (or a node
+    // inside it) it does not enter the CSS or JavaScript mounted over that
+    // value: after such a lookup a source got the attribute value instead
+    // of the property name, and offered nothing there.
+    var COMPLETION_SLOTS = 16;
+
+    function _completionSlots(cm) {
+        var slots = [];
+        for (var i = 0; i < COMPLETION_SLOTS; i++) {
+            slots.push((function (index) {
+                return function (context) {
+                    var list = context.state.languageDataAt('autocomplete', context.pos);
+                    var source = list[index];
+                    if (!source) return null;
+                    if (typeof source !== 'function') source = cm.autocomplete.completeFromList(source);
+                    cm.language.syntaxTree(context.state).resolveInner(0, 0);
+                    var result = source(context);
+                    if (result && typeof result.then === 'function') {
+                        return result.then(function (r) { return _rankResult(cm, context, r); });
+                    }
+                    return _rankResult(cm, context, result);
+                };
+            })(i));
+        }
+        return slots;
+    }
+
+    // The colour drawn beside a completion option: its own `swatch` (a
+    // design token's value, which the label does not show), else its label
+    // when that is a colour: #hex, a colour function, or a named colour the
+    // CSS completions offer (type 'constant'). '' when there is none.
+    function _swatchColor(option) {
+        if (!option) return '';
+        if (typeof option.swatch === 'string' && option.swatch) return option.swatch;
+        var label = String(option.label || '');
+        if (/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(label)) return label;
+        if (/^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\([^()]*\)$/i.test(label)) return label;
+        if ((option.type === 'constant') && /^[a-z]+$/i.test(label)
+            && !/^(?:transparent|currentcolor|inherit|initial|unset|revert)$/i.test(label)
+            && (typeof CSS !== 'undefined') && CSS.supports && CSS.supports('color', label)) return label;
+        return '';
+    }
+
+    function _swatchOption() {
+        return {
+            position: 30,
+            render: function (completion) {
+                var color = _swatchColor(completion);
+                if (!color) return null;
+                var el = document.createElement('span');
+                el.className = 'pg-ce-swatch';
+                el.setAttribute('aria-hidden', 'true');
+                el.style.backgroundColor = color;
+                return el;
+            }
+        };
     }
 
     // Syntax errors as diagnostics: the parser leaves an error node where a
@@ -641,7 +779,12 @@
             L.indentOnInput(),
             L.bracketMatching(),
             cm.autocomplete.closeBrackets(),
-            cm.autocomplete.autocompletion({ defaultKeymap: !useVscode, activateOnTyping: opts.completeOnTyping !== false }),
+            cm.autocomplete.autocompletion({
+                defaultKeymap: !useVscode,
+                activateOnTyping: opts.completeOnTyping !== false,
+                override: _completionSlots(cm),
+                addToOptions: [_swatchOption()]
+            }),
             V.rectangularSelection(),
             V.crosshairCursor(),
             V.highlightActiveLine(),
@@ -996,6 +1139,7 @@
         open: open,
         attach: attach,
         addCompletionSource: addCompletionSource,
+        addCompletionRanker: addCompletionRanker,
         addExtension: addExtension,
         normalizeLanguage: _normLanguage
     };

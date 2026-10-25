@@ -30,6 +30,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
+- code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, bundle build
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
