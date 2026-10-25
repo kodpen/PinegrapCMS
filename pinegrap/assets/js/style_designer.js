@@ -3661,21 +3661,22 @@ const StyleDesigner = (function () {
         return false;
     }
 
-    // Where `nodes`, pasted through the paste event, go, as { parent, index }.
-    // The selection decides, and nothing selected means the end of the page.
-    // The node the paste landed on does not count: a click on a canvas
-    // element or an Overview row selects it, so with nothing selected that
-    // node is only where the text caret was left (the first element after a
-    // re-render, a locked Overview row's label). Into the selection when it
-    // is something that holds children and the drop rules let every pasted
+    // Where pasted `nodes` go, as { parent, index }. Every paste path asks
+    // here (_sdPasteNodes()): the paste event (our nodes off the system
+    // clipboard, imported markup), the context-menu Paste and Ctrl+V without
+    // the system clipboard. The selection decides, and nothing selected
+    // means the end of the page. The node the paste landed on does not
+    // count: a click on a canvas element or an Overview row selects it, so
+    // with nothing selected that node is only where the text caret was left
+    // (the first element after a re-render, a locked Overview row's label).
+    // Into the selection when it holds children, is not the node being
+    // duplicated (_sdPasteRepeats()) and the drop rules let every pasted
     // node in (_sdPasteFits()) — "I selected this area and pasted into it" —
     // and beside it otherwise, because a paragraph cannot contain a section.
     // Beside means in the tree the node lives in: the page's, or the shared
-    // component's or system widget's own tree (_sdAnyParent()). The
-    // in-memory paste (context menu, Ctrl+V without the system clipboard)
-    // has its own spot, _sdPasteTarget(): always beside the selection, with
-    // no index.
-    function _sdPasteSpot(nodes) {
+    // component's or system widget's own tree (_sdAnyParent()). `key` names
+    // what is on the clipboard (see _sdPasteNodes()).
+    function _sdPasteSpot(nodes, key) {
         var sel = selectedNode;
         if (!sel || sel === tree) return { parent: tree, index: (tree.children || []).length };
         var holds = (sel.type === 'root' || sel.type === 'container' || sel.type === 'row' ||
@@ -3686,7 +3687,7 @@ const StyleDesigner = (function () {
                            'base', 'link', 'meta', 'param', 'wbr', 'option', 'textarea', 'select'];
             holds = voidish.indexOf(t) === -1 && _SD_TEXT_SINK_TAGS.indexOf(t) === -1;
         }
-        if (holds && _sdPasteFits(nodes || [], sel)) {
+        if (holds && !_sdPasteRepeats(nodes || [], sel, key) && _sdPasteFits(nodes || [], sel)) {
             if (!Array.isArray(sel.children)) sel.children = [];
             return { parent: sel, index: sel.children.length };
         }
@@ -3697,30 +3698,51 @@ const StyleDesigner = (function () {
         return { parent: par, index: at === -1 ? par.children.length : at + 1 };
     }
 
+    // The copy the last paste selected, and what was on the clipboard then.
+    var _sdLastPaste = { node: null, key: null };
+
+    // Is this paste a duplicate of the selection rather than a paste into
+    // it? It is when the selection is a copied node itself (the clipboard
+    // keeps the copied node's _id), or the copy the last paste of the same
+    // clipboard selected: Ctrl+C, Ctrl+V, Ctrl+V on a section gives three
+    // sections side by side, instead of each copy going into the one
+    // before. Pasting into a container takes selecting another one. The
+    // last copy is compared by reference, not by id: an undo rebuilds the
+    // tree and hands the undone copy's id out again to the next new node.
+    // Ids repeat across pages and shared trees, so a copy from elsewhere
+    // with the selection's id also goes beside it.
+    function _sdPasteRepeats(nodes, sel, key) {
+        if (_sdLastPaste.node && sel === _sdLastPaste.node && key === _sdLastPaste.key) return true;
+        return nodes.some(function (n) { return !!(n && n._id && n._id === sel._id); });
+    }
+
     // May every pasted node go into `target`? The drop rules decide
     // (canDrop()): nothing into a locked element, only columns into a row,
     // only items into a list. A copy is a new node, so the lock flag it
     // carries from the copied node does not stop it as it stops moving that
-    // node. A column goes beside a selected column, not into it. A copy of
-    // the target itself (the clipboard keeps the copied node's _id) goes
-    // beside it: Ctrl+C, Ctrl+V on a section duplicates it, as the
-    // context-menu Paste and Ctrl+D do, instead of nesting it in itself.
-    // Ids repeat across pages and shared trees, so a copy from elsewhere
-    // with the same id also goes beside, where the in-memory paste puts it.
+    // node. A column goes beside a selected column, not into it.
     function _sdPasteFits(nodes, target) {
         return nodes.every(function (n) {
             if (!n || !n.props) return false;
-            if (n._id && n._id === target._id) return false;
             if (n.type === 'col' && target.type === 'col') return false;
             var probe = n.props._locked ? Object.assign({}, n, { props: Object.assign({}, n.props, { _locked: false }) }) : n;
             return canDrop({ source: 'node', type: n.type, node: probe }, target);
         });
     }
 
-    function _sdPasteNodes(nodes) {
+    // Pastes a fresh copy of `nodes` where _sdPasteSpot() says, as one
+    // history step, and selects the last copy. `key` names what is on the
+    // clipboard. It defaults to the nodes' JSON, which is the same for one
+    // copy whichever path pastes it (the system clipboard's payload or the
+    // in-memory clipboardNodes); imported markup passes the markup, because
+    // its nodes get new ids on every paste.
+    function _sdPasteNodes(nodes, key) {
         if (!nodes || !nodes.length) return;
+        if (key === undefined) {
+            try { key = JSON.stringify(nodes); } catch (e) { key = null; }
+        }
         saveState();
-        var spot = _sdPasteSpot(nodes);
+        var spot = _sdPasteSpot(nodes, key);
         var last = null;
         nodes.forEach(function (n, i) {
             var clone = cloneTree(n);
@@ -3735,6 +3757,7 @@ const StyleDesigner = (function () {
         }
         selectedNodes = [];
         if (last) { selectedNode = last; expandAncestors(last, tree); }
+        _sdLastPaste = { node: last, key: key };
         var owner = last ? _sdAnyParent(last) : null;
         if (owner && owner.sid) _sharedDirty[owner.sid] = true;
         render();
@@ -3864,7 +3887,7 @@ const StyleDesigner = (function () {
                 return;
             }
             _backfillIds({ type: 'root', props: {}, children: kids });
-            _sdPasteNodes(kids);
+            _sdPasteNodes(kids, body);
             sdToast('<strong>' + kids.length + '</strong> ' +
                     esc(_sdT('element(s) pasted.')), 'success', 4000);
             if (Array.isArray(res.warnings) && res.warnings.length) {
@@ -4237,20 +4260,7 @@ const StyleDesigner = (function () {
                 if (_sdClipStamp) return;
                 if (!clipboardNodes || !clipboardNodes.length) return;
                 e.preventDefault();
-                saveState();
-                var _lastPasted = null;
-                clipboardNodes.forEach(function(cn) {
-                    var _clone = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_clone);
-                    var _par = (selectedNode && selectedNode !== tree) ? (findParent(selectedNode, tree) || tree) : tree;
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _clone);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_clone); }
-                    _lastPasted = _clone;
-                });
-                selectedNodes = [];
-                if (_lastPasted) selectedNode = _lastPasted;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }
 
             // Undo / Redo (mirror main document shortcuts)
@@ -27605,22 +27615,7 @@ const StyleDesigner = (function () {
                 clipboardNodes = targets.map(function(n) { return cloneTree(n); });
             }},
             _sdGuardItem({ icon: 'bi-clipboard-check', label: _sdT('Paste'), disabled: !(clipboardNodes && clipboardNodes.length), handler: function() {
-                saveState();
-                var _lp = null;
-                var _pt = _sdPasteTarget();
-                var _par = _pt.parent;
-                clipboardNodes.forEach(function(cn) {
-                    var _cl = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_cl);
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _cl);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_cl); }
-                    _lp = _cl;
-                });
-                if (_pt.sid) _sharedDirty[_pt.sid] = true;
-                selectedNodes = [];
-                if (_lp) selectedNode = _lp;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }}, [selectedNode || node]),
             _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate') + (multi ? ' (' + targets.length + ')' : ''), handler: function() {
                 saveState();
@@ -39060,19 +39055,6 @@ const StyleDesigner = (function () {
         var p = findParent(node, tree);
         if (p) return { parent: p, sid: 0 };
         return _findParentInShared(node);
-    }
-
-    // Where a clipboard paste lands: beside the selected node — in the page
-    // tree or in the shared widget that owns it — or at the root when nothing
-    // (or the root itself) is selected. Returns { parent, sid }. Used by the
-    // in-memory paste (context menu, Ctrl+V); the paste event places its
-    // block with _sdPasteSpot().
-    function _sdPasteTarget() {
-        if (selectedNode && selectedNode !== tree) {
-            var owner = _sdAnyParent(selectedNode);
-            if (owner) return owner;
-        }
-        return { parent: tree, sid: 0 };
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -62747,22 +62729,7 @@ const StyleDesigner = (function () {
                 if (_sdClipStamp) return;
                 if (!clipboardNodes || !clipboardNodes.length) return;
                 e.preventDefault();
-                saveState();
-                var _lastP = null;
-                var _kpt = _sdPasteTarget();
-                var _par = _kpt.parent;
-                clipboardNodes.forEach(function(cn) {
-                    var _clone = cloneTree(cn);
-                    (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(_clone);
-                    var _idx = _par.children ? _par.children.indexOf(selectedNode) : -1;
-                    if (_idx !== -1) _par.children.splice(_idx + 1, 0, _clone);
-                    else { if (!_par.children) _par.children = []; _par.children.push(_clone); }
-                    _lastP = _clone;
-                });
-                if (_kpt.sid) _sharedDirty[_kpt.sid] = true;
-                selectedNodes = [];
-                if (_lastP) selectedNode = _lastP;
-                render();
+                _sdPasteNodes(clipboardNodes);
             }
             // Preview (Ctrl+Alt+P)
             if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openPreview(); }
