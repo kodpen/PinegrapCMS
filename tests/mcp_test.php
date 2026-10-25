@@ -176,10 +176,10 @@ function test_mcp_dry_run_reads_as_the_header_does()
 }
 
 // A string that is not UTF-8 as an answer's JSON writes it: U+FFFD in its
-// place on PHP 7.2+, the string alone as null on PHP 7.1, the rest kept.
+// place on every PHP version, the rest kept.
 function mcp_test_broken_byte_json($key)
 {
-	return defined('JSON_INVALID_UTF8_SUBSTITUTE') ? '"' . $key . '":"x' . "\u{FFFD}" . 'y"' : '"' . $key . '":null';
+	return '"' . $key . '":"x' . "\u{FFFD}" . 'y"';
 }
 
 // The encoder of every MCP answer follows api_json_encode(): a broken byte
@@ -190,6 +190,8 @@ function test_mcp_json_encode_keeps_what_it_can()
 	pg_assert_same('{' . mcp_test_broken_byte_json('note') . ',"ok":"fine"}', pg_mcp_json_encode(array('note' => "x\xFFy", 'ok' => 'fine')), 'a broken byte keeps the rest');
 	pg_assert_same(null, pg_mcp_json_encode(array('n' => INF)), 'INF cannot be JSON');
 	pg_assert_same(null, pg_mcp_json_encode(array('n' => NAN)), 'nor NAN');
+	pg_assert_same('{"k' . "\u{FFFD}" . '":"v","ok":1}', pg_mcp_json_encode(array("k\xFF" => 'v', 'ok' => 1)), 'a broken key is replaced too, never written as a bare null');
+	pg_assert_same(null, pg_mcp_json_encode(array('note' => "x\xFFy", 'n' => INF)), 'a broken byte next to INF is still null');
 }
 
 // tools/call once its route has answered: the body as text and as
@@ -212,6 +214,7 @@ function test_mcp_tool_answer()
 
 	foreach (array(INF, NAN) as $value) {
 		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error')), pg_mcp_tool_answer(200, array('n' => $value)), 'a body JSON cannot hold');
+		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error')), pg_mcp_tool_answer(200, array('note' => "x\xFFy", 'n' => $value)), 'a broken byte beside it changes nothing');
 	}
 }
 
@@ -224,4 +227,6 @@ function test_mcp_payload_json_is_never_empty()
 	pg_assert_same('{"jsonrpc":"2.0","id":7,"error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 7, 'result' => array('n' => INF))));
 	pg_assert_same('{"jsonrpc":"2.0","id":"a","error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 'a', 'result' => array('n' => NAN))), 'a string id');
 	pg_assert_same('{"jsonrpc":"2.0","id":null,"error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => INF, 'result' => array())), 'an id JSON cannot hold (1e999 decodes as INF)');
+	pg_assert_same('{"jsonrpc":"2.0","id":1,"result":{"structuredContent":{"k' . "\u{FFFD}" . '":"v"}}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 1, 'result' => (object)array('structuredContent' => array("k\xFF" => 'v')))), 'a broken key');
+	pg_assert_same('{"jsonrpc":"2.0","id":2,"error":{"code":-32603,"message":"Internal error"}}', pg_mcp_payload_json(array('jsonrpc' => '2.0', 'id' => 2, 'result' => (object)array('structuredContent' => array('a' => "\xFF", 'n' => INF)))), 'a broken byte next to INF');
 }

@@ -579,11 +579,11 @@ function test_mcp_prompts_weekly_report_messages()
 	pg_assert_false(strpos($without, 'workspace_channels_context') !== false, 'nor its tool');
 }
 
-// A string that is not UTF-8 as a read writes it: U+FFFD in its place on PHP
-// 7.2+, the string alone as null on PHP 7.1; the rest of the body stays.
+// A string that is not UTF-8 as a read writes it: U+FFFD in its place on
+// every PHP version; the rest of the body stays.
 function mcp_resources_test_broken_byte_json($key, $before, $after)
 {
-	return defined('JSON_INVALID_UTF8_SUBSTITUTE') ? '"' . $key . '":"' . $before . "\u{FFFD}" . $after . '"' : '"' . $key . '":null';
+	return '"' . $key . '":"' . $before . "\u{FFFD}" . $after . '"';
 }
 
 // A broken byte in the route's body keeps the rest of the read, as the REST
@@ -606,6 +606,7 @@ function test_mcp_resources_read_answer_that_cannot_be_json()
 
 	foreach (array(true, false) as $modern) {
 		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error', 'data' => array('uri' => $uri))), pg_mcp_resource_answer($uri, 200, array('n' => NAN), $modern), 'an internal error in either generation');
+		pg_assert_same(array('error' => array('code' => -32603, 'message' => 'Internal error', 'data' => array('uri' => $uri))), pg_mcp_resource_answer($uri, 200, array('note' => "x\xFFy", 'n' => INF), $modern), 'a broken byte beside INF changes nothing');
 	}
 }
 

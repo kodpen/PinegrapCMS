@@ -219,32 +219,16 @@ function pg_mcp_send($http_status, $payload) {
 
 }
 
-// A value as the JSON an MCP answer carries, by the rules of api_json_encode()
-// (includes/api/response.php, which loads only behind PG_API_ENTRY): a byte
-// that is not UTF-8 becomes U+FFFD and the rest of the value stays; PHP 7.1,
-// which cannot substitute, writes the broken string alone as null. null when
-// the value cannot be JSON at all (INF, NAN), for the caller to answer an
-// error: a bare json_encode() returns false there, which casts to an empty
-// text a client cannot tell from a real, empty answer.
+// A value as the JSON an MCP answer carries, by the encoder of the REST
+// answer (pg_json_encode_answer(), includes/fn/core.php): a byte that is not
+// UTF-8, in a key or a value, becomes U+FFFD and the rest of the value stays,
+// on every PHP version. null when the value cannot be JSON at all (INF, NAN),
+// a broken byte beside it or not, for the caller to answer an error: a bare
+// json_encode() returns false there, which casts to an empty text a client
+// cannot tell from a real, empty answer.
 function pg_mcp_json_encode($value) {
 
-	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-
-	if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-
-		$flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
-
-	}
-
-	$json = json_encode($value, $flags);
-
-	if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
-
-		$json = json_encode($value, $flags | JSON_PARTIAL_OUTPUT_ON_ERROR);
-
-	}
-
-	return is_string($json) ? $json : null;
+	return pg_json_encode_answer($value);
 
 }
 
