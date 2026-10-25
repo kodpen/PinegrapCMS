@@ -6,6 +6,7 @@ description: "New sales quote" in a Workspace channel's menu: the quote editor o
 ## What does it do?
 - The channel's menu (the three dots, `channelMenu()` in workspace.js) offers "New sales quote" / "Yeni satış teklifi". It opens add_erp_quote.php `?account_id=<id>`, the prefill the account card's "New quote" already used: the id only chooses the account box's option and saving checks the account again. The Workspace writes nothing.
 - The address comes with the channel: `sales_quote_url` in `ws_channel_detail()` (includes/workspace/channels.php), empty when nothing is offered. It is built on the server; workspace.js never puts an account id together.
+- A divider follows the item, but a reader may get nothing after it (a public channel they have not joined, archived, that they may not manage). `channelMenu()` therefore removes a divider left at the end of the menu, so the menu never ends on a bare line.
 
 ## Which account does it open on?
 - `ws_channel_sales_quote_account()` (includes/workspace/customer.php): the customer (`ws_channel_customer_of()`) when it is a current account, else the first account tied to it through its contact (`ws_customer_link_tokens()`, active accounts first).
@@ -18,4 +19,9 @@ description: "New sales quote" in a Workspace channel's menu: the quote editor o
 - The read-only flag is the session's constant: `ws_channel_detail()` is called only from the panel's `ws_*` actions, whose viewer is the signed-in person.
 
 ## What guards it?
-- tests/workspace_sales_quote_test.php: the pick (customer, ties, suppliers, passive and deleted accounts, other kinds of tie), the rights rule, no lookup without the right (the runner has no database, so a query errors), and the lookup's source asks the right before it reads and never names `erp_account_for_contact` or an INSERT.
+- tests/workspace_sales_quote_test.php covers:
+  - the pick: customer, ties, suppliers, passive and deleted accounts, other kinds of tie;
+  - the rights rule;
+  - no lookup without the right, checked in the source: the lookup's first statement must be `if (!ws_sales_quote_may_start(...)) { return 0; }`, and it never names `erp_account_for_contact` or an INSERT;
+  - the menu never ending on a divider, checked in workspace.js's source.
+- The gate cannot be tested by calling the lookup. The runner has no database and no ERP, so the lookup returns 0 for every reader before its first query, whether the reader is allowed or not. A runtime assertion passed even with the gate disabled.

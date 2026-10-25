@@ -8017,6 +8017,13 @@
                 });
             }
 
+            // A group's divider is drawn before it is known whether any item
+            // follows it ("New sales quote" may be the reader's only item):
+            // the menu never ends on one.
+            if (menu.lastElementChild && menu.lastElementChild.querySelector('.dropdown-divider')) {
+                menu.removeChild(menu.lastElementChild);
+            }
+
             wrap.appendChild(menu);
 
             return wrap;

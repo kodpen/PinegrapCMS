@@ -6,8 +6,9 @@
  * (includes/workspace/customer.php): which current account the quote is
  * written to (the channel's customer, else an account tied to it through
  * its contact; only an active account that is not a supplier alone), who is
- * offered it (the ERP right without the accountant's read-only one), and
- * that nobody else's request reads an account, let alone opens one.
+ * offered it (the ERP right without the accountant's read-only one), that
+ * nobody else's request reads an account, let alone opens one, and that
+ * the channel's menu never ends on the divider drawn below the item.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -105,34 +106,50 @@ function test_workspace_sales_quote_offered_to_erp_writers_only()
 }
 
 // Without the right nothing is looked up: the channel's account is never
-// read for that reader, so the menu cannot tell whether one exists. Errors
-// throw here, so a query (there is no database) fails the test.
+// read for that reader, so the menu cannot tell whether one exists. Read
+// from the source, because a call cannot show it: the runner has no
+// database and no ERP, so the lookup returns 0 for every reader, allowed
+// or not, before its first query. The lookup must open with the gate and
+// return 0 there, so nothing reads before it and a gate whose condition
+// is never true does not pass.
 function test_workspace_sales_quote_lookup_reads_nothing_without_the_right()
 {
-	$channel = array('id' => 5, 'contact_id' => 21, 'customer_type' => 'erp_account', 'customer_id' => 7);
-	$before = pg_error_throws();
-
-	pg_error_throws(true);
-
-	try {
-		pg_assert_same(0, ws_channel_sales_quote_account(workspace_sales_quote_test_viewer(false), $channel, false), 'no ERP right');
-		pg_assert_same(0, ws_channel_sales_quote_account(workspace_sales_quote_test_viewer(true), $channel, true), 'read-only accountant');
-	} finally {
-		pg_error_throws($before);
-	}
-
-	// The right is asked before the first query, and no account is ever
-	// opened from the Workspace (erp_account_for_contact() creates one).
 	$source = pg_test_function_source('ws_channel_sales_quote_account');
-	$gate = strpos($source, 'ws_sales_quote_may_start(');
+	$compact = '';
 
-	pg_assert_true($gate !== false, 'the lookup asks ws_sales_quote_may_start()');
-
-	foreach (array('db_', 'ws_customer_link_tokens(', 'ws_erp_quotes_readable(') as $reader) {
-		$at = strpos($source, $reader);
-		pg_assert_true(($at === false) || ($gate < $at), $reader . ' comes after the right is asked');
+	foreach (pg_test_source_tokens($source) as $token) {
+		if (!is_array($token) || ($token[0] !== T_WHITESPACE)) {
+			$compact .= pg_test_source_text($token);
+		}
 	}
 
+	$body = (string) substr($compact, (int) strpos($compact, '{'));
+	$gate = '{if(!ws_sales_quote_may_start($viewer,$erp_readonly)){return0;}';
+
+	pg_assert_same($gate, substr($body, 0, strlen($gate)), 'the lookup opens with the right and stops without it');
+
+	// No account is ever opened from the Workspace
+	// (erp_account_for_contact() creates one).
 	pg_assert_false(strpos($source, 'erp_account_for_contact') !== false, 'never opens an account');
 	pg_assert_false(stripos($source, 'INSERT') !== false, 'writes nothing');
+}
+
+// The item draws a divider below it, though a reader may be offered
+// nothing after it (a public channel they have not joined, archived, that
+// they may not manage): the menu never ends on a bare divider line.
+function test_workspace_sales_quote_menu_never_ends_on_a_divider()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($script, 'channelMenu: function () {');
+
+	pg_assert_true($start !== false, 'channelMenu() is in workspace.js');
+
+	$end = strpos($script, 'wrap.appendChild(menu);', (int) $start);
+	$menu = (string) substr($script, (int) $start, (int) $end - (int) $start);
+	$last_divider = strrpos($menu, 'divider();');
+	$tail = ($last_divider === false) ? '' : substr($menu, $last_divider);
+
+	pg_assert_contains('channel.sales_quote_url', $menu, 'the item is in channelMenu()');
+	pg_assert_true((bool) preg_match("/if \\(menu\\.lastElementChild && menu\\.lastElementChild\\.querySelector\\('\\.dropdown-divider'\\)\\) \\{\\s*menu\\.removeChild\\(menu\\.lastElementChild\\);\\s*\\}\\s*$/", $tail),
+		'a divider left last is dropped before the menu is drawn');
 }
