@@ -229,7 +229,7 @@ function pg_signature_png_from_data_url($data_url)
     $written = @imagepng($image, null, 9);
     $png = ob_get_clean();
 
-    imagedestroy($image);
+    pg_image_destroy($image);
 
     return ($written && is_string($png) && ($png !== '')) ? $png : false;
 }

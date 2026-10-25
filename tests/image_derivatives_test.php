@@ -251,7 +251,7 @@ function image_derivatives_test_jpeg($path, $width, $height, $seed)
 	}
 
 	imagejpeg($image, $path, 95);
-	imagedestroy($image);
+	pg_image_destroy($image);
 }
 
 // The same JPEG with an EXIF block that says "turn a quarter clockwise to

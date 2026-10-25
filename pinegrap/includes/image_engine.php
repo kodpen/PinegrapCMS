@@ -1127,7 +1127,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         $image = imagecreatetruecolor($target_width, $target_height);
 
         if (!$image) {
-            imagedestroy($source);
+            pg_image_destroy($source);
             return false;
         }
 
@@ -1150,7 +1150,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
             $target_width, $target_height,
             $source_width, $source_height);
 
-        imagedestroy($source);
+        pg_image_destroy($source);
 
     } elseif (($type == IMAGETYPE_PNG) || (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP))) {
         imagesavealpha($image, true);
@@ -1171,11 +1171,11 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         $turned = @imagerotate($image, -$rotate, $fill);
 
         if (!$turned) {
-            imagedestroy($image);
+            pg_image_destroy($image);
             return false;
         }
 
-        imagedestroy($image);
+        pg_image_destroy($image);
         $image = $turned;
 
         if (($type == IMAGETYPE_PNG) || (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP))) {
@@ -1210,7 +1210,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
 
         $data = ob_get_clean();
 
-        imagedestroy($image);
+        pg_image_destroy($image);
 
         if (!$written || ($data === '')) {
             return false;
@@ -1262,7 +1262,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
 
     $data = ob_get_clean();
 
-    imagedestroy($image);
+    pg_image_destroy($image);
 
     if (!$written || ($data === '')) {
         return false;
@@ -1304,6 +1304,25 @@ function pg_image_gd_read($file_path, $type)
     }
 
     return false;
+}
+
+
+/**
+ * Free a GD image.
+ *
+ * Below PHP 8.0 a GD image is a resource that holds its memory until
+ * imagedestroy() or the end of the request. From 8.0 on it is a GdImage
+ * object freed with its last reference, imagedestroy() does nothing, and
+ * PHP 8.5 deprecates it, so the call is made only where it still frees.
+ *
+ * @param resource|GdImage $image
+ * @return void
+ */
+function pg_image_destroy($image)
+{
+    if (PHP_VERSION_ID < 80000) {
+        imagedestroy($image); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.imagedestroyDeprecated -- guarded by PHP_VERSION_ID < 80000 above
+    }
 }
 
 
@@ -1371,7 +1390,7 @@ function pg_image_apply_gd_orientation($image, $file_path)
     }
 
     if ($rotated) {
-        imagedestroy($image);
+        pg_image_destroy($image);
         $image = $rotated;
     }
 
