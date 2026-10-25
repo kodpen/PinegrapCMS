@@ -124,6 +124,9 @@ function pg_page_cache_personal($reason = null)
 /**
  * Whether a session holds nothing but what every anonymous visitor's session
  * holds: the CSRF token, the device type and what visitor tracking keeps.
+ * The favourites cookie a visitor's first save started (wishlist_cookie)
+ * counts too: it is the session's copy of the pg_wishlist cookie, which no
+ * stored page is drawn from (the hearts are filled in by script).
  * Anything else (a sign-in, an order, a currency, an offer code, a liveform
  * notice, a guest pass, an auto dialog's visit start, a stored URL id) makes
  * it personal, and so does a key added later that is not on this list.
@@ -136,6 +139,7 @@ function pg_page_cache_session_anonymous(array $session)
     $allowed = array(
         'token', 'device_type', 'visitor_id', 'http_referer', 'tracking_code', 'affiliate_code',
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'cookie_id',
+        'wishlist_cookie',
     );
 
     foreach ($session as $key => $value) {
@@ -1346,6 +1350,7 @@ function pg_page_cache_referer($raw)
  * made old once it ends: a write (not GET, HEAD or OPTIONS) by a signed-in
  * user or an API client. Left out: the beacon, api.php (decided per action,
  * pg_page_cache_panel_dirties()), the chat and the update check, which poll,
+ * the favourites, whose hearts a page's script fills in for each visitor,
  * and the workspace, whose page and product changes are announced
  * (pg_page_cache_announce_dirties()).
  *
@@ -1365,7 +1370,7 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
 
     $script = strtolower(basename(str_replace('\\', '/', (string) $script)));
 
-    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php'), true)
+    if (in_array($script, array('page_view.php', 'api.php', 'chat.php', 'software_update_check.php', 'wishlist.php'), true)
         || (strpos($script, 'workspace') === 0)) {
         return false;
     }

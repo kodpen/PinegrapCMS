@@ -5,7 +5,7 @@ description: The comments system widget (regionType comments): whose thread it s
 
 ## What is it and where does it live?
 - Kind `comments` (`includes/fn/widgets_comments.php`, `SW_TYPES`, `pg_sw_type_labels()`): a page's thread and add-comment form ([[comments-widget-form]]) in the design's layout, shared by every page placing it; comments and `comments_*` settings stay the page's ([[comment-thread-rules]]).
-- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured top-level comments pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3, `per_page` 0|10|20|50. layout, max_depth, per_page: stored, not applied yet; no panel control yet.
+- Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured top-level comments pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). No panel control yet.
 
 ## Which thread does a page show?
 - The drawn page's (`pg_sw_render_context()['page_id']`). A top-level form_item_view widget (`pg_sw_record_comment_context()`): that record's thread, posted as `submitted_form`. Else the page's own: read as every comment on the page (null thread, as the classic block), posted as `''` / 0.
@@ -14,9 +14,9 @@ description: The comments system widget (regionType comments): whose thread it s
 - The search index reads a visitor's view: published only, no form, not staff.
 
 ## Which tokens and flags does it give?
-- Thread: `__comments_title|count|label|label_plural|intro|closed_message|show_all_url|show_featured_url`, `__login_url`, `__comment_author_name`. Row: `__comment_id|anchor|name|staff_name|message_html|date|datetime|rating|stars_html|badge|status|file_name|file_url|file_size|seller_reply_html|seller_reply_date|edit_url`.
-- Flags: 17 thread (`pg_comments_widget_thread_flags()`), 10 row (`pg_comments_widget_row_flags()`); the loop gets row + thread flags.
-- Still to come: depth, quote, reply, watch, paging (replies, watchers, pagination); `is_email` (e-mails).
+- Thread: `__comments_title|count|label|label_plural|intro|closed_message|show_all_url|show_featured_url`, `__login_url`, `__comment_author_name`, `__reply_to_name`, `__watcher_count_text`. Row: `__comment_id|anchor|name|staff_name|message_html|date|datetime|rating|stars_html|badge|status|file_name|file_url|file_size|seller_reply_html|seller_reply_date|edit_url|url|reply_url|parent_id|parent_name|parent_url|quote|depth|reply_count`.
+- Flags: 22 thread (`pg_comments_widget_thread_flags()`), 14 row (`pg_comments_widget_row_flags()`); the loop gets row + thread flags. Watch box, watcher list, staff form: [[comments-widget-watch-staff]].
+- Still to come: `is_email` (e-mails).
 
 ## How is it escaped?
 - Once: `pg_comments_widget_escape()` = `pg_sw_escape_token_values()` (raw: `__comment_message_html`, `__comment_stars_html`, `__comment_seller_reply_html`, defused) then every `^` as `&#94;`; filled in one `strtr()` pass. `__comment_datetime` is formatted (`pg_sw_apply_tokens()`) before visitor text goes in.
@@ -27,5 +27,5 @@ description: The comments system widget (regionType comments): whose thread it s
 - A designed list the visitor does not get (its box below a false flag, inside an undrawn form) takes its rows with it, as in every widget.
 
 ## How was it checked?
-- `tests/comments_widget_test.php` (helpers, twin, draw, wiring), `designer_messages_test`, `check_bindings`.
-- Sandbox, MariaDB, PHP 8.3 (2026-10-24): page and record threads; anonymous, member, admin; refused post, closed, sign-in, both featured modes, own pending, scheduled, CAPTCHA, files, stars, publish picker (Chromium), two widgets, widget + block. The JS starter draws the same 12 pages as the PHP tree; classic and block pages: 18 masked responses as on the base. The later fixes (hidden list, anchor links, classic pages, form fallbacks): unit tests only.
+- `tests/comments_widget_test.php`, `designer_messages_test`, `check_bindings`.
+- Sandbox, MariaDB, PHP 8.3 (2026-10-24): page and record threads; anonymous, member, admin; refused post, closed, sign-in, featured modes, own pending, scheduled, CAPTCHA, files, stars, publish picker (Chromium), two widgets, widget + block. The JS starter draws the same 12 pages as the PHP tree; classic and block pages: 18 masked responses as on the base. The later fixes (hidden list, anchor links, classic pages, form fallbacks): unit tests only.

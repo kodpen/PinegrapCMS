@@ -1015,9 +1015,11 @@ function pg_sw_should_count_record_view($seen, $method, $automated)
 // (t and a store a tracking or affiliate code in the session and a cookie,
 // o a special-offer code, rss/pdf/email/icalendar switch the output,
 // pg_lang the language, highlight marks text, send_to redirects), and the
-// widgets read the rest (page_number, query, r, ...). The names starting
-// with utm_ or pg_ are refused in pg_sw_url_param_name(). The editor keeps
-// a copy (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
+// widgets read the rest (page_number, query, r, ...; the comments widget
+// comments, comment, comments_page and reply_to, and add_comment.php's
+// redirect adds comment= to every page). The names starting with utm_ or
+// pg_ are refused in pg_sw_url_param_name(). The editor keeps a copy
+// (_SW_URL_PARAM_RESERVED in style_designer.js); a test compares them.
 // A designed form control's _cf.url_param obeys the same names.
 function pg_sw_url_param_reserved()
 {
@@ -1027,8 +1029,8 @@ function pg_sw_url_param_reserved()
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact',
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact',
     );
 }
 
@@ -4776,14 +4778,16 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
 // Bootstrap pagination for a widget list: previous / next, a window of two
 // pages around the current one, the first and the last. '' for a single page.
 // Links keep every other query parameter (search text, filters).
-function pg_sw_pagination_html($page_param, $current_page, $total_pages)
+function pg_sw_pagination_html($page_param, $current_page, $total_pages, $fragment = '')
 {
     $current_page = (int)$current_page;
     $total_pages  = (int)$total_pages;
     if ($total_pages <= 1) return '';
 
-    $link = function ($n, $label, $aria = '') use ($page_param) {
-        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . '"'
+    // $fragment: the anchor every link lands on (the comments widget's
+    // #software_comments); without one the links are as they always were.
+    $link = function ($n, $label, $aria = '') use ($page_param, $fragment) {
+        return '<li class="page-item"><a class="page-link" href="?' . h(_pg_sw_build_query($page_param, $n)) . (($fragment !== '') ? '#' . h($fragment) : '') . '"'
              . ($aria !== '' ? ' aria-label="' . h($aria) . '"' : '') . '>' . $label . '</a></li>';
     };
     $html = '<nav class="pg-sw-pagination" aria-label="' . h(lang('Page navigation')) . '"><ul class="pagination pagination-sm justify-content-center mt-3 mb-0">';
