@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W14 part 1 #1602): legacy-layout power in system widgets by one finish pass: conditions, row position, nested lists, fields, formats
+description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W14 part 1 #1602): legacy-layout power in system widgets by one finish pass: conditions, row position, nested lists, fields, formats
 ---
 
 ## What is built, and why?
@@ -21,13 +21,12 @@ description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W14 part 1 #1
 
 ## What does the owner still answer?
 OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical old blocks; words beside a value; code areas; page-level facts; per-placement settings; gallery sources; parts with controls; express order lists; classic bridge.
-Before W4: a cut required control (custom_form, registration, express_order) still blocks submit; refuse show_if on required controls? `pg_tr_node_fields()` skips `_bindParams`: a text operand is not translated.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592): finish pass and value conditions, server side ([[widget-finish-pass]], [[widget-conditions]]).
 - W2 done (#1582): palette double-click lands beside the selection, inside a widget too (shared_ref items stop at the widget).
 - W3 done (#1597): row position ([[widget-loop-position]]).
-- W4 Bind Data "Show only when a value…" for every kind, canvas chip, position group.
+- W4 done (#1665): Bind Data "Show only when a value…" for every kind, canvas chip; never on a required control, compared text translated ([[widget-condition-panel]]).
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
 - W6 Lists engine + form field values and attachments. W7 Lists in the editor. W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
@@ -38,7 +37,7 @@ Before W4: a cut required control (custom_form, registration, express_order) sti
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
-- Claim `[plan:widget-designability] Wn`. W4's waits (#1567, #1560, #1584, #1585) are merged; a new kind (#1585) reads its saved-tree checks through `pg_sw_cond_tree_json()`.
+- Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W4.
+- W6 (lists engine), then W7; W14 part 2 and W15 are free beside them.

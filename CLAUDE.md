@@ -114,10 +114,11 @@ session).
 2. **Hand over when green.** CI green on your head and nothing left for you:
    put the `ready` label on the PR
    (`gh api -X POST repos/kodpen/pinegrapcms/issues/<n>/labels -f 'labels[]=ready'`;
-   the merge order, if it has one, goes in the PR body), unsubscribe from its
-   activity, cancel your check-ins and stop. From then on do not merge
-   `development` into it, rebase it or re-run its checks; only the merging
-   session keeps it current. Act again only when it asks on the PR.
+   the merge order, if it has one, goes in the PR body), cancel your
+   check-ins and wait, still subscribed to the PR's activity. From then on do
+   not merge `development` into it, rebase it or re-run its checks; only the
+   merging session keeps it current. Act on it again only when that session
+   asks on the PR; its comment wakes you, and so does the merge (rule 6).
 3. **Only the merging session merges**, one session (a backup merges only
    when the owner says so). It merges in merge windows as a merge train
    (`merge-train.md`): the PRs merged onto `development` with one merge
@@ -141,8 +142,13 @@ session).
    steps are cut to that size when the plan is written, separate PRs, one at
    a time. A finished PR over the limit still lands, in a train of its own;
    the split is asked of the next step, not of the PR.
-6. **One task, one session.** Hand over through the plan file and the PR, not
-   a long-running session; at most one safety check-in, never polling.
+6. **On to the next step when your PR lands.** When GitHub closes your PR
+   as merged, check the queue limit (rule 8). Under it, take the next step
+   of your plan that no open PR holds (Claim work, steps 1-2); with no plan,
+   no free step or the queue over the limit, end. At most three steps in a
+   row, then hand over through the plan file and end: a long session pays
+   for its whole context on every wake. At most one safety check-in, never
+   polling.
 7. **Shared hot files**: a PR does not edit `changelog.txt`; its body names
    the `[NEW]` line or the `[SCHEME]` item and the merging session writes it
    when it lands the PR. Translation keys go in with `php tools/tr_add.php`
