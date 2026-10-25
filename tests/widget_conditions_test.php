@@ -313,13 +313,20 @@ function test_widget_conditions_placement_checks_skip_conditions()
 	}
 }
 
-// The module carries no quoted '__token' map keys: tools/check_bindings.php
-// would count each one as a token a renderer fills.
+// The modules carry no quoted '__token' map keys: tools/check_bindings.php
+// would count each one as a token a renderer fills. The one exception is
+// the finish pass's own row position tokens, which it does fill
+// (pg_sw_finish_position_values()).
 function test_widget_conditions_no_token_map_keys()
 {
-	foreach (array('widgets_conditions.php', 'widgets_finish.php') as $file) {
+	$own = array(
+		'widgets_conditions.php' => array(),
+		'widgets_finish.php'     => array_keys(pg_sw_finish_position_values(0, 1)),
+	);
+	foreach ($own as $file => $allowed) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $file);
-		pg_assert_same(0, preg_match("/'(__[a-z0-9_]+)'\s*=>/", $source), $file);
+		preg_match_all("/'(__[a-z0-9_]+)'\s*=>/", $source, $m);
+		pg_assert_same($allowed, $m[1], $file);
 		pg_assert_same(0, preg_match("/\\\$[A-Za-z_][A-Za-z0-9_]*\['(__[a-z0-9_]+)'\]\s*=[^=>]/", $source), $file);
 	}
 }

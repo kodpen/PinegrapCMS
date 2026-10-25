@@ -28169,5 +28169,12 @@
     "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
     "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş.",
     "Marked as refunded: the money went back from the order screen.": "Ücreti iade edildi olarak işaretlendi: para sipariş ekranından geri ödendi.",
-    "The payment service has not confirmed this refund. If this note stays, check the refund on the service's screen.": "Ödeme hizmeti bu iadeyi henüz onaylamadı. Bu not kalırsa iadeyi hizmetin kendi ekranında kontrol edin."
+    "The payment service has not confirmed this refund. If this note stays, check the refund on the service's screen.": "Ödeme hizmeti bu iadeyi henüz onaylamadı. Bu not kalırsa iadeyi hizmetin kendi ekranında kontrol edin.",
+    "Position in the list": "Listedeki yeri",
+    "Row number": "Sıra numarası",
+    "Rows on this page": "Bu sayfadaki satır sayısı",
+    "First row (1 or empty)": "İlk satır (1 ya da boş)",
+    "Last row (1 or empty)": "Son satır (1 ya da boş)",
+    "Odd row (1 or empty)": "Tek numaralı satır (1 ya da boş)",
+    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)"
 }
