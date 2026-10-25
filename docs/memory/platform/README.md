@@ -22,6 +22,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Make a change to what pages show that is not a signed-in POST, a content `api.php` row, an MCP write or a `pg_announce()` call `pg_page_cache_mark_dirty()`, and sort a new designer, shared component or explorer sub-action into `pg_page_cache_panel_sub_actions()`, or the file cache serves the old page for the TTL (`page-cache-invalidation.md`).
 - Cut a name a person gave (upload, archive entry, link) with `pg_basename()` and take its stem with `pg_file_name_stem()`, never `basename()` or `pathinfo()`: before PHP 8.0 they drop the non-ASCII letters the name starts with (`file-name-last-segment.md`).
 - Ask `pg_dir_writable()` whether a folder takes a file, never `is_writable()`: PHP on Windows reads the folder's read-only attribute, which OneDrive and Explorer set and which stops no write (`windows-folder-is-writable.md`).
+- Make a key with `pg_openssl_key_new()` and export it with the arguments it returns, never `openssl_pkey_new()` directly: without an OpenSSL config file (Windows PHP) both fail (`openssl-key-generation.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -68,7 +69,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
-- openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section); Apple sign-in (read and sign) needs none.
+- openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() fail without an OpenSSL config file; pg_openssl_key_new() retries with includes/openssl.cnf; DKIM keeps the old pair; Apple sign-in needs none.
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
 - page-cache-decisions.md: Why Pinegrap has its own anonymous page cache and the lasting decisions behind it (PRs #1382, #1402): no CDN dependence, off by default, what is never cached, how to measure
 - page-cache-gate.md: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot

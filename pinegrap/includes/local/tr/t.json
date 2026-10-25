@@ -545,6 +545,7 @@
     "The Claude settings were saved.": "Claude ayarları kaydedildi.",
     "The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.": "Onay Türü Sonraki Sayfa, ancak sayfa seçilmemiş. Ziyaretçinin gönderdikten sonra gideceği sayfayı seçin ya da Mesaj'ı seçin.",
     "The Continue link in the confirmation. A ?send_to= in the reset link wins.": "Onaydaki Devam bağlantısı. Sıfırlama bağlantısındaki ?send_to= önceliklidir.",
+    "The DKIM key could not be generated on this server. Any existing DKIM key was left unchanged.": "DKIM anahtarı bu sunucuda oluşturulamadı. Varsa mevcut DKIM anahtarı değiştirilmedi.",
     "The DNS record ID is not valid.": "DNS kayıt kimliği geçerli değil.",
     "The Docs": "Dokümanlar",
     "The ERP account beside its card at {var:1}.": "ERP carisi ve {var:1} kartı yan yana.",
