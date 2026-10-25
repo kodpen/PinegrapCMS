@@ -539,6 +539,9 @@ function ws_customer_js_strings()
         'cust_quotes'     => lang('Open sales quotes'),
         'cust_forms'      => lang('Form submissions'),
         'cust_empty'      => lang('Nothing to show for this customer yet.'),
+        'cust_history'       => lang('History'),
+        'cust_older'         => lang('Show older'),
+        'cust_history_empty' => lang('Nothing in the history yet.'),
     );
 }
 

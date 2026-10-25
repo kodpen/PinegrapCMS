@@ -8,7 +8,8 @@
  * assets/js/workspace.js asks this file for the card and lends it its own
  * helpers (api, t, el, ...), so nothing here talks to the server or shows a
  * text any other way:
- *   PGWsCustomer.card(channel, helpers)   the card, filled once it is read
+ *   PGWsCustomer.card(channel, helpers)   the card, filled once it is read,
+ *                                         with its History read on demand
  *
  * The server reads the card for the person looking (ws_customer_card(),
  * includes/workspace/customer.php): a section they hold no right to is not
@@ -71,7 +72,7 @@
         return row;
     }
 
-    function draw(h, body, data) {
+    function draw(h, body, data, channelId) {
         var sections = data.sections || {};
         var shown = false;
 
@@ -136,6 +137,82 @@
         if (!shown) {
             body.appendChild(h.el('div', 'small text-body-secondary mt-3', h.t('cust_empty')));
         }
+
+        body.appendChild(historyPart(h, channelId));
+    }
+
+    // The kinds of entry in the history and their icons.
+    var HISTORY_ICONS = {
+        order: 'bi-bag-check',
+        invoice: 'bi-receipt',
+        sales_quote: 'bi-file-earmark-text',
+        form: 'bi-ui-checks',
+        message: 'bi-chat-left-text',
+        task: 'bi-check2-square'
+    };
+
+    // What happened with the customer, newest first, read only when asked
+    // for and page by page (ws_customer_history(), customer_history.php).
+    function historyPart(h, channelId) {
+        var part = h.el('div', 'mt-3');
+        var open = h.button('btn btn-sm btn-outline-secondary', h.t('cust_history'), 'bi-clock-history');
+        var list = h.el('div', '');
+
+        function page(before) {
+            var more = h.button('btn btn-sm btn-link px-0', h.t('cust_older'));
+
+            return h.api('ws_channel_customer_history', { channel_id: channelId, before: before }).then(function (data) {
+                var history = data.history;
+
+                if (!history.entries.length && !before) {
+                    list.appendChild(h.el('div', 'small text-body-secondary', h.t('cust_history_empty')));
+                }
+
+                history.entries.forEach(function (entry) {
+                    var row = h.el('div', 'd-flex align-items-baseline gap-2 small py-1 border-bottom');
+
+                    row.appendChild(h.icon(HISTORY_ICONS[entry.kind] || 'bi-dot', 'text-body-secondary'));
+                    row.appendChild(named(h, 'text-truncate', entry.title, entry.url));
+                    row.appendChild(h.el('span', 'text-body-secondary text-truncate flex-grow-1', [entry.status_label, entry.detail].filter(Boolean).join(' · ')));
+
+                    if (entry.amount_text) {
+                        row.appendChild(h.el('span', 'fw-semibold text-nowrap', entry.amount_text));
+                    }
+
+                    row.appendChild(h.el('span', 'text-body-secondary text-nowrap', entry.at_text));
+                    list.appendChild(row);
+                });
+
+                if (history.more) {
+                    more.addEventListener('click', function () {
+                        more.disabled = true;
+                        page(history.before).then(function () {
+                            more.remove();
+                        }, function (error) {
+                            more.disabled = false;
+                            h.fail(error);
+                        });
+                    });
+                    list.appendChild(more);
+                }
+            });
+        }
+
+        open.addEventListener('click', function () {
+            open.disabled = true;
+            page(0).then(function () {
+                open.remove();
+                part.appendChild(sectionTitle(h, h.t('cust_history'), 'bi-clock-history', 0));
+                part.appendChild(list);
+            }, function (error) {
+                open.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        part.appendChild(open);
+
+        return part;
     }
 
     function card(channel, h) {
@@ -150,7 +227,7 @@
         // No card for a customer gone since, or one the reader cannot read.
         h.api('ws_channel_customer', { channel_id: channel.id }).then(function (data) {
             if (data.card) {
-                draw(h, body, data.card);
+                draw(h, body, data.card, channel.id);
             } else {
                 node.remove();
             }

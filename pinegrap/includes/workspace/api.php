@@ -149,6 +149,8 @@ function ws_openapi_objects()
         'WorkspaceCustomerQuotes'  => 'ws_api_customer_quotes_schema',
         'WorkspaceCustomerQuote'   => 'ws_api_customer_quote_schema',
         'WorkspaceCustomerForm'    => 'ws_api_customer_form_schema',
+        'WorkspaceCustomerHistory' => 'ws_api_customer_history_schema',
+        'WorkspaceCustomerHistoryEntry' => 'ws_api_customer_history_entry_schema',
         'WorkspaceChangeType'     => 'ws_api_claude_change_type_schema',
         'WorkspaceRecord'         => 'ws_api_claude_record_schema',
         'WorkspaceRecordLine'     => 'ws_api_claude_record_line_schema',
@@ -371,6 +373,25 @@ function ws_api_routes()
             'description' => 'The customer the channel is about - the contact, user or current account chosen for it (customer_type and customer_id on the channel) - with the records tied to it through its contact that the owner of the application may see, and where the customer stands. orders: how many orders the customer placed (by its contact, the users tied to it and its current accounts; a cart not ordered yet is not one, and a counter sale counts for its buyer, never for the user who rang it up) and the latest five. erp_accounts: each current account tied to it with its balance in the site\'s currency, positive when the account owes. sales_quotes: how many open sales quotes its current accounts have (open and not past their date) and the latest five. forms: the latest five forms its contact submitted, in folders the owner may edit. Money is in minor units; total_text and balance_text write it out as the panel does, a sales quote in its own currency. A section is null where the owner holds no right to it (the ecommerce right for orders, the ERP right for the balance and the sales quotes - read only is enough - and the forms right for forms) or the key not the scope the API reads that kind of record with (orders:read, erp:read, forms:read), and where it holds nothing. A record the owner may not see (for an owner with the user role, also a contact outside the contact groups given to it), or the key may not read (customers:read for a contact, erp:read for a current account; no scope reads a user account, so a user always), is named by its kind and number only, with no detail and url null. customer is null for a channel about nobody, or whose customer was deleted. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there is open, as the person who asked reads it, as GET /workspace/channels/{id}/context does.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // The customer's history beside the summary: read as the summary is,
+        // by the same reader narrowed to the same scopes, so it stays an MCP
+        // tool as well.
+        array(
+            'id'          => 'workspace.channels.customer_history',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/customer/history',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_customer_history',
+            'returns'     => 'WorkspaceCustomerHistory',
+            'summary'     => 'What happened with a channel\'s customer, newest first',
+            'description' => 'One list, newest first, of what happened with the customer the channel is about (GET /workspace/channels/{id}/customer): their orders (kind order; a cart not ordered yet is none), the invoices of their current accounts, sales and purchase, drafts and cancelled ones too (invoice), the sales quotes of those accounts in every state (sales_quote, its state as the ERP calls it now: an open quote past its date is expired), the forms their contact submitted in folders the owner may edit (form), and the messages in other channels and the tasks that tag the customer or a record tied to it, where the owner may see them (message, task; the channel\'s own messages are left out, read them with GET /workspace/channels/{id}/messages). at is when it happened: placed, written or sent. amount is in minor units, amount_text writes it out as the panel does (an invoice or a sales quote in its own currency); both are empty for an entry without an amount. url opens it in the panel. A kind is left out where the owner holds no right to it (the ecommerce right for orders, the ERP right for invoices and sales quotes - read only is enough - and the forms right for forms) or the key not the scope the API reads it with (orders:read, erp:read, forms:read). limit is 20 by default, at most 50. When more is true, ask again with before set to the answer\'s before for the next page; a page never ends inside a second, so nothing is skipped. entries is empty for a channel about nobody. The application chosen for Claude reads the channel as GET /workspace/channels/{id}/customer does.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'before', 'in' => 'query', 'type' => 'int', 'min' => 0),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 20),
             ),
         ),
 
