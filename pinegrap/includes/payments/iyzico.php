@@ -17,14 +17,15 @@
  * the gateway code in submit_order.php, view_order.php and
  * process_order_cancellation() has always sent.
  *
- * The bank's answer to a 3-D Secure payment comes back to submit_order.php
- * (mode iyzipay_threedsecure_return), which finishes the payment itself and
- * reads the row the start of the payment keeps in iyzipay_3ds_state; so the
- * card driver writes that row and defines no complete().
+ * A 3-D Secure payment starts with a row in iyzipay_3ds_state (the totals it
+ * was started with); the bank's answer comes back to submit_order.php (mode
+ * iyzipay_threedsecure_return), which hands it to the card driver's
+ * complete(): the row is claimed, the payment confirmed and checked against it.
  *
  * Each operation is a thin wrapper around a *_with() function that takes the
- * settings (and, for the 3-D Secure row, the writer) as arguments, so the
- * whole flow can run against a stand-in for iyzico's HTTP client.
+ * settings (and, for the 3-D Secure row, the functions that write, read and
+ * claim it) as arguments, so the whole flow can run against a stand-in for
+ * iyzico's HTTP client.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -42,12 +43,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_payment_iyzico_capabilities()
 {
-    return array('installments', 'partial_refund');
+    return array('installments', 'partial_refund', 'threeds');
 }
 
 function pg_payment_iyzico_authorize($order, $amount, $payment)
 {
     return pg_payment_iyzico_authorize_with($order, $amount, $payment, pg_payment_iyzico_settings(true), 'pg_payment_iyzico_threeds_keep');
+}
+
+function pg_payment_iyzico_complete($order, $amount, $return, $state)
+{
+    return pg_payment_iyzico_complete_with($order, $amount, $return, $state, pg_payment_iyzico_settings(true), 'pg_payment_iyzico_threeds_find', 'pg_payment_iyzico_threeds_claim');
 }
 
 function pg_payment_iyzico_refund($order, $amount, $lines)
@@ -349,7 +355,9 @@ function pg_payment_iyzico_start_error($error_message, $raw)
  * @param array    $payment
  * @param array    $settings pg_payment_iyzico_settings(true)
  * @param callable $keep     writes the 3-D Secure row (pg_payment_iyzico_threeds_keep())
- * @return array an answer: paid, or redirect with the bank's page
+ * @return array an answer: paid, or redirect with the bank's page and, as
+ *               state, the instalment number the visitor picked, which the
+ *               return checks against the limit again
  */
 function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, $keep)
 {
@@ -541,6 +549,7 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
             'html'         => (string) $initialize->getHtmlContent(),
             'amount'       => $total,
             'installments' => $installment,
+            'state'        => array('installment' => $selected),
             'log'          => $log,
         );
     }
@@ -581,7 +590,7 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
 }
 
 /**
- * Writes the row the 3-D Secure return in submit_order.php reads.
+ * Writes the row the 3-D Secure return (pg_payment_iyzico_complete_with()) reads.
  *
  * @param array $row pg_payment_iyzico_authorize_with()
  * @return void
@@ -602,6 +611,202 @@ function pg_payment_iyzico_threeds_keep($row)
     ";
 
     mysqli_query(db::$con, $query) or output_error(lang('3DS state insert failed.'));
+}
+
+/**
+ * The 3-D Secure row of the conversation id the bank posts back.
+ *
+ * @param string $conversation_id
+ * @return array|null the iyzipay_3ds_state row, null when there is none
+ */
+function pg_payment_iyzico_threeds_find($conversation_id)
+{
+    $query = "
+        SELECT *
+        FROM iyzipay_3ds_state
+        WHERE conversation_id = '" . mysqli_real_escape_string(db::$con, (string) $conversation_id) . "'
+        LIMIT 1
+    ";
+
+    $result = mysqli_query(db::$con, $query) or output_error(lang('3DS state select failed.'));
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Marks a 3-D Secure row used by the payment the bank posted back. The
+ * payment id is the used marker, so a replayed return finds the row taken.
+ *
+ * @param array  $row        pg_payment_iyzico_threeds_find()
+ * @param string $payment_id
+ * @return bool true when this call took the row
+ */
+function pg_payment_iyzico_threeds_claim($row, $payment_id)
+{
+    $query = "
+        UPDATE iyzipay_3ds_state
+        SET payment_id = '" . mysqli_real_escape_string(db::$con, (string) $payment_id) . "'
+        WHERE
+            (id = '" . (int) $row['id'] . "')
+            AND ((payment_id IS NULL) OR (payment_id = ''))
+        LIMIT 1
+    ";
+
+    mysqli_query(db::$con, $query) or output_error('3DS state update failed.');
+
+    return mysqli_affected_rows(db::$con) === 1;
+}
+
+/**
+ * The visitor is back from the bank's 3-D Secure page: the payment the bank
+ * confirmed is taken from iyzico only for the order and the total it was
+ * started with (the iyzipay_3ds_state row), and the order records the row's
+ * total and instalment charge, which are what the card was charged. The row
+ * is claimed before iyzico is asked, so a replayed return cannot take the
+ * payment twice; a payment iyzico took for another total is cancelled.
+ *
+ * @param array    $order    orders row of the order in the visitor's session
+ * @param int      $amount   hundredths: the order total now, before any
+ *                           instalment charge
+ * @param array    $return   what the bank posted back (conversationId,
+ *                           paymentId, conversationData)
+ * @param array    $state    pg_payment_iyzico_authorize_with(): the instalment
+ *                           number the visitor picked
+ * @param array    $settings pg_payment_iyzico_settings(true)
+ * @param callable $find     reads the row (pg_payment_iyzico_threeds_find())
+ * @param callable $claim    marks it used (pg_payment_iyzico_threeds_claim())
+ * @return array an answer: paid; state kept only while iyzico was not asked
+ */
+function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $settings, $find, $claim)
+{
+    pg_payment_iyzico_sdk();
+
+    $return = is_array($return) ? $return : array();
+    $state = is_array($state) ? $state : array();
+    $log = array();
+
+    // The store's limit may have been lowered while the visitor was at the
+    // bank; the instalment price is not asked again, the row has it.
+    $selected = isset($state['installment']) ? (int) $state['installment'] : 0;
+
+    if (($selected >= 1) && ($selected > $settings['installments'])) {
+        $answer = pg_payment_failure(lang('Payment Installment cannot be bigger than accepted Installment!'));
+        $answer['state'] = $state;
+
+        return $answer;
+    }
+
+    $posted = function ($name) use ($return) {
+        return (isset($return[$name]) && is_scalar($return[$name])) ? (string) $return[$name] : '';
+    };
+
+    $conversation_id = $posted('conversationId');
+    $posted_payment_id = $posted('paymentId');
+    $order_id = (int) pg_payment_iyzico_order_value($order, 'id');
+    $row = ($conversation_id !== '') ? call_user_func($find, $conversation_id) : null;
+
+    // The row must belong to the order in the visitor's session, otherwise a
+    // conversation id taken from another order could complete this one.
+    if (!is_array($row) || ($order_id <= 0) || ((int) $row['order_id'] !== $order_id) || ($posted_payment_id === '')) {
+        $log[] = "Iyzipay 3DS callback: state not found or order mismatch for conversationId=$conversation_id, order_id=$order_id";
+
+        $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
+        $answer['state'] = $state;
+
+        return $answer;
+    }
+
+    if (!call_user_func($claim, $row, $posted_payment_id)) {
+        $log[] = "Iyzipay 3DS callback: state already used for conversationId=$conversation_id";
+
+        $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
+        $answer['state'] = $state;
+
+        return $answer;
+    }
+
+    $options = pg_payment_iyzico_options($settings);
+
+    $request = new \Iyzipay\Request\CreateThreedsPaymentRequest();
+    $request->setLocale($settings['locale']);
+    $request->setConversationId($conversation_id);
+    $request->setPaymentId($posted_payment_id);
+    $request->setConversationData($posted('conversationData'));
+
+    $paid = \Iyzipay\Model\ThreedsPayment::create($request, $options);
+
+    $status = $paid->getStatus();
+    $error_code = $paid->getErrorCode();
+    $error_message = $paid->getErrorMessage();
+    $payment_id = (string) $paid->getPaymentId();
+    $fraud_status = $paid->getFraudStatus();
+    $paid_cents = (int) round((float) $paid->getPaidPrice() * 100);
+
+    if ($error_code === '5002') {
+        $log[] = "Iyzipay 3DS error 5002: paymentId=$payment_id";
+
+        return pg_payment_failure_logged(lang('3D Secure verification failed. Please try again.'), $log);
+    }
+
+    if ($status !== 'success') {
+        $log[] = "Iyzipay 3DS status!=success: code=$error_code, message=$error_message";
+
+        return pg_payment_failure_logged(lang('Payment could not be verified. Please try again.'), $log);
+    }
+
+    if ($fraud_status === -1) {
+        $log[] = "Iyzipay 3DS fraud rejected: paymentId=$payment_id";
+
+        return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), $log);
+    }
+
+    if ($fraud_status === 0) {
+        $log[] = "Iyzipay 3DS fraud pending review: paymentId=$payment_id";
+    }
+
+    // The order must still total what the payment was started with (the cart
+    // may have changed in another tab), and iyzico must have taken exactly
+    // that plus the instalment charge. In the protected currency iyzico's
+    // amount was converted at the rate of the start, which may have moved.
+    $base_total = (int) $row['base_total_cents'];
+    $current_total = (int) $amount;
+    $expected_paid = $base_total + (int) $row['installment_charge_cents'];
+    $expected_cents = $expected_paid;
+    $tolerance = 0;
+
+    if ($settings['protected_rate'] > 0) {
+        $expected_cents = (int) round(($expected_paid / 100.0) * $settings['protected_rate'] * 100);
+        $tolerance = (int) ceil($expected_cents * 0.01);
+    }
+
+    if (($base_total <= 0) || ($current_total !== $base_total) || (abs($paid_cents - $expected_cents) > $tolerance)) {
+        $log[] = "Iyzipay 3DS amount mismatch: paymentId=$payment_id, order_id=$order_id, current_total=$current_total, stored_total=$base_total, gateway_paid=$paid_cents, expected_paid=$expected_cents";
+        $log = array_merge($log, pg_payment_iyzico_void($options, $payment_id, $conversation_id, 'Order total changed during 3D Secure verification'));
+
+        return pg_payment_failure_logged(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $log);
+    }
+
+    $log[] = lang(array(
+        'string' => 'The 3D Security process has been completed by {var:1} {var:2} ({var:3}).',
+        'vars'   => array(
+            pg_payment_iyzico_order_value($order, 'billing_first_name'),
+            pg_payment_iyzico_order_value($order, 'billing_last_name'),
+            pg_payment_iyzico_order_value($order, 'billing_email_address'),
+        ),
+    ));
+
+    return array(
+        'success'        => true,
+        'status'         => 'paid',
+        'transaction_id' => ($payment_id !== '') ? $payment_id : $posted_payment_id,
+        // The row's total and instalment charge; the caller takes what is
+        // above the order total as the charge (pg_payment_checkout_totals()).
+        'amount'         => $expected_paid,
+        'installments'   => (int) $paid->getInstallment(),
+        'card_brand'     => (string) $paid->getCardAssociation(),
+        'log'            => $log,
+    );
 }
 
 /* ---------------------------------------------------------------------------

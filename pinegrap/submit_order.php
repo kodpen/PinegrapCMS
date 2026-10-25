@@ -1881,8 +1881,9 @@ function submit_order($type) {
         $payment_order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
         $payment_order = is_array($payment_order) ? $payment_order : array();
         $payment_return_mode = pg_payment_return_mode($payment_driver);
+        $payment_return = ($payment_return_mode !== '') && (($_GET['mode'] ?? '') === $payment_return_mode);
 
-        if (($payment_return_mode !== '') && (($_GET['mode'] ?? '') === $payment_return_mode)) {
+        if ($payment_return) {
             $payment_answer = pg_payment_call($payment_driver, 'complete', array(
                 $payment_order,
                 $total,
@@ -1965,6 +1966,13 @@ function submit_order($type) {
                 $card_number = ($payment_answer['card_last4'] !== '') ? str_repeat('0', 12) . $payment_answer['card_last4'] : '';
                 $expiration_month = $payment_answer['card_exp_month'];
                 $expiration_year = $payment_answer['card_exp_year'];
+
+            // The bank's 3-D Secure return posts no card and the card checks
+            // above do not run for it: the order keeps no card number.
+            } elseif ($payment_return) {
+                $card_number = '';
+                $expiration_month = '';
+                $expiration_year = '';
             }
         }
     }
