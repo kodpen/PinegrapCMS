@@ -4,12 +4,12 @@ description: Returns in the classic My Account order view: listed for the owner 
 ---
 
 ## Which page is it?
-- A legacy page of type `view order` (`get_view_order_screen_content.php`), linked from the legacy My Account page and, when no designer order page exists, from the My Account widget. It is not the panel's `view_order.php`. The designer order view widget is order-returns-customer.md.
+- Added by PR #1617: a legacy page of type `view order` (`get_view_order_screen_content.php`), linked from the legacy My Account page and, when no designer order page exists, from the My Account widget. It is not the panel's `view_order.php`. The designer order view widget is order-returns-customer.md.
 
 ## What does it show, and to whom?
 - Only to the signed-in account that owns the order: `pg_return_classic_visible(USER_ID, orders.user_id, email)`, the `USER_ID` rule `order_return.php` applies. The page's own check (user looked up by `sessionusername`) still runs first. Never in a page drawn as an e-mail (`pg_sw_render_context()['email']`); guests are sent to sign in by `get_page.php`.
 - The order's returns always when it has some (decided 2026-10-25): a return staff or an app recorded is visible with the switch off, read-only. The request form and the customer's moves (withdraw, "I have sent it") only while `ECOMMERCE_ORDER_RETURNS_ALLOWED` is on, under `pg_return_customer_view()`'s rules. `pg_return_classic_view_html()` (pure) also drops the moves when the view says the switch is off.
-- An order without returns, or with nothing to ask for, draws byte for byte as before.
+- An order with no returns and nothing to ask for draws byte for byte as before, unless an `order_return.php` answer is waiting, which the owner's page prints.
 
 ## How does the answer come back?
 - The forms post to `order_return.php` with `send_to` = `REQUEST_URL`; it answers through liveform `order_receipt` and redirects back. The page reads that liveform, prints it at the top of `div.software_order_view` and removes it.
@@ -21,8 +21,8 @@ description: Returns in the classic My Account order view: listed for the owner 
 - Dates through `pg_return_classic_date()`: `get_absolute_time()` with `format => plain_text`, because the builders escape dates and the default `<time>` element would show as text.
 
 ## What is known not to work?
-- A `view order` page that also carries an order view widget draws two order views; whichever renders first prints the answer.
+- A `view order` page that also carries an order view widget draws two order views. `get_page_content()` expands system widgets before the `<system>` region, so the widget's messages node always prints and clears the `order_receipt` answer; the classic block never shows it, even for its own forms.
 - `order_history_view_order.php` without a `view order` page ends in a missing template (older bug).
 
 ## Tests?
-- `tests/returns_test.php` (`test_returns_classic_*`, `test_returns_block_html`), `tests/order_view_screen_test.php` (`test_order_view_screen_returns`, source order). Sandbox (Bootstrap 3 turkish_default, both layouts): request, repeat, withdraw, sent, a refusal, another account's order, a guest, switch off, e-mail render, no tables; the widget's output for the same orders unchanged.
+- `tests/returns_test.php` (`test_returns_classic_*`, the wrapper by source, `test_returns_block_html`), `tests/order_view_screen_test.php` (`test_order_view_screen_returns`: the gate, source order). Sandbox (Bootstrap 3 turkish_default, both layouts): request, repeat, withdraw, sent, a refusal, another account's order, a guest, switch off, e-mail render, no tables; the widget's output for the same orders unchanged.

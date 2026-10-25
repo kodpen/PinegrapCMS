@@ -64,12 +64,16 @@ function test_order_view_screen_returns()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_view_order_screen_content.php');
 	$owner = strpos($source, 'if ($order_user_id != $user_id) {');
-	$visible = strpos($source, "pg_return_classic_visible(defined('USER_ID') ? USER_ID : 0, \$order_user_id, ");
-	$block = strpos($source, 'pg_return_classic_block($order_id, REQUEST_URL)');
+	// The whole gate: USER_ID owns the order, and the page is not an e-mail.
+	$visible = strpos($source, "if (pg_return_classic_visible(defined('USER_ID') ? USER_ID : 0, \$order_user_id, !empty(\$render_context['email']))) {");
+	$block = strpos($source, '$output_returns = pg_return_classic_block($order_id, REQUEST_URL);');
 	$layouts = strpos($source, "if (\$layout_type == 'system') {");
 
 	pg_assert_true(($owner !== false) && ($visible !== false) && ($block !== false) && ($layouts !== false), 'all four are there');
 	pg_assert_true(($owner < $visible) && ($visible < $block) && ($block < $layouts), 'owner check, visibility, block, layouts');
+
+	$gate_end = strpos($source, "\n    }\n", (int) $visible);
+	pg_assert_true(($gate_end !== false) && ($block < $gate_end), 'the block is drawn inside the gate');
 
 	$answer = strpos($source, "new liveform('order_receipt')");
 	pg_assert_true(($answer !== false) && ($answer > $visible) && ($answer < $block), 'the answer is read for the owner');
@@ -78,5 +82,9 @@ function test_order_view_screen_returns()
 
 	pg_assert_contains('$output_return_messages . $output . $output_returns', $source, 'system layout');
 	pg_assert_contains('$output_return_messages . $content . $output_returns', $source, 'custom layout');
-	pg_assert_true(strpos($source, '$content = $form->prepare($content);') < strrpos($source, '$output_returns'), 'after prepare()');
+
+	// prepare() rewrites inputs named in the 'view_order' session, so it gets
+	// only the layout, and the returns forms are added after it.
+	$prepare = strpos($source, '$content = $form->prepare($content);');
+	pg_assert_true(($prepare !== false) && ($prepare < strrpos($source, '$output_returns')), 'after prepare()');
 }

@@ -29,4 +29,4 @@ description: Customer side of returns in My Account's order view: the switch, __
 - Activity log lines for the request, the withdrawal and the parcel sent back.
 
 ## And the classic order view?
-- The legacy `view order` page shows the same list and form: commerce/order-returns-classic-view.md.
+- The legacy `view order` page shows the same list and form (PR #1617): commerce/order-returns-classic-view.md.

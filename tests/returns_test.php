@@ -504,9 +504,33 @@ function test_returns_classic_view_html()
 	pg_assert_same(1, substr_count($html, '<form '), 'the form alone');
 	pg_assert_false(strpos($html, 'pg-ov-returns"') !== false, 'no list');
 
+	// Switched on, but the customer may not ask (window closed): no form.
+	$html = pg_return_classic_view_html(array('enabled' => true, 'returns' => array($requested),
+		'deliveries' => array($delivery), 'can_request' => false, 'has_returns' => true), returns_test_form());
+	pg_assert_false(strpos($html, 'value="request"') !== false, 'no form when the customer may not ask');
+
 	pg_assert_same('', pg_return_classic_view_html(array('enabled' => true, 'returns' => array(),
 		'deliveries' => array(), 'can_request' => false, 'has_returns' => false), returns_test_form()), 'nothing to show');
 	pg_assert_same('', pg_return_classic_view_html(null, returns_test_form()), 'no view');
+}
+
+// The classic block reads the database, so its wiring is checked in the
+// source: plain-text dates, the raw endpoint path (the builders escape it),
+// the page's own path to come back to, and nothing without e-commerce.
+function test_returns_classic_block_source()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
+	$start = strpos($source, "\nfunction pg_return_classic_block(");
+	$end = ($start === false) ? false : strpos($source, "\n}\n", $start);
+	pg_assert_true(($start !== false) && ($end !== false), 'the function is there');
+	$body = substr($source, (int) $start, (int) $end - (int) $start);
+
+	pg_assert_contains("if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {\n        return '';\n    }", $body, 'e-commerce gate');
+	pg_assert_contains("pg_return_customer_view(\$order_id, 'pg_return_classic_date')", $body, 'plain-text dates');
+	pg_assert_contains("'action'   => PATH . SOFTWARE_DIRECTORY . '/order_return.php',", $body, 'raw endpoint path');
+	pg_assert_false(strpos($body, 'OUTPUT_') !== false, 'no escaped path constant, escaped twice by the builders');
+	pg_assert_contains("'send_to'  => (string) \$send_to,", $body, 'back to the page');
+	pg_assert_contains("'token'    => get_token_field(),", $body, 'CSRF field');
 }
 
 // The customer's mail repeats what they asked for, escaped.
