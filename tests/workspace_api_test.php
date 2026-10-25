@@ -38,6 +38,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 
 function test_ws_api_routes_reach_a_handler()
 {
@@ -526,6 +527,20 @@ function test_ws_api_flow_shares_routes()
 	pg_assert_true(!empty($params['target_type']['required']) && !empty($params['target_id']['required']), 'what is shared with is required');
 }
 
+// A start retried with its token after the flow was paused answers the run
+// the token started to whoever still reads it, as before the pause: the
+// handler asks for that run before it answers 404 for a flow the person may
+// no longer run, and the start check decides the rest.
+function test_ws_api_flow_run_start_retried_after_a_pause()
+{
+	$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_flow_runs_start'));
+	$token = strpos($source, 'ws_flow_run_for_token(');
+
+	pg_assert_true($token !== false, 'the run the token started is looked for');
+	pg_assert_true($token < strpos($source, 'ws_api_flow_or_404('), 'before the flow is refused');
+	pg_assert_true(strpos($source, 'ws_api_flow_or_404(') < strpos($source, 'ws_flow_run_start_check('), 'the start check decides after both');
+}
+
 // The list reads changed messages with changed_since, a moment.
 function test_ws_api_messages_list_takes_changed_since()
 {
@@ -901,6 +916,19 @@ function test_ws_api_search_record_scopes_name_known_kinds()
 	}
 
 	pg_assert_false(array_key_exists('user_account', ws_api_search_record_scopes()), 'no scope reads user accounts');
+
+	// A sales quote is found with the scope the ERP's own quote routes read
+	// it with, so the search is no way round them.
+	$quote_routes = 0;
+
+	foreach (erp_api_routes() as $route) {
+		if (in_array($route['id'], array('erp.quotes.list', 'erp.quotes.get'), true)) {
+			$quote_routes++;
+			pg_assert_same($route['scope'], ws_api_search_record_scopes()['erp_quote'] ?? null, 'a sales quote is searched with the scope of ' . $route['id']);
+		}
+	}
+
+	pg_assert_same(2, $quote_routes, 'the ERP\'s quote routes were read');
 }
 
 // A person signed in on their own device writes in their own name; an

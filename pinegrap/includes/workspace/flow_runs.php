@@ -969,18 +969,44 @@ function ws_flow_runs_list($viewer, $flow, $filters = array(), $keep = null)
 }
 
 /**
+ * The run a start token named for a flow, as the person reaches it
+ * (ws_flow_run_for()): null for no token, a token of the wrong shape, one
+ * that started no run of the flow, or a run they may not read.
+ *
+ * @param array $viewer
+ * @param int   $flow_id
+ * @param mixed $token   as the client sent it
+ * @return array|null the run, with access and flow
+ */
+function ws_flow_run_for_token($viewer, $flow_id, $token)
+{
+    if (((int) $flow_id <= 0) || !ws_flow_start_token_valid($token)) {
+        return null;
+    }
+
+    $run_id = (int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . (int) $flow_id . "' AND start_key = '" . e(ws_flow_start_key($token)) . "'");
+
+    return ($run_id > 0) ? ws_flow_run_for($viewer, $run_id) : null;
+}
+
+/**
  * Whether the person may start a run of the flow now: the checks of
  * ws_flow_run_start(), made on their own so that the API's dry run meets the
  * same refusals. The flow is live with a version that is started by hand,
  * the person may run it, its owner is still on the staff (the run acts with
  * their rights), and it is neither too busy nor started too often. A token
  * already used for this flow is no refusal: it names the run it started, and
- * is looked up right after the access check, so a start retried after the
- * flow was paused or its owner left still answers the run it started.
+ * is looked up before the other refusals, so a start retried after the flow
+ * was paused or its owner left still answers the run it started. A person
+ * who may no longer run the flow (it was paused, or their share was lowered
+ * to view) gets that run back while they may read it
+ * (ws_flow_run_for_token()); anybody else gets the 404 of a flow they cannot
+ * see, or the 403 of a flow shared with them at view, never a refusal of the
+ * token's shape.
  *
- * @param array $viewer
- * @param array $flow
- * @param array $data token (optional, ws_flow_start_token_valid())
+ * @param array      $viewer
+ * @param array|null $flow
+ * @param array      $data   token (optional, ws_flow_start_token_valid())
  * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none)
  */
 function ws_flow_run_start_check($viewer, $flow, $data = array())
@@ -989,18 +1015,43 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
+    $token = $data['token'] ?? '';
+
+    // The run a token started, answered as its version stands.
+    $found = function ($run, $start_key) {
+        $version = ws_flow_version($run['version_id']);
+        $graph = is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_empty();
+
+        return array(
+            'ok'        => true,
+            'error'     => '',
+            'status'    => 200,
+            'field'     => '',
+            'start_key' => $start_key,
+            'version'   => is_array($version) ? $version : array('id' => 0, 'n' => 0),
+            'graph'     => $graph,
+            'trigger'   => ws_flow_trigger_node($graph),
+            'existing'  => (int) $run['id'],
+        );
+    };
+
     $access = ws_flow_access($viewer, $flow);
 
-    if ($access === '') {
-        return ws_flow_refusal(lang('That flow could not be found.'), 404);
-    }
+    // Somebody who may not run the flow, or no longer may (it was paused, or
+    // their share was lowered to view), gets the run their token started
+    // while they may read it. Otherwise a flow they do not reach is a 404,
+    // and a flow shared at view is looked at, not run.
+    if (($access === '') || ($access === 'view')) {
+        $retried = is_array($flow) ? ws_flow_run_for_token($viewer, (int) $flow['id'], $token) : null;
 
-    // A flow shared at view is looked at, not run.
-    if ($access === 'view') {
-        return ws_flow_refusal(lang('You can look at this flow but not run it.'), 403);
-    }
+        if ($retried) {
+            return $found($retried, ws_flow_start_key($token));
+        }
 
-    $token = $data['token'] ?? '';
+        return ($access === 'view')
+            ? ws_flow_refusal(lang('You can look at this flow but not run it.'), 403)
+            : ws_flow_refusal(lang('That flow could not be found.'), 404);
+    }
 
     if (($token !== '') && ($token !== null) && !ws_flow_start_token_valid($token)) {
         return ws_flow_refusal(lang(array('string' => 'The token of a run is 1-{var:1} letters, digits and . _ : - characters.', 'vars' => WS_FLOW_TOKEN_MAX)), 422, 'token');
@@ -1011,15 +1062,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
     $ok = array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'start_key' => $start_key);
 
     if ($existing) {
-        $version = ws_flow_version($existing['version_id']);
-        $graph = is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_empty();
-
-        return $ok + array(
-            'version'  => is_array($version) ? $version : array('id' => 0, 'n' => 0),
-            'graph'    => $graph,
-            'trigger'  => ws_flow_trigger_node($graph),
-            'existing' => (int) $existing['id'],
-        );
+        return $found($existing, $start_key);
     }
 
     $version = (((string) $flow['status'] === 'live') && ((int) $flow['version_id'] > 0)) ? ws_flow_version($flow['version_id']) : null;
@@ -1145,6 +1188,11 @@ function ws_flow_run_refresh($run_id)
     }
 
     $graph = ws_flow_run_graph($run);
+
+    // Taken before the boxes are read: a box another request settles after
+    // this read ends at or after the run's updated_at written below, which
+    // is how ws_flow_runs_heal() knows a waiting state written from boxes
+    // read too early.
     $now = time();
     $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
     $walk = ws_flow_walk($graph, $steps);
@@ -1258,7 +1306,10 @@ function ws_flow_step_claim($step)
  * leaves a run that reads running and is touched by nobody: a running run is
  * always touched within WS_FLOW_LOCK (its boxes are claimed, or stop half
  * way and are taken care of), so ws_flow_runs_heal() knows such a run by its
- * age and walks it again. An ended run stays as it is.
+ * age and walks it again. A walk of another request that read the boxes
+ * before this box settled may still write waiting over this mark; the run
+ * then has a box that ended at or after its last write, which the heal looks
+ * for too. An ended run stays as it is.
  *
  * @param int $run_id
  */
@@ -1298,13 +1349,24 @@ function ws_flow_step_settle($step, $from, $status, $outcome, $text, $data = arr
 }
 
 /**
- * Runs that read running but nobody touched for WS_FLOW_LOCK seconds
- * (ws_flow_run_touch()): a request died after it settled a box and before it
- * wrote the boxes after it, or after it wrote the run and before its start
- * box. Nothing else would look at such a run again. Each is walked again
- * (ws_flow_run_refresh()), a run without a single box getting its start box
- * first; a run that still reads running then (its boxes are ready, and the
- * claims take them) is left for another WS_FLOW_LOCK.
+ * Runs a request left half walked, which nothing else would look at again:
+ * - running, but nobody touched them for WS_FLOW_LOCK seconds
+ *   (ws_flow_run_touch()): a request died after it settled a box and before
+ *   it wrote the boxes after it, or after it wrote the run and before its
+ *   start box;
+ * - waiting, untouched as long, with a box that ended at or after the run's
+ *   last write: a walk that read the boxes just before that box ended wrote
+ *   waiting over the mark the box's request had made, and that request died
+ *   before it wrote what comes after the box. A run that only waits for its
+ *   tasks matches only when its last box ended in the second of that write;
+ *   it is walked once, to no effect, and then marked looked at.
+ * Each is walked again (ws_flow_run_refresh()), a run without a single box
+ * getting its start box first, and marked looked at: a run that still reads
+ * running then (its boxes are ready, and the claims take them) is left for
+ * another WS_FLOW_LOCK. ws_flow_due() sees the running ones only, since
+ * every open screen asks it and waiting runs are many; a waiting one is
+ * found on the runner's next pass (workspace_recurring_job.php runs it on
+ * every tick, and any box or action that is due starts one too).
  *
  * @param int $run_id only this run, 0 for all
  * @return int how many runs were walked again
@@ -1313,12 +1375,21 @@ function ws_flow_runs_heal($run_id = 0)
 {
     $now = time();
     $healed = 0;
+    $only = ((int) $run_id > 0) ? " AND id = '" . (int) $run_id . "'" : '';
 
-    foreach ((array) db_items("SELECT * FROM ws_flow_runs
-        WHERE status = 'running' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'"
-        . (((int) $run_id > 0) ? " AND id = '" . (int) $run_id . "'" : '') . "
-        ORDER BY updated_at LIMIT 10") as $run) {
+    $runs = array_merge(
+        (array) db_items("SELECT * FROM ws_flow_runs
+            WHERE status = 'running' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'" . $only . "
+            ORDER BY updated_at LIMIT 10"),
+        (array) db_items("SELECT * FROM ws_flow_runs
+            WHERE status = 'waiting' AND updated_at < '" . ($now - WS_FLOW_LOCK) . "'" . $only . "
+            AND EXISTS (SELECT 1 FROM ws_flow_run_steps
+                WHERE ws_flow_run_steps.run_id = ws_flow_runs.id AND ws_flow_run_steps.status IN ('done', 'failed', 'skipped')
+                AND ws_flow_run_steps.finished_at >= ws_flow_runs.updated_at)
+            ORDER BY updated_at LIMIT 10")
+    );
 
+    foreach ($runs as $run) {
         if (!db_value("SELECT id FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "' LIMIT 1")) {
             $trigger = ws_flow_trigger_node(ws_flow_run_graph($run));
 
@@ -1336,8 +1407,10 @@ function ws_flow_runs_heal($run_id = 0)
 
         ws_flow_run_refresh((int) $run['id']);
 
+        // Only when nobody wrote the run meanwhile: the walk's own write, or
+        // another request's, carries its own moment.
         db("UPDATE ws_flow_runs SET updated_at = '" . $now . "'
-            WHERE id = '" . (int) $run['id'] . "' AND status = 'running' AND updated_at = '" . (int) $run['updated_at'] . "'");
+            WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting') AND updated_at = '" . (int) $run['updated_at'] . "'");
 
         $healed++;
     }
@@ -1351,8 +1424,8 @@ function ws_flow_runs_heal($run_id = 0)
  * has come look at their task, then the ready boxes are claimed and carried
  * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run and
  * WS_FLOW_ADVANCE_MAX in all, and none started once the time budget is
- * spent. A box that ends makes the next ones ready, which a later round of
- * the same call takes.
+ * spent (ws_flow_advance_boxes()). A box that ends makes the next ones
+ * ready, which a later round of the same call takes.
  *
  * @param int $budget seconds: WS_FLOW_BUDGET_TICK on a screen, WS_FLOW_BUDGET_JOB in a job
  * @param int $run_id only this run (the one just started), 0 for all
@@ -1373,31 +1446,68 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
     ws_flow_runs_heal((int) $run_id);
     $result['woke'] = ws_flow_steps_recheck($only, $deadline);
 
-    $per_run = array();
-    $full = array();
-
-    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
-        $rows = (array) db_items("SELECT * FROM ws_flow_run_steps
-            WHERE status = 'ready' AND ready_at <= '" . time() . "'" . $only
-            . (!empty($full) ? " AND run_id NOT IN (" . implode(',', $full) . ")" : '') . "
-            ORDER BY ready_at, id LIMIT 20");
-        $started = 0;
-
-        foreach ($rows as $row) {
-            if (($result['ran'] >= WS_FLOW_ADVANCE_MAX) || (microtime(true) >= $deadline)) {
-                return $result;
-            }
-
-            $id = (int) $row['run_id'];
-
-            if (isset($full[$id]) || !ws_flow_step_claim($row)) {
-                continue;
-            }
-
+    $result['ran'] = ws_flow_advance_boxes(
+        function ($full) use ($only) {
+            return (array) db_items("SELECT * FROM ws_flow_run_steps
+                WHERE status = 'ready' AND ready_at <= '" . time() . "'" . $only
+                . (!empty($full) ? " AND run_id NOT IN (" . implode(',', array_map('intval', $full)) . ")" : '') . "
+                ORDER BY ready_at, id LIMIT 20");
+        },
+        function ($row) {
+            return ws_flow_step_claim($row);
+        },
+        function ($row) {
             // The row as the claim left it: a box on its second try knows it
             // is one (ws_flow_step_task() looks for the first try's task).
             $row['status'] = 'running';
             $row['attempt'] = (int) $row['attempt'] + 1;
+
+            ws_flow_step_run($row);
+        },
+        $deadline
+    );
+
+    return $result;
+}
+
+/**
+ * The ready boxes one call of ws_flow_advance() carries out, oldest first: a
+ * batch read at a time ($select, told the runs that had their share so that
+ * it leaves them out), each box taken ($claim) and carried out ($carry) in
+ * turn. At most WS_FLOW_BOXES_PER_RUN boxes of one run, also when one batch
+ * holds more of it, and WS_FLOW_ADVANCE_MAX in all; none started once the
+ * deadline has passed. A box another request took counts for nothing; a
+ * batch that starts no box ends the call. A box that ends makes the next
+ * ones ready, which a later batch takes. Pure but for its callables.
+ *
+ * @param callable $select   function (int[] $full): array[], ready rows of runs not in $full
+ * @param callable $claim    function (array $row): bool, whether this request took the box
+ * @param callable $carry    function (array $row), carries out a box taken
+ * @param float    $deadline microtime(true) after which no box is started
+ * @return int how many boxes were carried out
+ */
+function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
+{
+    $ran = 0;
+    $per_run = array();
+    $full = array();
+
+    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
+        $started = 0;
+
+        foreach ((array) $select($full) as $row) {
+            if (($ran >= WS_FLOW_ADVANCE_MAX) || (microtime(true) >= $deadline)) {
+                return $ran;
+            }
+
+            $id = (int) $row['run_id'];
+
+            // A run that had its share is passed over before its box is
+            // taken: a box taken and then left would wait in running until
+            // the stale pass.
+            if (isset($full[$id]) || !$claim($row)) {
+                continue;
+            }
 
             $per_run[$id] = ($per_run[$id] ?? 0) + 1;
 
@@ -1405,10 +1515,10 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
                 $full[$id] = $id;
             }
 
-            $result['ran']++;
+            $ran++;
             $started++;
 
-            ws_flow_step_run($row);
+            $carry($row);
         }
 
         if ($started === 0) {
@@ -1416,7 +1526,7 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
         }
     }
 
-    return $result;
+    return $ran;
 }
 
 /**
@@ -1643,7 +1753,9 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
  * on a stale box waits again instead of opening a second task. A box tried
  * again after its request died first looks for the task its first try
  * opened, and looks at it at once when it finds it: the task may have been
- * finished meanwhile, and the event that said so woke no box.
+ * finished meanwhile, and the event that said so woke no box. A run
+ * cancelled while the box was on its way opens no task; one cancelled while
+ * the task was being opened keeps its id on the box.
  *
  * @param array $run
  * @param array $flow
@@ -1665,6 +1777,16 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
     if (!$adopted) {
         $people = ws_flow_step_task_people($owner, $config, $run, $channel ? (int) $channel['department_id'] : 0);
+
+        // The run as it is now, read again right before anything is opened:
+        // a run cancelled since ws_flow_step_run() looked at it opens no
+        // task. The cancel skipped this box already; this leaves it so.
+        $current = ws_flow_run((int) $run['id']);
+
+        if (!$current || !ws_flow_run_open($current['status'])) {
+            ws_flow_step_settle($step, 'running', 'skipped', '', lang('Not reached in this run.'));
+            return;
+        }
 
         $made = ws_task_create($owner, array(
             'title'         => $title,
@@ -1700,7 +1822,18 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         // later in the same request is kept for it.
         ws_events_awaited(true);
         ws_flow_run_refresh((int) $run['id']);
+
+        return;
     }
+
+    // The box ended while its task was being opened: the run was cancelled
+    // at that very moment, or the box was given up as stopped half way. It
+    // still names the task it opened, which stays as it is, so the run shows
+    // it. A box made ready again for its retry is left alone: the retry
+    // finds this task itself (ws_flow_step_task_find()), and a box holding
+    // it would hide it from that search.
+    db("UPDATE ws_flow_run_steps SET effect = 'task:" . $task_id . "'
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '' AND status IN ('skipped', 'failed')");
 }
 
 /**
@@ -1881,7 +2014,9 @@ function ws_flow_run_cancel_check($viewer, $run)
  * Cancels a run: the run ends cancelled and its open boxes are skipped. The
  * tasks it opened stay as they are: a person decides what becomes of them.
  * A box another request is carrying out at this moment finds the run over
- * and leaves it so.
+ * and leaves it so; a task box looks again right before it opens its task,
+ * and a task opened at that very moment is still written on its box
+ * (ws_flow_step_task()), though this answer could not name it.
  *
  * @param array $viewer
  * @param array $run

@@ -12,7 +12,9 @@
  * presenters, which the panel can load, and the states it draws are the
  * runner's. The shares of a flow go through the share writers' own checks
  * and answer with the API's share presenter; every fl_ text handed over is
- * read by a script.
+ * read by a script. What the run view and the runs list show when a read
+ * fails is run under Node, with the script's own functions (skipped without
+ * Node).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -433,4 +435,276 @@ function test_workspace_flows_canvas_share_dialog_is_drawn_by_the_script()
 
 	pg_assert_contains('data.manage', $script, 'the controls follow the answer');
 	pg_assert_contains('flow.manage', $script, 'the menu item follows the flow');
+}
+
+// One top-level function of workspace_flow.js, as written: from its line to
+// the closing brace at its own indent ('' when it is not there).
+function ws_flows_canvas_test_script_function($script, $name)
+{
+	if (!preg_match('/^( *)function ' . preg_quote($name, '/') . '\(/m', $script, $found, PREG_OFFSET_CAPTURE)) {
+		return '';
+	}
+
+	$close = "\n" . $found[1][0] . "}\n";
+	$end = strpos($script, $close, $found[0][1]);
+
+	return ($end !== false) ? substr($script, $found[0][1], $end - $found[0][1] + strlen($close)) : '';
+}
+
+// Stand-ins for what the canvas functions read of the page and of the
+// Workspace kit: elements that keep their children, text and listeners,
+// K.api answering from a queue, timers kept to be fired by hand, t() that
+// gives the key with its values.
+function ws_flows_canvas_test_stage()
+{
+	return <<<'JS'
+var calls = [], answers = [], failed = [], announced = [], timers = [];
+function FakeNode(tag, className, text) {
+    var self = this;
+    this.tag = tag;
+    this.className = className || '';
+    this.textContent = ((text === undefined) || (text === null)) ? '' : String(text);
+    this.children = [];
+    this.attrs = {};
+    this.listeners = {};
+    this.disabled = false;
+    this.classList = {
+        add: function (name) { self.mark(name, true); },
+        remove: function (name) { self.mark(name, false); },
+        toggle: function (name, on) { self.mark(name, (on === undefined) ? !self.classList.contains(name) : !!on); },
+        contains: function (name) { return (' ' + self.className + ' ').indexOf(' ' + name + ' ') !== -1; }
+    };
+}
+FakeNode.prototype.mark = function (name, on) {
+    var list = this.className.split(/\s+/).filter(function (item) { return item && (item !== name); });
+    if (on) { list.push(name); }
+    this.className = list.join(' ');
+};
+FakeNode.prototype.appendChild = function (child) { this.children.push(child); return child; };
+FakeNode.prototype.setAttribute = function (name, value) { this.attrs[name] = String(value); };
+FakeNode.prototype.getAttribute = function (name) { return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null; };
+FakeNode.prototype.addEventListener = function (type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); };
+FakeNode.prototype.click = function () { (this.listeners.click || []).forEach(function (fn) { fn({ button: 0 }); }); };
+FakeNode.prototype.querySelector = function () { return null; };
+FakeNode.prototype.querySelectorAll = function () { return []; };
+FakeNode.prototype.contains = function () { return false; };
+function textOf(node) { return [node.textContent].concat(node.children.map(textOf)).join(' ').replace(/\s+/g, ' ').trim(); }
+function buttonsOf(node) { return node.children.reduce(function (all, child) { return all.concat(buttonsOf(child)); }, (node.tag === 'button') ? [node] : []); }
+var el = function (tag, className, text) { return new FakeNode(tag, className, text); };
+var t = function () { return Array.prototype.slice.call(arguments).join(' '); };
+var K = {
+    el: el,
+    clear: function (node) { node.children = []; node.textContent = ''; return node; },
+    icon: function (name) { return new FakeNode('i', 'bi ' + (name || '')); },
+    button: function (className, label) { return new FakeNode('button', className, label); },
+    fail: function (error) { failed.push(error && error.message); },
+    toast: function () {},
+    api: function (action) { calls.push(action); var next = answers.shift(); return next ? next() : new Promise(function () {}); }
+};
+var window = {
+    setTimeout: function (fn, ms) { timers.push({ fn: fn, ms: ms, live: true }); return timers.length; },
+    clearTimeout: function (id) { if (id && timers[id - 1]) { timers[id - 1].live = false; } }
+};
+var document = { visibilityState: 'visible', activeElement: null, body: new FakeNode('body') };
+var ui = { root: new FakeNode('div'), runBox: new FakeNode('div', 'wsf-run-bar d-none'), side: new FakeNode('aside'), app: new FakeNode('div'), outlineBox: new FakeNode('div'), boxes: new FakeNode('div') };
+var state = {};
+function live() { return timers.filter(function (timer) { return timer.live; }).map(function (timer) { return timer.ms; }); }
+function fire() { var timer = timers.filter(function (item) { return item.live; }).pop(); timer.live = false; timer.fn(); }
+function settle() { return new Promise(function (resolve) { setImmediate(resolve); }); }
+// A refusal read from the server's JSON answer, as workspace.js's api() throws it.
+function refused(message) { var error = new Error(message); error.field = ''; error.code = ''; error.stale = false; return Promise.reject(error); }
+function keepFocus(draw) { draw(); }
+function announce(text) { announced.push(text); }
+function runBadge(states, status) { return el('span', 'wsf-run-badge', status); }
+function personName(id) { return 'person ' + id; }
+function when(value) { return String(value); }
+var RUN_STATES = {};
+JS;
+}
+
+// Runs the functions named, cut from workspace_flow.js as written (its
+// POLL_* timings with them), after the stand-ins and before $script, and
+// returns what $script prints as JSON. null without Node.
+function ws_flows_canvas_test_node(array $names, $script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$body = ws_flows_canvas_test_stage() . "\n";
+
+	preg_match_all('/^ *var POLL_[A-Z_]+ = [0-9.]+;$/m', $source, $timings);
+	$body .= implode("\n", $timings[0]) . "\n";
+
+	foreach ($names as $name) {
+		$function = ws_flows_canvas_test_script_function($source, $name);
+
+		pg_assert_true($function !== '', 'workspace_flow.js has ' . $name . '()');
+		$body .= $function . "\n";
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgwsflow');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $body . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// A look at an open run that the server refuses (the flow binned with its
+// runs, the channel no longer read, the session ended: a JSON answer, which
+// api() gives a code) is final: no further look, and the bar over the canvas
+// says why and that the run is no longer followed. A look that got no answer
+// (a network failure, a server error page without JSON) is tried again,
+// later each time, with a word in the bar that goes once a look succeeds.
+// Before, a refusal stopped the looks without a word, and the run kept
+// showing as still going with its Cancel.
+function test_workspace_flows_canvas_run_poll_failures_are_told()
+{
+	$result = ws_flows_canvas_test_node(
+		array('runOpen', 'stopPoll', 'schedulePoll', 'pollRun', 'pollDone', 'pollResume', 'pollFailed', 'drawRunBar', 'runSide'),
+		<<<'JS'
+function applyRun(run) { state.run = run; return false; }
+function drawRunViews() { drawRunBar(); K.clear(ui.side); runSide(); }
+function closeRun() {}
+function tick() {}
+function fresh() {
+    state = { run: { id: 12, flow_id: 7, status: 'running', version: 2, can_cancel: true, started_by: 4, started_at: 'a', finished_at: null, steps: [] }, poll: { timer: 0, delay: POLL_FIRST, busy: 0 }, outline: true, refocus: '' };
+    timers = [];
+    announced = [];
+    K.clear(ui.runBox);
+    K.clear(ui.side);
+}
+(async function () {
+    var out = {};
+
+    fresh();
+    answers.push(function () { return refused('That run could not be found.'); });
+    pollRun();
+    await settle();
+    out.refused = { looks: live(), bar: textOf(ui.runBox), side: textOf(ui.side), sideButtons: buttonsOf(ui.side).map(textOf), told: announced.length, cancel: state.run.can_cancel };
+    schedulePoll(0);
+    out.refused.again = live();
+
+    fresh();
+    answers.push(function () { return Promise.reject(new TypeError('Failed to fetch')); });
+    pollRun();
+    await settle();
+    out.unreached = { looks: live(), bar: textOf(ui.runBox), told: announced.length };
+    answers.push(function () { return Promise.reject(new Error('Something went wrong.')); });
+    fire();
+    await settle();
+    out.unreached.second = live();
+    out.unreached.toldOnce = announced.length;
+    answers.push(function () { return Promise.resolve({ run: state.run, due: false }); });
+    fire();
+    await settle();
+    out.unreached.healed = textOf(ui.runBox);
+    out.unreached.next = live().length;
+
+    console.log(JSON.stringify(out));
+})();
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(is_array($result), 'the script printed its result');
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(), $result['refused']['looks'], 'a refusal is not read again');
+	pg_assert_contains('That run could not be found.', $result['refused']['bar'], 'the bar says why');
+	pg_assert_contains('fl_run_lost', $result['refused']['bar'], 'and that the run is no longer followed');
+	pg_assert_true($result['refused']['told'] > 0, 'screen readers are told');
+	pg_assert_false($result['refused']['cancel'], 'a run that cannot be read offers no Cancel');
+	pg_assert_false(in_array('fl_run_cancel', $result['refused']['sideButtons'], true), 'nor does its side panel');
+	pg_assert_false(strpos($result['refused']['side'], 'fl_run_open') !== false, 'the side panel no longer says it is still going');
+	pg_assert_contains('fl_run_lost', $result['refused']['side'], 'but that it is shown as last read');
+	pg_assert_same(array(), $result['refused']['again'], 'a tab shown again or the screen\'s tick does not read it again');
+
+	pg_assert_same(array(4000), $result['unreached']['looks'], 'no answer: read again later');
+	pg_assert_contains('fl_run_unreached', $result['unreached']['bar'], 'the bar says it is tried again');
+	pg_assert_same(1, $result['unreached']['told'], 'screen readers are told');
+	pg_assert_same(array(8000), $result['unreached']['second'], 'a server error page waits longer still');
+	pg_assert_same(1, $result['unreached']['toldOnce'], 'told once while it lasts');
+	pg_assert_false(strpos($result['unreached']['healed'], 'fl_run_unreached') !== false, 'the word goes once a look succeeds');
+	pg_assert_same(1, $result['unreached']['next'], 'and the run keeps being read');
+}
+
+// The runs list that could not be loaded says so, with the reason and a
+// way to load it again, instead of "This flow has not run yet."
+function test_workspace_flows_canvas_runs_list_failure_is_told()
+{
+	$result = ws_flows_canvas_test_node(
+		array('loadRuns', 'runsSide'),
+		<<<'JS'
+function drawSettings() { K.clear(ui.side); runsSide(); }
+function openRun() {}
+state = { flow: { id: 7 }, panel: 'runs', run: null, selected: null, outline: false, opening: {}, refocus: '', runs: { flow: 7, items: [], next: null, loading: false } };
+(async function () {
+    var out = {};
+
+    answers.push(function () { return refused('That flow could not be found.'); });
+    loadRuns(false);
+    await settle();
+    drawSettings();
+    out.failed = textOf(ui.side);
+    var retry = buttonsOf(ui.side);
+    out.buttons = retry.length;
+    answers.push(function () { return Promise.resolve({ runs: [{ id: 31, flow_id: 7, status: 'done', version: 2, started_by: 4, started_at: 'a', finished_at: 'b' }], next: null }); });
+
+    if (retry.length) {
+        retry[0].click();
+    }
+
+    out.again = textOf(ui.side);
+    await settle();
+    drawSettings();
+    out.loaded = textOf(ui.side);
+    out.calls = calls.length;
+
+    console.log(JSON.stringify(out));
+})();
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(is_array($result), 'the script printed its result');
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_false(strpos($result['failed'], 'fl_runs_none') !== false, 'a failed load is not "has not run yet"');
+	pg_assert_contains('That flow could not be found.', $result['failed'], 'the reason');
+	pg_assert_contains('fl_retry', $result['failed'], 'a way to load it again');
+	pg_assert_same(1, $result['buttons'], 'one button');
+	pg_assert_contains('loading', $result['again'], 'loading again shows at once');
+	pg_assert_contains('fl_run_name 31', $result['loaded'], 'then the runs');
+	pg_assert_same(2, $result['calls'], 'read twice');
 }

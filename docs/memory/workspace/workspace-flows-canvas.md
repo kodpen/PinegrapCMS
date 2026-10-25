@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-canvas
-description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, run view, what is left
+description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 ---
 
 ## What is there?
@@ -24,17 +24,14 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Unsaveable changes are dropped on a switch after `ask()` only. A 409 shows "Load it again".
 
 ## Focus and keys?
-- `state.refocus`: `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading or the run's title.
+- `state.refocus`: `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading, the run's title or the run bar's Close.
 - Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc.
 
 ## What is the outline view?
 - A toggle, default under 768 px: boxes in arrow order with settings and "Connect to…"; the hidden canvas redraws when shown.
 
-## What does the run view do?
-- Run (live, version > 0, edit or run access) asks, then starts once (`state.starting`). Its token goes as `start_token`: `token` is the CSRF token, which a data key would replace in `api()` (every start was refused). Kept until answered: a start sent again gets the first one's run. Primary only without "New flow".
-- "Flow runs" lists runs while nothing is selected; pressed while the list or a run shows (`runsShown()`). A run picked: its button disabled meanwhile, only the last pick shown (`openSeq`). Its version's graph read-only; draft, selection, view wait in `state.stash`; saves send the draft (`draftOf()`).
-- Each box: `wsf-run-<state>` tone, mark, word (none = not reached), result, a waiting task's link (`?task=`, `K.openTask()`, then `ws_tick`). Taken arrows marked; outline in words.
-- Poll: 2 s, ×1.5 to 30 s unchanged; stops once ended or hidden. `poll.busy` is a run id: a slow look at one run froze the next. `due` sends `ws_tick`; polite live region; Cancel (`can_cancel`) asks.
+## Where is the run view?
+- `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
 
 ## What is left?
 - Notes on the canvas, undo/redo, auto-layout, templates, multi-select, Help link; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`; no headless harness in the repo.

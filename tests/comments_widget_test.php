@@ -68,9 +68,12 @@ function test_comments_widget_page_hand_off_wiring()
 {
 	$page = comments_widget_test_source('get_page_content.php');
 
-	$context = strpos($page, 'pg_sw_render_context(array(');
+	// The widget pass sets its own context ($pg_sw_prev_ctx); the context set
+	// for the whole render before it carries only the e-mail flag.
+	$pass = strpos($page, '$pg_sw_prev_ctx = ');
+	$context = ($pass === false) ? false : strpos($page, 'pg_sw_render_context(array(', $pass);
 	$close = ($context === false) ? false : strpos($page, ';', $context);
-	pg_assert_true(($context !== false) && ($close !== false), 'the context is set');
+	pg_assert_true(($context !== false) && ($close !== false), 'the widget pass sets the context');
 	if (($context !== false) && ($close !== false)) {
 		pg_assert_contains("'page_id' => (int)\$page_id", substr($page, $context, $close - $context), 'the drawn page goes into the context');
 	}
