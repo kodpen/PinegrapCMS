@@ -14,6 +14,9 @@
  *   action=refund    refund_amount, refund_method (driver or manual),
  *                    refund_reference: the money back once the goods are here
  *
+ * Every form also posts status_was, the status the page showed: a return
+ * that is in another status by then is not moved (the page is shown again).
+ *
  * Approving, rejecting and refunding mail the customer. Every move is written
  * to the audit trail and the activity log. A refund of an order with an
  * issued invoice goes on to its return invoice, filled in with the same lines.
@@ -69,6 +72,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = isset($_POST['action']) ? (string) $_POST['action'] : '';
 
+    // The status the page showed. A form without it was drawn before it
+    // carried the status, and is refused like any other page left open while
+    // the return moved. This check gives every such page one sentence; the
+    // guard is the same comparison made again under the order's return lock
+    // (status_was below, pg_return_move()), where a click that waited on a
+    // refund is caught too. The refund re-reads under that lock as well and
+    // takes only a received return (pg_return_refund()).
+    $shown = (isset($_POST['status_was']) && is_string($_POST['status_was'])) ? $_POST['status_was'] : '';
+
+    if (!pg_return_status_seen($shown, (string) $return['status'])) {
+        $refuse('_error', lang('The return was changed in the meantime. Open it again.'));
+    }
+
     // The money back: its own path, because it moves money before it moves
     // the return (pg_return_refund()).
     if ($action === 'refund') {
@@ -123,13 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $to = $targets[$action];
 
-    // A page left open while somebody else moved the return: said plainly
-    // rather than as the two statuses.
+    // A target the status does not allow (the page showed this status, so
+    // only a crafted request gets here): said plainly rather than as the two
+    // statuses.
     if (!in_array($to, pg_return_staff_actions((string) $return['status']), true)) {
         $refuse('_error', lang('This return was changed in the meantime and can no longer be moved that way.'));
     }
 
-    $options = array();
+    $options = array('status_was' => $shown);
 
     if (($to === 'approved') || ($to === 'rejected')) {
         $options['note'] = isset($_POST['note']) ? (string) $_POST['note'] : '';
@@ -199,6 +216,14 @@ $reasons = pg_return_reasons();
 $carriers = function_exists('pg_shipping_carriers') ? pg_shipping_carriers() : array();
 $people = pg_return_user_names(array($return['requested_by'], $return['decided_by']));
 
+// What every form posts besides its own fields: the token, the return and the
+// status this page shows. The status is printed from the row, never through
+// the liveform: a refused post keeps its fields in the session, and a status
+// filled back from there would send the stale one again on the next click.
+$form_keys = get_token_field() . '
+                        <input type="hidden" name="id" value="' . $return_id . '">
+                        <input type="hidden" name="status_was" value="' . h($status) . '" autocomplete="off">';
+
 // The lines of the return, with what each one is in the order.
 $output_lines = '';
 
@@ -251,8 +276,7 @@ if (in_array('approved', $actions, true)) {
                 </div>
                 <div class="card-body">
                     <form method="post" action="view_return.php">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $form_keys . '
                         <div class="row g-3">
                             <div class="col-12">
                                 <label for="note" class="form-label">' . h(lang('Note to the customer')) . '</label>
@@ -285,8 +309,7 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
     if (in_array('shipped', $actions, true)) {
         $output_shipped = '
                     <form method="post" action="view_return.php" class="mb-3">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $form_keys . '
                         <div class="row g-3 align-items-end">
                             <div class="col-12 col-md-5">
                                 <label for="tracking_number" class="form-label">' . h(lang('Tracking number of the parcel')) . '</label>
@@ -306,8 +329,7 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
 
     $output_received = in_array('received', $actions, true) ? '
                     <form method="post" action="view_return.php">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $form_keys . '
                         <button type="submit" name="action" value="received" class="btn btn-primary" data-confirm-content="' . h(lang('The goods of this return will be marked as received.')) . '"><i class="bi bi-box-seam me-1" aria-hidden="true"></i>' . h(lang('Mark the Goods Received')) . '</button>
                     </form>' : '';
 
@@ -377,8 +399,7 @@ if ($refund_plan !== null) {
                         <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('Left to refund on this order')) . ':</span> ' . $money($refund_plan['remaining']) . '</div>
                     </div>
                     <form method="post" action="view_return.php">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $form_keys . '
                         ' . $output_methods . '
                         <div class="row g-3">
                             <div class="col-12 col-md-4">
@@ -524,8 +545,7 @@ foreach ($stamps as $column => $label) {
 
 $output_close = in_array('closed', $actions, true) ? '
                     <form method="post" action="view_return.php" class="mt-3">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $form_keys . '
                         <button type="submit" name="action" value="close" class="btn btn-sm btn-outline-warning" data-confirm-content="' . h(lang('The return will be closed and can no longer be moved. A request closed before the goods were sent frees them to be asked for again.')) . '"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Close the Return')) . '</button>
                     </form>' : '';
 
