@@ -36,6 +36,12 @@ none
 
 - 
 
+## Questions for the owner
+
+<!-- A decision only the owner can make, one per line; leave "none". The coordinator asks the owner and answers with a comment on this PR. -->
+
+none
+
 ## Checklist
 
 - [ ] `php tools/lint.php` exits 0
