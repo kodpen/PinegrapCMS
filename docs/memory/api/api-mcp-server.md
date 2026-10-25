@@ -4,9 +4,9 @@ description: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tool
 ---
 
 ## Where do the tools come from?
-- Every route is a tool (`pg_mcp_tool_from_route()`, `includes/mcp/tools.php`): a new endpoint brings its tool with no line here. Name = the route id with dots as underscores; description = `summary` + `description`; input = the declared parameters, plus `dry_run` on a rehearsable write. These texts are what the model reads: English, short and true. Not `destructiveHint`: a GET, ids ending `create` or `propose`.
+- Every route is a tool (`pg_mcp_tool_from_route()`, `includes/mcp/tools.php`): a new endpoint brings its tool. Name = the route id with dots as underscores; description = `summary` + `description`; input = the declared parameters, plus `dry_run` on a rehearsable write. These texts are what the model reads: English, short and true. Not `destructiveHint`: a GET, ids ending `create` or `propose`.
 - An AI app may propose a record change instead of writing it: `workspace_changes_propose` and `workspace_tasks_changes_propose` leave cards the person applies (`workspace/workspace-change-proposals.md`).
-- Left out (`pg_mcp_route_is_offered()`): routes with no scope or `'public' => true`, ids starting `auth.`, `push.` or `docs.`, ids ending `_post` (the IIS twins), and routes with `'mcp' => false` (below). An IIS POST twin's id must end in `_post`, or one action becomes two tools. Only routes the caller's scopes cover are listed.
+- Left out (`pg_mcp_route_is_offered()`): routes with no scope or `'public' => true`, ids starting `auth.`, `push.` or `docs.`, ids ending `_post` (the IIS twins), and routes with `'mcp' => false` (below). An IIS POST twin's id must end in `_post`, or one action is two tools. Only routes the caller's scopes cover are listed.
 
 ## Which routes are no tools on purpose?
 - The routes that carry `'mcp' => false` and why: `api-mcp-no-tool-routes.md`.

@@ -9153,6 +9153,7 @@ function get_tables() {
 		'page_translations',
 		'page_drafts',
 		'page_revisions',
+		'prototype_links',
 	);
 
 }

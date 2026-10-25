@@ -47,8 +47,9 @@ function api_scope_groups() {
 		// The layout of the Visual Page Editor's pages. Writing a layout means
 		// proposing: a change waits until a designer applies it, so an
 		// application never rewrites a layout by itself. It may add a page as a
-		// draft, set when a page goes on the site and comes off it, and put back
-		// a layout a person published before (a revision).
+		// draft, set when a page goes on the site and comes off it, put back a
+		// layout a person published before (a revision), and share a design's
+		// drafts as a prototype by a link (never as an MCP tool).
 		'design'    => array('label' => 'Page design', 'read' => 'design:read',   'write' => 'design:write'),
 
 		// What visitors wrote under pages, records, products and events.

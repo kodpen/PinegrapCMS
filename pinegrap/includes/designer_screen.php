@@ -224,6 +224,9 @@ function pg_designer_screen_render($ctx)
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
     $sd_ai = pg_design_ai_editor_config($user);
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+    $sd_proto_share = pg_page_draft_ready() && pg_proto_links_ready();
+
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
     foreach ($js_pages as $jp) {
@@ -245,6 +248,10 @@ function pg_designer_screen_render($ctx)
         // a clickable prototype, for the roles it admits (0-2); '' for the
         // rest, and the tab menu then offers no item for it.
         'prototypeUrl'  => ((int)$user['role'] < 3) ? PATH . SOFTWARE_DIRECTORY . '/prototype.php' : '',
+        // Share links of the prototype (includes/fn/prototype_links.php):
+        // made, listed and revoked by administrators and designers, once
+        // the schema has them. False hides the "Share prototype" item.
+        'prototypeShare' => ((int)$user['role'] <= 1) && $sd_proto_share,
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
         // The schema can open shared components to content editors

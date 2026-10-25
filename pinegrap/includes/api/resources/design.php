@@ -1310,3 +1310,336 @@ function api_design_revisions_restore($params) {
 	api_ok(api_design_restore_present(api_design_page_present($row), $revision['revision_no'], $revision_no, $changed, $warnings));
 
 }
+
+// Share links of a design's prototype (includes/fn/prototype_links.php):
+// listed, made and revoked by an application whose owner is an administrator
+// or a designer, as in the editor's Share prototype dialog. None of the three
+// routes is an MCP tool ('mcp' => false): no AI app mints a public link to
+// pages that are not on the site. The address of a link is answered when it
+// is made, and to a retry of that request; the editor can show it again to a
+// designer.
+function api_design_prototype_links_ready() {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+
+	if (!pg_proto_links_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('This site has not been upgraded to the version that shares prototypes.'));
+
+	}
+
+}
+
+// The design a link belongs to, or 404.
+function api_design_prototype_design_or_fail($id) {
+
+	$name = pg_proto_link_design_name($id);
+
+	if ($name === null) {
+
+		api_fail_not_found(lang('Design'));
+
+	}
+
+	return $name;
+
+}
+
+// One link, with nothing that opens it (pg_proto_link_summary()).
+function api_design_prototype_link_present($row, $now) {
+
+	$link = pg_proto_link_summary($row, $now);
+
+	return array(
+		'id'              => $link['id'],
+		'design_id'       => $link['style_id'],
+		'audience'        => $link['audience'],
+		'start_page_id'   => ($link['start_page_id'] > 0) ? $link['start_page_id'] : null,
+		'hint'            => $link['hint'],
+		'password'        => $link['password'],
+		'password_locked' => $link['locked'],
+		'state'           => $link['state'],
+		'expires_at'      => api_time($link['expires_at']),
+		'uses'            => $link['uses'],
+		'last_used_at'    => api_time($link['last_used_at']),
+		'created_by'      => ($link['created_by'] > 0) ? $link['created_by'] : null,
+		'created_at'      => api_time($link['created_at']),
+		'revoked_at'      => api_time($link['revoked_at'])
+	);
+
+}
+
+// What api_design_prototype_link_present() returns.
+function api_design_prototype_link_schema() {
+
+	return array(
+		'id'              => 'integer',
+		'design_id'       => 'integer',
+		'audience'        => 'string',
+		'start_page_id'   => 'integer?',
+		'hint'            => 'string',
+		'password'        => 'boolean',
+		'password_locked' => 'boolean',
+		'state'           => 'string',
+		'expires_at'      => 'string?',
+		'uses'            => 'integer',
+		'last_used_at'    => 'string?',
+		'created_by'      => 'integer?',
+		'created_at'      => 'string?',
+		'revoked_at'      => 'string?'
+	);
+
+}
+
+// What a new link answers with: its address (null on a retry answered from
+// its Idempotency-Key record when the site's key cannot read the token back,
+// api_design_prototype_link_restore()), and the link.
+function api_design_prototype_link_created_schema() {
+
+	return array(
+		'url'  => 'string?',
+		'link' => 'DesignPrototypeLink'
+	);
+
+}
+
+// A create answer read from its Idempotency-Key record, which keeps url null
+// ('idempotency_redact'), with the address filled in again: $row is the link
+// the record names and $url its address read back ('' when it cannot be).
+// Only for that link, still of the design the record names.
+function api_design_prototype_link_replayed($stored, $row, $url) {
+
+	if (!is_array($stored) || !array_key_exists('url', $stored) || ($stored['url'] !== null) || !isset($stored['link']['id'], $stored['link']['design_id'])) {
+
+		return $stored;
+
+	}
+
+	if (!is_array($row) || ((int)$row['id'] !== (int)$stored['link']['id']) || ((int)$row['style_id'] !== (int)$stored['link']['design_id']) || ((string)$url === '')) {
+
+		return $stored;
+
+	}
+
+	$stored['url'] = (string)$url;
+
+	return $stored;
+
+}
+
+// The create route's 'idempotency_restore' function: a retry answered from
+// its record gets the address the first answer carried, read back from the
+// link's row, where the token is sealed with the site key
+// (pg_proto_link_token()), so the record never holds it. The replay runs
+// before the handler, so the owner check is made again here; url stays null
+// for an owner who is no longer an administrator or a designer, and when the
+// token cannot be read back (no key, or a key changed since).
+function api_design_prototype_link_restore($stored) {
+
+	if (!is_array($stored) || !isset($stored['link']['id'])) {
+
+		return $stored;
+
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+
+	$app = api_current_app();
+
+	if (!pg_proto_links_ready() || !pg_designer_is_full($app['owner'])) {
+
+		return $stored;
+
+	}
+
+	$row = pg_proto_link_get($stored['link']['id']);
+
+	$token = is_array($row) ? pg_proto_link_token($row) : '';
+
+	return api_design_prototype_link_replayed($stored, $row, ($token !== '') ? pg_proto_link_url($token) : '');
+
+}
+
+// The password of a new link as the plan is handed it, from the body as sent:
+// the router trims a string, which would make one of spaces alone no password
+// at all and drop the spaces around another, while the editor and the
+// password form take it as typed. Not sent or null is no password; a number
+// is read as its digits, as the router reads one for a text field; anything
+// else (a list, an object, true or false) goes on as it came, and the plan
+// refuses it instead of the link being made with no password.
+function api_design_prototype_link_password($input) {
+
+	if (!is_array($input) || !array_key_exists('password', $input) || ($input['password'] === null)) {
+
+		return '';
+
+	}
+
+	$value = $input['password'];
+
+	return (is_int($value) || is_float($value)) ? (string)$value : $value;
+
+}
+
+// The line the Site Log adds after a link's own words: the application.
+function api_design_prototype_via($app) {
+
+	return ' ' . lang(array('string' => '(through the API by the application {var:1})', 'vars' => array(isset($app['name']) ? (string)$app['name'] : '')));
+
+}
+
+function api_design_prototype_links_list($params) {
+
+	api_design_prototype_links_ready();
+
+	api_design_designer_or_fail(lang('Only administrators and designers can share a prototype.'));
+
+	$design_id = (int)$params['id'];
+
+	api_design_prototype_design_or_fail($design_id);
+
+	$where = array("style_id = '" . $design_id . "'");
+
+	if (empty($params['revoked'])) {
+
+		$where[] = "revoked_at = 0";
+
+	}
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$where[] = "id < '" . (int)$cursor['i'] . "'";
+
+	}
+
+	$limit = (int)$params['limit'];
+
+	$rows = api_rows("SELECT * FROM prototype_links WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT " . ($limit + 1));
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$now = time();
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_design_prototype_link_present($row, $now);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+function api_design_prototype_links_create($params) {
+
+	api_design_prototype_links_ready();
+
+	$app = api_design_designer_or_fail(lang('Only administrators and designers can share a prototype.'));
+
+	$design_id = (int)$params['id'];
+
+	api_design_prototype_design_or_fail($design_id);
+
+	$draft_ids = array();
+
+	foreach (pg_proto_design_pages($design_id) as $page) {
+
+		$draft_ids[] = (int)$page['id'];
+
+	}
+
+	$now = time();
+
+	// The password as sent, not as the router trimmed it.
+	$password = api_design_prototype_link_password(api_request_input());
+
+	$plan = pg_proto_link_plan(array(
+		'audience'      => isset($params['audience']) ? $params['audience'] : '',
+		'start_page_id' => isset($params['start_page_id']) ? (int)$params['start_page_id'] : 0,
+		'duration'      => isset($params['duration']) ? (int)$params['duration'] : 0,
+		'password'      => $password
+	), $draft_ids, array_keys(pg_proto_link_durations()), $now);
+
+	if (!$plan['ok']) {
+
+		api_fail_validation(pg_proto_link_error_message($plan['error']), ($plan['error'] === 'no_drafts') ? 'id' : $plan['field']);
+
+	}
+
+	api_dry_run_stop('created', 'design_prototype_link', array(
+		'design_id'     => $design_id,
+		'audience'      => $plan['link']['audience'],
+		'start_page_id' => ($plan['link']['start_page_id'] > 0) ? $plan['link']['start_page_id'] : null,
+		'expires_at'    => api_time($plan['link']['expires_at']),
+		'password'      => ($plan['link']['password'] !== '')
+	));
+
+	$owner = $app['owner'];
+
+	$made = pg_proto_link_issue($design_id, $plan['link'], (int)$owner['id'], (string)$owner['username'], api_design_prototype_via($app));
+
+	if ($made === null) {
+
+		api_fail_server(lang('The link could not be made.'));
+
+	}
+
+	api_ok(array('url' => pg_proto_link_url($made['token']), 'link' => api_design_prototype_link_present($made['row'], $now)), 201);
+
+}
+
+function api_design_prototype_links_revoke($params) {
+
+	api_design_prototype_links_ready();
+
+	$app = api_design_designer_or_fail(lang('Only administrators and designers can share a prototype.'));
+
+	$design_id = (int)$params['id'];
+
+	api_design_prototype_design_or_fail($design_id);
+
+	$row = pg_proto_link_get($params['link_id']);
+
+	if (($row === null) || ((int)$row['style_id'] !== $design_id)) {
+
+		api_fail_not_found(lang('Link'));
+
+	}
+
+	$now = time();
+
+	api_dry_run_stop('revoked', 'design_prototype_link', array(
+		'id'      => (int)$row['id'],
+		'changed' => ((int)$row['revoked_at'] === 0)
+	));
+
+	$owner = $app['owner'];
+
+	pg_proto_link_revoke($row, (int)$owner['id'], (string)$owner['username'], api_design_prototype_via($app));
+
+	api_ok(api_design_prototype_link_present(pg_proto_link_get($row['id']), $now));
+
+}

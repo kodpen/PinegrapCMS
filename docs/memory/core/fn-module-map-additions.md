@@ -1,6 +1,6 @@
 ---
 name: fn-module-map-additions
-description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, lang_files, wishlist, link_resolve, widgets_wishlist and others) and the memory file that describes each.
+description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, wishlist, link_resolve, prototype_links, widgets_wishlist and others) and the memory file that describes each.
 ---
 
 ## Which `includes/fn/` modules were added in 2026.4.8?
@@ -17,6 +17,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, l
 - `lang_files`: language files kept as sorted shards: the shard of a key, the exact file text, adding keys, the three-way merge, shard checks, atomic writes ([[lang-files]]).
 - `wishlist`: a visitor's or an account's favourites, the visitor cookie, the merge at sign-in, the toggle and state endpoint (`wishlist.php`): [[wishlist]].
 - `link_resolve` (what an href leads to, pure, with the SEO name maps) and `prototype` (loaded by prototype.php only): [[designer-prototype-viewer]].
+- `prototype_links` (share links; loaded where needed, by prototype.php before init.php too): [[designer-prototype-share-links]].
 - `widgets_wishlist`: the Favourites system widget, the visitor's saved products with add to cart and remove: [[wishlist-widget]].
 
 ## Where does a module added later go?

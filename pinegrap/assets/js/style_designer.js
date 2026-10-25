@@ -59137,6 +59137,10 @@ const StyleDesigner = (function () {
         // The design's saved drafts as a clickable prototype, from a saved
         // draft tab (_pgPrototypeUrl()).
         var protoUrl = _pgPrototypeUrl(p);
+        // Share links of the prototype, for an administrator or a designer
+        // (_design.prototypeShare); a saved draft tab is offered as the
+        // link's start page.
+        var protoShare = _pgPrototypeShareReady();
         // A saved page of this design can go to another one; the chooser is
         // on the screen for designers only (pg_designer_target_modal()).
         var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
@@ -59168,6 +59172,7 @@ const StyleDesigner = (function () {
         var html =
             (viewUrl ? item('view', 'bi-box-arrow-up-right', _sdT('View Page')) : '') +
             (protoUrl ? item('prototype', 'bi-play-btn', _sdT('Preview as prototype')) : '') +
+            (protoShare ? item('share-prototype', 'bi-share', _sdT('Share prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
@@ -59221,10 +59226,11 @@ const StyleDesigner = (function () {
             var act = b.dataset.act;
             _pgTabsCloseMenu();
             if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
-                && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
+                && act !== 'share-prototype' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
+                case 'share-prototype': _pgPrototypeShareDialog((p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
@@ -61688,6 +61694,297 @@ const StyleDesigner = (function () {
         if (!p || !(p.page_id > 0) || !p.page_draft || p.pickedPending || !_pgDraftsReady()) return '';
         if (!_design || !_design.prototypeUrl || !(_design.styleId > 0)) return '';
         return _design.prototypeUrl + '?page=' + encodeURIComponent(p.page_id);
+    }
+
+    // Whether this operator may share the prototype by a link: an
+    // administrator or a designer on a saved design, on a site whose schema
+    // keeps share links (_design.prototypeShare); the server checks the
+    // role again on every request.
+    function _pgPrototypeShareReady() {
+        return !!(_design && _design.prototypeShare && _design.styleId > 0 && _pgDraftsReady());
+    }
+
+    // ── Share prototype ──────────────────────────────────────────────────
+    // The design's share links (includes/fn/prototype_links.php): who each
+    // opens for, its start page, expiry, password, uses, last use and the
+    // first characters of its token; Copy address and Show address fetch the
+    // address from the server each time (the page never keeps it); Revoke
+    // asks first. Below, the form for a new link. A link always shows the
+    // drafts as last saved.
+    function _pgPrototypeShareDialog(startPageId) {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !_pgPrototypeShareReady()) return;
+        var styleId = _design.styleId;
+        var state = { pages: [], durations: [], canShow: true };
+        var when = function (unix) {
+            if (!(unix > 0)) return '';
+            try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
+            catch (e) { return new Date(unix * 1000).toLocaleString(); }
+        };
+        var el = document.createElement('div');
+        el.className = 'modal fade';
+        el.tabIndex = -1;
+        el.setAttribute('aria-labelledby', 'ps-title');
+        el.innerHTML =
+            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
+                '<div class="modal-header py-2"><h6 class="modal-title mb-0" id="ps-title"><span class="bi bi-share me-2" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                '<div class="modal-body small">' +
+                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
+                    '<div class="alert alert-success d-none" data-ps-made role="status"></div>' +
+                    '<div data-ps-list><div class="text-body-secondary py-2">' + esc(_sdT('Loading…')) + '</div></div>' +
+                    '<hr class="my-3">' +
+                    '<h6 class="mb-2">' + esc(_sdT('New link')) + '</h6>' +
+                    '<form data-ps-form novalidate>' +
+                        '<div class="mb-2" role="radiogroup" aria-labelledby="ps-audience-label">' +
+                            '<div class="form-label mb-1" id="ps-audience-label">' + esc(_sdT('Who can open it')) + '</div>' +
+                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="anyone" checked>' +
+                                '<span class="form-check-label">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
+                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="team">' +
+                                '<span class="form-check-label">' + esc(_sdT('The team: signed-in administrators, designers and managers')) + '</span></label>' +
+                        '</div>' +
+                        '<div class="row g-2 mb-2">' +
+                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-start">' + esc(_sdT('Start page')) + '</label>' +
+                                '<select class="form-select form-select-sm" id="ps-start" data-ps-start></select></div>' +
+                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-duration">' + esc(_sdT('Expires')) + '</label>' +
+                                '<select class="form-select form-select-sm" id="ps-duration" data-ps-duration></select></div>' +
+                        '</div>' +
+                        '<div class="mb-2"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
+                            '<input type="password" class="form-control form-control-sm" id="ps-password" data-ps-password autocomplete="new-password" maxlength="128">' +
+                            '<div class="form-text">' + esc(_sdT('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) + '</div></div>' +
+                        '<div class="text-danger mb-2 d-none" data-ps-error role="alert"></div>' +
+                        '<button type="submit" class="btn btn-sm btn-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
+                    '</form>' +
+                '</div>' +
+                '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Close')) + '</button></div>' +
+            '</div></div>';
+        document.body.appendChild(el);
+
+        var listEl = el.querySelector('[data-ps-list]');
+        var madeEl = el.querySelector('[data-ps-made]');
+        var form = el.querySelector('[data-ps-form]');
+        var startEl = el.querySelector('[data-ps-start]');
+        var durationEl = el.querySelector('[data-ps-duration]');
+        var errorEl = el.querySelector('[data-ps-error]');
+        var createBtn = el.querySelector('[data-ps-create]');
+
+        var audience = function () {
+            var r = el.querySelector('input[name="ps-audience"]:checked');
+            return r ? r.value : 'anyone';
+        };
+        // A link for anyone runs out (at most 90 days); a team link may not.
+        var fillDurations = function () {
+            var kept = durationEl.value;
+            var html = audience() === 'team' ? '<option value="0">' + esc(_sdT('Never')) + '</option>' : '';
+            state.durations.forEach(function (d) {
+                html += '<option value="' + esc(String(d.seconds)) + '">' + esc(d.label) + '</option>';
+            });
+            durationEl.innerHTML = html;
+            var fallback = audience() === 'team' ? '0' : '604800';
+            durationEl.value = kept && durationEl.querySelector('option[value="' + kept + '"]') ? kept : fallback;
+            if (!durationEl.value && durationEl.options.length) durationEl.selectedIndex = 0;
+        };
+        var fillPages = function () {
+            var html = '<option value="0">' + esc(_sdT('The first draft')) + '</option>';
+            state.pages.forEach(function (pg) {
+                html += '<option value="' + esc(String(pg.id)) + '"' + (pg.id === startPageId ? ' selected' : '') + '>' + esc(pg.label) + '</option>';
+            });
+            startEl.innerHTML = html;
+        };
+        var copied = function () { sdToast(esc(_sdT('Address copied.')), 'success'); };
+        // A write the browser refuses (no permission, or Safari once the
+        // click is over) never ends in silence: the address is shown in
+        // `field` (an address box's input, or a row's address slot)
+        // selected, with a note to copy it by hand.
+        var copyFailed = function (text, field) {
+            var input = field && field.tagName === 'INPUT' ? field : null;
+            if (!input && field) {
+                field.innerHTML = addressBox(text);
+                input = field.querySelector('input');
+            }
+            if (!input) { window.prompt(_sdT('Copy address'), text); return; }
+            input.focus();
+            input.select();
+            sdToast(esc(_sdT('The address could not be copied. It is selected: copy it by hand.')), 'error');
+        };
+        var copy = function (text, field) {
+            if (!navigator.clipboard || !navigator.clipboard.writeText) { copyFailed(text, field); return; }
+            navigator.clipboard.writeText(text).then(copied, function () { copyFailed(text, field); });
+        };
+        var addressBox = function (url) {
+            return '<div class="input-group input-group-sm mt-2">' +
+                       '<input type="text" class="form-control" readonly value="' + esc(url) + '" aria-label="' + esc(_sdT('Address')) + '">' +
+                       '<button type="button" class="btn btn-outline-secondary" data-ps-copy-url="' + esc(url) + '"><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy')) + '</button>' +
+                   '</div>';
+        };
+        var row = function (l) {
+            var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'text-bg-warning' : 'text-bg-info') + ' me-1">' +
+                             esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
+                         (l.password ? '<span class="badge text-bg-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
+                         (l.locked ? '<span class="badge text-bg-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
+                         (l.state === 'expired' ? '<span class="badge text-bg-dark me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+            var facts = [
+                _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
+                l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
+                _sdT('Opened {var} times', String(l.uses)),
+                l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
+            ];
+            var showable = state.canShow && l.can_show;
+            return '<li class="list-group-item px-2 py-2" data-ps-id="' + esc(String(l.id)) + '">' +
+                       '<div class="d-flex flex-wrap align-items-center gap-2">' +
+                           '<div class="me-auto">' + badges + '<code class="text-body-secondary">' + esc(l.hint) + '…</code></div>' +
+                           '<div class="btn-group btn-group-sm" role="group">' +
+                               (showable ? '<button type="button" class="btn btn-outline-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
+                                           '<button type="button" class="btn btn-outline-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
+                               '<button type="button" class="btn btn-outline-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                           '</div>' +
+                       '</div>' +
+                       '<div class="text-body-secondary mt-1">' + facts.map(esc).join(' · ') +
+                           (l.created_by_name ? ' · ' + esc(_sdT('Made by {var}', l.created_by_name)) : '') + '</div>' +
+                       '<div data-ps-address></div>' +
+                   '</li>';
+        };
+        var render = function (links) {
+            if (!links.length) {
+                listEl.innerHTML = '<div class="text-body-secondary py-2">' + esc(_sdT('No links yet. Make one below.')) + '</div>';
+                return;
+            }
+            listEl.innerHTML = '<ul class="list-group">' + links.map(row).join('') + '</ul>';
+        };
+        var load = function () {
+            return _pgApiPost('prototype_links', { style_id: styleId }).then(function (res) {
+                if (!res || res.status !== 'success') {
+                    listEl.innerHTML = '<div class="text-danger py-2">' + esc((res && res.message) || _sdT('Sorry, we could not accept your request.')) + '</div>';
+                    return;
+                }
+                state.pages = res.pages || [];
+                state.durations = res.durations || [];
+                state.canShow = res.can_show !== false;
+                if (!startEl.options.length) fillPages();
+                fillDurations();
+                render(res.links || []);
+            }).catch(function () { listEl.innerHTML = '<div class="text-danger py-2">' + esc(_sdT('Network error.')) + '</div>'; });
+        };
+        // The address is asked for again on each use, never kept here.
+        var fetchAddress = function (id) {
+            return _pgApiPost('prototype_link_address', { link_id: id }).then(function (res) {
+                if (!res || res.status !== 'success' || !res.url) {
+                    sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                    return '';
+                }
+                return res.url;
+            });
+        };
+
+        el.addEventListener('change', function (e) {
+            if (e.target && e.target.name === 'ps-audience') fillDurations();
+        });
+        el.addEventListener('click', function (e) {
+            var urlBtn = e.target.closest('[data-ps-copy-url]');
+            if (urlBtn) {
+                var group = urlBtn.closest('.input-group');
+                copy(urlBtn.getAttribute('data-ps-copy-url'), group ? group.querySelector('input') : null);
+                return;
+            }
+            var item = e.target.closest('[data-ps-id]');
+            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke]');
+            if (!item || !btn || btn.disabled) return;
+            var id = parseInt(item.getAttribute('data-ps-id'), 10);
+            if (btn.hasAttribute('data-ps-revoke')) {
+                var revoke = function () {
+                    btn.disabled = true;
+                    _pgApiPost('prototype_link_revoke', { link_id: id }).then(function (res) {
+                        btn.disabled = false;
+                        if (!res || res.status !== 'success') {
+                            sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                            return;
+                        }
+                        sdToast(esc(_sdT('The link was revoked. It no longer opens the prototype.')), 'success');
+                        // The "ready" box of the link just revoked would go
+                        // on offering its dead address to copy.
+                        if (madeEl.getAttribute('data-ps-made-id') === String(id)) {
+                            madeEl.classList.add('d-none');
+                            madeEl.innerHTML = '';
+                            madeEl.removeAttribute('data-ps-made-id');
+                        }
+                        load();
+                    }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                };
+                var msg = _sdT('Revoke this link? Whoever has it can no longer open the prototype, and it cannot be turned back on.');
+                if (typeof window.pgConfirm === 'function') {
+                    window.pgConfirm({ title: _sdT('Revoke link'), message: msg, confirmText: _sdT('Yes, revoke'), cancelText: _sdT('No'), variant: 'danger' })
+                        .then(function (ok) { if (ok) revoke(); });
+                } else if (window.confirm(msg)) {
+                    revoke();
+                }
+                return;
+            }
+            btn.disabled = true;
+            var slot = item.querySelector('[data-ps-address]');
+            var pending = fetchAddress(id);
+            var write = null;
+            if (btn.hasAttribute('data-ps-copy') && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+                // Safari lets a click write to the clipboard only while the
+                // click lasts, not once the address has come back: the write
+                // starts now and is handed the address still on its way.
+                var blob = pending.then(function (url) {
+                    if (!url) throw new Error('no address');
+                    return new Blob([url], { type: 'text/plain' });
+                });
+                blob.catch(function () {});
+                try { write = navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]); } catch (err) { write = null; }
+            }
+            if (write) {
+                write.then(function () {
+                    btn.disabled = false;
+                    copied();
+                }, function () {
+                    pending.then(function (url) {
+                        btn.disabled = false;
+                        if (url) copyFailed(url, slot);
+                    }, function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                });
+                return;
+            }
+            pending.then(function (url) {
+                btn.disabled = false;
+                if (!url) return;
+                if (btn.hasAttribute('data-ps-copy')) { copy(url, slot); return; }
+                slot.innerHTML = addressBox(url);
+            }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+        });
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (createBtn.disabled) return;
+            errorEl.classList.add('d-none');
+            var passwordEl = el.querySelector('[data-ps-password]');
+            createBtn.disabled = true;
+            _pgApiPost('prototype_link_create', {
+                style_id: styleId,
+                audience: audience(),
+                start_page_id: parseInt(startEl.value, 10) || 0,
+                duration: parseInt(durationEl.value, 10) || 0,
+                password: passwordEl.value
+            }).then(function (res) {
+                createBtn.disabled = false;
+                if (!res || res.status !== 'success') {
+                    errorEl.textContent = (res && res.message) || _sdT('Sorry, we could not accept your request.');
+                    errorEl.classList.remove('d-none');
+                    return;
+                }
+                passwordEl.value = '';
+                madeEl.innerHTML = '<div class="fw-semibold">' + esc(_sdT('The link is ready. Copy it now and send it on.')) + '</div>' + addressBox(res.url);
+                madeEl.setAttribute('data-ps-made-id', String(res.link && res.link.id ? res.link.id : ''));
+                madeEl.classList.remove('d-none');
+                load();
+            }).catch(function () {
+                createBtn.disabled = false;
+                errorEl.textContent = _sdT('Network error.');
+                errorEl.classList.remove('d-none');
+            });
+        });
+        el.addEventListener('hidden.bs.modal', function () { el.remove(); });
+        bootstrap.Modal.getOrCreateInstance(el).show();
+        load();
     }
 
     // "View page" next to Save AND next to Preview on the canvas bar: both

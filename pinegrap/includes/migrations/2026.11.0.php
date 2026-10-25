@@ -62,6 +62,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_flow_shares(); // 11.0.83
 	upgrade_2026_11_0_comment_record_counts();  // 11.0.33
 	upgrade_2026_11_0_order_return_refund();    // 11.0.34
+	upgrade_2026_11_0_prototype_links();        // 11.0.35
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
 
 }
@@ -2124,5 +2125,51 @@ function upgrade_2026_11_0_comment_record_counts_progress_save() {
 	}
 
 	@file_put_contents($file, json_encode(array('time' => time(), 'progress' => upgrade_2026_11_0_comment_record_counts_progress())), LOCK_EX);
+
+}
+
+// Share links of a design's prototype (2026.11.0, 11.0.35;
+// includes/fn/prototype_links.php, prototype.php?link=...).
+//
+// prototype_links keeps one row per link: the design (style_id) and the draft
+// it opens on (start_page_id, 0 for the design's first draft); token_hash, the
+// SHA-256 of the token in the link's address, which a request is looked up by
+// (unique); token_secret, the token encrypted with the site's key so that its
+// maker can be shown the address again ("<ciphertext>:<iv>", empty on a site
+// without a key); token_hint, its first characters for lists and log lines.
+// audience is 'anyone' or 'team', VARCHAR rather than ENUM for the reason the
+// price history step gives. password_hash is NULL for a link without a
+// password; password_failures counts wrong answers in a row and
+// password_locked_until is the end of a lock, on the row and not in the
+// sign-in throttle, whose address bucket would lock sign-in. expires_at is 0
+// for a team link that runs for good; created_*, revoked_* (0: not revoked),
+// uses and last_used_at are unix times and counters like the other token
+// links. style_id has a key: the editor lists a design's links.
+function upgrade_2026_11_0_prototype_links() {
+
+	install_create_table('prototype_links', "CREATE TABLE prototype_links (
+		id                     INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		style_id               INT UNSIGNED NOT NULL DEFAULT 0,
+		start_page_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		token_hash             CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		token_secret           TEXT NULL,
+		token_hint             VARCHAR(8) NOT NULL DEFAULT '',
+		audience               VARCHAR(16) NOT NULL DEFAULT 'team',
+		password_hash          VARCHAR(255) NULL DEFAULT NULL,
+		password_failures      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		password_locked_until  INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by             INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		revoked_at             INT UNSIGNED NOT NULL DEFAULT 0,
+		revoked_by             INT UNSIGNED NOT NULL DEFAULT 0,
+		uses                   INT UNSIGNED NOT NULL DEFAULT 0,
+		last_used_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_token (token_hash),
+		KEY idx_style (style_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
 
 }

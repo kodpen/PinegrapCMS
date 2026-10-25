@@ -215,6 +215,10 @@ function pg_idt_remove_starter($page_ids, $style_ids, $style_id, $start_page_id)
         if (pg_idt_has('folder', 'mobile_style_id')) db("UPDATE folder SET mobile_style_id = 0 WHERE mobile_style_id IN ($styles)");
         db("DELETE FROM style WHERE style_id IN ($styles)");
         $removed['styles'] = (int)mysqli_affected_rows(db::$con);
+        // Their prototype share links end with them: a later design may get
+        // one of their ids.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+        pg_proto_links_revoke_design($style_ids, 0);
     }
 
     return $removed;

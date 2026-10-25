@@ -1602,6 +1602,20 @@ function pg_panel_designer($request, $action)
                 'primary' => $p, 'secondary' => $s));
             break;
 
+        // ── PROTOTYPE SHARE LINKS ────────────────────────────────────
+        // The Share prototype dialog (includes/fn/prototype_links.php): a
+        // design's links, a new one, a link's address shown again, and
+        // revoking one. Designers only, like the Schedule section: the
+        // list above does not open them to a content-level operator.
+        case 'prototype_links':
+        case 'prototype_link_create':
+        case 'prototype_link_address':
+        case 'prototype_link_revoke':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+            respond(pg_proto_links_panel($sub, $request, $user));
+            break;
+
         default:
             respond(array('status' => 'error', 'message' => lang('Unknown action.')));
     }

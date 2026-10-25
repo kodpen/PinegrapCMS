@@ -84,3 +84,91 @@ function test_api_idempotency_input_text_tells_apart_bodies_json_cannot_write()
 	pg_assert_same($first, api_idempotency_input_text(array('name' => "x\xFDy")), 'the same body, the same fingerprint');
 	pg_assert_true(api_idempotency_input_text(array('n' => INF)) !== api_idempotency_input_text(array('n' => -INF)), 'INF and -INF too');
 }
+
+// A field a route marks 'secret' (a password) enters the fingerprint as an
+// HMAC keyed with the site's key, never as sent: the fingerprint is kept for a
+// day beside the key, where a plain SHA-256 over a short password is a fast
+// offline guess.
+function test_api_idempotency_fingerprint_keys_a_secret_field()
+{
+	$route = array('params' => array(
+		array('name' => 'audience', 'in' => 'body', 'type' => 'enum'),
+		array('name' => 'password', 'in' => 'body', 'type' => 'string', 'secret' => true),
+	));
+
+	$input = api_idempotency_secret_input($route, array('audience' => 'anyone', 'password' => 'hunter2x'), 'site-key');
+
+	pg_assert_same('anyone', $input['audience'], 'other fields as they came');
+	pg_assert_true($input['password'] !== 'hunter2x', 'not the password itself');
+	pg_assert_false(strpos(api_idempotency_input_text($input), 'hunter2x') !== false, 'nowhere in the hashed text');
+	pg_assert_false(strpos(api_idempotency_input_text($input), hash('sha256', 'hunter2x')) !== false, 'nor its plain hash');
+	pg_assert_same($input, api_idempotency_secret_input($route, array('audience' => 'anyone', 'password' => 'hunter2x'), 'site-key'), 'the same request, the same fingerprint');
+	pg_assert_true($input !== api_idempotency_secret_input($route, array('audience' => 'anyone', 'password' => 'hunter3x'), 'site-key'), 'another password, another fingerprint');
+	pg_assert_true($input !== api_idempotency_secret_input($route, array('audience' => 'anyone', 'password' => 'hunter2x'), 'other-key'), 'keyed');
+	pg_assert_same(array('audience' => 'team'), api_idempotency_secret_input($route, array('audience' => 'team'), 'site-key'), 'a secret not sent is not added');
+	pg_assert_same(array('n' => 1), api_idempotency_secret_input(array(), array('n' => 1), 'site-key'), 'a route without params');
+}
+
+// The fields a route names in 'idempotency_redact' are recorded as null: a
+// secret answered once (a share link's address) does not sit readable in
+// api_idempotency for the day the row lives.
+function test_api_idempotency_record_leaves_out_a_routes_redacted_fields()
+{
+	$answer = array('url' => 'https://example.com/pinegrap/prototype.php?link=secret', 'link' => array('id' => 4, 'url' => 'kept'));
+
+	pg_assert_same(array('url' => null, 'link' => array('id' => 4, 'url' => 'kept')), api_idempotency_redacted($answer, array('url')), 'top-level fields only');
+	pg_assert_same($answer, api_idempotency_redacted($answer, array()), 'nothing named');
+	pg_assert_same($answer, api_idempotency_redacted($answer, array('token_url')), 'a name not in the answer is not added');
+	pg_assert_same('text', api_idempotency_redacted('text', array('url')), 'not an object');
+
+	// The route's list travels with the key to the line that records the
+	// answer.
+	$context = api_idempotency_context(3, 'k1', 'h1', array('url'));
+	pg_assert_same(array('url'), $context['redact']);
+	$context = api_idempotency_context(3, 'k1', 'h1');
+	pg_assert_same(array(), $context['redact'], 'none unless the route names some');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/idempotency.php');
+	pg_assert_contains("api_idempotency_redacted(\$response, \$context['redact'])", $source);
+	pg_assert_contains("api_idempotency_secret_input(\$route, \$params,", $source);
+
+	$bootstrap = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/bootstrap.php');
+	pg_assert_contains("api_idempotency_context((int)\$app['id'], \$key, \$hash, isset(\$route['idempotency_redact']) ? (array)\$route['idempotency_redact'] : array(), isset(\$route['idempotency_restore']) ? (string)\$route['idempotency_restore'] : '');", $bootstrap);
+}
+
+// A route's 'idempotency_restore' function, as a test stands one in: fills
+// the field the record left out.
+function api_idempotency_test_restore($stored)
+{
+	$stored['url'] = 'read back';
+
+	return $stored;
+}
+
+// One that answers something that is not an object.
+function api_idempotency_test_restore_text($stored)
+{
+	return 'text';
+}
+
+// What the record left out ('idempotency_redact') a replay fills in again
+// through the route's 'idempotency_restore' function, so the retry gets the
+// first answer; a route without one, or a function that answers anything
+// but an object, leaves the record as it is.
+function test_api_idempotency_replay_restores_a_routes_redacted_fields()
+{
+	$stored = array('url' => null, 'link' => array('id' => 4));
+
+	pg_assert_same(array('url' => 'read back', 'link' => array('id' => 4)), api_idempotency_restored($stored, 'api_idempotency_test_restore'));
+	pg_assert_same($stored, api_idempotency_restored($stored, ''), 'no restore function');
+	pg_assert_same($stored, api_idempotency_restored($stored, 'api_idempotency_test_no_such_function'), 'a name that is not a function');
+	pg_assert_same($stored, api_idempotency_restored($stored, 'api_idempotency_test_restore_text'), 'an answer that is not an object');
+
+	$context = api_idempotency_context(3, 'k1', 'h1', array('url'), 'api_idempotency_test_restore');
+	pg_assert_same('api_idempotency_test_restore', $context['restore']);
+	$context = api_idempotency_context(3, 'k1', 'h1', array('url'));
+	pg_assert_same('', $context['restore'], 'none unless the route names one');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/idempotency.php');
+	pg_assert_contains("api_send((int)\$row['status_code'], api_idempotency_restored(\$stored, \$context['restore']));", $source);
+}

@@ -11,6 +11,7 @@ description: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): add
 ## Which endpoints must use it?
 - Every endpoint that accepts a password: `pg_login_throttle_guard($name)` before the check, `pg_login_record_failure($name)` after a miss, the same buckets as the sign-in screens. A door without it bypasses the lock. `grep -rn "pg_login_throttle_guard("` lists the doors today (sign-in screens, change password, `api.php` with a password in the body, the external API's device sign-in, MFA, ShipWorks, the install unlock form).
 - The sign-in question sits in front of the lock: docs/memory/waf/waf-login-captcha.md.
+- Not a prototype share link's password: it opens no account, so its wrong answers count on its own row; the address bucket would lock the visitor's office out of sign-in (docs/memory/designer/designer-prototype-share-links.md).
 
 ## Does it depend on the firewall?
 - No. Own switch `login_throttle` (default on, columns from 2026.4.4; `pg_login_throttle_ready()` hides it on a database without them). The firewall ships in Monitor mode and may be switched off to chase a false positive; neither may open the password door.
