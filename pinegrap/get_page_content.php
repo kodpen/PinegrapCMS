@@ -505,14 +505,26 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
+    // The pages whose comment thread a comments widget drew in this pass
+    // (widgets_comments.php); the classic comments block below leaves them
+    // alone.
+    $pg_cw_pages = array();
     if (strpos($content, '<!--pg-system-widget:') !== false) {
+        // The drawn page's id wins over a dynamic property of that name: a
+        // widget whose data is the page's own (its comment thread) reads it
+        // here.
         $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
-            ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
+            ? pg_sw_render_context(array('email' => (bool)$email, 'page_id' => (int)$page_id) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
             : null;
+        // Each pass keeps its own record of the pages a comments widget drew:
+        // an e-mail or another page drawn meanwhile neither adds to it nor
+        // clears it.
+        $pg_cw_prev = function_exists('pg_comments_widget_pages') ? pg_comments_widget_pages(array()) : null;
         $content = _expand_system_widgets($content, $mode, $email);
         // A widget's own layout can place shared components and other
         // widgets; their markers come out of the widget's render.
         $content = pg_expand_nested_components($content, $mode, $email);
+        if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 
@@ -3708,6 +3720,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $system_output .= '<div class="software_rss_link" style="margin-top: .5em; margin-bottom: .5em"><a href="' . $output_rss_url . '"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_rss.png" width="27" height="20" alt="RSS" title="' . lang('Subscribe to RSS feed') . '" border="0" /></a></div>';
             }
             
+            // The page's comment settings as the shared comment rules read them
+            // (includes/fn/comments.php); the HTML below still reads its texts and
+            // switches from the region's page row.
+            $comments_settings = pg_comments_settings($system_region_properties);
+
             // A page built in the visual editor shows a submitted form through its
             // form_item_view widget rather than a page type. Its comments belong
             // to that record, as on a legacy form item view page, and the widget's
@@ -3716,7 +3733,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $comments_page_type = $system_region_properties['page_type'];
             $comments_record = null;
             if (
-                ($system_region_properties['comments'] == '1')
+                $comments_settings['enabled']
                 && ($comments_page_type != 'form item view')
                 && function_exists('pg_sw_record_comment_context')
             ) {
@@ -3739,8 +3756,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $cm_check    = 'software_input_checkbox' . ($cm_bs ? ' form-check-input' : '');
             $cm_btn_secondary = $cm_bs ? ' btn btn-sm btn-outline-secondary' : '';
 
-            // if comments are turned on for this page then output comments, add comment form, and watch comments area
-            if (($system_region_properties['comments'] == '1') && (($comments_record === null) || $comments_record['visible'])) {
+            // if comments are turned on for this page then output comments, add comment form, and watch comments area.
+            // A comments widget that drew this page's thread owns it: no second list,
+            // no second reader of the add_comment form state and no append to the
+            // System region. A comments-block marker is still emptied further down,
+            // as $comments_block_html stays empty.
+            if ($comments_settings['enabled'] && (($comments_record === null) || $comments_record['visible']) && !pg_comments_widget_drawn($system_region_properties['page_id'], $pg_cw_pages)) {
                 $item_id = '0';
                 $item_type = '';
 
@@ -3752,7 +3773,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $form_editor_email_address = '';
                 $form_submitter_user_id = '';
 
-                $sql_where = '';
+                // The item thread the page shows; null on a page that shows no
+                // item, whose block reads every comment on the page.
+                $comments_thread = null;
                 $sql_where_watchers = '';
 
                 $comment_label = get_comment_label(array('label' => $system_region_properties['comments_label']));
@@ -3884,10 +3907,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             break;
                     }
                     
-                    $sql_where = " AND (item_id = '" . escape($item_id) . "') AND (item_type = '" . escape($item_type) . "')";
-                    
+                    $comments_thread = array('item_type' => $item_type, 'item_id' => $item_id);
+
                     // store the sql where here, because we will need this later for the watchers area
-                    $sql_where_watchers = $sql_where;
+                    $sql_where_watchers = pg_comments_thread_sql($comments_thread);
                 }
 
                 $form_submitter_email_address = '';
@@ -3901,130 +3924,32 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $form_submitter_email_address = get_submitter_email_address($item_id);
                 }
 
-                $form_editor = false;
-
-                // If the visitor is the form editor, then remember that for later.
-                if (
-                    ($comments_page_type == 'form item view')
-                    && ($form_editor_username != '')
-                    && (USER_LOGGED_IN)
-                    && (USER_ID == $form_editor_user_id)
-                ) {
-                    $form_editor = true;
-                }
-                
                 // The search index stores what an anonymous visitor reads of
                 // a record on a visual page, even when an editor's click on
                 // the panel button runs it.
                 $comments_for_search_index = ($comments_record !== null)
                     && defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
 
-                // If the visitor does not have edit access to this page,
-                // and the visitor is not the form editor,
-                // then prepare sql to restrict which comments should appear
-                if ((!$edit_access && !$form_editor) || $comments_for_search_index) {
-                    $sql_added_comments = "";
-                    
-                    // if session array is set then loop through comments and add them to sql statement
-                    if (!$comments_for_search_index && (isset($_SESSION['software']['added_comments']) == TRUE)) {
-                        // loop through added comments and add each comment id to the sql statement
-                        foreach ($_SESSION['software']['added_comments'] as $added_comment) {
-                            if ($sql_added_comments != '') {
-                                $sql_added_comments .= " OR ";
-                            }
-                            
-                            $sql_added_comments .= "(comments.id = '" . escape($added_comment) . "')";
-                        }
-                        
-                        // if there was an added comment, then add wrapper around added comment(s)
-                        if ($sql_added_comments != '') {
-                            $sql_added_comments = " OR ($sql_added_comments)";
-                        }
-                    }
-                    
-                    $sql_where .= " AND ((comments.published = '1')$sql_added_comments)";
-                }
+                // Who reads the thread: staff (edit access to this page), the
+                // shown record's form editor, and the comments this browser
+                // session added.
+                $comments_viewer = pg_comments_viewer($edit_access, ($comments_page_type == 'form item view') ? array('form_editor_user_id' => $form_editor_user_id, 'form_editor_username' => $form_editor_username) : null, $comments_for_search_index);
+                $form_editor = $comments_viewer['form_editor'];
 
-                // Get the total number of comments.  We will output this further below.
-                // We do this before dealing with the featured comments because we want a total number of featured and non-featured comments.
-                $query = "SELECT COUNT(*) FROM comments WHERE comments.page_id = '" . escape($system_region_properties['page_id']) . "'$sql_where";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_row($result);
-                $number_of_comments = $row[0];
+                // The comments this visitor reads, oldest first: everyone the
+                // published ones and their own of this session, staff and the
+                // form editor every one. While featured comments exist and
+                // ?comments is unset or 'featured', only the featured ones;
+                // the count is of all of them. $comments, the page's comments
+                // switch above, holds the rows from here on as it always has,
+                // so a second blank <system> region of the page draws no
+                // comments.
+                $comments_read = pg_comments_rows($system_region_properties['page_id'], $comments_thread, $comments_viewer, array('featured' => 'filter', 'view' => $_GET['comments'] ?? null));
+                $number_of_comments = $comments_read['count'];
+                $featured_comments_exist = $comments_read['has_featured'];
+                $featured = $comments_read['featured_view'];
+                $comments = $comments_read['rows'];
 
-                // Determine if there are featured comments.  We will use this to decide if we need to filter
-                // for featured comments and if we need to output different view links for "all" and "featured".
-                $query =
-                    "SELECT COUNT(*)
-                    FROM comments
-                    WHERE
-                        (comments.page_id = '" . escape($system_region_properties['page_id']) . "')
-                        $sql_where
-                        AND comments.featured = '1'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_row($result);
-
-                // Assume that there are not any featured comments until we find out otherwise.
-                $featured_comments_exist = false;
-
-                // If there are featured comments then remember that.
-                if ($row[0] > 0) {
-                    $featured_comments_exist = true;
-                }
-
-                // Assume that we are not just showing featured comments until we find out otherwise.
-                $featured = false;
-
-                // If featured comments exist and the comments view is not set in the query string
-                // or it is set to "featured", then add filter to SQL where clause so query only gets
-                // featured comments, and remember that we are only showing featured comments.
-                if (
-                    ($featured_comments_exist == true)
-                    &&
-                    (
-                        (isset($_GET['comments']) == false)
-                        || ($_GET['comments'] == 'featured')
-                    )
-                ) {
-                    $sql_where .= " AND (comments.featured = '1')";
-                    $featured = true;
-                }
-                
-                // get comments data
-                $query = 
-                    "SELECT
-                        comments.id,
-                        comments.name,
-                        comments.message,
-                        files.name as file_name,
-                        files.size as file_size,
-                        comments.published,
-                        comments.publish_date_and_time,
-                        comments.publish_cancel,
-                        comments.featured,
-                        comments.rating,
-                        " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
-                        " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
-                        user.user_username as username,
-                        user.user_role,
-                        user.user_id,
-                        user.user_badge,
-                        user.user_badge_label,
-                        comments.created_timestamp
-                    FROM comments
-                    LEFT JOIN files ON comments.file_id = files.id
-                    LEFT JOIN user ON comments.created_user_id = user.user_id
-                    WHERE comments.page_id = '" . escape($system_region_properties['page_id']) . "'$sql_where
-                    ORDER BY comments.created_timestamp ASC";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                
-                $comments = array();
-                
-                // loop through all comments in order to add them to array
-                while ($row = mysqli_fetch_assoc($result)) {
-                    $comments[] = $row;
-                }
-                
                 $output_comments = '';
                 
                 // if there is at least one comment, then prepare to output list of comments
@@ -4409,45 +4334,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     }
                 }
                 
-                // assume that new comments are not allowed, until we find out otherwise
-                $allow_new_comments = FALSE;
-                
-                // if these are comments for a specific item, then determine if new comments are allowed for the item
-                if ($item_id != 0) {
-                    $query = 
-                        "SELECT allow_new_comments
-                        FROM allow_new_comments_for_items
-                        WHERE
-                            (page_id = '" . escape($system_region_properties['page_id']) . "')
-                            AND (item_id = '" . escape($item_id) . "')
-                            AND (item_type = '" . escape($item_type) . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
-                    // if a result was found, then use the result
-                    if (mysqli_num_rows($result) > 0) {
-                        $row = mysqli_fetch_assoc($result);
-                        
-                        // if new comments are are allowed then remember that
-                        if ($row['allow_new_comments'] == 1) {
-                            $allow_new_comments = TRUE;
-                        }
-                        
-                    // else a result was not found, so use value from page
-                    } else {
-                        // if new comments are allowed for the page, then remember that
-                        if ($system_region_properties['comments_allow_new_comments'] == 1) {
-                            $allow_new_comments = TRUE;
-                        }
-                    }
-                    
-                // else these are comments just for the page, not for an item, so use value from page
-                } else {
-                    // if new comments are allowed for the page, then remember that
-                    if ($system_region_properties['comments_allow_new_comments'] == 1) {
-                        $allow_new_comments = TRUE;
-                    }
-                }
-                
+                // Whether the thread takes new comments: an item's own switch in
+                // allow_new_comments_for_items when it has one, else the page's.
+                $allow_new_comments = pg_comments_allow_new($system_region_properties['page_id'], $item_type, $item_id, $comments_settings['allow_new']);
+
                 $output_allow_new_comments_form = '';
                 
                 // if the user has edit rights to this page, then output form that will allow the user to allow/disallow new comments
@@ -6515,6 +6405,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // src addresses absolute, not srcset ones (pg_img_strip_responsive()).
     if ($email && function_exists('pg_img_strip_responsive')) {
         $content = pg_img_strip_responsive($content);
+    }
+
+    // The edit chips' stylesheet, once, on a finished page that shows a chip
+    // (pg_sw_edit_chip_css_inject()). Not in an e-mail.
+    if (!$email && function_exists('pg_sw_edit_chip_css_inject')) {
+        $content = pg_sw_edit_chip_css_inject($content);
     }
 
     return $content;

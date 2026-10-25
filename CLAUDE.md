@@ -105,10 +105,11 @@ the search API are blocked in cloud sessions.
 2. **No AI or process trace** in comments, commits, PR bodies, PR comments or
    merge messages: no "user decision", "per feedback", phase numbers, plan or
    session references, `Co-Authored-By: Claude`, `Claude-Session:`,
-   "Generated with Claude Code" or claude.ai links. If a tool adds one, edit it
-   out right away. Commit author `Erdal Güral <erdaltyy@gmail.com>`. Comments
-   say what the code does and the technical why; decision history goes to
-   memory.
+   "Generated with Claude Code" or claude.ai links. A footer GitHub adds to a
+   PR body or comment is cleaned by the session that merges the PR; others do
+   not spend turns on it (`docs/memory/workflow/pr-footer-and-trailers.md`).
+   Commit author `Erdal Güral <erdaltyy@gmail.com>`. Comments say what the
+   code does and the technical why; decision history goes to memory.
 3. **Every user-facing text is translated:** `lang('English text')` in PHP and
    the panel, `_sdT('English text')` in the designer (single-quoted literal).
    The English source is the key and must exist in `tr.json`.
