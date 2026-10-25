@@ -24,11 +24,13 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 
 ## What do the action bindings do?
 - `add_to_cart` (catalog_item_view button); `catalog_add_to_cart` (catalog_listing card, per card).
+- `wishlist` (catalog_item_view) / `catalog_wishlist` (catalog_listing card): the favourite heart, offered on a button only (btn component or `<button>`); a hidden `type="button"` marked `data-pg-wishlist`, shown by `pg_wishlist.js` (`commerce/wishlist-heart.md`).
 - `cart_update` / `cart_checkout` (shopping_cart button); `cart_qty_inc` / `cart_qty_dec` (shopping_cart loop button).
 - `eo_submit_purchase` (complete order), `eo_submit_update` (update cart/totals), `eo_qty_inc` / `eo_qty_dec` (EO loop button).
 - `remove_from_cart`: shopping_cart + EO loop, tag-agnostic per-row removal (a -> href, button -> `data-pg-remove-href` + JS).
 - `apply_coupon` (shopping_cart button); `coupon_form` (shopping_cart form: action/method + CSRF).
 - `open_filters` / `clear_filters` / `submit_search` (catalog_listing): filter offcanvas, clear, search.
+- `wishlist_remove` / `wishlist_add_to_cart` (wishlist loop button): a submit button for a hidden form printed after the widget (`wishlist-widget.md`).
 
 ## What happens to the URL field when href is bound?
 - Hidden via `_sdHrefIsBound()` + `_sdBoundHrefNotice()` (style_designer.js) in four panels: Link Options, Button Options, semantic `<a>`, generic component href row. Reason: server rewrites href at render, so a typed URL did nothing ("visible but non-functional" is forbidden).

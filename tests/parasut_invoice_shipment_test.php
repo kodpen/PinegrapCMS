@@ -149,13 +149,14 @@ function test_parasut_shipment_invoice_link_names_an_invoice_without_shipment()
 }
 
 // A read that fails, or an answer that does not say, is no answer: E-Shipment
-// is refused with Paraşüt's words rather than sent on a guess.
+// is refused with Paraşüt's words (without their closing period) rather than
+// sent on a guess. An invoice deleted on Paraşüt's screen (404) is no
+// invoice: parasut_stale_ids_test.php.
 function test_parasut_shipment_invoice_link_refuses_when_parasut_does_not_say()
 {
 	$answers = array(
 		'no connection' => array('http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => 'Operation timed out'),
 		'server error' => array('http_code' => 500, 'body' => null, 'raw' => ''),
-		'deleted there' => array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found', 'detail' => 'SalesInvoice-77'))), 'raw' => ''),
 		'no attribute' => array('http_code' => 200, 'body' => array('data' => array('id' => '77', 'attributes' => array('net_total' => '10.0'))), 'raw' => ''),
 		'null attribute' => array('http_code' => 200, 'body' => array('data' => array('id' => '77', 'attributes' => array('shipment_included' => null))), 'raw' => ''),
 		'text attribute' => array('http_code' => 200, 'body' => array('data' => array('id' => '77', 'attributes' => array('shipment_included' => 'false'))), 'raw' => ''),
@@ -168,7 +169,7 @@ function test_parasut_shipment_invoice_link_refuses_when_parasut_does_not_say()
 		pg_assert_same('', $link['invoice_id'], $label);
 		pg_assert_same(lang(array(
 			'string' => 'Paraşüt could not be asked whether this order\'s sales invoice (ID: {var:1}) carries the shipment: {var:2}. No shipment document was created; try again in a minute.',
-			'vars' => array('77', _parasut_extract_error($answer)),
+			'vars' => array('77', parasut_refusal_words(_parasut_extract_error($answer))),
 		)), $link['error'], $label);
 	}
 }
@@ -209,15 +210,16 @@ function test_parasut_create_invoice_sends_without_shipment_after_e_shipment()
 	pg_assert_true(($posted !== false) && ($built < $posted), 'before the create');
 }
 
-// E-Shipment judges the order's invoice after the guard of a shipped order
-// and before anything is written at Paraşüt: the buyer card, the product,
-// its tracking and opening stock, the document. The document names the
-// invoice the judgement gave.
+// E-Shipment judges the order's invoice (its own, or the Paraşüt record of
+// its ERP invoice: parasut_order_gates_test.php) after the guard of a
+// shipped order and before anything is written at Paraşüt: the buyer card,
+// the product, its tracking and opening stock, the document. The document
+// names the invoice the judgement gave.
 function test_parasut_create_shipment_judges_the_invoice_before_any_write()
 {
 	$body = parasut_invoice_shipment_test_source('parasut_create_shipment');
 	$guard = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
-	$link = strpos($body, "parasut_shipment_invoice_link((string) (\$order['parasut_invoice_id'] ?? ''),");
+	$link = strpos($body, "parasut_shipment_invoice_link(\$invoice_to_judge['invoice_id'],");
 	$refused = strpos($body, "if (\$invoice_link['error'] !== '') {");
 
 	pg_assert_true(($guard !== false) && ($link !== false) && ($guard < $link), 'after the guard of a shipped order');

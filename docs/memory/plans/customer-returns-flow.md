@@ -1,6 +1,6 @@
 ---
 name: customer-returns-flow
-description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
+description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks, and the classic order view): a staff-recorded request form left
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to AP
 
 ## What remains?
 1. Done (PR #650): tables (step 11.0.11), `includes/fn/returns.php` (statuses and moves, held quantities, withdrawal window, refund deadline, create, move, read, delete with the order), `tests/returns_test.php`. Behaviour and what was added to the column list (`decision_note`, `source`, `requested_by`, `decided_by`, `shipped_at`, `closed_at`): docs/memory/commerce/order-returns.md.
-2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
+2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. The classic order view (`get_view_order_screen_content.php`) shows them too (PR #1617): docs/memory/commerce/order-returns-classic-view.md.
 3. Done (PR #808): list and bulk approve, one return's moves, decision mails, audit trail, bell, order card, delivery date from the parcel rows: docs/memory/commerce/order-returns-panel.md. Left: a form for staff to record a request (`pg_return_create()` source `panel`).
 4. Done (PR #936): refund by driver or recorded, ERP return invoice hand-off, refund mail, reminder job, `[NEW]` line: docs/memory/commerce/order-returns-refund.md.
 5. Done (PR #1352): `GET/POST /orders/{id}/returns`, `order.return.*` webhooks, Workspace trigger: docs/memory/commerce/order-returns-api.md, order-returns-events.md.
@@ -25,4 +25,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to AP
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
 
 ## Where to start?
-- What is left ("Left" in steps 2 and 3): a panel form to record a request (source `panel`; `pg_return_create_check()` and `pg_return_audit_create_fields()` are ready), and returns in the classic order view. Read `commerce/order-returns-api.md`.
+- What is left ("Left" in step 3), a panel form to record a request (source `panel`), is in open PR #1616; when it merges the plan is finished: move its decisions to commerce/ and delete this file.

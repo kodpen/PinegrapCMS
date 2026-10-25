@@ -320,21 +320,133 @@ function pg_sw_finish_place_chips($html, $nonce)
     return $out . substr($html, $pos);
 }
 
+// Row positions. A list's row template that uses one of the six position
+// tokens is drawn between two row marks (_split_widget_tree()), so every
+// copy of it the renderer prints is a row span:
+//
+//   <!--pg-row:NONCE-->  one row, ^^__loop_index^^ and the rest unfilled  <!--/pg-row:NONCE-->
+//
+// No renderer fills these tokens, and the sweep keeps them while a widget
+// renders (pg_sw_sweep_tokens()); the pass numbers the spans it finds.
+
+// The two row marks of $nonce.
+function pg_sw_finish_row_marks($nonce)
+{
+    return array('<!--pg-row:' . $nonce . '-->', '<!--/pg-row:' . $nonce . '-->');
+}
+
+// Whether a list's row template ($children, the loop_area's children)
+// should be drawn between row marks: only inside a widget render, and only
+// when a node of it names a position token, in a binding (a condition
+// too), a text or custom HTML. A template without one draws as before.
+function pg_sw_finish_uses_positions($children)
+{
+    if (!pg_sw_finish_active() || !is_array($children) || !$children) return false;
+    $json = json_encode($children);
+    return is_string($json) && (bool)preg_match('/__loop_(?:index|count|is_first|is_last|is_odd|is_even)\b/', $json);
+}
+
+// The values of the six position tokens for row $i (counted from 0) of $n
+// rows: the row number, the number of rows, and '1' or '' for the first,
+// the last, an odd and an even row.
+function pg_sw_finish_position_values($i, $n)
+{
+    $i = (int)$i;
+    $n = (int)$n;
+    return array(
+        '__loop_index'    => (string)($i + 1),
+        '__loop_count'    => (string)$n,
+        '__loop_is_first' => ($i === 0) ? '1' : '',
+        '__loop_is_last'  => ($i === $n - 1) ? '1' : '',
+        '__loop_is_odd'   => (($i + 1) % 2 === 1) ? '1' : '',
+        '__loop_is_even'  => (($i + 1) % 2 === 0) ? '1' : '',
+    );
+}
+
+// The pattern of a position token with its optional format suffix.
+function _pg_sw_finish_position_pattern()
+{
+    return '/\^\^(__loop_(?:index|count|is_first|is_last|is_odd|is_even))\^\^(?:%%.*?%%)?/';
+}
+
+// The row spans of $html at its top level, numbered in the order they
+// stand: the spans inside a span's body number among themselves first,
+// then the position tokens left in the body take the span's values (the
+// format suffix goes; the values are digits, '1' or '', so nothing needs
+// escaping). The marks of a span are taken out; a mark without its pair
+// is left. Pairs are found with strpos(), never one pattern over a body.
+function _pg_sw_finish_number_rows($html, $open, $close)
+{
+    $spans = array();
+    $pos   = 0;
+    while (($at = strpos($html, $open, $pos)) !== false) {
+        $after = $at + strlen($open);
+        $end   = _pg_sw_finish_pair_end($html, $open, $close, $after);
+        if ($end === null) {
+            $pos = $after;
+            continue;
+        }
+        $spans[] = array($at, $after, $end[0], $end[1]);
+        $pos     = $end[1];
+    }
+    if (!$spans) return $html;
+
+    $n       = count($spans);
+    $pattern = _pg_sw_finish_position_pattern();
+    $out     = '';
+    $pos     = 0;
+    foreach ($spans as $i => $span) {
+        $out   .= substr($html, $pos, $span[0] - $pos);
+        $body   = _pg_sw_finish_number_rows(substr($html, $span[1], $span[2] - $span[1]), $open, $close);
+        $values = pg_sw_finish_position_values($i, $n);
+        $filled = preg_replace_callback($pattern, function ($m) use ($values) {
+            return $values[$m[1]];
+        }, $body);
+        $out .= ($filled === null) ? $body : $filled;
+        $pos  = $span[3];
+    }
+    return $out . substr($html, $pos);
+}
+
+// The position stage of the pass: every row span of $nonce numbered
+// (_pg_sw_finish_number_rows()), then every row mark and every position
+// token still standing taken out: a token bound outside the loop, or one
+// in markup no row mark reached, reads as empty.
+function pg_sw_finish_positions($html, $nonce)
+{
+    if (!is_string($html) || $html === '') return $html;
+    list($open, $close) = pg_sw_finish_row_marks($nonce);
+    if (strpos($html, $open) !== false) {
+        $html = str_replace(array($open, $close), '', _pg_sw_finish_number_rows($html, $open, $close));
+    } elseif (strpos($html, $close) !== false) {
+        $html = str_replace($close, '', $html);
+    }
+    if (strpos($html, '^^__loop_') === false) return $html;
+    $out = preg_replace(_pg_sw_finish_position_pattern(), '', $html);
+    return ($out === null) ? $html : $out;
+}
+
 // The finish pass of one widget's markup. Its stages, in order:
-//   1. conditions (pg_sw_finish_resolve());
-//   2. when a span was cut, pg-hide-if-empty again in the kinds whose
+//   1. row positions (pg_sw_finish_positions()), first, so a condition on
+//      a position token reads its row's value;
+//   2. conditions (pg_sw_finish_resolve());
+//   3. when a span was cut, pg-hide-if-empty again in the kinds whose
 //      renderer honours it, on the elements around a cut point only, so a
 //      row whose value left and a box whose last row left go with it, and
 //      an element no cut touched is judged as the renderer judged it;
-//   3. every marker, carrier and cut point of this request still standing
+//   4. every marker, carrier and cut point of this request still standing
 //      taken out;
-//   4. each record's edit pencil put in the first element the record kept
+//   5. each record's edit pencil put in the first element the record kept
 //      (pg_sw_finish_place_chips()), then any pencil marker left taken out.
-// Markup that holds no marker of this request comes back as it was.
+// Markup that holds neither a marker of this request nor a position token
+// comes back as it was; markup without a marker ends after stage 1.
 function pg_sw_finish_widget_html($html, $scope)
 {
     if (!is_string($html) || $html === '') return $html;
     $nonce = pg_sw_marker_nonce();
+    if (strpos($html, $nonce) === false && strpos($html, '^^__loop_') === false) return $html;
+
+    $html = pg_sw_finish_positions($html, $nonce);
     if (strpos($html, $nonce) === false) return $html;
 
     $cut  = false;

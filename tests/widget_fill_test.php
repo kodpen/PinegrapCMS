@@ -464,14 +464,17 @@ function test_widget_fill_php_js_parity()
 	$types = _widget_fill_js_literal($js, 'SW_TYPES');
 	preg_match_all("/\\{ type: '([a-z_]+)'/", $types, $t);
 	pg_assert_true(count($t[1]) >= 30, 'SW_TYPES is read');
-	$part_two = array('catalog_listing', 'catalog_item_view', 'shopping_cart', 'express_order', 'order_view');
+	// The shop kinds, and the kinds whose fill reads no format (the
+	// favourites list, the recent comments list): the editor offers them no
+	// Format row.
+	$part_two = array('catalog_listing', 'catalog_item_view', 'shopping_cart', 'express_order', 'order_view', 'wishlist', 'comments_recent');
 	$kinds = _widget_fill_js_literal($js, '_SD_FILTER_KINDS');
 	preg_match_all('/\b([a-z_]+): 1\b/', $kinds, $k);
 	$expected = array_values(array_diff($t[1], $part_two));
 	$listed = $k[1];
 	sort($expected);
 	sort($listed);
-	pg_assert_same($expected, $listed, 'every kind whose fill reads a format, the shop kinds aside');
+	pg_assert_same($expected, $listed, 'every kind whose fill reads a format, the shop kinds and the kinds without a format aside');
 
 	$dates = _widget_fill_js_literal($js, 'SW_DATE_FIELD_TOKENS');
 	foreach (array('__event_date', '__event_start_date', '__event_end_date') as $token) {
@@ -500,7 +503,8 @@ function _widget_fill_run_js($script)
 	$bindfmt = _widget_fill_js_function($js, '_sdBindFormatRow');
 	$setter = _widget_fill_js_function($js, '_sdNodeSetBinding');
 	$kind = _widget_fill_js_function($js, '_swNameKind');
-	pg_assert_true($block !== '' && $dates !== '' && $bindfmt !== '' && $setter !== '' && $kind !== '', 'the editor code is found');
+	$kind_of = _widget_fill_js_function($js, '_swKindOf');
+	pg_assert_true($block !== '' && $dates !== '' && $bindfmt !== '' && $setter !== '' && $kind !== '' && $kind_of !== '', 'the editor code is found');
 
 	$stubs = "function _sdT(k, v) { if (v === undefined) return k; var l = Array.isArray(v) ? v : [v]; return k.replace(/\\{var\\}/g, String(l[0])); }\n"
 		. "function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;'); }\n"
@@ -511,7 +515,7 @@ function _widget_fill_run_js($script)
 		. "var SW_STANDARD_FIELD_OPTIONS = [['submitted_date_and_time', 'Submitted', 'date'], ['reference_code', 'Reference', 'text']];\n";
 
 	$file = tempnam(sys_get_temp_dir(), 'pgfill');
-	file_put_contents($file, $stubs . $dates . ";\n" . $block . $bindfmt . $setter . $kind . "\n" . $script);
+	file_put_contents($file, $stubs . $dates . ";\n" . $block . $bindfmt . $setter . $kind_of . $kind . "\n" . $script);
 	$out = array();
 	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	unlink($file);

@@ -53,8 +53,18 @@ if (isset($_POST['parasut_action'])) {
         }
 
         // Validate that a contact is linked before invoicing.
-        $parasut_order = db_item("SELECT contact_id, custom_field_1, custom_field_2, parasut_shipment_id FROM orders WHERE id = '$order_id'");
+        $parasut_order = db_item("SELECT status, contact_id, custom_field_1, custom_field_2, parasut_shipment_id FROM orders WHERE id = '$order_id'");
         $parasut_contact_id = $parasut_order['contact_id'] ?? '';
+
+        // Only a finished sale is invoiced or shipped. The buttons are drawn
+        // for no other status, so a post that gets here comes from a page
+        // opened before the order was cancelled; the writers refuse it too,
+        // and this says so before the buyer's details are asked about.
+        $parasut_status_refusal = parasut_order_status_refusal($parasut_order['status'] ?? '', ($parasut_action === 'e_irsaliye') ? 'shipment' : 'invoice');
+        if ($parasut_status_refusal !== '') {
+            $liveform->mark_error('_error', $parasut_status_refusal);
+            go($redirect);
+        }
 
         if (!$parasut_contact_id) {
             $liveform->mark_error('_error', lang('No contact is linked to this order. Please ensure billing information is complete.'));
@@ -81,8 +91,10 @@ if (isset($_POST['parasut_action'])) {
             }
         }
 
+        $parasut_notices = array();
+
         if ($parasut_action === 'invoice') {
-            $result = parasut_create_invoice($order_id);
+            $result = parasut_create_invoice($order_id, $parasut_notices);
             if ($result['success']) {
                 $kind_label = ($result['edoc_kind'] === 'einvoice') ? lang('E-Invoice') : lang('E-Archive');
                 $state_note = (($result['edoc_state'] ?? '') === 'done')
@@ -97,12 +109,20 @@ if (isset($_POST['parasut_action'])) {
             }
 
         } elseif ($parasut_action === 'e_irsaliye') {
-            $result = parasut_create_shipment($order_id);
+            $result = parasut_create_shipment($order_id, $parasut_notices);
             if ($result['success']) {
                 $liveform->add_notice(lang('E-Shipment document created successfully in Parasut.') . ' (ID: ' . h($result['parasut_shipment_id']) . ')');
             } else {
                 $liveform->mark_error('_error', lang('Parasut E-Shipment Error') . ': ' . h($result['error']));
             }
+        }
+
+        // A record the order kept that Paraşüt no longer holds (deleted on
+        // Paraşüt's screen) was left out by the press, and its id cleared.
+        // Shown as a warning: it is no success, and it stands beside a
+        // refusal as well as beside a record created.
+        foreach ($parasut_notices as $parasut_notice) {
+            $liveform->add_warning(h($parasut_notice));
         }
     }
 
@@ -241,6 +261,9 @@ if (!$_POST) {
     $ip_address = $row['ip_address'];
     $parasut_invoice_id  = $row['parasut_invoice_id']  ?? '';
     $parasut_shipment_id = $row['parasut_shipment_id'] ?? '';
+    // Set when Create Invoice saw the e-document's conversion finish (and by
+    // the spreadsheet export): the invoice badge says "Sent" only then.
+    $parasut_exported = !empty($row['parasut_exported']);
 
     $source = '';
 
@@ -2463,20 +2486,31 @@ if (!$_POST) {
         $has_shippable = ($shippable_count > 0);
         $is_mixed      = ($shippable_count > 0 && $non_shippable_count > 0);
 
+        // Only a finished sale gets the buttons (the ERP's billable statuses:
+        // complete, exported); the writers refuse any other status as well.
+        $parasut_billable = (parasut_order_status_refusal($status, 'invoice') === '');
+
+        // An order the ERP invoiced through its e-document provider: its
+        // invoice is that one, so Create Invoice is not offered, and the
+        // status row names it. E-Shipment judges its Paraşüt record as it
+        // judges the order's own invoice.
+        $parasut_erp_invoice = parasut_order_erp_invoice((int) $_GET['id']);
+
         // Show invoice status badge. The unsure mark a create with no answer
         // leaves (parasut_order_invoice_unsure()) is no invoice: it asks for
         // Paraşüt to be checked, and Create Invoice stays offered, since the
-        // press looks for the record there before it writes one.
+        // press looks for the record there before it writes one. "Sent" only
+        // for an e-document whose conversion was seen to finish.
         $parasut_invoice_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
         $parasut_invoice_sent = ($parasut_invoice_id !== '') && !$parasut_invoice_unsure;
-        $output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);
+        $output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true, $parasut_exported);
         $output_parasut_shipment_badge = '';
         if ($parasut_shipment_id !== '') {
             $output_parasut_shipment_badge = ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '">' . lang('Sent') . '</span>';
         }
 
         // Status rows shown inside the Order Information card.
-        $invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);
+        $invoice_row_badge  = parasut_order_invoice_row_badge($parasut_invoice_id, $parasut_exported, $parasut_erp_invoice);
         $shipment_row_badge = $parasut_shipment_id !== ''
             ? '<span class="badge bg-success">' . lang('Sent') . '</span>'
               . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '</small>'
@@ -2523,23 +2557,31 @@ if (!$_POST) {
         }
 
         // Escape single quotes in translated strings so they are safe inside JS confirm('...').
-        $js_confirm_invoice  = str_replace("'", "\\'", lang('This will invoice the order in Parasut. Whether it is issued as an e-invoice or an e-archive is decided from the buyer\'s tax number. Continue?'));
-        $js_confirm_shipment = str_replace("'", "\\'", lang('This will create an e-shipment document in Parasut for this order. Continue?'));
+        // On an order that keeps its record's id the press asks Paraşüt for
+        // that record first and creates the document again only if it was
+        // deleted there (parasut_stored_record_check()).
+        $js_confirm_invoice  = str_replace("'", "\\'", $parasut_invoice_sent
+            ? lang('This order already has a sales invoice in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?')
+            : lang('This will invoice the order in Parasut. Whether it is issued as an e-invoice or an e-archive is decided from the buyer\'s tax number. Continue?'));
+        $js_confirm_shipment = str_replace("'", "\\'", ($parasut_shipment_id !== '')
+            ? lang('This order already has a shipment document in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?')
+            : lang('This will create an e-shipment document in Parasut for this order. Continue?'));
         if ($is_mixed) {
             $js_confirm_shipment = str_replace("'", "\\'", lang('This order contains both shippable and non-shippable items. Only shippable (stock-tracked) items will be included in the e-shipment document.')) . '\n\n' . $js_confirm_shipment;
         }
 
         // Build the e-irsaliye button separately so the main button group stays simple.
-        // An order whose shipment document is already in Paraşüt is not offered
-        // the action again: parasut_create_shipment() refuses a second one.
+        // An order whose shipment document is already in Paraşüt stays offered
+        // the action: parasut_create_shipment() refuses a second document while
+        // Paraşüt holds the first, and creates one only if it was deleted there.
         $output_parasut_shipment_button = '';
         if ($has_shippable) {
             $shipment_btn_class = $parasut_shipment_id ? 'link-success' : ($is_mixed ? 'link-warning' : 'link-secondary');
-            $shipment_btn_title = $is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt E-İrsaliye';
+            $shipment_btn_title = ($parasut_shipment_id !== '')
+                ? h(lang('This order already has a shipment document in Paraşüt.'))
+                : ($is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt E-İrsaliye');
             $shipment_mixed_icon = $is_mixed ? ' <i class="bi bi-exclamation-triangle-fill text-warning small"></i>' : '';
-            $shipment_btn_action = ($parasut_shipment_id !== '')
-                ? ' disabled title="' . h(lang('This order already has a shipment document in Paraşüt.')) . '"'
-                : ' onclick="pgConfirm({title:\'Paraşüt E-İrsaliye\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
+            $shipment_btn_action = ' onclick="pgConfirm({title:\'Paraşüt E-İrsaliye\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
                 title="' . $shipment_btn_title . '"';
             $output_parasut_shipment_button = '
             <button type="button"
@@ -2552,25 +2594,30 @@ if (!$_POST) {
         // follows from whether the buyer is registered with the tax authority, so
         // it is not the operator's to choose - and choosing wrong produced a
         // document that was not valid.
-        // An order that already has its sales invoice in Paraşüt is not offered
-        // the action again: parasut_create_invoice() refuses a second one.
-        $output_parasut_invoice_action = $parasut_invoice_sent
-            ? ' disabled title="' . h(lang('This order already has a sales invoice in Paraşüt.')) . '"'
-            : ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
-                title="' . ($parasut_invoice_unsure
-                    ? h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.') . ' ' . lang('Pressed again, it looks for the invoice at Paraşüt first and writes one only if none is there.'))
-                    : 'Paraşüt') . '"';
+        // An order that already has its sales invoice in Paraşüt stays offered
+        // the action: parasut_create_invoice() refuses a second invoice while
+        // Paraşüt holds the first, and creates one only if it was deleted there.
+        $output_parasut_invoice_action = ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
+                title="' . ($parasut_invoice_sent
+                    ? h(lang('This order already has a sales invoice in Paraşüt.'))
+                    : ($parasut_invoice_unsure
+                        ? h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.') . ' ' . lang('Pressed again, it looks for the invoice at Paraşüt first and writes one only if none is there.'))
+                        : 'Paraşüt')) . '"';
+
+        $output_parasut_invoice_button = ($parasut_erp_invoice['state'] === 'none')
+            ? '
+            <button type="button"
+                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_sent ? ($parasut_exported ? 'link-success' : 'link-warning') : ($parasut_invoice_unsure ? 'link-warning' : 'link-secondary')) . '"' . $output_parasut_invoice_action . '>
+                <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
+            </button>'
+            : '';
 
         $output_parasut_buttons = '
-        <div class="btn-group btn-group-sm flex-wrap">
-            <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_sent ? 'link-success' : ($parasut_invoice_unsure ? 'link-warning' : 'link-secondary')) . '"' . $output_parasut_invoice_action . '>
-                <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
-            </button>
+        <div class="btn-group btn-group-sm flex-wrap">' . $output_parasut_invoice_button . '
             ' . $output_parasut_shipment_button . '
         </div>';
 
-        if ($parasut_in_erp) {
+        if ($parasut_in_erp || !$parasut_billable) {
             $output_parasut_buttons = '';
             $output_parasut_forms = '';
         }

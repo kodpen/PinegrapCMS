@@ -9,5 +9,5 @@ description: Why wide row gutters (g-5) overflow inside .container on phones, th
 - **Rule:** row gutter `gutter: '4'`; for a wide gutter use `cssClass: 'g-lg-5'`. Never plain `gutter: '5'`.
 
 ## How is responsive overflow measured?
-- Palette double-click puts the block **inside the selected node**; consecutive drops nest blocks and fake an overflow. Measure each block alone: drop -> take the HTML generated from `#sd-html-tree` (`&nbsp;` inside tags becomes a normal space) -> undo with Ctrl+Z.
+- A palette double-click puts the block **into the selected node** when it takes it, else right after it (`palette-insert-at-selection.md`). A selected section takes the next block, so consecutive double-clicks still nest blocks and fake an overflow. Measure each block alone: drop -> take the HTML generated from `#sd-html-tree` (`&nbsp;` inside tags becomes a normal space) -> undo with Ctrl+Z.
 - Measure on that HTML in a clean Bootstrap page, not on the canvas: canvas `.sd-wrap` wrappers do not exist in the real page.

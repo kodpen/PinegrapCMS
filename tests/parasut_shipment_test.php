@@ -60,14 +60,15 @@ function test_parasut_shipment_stock_movement_names_product_warehouse_and_quanti
 }
 
 // The opening-stock inflow and the outgoing document both send their lines
-// as relationships.stock_movements, built by the one helper.
+// as relationships.stock_movements, built by the one helper. The inflow goes
+// through the stock step's request (a path after the company prefix).
 function test_parasut_shipment_documents_send_stock_movements()
 {
 	foreach (array('parasut_ensure_product_stock_tracking', 'parasut_create_shipment') as $function) {
 		$body = parasut_shipment_test_source($function);
 
 		pg_assert_true($body !== '', $function . '() is found');
-		pg_assert_contains("_parasut_prefix() . '/shipment_documents'", $body);
+		pg_assert_contains("'/shipment_documents'", $body);
 		pg_assert_contains('parasut_shipment_stock_movement(', $body);
 		pg_assert_contains("'stock_movements' => ", $body);
 		pg_assert_false(strpos($body, 'shipment_document_details') !== false, $function . '() builds no detail line');

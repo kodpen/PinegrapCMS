@@ -7,7 +7,7 @@ description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521;
 - The "MCP servers" card in Workspace settings is hard to follow: simplify it, with ready connectors as in Claude. Tried it; it did not work.
 
 ## What is there today?
-- includes/mcp/client.php, includes/workspace/mcp*.php, workspace_mcp.php; no memory file, no API route.
+- includes/mcp/client.php, includes/workspace/mcp*.php, workspace_mcp.php; workspace/workspace-mcp-servers-card.md.
 - Why it fails (2026-10-24): 1) `WS_AI_ENDPOINT` gives 502 and Pinegrap AI answers each `@alias` outside agent mode; its card stays Ready. 2) Tools start off; with none on, the @ picker (`ws_mcp_boot()`), form run and agent mode skip the server; saved, they stay hidden; "Every tool that reads only" skips unannotated ones (DeepWiki, GitMCP). 3) "No credential" on OAuth servers reads "refused the credentials" (Linear, Notion, GitHub). 4) A trailing slash (307), /sse (405, 410): "could not be read". 5) GitMCP holds each stream 10 s.
 
 ## What is proposed? (not approved yet)
@@ -37,5 +37,5 @@ No schema; one PR each.
 
 ## Where to start?
 - Owner: ai.pinegrap.com gives 502; meanwhile turn a tool on, use workspace_mcp.php.
-- Slice 1; it starts workspace/workspace-mcp-client.md (proposed); tr.json after #1439.
+- 1-6, 9, 11, 12, 13a are in; next: 13 (bulk declare), other API routes, 10 (WAF), 7-8.
 - Overlap: plans/workspace-agent-handles.md slice 5 (avatars), plans/workspace-mcp-capabilities.md (our server), plans/workspace-assistant-key-setup.md (Pinegrap AI card); GitHub OAuth: model B, plans/reverse-oauth-leftovers.md.

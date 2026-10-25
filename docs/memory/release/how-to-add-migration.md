@@ -15,7 +15,7 @@ Each item was skipped once and broke something; go through them in order.
 2. End the step with `install_note()`: one plain sentence for the operator, shown under the version on the upgrade screen.
 3. A step that rewrites a big table: `'<version>' => array('<table>')` in `install_heavy_tables()` (`runner.php`) for the preflight warning; a long step: `migration-long-steps.md`.
 4. A NEW table goes into `get_tables()` in `install/index.php`, the software's tables a reinstall or restore drops when the loaded backup lacks them. Skipped: a reinstall into the same database keeps the old table with its rows and structure, the idempotent step says "already exists", and the site silently runs on the old schema. (`check_and_repair_database_tables()`, `includes/fn/system_status.php`, reads `information_schema`; nothing to add there.)
-5. `pinegrap/changelog.txt`: the open version keeps ONE `[SCHEME]` sentence; widen it to name your area, never a second line (`upgrade-changelog-rules.md`).
+5. `pinegrap/changelog.txt`: do not edit it; name in the PR body the area for the open version's one `[SCHEME]` sentence, and the merging session writes it (`upgrade-changelog-rules.md`).
 6. The why, root cause, symptom and trade-off go into the matching memory file.
 7. The label comment beside the call: taken labels are read from there, there is no other step table; finding a free one: `version-numbering.md`.
 

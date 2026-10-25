@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+description: Plan (1-19 and 3b done; 20 deferred): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -26,16 +26,15 @@ description: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a 
 9. "Make a copy for this page" button (style_designer.js). Done (#1472).
 10. Read-only Comments widget: renderer `includes/fn/widgets_comments.php`, SW_TYPES, tokens, flags, default layout in three places. Done (#1558).
 11. The add-comment form in the widget (bindings, CAPTCHA, rating, publish section, frontend twins). Done (#1558).
-12. Replies and quotes (layout flat/threaded, `max_depth`).
-13. Watch box and staff controls.
-14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`).
-15. Designer panel: page comment settings shown on the widget, shared Display section.
-16. Page columns the designer cannot set yet (attachments, choose a name, intro and closed messages, watchers managed by submitter); template keys.
-17. Canvas samples and Preview.
-18. "Make designable" / "Back to the fixed block", save warnings, templates may ship the kind. The forum template ([[design-template-forum]]) needs 1-18.
-19. Designable comment e-mails (after 18).
+12. Replies and quotes (layout flat/threaded, `max_depth`). Done (#1567).
+13. Watch box and staff controls. Done (#1567).
+14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`). Done (#1567).
+15. Designer panel: page comment settings shown on the widget, shared Display section. Done (#1618).
+16. Page columns the designer cannot set yet (attachments, choose a name, intro and closed messages, watchers managed by submitter); template keys. Done (#1618).
+17. Canvas samples and Preview. Done (#1618).
+18. "Make designable" / "Back to the fixed block", save warnings, templates may ship the kind. The forum template ([[design-template-forum]]) needs 1-18. Done (#1618).
+19. Designable comment e-mails (after 18). Done (#1620).
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558); D = 12 + 13 + 14 (#1567); E = 15 + 16 + 17 + 18; then 19. Each group branch stacks on the one before.
-- Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).
+- Nothing open: slices 1-19 are merged (#1461-#1620). Slice 20 (product and event threads) waits for the owner, after the forum template moves to the widget (design-template-forum-leftovers D). When 20 is dropped or built, move the lasting decisions to designer/ and delete this plan.
