@@ -434,7 +434,7 @@ function test_parasut_product_stock_e_shipment_checks_the_total_once_per_product
 	), 'E-Shipment');
 
 	// The stock step's own argument list, whatever the line endings.
-	$arguments = preg_match('/parasut_ensure_product_stock_tracking\((.*?)\);/s', $body, $match) ? $match[1] : '';
+	$arguments = preg_match('/\$ensure = parasut_ensure_product_stock_tracking\((.*?)\);/s', $body, $match) ? $match[1] : '';
 
 	pg_assert_contains("\$need['quantity'],", $arguments);
 	pg_assert_false(strpos($arguments, '$item_qty') !== false, 'no line\'s own quantity goes to the stock step');

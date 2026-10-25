@@ -448,7 +448,7 @@ if ($management == TRUE) {
             WHERE
                 (
                     (user_id = '" . USER_ID . "')
-                    || (email_address = '" . USER_EMAIL_ADDRESS . "')
+                    || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
                 )
                 AND (page_id = '" . escape($page_id) . "')
                 AND (item_id = '" . escape($item_id) . "')
@@ -492,7 +492,7 @@ if ($management == TRUE) {
             WHERE
                 (
                     (user_id = '" . USER_ID . "')
-                    || (email_address = '" . USER_EMAIL_ADDRESS . "')
+                    || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
                 )
                 AND (page_id = '" . escape($page_id) . "')
                 AND (item_id = '" . escape($item_id) . "')
@@ -513,7 +513,7 @@ if ($management == TRUE) {
             WHERE
                 (
                     ((user_id = '" . USER_ID . "') && (user_id != ''))
-                    || ((email_address = '" . USER_EMAIL_ADDRESS . "') && (email_address != ''))
+                    || ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') && (email_address != ''))
                 )
                 AND (page_id = '" . escape($page_id) . "')
                 AND (item_id = '" . escape($item_id) . "')

@@ -22,9 +22,13 @@ description: The Paraşüt product card of a Pinegrap product (parasut_sync_prod
 - `/stock_updates` cannot seed stock from zero either: an inflow shipment document seeds short stock (erp-parasut-legacy-shipment-stock.md).
 
 ## How was it checked live? (2026-10-24, demo company 830533)
-- `parasut_sync_product()` on dev product 43 (79.95, tracked, 9986 in stock): one request (POST products, counted through a logging proxy); the card read `list_price` "79.95", `currency` "TRL", `stock_count` "9986.0", no movements; the config warehouse id stayed empty. No `code` or `unit` needed.
-- Card deleted (204), product 43's id cleared, demo at its baseline. A tracked card opened with 0 in stock: 201.
+- `parasut_sync_product()` on dev product 43 (79.95, tracked, 9986 in stock): one request (POST products); the card read `list_price` "79.95", `currency` "TRL", `stock_count` "9986.0", `has_stock_movements` false; the config warehouse id stayed empty. The card takes `list_price` without `code` or `unit`.
+- Card deleted (204), product 43's id cleared, demo products equal to the baseline.
+- A tracked product with 0 in stock opens too: dev product 45 (`inventory` 1, `inventory_quantity` 0) got card 1079494466, read back with `inventory_tracking` true (the same day, the driver's resend after a stale card: erp-parasut-stale-kept-ids.md).
 - #PR's currency: unit tests only (demo key expired 2026-10-25); a card in EUR, USD or GBP, or without `currency`, never ran live.
+
+## What if Paraşüt no longer holds a kept card?
+- It is forgotten on every product holding it and the create sent once more: erp-parasut-stale-kept-ids.md.
 
 ## Tests
 - `tests/parasut_product_test.php`: the attributes (tracked, untracked, below zero) and, from the source, no `stock_updates`, warehouse lookup, `unit_price` or `product_type` in `parasut_sync_product()`.

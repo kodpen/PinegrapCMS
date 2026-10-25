@@ -329,7 +329,8 @@ function test_parasut_stale_product_send_once_more_names_the_default_product()
 }
 
 // When the create cannot be readied again (the buyer card would not open),
-// it is not sent again and the reason is the refusal.
+// it is not sent again, the notice does not say it was, and the reason is
+// the refusal.
 function test_parasut_stale_product_send_once_more_stops_when_it_cannot_ready_the_create()
 {
 	$answers = parasut_stale_product_test_answers();
@@ -340,7 +341,25 @@ function test_parasut_stale_product_send_once_more_stops_when_it_cannot_ready_th
 
 	pg_assert_same(1, $calls);
 	pg_assert_same('Contact create failed: name is blank', $sent['refusal']);
-	pg_assert_same(array(parasut_stale_kept_notice('Contact', '1093318880')), $sent['notices']);
+	pg_assert_same(array(parasut_stale_kept_notice('Contact', '1093318880', false)), $sent['notices']);
+	pg_assert_true(parasut_stale_kept_notice('Contact', '1093318880', false) !== parasut_stale_kept_notice('Contact', '1093318880'), 'not the notice of a try made once more');
+}
+
+// The resend starts PHP's time limit afresh before it repeats the try's
+// requests, and only once the create is readied again.
+function test_parasut_stale_product_send_once_more_allows_time_for_the_resend()
+{
+	$body = parasut_stale_product_test_source('includes/fn/parasut.php', 'parasut_send_once_more');
+
+	parasut_stale_product_test_in_order($body, array(
+		'$sent = (array) call_user_func($send);',
+		"\$refusal = (string) call_user_func(\$forget, (string) \$missing['type'], (string) \$missing['id']);",
+		"\$notices[] = parasut_stale_kept_notice(\$missing['type'], \$missing['id'], \$refusal === '');",
+		"if (\$refusal !== '') {",
+		'_parasut_order_invoice_load();',
+		'erp_edoc_parasut_allow_time();',
+		'$sent = (array) call_user_func($send);',
+	), 'parasut_send_once_more');
 }
 
 // What the screen and the ERP are told, one sentence per kind of record.
@@ -352,7 +371,14 @@ function test_parasut_stale_product_notices_and_refusal()
 	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten and Pinegrap tried once more without it, as an ordinary invoice of the order with the shipment included.', 'vars' => array('1003775252'))), parasut_stale_kept_notice('ShipmentDocument', '1003775252'));
 	pg_assert_same('', parasut_stale_kept_notice('SalesInvoice', '1'));
 
-	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.', 'vars' => array('1079201749'))), parasut_default_product_gone_refusal('1079201749'));
+	// The create could not be readied again: nothing went once more.
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds product card {var:1}, which Pinegrap kept for a product: the id was forgotten, but the document could not be sent once more without it.', 'vars' => array('1079203184'))), parasut_stale_kept_notice('Product', '1079203184', false));
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds warehouse {var:1}, the default warehouse kept in the Paraşüt settings: the id was forgotten, but the document could not be sent once more without it.', 'vars' => array('1'))), parasut_stale_kept_notice('Warehouse', '1', false));
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds buyer card {var:1}, which this order kept: the id was forgotten, but the document could not be sent once more without it.', 'vars' => array('1093318880'))), parasut_stale_kept_notice('Contact', '1093318880', false));
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten, but the invoice could not be sent once more without it.', 'vars' => array('1003775252'))), parasut_stale_kept_notice('ShipmentDocument', '1003775252', false));
+	pg_assert_same('', parasut_stale_kept_notice('SalesInvoice', '1', false));
+
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.', 'vars' => array('1079201749'))), parasut_default_product_gone_refusal('1079201749'));
 }
 
 // What forgetting writes: every product holding the card, the warehouse
@@ -486,6 +512,15 @@ function test_parasut_stale_product_create_shipment_sends_once_more()
 	pg_assert_contains("'vars' => array(_parasut_extract_error(\$get)))), 'answer' => \$get];", $stock);
 	pg_assert_contains("'vars' => array(_parasut_extract_error(\$patch)))), 'answer' => \$patch];", $stock);
 	pg_assert_contains("'answer' => \$seed,", $stock);
+
+	// A product an earlier line seeded in the first try has stock movements
+	// by the resend, so its inflow is not seeded a second time.
+	parasut_stale_product_test_in_order($stock, array(
+		"\$has_movements = !empty(\$attrs['has_stock_movements']);",
+		'if ($has_movements) {',
+		"return ['success' => true, 'current_stock' => \$current_stock, 'error' => ''];",
+		"'inflow' => true,",
+	), 'stock step');
 }
 
 // The ERP driver: the kept ids are noted before the body is built, the

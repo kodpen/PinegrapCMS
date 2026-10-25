@@ -4393,7 +4393,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         WHERE
                             (
                                 (user_id = '" . USER_ID . "')
-                                || (email_address = '" . USER_EMAIL_ADDRESS . "')
+                                || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
                             )
                             AND (page_id = '" . escape($system_region_properties['page_id']) . "')$sql_where_watchers";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

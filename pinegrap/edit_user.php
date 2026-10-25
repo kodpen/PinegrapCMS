@@ -1401,6 +1401,9 @@ if (!$_POST) {
             // The Microsoft and Apple identities go with the account.
             pg_signin_identities_forget((int) ($_POST['id'] ?? 0));
 
+            // So do its favourites.
+            pg_wishlist_forget_user((int) ($_POST['id'] ?? 0));
+
             // delete user record
             $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
