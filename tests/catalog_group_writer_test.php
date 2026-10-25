@@ -5,9 +5,10 @@
  * Tests for the one product group writer (pg_catalog_group_create() and
  * pg_catalog_group_clouds(), includes/fn/ecommerce.php). Run here: what the
  * writer settles before it writes (the parent, the text the address is made
- * from, the rich text with {path}, the products), the INSERT and product
- * links it builds held to the statements POST /product-groups and a
- * Workspace create built before they shared it, the statements it runs in
+ * from, the rich text with {path}, the products), the INSERT it builds from
+ * the data each caller really hands it and the product links, held to the
+ * statements POST /product-groups and a Workspace create built before they
+ * shared it, the statements it runs in
  * their order, and the API's own query helpers taking the API's statements.
  * Read from the source, since they need a database: both callers are thin
  * wrappers around it, every create is scored for SEO and announced once as
@@ -24,7 +25,12 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/product_groups.php');
 
 // e() asks the connection class; without a database it falls back to
 // addslashes() once the class exists.
@@ -199,23 +205,6 @@ function catalog_group_writer_test_workspace_before($values, $parent, $short, $f
                 UNIX_TIMESTAMP())";
 }
 
-// What POST /product-groups now hands the writer, from the same request.
-function catalog_group_writer_test_api_data($params, $name, $parent_id, $product_ids)
-{
-	return array(
-		'name'              => $name,
-		'enabled'           => !empty($params['enabled']),
-		'parent_id'         => $parent_id,
-		'short_description' => isset($params['short_description']) ? (string) $params['short_description'] : '',
-		'full_description'  => isset($params['description']) ? (string) $params['description'] : '',
-		'keywords'          => isset($params['keywords']) ? (string) $params['keywords'] : '',
-		'title'             => isset($params['title']) ? (string) $params['title'] : '',
-		'meta_description'  => isset($params['meta_description']) ? (string) $params['meta_description'] : '',
-		'meta_keywords'     => isset($params['meta_keywords']) ? (string) $params['meta_keywords'] : '',
-		'product_ids'       => $product_ids,
-	);
-}
-
 function test_catalog_group_writer_writes_the_row_the_api_wrote()
 {
 	catalog_group_writer_test_db_stub();
@@ -244,8 +233,9 @@ function test_catalog_group_writer_writes_the_row_the_api_wrote()
 		$address = 'Mugs_1';
 		$asked = 0;
 
+		// The mapping POST /product-groups hands the writer, run as it is.
 		$input = pg_catalog_group_create_input(
-			catalog_group_writer_test_api_data($params, $name, 12, array()),
+			api_product_group_create_data($params, $name, 12, array()),
 			array('id' => '7', 'username' => 'owner'),
 			catalog_group_writer_test_top(1, $asked),
 			'/shop/');
@@ -258,6 +248,11 @@ function test_catalog_group_writer_writes_the_row_the_api_wrote()
 		pg_assert_same(($short !== '') ? $short : $name, $input['address_source'], $label . ': the address is made from the short description, else the name');
 		pg_assert_same(0, $asked, $label . ': a parent named, the top is not asked');
 	}
+
+	$data = api_product_group_create_data(array('name' => 'Mugs'), 'Mugs', 12, array(3, 5));
+
+	pg_assert_same(12, $data['parent_id'], 'the parent the handler settled');
+	pg_assert_same(array(3, 5), $data['product_ids'], 'the products the handler checked');
 }
 
 function test_catalog_group_writer_writes_the_row_the_workspace_wrote()
@@ -391,8 +386,7 @@ function test_catalog_group_writer_api_create_is_a_thin_wrapper()
 {
 	$body = catalog_group_writer_test_body(catalog_group_writer_test_source('includes/api/resources/product_groups.php'), 'api_product_groups_create');
 
-	pg_assert_contains('pg_catalog_group_create(', $body, 'writes through the shared writer');
-	pg_assert_contains("array('api' => true)", $body, 'with the API\'s own query helpers');
+	pg_assert_contains("pg_catalog_group_create(api_product_group_create_data(\$params, \$name, \$parent_id, \$product_ids), \$app['owner'], array('api' => true));", $body, 'writes through the shared writer, the request mapped by the tested helper, stamped with the key owner, through the API\'s own query helpers');
 	pg_assert_false(strpos($body, 'INSERT INTO') !== false, 'no INSERT of its own');
 	pg_assert_false(strpos($body, "'product_group.created'") !== false, 'no announcement of its own: the writer makes the one');
 	pg_assert_contains("api_fail(409, 'name_taken'", $body, 'a taken name is still 409');

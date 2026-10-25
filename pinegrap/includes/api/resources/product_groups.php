@@ -666,6 +666,27 @@ function api_product_group_member_ids($group_id) {
 
 }
 
+// What POST /product-groups hands the catalogue's group writer
+// (pg_catalog_group_create()) from the request: the wire's description is the
+// group's full description. $name is trimmed, $parent_id and $product_ids are
+// the ones the handler checked.
+function api_product_group_create_data($params, $name, $parent_id, $product_ids) {
+
+	return array(
+		'name'              => $name,
+		'enabled'           => !empty($params['enabled']),
+		'parent_id'         => $parent_id,
+		'short_description' => isset($params['short_description']) ? (string)$params['short_description'] : '',
+		'full_description'  => isset($params['description']) ? (string)$params['description'] : '',
+		'keywords'          => isset($params['keywords']) ? (string)$params['keywords'] : '',
+		'title'             => isset($params['title']) ? (string)$params['title'] : '',
+		'meta_description'  => isset($params['meta_description']) ? (string)$params['meta_description'] : '',
+		'meta_keywords'     => isset($params['meta_keywords']) ? (string)$params['meta_keywords'] : '',
+		'product_ids'       => $product_ids
+	);
+
+}
+
 // A new group, filed under a parent that exists.
 //
 // Written by the catalogue's one group writer, pg_catalog_group_create()
@@ -732,18 +753,7 @@ function api_product_groups_create($params) {
 
 	api_dry_run_stop('created', 'product_group', array('name' => $name, 'parent_id' => $parent_id, 'products' => count($product_ids)));
 
-	$id = pg_catalog_group_create(array(
-		'name'              => $name,
-		'enabled'           => !empty($params['enabled']),
-		'parent_id'         => $parent_id,
-		'short_description' => isset($params['short_description']) ? (string)$params['short_description'] : '',
-		'full_description'  => isset($params['description']) ? (string)$params['description'] : '',
-		'keywords'          => isset($params['keywords']) ? (string)$params['keywords'] : '',
-		'title'             => isset($params['title']) ? (string)$params['title'] : '',
-		'meta_description'  => isset($params['meta_description']) ? (string)$params['meta_description'] : '',
-		'meta_keywords'     => isset($params['meta_keywords']) ? (string)$params['meta_keywords'] : '',
-		'product_ids'       => $product_ids
-	), $app['owner'], array('api' => true));
+	$id = pg_catalog_group_create(api_product_group_create_data($params, $name, $parent_id, $product_ids), $app['owner'], array('api' => true));
 
 	if ($id <= 0) {
 
