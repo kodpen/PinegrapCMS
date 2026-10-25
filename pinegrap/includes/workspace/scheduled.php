@@ -3440,12 +3440,9 @@ function ws_scheduled_rules_hold($viewer, $rules, $row = array())
                 break;
 
             case 'hours':
-                $clock = date('H:i');
-                $inside = ($rule['from'] < $rule['to'])
-                    ? (($clock >= $rule['from']) && ($clock < $rule['to']))
-                    : (($clock >= $rule['from']) || ($clock < $rule['to']));
+                $now = time();
 
-                if (!$inside) {
+                if (!ws_scheduled_hours_hold($rule['from'], $rule['to'], (int) date('G', $now) * 60 + (int) date('i', $now))) {
                     return array('ok' => false, 'reason' => lang(array('string' => 'Outside its hours ({var:1} – {var:2}).', 'vars' => array($rule['from'], $rule['to']))));
                 }
 
@@ -3484,6 +3481,30 @@ function ws_scheduled_rules_hold($viewer, $rules, $row = array())
     }
 
     return array('ok' => true, 'reason' => '');
+}
+
+/**
+ * Is a minute of the day inside the hours of an "hours" rule? The start is
+ * in, the end is out; a start later than the end runs past midnight (22:00
+ * to 06:00 holds from 22:00 to 05:59). The clocks are compared as the form
+ * writes them, "HH:MM", so a start equal to the end holds all day (the form
+ * refuses one). Pure: the caller gives the clock.
+ *
+ * @param string $from   HH:MM
+ * @param string $to     HH:MM
+ * @param int    $minute minutes since midnight in the site's time zone, 0-1439
+ * @return bool
+ */
+function ws_scheduled_hours_hold($from, $to, $minute)
+{
+    $minute = (((int) $minute % 1440) + 1440) % 1440;
+    $clock = sprintf('%02d:%02d', intdiv($minute, 60), $minute % 60);
+    $from = (string) $from;
+    $to = (string) $to;
+
+    return ($from < $to)
+        ? (($clock >= $from) && ($clock < $to))
+        : (($clock >= $from) || ($clock < $to));
 }
 
 /**
