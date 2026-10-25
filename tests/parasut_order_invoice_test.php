@@ -790,7 +790,8 @@ function test_parasut_sync_contact_writes_the_card_with_the_order_attributes()
 	$end = strpos($source, "\n}\n", $start);
 	$body = substr($source, $start, $end - $start);
 
-	pg_assert_contains('parasut_order_contact_attributes($order, _parasut_order_identity($order))', $body);
+	pg_assert_contains('$identity = _parasut_order_identity($order);', $body);
+	pg_assert_contains('parasut_order_contact_attributes($order, $identity)', $body);
 	pg_assert_false(strpos($body, "'tckn'") !== false, 'no tckn attribute');
 
 	// The address is read by the ERP's accounts code, loaded first also for

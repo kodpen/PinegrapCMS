@@ -11845,12 +11845,14 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   height: .45rem;
   background: var(--bs-secondary-bg);
 }
+/* The colour only: the background shorthand would also reset the stripes of
+   .progress-bar-striped (the notes import's reading step). */
 .ws-progress .progress-bar {
-  background: rgb(var(--ws-accent-rgb));
+  background-color: rgb(var(--ws-accent-rgb));
   transition: width .25s ease;
 }
 .ws-progress.ws-progress-full .progress-bar {
-  background: var(--bs-success);
+  background-color: var(--bs-success);
 }
 .ws-progress.ws-progress-sm {
   height: .3rem;
@@ -12881,6 +12883,52 @@ a.ws-chip:hover {
 .ws-composer-hint {
   font-size: .72rem;
   color: var(--bs-secondary-color);
+}
+/* The composer's own marks and steps (PGWsEditor.toolbar()): two small
+   groups after the inserts. Where the row is too narrow for them (a phone,
+   the discussion panel, a narrow window) they are left out and the row
+   stays as it was; the bar over a selection still formats there. The widest
+   row (Turkish "Gönder" with the scheduled-send clock beside it) needs about
+   33rem with them; the cut-off leaves a margin for wider system fonts. */
+.ws-composer-tools {
+  container-type: inline-size;
+}
+.ws-composer-format {
+  display: flex;
+  align-items: center;
+  gap: .15rem;
+  margin-left: .1rem;
+  padding-left: .25rem;
+  border-left: 1px solid var(--bs-border-color-translucent);
+}
+@container (max-width: 34rem) {
+  .ws-composer-format {
+    display: none;
+  }
+}
+@media (max-width: 767.98px) {
+  .ws-composer-format {
+    display: none;
+  }
+}
+/* The hint gives way to the buttons on one line rather than growing the row
+   by several. */
+.ws-composer-tools .ws-composer-hint {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* A mark the caret or the selection has, on a button of a box's row of
+   tools: the tint of the bar over a selection. Undo and redo with nothing to
+   take back draw no frame: .btn-ghost sets no disabled border colour, so the
+   border fell back to the text colour. */
+.ws-rich-tools .btn-ghost[aria-pressed="true"] {
+  background: rgba(var(--ws-accent-rgb), .15);
+  color: rgba(var(--ws-accent-rgb), 1);
+}
+.ws-rich-tools .btn-ghost:disabled {
+  border-color: transparent;
 }
 
 /* The writing box: formatted text, chips and cards, and still a chat field.
@@ -16453,6 +16501,13 @@ button.ws-home-row:hover,
 .ws-nb-import-drop.ws-nb-import-over {
   border-color: var(--ws-accent);
   background-color: rgba(var(--ws-accent-rgb), .06);
+}
+/* The file picker inside is hidden; a keyboard focus on it shows on the
+   area. A rule of its own: a browser without :has() drops only this one. */
+.ws-nb-import-drop:has(:focus-visible) {
+  border-color: var(--ws-accent);
+  background-color: rgba(var(--ws-accent-rgb), .06);
+  box-shadow: 0 0 0 .2rem rgba(var(--ws-accent-rgb), .25);
 }
 .ws-nb-import-list {
   max-height: 55vh;

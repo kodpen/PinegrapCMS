@@ -1081,6 +1081,14 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_language_switcher($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'comments' — the drawn page's comment thread and the form that
+            // adds a comment to it (widgets_comments.php). The layout is the
+            // widget's; the comments and their settings are the page's.
+            if ($region_type === 'comments') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_comments($tree_json, $sid, $cfg, $mode);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';

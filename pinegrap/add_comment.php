@@ -164,44 +164,10 @@ if ($comments == 0) {
     output_error(lang('You do not have access to submit a comment to that page because comments are disabled.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
-// assume that new comments are not allowed, until we find out otherwise
-$allow_new_comments = FALSE;
-
-// if the comment is for a specific item, then determine if new comments are allowed for the item
-if ($item_id != 0) {
-    $query = 
-        "SELECT allow_new_comments
-        FROM allow_new_comments_for_items
-        WHERE
-            (page_id = '" . escape($page_id) . "')
-            AND (item_id = '" . escape($item_id) . "')
-            AND (item_type = '" . escape($item_type) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    // if a result was found, then use the result
-    if (mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
-        
-        // if new comments are are allowed then remember that
-        if ($row['allow_new_comments'] == 1) {
-            $allow_new_comments = TRUE;
-        }
-        
-    // else a result was not found, so use value from page
-    } else {
-        // if new comments are allowed for the page, then remember that
-        if ($comments_allow_new_comments == 1) {
-            $allow_new_comments = TRUE;
-        }
-    }
-    
-// else the comment is just for the page, not for an item, so use value from page
-} else {
-    // if new comments are allowed for the page, then remember that
-    if ($comments_allow_new_comments == 1) {
-        $allow_new_comments = TRUE;
-    }
-}
+// Whether the thread takes new comments: an item's own switch when it has one
+// (allow_new_comments_for_items), else the page's; the comment form asks the
+// same (includes/fn/comments.php).
+$allow_new_comments = pg_comments_allow_new($page_id, $item_type, $item_id, ($comments_allow_new_comments == 1));
 
 // if new comments are not allowed, log and output error
 if ($allow_new_comments == FALSE) {
