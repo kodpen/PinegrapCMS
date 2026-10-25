@@ -23,7 +23,7 @@ description: The recent comments list in the editor: the kind twin, palette, Cha
 - `_sdCommentsModeOffBindings()` (twin of `pg_comments_mode_off_bindings()`, compared under Node) holds the lists; `_sdCommentsModeOff()` fades by them: in a list the form, thread controls, sections, thread-only tokens and flags; in a thread the list's tokens and flags. A list without a page fades its root.
 
 ## What does the canvas draw?
-- States (`_sdCommentsCanvasStates(cfg)`): comments, no comments, signed out (mine only), staff. `_sdCommentsRecentFacts()` -> `_sdCommentsRecentFlags()`, line for line `pg_comments_recent_flags()` (Node).
+- States (`_sdCommentsCanvasStates(cfg)`): comments, no comments, signed out (mine only), staff; no e-mail state (a list draws nothing in an e-mail). `_sdCommentsRecentFacts()` -> `_sdCommentsRecentFlags()`, line for line `pg_comments_recent_flags()` (Node).
 - Samples `_sdCommentsRecentSamples()` in the list's scope: a record's and a page's comment; pending: both awaiting approval ("Not Published" for staff); mine: plus one of the member's own waiting (the author's status, staff too); published: none waiting.
 
 ## How was it checked?

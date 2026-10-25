@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-18 and 3b done; 19 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+description: Plan (1-19 and 3b done; 20 deferred): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -33,9 +33,9 @@ description: Plan (1-18 and 3b done; 19 next): comments as a designable system w
 16. Page columns the designer cannot set yet (attachments, choose a name, intro and closed messages, watchers managed by submitter); template keys. Done (#1618).
 17. Canvas samples and Preview. Done (#1618).
 18. "Make designable" / "Back to the fixed block", save warnings, templates may ship the kind. The forum template ([[design-template-forum]]) needs 1-18. Done (#1618).
-19. Designable comment e-mails (after 18).
+19. Designable comment e-mails (after 18). Done (#1620).
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558); D = 12 + 13 + 14 (#1567); E = 15 + 16 + 17 + 18 (#1618); then 19. Each group branch stacks on the one before.
+- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558); D = 12 + 13 + 14 (#1567); E = 15 + 16 + 17 + 18 (#1618); then 19 (#1620). Each group branch stacks on the one before.
 - Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).

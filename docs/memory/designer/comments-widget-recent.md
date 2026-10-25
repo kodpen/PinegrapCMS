@@ -13,11 +13,12 @@ description: The Comments widget's recent mode (kind comments_recent): what a li
 
 ## What does it never do?
 - Claim a thread, read a liveform, print a form, token, CAPTCHA, `#software_comments` or `id="c-<id>"`; Messages node `comments_recent`. Nothing in an e-mail or for the search index; a background render (Preview, SEO) is anonymous.
+- Draw in a comment e-mail either: the thread renderer hands a list over before its e-mail branch. Reached first, that branch drew the named comment in the list's layout and claimed the e-mail page, so the page's thread widget drew nothing (`test_comments_recent_nothing_in_a_comment_email`). `is_email` is among the thread flags a list switches off.
 
 ## Which tokens and flags?
 - `__comments_count` (drawn); the thread's row tokens minus `pg_comments_mode_off_bindings('recent')`, plus `__comment_thread_title|thread_url|label`; `__comment_excerpt` in both modes. `__comment_url` is the comment on its page (`pg_comment_view_query()` + `#c-<id>`).
 - `pg_comments_recent_flags()`: has_comments, no_comments, has_more_pages, is_signed_in, is_signed_out, is_staff; rows add `comment_on_record|on_page`. Other thread flags are absent (fail closed). `pg_comments_drop_mode_bindings()` drops nodes bound to the other mode's tokens, both ways.
 
 ## How was it checked?
-- `tests/comments_recent_test.php`, `comments_widget_test`, `designer_messages_test`, `check_bindings`.
+- `tests/comments_recent_test.php` (also: every thread flag a list lacks is off), `comments_widget_test`, `designer_messages_test`, `check_bindings`.
 - Sandbox, MariaDB 10.11, PHP 8.3 (2026-10-25): 5 viewers (anonymous, 2 members, a role-3 editor of one folder, admin) x 2 host pages, 24 marked comments: nothing hidden leaked, each source as expected; two anonymous answers identical; member B after an anonymous post in the same browser saw none; a thread beside a list kept its form and refused-post error; Preview (as admin) and search index drew the anonymous view.
