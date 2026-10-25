@@ -1,0 +1,96 @@
+{
+    "totalElements": 3,
+    "totalPages": 1,
+    "page": 0,
+    "size": 100,
+    "nextPageToken": null,
+    "content": [
+        {
+            "contentId": 1239111111,
+            "productMainId": "PG-TSHIRT",
+            "brand": {"id": 1791, "name": "Örnek"},
+            "category": {"id": 600, "name": "T-Shirt"},
+            "title": "Pamuklu Tişört",
+            "description": "<p>Pamuklu tişört</p>",
+            "images": [{"url": "https://cdn.example.com/a.jpg"}],
+            "attributes": [],
+            "variants": [
+                {
+                    "variantId": 9001,
+                    "barcode": "8680000000011",
+                    "commission": 13.5,
+                    "stockCode": "TSHIRT-RED-M",
+                    "onSale": true,
+                    "channels": ["TR"],
+                    "stock": {"quantity": 12},
+                    "price": {"salePrice": 199.99, "listPrice": 199.99, "priceSeenByCustomer": 199.99},
+                    "vatRate": 10,
+                    "locked": false,
+                    "lockReason": null,
+                    "archived": false,
+                    "blacklisted": false,
+                    "hasViolation": false,
+                    "docNeeded": false,
+                    "productUrl": "https://www.trendyol.com/ornek/pamuklu-tisort-p-1239111111?merchantId=123456"
+                },
+                {
+                    "variantId": 9002,
+                    "barcode": "8680000000028",
+                    "commission": 13.5,
+                    "stockCode": "TSHIRT-RED-L",
+                    "onSale": false,
+                    "stock": {"quantity": 0},
+                    "price": {"salePrice": 199.99, "listPrice": 199.99},
+                    "vatRate": 10,
+                    "locked": true,
+                    "lockReason": "Fiyat kontrolü",
+                    "archived": false,
+                    "blacklisted": false
+                },
+                {
+                    "variantId": 9003,
+                    "barcode": "8680000000099",
+                    "commission": 13.5,
+                    "stockCode": "TSHIRT-RED-XL",
+                    "onSale": true,
+                    "locked": false,
+                    "archived": false,
+                    "blacklisted": false
+                }
+            ]
+        },
+        {
+            "contentId": 1239222222,
+            "productMainId": "PG-MUG",
+            "title": "Seramik Kupa",
+            "variants": [
+                {
+                    "variantId": 9101,
+                    "barcode": "8680000000035",
+                    "commission": "12",
+                    "stockCode": "MUG-01",
+                    "onSale": false,
+                    "locked": false,
+                    "archived": true,
+                    "blacklisted": false
+                }
+            ]
+        },
+        {
+            "contentId": 1239333333,
+            "productMainId": "PG-CAP",
+            "title": "Şapka",
+            "variants": [
+                {
+                    "variantId": 9201,
+                    "barcode": "ty-cap-1",
+                    "stockCode": "CAP-1",
+                    "onSale": false,
+                    "locked": false,
+                    "archived": false,
+                    "blacklisted": true
+                }
+            ]
+        }
+    ]
+}

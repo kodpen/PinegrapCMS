@@ -55,6 +55,34 @@ function test_designer_messages_named_node_leaves_other_forms()
 	}
 }
 
+// The comments widget's form carries its Messages node first: a refused
+// comment's error prints there and the add_comment state is used up, while
+// another form's error waits for its own widget.
+function test_designer_messages_comments_form_uses_add_comment()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('software' => array('liveforms' => array(
+		'add_comment' => array(12 => array('message' => array('error' => true, 'error_message' => 'A comment is required.'))),
+		'my_account_profile' => array(0 => array('code' => array('error' => true, 'error_message' => 'Wrong code'))),
+	)));
+
+	$tree = pg_comments_default_tree();
+	_pg_inject_messages_node($tree, 'add_comment');
+	$html = _render_tree_node($tree, 0);
+
+	pg_assert_contains('A comment is required.', $html, 'the comment form prints its error');
+	pg_assert_true(strpos($html, 'A comment is required.') > strpos($html, '<form'), 'inside the form');
+	pg_assert_same(false, strpos($html, 'Wrong code'), 'not another form\'s');
+	pg_assert_false(isset($_SESSION['software']['liveforms']['add_comment']), 'the add_comment state is used up');
+	pg_assert_true(isset($_SESSION['software']['liveforms']['my_account_profile']), 'the other is left');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
 // Every system widget renderer names its Messages node, and none with an
 // empty name.
 function test_designer_messages_every_renderer_names_its_node()

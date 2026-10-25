@@ -74,6 +74,7 @@ function pg_sw_type_labels()
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
+        'comments'            => lang('Comments'),
     );
 }
 
@@ -737,6 +738,10 @@ function pg_sw_raw_token_keys()
         '__filters_offcanvas',
         '__filters_offcanvas_inner_html',
         '__clear_filters_button',
+        // Comments widget.
+        '__comment_message_html',
+        '__comment_stars_html',
+        '__comment_seller_reply_html',
     ));
 
     return $keys;
@@ -1750,18 +1755,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                     }
                 }
                 if ($viewer_filter_watcher) {
-                    // Watcher check needs the configured detail page (a form_item_view
-                    // page with comments + watcher email enabled). Without one, the
-                    // watcher contribution collapses to FALSE — same as legacy logic.
-                    $detail_pid_for_watch = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
-                    $watcher_page_id = $detail_pid_for_watch > 0 ? db_value(
-                        "SELECT page_id FROM page
-                         WHERE page_id = '" . (int)$detail_pid_for_watch . "'
-                           AND page_type = 'form item view'
-                           AND comments = '1'
-                           AND comments_watcher_email_page_id != '0'"
-                    ) : 0;
-                    if ($watcher_page_id) {
+                    // Watchers of the configured detail page: a classic form
+                    // item view page, or a designed page whose record view
+                    // shows this form, with comments and watching on
+                    // (pg_sw_list_watcher_page_id()). Without one, the watcher
+                    // contribution collapses to FALSE — same as legacy logic.
+                    $watcher_page_id = pg_sw_list_watcher_page_id(isset($cfg['detail_page_id']) ? $cfg['detail_page_id'] : 0, $custom_form_page_id);
+                    if ($watcher_page_id > 0) {
                         $clauses[] = "(EXISTS (SELECT 1 FROM watchers
                                               WHERE watchers.page_id = '" . (int)$watcher_page_id . "'
                                                 AND watchers.item_id = forms.id
@@ -2363,8 +2363,7 @@ function pg_sw_record_comment_context($page_id, $form_id = 0, $email = false)
     $widget = pg_sw_page_widget($page_id, 'form_item_view');
     if (!$widget) return null;
     $cfg = $widget['cfg'];
-    $custom_form_page_id = (int)(!empty($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id']
-                               : (!empty($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
+    $custom_form_page_id = pg_sw_record_view_form_page_id($cfg);
     $access = (isset($cfg['access_control']) && in_array($cfg['access_control'], array('public', 'submitter_only', 'logged_in'), true))
         ? $cfg['access_control'] : 'public';
 
@@ -2394,6 +2393,78 @@ function pg_sw_record_comment_context($page_id, $form_id = 0, $email = false)
         'visible'             => ($form !== null) && pg_sw_submitted_form_visible($form, $access, $page_id)
                                  && ($email || pg_sw_record_passes_filters($custom_form_page_id, pg_sw_record_view_filters($cfg), $form['id'], $page_id)),
     );
+}
+
+// The custom form a record view's comments and watchers belong to:
+// custom_form_page_id, else the older form_page_id; 0 when it names neither.
+// The source_page name is not looked up (pg_sw_form_widget_form_page_id()
+// does), so the comment context above and the list's watcher page below
+// read the same form. Pure.
+function pg_sw_record_view_form_page_id($cfg)
+{
+    if (!is_array($cfg)) return 0;
+    foreach (array('custom_form_page_id', 'form_page_id') as $key) {
+        if (!empty($cfg[$key])) return is_scalar($cfg[$key]) ? (int)$cfg[$key] : 0;
+    }
+    return 0;
+}
+
+// The page whose watchers a viewer filtered form list counts as the
+// viewer's records (viewer_filter_watcher), or 0 when none counts. Pure:
+// $page is the detail page's row (page_id, page_type, comments,
+// comments_watcher_email_page_id), $view_form_page_id the form of the
+// page's first record view widget (pg_sw_record_view_form_page_id(), 0
+// without one).
+//
+// - Comments and watching must be on: add_or_remove_watcher.php stores no
+//   watcher on a page without them.
+// - A classic form item view page counts by its page type, as it always did.
+// - Any other page counts when its record view shows the list's own form:
+//   add_or_remove_watcher.php and add_comment.php take that widget's record
+//   as the page's thread (pg_sw_record_comment_context(),
+//   pg_comment_thread_verify()). A page without one, or whose record view
+//   shows another form, counts no watcher.
+function pg_sw_list_watcher_page_decision($page, $list_form_page_id, $view_form_page_id)
+{
+    if (!is_array($page)) return 0;
+    $page_id = (isset($page['page_id']) && is_scalar($page['page_id'])) ? (int)$page['page_id'] : 0;
+    if ($page_id <= 0) return 0;
+    $comments = (isset($page['comments']) && is_scalar($page['comments'])) ? (int)$page['comments'] : 0;
+    $watching = (isset($page['comments_watcher_email_page_id']) && is_scalar($page['comments_watcher_email_page_id']))
+        ? (int)$page['comments_watcher_email_page_id'] : 0;
+    if ($comments !== 1 || $watching === 0) return 0;
+    $page_type = (isset($page['page_type']) && is_scalar($page['page_type'])) ? (string)$page['page_type'] : '';
+    if ($page_type === 'form item view') return $page_id;
+    $list_form = is_scalar($list_form_page_id) ? (int)$list_form_page_id : 0;
+    $view_form = is_scalar($view_form_page_id) ? (int)$view_form_page_id : 0;
+    return ($list_form > 0 && $view_form === $list_form) ? $page_id : 0;
+}
+
+// The page whose watchers a viewer filtered list of $custom_form_page_id
+// counts: pg_sw_list_watcher_page_decision() over the list's detail page
+// and, on a page other than a classic form item view, its first record view
+// widget, the one pg_sw_record_comment_context() asks. One page query; the
+// widget lookup is kept per request (pg_sw_page_widgets()), and the list's
+// record links read the same page. 0 when no watcher counts.
+function pg_sw_list_watcher_page_id($detail_page_id, $custom_form_page_id)
+{
+    $detail_page_id      = is_scalar($detail_page_id) ? (int)$detail_page_id : 0;
+    $custom_form_page_id = is_scalar($custom_form_page_id) ? (int)$custom_form_page_id : 0;
+    if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return 0;
+    $page = db_item(
+        "SELECT page_id, page_type, comments, comments_watcher_email_page_id
+         FROM page
+         WHERE page_id = '" . $detail_page_id . "'
+           AND comments = '1'
+           AND comments_watcher_email_page_id != '0'
+         LIMIT 1");
+    if (!is_array($page)) return 0;
+    $view_form = 0;
+    if ((string)$page['page_type'] !== 'form item view') {
+        $widget = pg_sw_page_widget($detail_page_id, 'form_item_view');
+        if ($widget) $view_form = pg_sw_record_view_form_page_id($widget['cfg']);
+    }
+    return pg_sw_list_watcher_page_decision($page, $custom_form_page_id, $view_form);
 }
 
 // ============================================================================
@@ -5897,13 +5968,17 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * What the page is being drawn for, as the system widgets need to know it.
  *
  * get_page_content() sets 'email' for its whole render (true when the page is
- * the body of an e-mail), and its widget pass adds the dynamic properties the
- * sender passed with it - 'form_id' for a form's confirmation or
- * notification, 'order_id' for an order receipt. A widget on an e-mail page
- * has no address to read ?r= or ?order_id= from, and the recipient is chosen
- * by the server, so the checks that keep a visitor to their own records do
- * not apply there. Pass an array to set (the previous context comes back,
- * for restoring); pass nothing to read.
+ * the body of an e-mail), and around its widget pass adds 'page_id' and the
+ * dynamic properties the sender passed with it - 'form_id' for a form's
+ * confirmation or notification, 'order_id' for an order receipt. A widget on
+ * an e-mail page has no address to read ?r= or ?order_id= from, and the
+ * recipient is chosen by the server, so the checks that keep a visitor to
+ * their own records do not apply there. 'page_id' is the page being drawn: a
+ * widget whose data is the page's own (the comments widget's thread) reads it
+ * here, never through _pg_sw_current_page_id(), which is 0 on the live home
+ * page, in e-mails and in the search index, and is cached for the whole
+ * request. Pass an array to set (the previous context comes back, for
+ * restoring); pass nothing to read.
  *
  * @param array|null $set
  * @return array
@@ -8093,9 +8168,10 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // the page itself is edited in the visual editor, and what its widgets show
 // - a product, a product group, a submitted form, a comment - is edited in
 // the panel. So the pencil is simply there for a user who may edit that
-// record, in the record's top-left corner (the top-right is where a comment
-// keeps its share button), and it opens the record's edit screen, which
-// brings them back here.
+// record, in the record's top-left corner on every page (the comment card
+// keeps its share button top right through Bootstrap's physical utilities,
+// so a chip that followed a right-to-left page would cover it), and it
+// opens the record's edit screen, which brings them back here.
 
 /**
  * Whether a render draws edit chips, from values already read: a signed-in
@@ -8215,31 +8291,66 @@ function pg_sw_backend_edit_url($script, $id, $params = array())
          . ($back !== '' ? '&send_to=' . urlencode($back) : '');
 }
 
-/** The chips' stylesheet, written once per page with the first chip. */
+/**
+ * The chips' stylesheet: only what a style attribute cannot say. The record
+ * is the chip's positioning box (zero specificity: a design that positions
+ * the record itself wins); the chip fades in on hover and focus and grows
+ * under the pointer (!important, over the plain opacity and transform the
+ * chip carries); it draws no pseudo-element a design gives links; it is not
+ * printed (visibility: its display is pinned). The chip's size, shape and
+ * colours need none of it. Written once per page by
+ * pg_sw_edit_chip_css_inject().
+ */
 function pg_sw_edit_chip_css()
 {
-    return '<style>'
-        . '.pg-edit-host{position:relative}'
-        . '.pg-edit-chip{position:absolute;top:.5rem;left:.5rem;z-index:6;display:inline-flex;align-items:center;justify-content:center;'
-        .   'width:1.9rem;height:1.9rem;border-radius:50%;background:rgba(25,118,210,.92);color:#fff!important;text-decoration:none!important;'
-        .   'box-shadow:0 2px 6px rgba(0,0,0,.28);opacity:.55;transition:opacity .15s,transform .15s}'
-        . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1}'
-        . '.pg-edit-chip:hover{transform:scale(1.08)}'
-        . '.pg-edit-chip:focus-visible{outline:2px solid #fff;outline-offset:2px}'
-        . '.pg-edit-chip svg{width:.9rem;height:.9rem;pointer-events:none}'
-        . '.pg-edit-chip-ecommerce{background:rgba(85,139,47,.94)}'
-        . '.pg-edit-chip-forms{background:rgba(128,95,167,.94)}'
-        . '.pg-edit-chip-calendar{background:rgba(93,64,55,.94)}'
-        . '@media (hover:none){.pg-edit-chip{opacity:.9}}'
-        . '@media print{.pg-edit-chip{display:none}}'
+    return '<style id="pg-edit-chip-css">'
+        . ':where(.pg-edit-host){position:relative}'
+        . '.pg-edit-chip::before,.pg-edit-chip::after{content:none!important;display:none!important}'
+        . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1!important}'
+        . '.pg-edit-chip:hover{transform:scale(1.08)!important}'
+        . '.pg-edit-chip:focus-visible{outline:2px solid #fff!important;outline-offset:2px!important}'
+        . '@media (hover:none){.pg-edit-chip{opacity:.9!important}}'
+        . '@media print{.pg-edit-chip{visibility:hidden!important}}'
         . '</style>';
 }
 
 /**
- * Put an edit chip in the first element of a rendered record and make that
- * element its positioning box. A record whose first element cannot hold one
- * - a void element, a table row, a link or button (a link in a link is not
+ * The chips' stylesheet in a finished page that shows a chip: once, in its
+ * head (in front of a page without one). Asked of the whole page
+ * (get_page_content()), not written with the first chip: that chip may
+ * belong to output thrown away later - a list hidden by "Show only when"
+ * draws its rows before it is cut - and the stylesheet went with it.
+ *
+ * @param string $html the page
+ * @return string
+ */
+function pg_sw_edit_chip_css_inject($html)
+{
+    $html = (string)$html;
+    if (strpos($html, 'class="pg-edit-chip ') === false || strpos($html, 'id="pg-edit-chip-css"') !== false) {
+        return $html;
+    }
+    $head_end = stripos($html, '</head>');
+    if ($head_end === false) return pg_sw_edit_chip_css() . $html;
+    return substr($html, 0, $head_end) . pg_sw_edit_chip_css() . substr($html, $head_end);
+}
+
+/**
+ * Put an edit chip in the first element of a rendered record and mark that
+ * element as its host. A record whose first element cannot hold one - a
+ * void element, a table row, a link or button (a link in a link is not
  * HTML) - is left as it is; its detail page carries the chip instead.
+ *
+ * The chip's look and place are written on the chip and its icon with
+ * !important, because a design's rules for links, svg and pictures
+ * ("a {display:block}", ".card svg {width:100%}", ".row > *", ".ratio > *")
+ * reach them too and made the pencil as wide as a card's picture, in the
+ * flow above it. It sits .5rem inside the record's top-left corner in
+ * either direction (right is auto). The record is its positioning box
+ * through the page's stylesheet (pg_sw_edit_chip_css()), not a position
+ * written on the record, which would override the design's own. Opacity and transform stay plain
+ * declarations, which a design's rules cannot reach either; the stylesheet
+ * raises them on hover and focus.
  *
  * @param string $html  one record's markup
  * @param string $url   the edit screen
@@ -8248,7 +8359,6 @@ function pg_sw_edit_chip_css()
  */
 function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
 {
-    static $css_written = false;
     if ($url === '' || !preg_match('/^(\s*(?:<!--.*?-->\s*)*)<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/s', (string)$html, $m)) {
         return $html;
     }
@@ -8266,15 +8376,32 @@ function pg_sw_add_edit_chip($html, $url, $title, $tone = 'page')
     } else {
         $attrs = rtrim($attrs, " \t\n\r/") . ' class="pg-edit-host"';
     }
-    $tone = in_array($tone, array('page', 'ecommerce', 'forms', 'calendar'), true) ? $tone : 'page';
-    $chip = '<a class="pg-edit-chip pg-edit-chip-' . $tone . '" href="' . h($url) . '" title="' . h($title) . '" aria-label="' . h($title) . '" rel="nofollow">'
-          . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">'
-          . '<path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>'
+    $backgrounds = array(
+        'page'      => 'rgba(25,118,210,.92)',
+        'ecommerce' => 'rgba(85,139,47,.94)',
+        'forms'     => 'rgba(128,95,167,.94)',
+        'calendar'  => 'rgba(93,64,55,.94)',
+    );
+    $tone = isset($backgrounds[$tone]) ? $tone : 'page';
+    // justify-self / align-self: the corner, where a browser that aligns
+    // positioned boxes would otherwise follow a design's alignment.
+    $chip_style = 'position:absolute!important;top:.5rem!important;right:auto!important;bottom:auto!important;left:.5rem!important;'
+                . 'z-index:6!important;display:flex!important;align-items:center!important;justify-content:center!important;'
+                . 'justify-self:start!important;align-self:start!important;box-sizing:border-box!important;'
+                . 'width:1.9rem!important;height:1.9rem!important;min-width:0!important;min-height:0!important;'
+                . 'max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;'
+                . 'border:0!important;border-radius:50%!important;background:' . $backgrounds[$tone] . '!important;'
+                . 'color:#fff!important;box-shadow:0 2px 6px rgba(0,0,0,.28)!important;font-size:1rem!important;'
+                . 'line-height:1!important;text-decoration:none!important;float:none!important;pointer-events:auto!important;'
+                . 'transition:opacity .15s,transform .15s!important;opacity:.55;transform:none';
+    $svg_style  = 'display:block!important;flex:none!important;position:static!important;float:none!important;'
+                . 'width:.9rem!important;height:.9rem!important;min-width:0!important;min-height:0!important;'
+                . 'max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;'
+                . 'border:0!important;transform:none!important;opacity:1!important;color:inherit!important;'
+                . 'fill:currentColor!important;pointer-events:none!important';
+    $chip = '<a class="pg-edit-chip pg-edit-chip-' . $tone . '" href="' . h($url) . '" title="' . h($title) . '" aria-label="' . h($title) . '" rel="nofollow" style="' . $chip_style . '">'
+          . '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false" style="' . $svg_style . '">'
+          . '<path style="fill:currentColor!important;stroke:none!important" d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>'
           . '</svg></a>';
-    $out = $m[1] . '<' . $m[2] . $attrs . '>' . $chip . substr((string)$html, strlen($m[0]));
-    if (!$css_written) {
-        $css_written = true;
-        $out = pg_sw_edit_chip_css() . $out;
-    }
-    return $out;
+    return $m[1] . '<' . $m[2] . $attrs . '>' . $chip . substr((string)$html, strlen($m[0]));
 }

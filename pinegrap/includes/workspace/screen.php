@@ -549,6 +549,21 @@ function ws_editor_js_strings()
         'table_total'               => lang('Total'),
         'table_fill_down'           => lang('Copy the formula to the cells below'),
         'update_block'              => lang('Update'),
+        // The rows of tools under a box (PGWsEditor.toolbar()).
+        'tool_bar'                  => lang('Text tools'),
+        'tool_bar_message'          => lang('Message tools'),
+        'tool_bar_note'             => lang('Note tools'),
+        'tool_undo'                 => lang('Undo (Ctrl+Z)'),
+        'tool_redo'                 => lang('Redo (Ctrl+Y)'),
+        'tool_bold'                 => lang('Bold (Ctrl+B)'),
+        'tool_italic'               => lang('Italic (Ctrl+I)'),
+        'tool_strike'               => lang('Strikethrough (Ctrl+Shift+X)'),
+        'tool_code'                 => lang('Code (Ctrl+E)'),
+        'tool_link'                 => lang('Link (Ctrl+K)'),
+        'tool_checklist'            => lang('Checklist'),
+        'tool_table'                => lang('Table'),
+        'tool_calc'                 => lang('Calculation'),
+        'tool_codeblock'            => lang('Code block'),
     );
 }
 
@@ -729,11 +744,12 @@ function ws_screen_config($viewer, $mode, $extra = array())
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
-        // size and how many files the server takes in one request; and how
-        // many notes a person keeps.
+        // size, how many files the server takes in one request and the kinds
+        // of file it reads; and how many notes a person keeps.
         'notes_import' => function_exists('ws_note_import_upload_max') ? array(
             'max'   => ws_note_import_upload_max(),
             'files' => ws_note_import_files_max(),
+            'types' => ws_note_import_extensions(),
             'limit' => WS_NOTE_LIMIT,
         ) : null,
         // The paperclip also picks from the file manager (library.php).

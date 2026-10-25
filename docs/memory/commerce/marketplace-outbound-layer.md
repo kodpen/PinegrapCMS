@@ -4,7 +4,7 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 ---
 
 ## What is the connector contract?
-- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create, stock and price, batch result, order pull, stage, Picking accept and order webhook (`trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`).
+- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create and approval read (`listing_status`), stock and price, batch result, order pull, stage, Picking accept and order webhook (the `trendyol-*.md` files, `marketplace-webhook-receiver.md`).
 - The contract is not an interface but a TABLE OF FUNCTION NAMES: `mp_connector('n11')` returns it, `mp_can()` asks, `mp_call()` calls. A connector that does not name a function it cannot do is valid.
 - A new connector = `connectors/<key>.php` + its `mp_providers()` row (`file`, `fields`); every entry is optional but `test_credentials` (list in `base.php`'s header). `approve_lines($account, $line_ids, $package)` gets the imported package third: Trendyol needs its id and line quantities. A connector reports; it never writes the catalogue.
 - `push_stock_price` may answer `data['refused']` (product id => reason): the queue fails those rows on their own reason at once and writes it on the mapping. `task_id` '' = nothing was sent, the rest close as done. A retryable error may carry `data['retry_after']` (seconds, capped at an hour), which `mp_sync_batch_failed()` waits instead of the backoff.
