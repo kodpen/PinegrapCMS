@@ -75,7 +75,7 @@ function ws_record_type_keys()
     return array(
         'order', 'product', 'product_group', 'offer',
         'contact', 'user_account',
-        'erp_account', 'invoice', 'waybill', 'receipt', 'edoc',
+        'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
         'form', 'calendar_event',
         'file', 'page',
     );
@@ -146,6 +146,9 @@ function ws_ref_types($viewer)
 
     if ($viewer['erp']) {
         $add('edoc', lang('Incoming e-invoice'), 'bi-envelope-paper', array('gelen', 'ebelge', 'e-belge', 'edoc', 'e'));
+        // The ERP's priced offer to an account (erp_quotes), never the
+        // site's discount: an Offer keeps "teklif", so no prefix is shared.
+        $add('erp_quote', lang('Sales quote'), 'bi-file-earmark-text', array('satis', 'satış', 'satisteklifi', 'satışteklifi', 'salesquote'));
     }
 
     if ($viewer['forms']) {
@@ -256,6 +259,35 @@ function ws_money_out($minor)
     }
 
     return function_exists('pg_format_number') ? pg_format_number(((int) $minor) / 100, 2) : number_format(((int) $minor) / 100, 2);
+}
+
+/**
+ * Whether sales quotes can be read: the ERP is on and its quotes table is
+ * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
+ * and the money helpers (erp_money_out_currency()) alone rather than the
+ * whole module through its bootstrap: a tag reads one table and needs
+ * nothing else of it.
+ *
+ * @return bool
+ */
+function ws_erp_quotes_readable()
+{
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
+        return false;
+    }
+
+    if (!function_exists('erp_quotes_ready') || !function_exists('erp_money_out_currency')) {
+        // The gate every file under includes/erp/ checks; the ERP bootstrap
+        // defines it the same way.
+        if (!defined('PG_ERP_ENTRY')) {
+            define('PG_ERP_ENTRY', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
+    }
+
+    return erp_quotes_ready();
 }
 
 /**
@@ -583,6 +615,38 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
+    if (!empty($ids['erp_quote'])) {
+        // The joined invoice's status tells an invoiced quote whose invoice
+        // was cancelled or deleted (accepted again) from one still invoiced.
+        $rows = ws_erp_quotes_readable()
+            ? (array) db_items("SELECT q.id, q.full_number, q.status, q.valid_until, q.grand_total, q.currency, a.title AS account_title,
+                    i.status AS invoice_status
+                FROM erp_quotes q
+                LEFT JOIN erp_accounts a ON a.id = q.account_id
+                LEFT JOIN erp_invoices i ON i.id = q.invoice_id
+                WHERE q.id IN (" . $in('erp_quote') . ")")
+            : array();
+
+        $statuses = $rows ? erp_quote_statuses() : array();
+
+        foreach ($rows as $row) {
+            if ($viewer['erp']) {
+                $number = ((string) $row['full_number'] !== '') ? $row['full_number'] : '#' . (int) $row['id'];
+                $state = erp_quote_state($row);
+
+                // grand_total is in the quote's own currency (erp_quote_save()
+                // keeps the base figure apart), so it is printed in that
+                // currency, as the quote screens print it; ws_money_out()
+                // would show it in the visitor's currency.
+                $put('erp_quote', $row['id'], lang('Sales quote') . ' ' . $number, $base . 'edit_erp_quote.php?id=' . (int) $row['id'],
+                    trim((string) $row['account_title'] . ' · ' . erp_money_out_currency((int) $row['grand_total'], (string) $row['currency']), ' ·'),
+                    $statuses[$state][0] ?? $state, true, 'bi-file-earmark-text');
+            } else {
+                $put('erp_quote', $row['id'], lang('Sales quote'), '', '', '', false, 'bi-file-earmark-text');
+            }
+        }
+    }
+
     if (!empty($ids['form'])) {
         $rows = (array) db_items("SELECT f.id, f.reference_code, f.submitted_timestamp, f.complete, p.page_folder, c.form_name
             FROM forms f
@@ -901,6 +965,14 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             $found = db_values("SELECT id FROM erp_edoc_inbox
                 WHERE (gib_number LIKE '%" . $like . "%' OR supplier_title LIKE '%" . $like . "%')
                 ORDER BY id DESC LIMIT " . $limit);
+            break;
+
+        case 'erp_quote':
+            $found = ws_erp_quotes_readable()
+                ? db_values("SELECT q.id FROM erp_quotes q LEFT JOIN erp_accounts a ON a.id = q.account_id
+                    WHERE (q.full_number LIKE '%" . $like . "%' OR a.title LIKE '%" . $like . "%')
+                    ORDER BY q.id DESC LIMIT " . $limit)
+                : array();
             break;
 
         case 'form':
