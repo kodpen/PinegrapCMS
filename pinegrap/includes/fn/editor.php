@@ -897,12 +897,18 @@ function pg_code_editor_json($value)
 }
 
 // create function that replaces the actual path in the content from a rich-text editor with the {path} placeholder,
-// so that the actual path is not stored in the database
-function prepare_rich_text_editor_content_for_input($content)
+// so that the actual path is not stored in the database. $path is the site path
+// the addresses start with: PATH unless a caller names it (the unit tests run
+// without PATH).
+function prepare_rich_text_editor_content_for_input($content, $path = null)
 {
-    $content = str_replace('href="' . PATH, 'href="{path}', $content);
-    $content = str_replace('src="' . PATH, 'src="{path}', $content);
-    $content = str_replace('value="' . PATH, 'value="{path}', $content);
+    if ($path === null) {
+        $path = PATH;
+    }
+
+    $content = str_replace('href="' . $path, 'href="{path}', $content);
+    $content = str_replace('src="' . $path, 'src="{path}', $content);
+    $content = str_replace('value="' . $path, 'value="{path}', $content);
     return $content;
 }
 /**

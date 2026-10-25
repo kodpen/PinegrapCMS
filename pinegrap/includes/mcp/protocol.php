@@ -15,7 +15,7 @@
  *
  * Who is calling is settled the way integration.php settles it - an OAuth
  * token issued for this endpoint, a device token, or an application's key -
- * and every tool is held to that caller's scopes.
+ * and every tool, resource and prompt is held to that caller's scopes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -30,8 +30,10 @@ if (!defined('PG_MCP_ENTRY')) {
 // The protocol versions answered, newest first. The first is the current
 // generation; the rest open with initialize. 2024-11-05 is still what some
 // clients built on an older SDK ask for, and the messages this server
-// exchanges - tools/list and tools/call - read the same in it: a client
-// answered with a version it does not know gives up instead.
+// exchanges - the tools, resources and prompts lists, tools/call,
+// resources/read and prompts/get - read the same in it, apart from fields it
+// ignores: a client answered with a version it does not know gives up
+// instead.
 function pg_mcp_versions() {
 
 	return array('2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05');
@@ -78,11 +80,12 @@ function pg_mcp_request_version($header, $params) {
 
 }
 
-// The current generation repeats the method, the tool's name and the version
-// in headers so that a gateway can route on them without reading the body;
-// the server refuses a request whose headers and body disagree, or the
-// gateway's decision would rest on something the server never sees. Answers
-// '' when they agree, the reason otherwise.
+// The current generation repeats the method, the name of the tool or prompt
+// (the uri of a resource read) and the version in headers so that a gateway
+// can route on them without reading the body; the server refuses a request
+// whose headers and body disagree, or the gateway's decision would rest on
+// something the server never sees. Answers '' when they agree, the reason
+// otherwise.
 function pg_mcp_header_mismatch($method, $params, $headers) {
 
 	if ($headers['method'] !== $method) {
@@ -91,13 +94,17 @@ function pg_mcp_header_mismatch($method, $params, $headers) {
 
 	}
 
-	if (in_array($method, array('tools/call', 'prompts/get'), true)) {
+	$named = array('tools/call' => 'name', 'prompts/get' => 'name', 'resources/read' => 'uri');
 
-		$name = (isset($params['name']) && is_string($params['name'])) ? $params['name'] : '';
+	if (isset($named[$method])) {
 
-		if ($headers['name'] !== $name) {
+		$key = $named[$method];
 
-			return 'The Mcp-Name header does not match the name in the body.';
+		$name = (isset($params[$key]) && is_string($params[$key])) ? $params[$key] : '';
+
+		if (pg_mcp_header_name_decode($headers['name']) !== $name) {
+
+			return 'The Mcp-Name header does not match the ' . $key . ' in the body.';
 
 		}
 
@@ -113,6 +120,26 @@ function pg_mcp_header_mismatch($method, $params, $headers) {
 	}
 
 	return '';
+
+}
+
+// An Mcp-Name value as the body would hold it. A name or uri that is not
+// plain ASCII travels as =?base64?...?= (the markers lowercase), and is
+// compared decoded; a value in that shape that is not Base64 is null and
+// matches nothing.
+function pg_mcp_header_name_decode($value) {
+
+	$value = (string)$value;
+
+	if (preg_match('#^=\?base64\?(.*)\?=\z#s', $value, $found) !== 1) {
+
+		return $value;
+
+	}
+
+	$decoded = (preg_match('#^[A-Za-z0-9+/]*={0,2}\z#', $found[1]) === 1) ? base64_decode($found[1], true) : false;
+
+	return ($decoded === false) ? null : $decoded;
 
 }
 
@@ -184,11 +211,43 @@ function pg_mcp_send($http_status, $payload) {
 
 	if ($payload !== null) {
 
-		echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		echo pg_mcp_payload_json($payload);
 
 	}
 
 	exit();
+
+}
+
+// A value as the JSON an MCP answer carries, by the encoder of the REST
+// answer (pg_json_encode_answer(), includes/fn/core.php): a byte that is not
+// UTF-8, in a key or a value, becomes U+FFFD and the rest of the value stays,
+// on every PHP version. null when the value cannot be JSON at all (INF, NAN),
+// a broken byte beside it or not, for the caller to answer an error: a bare
+// json_encode() returns false there, which casts to an empty text a client
+// cannot tell from a real, empty answer.
+function pg_mcp_json_encode($value) {
+
+	return pg_json_encode_answer($value);
+
+}
+
+// The body pg_mcp_send() writes, never empty: a payload JSON cannot hold
+// becomes an internal error under the request's id, or under null when the
+// id is what cannot be written (a client's 1e999 decodes as INF).
+function pg_mcp_payload_json($payload) {
+
+	$json = pg_mcp_json_encode($payload);
+
+	if ($json !== null) {
+
+		return $json;
+
+	}
+
+	$id = (is_array($payload) && isset($payload['id']) && (pg_mcp_json_encode($payload['id']) !== null)) ? $payload['id'] : null;
+
+	return (string)pg_mcp_json_encode(array('jsonrpc' => '2.0', 'id' => $id, 'error' => array('code' => -32603, 'message' => 'Internal error')));
 
 }
 
@@ -212,6 +271,24 @@ function pg_mcp_result($id, $result, $modern) {
 
 }
 
+// The caching hints the current generation asks for on lists and reads: how
+// long the answer may be used again, and that it is this caller's own - what
+// is listed and read follows the caller's scopes and rights. Earlier
+// generations have none.
+function pg_mcp_cache_hints($result, $ttl_ms, $modern) {
+
+	if ($modern) {
+
+		$result['ttlMs'] = (int)$ttl_ms;
+
+		$result['cacheScope'] = 'private';
+
+	}
+
+	return $result;
+
+}
+
 function pg_mcp_error($id, $code, $message, $data = null, $http_status = 400) {
 
 	$error = array('code' => (int)$code, 'message' => (string)$message);
@@ -223,6 +300,23 @@ function pg_mcp_error($id, $code, $message, $data = null, $http_status = 400) {
 	}
 
 	pg_mcp_send($http_status, array('jsonrpc' => '2.0', 'id' => $id, 'error' => $error));
+
+}
+
+// Writes an answer built without side effects (pg_mcp_list_answer(),
+// pg_mcp_resource_target(), pg_mcp_resource_answer(), pg_mcp_tool_answer()):
+// array('result' => ...) or array('error' => array('code', 'message', 'data'
+// when there is one)). Such an error is about the request it answers, so it
+// travels with HTTP 200 in both generations, as the tools' do.
+function pg_mcp_answer($id, $answer, $modern) {
+
+	if (isset($answer['error'])) {
+
+		pg_mcp_error($id, $answer['error']['code'], $answer['error']['message'], isset($answer['error']['data']) ? $answer['error']['data'] : null, 200);
+
+	}
+
+	pg_mcp_result($id, $answer['result'], $modern);
 
 }
 
@@ -246,9 +340,15 @@ function pg_mcp_server_info() {
 
 }
 
+// Tools, resources and prompts; none of the lists is announced as changed
+// (no notifications are sent) and no resource can be subscribed to.
 function pg_mcp_capabilities() {
 
-	return array('tools' => array('listChanged' => false));
+	return array(
+		'tools'     => array('listChanged' => false),
+		'resources' => array('listChanged' => false),
+		'prompts'   => array('listChanged' => false)
+	);
 
 }
 
@@ -267,6 +367,41 @@ function pg_mcp_instructions() {
 /* ---------------------------------------------------------------------------
    The request
    --------------------------------------------------------------------------- */
+
+// The answer to tools/list, resources/list, resources/templates/list or
+// prompts/list for a caller whose tools are $routes (pg_mcp_routes()), or
+// null for any other method. The lists depend on who asks, so each is cached
+// by that client alone, and for a few minutes: a permission granted or taken
+// away shows within them. None is paged: each is complete in one answer and
+// no nextCursor is ever handed out, so a cursor the client sends is one this
+// server never gave, and invalid params (the pagination utility of every
+// generation). A null or empty cursor is no cursor.
+function pg_mcp_list_answer($method, $params, $routes, $modern) {
+
+	$lists = array(
+		'tools/list'               => array('tools', 'pg_mcp_tools_list'),
+		'resources/list'           => array('resources', 'pg_mcp_resources_list'),
+		'resources/templates/list' => array('resourceTemplates', 'pg_mcp_resource_templates_list'),
+		'prompts/list'             => array('prompts', 'pg_mcp_prompts_list')
+	);
+
+	if (!isset($lists[$method])) {
+
+		return null;
+
+	}
+
+	if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+
+		return array('error' => array('code' => -32602, 'message' => 'Invalid params: unknown cursor.'));
+
+	}
+
+	list($key, $builder) = $lists[$method];
+
+	return array('result' => pg_mcp_cache_hints(array($key => call_user_func($builder, $routes)), 300000, $modern));
+
+}
 
 function pg_mcp_run() {
 
@@ -440,40 +575,23 @@ function pg_mcp_run() {
 			), $modern);
 
 		case 'tools/list':
+		case 'resources/list':
+		case 'resources/templates/list':
+		case 'prompts/list':
 
-			$result = array('tools' => pg_mcp_tools_list());
-
-			// The list depends on who asks, so it is cached by that client
-			// alone, and for a few minutes: a permission granted or taken
-			// away shows within them.
-			if ($modern) {
-
-				$result['ttlMs'] = 300000;
-
-				$result['cacheScope'] = 'private';
-
-			}
-
-			pg_mcp_result($id, $result, $modern);
+			pg_mcp_answer($id, pg_mcp_list_answer($method, $params, pg_mcp_routes(), $modern), $modern);
 
 		case 'tools/call':
 
 			pg_mcp_tool_call($id, $params, $modern);
 
-		// Asked by some clients whatever the capabilities say. The server
-		// offers no resources and no prompts, and an empty list says so
-		// without the client reporting a failed server.
-		case 'resources/list':
+		case 'resources/read':
 
-			pg_mcp_result($id, array('resources' => array()), $modern);
+			pg_mcp_resource_read($id, $params, $modern);
 
-		case 'resources/templates/list':
+		case 'prompts/get':
 
-			pg_mcp_result($id, array('resourceTemplates' => array()), $modern);
-
-		case 'prompts/list':
-
-			pg_mcp_result($id, array('prompts' => array()), $modern);
+			pg_mcp_prompt_get($id, $params, $modern);
 
 	}
 

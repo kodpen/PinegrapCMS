@@ -9,8 +9,9 @@
  *
  * # looks only among the records, @ among the people of the team, / among
  * the commands of the writing box (a command picked is written into the box
- * of the channel open on the screen). The last five searches are kept in
- * the browser, per person, and shown while the box is empty.
+ * of the channel open on the screen). Words such as "new product" offer to
+ * make one in the record drawer's new mode. The last five searches are kept
+ * in the browser, per person, and shown while the box is empty.
  *
  * assets/js/workspace.js opens it (window.PGWsPalette.open()) and lends it
  * its helpers through window.PGWsKit. Every text comes from the #ws-config
@@ -648,6 +649,11 @@
 
             case 'command':
                 action = function () { here.insert(item.insert); };
+                break;
+
+            // A new product or product group: the record drawer's new mode.
+            case 'create':
+                action = function () { k.openCreate(item.kind); };
                 break;
 
             default:

@@ -245,6 +245,17 @@ if (!$_POST) {
             $register_opts = pg_member_widget_register_opts((int) ($_POST['pg_widget_id'] ?? 0), $register_form);
         }
 
+        // Whether the marketing question was on the screen, so that only an
+        // answer the visitor gave is recorded. A widget post asks the
+        // widget's tree for the opt_in control. A post without one comes from
+        // the legacy screen: its system layout and the shipped custom layouts
+        // draw the box, but a custom layout edited to leave it out posts the
+        // same as an unticked box, so it still counts as asked and its 0 is
+        // recorded as a refusal.
+        $register_opts['opt_in_asked'] = isset($_POST['pg_widget_id'])
+            ? pg_member_widget_asks_opt_in((int) $_POST['pg_widget_id'], 'registration')
+            : true;
+
         $registered = pg_member_register($register_form, $register_opts);
 
         // if an error does not exist

@@ -592,42 +592,11 @@ function api_product_groups_update($params) {
 }
 
 // The search results pages whose keyword cloud is built from a catalogue that
-// takes in this group. Their clouds are taken down, and built again unless the
-// group is on its way out - the order the group screens follow, so a page
-// never carries keywords from a group that is no longer there.
+// takes in this group: the shared rebuild (pg_catalog_group_clouds()), run
+// through this API's own query helpers.
 function api_product_group_clouds($group_id, $clear_only = false) {
 
-	$pages = array();
-
-	foreach (api_rows("SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'") as $page) {
-
-		foreach ((array)get_product_groups_in_product_group_tree($page['product_group_id']) as $group) {
-
-			if ((int)$group['id'] === (int)$group_id) {
-
-				$pages[] = $page;
-
-				break;
-
-			}
-
-		}
-
-	}
-
-	foreach ($pages as $page) {
-
-		delete_tag_cloud_keywords_for_search_results_page($page['page_id']);
-
-		if (!$clear_only) {
-
-			update_tag_cloud_keywords_for_search_results_page_product_group($page['page_id'], $page['product_group_id']);
-
-		}
-
-	}
-
-	return $pages;
+	return pg_catalog_group_clouds($group_id, $clear_only, array('api' => true));
 
 }
 
@@ -697,12 +666,35 @@ function api_product_group_member_ids($group_id) {
 
 }
 
+// What POST /product-groups hands the catalogue's group writer
+// (pg_catalog_group_create()) from the request: the wire's description is the
+// group's full description. $name is trimmed, $parent_id and $product_ids are
+// the ones the handler checked.
+function api_product_group_create_data($params, $name, $parent_id, $product_ids) {
+
+	return array(
+		'name'              => $name,
+		'enabled'           => !empty($params['enabled']),
+		'parent_id'         => $parent_id,
+		'short_description' => isset($params['short_description']) ? (string)$params['short_description'] : '',
+		'full_description'  => isset($params['description']) ? (string)$params['description'] : '',
+		'keywords'          => isset($params['keywords']) ? (string)$params['keywords'] : '',
+		'title'             => isset($params['title']) ? (string)$params['title'] : '',
+		'meta_description'  => isset($params['meta_description']) ? (string)$params['meta_description'] : '',
+		'meta_keywords'     => isset($params['meta_keywords']) ? (string)$params['meta_keywords'] : '',
+		'product_ids'       => $product_ids
+	);
+
+}
+
 // A new group, filed under a parent that exists.
 //
-// The same row add_product_group.php writes: a browse page with variant
-// selection on, an address made from the short description or the name by the
-// catalogue's own rule, the rich text prepared the way the editor prepares it.
-// It starts switched off unless enabled is sent, so a category an import is
+// Written by the catalogue's one group writer, pg_catalog_group_create()
+// (includes/fn/ecommerce.php), which the Workspace shares: a browse page with
+// variant selection on, an address made from the short description or the
+// name by the catalogue's own rule, the rich text prepared the way the editor
+// prepares it, scored for SEO and announced as product_group.created. It
+// starts switched off unless enabled is sent, so a category an import is
 // still filling does not appear in the shop's navigation half-empty.
 //
 // The name is checked before the write, as it is for a product: it is the
@@ -737,7 +729,7 @@ function api_product_groups_create($params) {
 
 	if ($parent_id <= 0) {
 
-		$parent_id = (int)api_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id ASC LIMIT 1");
+		$parent_id = pg_catalog_group_top_id(array('api' => true));
 
 	} else {
 
@@ -759,35 +751,9 @@ function api_product_groups_create($params) {
 		? api_product_group_product_ids($params['product_ids'], 'product_ids')
 		: array();
 
-	$short = isset($params['short_description']) ? (string)$params['short_description'] : '';
-
-	$full = isset($params['description']) ? prepare_rich_text_editor_content_for_input((string)$params['description']) : '';
-
-	$address = prepare_catalog_item_address_name(($short !== '') ? $short : $name);
-
 	api_dry_run_stop('created', 'product_group', array('name' => $name, 'parent_id' => $parent_id, 'products' => count($product_ids)));
 
-	api_exec("INSERT INTO product_groups (name, enabled, parent_id, short_description, full_description, details, code,
-			keywords, image_name, display_type, address_name, title, meta_description, meta_keywords, attributes, user, timestamp)
-		VALUES (
-			'" . escape($name) . "',
-			'" . (!empty($params['enabled']) ? '1' : '0') . "',
-			'" . $parent_id . "',
-			'" . escape($short) . "',
-			'" . escape($full) . "',
-			'', '',
-			'" . escape(isset($params['keywords']) ? (string)$params['keywords'] : '') . "',
-			'',
-			'browse',
-			'" . escape($address) . "',
-			'" . escape(isset($params['title']) ? (string)$params['title'] : '') . "',
-			'" . escape(isset($params['meta_description']) ? (string)$params['meta_description'] : '') . "',
-			'" . escape(isset($params['meta_keywords']) ? (string)$params['meta_keywords'] : '') . "',
-			'1',
-			'" . (int)$app['owner']['id'] . "',
-			UNIX_TIMESTAMP())");
-
-	$id = (int)api_insert_id();
+	$id = pg_catalog_group_create(api_product_group_create_data($params, $name, $parent_id, $product_ids), $app['owner'], array('api' => true));
 
 	if ($id <= 0) {
 
@@ -795,21 +761,10 @@ function api_product_groups_create($params) {
 
 	}
 
-	foreach ($product_ids as $product_id) {
-
-		api_exec("INSERT INTO products_groups_xref (product, product_group, sort_order)
-			VALUES ('" . $product_id . "', '" . $id . "', '0')");
-
-	}
-
-	api_product_group_clouds($id);
-
 	log_activity(lang(array(
 		'string' => 'Product group ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($name, $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
-
-	api_webhook_enqueue('product_group.created', array('id' => $id, 'name' => $name));
 
 	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
 

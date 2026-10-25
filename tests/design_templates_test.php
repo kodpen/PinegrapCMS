@@ -227,6 +227,21 @@ function test_design_templates_page_comments()
 	pg_assert_same(1, $c['allow_new']);
 	pg_assert_same(0, $c['rating']);
 	pg_assert_same('Comment', $c['label']);
+
+	// The settings the designer gained later travel too.
+	pg_assert_same(0, isset($c['attachments']) ? $c['attachments'] : null, 'attachments off');
+	pg_assert_same(0, isset($c['select_name']) ? $c['select_name'] : null, 'no name choice');
+	pg_assert_same('', isset($c['message']) ? $c['message'] : null, 'no intro message');
+	pg_assert_same('', isset($c['closed_message']) ? $c['closed_message'] : null, 'no closed message');
+	$more = pg_dtc_page_comments(array(
+		'pg_comments' => 1, 'pg_comments_attachments' => 1, 'pg_comments_select_name' => '1',
+		'pg_comments_message' => 'Be kind.', 'pg_comments_closed_message' => 'Closed.', 'pg_comments_watchers_managed' => 1,
+	), _test_dtc_ctx());
+	pg_assert_same(1, isset($more['attachments']) ? $more['attachments'] : null, 'attachments on');
+	pg_assert_same(1, isset($more['select_name']) ? $more['select_name'] : null, 'name choice on');
+	pg_assert_same('Be kind.', isset($more['message']) ? $more['message'] : null, 'intro message');
+	pg_assert_same('Closed.', isset($more['closed_message']) ? $more['closed_message'] : null, 'closed message');
+	pg_assert_false(array_key_exists('watchers_managed', $more), 'watchers managed is not a template key');
 }
 
 // Folders: up to the root (not included), parents first, keys unique.
