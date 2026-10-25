@@ -120,8 +120,9 @@ function test_returns_staff_request_deliveries()
 	pg_assert_same(array(11, 12), array_keys($deliveries), 'a delivery with nothing left, or not the order\'s, is not listed');
 	pg_assert_same(array(1, 2), array_column($deliveries[11]['lines'], 'id'), 'every line of the delivery, in order');
 	pg_assert_same(2, $deliveries[11]['left'], 'what is left on its lines');
-	pg_assert_same('Ayşe Bir', $deliveries[11]['label']);
-	pg_assert_same('#12', $deliveries[12]['label'], 'a delivery without a name');
+	pg_assert_same('Sent to Ayşe Bir', $deliveries[11]['label']);
+	pg_assert_same('Delivery 2', $deliveries[12]['label'], 'a delivery without a name: its number in the order');
+	pg_assert_same(array(1, 2), array_column($deliveries, 'number'));
 	pg_assert_same('', $deliveries[11]['breach']);
 	pg_assert_same('not_sent', $deliveries[12]['breach']);
 	pg_assert_true($deliveries[11]['timing']['in_time'], 'the deadline day is in time');
@@ -131,6 +132,39 @@ function test_returns_staff_request_deliveries()
 	$late = pg_return_staff_deliveries($lines, $states, '2026-10-16');
 	pg_assert_false($late[11]['timing']['in_time'], 'the day after is late');
 	pg_assert_same(array(), pg_return_staff_deliveries(array(), $states, '2026-10-15'), 'no lines');
+}
+
+// Every delivery in the switch reads differently: the name it was saved
+// under when the recipient has none, and its number when two deliveries go
+// to the same name.
+function test_returns_staff_request_delivery_labels()
+{
+	$window = pg_return_window(array('delivered' => '2026-10-01'), '2026-10-15');
+	$office = returns_staff_request_test_state(23, '', true, $window);
+	$office['ship_to']['ship_to_name'] = 'Ofis Depo';
+	$states = array(
+		21 => returns_staff_request_test_state(21, 'Ayşe Bir', true, $window),
+		22 => returns_staff_request_test_state(22, 'Ayşe Bir', true, $window),
+		23 => $office,
+		24 => returns_staff_request_test_state(24, 'Can Üç', true, $window),
+		25 => returns_staff_request_test_state(25, 'Can Üç', true, $window),
+	);
+	$lines = array(
+		returns_staff_request_test_line(1, 22, 1, 0),
+		returns_staff_request_test_line(2, 21, 1, 0),
+		returns_staff_request_test_line(3, 23, 1, 0),
+		returns_staff_request_test_line(4, 24, 1, 0),
+		returns_staff_request_test_line(5, 25, 1, 1),
+	);
+
+	$labels = array_column(pg_return_staff_deliveries($lines, $states, '2026-10-15'), 'label', 'ship_to_id');
+
+	pg_assert_same(array(
+		21 => 'Sent to Ayşe Bir (delivery 1)',
+		22 => 'Sent to Ayşe Bir (delivery 2)',
+		23 => 'Sent to Ofis Depo',
+		24 => 'Sent to Can Üç',
+	), $labels, 'numbered in the order the deliveries were made; a name shared only with a delivery that has nothing left stays plain');
 }
 
 // The quantity boxes are flat names (qty_<line>), read for the delivery's own
@@ -280,7 +314,8 @@ function test_returns_staff_request_screen_leaves_no_fields()
 	$not_found = strpos($screen, "output_error(lang('Record not found.'), 404);");
 	pg_assert_true($not_found !== false, 'an unknown order is not found');
 	pg_assert_contains('->remove_form();', substr($screen, max(0, $not_found - 200), 200), 'before "not found"');
-	pg_assert_true(substr_count($screen, '$liveform->remove_form();') >= 4, 'the drawn screens clear the form too');
+	pg_assert_same(2, substr_count($screen, "</main>' . output_footer();\n\n    \$liveform->remove_form();"), 'both drawn screens clear the form right after drawing');
+	pg_assert_same(6, substr_count($screen, '$liveform->remove_form();'), 'four exits and two drawn screens');
 }
 
 // The order screen's Returns card offers the form.

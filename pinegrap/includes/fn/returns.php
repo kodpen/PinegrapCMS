@@ -905,8 +905,8 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
  * @param int    $order_id
  * @param int    $ship_to_id
  * @param string $today Y-m-d, or '' for today in the site's time zone
- * @return array|null ship_to (id, name, ship_date, delivery_date,
- *                    method_code), parcels (number, carrier, delivered),
+ * @return array|null ship_to (id, name, ship_to_name, ship_date,
+ *                    delivery_date, method_code), parcels (number, carrier, delivered),
  *                    goods_left, window (pg_return_window()); null when the
  *                    delivery is not the order's
  */
@@ -920,7 +920,7 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
     }
 
     $ship_to = db_item(
-        "SELECT id, first_name, last_name, ship_date, delivery_date, shipping_method_code
+        "SELECT id, ship_to_name, first_name, last_name, ship_date, delivery_date, shipping_method_code
         FROM ship_tos
         WHERE (id = '" . $ship_to_id . "') AND (order_id = '" . $order_id . "')");
 
@@ -982,6 +982,7 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
         'ship_to'    => array(
             'id'            => (int) $ship_to['id'],
             'name'          => trim(trim((string) $ship_to['first_name']) . ' ' . trim((string) $ship_to['last_name'])),
+            'ship_to_name'  => trim((string) $ship_to['ship_to_name']),
             'ship_date'     => pg_return_date((string) $ship_to['ship_date']),
             'delivery_date' => pg_return_date((string) $ship_to['delivery_date']),
             'method_code'   => $method_code,
@@ -2825,12 +2826,19 @@ function pg_return_recordable($status, $lines)
  * return period ends against today (pg_return_timing()). A line of a delivery
  * that is not the order's (no state) is left out.
  *
+ * Each delivery is labelled by its recipient's name, else by the name the
+ * delivery was saved under (ship_tos.ship_to_name, which the order screen
+ * shows and an imported marketplace order fills instead), else by its number
+ * in the order. Two deliveries with the same name carry their numbers too, so
+ * the toolbar switch never offers the same text twice.
+ *
  * @param array  $lines  pg_return_order_lines() of the order
  * @param array  $states ship_to_id => pg_return_delivery_state()
  * @param string $today  Y-m-d
- * @return array ship_to_id => ship_to_id, label (the recipient's name, else
- *               #id), lines, left (what its lines have left), breach, timing,
- *               state
+ * @return array ship_to_id => ship_to_id, number (the delivery's place among
+ *               the order's deliveries, from 1), label (text, not yet
+ *               escaped), lines, left (what its lines have left), breach,
+ *               timing, state
  */
 function pg_return_staff_deliveries($lines, $states, $today)
 {
@@ -2847,9 +2855,15 @@ function pg_return_staff_deliveries($lines, $states, $today)
             $state = $states[$ship_to_id];
             $name = isset($state['ship_to']['name']) ? trim((string) $state['ship_to']['name']) : '';
 
+            if ($name === '') {
+                $name = isset($state['ship_to']['ship_to_name']) ? trim((string) $state['ship_to']['ship_to_name']) : '';
+            }
+
             $deliveries[$ship_to_id] = array(
                 'ship_to_id' => $ship_to_id,
-                'label'      => ($name !== '') ? $name : '#' . $ship_to_id,
+                'number'     => 0,
+                'name'       => $name,
+                'label'      => '',
                 'lines'      => array(),
                 'left'       => 0,
                 'breach'     => pg_return_rule_breach($state),
@@ -2862,10 +2876,40 @@ function pg_return_staff_deliveries($lines, $states, $today)
         $deliveries[$ship_to_id]['left'] += max(0, (int) $line['returnable']);
     }
 
+    // Numbered in the order the deliveries were made, the ones with nothing
+    // left included, so a delivery keeps its number.
+    ksort($deliveries);
+    $number = 0;
+    $names = array();
+
+    foreach ($deliveries as $ship_to_id => $delivery) {
+        $deliveries[$ship_to_id]['number'] = ++$number;
+
+        if (($delivery['left'] > 0) && ($delivery['name'] !== '')) {
+            $names[] = $delivery['name'];
+        }
+    }
+
+    $shared = array_count_values($names);
+
     foreach ($deliveries as $ship_to_id => $delivery) {
         if ($delivery['left'] <= 0) {
             unset($deliveries[$ship_to_id]);
+            continue;
         }
+
+        $name = $delivery['name'];
+
+        if ($name === '') {
+            $label = lang(array('string' => 'Delivery {var:1}', 'vars' => array($delivery['number'])));
+        } elseif ($shared[$name] > 1) {
+            $label = lang(array('string' => 'Sent to {var:1} (delivery {var:2})', 'vars' => array($name, $delivery['number'])));
+        } else {
+            $label = lang(array('string' => 'Sent to {var:1}', 'vars' => array($name)));
+        }
+
+        $deliveries[$ship_to_id]['label'] = $label;
+        unset($deliveries[$ship_to_id]['name']);
     }
 
     return $deliveries;

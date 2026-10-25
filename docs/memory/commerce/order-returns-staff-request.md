@@ -1,6 +1,6 @@
 ---
 name: order-returns-staff-request
-description: Staff record a return request on the panel (add_return.php, source panel): entry points, form, timing warnings, what follows (audit, log, opt-in mail, no bell), repeat, refusals
+description: Staff record a return request on the panel (add_return.php, source panel, PR #1616): entry points, form, timing warnings, what follows (audit, log, opt-in mail, no bell), repeat, refusals
 ---
 
 ## Where do staff record a request?
@@ -8,14 +8,14 @@ description: Staff record a return request on the panel (add_return.php, source 
 - Entry points: the order screen's Returns card (`pg_returns_panel_card()`), drawn also for an order without returns when `pg_return_recordable()` (complete/exported, something left on a line sent to an address); and **Record a Return** in the `view_returns.php` toolbar, which opens an order number step (`orders.order_number`, then the id; `#` and spaces allowed, `pg_return_order_number_input()`; a cart is refused there).
 
 ## What does the form hold?
-- One delivery at a time (`pg_return_staff_deliveries()`: only deliveries with something left; a toolbar select switches when there are several; an unknown `ship_to_id` falls back to the first).
+- One delivery at a time (`pg_return_staff_deliveries()`: only deliveries with something left; a toolbar select switches when there are several; an unknown `ship_to_id` falls back to the first). Labelled by the recipient's name, else `ship_tos.ship_to_name`, else "Delivery N"; a name two deliveries share gets the number too.
 - A box per line named `qty_<order item id>` (`pg_return_staff_quantities()`): liveform refills flat names, never `qty[<id>]`.
 - The reason select from `pg_return_reason_options()`: a liveform select takes label => value and prints both raw, so labels are escaped and the code is posted.
 - The customer's words go to `customer_note` (the customer sees them on the order page and in the mail; needed with "other").
 - The request-received mail box is off by default and drawn only when the order has an address with `@` and the site a sender (the condition of `pg_return_mail_context()`).
 
 ## Are staff held to the customer's timing rules?
-- No (`pg_return_customer_rules()` is false for panel). One rule for both sides: `pg_return_rule_breach($state)` (pure: `not_sent`, `delivery_date_unknown`, `window_closed` or ''). `pg_return_create_check()` refuses a customer on it with the same codes and sentences as before; the form shows it as an alert above the form and a confirm on the button, and records anyway.
+- No (`pg_return_customer_rules()` is false for panel). One rule for both sides: `pg_return_rule_breach($state)` (pure: `not_sent`, `delivery_date_unknown`, `window_closed` or ''). `pg_return_create_check()` refuses a customer on it with the same codes and sentences as before; the form shows it as an alert above the form and a confirm on the button (the form's `submitshortcut` makes Ctrl+S press it too), and records anyway.
 
 ## What follows a new request?
 - `pg_return_staff_record()`: `pg_return_create()` with source `panel` and the person as `requested_by`; `pg_audit('create', 'order_return', …)` over `pg_return_audit_create_fields()`; one activity log line; the request mail only when ticked (`mailed` true/false, null when not asked; a failed mail never undoes the request).
@@ -30,4 +30,4 @@ description: Staff record a return request on the panel (add_return.php, source 
 - `remove_form()` comes before every redirect but the one back to the form, and before "Record not found.": a customer's words never refill another order's form.
 
 ## Tests?
-- `tests/returns_staff_request_test.php` (helpers, the check's use of the rule, wrapper and screen source order), the card in `tests/returns_test.php`. Sandbox: one and two deliveries, late, unsent, undated, double click, refill, mail on/off/failed, busy lock, gate.
+- `tests/returns_staff_request_test.php` (helpers, the check's use of the rule, wrapper and screen source order), the card in `tests/returns_test.php`. Sandbox (one and two deliveries, late, unsent, undated, double click, refill, mail on/off/failed, busy lock, gate): PR #1616 body.

@@ -289,7 +289,7 @@ if ($order_id <= 0) {
         $switch_options = array();
 
         foreach ($deliveries as $choice) {
-            $switch_options[$choice['ship_to_id']] = lang(array('string' => 'Sent to {var:1}', 'vars' => array($choice['label'])));
+            $switch_options[$choice['ship_to_id']] = $choice['label'];
         }
 
         $output_switch = pg_filter_select('ship_to_id', $switch_options, (string) $ship_to_id, array('label' => lang('Delivery'), 'action' => 'add_return.php', 'keep' => array('order_id'), 'id' => 'ship_to_switch'));
@@ -352,7 +352,7 @@ if ($order_id <= 0) {
         ' . $output_switch . '
     </nav>
     ' . $output_breach . '
-    <form method="post" action="add_return.php" autocomplete="off">
+    <form method="post" action="add_return.php" autocomplete="off" submitshortcut="submit_create">
         ' . get_token_field() . '
         <input type="hidden" name="order_id" value="' . $order_id . '">
         <input type="hidden" name="ship_to_id" value="' . $ship_to_id . '">
@@ -423,7 +423,7 @@ if ($order_id <= 0) {
                     <div class="card mb-4">
                         <div class="card-header text-uppercase h6 text-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
                         <div class="card-body small">
-                            <div class="fw-semibold mb-2">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($delivery['label'])))) . '</div>
+                            <div class="fw-semibold mb-2">' . h($delivery['label']) . '</div>
                             ' . (($output_parcels !== '') ? '<ul class="ps-3 mb-2">' . $output_parcels . '</ul>' : '') . '
                             ' . $output_window . '
                         </div>
