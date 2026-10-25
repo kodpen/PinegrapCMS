@@ -1231,6 +1231,15 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
     $environment = erp_edoc_environment($provider);
     $message = lang(array('string' => '{var:1} took the invoice (id {var:2}).', 'vars' => array(erp_edoc_info($provider)['label'], (string) ($result['external_id'] ?? ''))));
 
+    // What the driver says beside the outcome: an id it kept for a record
+    // the provider no longer held, forgotten before it sent again, say. It
+    // goes with a failed hand-over too: the id stays forgotten either way.
+    $told = trim((string) ($result['message'] ?? ''));
+
+    if ($told !== '') {
+        $message .= ' ' . $told;
+    }
+
     // The second step. A draft the provider is keeping is not a document
     // yet, so unless the store asked to look its drafts over first, the one
     // button finishes the job. A failure here leaves the row at 'created'
@@ -1251,7 +1260,7 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
                     'error' => lang(array(
                         'string' => '{var:1} saved the invoice as a draft (id {var:2}) but would not hand it to GİB: {var:3}',
                         'vars' => array(erp_edoc_info($provider)['label'], (string) ($result['external_id'] ?? ''), (string) $submitted['error']),
-                    )),
+                    )) . (($told !== '') ? ' ' . $told : ''),
                 );
             }
 
