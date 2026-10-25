@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+description: Plan (1-14 and 3b done; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -26,9 +26,9 @@ description: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a 
 9. "Make a copy for this page" button (style_designer.js). Done (#1472).
 10. Read-only Comments widget: renderer `includes/fn/widgets_comments.php`, SW_TYPES, tokens, flags, default layout in three places. Done (#1558).
 11. The add-comment form in the widget (bindings, CAPTCHA, rating, publish section, frontend twins). Done (#1558).
-12. Replies and quotes (layout flat/threaded, `max_depth`).
-13. Watch box and staff controls.
-14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`).
+12. Replies and quotes (layout flat/threaded, `max_depth`). Done (#1567).
+13. Watch box and staff controls. Done (#1567).
+14. Pagination (`?comments_page`) and permalinks (`?comment=<id>`). Done (#1567).
 15. Designer panel: page comment settings shown on the widget, shared Display section.
 16. Page columns the designer cannot set yet (attachments, choose a name, intro and closed messages, watchers managed by submitter); template keys.
 17. Canvas samples and Preview.
