@@ -8009,7 +8009,9 @@ function pg_design_template_starter_kinds($tpl, $all = false)
             $wpage = isset($w['page']) ? (string)$w['page'] : '';
             if ($wpage !== '' && !isset($page_keys[$wpage])) continue;
         }
-        $kind = isset($w['config']['regionType']) ? (string)$w['config']['regionType'] : '';
+        // The kind, so a comments widget in the recent mode asks for the
+        // list's starter ('comments_recent'), not the thread's.
+        $kind = pg_sw_widget_kind(isset($w['config']) ? $w['config'] : null);
         if (preg_match('/^[a-z0-9_]{1,64}$/', $kind)) $kinds[$kind] = $kind;
     }
     return array_values($kinds);
@@ -8136,7 +8138,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
     foreach ($tp['widgets'] as $w) {
         if (empty($w['starter'])) continue;
         $cfg  = json_decode((string)$w['system_region_config'], true);
-        $kind = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+        $kind = pg_sw_widget_kind($cfg);
         $tree = ($kind !== '' && isset($starters[$kind]))
             ? _pg_tpl_clean_starter($starters[$kind], 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_')
             : null;
@@ -8800,7 +8802,9 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
             if (!is_array($cfg)) {
                 $cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . (int)$sid . "' LIMIT 1"), true);
             }
-            $type = (is_array($cfg) && isset($cfg['regionType'])) ? (string)$cfg['regionType'] : '';
+            // The kind: a list of recent comments reads its own source
+            // pages and takes no record of this page.
+            $type = pg_sw_widget_kind($cfg);
 
             if ($type === 'form_item_view') {
                 $code = _pg_preview_newest_record_code($cfg, $page_id);

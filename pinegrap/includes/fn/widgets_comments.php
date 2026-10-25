@@ -1141,7 +1141,8 @@ function _pg_comments_census_walk($node, &$census, $depth)
  * them.
  *
  * @param mixed $ids the component ids the page places
- * @return array id => array('type' => its regionType ('' for none),
+ * @return array id => array('type' => its kind (pg_sw_widget_kind(): '' for
+ *               none, 'comments_recent' for a list of recent comments),
  *               'census' => pg_comments_tree_census() of its tree)
  */
 function pg_comments_component_census($ids)
@@ -1182,8 +1183,10 @@ function pg_comments_component_census($ids)
             $id = (int) $row['id'];
             $cfg = json_decode((string) $row['system_region_config'], true);
             $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
+            // The kind, so a list of recent comments ('comments_recent') is
+            // not counted as a second thread.
             $out[$id] = array(
-                'type' => (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '',
+                'type' => pg_sw_widget_kind($cfg),
                 'census' => $census,
             );
 
@@ -3171,7 +3174,13 @@ function pg_comments_default_tree()
  *   comment_watchers, comment_pagination markup, '' when off (the container
  *   is then dropped);
  * - slots: the form's internal slots, already escaped;
- * - edit_chips: draw the edit pencil on each comment.
+ * - edit_chips: draw the edit pencil on each comment;
+ * - recent: a list of recent comments (widgets_comments_recent.php): each
+ *   comment stands on another page, so no row gets its anchor
+ *   (id="c-<id>", data-pg-comment-depth) or its anchor links, the output has
+ *   no #software_comments anchor, and the fallback rows go in a list-group;
+ * - default_tree: the default layout whose loop_area is the fallback
+ *   (pg_comments_default_tree() when none is given).
  *
  * Each value is escaped once (pg_comments_widget_escape()) and filled in one
  * strtr() pass, so a visitor's text never forms a token. A stored layout
@@ -3202,6 +3211,7 @@ function pg_comments_widget_draw($tree, $data)
     };
 
     $widget_id = isset($data['widget_id']) ? (int) $data['widget_id'] : 0;
+    $recent = !empty($data['recent']);
     $thread_values = $list('thread_values');
     $sections = $list('sections') + array('comment_captcha' => '', 'comment_rating_input' => '', 'comment_publish' => '',
         'comment_watchers' => '', 'comment_pagination' => '');
@@ -3248,7 +3258,7 @@ function pg_comments_widget_draw($tree, $data)
     $rows = ($designed_loop && !is_array($loop_children)) ? array() : $list('rows');
 
     if ($fallback) {
-        $default = _split_widget_tree(pg_comments_default_tree());
+        $default = _split_widget_tree((isset($data['default_tree']) && is_array($data['default_tree'])) ? $data['default_tree'] : pg_comments_default_tree());
         $loop_children = $default['loop_children'];
     }
 
@@ -3287,8 +3297,11 @@ function pg_comments_widget_draw($tree, $data)
         $html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, pg_comments_widget_escape($values + $thread_values)));
         $html = pg_sw_hide_empty_fields($html);
         $html = pg_sw_uniquify_row_ids($html, $widget_id, $id);
-        $html = pg_comments_row_root_id($html, $id, isset($row['depth']) ? (int) $row['depth'] : 0);
-        $html = pg_comments_row_anchor_links($html, $widget_id, $id);
+
+        if (!$recent) {
+            $html = pg_comments_row_root_id($html, $id, isset($row['depth']) ? (int) $row['depth'] : 0);
+            $html = pg_comments_row_anchor_links($html, $widget_id, $id);
+        }
 
         $edit_url = (isset($values['__comment_edit_url']) && is_scalar($values['__comment_edit_url'])) ? (string) $values['__comment_edit_url'] : '';
 
@@ -3304,7 +3317,7 @@ function pg_comments_widget_draw($tree, $data)
     $static = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_comments_widget_escape($thread_values) + $slots));
 
     if ($fallback && ($rows_html !== '')) {
-        $rows_html = '<div class="pg-comments-list">' . $rows_html . '</div>';
+        $rows_html = '<div class="pg-comments-list' . ($recent ? ' list-group list-group-flush' : '') . '">' . $rows_html . '</div>';
     }
 
     // The page links, when the design placed no comment_pagination section
@@ -3337,7 +3350,7 @@ function pg_comments_widget_draw($tree, $data)
 
     // After the rows are in: a box the design marked pg-hide-if-empty around
     // the list goes when there are none.
-    return '<a id="software_comments"></a>' . pg_sw_hide_empty_fields($html);
+    return ($recent ? '' : '<a id="software_comments"></a>') . pg_sw_hide_empty_fields($html);
 }
 
 // ============================================================================
@@ -3399,6 +3412,9 @@ function pg_comments_widget_login_url($page_id)
 
 /**
  * One comment's token values, raw (pg_comments_widget_draw() escapes them).
+ * A thread and a list of recent comments both draw them;
+ * ^^__comment_excerpt^^ is the start of the comment's own words
+ * (pg_comments_quote_excerpt()).
  *
  * $env: is_staff, sees_pending, show_date, label_lower, badge_label.
  *
@@ -3440,6 +3456,7 @@ function pg_comments_widget_row_values($row, $flags, $env)
         '__comment_name' => ($name !== '') ? $name : lang('Anonymous'),
         '__comment_staff_name' => $is_staff ? _pg_comments_row_text($row, 'username') : '',
         '__comment_message_html' => convert_text_to_html(_pg_comments_row_text($row, 'message')),
+        '__comment_excerpt' => pg_comments_quote_excerpt(_pg_comments_row_text($row, 'message')),
         '__comment_date' => !empty($env['show_date']) ? get_relative_time(array('timestamp' => $created, 'format' => 'plain_text')) : '',
         '__comment_rating' => $has_rating ? (string) (int) _pg_comments_row_text($row, 'rating') : '',
         '__comment_stars_html' => $has_rating ? pg_comments_stars_html((int) _pg_comments_row_text($row, 'rating')) : '',
@@ -3516,6 +3533,12 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
 
     if (!empty($ctx['email'])) {
         return '';
+    }
+
+    // A list of recent comments is drawn from its source pages, never from
+    // the drawn page: it claims no thread and reads no form state.
+    if (pg_sw_widget_kind($cfg) === 'comments_recent') {
+        return _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode);
     }
 
     $page_id = isset($ctx['page_id']) ? (int) $ctx['page_id'] : 0;
@@ -4007,8 +4030,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
             : '',
     );
 
-    // The widget's Messages node prints only the add_comment form's errors;
-    // the ones in the small forms print their own handler's.
+    // A node bound to a token only a list of recent comments fills prints
+    // nothing in a thread. The widget's Messages node prints only the
+    // add_comment form's errors; the ones in the small forms print their own
+    // handler's.
+    pg_comments_drop_mode_bindings($tree, 'thread');
     _pg_inject_messages_node($tree, 'add_comment');
     pg_comments_stamp_form_messages($tree);
 
