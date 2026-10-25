@@ -847,6 +847,53 @@ function pg_comment_parent_mail_line($parent)
 }
 
 /**
+ * The addresses the watcher e-mail about a new comment goes to, each once
+ * (compared without case): for each watcher the e-mail of the user it is
+ * connected to, else its own address. The comment's writer gets none,
+ * neither through their user's watcher row ($writer_user_id) nor through a
+ * row that carries their address ($writer_email). Pure.
+ *
+ * @param mixed $watchers       rows with user_id, user_email_address and watcher_email_address
+ * @param mixed $writer_user_id the comment's created_user_id (0 for a guest)
+ * @param mixed $writer_email   the writer's user e-mail ('' for a guest)
+ * @return array
+ */
+function pg_comment_watcher_addresses($watchers, $writer_user_id, $writer_email)
+{
+    $value = function ($row, $key) {
+        return (isset($row[$key]) && is_scalar($row[$key]) && !is_bool($row[$key])) ? trim((string) $row[$key]) : '';
+    };
+
+    $writer = (is_scalar($writer_user_id) && !is_bool($writer_user_id)) ? (int) $writer_user_id : 0;
+    $own = is_string($writer_email) ? mb_strtolower(trim($writer_email)) : '';
+    $addresses = array();
+    $seen = array();
+
+    foreach (is_array($watchers) ? $watchers : array() as $watcher) {
+        if (!is_array($watcher) || (($writer > 0) && ((int) $value($watcher, 'user_id') === $writer))) {
+            continue;
+        }
+
+        $address = $value($watcher, 'user_email_address');
+
+        if ($address === '') {
+            $address = $value($watcher, 'watcher_email_address');
+        }
+
+        $key = mb_strtolower($address);
+
+        if (($address === '') || ($key === $own) || isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $addresses[] = $address;
+    }
+
+    return $addresses;
+}
+
+/**
  * The parent_id a reply gets when its page is copied: the new id of the copy
  * of the comment it answers, or 0 when it answers none or that comment was
  * not copied (deleted, so the reply already reads as a comment of its own).

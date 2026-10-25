@@ -1794,9 +1794,9 @@ var software = {
 
             form.find('input[name="parent_id"]').val(id);
             software_$('[data-pg-comment-reply-to-name]').text(name);
-            // The hidden attribute: Bootstrap's [hidden] wins over a display
-            // class.
-            software_$('[data-pg-comment-replying]').prop('hidden', id === '0');
+            // The hidden attribute and d-none together: a display class such
+            // as d-flex beats Bootstrap's [hidden], and d-none comes after it.
+            software_$('[data-pg-comment-replying]').prop('hidden', id === '0').toggleClass('d-none', id === '0');
 
             return form;
         };
