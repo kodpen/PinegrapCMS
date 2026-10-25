@@ -50,7 +50,9 @@ function test_workspace_render_list_line_kinds()
 	pg_assert_same(array('kind' => 'quote', 'number' => 0, 'text' => 'said'), ws_list_line('> said'));
 	pg_assert_same(array('kind' => 'quote', 'number' => 0, 'text' => ''), ws_list_line('>'), 'an empty line of a quote');
 
-	foreach (array('-', '- ', '-milk', '**bold**', '- [ ] task', '- [x] done', '* * *', '- - -', '2026. yılında', '1.5 kg', '>quoted', '>> nested', 'text - dash', '') as $line) {
+	pg_assert_same(array('kind' => 'number', 'number' => 10, 'text' => 'ten'), ws_list_line('10. ten'));
+
+	foreach (array('-', '- ', '-milk', '**bold**', '- [ ] task', '- [x] done', '* * *', '- - -', '2026. yılında', '1.5 kg', '>quoted', '>> nested', 'text - dash', '', '01. Intro', '001. Intro') as $line) {
 		pg_assert_same(null, ws_list_line($line), 'not an item: "' . $line . '"');
 	}
 }
@@ -76,6 +78,58 @@ function test_workspace_render_text_blocks_group_lines()
 	pg_assert_same(array(
 		array('kind' => 'quote', 'lines' => array('a', '', 'b')),
 	), ws_text_blocks(array('> a', '>', '> b')));
+
+	pg_assert_same(array(
+		array('kind' => 'text', 'lines' => array('Input', '>', 'Output')),
+	), ws_text_blocks(array('Input', '>', 'Output')), 'a ">" with no quoted words stays text');
+
+	pg_assert_same(array(
+		array('kind' => 'text', 'lines' => array('>', '>', 'x')),
+	), ws_text_blocks(array('>', '>', 'x')));
+}
+
+// A number with a leading zero is read as written, wherever it stands: the
+// fast path drew "01." as text, the long way as an item numbered 1.
+function test_workspace_render_leading_zero_stays_text()
+{
+	pg_assert_same("01. Intro<br>\n02. Body", workspace_render_test_html("01. Intro\n02. Body"));
+
+	$html = workspace_render_test_html("01. Intro\n02. Body\n- x");
+
+	pg_assert_true(strpos($html, '<ol>') === false, 'no numbered list');
+	pg_assert_contains("01. Intro<br>\n02. Body", $html);
+	pg_assert_contains('<ul><li>x</li></ul>', $html);
+	pg_assert_same("01. Intro 02. Body", workspace_render_test_plain("01. Intro\n02. Body"));
+}
+
+// A lone ">" between lines of text stays as written, on every reader: the
+// guest page and the approval mail joined the lines around it.
+function test_workspace_render_lone_quote_mark_stays()
+{
+	pg_assert_same("Input<br>\n&gt;<br>\nOutput", ws_guest_render("Input\n>\nOutput"));
+	pg_assert_same("Input\n>\nOutput", ws_approval_guest_details_text("**Title**\nInput\n>\nOutput"));
+	pg_assert_same("<div class=\"ws-text\">Input<br>\n&gt;<br>\nOutput</div>", workspace_render_test_html("Input\n>\nOutput"));
+}
+
+// The words of a drawn text read back with tags stripped (a reply's quote,
+// the guest page's parent line, textContent) stay apart around lists and
+// quotes.
+function test_workspace_render_blocks_keep_words_apart()
+{
+	$fold = function ($html) {
+		return trim(preg_replace('/\s+/u', ' ', strip_tags($html)));
+	};
+
+	$cases = array(
+		"Shopping:\n- milk\n- bread\nThanks" => 'Shopping: milk bread Thanks',
+		"Steps:\n1. Open\n2. Close" => 'Steps: Open Close',
+		"> said so\nanswer" => 'said so answer',
+	);
+
+	foreach ($cases as $body => $words) {
+		pg_assert_same($words, $fold(workspace_render_test_html($body)), 'staff: ' . json_encode($body));
+		pg_assert_same($words, $fold(ws_guest_render($body)), 'guest: ' . json_encode($body));
+	}
 }
 
 function test_workspace_render_text_blocks_loose_lists()
@@ -103,11 +157,11 @@ function test_workspace_render_text_blocks_loose_lists()
 
 function test_workspace_render_body_draws_lists_and_quotes()
 {
-	pg_assert_same('<div class="ws-text">Shopping:</div><ul><li>milk</li><li>bread</li></ul><div class="ws-text">Thanks</div>',
+	pg_assert_same("<div class=\"ws-text\">Shopping:</div>\n<ul><li>milk</li>\n<li>bread</li></ul>\n<div class=\"ws-text\">Thanks</div>",
 		workspace_render_test_html("Shopping:\n- milk\n* bread\nThanks"));
 
-	pg_assert_same('<ol><li>one</li><li>two</li></ol>', workspace_render_test_html("1. one\n2. two"));
-	pg_assert_same("<blockquote>first<br>\nsecond</blockquote><div class=\"ws-text\">answer</div>", workspace_render_test_html("> first\n> second\nanswer"));
+	pg_assert_same("<ol><li>one</li>\n<li>two</li></ol>", workspace_render_test_html("1. one\n2. two"));
+	pg_assert_same("<blockquote>first<br>\nsecond</blockquote>\n<div class=\"ws-text\">answer</div>", workspace_render_test_html("> first\n> second\nanswer"));
 
 	// The words of an item are drawn as the rest of the text.
 	pg_assert_same('<ul><li><strong>bold</strong> and <code>code</code></li></ul>', workspace_render_test_html('- **bold** and `code`'));
@@ -160,8 +214,8 @@ function test_workspace_render_excerpt_folds_lines()
 
 function test_workspace_render_guest_draws_lists_and_quotes()
 {
-	pg_assert_same('Shopping:<ul><li>milk</li><li><strong>bread</strong></li></ul>Thanks', ws_guest_render("Shopping:\n- milk\n- **bread**\nThanks"));
-	pg_assert_same('<ol><li>one</li><li>two</li></ol><blockquote>said</blockquote>', ws_guest_render("1. one\n2. two\n> said"));
+	pg_assert_same("Shopping:\n<ul><li>milk</li>\n<li><strong>bread</strong></li></ul>\nThanks", ws_guest_render("Shopping:\n- milk\n- **bread**\nThanks"));
+	pg_assert_same("<ol><li>one</li>\n<li>two</li></ol>\n<blockquote>said</blockquote>", ws_guest_render("1. one\n2. two\n> said"));
 	pg_assert_same("a<br>\nb", ws_guest_render("a\nb"), 'running text as before');
 	pg_assert_true(strpos(ws_guest_render('- <script>x</script>'), '<script') === false, 'escaped');
 }

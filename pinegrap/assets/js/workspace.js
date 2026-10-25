@@ -365,6 +365,24 @@
             card.parentNode.removeChild(card);
         });
 
+        // innerText leaves out a list's numbers and bullets (markers the
+        // browser draws) and has no mark for a quote: they are written back
+        // as typed ("1. ", "- ", "> "). Only the lists and quotes of the text
+        // (includes/workspace/render.php, no class); a checklist has its own.
+        Array.prototype.forEach.call(box.querySelectorAll('ol:not([class]) > li, ul:not([class]) > li'), function (item) {
+            var number = Array.prototype.indexOf.call(item.parentNode.children, item) + 1;
+
+            item.insertBefore(document.createTextNode((item.parentNode.tagName === 'OL') ? number + '. ' : '- '), item.firstChild);
+        });
+
+        Array.prototype.forEach.call(box.querySelectorAll('blockquote:not([class])'), function (quote) {
+            Array.prototype.forEach.call(quote.querySelectorAll('br'), function (line) {
+                line.parentNode.insertBefore(document.createTextNode('> '), line.nextSibling);
+            });
+
+            quote.insertBefore(document.createTextNode('> '), quote.firstChild);
+        });
+
         box.style.cssText = 'position:fixed;top:0;left:-9999px;width:40rem;';
         document.body.appendChild(box);
 
@@ -11591,6 +11609,18 @@
             return this.input.value.slice(0, this.input.selectionStart);
         },
 
+        // Whether the caret of the rich box is in an item of a list or in a
+        // line of a quote.
+        inListItem: function () {
+            if (!this.rich) {
+                return false;
+            }
+
+            var state = this.rich.formatState();
+
+            return !!(state.bullets || state.numbers || state.quote);
+        },
+
         insertCode: function () {
             var self = this;
 
@@ -12399,7 +12429,12 @@
             var before = self.beforeCaret();
             var match;
 
-            if (!self.noCommands && (match = /^\/([^\s]*)$/.exec(before))) {
+            // A line of a list or a quote is no command: the text sent starts
+            // with its mark, and the server runs only a text that starts
+            // with "/" (beforeCaret() of a list that starts the box does not).
+            var commands = !self.noCommands && !self.inListItem();
+
+            if (commands && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -12409,7 +12444,7 @@
             // After "/name ": the argument the command expects next
             // (commandArgument()), shown in the strip above the box. Only the
             // channel's composer reads commands.
-            var argument = self.noCommands ? null : self.commandArgument(before);
+            var argument = commands ? self.commandArgument(before) : null;
 
             if (!self.noCommands) {
                 if (!argument) {

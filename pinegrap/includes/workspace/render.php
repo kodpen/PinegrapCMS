@@ -234,9 +234,10 @@ function ws_table_alignments($line)
 /**
  * One line as an item of a list or a line of a quote: "- " or "* " (a
  * bulleted item), a number and ". " (a numbered one), "> " or a lone ">"
- * (a quote). A checklist item ("- [ ] ") and a rule ("* * *") are none of
- * them. The writing box's twin is listLine() in
- * assets/js/workspace_editor.js.
+ * (a quote). A checklist item ("- [ ] "), a rule ("* * *") and a number
+ * written with a leading zero ("01. ") are none of them: "01." read as 1
+ * would be drawn and written back as "1.". The writing box's twin is
+ * listLine() in assets/js/workspace_editor.js.
  *
  * @param string $line
  * @return array|null kind (bullet | number | quote), number (0 unless
@@ -258,7 +259,7 @@ function ws_list_line($line)
         return array('kind' => 'bullet', 'number' => 0, 'text' => rtrim($match[1]));
     }
 
-    if (preg_match('/^[ \t]*([0-9]{1,3})\.[ \t]+(\S.*)$/u', $line, $match)) {
+    if (preg_match('/^[ \t]*(0|[1-9][0-9]{0,2})\.[ \t]+(\S.*)$/u', $line, $match)) {
         return array('kind' => 'number', 'number' => (int) $match[1], 'text' => rtrim($match[2]));
     }
 
@@ -274,8 +275,9 @@ function ws_list_line($line)
  * whatever its number; a number that starts no list stays text, so a reader
  * never sees a number other than the one written (an <ol> carries no
  * start). Empty lines between two items of a list keep it one list, as
- * Markdown's loose lists; between two lines of a quote they end it. The
- * writing box's twin is parseBlocks() in assets/js/workspace_editor.js.
+ * Markdown's loose lists; between two lines of a quote they end it. Lines
+ * of ">" with no words quote nothing and stay text (an arrow, a prompt).
+ * The writing box's twin is parseBlocks() in assets/js/workspace_editor.js.
  *
  * @param string[] $lines
  * @return array[] kind (text | bullet | number | quote), lines (each line
@@ -309,6 +311,7 @@ function ws_text_blocks($lines)
         }
 
         $block = array('kind' => $kind, 'lines' => array($item['text']));
+        $first = $i;
 
         while (($i + 1) < $count) {
             $next = ws_list_line($lines[$i + 1]);
@@ -336,6 +339,20 @@ function ws_text_blocks($lines)
             break;
         }
 
+        // A quote of empty lines only: its lines as written, as text.
+        if (($kind === 'quote') && (implode('', $block['lines']) === '')) {
+            $last = count($out) - 1;
+            $written = array_map('strval', array_slice($lines, $first, $i - $first + 1));
+
+            if (($last >= 0) && ($out[$last]['kind'] === 'text')) {
+                $out[$last]['lines'] = array_merge($out[$last]['lines'], $written);
+            } else {
+                $out[] = array('kind' => 'text', 'lines' => $written);
+            }
+
+            continue;
+        }
+
         $out[] = $block;
     }
 
@@ -347,6 +364,10 @@ function ws_text_blocks($lines)
  * and <blockquote>, none of them with an attribute. Every word in them is
  * the author's, drawn by the callbacks, which escape it first.
  *
+ * A line break stands between two items and between two blocks or runs:
+ * nothing on screen (message bodies collapse white space), but a reader of
+ * the words alone (strip_tags(), textContent) keeps them apart.
+ *
  * @param string   $text
  * @param callable $run    function (string $text): string, a run of text
  * @param callable $inline function (string $text): string, an item, or the
@@ -355,31 +376,33 @@ function ws_text_blocks($lines)
  */
 function ws_text_blocks_html($text, $run, $inline)
 {
-    $html = '';
+    $pieces = array();
 
     foreach (ws_text_blocks(preg_split('/\r\n|\r|\n/', (string) $text)) as $block) {
         if ($block['kind'] === 'text') {
-            $html .= $run(implode("\n", $block['lines']));
+            $pieces[] = $run(implode("\n", $block['lines']));
             continue;
         }
 
         if ($block['kind'] === 'quote') {
             $quoted = trim(implode("\n", $block['lines']), "\n");
-            $html .= ($quoted !== '') ? '<blockquote>' . $inline($quoted) . '</blockquote>' : '';
+            $pieces[] = ($quoted !== '') ? '<blockquote>' . $inline($quoted) . '</blockquote>' : '';
             continue;
         }
 
         $tag = ($block['kind'] === 'number') ? 'ol' : 'ul';
-        $html .= '<' . $tag . '>';
+        $items = array();
 
         foreach ($block['lines'] as $line) {
-            $html .= '<li>' . $inline($line) . '</li>';
+            $items[] = '<li>' . $inline($line) . '</li>';
         }
 
-        $html .= '</' . $tag . '>';
+        $pieces[] = '<' . $tag . '>' . implode("\n", $items) . '</' . $tag . '>';
     }
 
-    return $html;
+    return implode("\n", array_filter($pieces, function ($piece) {
+        return $piece !== '';
+    }));
 }
 
 /**
@@ -392,8 +415,9 @@ function ws_text_blocks_html($text, $run, $inline)
  */
 function ws_html_blocks_text($html)
 {
-    // \x03 marks where a block starts and ends; marks that meet are one
-    // line break.
+    // \x03 marks where a block starts and ends; marks that meet, with the
+    // line break ws_text_blocks_html() puts between blocks, are one line
+    // break.
     $html = preg_replace_callback('#<(ul|ol)>(.*?)</\1>#s', function ($list) {
         $items = array();
 
@@ -412,7 +436,7 @@ function ws_html_blocks_text($html)
         }, preg_split('#<br\s*/?>\n?#', $quote[1]))) . "\x03";
     }, $html);
 
-    return preg_replace("/\x03+/", "\n", $html);
+    return preg_replace("/(?:\n?\x03\n?)+/", "\n", $html);
 }
 
 /**

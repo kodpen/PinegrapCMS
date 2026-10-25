@@ -115,7 +115,7 @@
     }
 
     // The browser's own editing commands, for what behaves as typing does
-    // (text, a line break, a chip or a card at the caret): the caret lands
+    // (text, a line break or a card at the caret): the caret lands
     // where the browser puts it after typing. Marks never come this way.
     function command(name, value) {
         try {
@@ -374,7 +374,8 @@
             return { kind: 'bullets', number: 0, text: trim(match[1]) };
         }
 
-        match = /^[ \t]*([0-9]{1,3})\.[ \t]+(\S.*)$/.exec(text);
+        // A number with a leading zero ("01.") is text, as on the server.
+        match = /^[ \t]*(0|[1-9][0-9]{0,2})\.[ \t]+(\S.*)$/.exec(text);
 
         return match ? { kind: 'numbers', number: parseInt(match[1], 10), text: trim(match[2]) } : null;
     }
@@ -479,6 +480,7 @@
 
             if (item && !((item.kind === 'numbers') && (item.number !== 1))) {
                 var texts = [item.text];
+                var first = i;
 
                 while ((i + 1) < lines.length) {
                     var next = listLine(lines[i + 1]);
@@ -503,6 +505,14 @@
                     }
 
                     break;
+                }
+
+                // Lines of ">" with no words quote nothing: text as written.
+                if ((item.kind === 'quote') && (texts.join('') === '')) {
+                    lines.slice(first, i + 1).forEach(function (written) {
+                        out.push({ kind: 'text', markup: written });
+                    });
+                    continue;
                 }
 
                 out.push({ kind: 'list', list: item.kind, items: texts });
@@ -1628,6 +1638,103 @@
         var after = surface.childNodes[range.startOffset] || null;
 
         return (before && (before.nodeType === 1) && LIST_TAGS.test(before.tagName) && !(after && hasWords(after))) ? before : null;
+    }
+
+    // The list a collapsed caret stands right after at the very end of the
+    // box (the surface itself, nothing but empty text after it): the browser
+    // shows that caret in the list's last item and types there.
+    function caretAfterList(surface, range) {
+        if (!range || !range.collapsed || (range.startContainer !== surface)) {
+            return null;
+        }
+
+        for (var at = range.startOffset; at < surface.childNodes.length; at++) {
+            var rest = surface.childNodes[at];
+
+            if (!((rest.nodeType === 3) && (rest.nodeValue === ''))) {
+                return null;
+            }
+        }
+
+        var before = surface.childNodes[range.startOffset - 1] || null;
+
+        while (before && (before.nodeType === 3) && (before.nodeValue === '')) {
+            before = before.previousSibling;
+        }
+
+        return (before && (before.nodeType === 1) && LIST_TAGS.test(before.tagName)) ? before : null;
+    }
+
+    // The point at the end of an item's words: before the line break an
+    // empty item keeps.
+    function itemEnd(item) {
+        var last = item.lastChild;
+
+        while (last && (last.nodeType === 3) && (last.nodeValue === '')) {
+            last = last.previousSibling;
+        }
+
+        if (last && (last.nodeType === 1) && (last.tagName === 'BR')) {
+            return [item, Array.prototype.indexOf.call(item.childNodes, last)];
+        }
+
+        return (last && (last.nodeType === 3)) ? [last, last.nodeValue.length] : [item, item.childNodes.length];
+    }
+
+    // The last item of a list, or null.
+    function lastItem(list) {
+        var item = list.lastChild;
+
+        while (item && !isItem(item)) {
+            item = item.previousSibling;
+        }
+
+        return item;
+    }
+
+    // A caret right after a list at the end of the box moved into the list's
+    // last item, where the browser shows it, before a key or a button acts
+    // on the item it is in.
+    function caretIntoList(surface) {
+        var list = caretAfterList(surface, selectionRange());
+        var item = list ? lastItem(list) : null;
+
+        if (item) {
+            var end = itemEnd(item);
+
+            select(end[0], end[1], end[0], end[1]);
+        }
+    }
+
+    // Nodes put in place of the selection, the caret after the last one.
+    // Made on the nodes: the browser's insertHTML takes a chip's <span>
+    // apart in a list item and moves what it inserts in a line of a quote
+    // out of the line. true when the selection was in the surface.
+    function insertAtSelection(surface, nodes) {
+        var range = selectionRange();
+
+        if (!range || !nodes.length || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        range.deleteContents();
+
+        // Each goes in at the start of the range, so the last goes in first.
+        for (var index = nodes.length - 1; index >= 0; index--) {
+            range.insertNode(nodes[index]);
+        }
+
+        var last = nodes[nodes.length - 1];
+
+        if (last.nodeType === 3) {
+            select(last, last.nodeValue.length, last, last.nodeValue.length);
+        } else {
+            var spot = Array.prototype.indexOf.call(last.parentNode.childNodes, last) + 1;
+
+            select(last.parentNode, spot, last.parentNode, spot);
+        }
+
+        return true;
     }
 
     // Chrome lays a box that held only blocks (a list) out as one even once
@@ -3126,6 +3233,7 @@
             // lines the selection touches (toggleList()).
             if (Object.prototype.hasOwnProperty.call(LISTS, name)) {
                 self.restore();
+                caretIntoList(self.node);
                 return self.change(function () { return toggleList(self.node, name); });
             }
 
@@ -3156,7 +3264,8 @@
 
             var state = marksAt(this.node, range);
             var where = range ? itemAt(this.node, range.startContainer) : null;
-            var kind = where ? listKind(where.list) : '';
+            var after = (range && !where) ? caretAfterList(this.node, range) : null;
+            var kind = where ? listKind(where.list) : (after ? listKind(after) : '');
 
             Object.keys(LISTS).forEach(function (name) {
                 state[name] = (kind === name);
@@ -3233,9 +3342,12 @@
         },
 
         // Enter (Shift+Enter in the composer) in an item: itemEnter(). true
-        // when the caret was in one.
+        // when the caret was in one, or shown in one at the end of the box.
         listEnter: function () {
             var self = this;
+
+            caretIntoList(self.node);
+
             var range = selectionRange();
 
             if (!range || !self.node.contains(range.startContainer) || !itemAt(self.node, range.startContainer)) {
@@ -3381,12 +3493,25 @@
             }).catch(again);
         },
 
+        // The caret at the end of the box; in a box that ends with a list, at
+        // the end of the list's last item, where the browser shows it.
         caretToEnd: function () {
             var range = document.createRange();
             var selection = window.getSelection();
 
             range.selectNodeContents(this.node);
             range.collapse(false);
+
+            var list = caretAfterList(this.node, range);
+            var item = list ? lastItem(list) : null;
+
+            if (item) {
+                var end = itemEnd(item);
+
+                range.setStart(end[0], end[1]);
+                range.collapse(true);
+            }
+
             selection.removeAllRanges();
             selection.addRange(range);
             this.savedRange = range.cloneRange();
@@ -3449,10 +3574,15 @@
             }
 
             if (item.token) {
-                var holder = el('span');
-                holder.appendChild(chipNode(item.token, item.shown, item.icon || ''));
-                command('insertHTML', holder.innerHTML + ' ');
-            } else if (item.text) {
+                // On the nodes (insertAtSelection()), so that the chip and its
+                // token stay whole in a list item or a line of a quote.
+                insertAtSelection(this.node, [chipNode(item.token, item.shown, item.icon || ''), document.createTextNode('\u00a0')]);
+                this.tidy();
+                this.node.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            if (item.text) {
                 command('insertText', item.text);
             } else if (!selection.isCollapsed) {
                 // Nothing in its place: what was typed goes away.
@@ -3475,12 +3605,17 @@
             this.restore();
 
             var before = this.beforeCaret();
-            var holder = el('span');
             var link = el('a', '', text);
+            var nodes = [link, document.createTextNode(' ')];
 
             link.href = url;
-            holder.appendChild(link);
-            command('insertHTML', ((before !== '' && !/\s$/.test(before)) ? ' ' : '') + holder.innerHTML + ' ');
+
+            if (before !== '' && !/\s$/.test(before)) {
+                nodes.unshift(document.createTextNode(' '));
+            }
+
+            // On the nodes, so that it stays in a line of a quote.
+            insertAtSelection(this.node, nodes);
             this.tidy();
             this.node.dispatchEvent(new Event('input', { bubbles: true }));
         },

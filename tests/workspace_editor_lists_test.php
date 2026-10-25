@@ -43,6 +43,21 @@ function workspace_editor_lists_test_function($source, $name)
 	return (string) substr($source, (int) $start, (int) $end - (int) $start) . "\n    }\n";
 }
 
+// The text of one method of an object literal ("        name: function ("
+// up to its closing "        },"); '' when it is not found.
+function workspace_editor_lists_test_method($source, $name)
+{
+	$start = strpos($source, "\n        " . $name . ': function (');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n        },\n", (int) $start);
+
+	return (string) substr($source, (int) $start, (int) $end - (int) $start);
+}
+
 // One "var NAME = ...;" of the file, a line or an object literal.
 function workspace_editor_lists_test_var($source, $name)
 {
@@ -120,7 +135,7 @@ function test_workspace_editor_lists_line_twin()
 {
 	$lines = array('- milk', '* bread', '   - indented', '1. first', '12. twelfth', '> said', '>', '>  spaced',
 		'-', '- ', '-milk', '**bold**', '- [ ] task', '- [x] done', '- [ ]', '* * *', '- - -', '2026. yılında',
-		'1.5 kg', '>quoted', '>> nested', 'text - dash', '', "\t- tabbed");
+		'1.5 kg', '>quoted', '>> nested', 'text - dash', '', "\t- tabbed", '01. Intro', '001. Intro', '0. zero', '10. ten');
 	$steps = array();
 
 	foreach ($lines as $line) {
@@ -156,6 +171,9 @@ function test_workspace_editor_lists_blocks_twin()
 		"> a\n\n> b",
 		"- a\n1. b\n- c",
 		"- a\n- [ ] task\n- b",
+		"Input\n>\nOutput",
+		">\n>",
+		"01. Intro\n02. Body\n- x",
 	);
 	$steps = array();
 
@@ -271,4 +289,123 @@ function test_workspace_editor_lists_keys()
 	pg_assert_contains("event.inputType !== 'insertText'", $check);
 	pg_assert_contains("/(^|\\n)([-*]|1\\.|>) $/", $check);
 	pg_assert_contains('self.listCheck(event);', $editor, 'the box checks what was typed');
+}
+
+// A number written with a leading zero ("01.") is no item, in the box as on
+// the server: read as 1, the same lines were a list in one message and text
+// in another, and an edit wrote them back as "1.".
+function test_workspace_editor_lists_leading_zero_is_text()
+{
+	$answer = workspace_editor_lists_test_run(array(
+		array('line', '01. Intro'),
+		array('line', '001. Intro'),
+		array('line', '10. ten'),
+		array('blocks', "01. Intro\n02. Body"),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(null, $answer[0], '"01." is text');
+	pg_assert_same(null, $answer[1], '"001." is text');
+	pg_assert_same(array('kind' => 'numbers', 'number' => 10, 'text' => 'ten'), $answer[2], 'a zero inside a number is kept');
+	pg_assert_same(array(array('kind' => 'text', 'markup' => '01. Intro'), array('kind' => 'text', 'markup' => '02. Body')), $answer[3], 'laid out in the box as written');
+}
+
+// A ">" with no quoted words is no quote: it stays the text it was, so an
+// edit keeps it.
+function test_workspace_editor_lists_empty_quote_is_text()
+{
+	$answer = workspace_editor_lists_test_run(array(
+		array('blocks', "Input\n>\nOutput"),
+		array('blocks', ">\n>"),
+		array('blocks', "> a\n>\n> b"),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('kind' => 'text', 'markup' => 'Input'), array('kind' => 'text', 'markup' => '>'), array('kind' => 'text', 'markup' => 'Output')), $answer[0]);
+	pg_assert_same(array(array('kind' => 'text', 'markup' => '>'), array('kind' => 'text', 'markup' => '>')), $answer[1]);
+	pg_assert_same(array(array('kind' => 'list', 'list' => 'quote', 'items' => array('a', '', 'b'))), $answer[2], 'an empty line inside a quote stays in it');
+}
+
+// A chip (a person, a record) or a link put in where the caret is goes in on
+// the nodes: the browser's insertHTML took a chip's <span> apart in a list
+// item (its token lost) and moved what it inserted in a quote's line out of
+// the line.
+function test_workspace_editor_lists_picks_go_in_on_the_nodes()
+{
+	$source = workspace_editor_lists_test_source();
+	$replace = workspace_editor_lists_test_method($source, 'replaceTyped');
+	$link = workspace_editor_lists_test_method($source, 'insertLink');
+	$insert = workspace_editor_lists_test_function($source, 'insertAtSelection');
+
+	pg_assert_true(($replace !== '') && ($link !== '') && ($insert !== ''), 'all three found');
+	pg_assert_true(strpos($replace, 'insertHTML') === false, 'a chip is not inserted as HTML');
+	pg_assert_contains('insertAtSelection(this.node, [chipNode(', $replace);
+	pg_assert_true(strpos($link, 'insertHTML') === false, 'a link is not inserted as HTML');
+	pg_assert_contains('insertAtSelection(this.node, ', $link);
+	pg_assert_contains('range.insertNode(', $insert);
+	pg_assert_true((strpos($insert, 'command(') === false) && (strpos($insert, 'execCommand') === false), 'no execCommand');
+}
+
+// A caret at the end of a box that ends with a list is in the list's last
+// item, as the browser types there: Enter goes on with the list, a list
+// button changes that item, the button shows it pressed.
+function test_workspace_editor_lists_caret_after_a_list_is_in_it()
+{
+	$source = workspace_editor_lists_test_source();
+	$end = workspace_editor_lists_test_method($source, 'caretToEnd');
+	$enter = workspace_editor_lists_test_method($source, 'listEnter');
+	$state = workspace_editor_lists_test_method($source, 'formatState');
+	$format = workspace_editor_lists_test_method($source, 'format');
+
+	pg_assert_contains('caretAfterList(', $end, 'the end of a box that ends with a list is the end of its last item');
+	pg_assert_contains('itemEnd(', $end);
+
+	$moved = strpos($enter, 'caretIntoList(self.node);');
+	$item = strpos($enter, 'itemAt(self.node, range.startContainer)');
+
+	pg_assert_true(($moved !== false) && ($item !== false) && ($moved < $item), 'Enter puts the caret in the item first');
+	pg_assert_contains('caretAfterList(this.node, range)', $state, 'the pressed state reads the item the caret is shown in');
+
+	$moved = strpos($format, 'caretIntoList(self.node);');
+	$toggle = strpos($format, 'toggleList(self.node, name)');
+
+	pg_assert_true(($moved !== false) && ($toggle !== false) && ($moved < $toggle), 'a list button acts on that item');
+}
+
+// The first line of a list or a quote is no slash command: the text sent
+// starts with its mark, and the server runs only a text that starts with "/".
+function test_workspace_editor_lists_no_command_in_an_item()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$check = workspace_editor_lists_test_method($source, 'pickerCheck');
+	$guard = strpos($check, 'var commands = !self.noCommands && !self.inListItem();');
+	$match = strpos($check, 'if (commands && (match = /^\/([^\s]*)$/.exec(before)))');
+
+	pg_assert_true(($guard !== false) && ($match !== false) && ($guard < $match), 'no command picker in an item');
+	pg_assert_contains('var argument = commands ? self.commandArgument(before) : null;', $check, 'nor its argument strip');
+
+	$item = workspace_editor_lists_test_method($source, 'inListItem');
+
+	pg_assert_contains('this.rich.formatState()', $item);
+}
+
+// "Copy text" and "Select text" keep a list's numbers and bullets and a
+// quote's marks, which innerText leaves out.
+function test_workspace_editor_lists_copied_text_keeps_marks()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($source, "\n    function readableText(");
+	$body = (string) substr($source, (int) $start, (int) strpos($source, "\n    }\n", (int) $start) - (int) $start);
+	$marks = strpos($body, "'ol:not([class]) > li, ul:not([class]) > li'");
+	$read = strpos($body, 'box.innerText');
+
+	pg_assert_true(($marks !== false) && ($read !== false) && ($marks < $read), 'marks written in before the text is read');
+	pg_assert_contains("'blockquote:not([class])'", $body);
+	pg_assert_contains("'> '", $body);
 }
