@@ -2458,6 +2458,94 @@ function pg_json_duplicate_keys($json)
 
     return array_values($found);
 }
+
+// A value as the JSON text of an answer (the external API's api_json_encode(),
+// the MCP server's pg_mcp_json_encode()), or null when it cannot be JSON at
+// all (INF, NAN, nesting past 512), for the caller to answer an error: a bare
+// json_encode() returns false there, which casts to an empty body.
+//
+// Unicode and slashes are written as they are. A byte that is not UTF-8, in a
+// key or a value, becomes U+FFFD and the rest of the value stays: PHP 7.2+
+// does it with JSON_INVALID_UTF8_SUBSTITUTE. PHP 7.1 lacks that flag, so on a
+// UTF-8 failure its strings are replaced first (pg_json_utf8_substitute()) and
+// encoded again. JSON_PARTIAL_OUTPUT_ON_ERROR is not used for that: on 7.1 it
+// writes a broken key as a bare null, which is not JSON, and it hides every
+// other error of the same value (INF and NAN written as 0, any depth).
+function pg_json_encode_answer($value)
+{
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+
+        $json = json_encode($value, $flags | JSON_INVALID_UTF8_SUBSTITUTE); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+
+    } else {
+
+        $json = json_encode($value, $flags);
+
+        if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
+            $json = json_encode(pg_json_utf8_substitute($value), $flags);
+        }
+    }
+
+    return is_string($json) ? $json : null;
+}
+
+// The value with U+FFFD in place of every byte that is not UTF-8, in array
+// keys and object property names as well as strings, as
+// JSON_INVALID_UTF8_SUBSTITUTE writes them (ENT_SUBSTITUTE replaces the same
+// sequences); valid strings and other scalars are returned untouched. Two
+// keys that differ only in their broken bytes become one key holding the
+// last value (PHP 7.2+ writes the key twice). An object comes back as a
+// stdClass of what json_encode() writes for it (its jsonSerialize() answer,
+// or its public properties), so it is still written as an object. The walk
+// goes no deeper than 512 levels, json_encode()'s own limit: what lies deeper
+// fails to encode whatever its bytes, and a structure that contains itself
+// ends there too.
+function pg_json_utf8_substitute($value, $depth = 0)
+{
+    if (is_string($value)) {
+
+        if (preg_match('//u', $value)) {
+            return $value;
+        }
+
+        return htmlspecialchars_decode(htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), ENT_QUOTES);
+    }
+
+    if ($depth > 512) {
+        return $value;
+    }
+
+    if (is_object($value)) {
+
+        if ($value instanceof JsonSerializable) {
+
+            $serialized = $value->jsonSerialize();
+
+            // json_encode() writes the properties of an object whose
+            // jsonSerialize() returns the object itself.
+            if ($serialized !== $value) {
+                return pg_json_utf8_substitute($serialized, $depth + 1);
+            }
+        }
+
+        return (object) pg_json_utf8_substitute(get_object_vars($value), $depth);
+    }
+
+    if (!is_array($value)) {
+        return $value;
+    }
+
+    $substituted = array();
+
+    foreach ($value as $key => $item) {
+        $substituted[is_string($key) ? pg_json_utf8_substitute($key) : $key] = pg_json_utf8_substitute($item, $depth + 1);
+    }
+
+    return $substituted;
+}
+
 // Create function that is used to encode the path part of a URL (e.g. /example/example)
 // This is used in order to prepare valid URLs for page names or file names
 // that might contain special characters.  We do not encode forward slashes
@@ -3932,6 +4020,43 @@ function url_exists($url)
 // - Looks for JSON translation files in includes/local/{lang}.json relative to this file or cwd.
 // - If mbstring is not available, falls back to single-byte string helpers.
 // - in english language file you can overwrite strings.
+// The language map kept as shards in $dir (includes/local/<code>/): every
+// *.json there in name order, merged; null when $dir is not a folder or holds
+// no shard, so the caller falls back to the single <code>.json file. A shard
+// that is not valid JSON is skipped, as a broken single file is.
+function pg_lang_read_folder($dir)
+{
+    $dir = rtrim((string) $dir, '/\\');
+
+    if (($dir === '') || !is_dir($dir)) {
+        return null;
+    }
+
+    $files = glob($dir . '/*.json');
+
+    if (!is_array($files) || (count($files) === 0)) {
+        return null;
+    }
+
+    sort($files, SORT_STRING);
+
+    $map = array();
+
+    foreach ($files as $file) {
+        $decoded = @json_decode((string) @file_get_contents($file), true);
+
+        if (!is_array($decoded)) {
+            continue;
+        }
+
+        foreach ($decoded as $key => $value) {
+            $map[$key] = $value;
+        }
+    }
+
+    return $map;
+}
+
 function lang($properties = false)
 {
     static $translations = array(); // cache translations per language
@@ -4032,8 +4157,12 @@ function lang($properties = false)
         $translations[$selected_software_language] = array();
         $json = false;
 
+        // A language kept as shards (includes/local/<code>/*.json) is read
+        // from its folder; otherwise from its single file.
+        $folder_map = pg_lang_read_folder(PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language);
+
         // Prefer absolute path relative to this file
-        $pathsToTry = array(
+        $pathsToTry = ($folder_map !== null) ? array() : array(
             PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json',
             'includes/local/' . $selected_software_language . '.json',
             PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json'
@@ -4048,7 +4177,9 @@ function lang($properties = false)
             }
         }
 
-        if ($json !== false) {
+        if ($folder_map !== null) {
+            $translations[$selected_software_language] = $folder_map;
+        } elseif ($json !== false) {
             $decoded = @json_decode($json, true);
             if (is_array($decoded)) {
                 $translations[$selected_software_language] = $decoded;

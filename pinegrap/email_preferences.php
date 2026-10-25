@@ -59,6 +59,41 @@ if (!$_POST) {
             SET opt_in = '0', timestamp = UNIX_TIMESTAMP()
             WHERE email_address = '" . e($one_click_address) . "'");
 
+        // The person behind the address: the account that uses it and that
+        // account's contact, else the first contact with the address (as the
+        // signed preferences link picks it, with no account). The refusal is
+        // kept with them as well as with the address, so it is still found
+        // after the person saves a new address. contacts.user is not read: a
+        // form a signed-in visitor fills in for somebody else stores the
+        // visitor there.
+        $one_click_person = db_item(
+            "SELECT user_id, user_contact AS contact_id
+            FROM user
+            WHERE user_email = '" . e($one_click_address) . "'
+            ORDER BY user_id
+            LIMIT 1");
+
+        if (!$one_click_person || ((int) $one_click_person['contact_id'] <= 0)) {
+            $one_click_person = array(
+                'user_id' => $one_click_person ? (int) $one_click_person['user_id'] : 0,
+                'contact_id' => (int) db_value(
+                    "SELECT id
+                    FROM contacts
+                    WHERE email_address = '" . e($one_click_address) . "'
+                    ORDER BY id
+                    LIMIT 1"));
+        }
+
+        // The refusal goes to the consent log once: a client that repeats the
+        // POST finds it already recorded for the person and adds nothing.
+        pg_consent_log_answers(
+            array(
+                'email' => $one_click_address,
+                'user_id' => (int) $one_click_person['user_id'],
+                'contact_id' => (int) $one_click_person['contact_id']),
+            array('email:marketing' => false),
+            'unsubscribe');
+
         log_activity(lang(array('string' => '{var:1} unsubscribed with one click.', 'vars' => array($one_click_address))), 'UNKNOWN');
 
         http_response_code(200);
@@ -135,6 +170,10 @@ if (!$_POST) {
     
     $user_id = 0;
     
+    // Set when the signed-in path creates the visitor's contact below: the
+    // screen was drawn without one, so it showed no closed list.
+    $contact_created = false;
+
     // if user is logged in
     if (!empty($_SESSION['sessionusername'])) {
         // check to see if e-mail address is already in use
@@ -192,6 +231,7 @@ if (!$_POST) {
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
+            $contact_created = true;
 
             // A visitor who set their e-mail preferences without having a
             // contact record has one now.
@@ -449,6 +489,45 @@ if (!$_POST) {
         }
     }
     
+    // The answers of this post for the consent log, under the same guards as
+    // the writes above: the opt-in and the lists the screen drew. When the
+    // opt-in is unticked the lists are left out: the legacy screen hides their
+    // boxes then, and a hidden ticked box still posts '1'. A contact created
+    // by this post was in no closed list when the screen was drawn, so only
+    // the open lists were on it.
+    $consent_answers = array();
+
+    if (pg_sw_posted_control($pg_controls, 'opt_in')) {
+        $consent_answers['email:marketing'] = ($liveform->get_field_value('opt_in') === '1');
+    }
+
+    if (!isset($consent_answers['email:marketing']) || $consent_answers['email:marketing']) {
+        foreach ($contact_groups as $contact_group) {
+            if ($contact_created && ($contact_group['email_subscription_type'] != 'open')) {
+                continue;
+            }
+
+            if (pg_sw_posted_control($pg_controls, 'contact_group_' . $contact_group['id'])) {
+                $consent_answers['email:group:' . $contact_group['id']] = ($liveform->get_field_value('contact_group_' . $contact_group['id']) === '1');
+            }
+        }
+    }
+
+    // Only the answers that differ from the person's last recorded ones are
+    // written, once per person rather than once per contact. The address is
+    // the one just saved; the rows recorded under the address before the
+    // save are read as well, whichever account or contact they carry. A
+    // signed-in visitor answers on the account page, a visitor without a
+    // session through the signed link in an e-mail.
+    pg_consent_log_answers(
+        array(
+            'email' => $liveform->get_field_value('email_address'),
+            'user_id' => $user_id,
+            'contact_id' => $contact_id,
+            'previous_email' => $current_email_address),
+        $consent_answers,
+        !empty($_SESSION['sessionusername']) ? 'account' : 'unsubscribe');
+
     $liveform->add_notice(lang('Your email preferences have been updated.'));
     
     // send user back to e-mail preferences screen

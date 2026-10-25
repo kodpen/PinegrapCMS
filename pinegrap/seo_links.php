@@ -63,84 +63,6 @@ function pg_seo_link_severities()
     );
 }
 
-// Name lookups the resolver needs, loaded once per request.
-//
-// Three maps and two small sets, all keyed by the exact string the router
-// compares against. Building them costs three scans of narrow columns; the
-// alternative is a query per link, and a page with a navigation menu has
-// dozens.
-function pg_seo_link_maps()
-{
-    static $maps = null;
-
-    if ($maps !== null) {
-        return $maps;
-    }
-
-    $maps = array(
-        'pages' => array(),
-        'files' => array(),
-        'short_links' => array(),
-        'products' => array(),
-        'product_groups' => array(),
-        'home_page_id' => 0,
-    );
-
-    foreach (db_items("SELECT page_id, page_name, page_type, layout_type, page_home, page_folder FROM page") as $row) {
-        $maps['pages'][(string) $row['page_name']] = array(
-            'id' => (int) $row['page_id'],
-            'type' => (string) $row['page_type'],
-            'layout_type' => (string) $row['layout_type'],
-            'folder' => (int) $row['page_folder'],
-        );
-
-        if (((string) $row['page_home']) === 'yes') {
-            $maps['home_page_id'] = (int) $row['page_id'];
-        }
-    }
-
-    foreach (db_items("SELECT id, name FROM files") as $row) {
-        $maps['files'][(string) $row['name']] = (int) $row['id'];
-    }
-
-    foreach (db_items("SELECT name FROM short_links") as $row) {
-        $maps['short_links'][(string) $row['name']] = true;
-    }
-
-    // Item namespaces reachable through a slash in a pretty URL. Only these
-    // three exist, which is what makes an unresolved slug a confident
-    // finding rather than a guess.
-    if (defined('ECOMMERCE') && (ECOMMERCE == true)) {
-        foreach (db_items("SELECT id, address_name FROM products WHERE address_name <> ''") as $row) {
-            $maps['products'][(string) $row['address_name']] = (int) $row['id'];
-        }
-
-        foreach (db_items("SELECT id, address_name FROM product_groups WHERE address_name <> ''") as $row) {
-            $maps['product_groups'][(string) $row['address_name']] = (int) $row['id'];
-        }
-    }
-
-    return $maps;
-}
-
-// Address names of submitted forms, loaded only if a form list view link is
-// actually seen. Sites with a large blog have many, and most pages never
-// link to one.
-function pg_seo_form_address_names()
-{
-    static $names = null;
-
-    if ($names === null) {
-        $names = array();
-
-        foreach (db_items("SELECT address_name FROM forms WHERE address_name <> ''") as $row) {
-            $names[(string) $row['address_name']] = true;
-        }
-    }
-
-    return $names;
-}
-
 // Resolve one href to what the router would find.
 //
 // Returns array('type' => ..., 'id' => int). Types mirror the seo_link
@@ -148,149 +70,20 @@ function pg_seo_form_address_names()
 // 'unknown' is the only one that counts as broken, and the resolver is
 // deliberately reluctant to return it - a broken-link report full of false
 // positives is worse than no report, because the operator stops reading it.
+//
+// The resolution itself is pure and lives in includes/fn/link_resolve.php
+// with its name maps (pg_seo_link_maps(), pg_seo_form_address_names()). The
+// maps are read only once an href turns out to be an address of this site,
+// and the form names only for a form list address, as before.
 function pg_seo_resolve_link($href)
 {
-    $href = trim((string) $href);
+    $parsed = pg_link_parse($href, pg_link_resolve_env());
 
-    if ($href === '') {
-        return array('type' => 'unknown', 'id' => 0);
-    }
+    $result = ($parsed['result'] !== null)
+        ? $parsed['result']
+        : pg_link_resolve_item($parsed['item'], pg_seo_link_maps(), 'pg_seo_form_address_names');
 
-    // Not addresses of anything this software serves.
-    if (preg_match('/^(mailto:|tel:|sms:|javascript:|data:|ftp:|#)/i', $href)) {
-        return array('type' => 'external', 'id' => 0);
-    }
-
-    $parts = parse_url($href);
-
-    if ($parts === false) {
-        return array('type' => 'unknown', 'id' => 0);
-    }
-
-    // A host that is not ours is somebody else's problem; a link check that
-    // followed it would need HTTP, which this feature does not do.
-    if (!empty($parts['host'])) {
-        $own_host = defined('HOSTNAME') ? preg_replace('/:\d+$/', '', HOSTNAME) : '';
-        $link_host = preg_replace('/:\d+$/', '', $parts['host']);
-
-        if (($own_host === '') || (strcasecmp($link_host, $own_host) !== 0)) {
-            return array('type' => 'external', 'id' => 0);
-        }
-    }
-
-    $path = isset($parts['path']) ? $parts['path'] : '';
-
-    // A bare query string or fragment points at the page it sits on.
-    if ($path === '') {
-        return array('type' => 'external', 'id' => 0);
-    }
-
-    $site_path = defined('PATH') ? PATH : '/';
-
-    // A relative link is resolved against the site root rather than against
-    // the containing page: Pinegrap writes absolute paths everywhere, so a
-    // relative one is hand-written and its base is not knowable from here.
-    if (strpos($path, '/') !== 0) {
-        $path = $site_path . $path;
-    }
-
-    if (($site_path !== '') && (strpos($path, $site_path) === 0)) {
-        $item_name = substr($path, strlen($site_path));
-    } else {
-        // Outside the installation's own path - another application on the
-        // same host.
-        return array('type' => 'external', 'id' => 0);
-    }
-
-    $item_name = rawurldecode($item_name);
-    $item_name = ltrim($item_name, '/');
-
-    // The router's own order, from here down.
-    $maps = pg_seo_link_maps();
-
-    if (($item_name === '') || ($item_name === 'index.php')) {
-        return array('type' => 'page', 'id' => $maps['home_page_id']);
-    }
-
-    $lowercase = mb_strtolower($item_name);
-
-    if (($lowercase === 'robots.txt') || ($lowercase === 'sitemap.xml')) {
-        return array('type' => 'external', 'id' => 0);
-    }
-
-    // Anything inside the control panel directory is a backend address, not
-    // site content.
-    if (defined('SOFTWARE_DIRECTORY') && (strpos($item_name, SOFTWARE_DIRECTORY . '/') === 0)) {
-        return array('type' => 'external', 'id' => 0);
-    }
-
-    if (isset($maps['files'][$item_name])) {
-        return array('type' => 'file', 'id' => $maps['files'][$item_name]);
-    }
-
-    if (isset($maps['short_links'][$item_name])) {
-        return array('type' => 'short_link', 'id' => 0);
-    }
-
-    if (isset($maps['pages'][$item_name])) {
-        return array('type' => 'page', 'id' => $maps['pages'][$item_name]['id']);
-    }
-
-    // A slash means a pretty URL: the part before it names a page, the rest
-    // names an item that page displays.
-    if (mb_strpos($item_name, '/') !== false) {
-        $prefix = mb_substr($item_name, 0, mb_strpos($item_name, '/'));
-        $slug = trim(mb_substr($item_name, mb_strpos($item_name, '/') + 1), '/');
-
-        if (!isset($maps['pages'][$prefix])) {
-            return array('type' => 'unknown', 'id' => 0);
-        }
-
-        $page = $maps['pages'][$prefix];
-
-        // A trailing slash with nothing after it is the page itself.
-        if ($slug === '') {
-            return array('type' => 'page', 'id' => $page['id']);
-        }
-
-        if (($page['type'] === 'catalog') || ($page['type'] === 'catalog detail') || ($page['layout_type'] === 'system')) {
-
-            if (isset($maps['products'][$slug])) {
-                return array('type' => 'product', 'id' => $maps['products'][$slug]);
-            }
-
-            if (isset($maps['product_groups'][$slug])) {
-                return array('type' => 'product_group', 'id' => $maps['product_groups'][$slug]);
-            }
-
-            // A system-layout page can host widgets this resolver does not
-            // model, so an unmatched slug there is not proof of a dead link.
-            if ($page['layout_type'] === 'system') {
-                return array('type' => 'page', 'id' => $page['id']);
-            }
-
-            return array('type' => 'unknown', 'id' => 0);
-        }
-
-        if ($page['type'] === 'form list view') {
-            $form_names = pg_seo_form_address_names();
-
-            if (isset($form_names[$slug])) {
-                return array('type' => 'page', 'id' => $page['id']);
-            }
-
-            return array('type' => 'unknown', 'id' => 0);
-        }
-
-        // Some other page type carrying a path segment - a calendar view, a
-        // custom layout reading its own parameter. The prefix resolves, and
-        // what the page does with the rest is beyond what can be checked
-        // from the database, so it is reported as reaching that page rather
-        // than as broken.
-        return array('type' => 'page', 'id' => $page['id']);
-    }
-
-    return array('type' => 'unknown', 'id' => 0);
+    return array('type' => $result['type'], 'id' => $result['id']);
 }
 
 // Replace the stored links of one record.

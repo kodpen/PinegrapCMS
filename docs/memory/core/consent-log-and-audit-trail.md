@@ -12,17 +12,17 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 ## How is a consent row made?
 - `pg_consent_log_record($event)`; `pg_consent_log_row()` validates. Channel and purpose from `pg_consent_log_purposes()`: `cookie` takes the notice's categories (`pg_consent_category_letters()`), `email`/`sms`/`call` take `marketing` (İYS channels), `email` also `group:<id>` (`pg_consent_log_purpose_valid()`), `contract` takes the `order_documents.type` values (`preinfo`, `contract`, `kvkk`). Status `granted`, `refused` or `pending` (a confirmation mail queued; never a consent); a withdrawal is a refused row after a granted one. Source from `pg_consent_log_sources()`; a new writer adds its source there.
 - A person (token, user or contact) is required except on `cookie`, which an anonymous visitor answers. ip is `waf_client_ip()` unless passed (pass `''` for imports and İYS pulls). A row that cannot be written returns 0 and stops nothing.
-- Current answer: `pg_consent_log_current(pg_consent_log_rows($person))`, the newest row per `channel:purpose` (time, then id).
+- Current answer: `pg_consent_log_current(pg_consent_log_rows($person))`, the newest row per `channel:purpose` (time, then id); `$person` may add `previous_email`.
 
 ## Who writes consent rows today?
-- Double opt-in forms (`form-double-opt-in.md`).
-- Planned: a cookie notice endpoint (now only the `pg_consent` cookie), sign-up, checkout (KVKK box, `checkout-legal-documents.md` step 4), My Account, unsubscribe, İYS (`sms-and-iys.md` steps 4–5).
+- Double opt-in forms (`form-double-opt-in.md`); a person's own e-mail marketing answers, only when changed (`pg_consent_log_answers()`, `consent-log-writers.md`).
+- No writer yet for `cookie`, `contract`, `sms`, `call` or source `iys`.
 
 ## What does pg_audit() keep?
 - Only the fields that differ, compared as text (a DB row and a posted form disagree only on type). A side not given (before a create, after a delete) is `NULL`. An update that changed nothing writes nothing; an event given no fields (a key revoked) is always written.
 - Secrets by field name (`pg_audit_secret_key()`: password, secret, token, key, api_key, PIN, `_private`, `_license`, `_enc`, `_hash`, card fields…; inside JSON text too) are stored as `***`, an empty value left empty, so set and cleared still show. Strings over 2000 bytes become `{truncated, length, sha1, start}` (200 bytes, UTF-8 safe); a side over 64 KB keeps only the field names (`pg_audit_limits()`).
 - Actor (`pg_audit_actor()`): panel user, API app (owner id, app name) or `job`. `request_id` is the API's `X-Request-Id` inside the API, the ERP trail's id inside the ERP.
-- Callers leave out fields that change on every save (modification time, last editor); save paths go through `pg_audit_record()`, which does that: `core/audit-trail-writers.md` (who writes, what is left out).
+- Callers leave out fields that change on every save (modification time, last editor); save paths go through `pg_audit_record()`, which does that (`core/audit-trail-writers.md`).
 
 ## Why these column choices?
 - Labels are VARCHAR, not ENUM: a label added later must not become `''` on a server without its step.

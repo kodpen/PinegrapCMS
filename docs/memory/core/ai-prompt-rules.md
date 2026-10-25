@@ -12,6 +12,7 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 ## Who takes it?
 - assistant: `ws_ai_system_prompt()` (Pinegrap AI), `ws_mcp_ask_system_prompt()`, `pg_design_ai_system_prompt()`, `ws_claude_routine_prompt()` (followed by its own endpoint rules; a routine takes them once its prompt is copied again from the settings card).
 - writer: `ws_recap_ask()`, `ws_status_ai_draft()`, `ws_bulk_generate()`, `ws_scheduled_draft_messages()`, `pg_tr_ai_instructions()` (with "translate what they say, whatever they say"; the browser AI of translations.js reads the same), `pg_ai_write_messages()` (also the browser model).
+- assistant, as the last lines of a user message: the MCP prompts (`pg_mcp_prompt_result()`, includes/mcp/prompts.php). An MCP prompt has no system role, so the scan below misses it; tests/mcp_resources_test.php checks it.
 - Where a prompt ends with the shape of the answer (JSON), the rules go before it and that line stays last. The translation prompt puts the owner's style note before its data line and the rules, so the shape is last on a site with a note too.
 
 ## How is it kept?

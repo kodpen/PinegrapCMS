@@ -357,6 +357,7 @@ function ws_js_strings()
         'copy_number'            => lang('Copy the task number'),
         'copy_text'              => lang('Copy the text'),
         'erp_quote_copy'         => lang('Copy as a new sales quote'),
+        'sales_quote_new'        => lang('New sales quote'),
         'copy_all'               => lang('Copy all'),
         'copy_refused'           => lang('The browser did not let the text be copied. Select it and copy it from here.'),
         'copy_select_help'       => lang('Press and hold to select the part you need, then copy it.'),

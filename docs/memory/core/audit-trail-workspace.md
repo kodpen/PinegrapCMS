@@ -4,7 +4,7 @@ description: How Workspace writes reach audit_log through ws_change_write(): kin
 ---
 
 ## Where is a Workspace write recorded?
-- `ws_change_write()` (`includes/workspace/changes.php`) wraps every `ws_change_write_<kind>()` call. Callers: `ws_change_apply()`, `ws_quick_edit_save()`, `ws_bulk_step()`, `ws_scheduled_change()`; a new one goes through it too (`tests/workspace_audit_test.php` fails on a writer called by name elsewhere).
+- `ws_change_write()` (`includes/workspace/changes.php`) wraps every `ws_change_write_<kind>()` call. Callers: `ws_change_apply()`, `ws_quick_edit_save()`, `ws_quick_create_save()`, `ws_bulk_step()`, `ws_scheduled_change()`; a new one goes through it too (`tests/workspace_audit_test.php` fails on a writer called by name elsewhere).
 - It reads the row before the write (not for a create), runs the writer, then `pg_audit_record()`; a create takes the id the writer answers. The writer's answer comes back unchanged; a line that cannot be written stops nothing; without `includes/fn/audit.php` nothing is recorded.
 
 ## Which kind becomes which line?

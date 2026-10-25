@@ -411,8 +411,10 @@ function test_comments_widget_thread_flags_table()
 	$open = pg_comments_widget_thread_flags(comments_widget_test_facts());
 	$keys = array('comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'is_signed_in', 'is_signed_out', 'has_comments', 'no_comments',
 		'featured_view', 'has_featured', 'is_staff', 'name_is_typed', 'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on',
-		'has_more_pages', 'is_replying', 'is_watching', 'not_watching', 'can_manage_watchers');
-	pg_assert_same($keys, array_keys($open), 'exactly the 22 thread flags');
+		'has_more_pages', 'is_replying', 'is_watching', 'not_watching', 'can_manage_watchers', 'is_email');
+	pg_assert_same($keys, array_keys($open), 'exactly the 23 thread flags');
+	pg_assert_false($open['is_email'], 'a live page is no e-mail');
+	pg_assert_false(pg_comments_widget_thread_flags(comments_widget_test_facts(array('signed_in' => true, 'staff' => true)))['is_email'], 'whoever reads it');
 	pg_assert_false($open['has_more_pages'] || $open['is_replying'] || $open['is_watching'] || $open['not_watching'] || $open['can_manage_watchers'], 'one page, not replying, watching off');
 	pg_assert_true($open['comments_open'] && $open['can_comment'] && $open['is_signed_out'] && $open['has_comments'] && $open['name_is_typed'], 'open, signed out');
 	pg_assert_false($open['comments_closed'] || $open['must_sign_in'] || $open['is_signed_in'] || $open['no_comments'], 'open, signed out: the rest');
@@ -666,6 +668,26 @@ function test_comments_widget_link_values()
 	pg_assert_same(array('', '', '', ''), array($root['__comment_parent_id'], $root['__comment_parent_name'], $root['__comment_parent_url'], $root['__comment_quote']), 'no parent: no parent tokens');
 	pg_assert_same('0', $root['__comment_depth'], 'depth 0');
 	pg_assert_same('/t?reply_to=8#software_add_comment', $root['__comment_reply_url'], 'a reply link on a bare address');
+}
+
+// A thread's comment has the start of its own words too, and a node bound to
+// a token only a list of recent comments fills is left out of a thread.
+function test_comments_widget_excerpt_and_list_tokens()
+{
+	$row = array('id' => '4', 'message' => "Line one\n\nline   two", 'published' => '1');
+	$flags = pg_comments_widget_row_flags($row, false, comments_widget_test_state(array('rating_on' => false)));
+	$values = pg_comments_widget_row_values($row, $flags, array('is_staff' => false, 'sees_pending' => false, 'show_date' => false, 'label_lower' => 'comment', 'badge_label' => ''));
+	pg_assert_same('Line one line two', isset($values['__comment_excerpt']) ? $values['__comment_excerpt'] : null, 'the excerpt: folded, raw');
+
+	if (!function_exists('pg_comments_drop_mode_bindings')) {
+		pg_assert_true(false, 'pg_comments_drop_mode_bindings() exists');
+		return;
+	}
+
+	$tree = pg_comments_default_tree();
+	$tree['children'][0]['children'][] = array('type' => 'semantic', 'props' => array('tag' => 'span', 'customName' => 'list title', '_bindings' => array('text' => '__comment_thread_title')), 'children' => array());
+	pg_comments_drop_mode_bindings($tree, 'thread');
+	pg_assert_same(pg_comments_default_tree(), $tree, 'the list token is dropped, and nothing else');
 }
 
 function test_comments_widget_escape_carets_once()
@@ -1398,14 +1420,25 @@ function test_comments_widget_pagination_fragment()
 
 // -- the default layout in three places ----------------------------------------
 
-// The starter's case block in style_designer.js.
+// The starter's case block in style_designer.js: from its case line to the
+// next case of _buildStarterTree() or its default, so a case added after it
+// is never read as part of it.
 function comments_widget_test_starter_block()
 {
 	$js = comments_widget_test_source('assets/js/style_designer.js');
-	$start = strpos($js, "case 'comments': {");
-	$end = ($start === false) ? false : strpos($js, 'default: {', $start);
+	$start = strpos($js, "\n            case 'comments': {");
 
-	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start);
+	if ($start === false) {
+		return '';
+	}
+
+	$rest = substr($js, $start + 1);
+
+	if (!preg_match("/\n            (?:case '|default: \\{)/", $rest, $m, PREG_OFFSET_CAPTURE)) {
+		return '';
+	}
+
+	return substr($rest, 0, $m[0][1]);
 }
 
 // Each binding object of the starter, as sorted key:value pairs, and
@@ -1468,6 +1501,7 @@ function test_comments_widget_default_tree_matches_starter()
 {
 	$block = comments_widget_test_starter_block();
 	pg_assert_true($block !== '', 'the starter is found');
+	pg_assert_same(1, substr_count($block, "case '"), 'the block holds one case');
 
 	$js = comments_widget_test_js_bindings($block);
 	$php = array();
@@ -1939,7 +1973,7 @@ function test_comments_widget_canvas_twin_fades_by_place()
 
 	$js = comments_widget_test_source('assets/js/style_designer.js');
 	$code_js = '';
-	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_sdCommentsBindingOff') as $name) {
+	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
 		$body = comments_widget_test_js_function($js, $name);
 		pg_assert_true($body !== '', 'style_designer.js has ' . $name . '()');
 		$code_js .= $body . "\n";
