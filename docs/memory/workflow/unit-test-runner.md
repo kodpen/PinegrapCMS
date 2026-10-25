@@ -1,6 +1,6 @@
 ---
 name: unit-test-runner
-description: tools/test.php: what it loads, which errors fail a test (vendored deprecations pass), runs on other PHP versions, reading code behind a database probe, peak memory, editor JavaScript under Node
+description: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node
 ---
 
 ## What does tools/test.php load?
@@ -18,8 +18,9 @@ description: tools/test.php: what it loads, which errors fail a test (vendored d
 ## How does a test read data a function builds behind a database probe?
 - From its source, with `tests/helpers/source_reader.php` (not a test file; `require_once(__DIR__ . '/helpers/source_reader.php')`): `pg_test_function_source()`, `pg_test_source_array($function, '$var')` for an array literal (code such as `lang()` or a constant comes back as `PgTestSourceExpression`), `pg_test_ws_change_types()` for the Workspace change catalogue as written.
 
-## How does a test measure a function's peak memory?
-- In a PHP process of its own (`PHP_BINARY`, as `backup_restore_test_copy_alone()` in `tests/backup_restore_test.php` does), never with `memory_get_peak_usage()` in the runner: before PHP 8.2 (`memory_reset_peak_usage()`) that peak still holds what the test built and what earlier tests used. The archive copy test measured its own 22 MB dump twice over (44.4 MB) on PHP 7.1; the copy alone takes 2 MB.
+## How does a test run PHP in a process of its own?
+- `escapeshellarg(PHP_BINARY)` and a script file it wrote (`config_file_test_run()`), not `-r` with code holding `"`, `%` or `!`: on Windows `escapeshellarg()` makes those spaces and the code no longer parses (9 config tests failed there only, #1678).
+- Peak memory is measured that way too (`backup_restore_test_copy_alone()`), never with `memory_get_peak_usage()` in the runner: before PHP 8.2 that peak still holds earlier tests' data (44.4 MB read on 7.1 for a 2 MB copy).
 
 ## How does a test run editor JavaScript under Node?
 - It cuts functions out of the source (`style_designer.js`), appends its own steps that `console.log(JSON.stringify(...))`, runs the file with `node` and decodes the output. Skip (return) only when `node --version` fails; output that is not JSON must fail with the output shown, never be treated as a skip.

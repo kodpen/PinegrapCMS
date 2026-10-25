@@ -1,6 +1,6 @@
 ---
 name: openssl-key-generation
-description: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
+description: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section); Apple sign-in (read and sign) needs none.
 ---
 
 ## Why does key generation fail although openssl functions and curves exist?
@@ -12,6 +12,9 @@ description: Why openssl_pkey_new()/openssl_pkey_export() can fail without an Op
 - Try normally first; on failure retry once with `'config' => includes/openssl.cnf` (example: `includes/push.php` `pg_push_create_vapid_keys()`).
 - That file ships with the product; it holds nothing secret or site-specific.
 - **Do not write a providers section** into it: if a section is written, only the listed providers are loaded.
+
+## Does Apple sign-in need the file?
+- No: `includes/fn/signin.php` only reads the pasted .p8 key (`openssl_pkey_get_private()`) and signs with it, which works without one (Windows PHP 8.5.11, OpenSSL 3.5.8, no `openssl.cnf`). Only making a key and `openssl_pkey_export()` (pass it the same `config`) need it; the tests' `signin_test_pkey_new()` retries with the shipped file (#1678).
 
 ## Which paths do not follow it yet?
 - The DKIM pair in `smtp_settings.php` calls `openssl_pkey_new()` once, after it has already deleted the old `dkim.key` / `dkim.pub` files and records. On a server without a config file it removes the pair, writes nothing and shows no message.

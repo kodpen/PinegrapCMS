@@ -68,7 +68,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
-- openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
+- openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section); Apple sign-in (read and sign) needs none.
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
 - page-cache-decisions.md: Why Pinegrap has its own anonymous page cache and the lasting decisions behind it (PRs #1382, #1402): no CDN dependence, off by default, what is never cached, how to measure
 - page-cache-gate.md: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot

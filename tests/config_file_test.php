@@ -41,17 +41,22 @@ function config_file_test_values()
 // null for one it did not define) for each name in $constants, or a string
 // with what PHP said when the file did not run cleanly (a parse error, a
 // warning such as a constant defined twice).
+//
+// The code that includes the file and reports back is a script file of its
+// own, not a -r argument: on Windows escapeshellarg() turns every " in an
+// argument into a space, and the code would no longer parse.
 function config_file_test_run($content, $constants)
 {
 	$file = tempnam(sys_get_temp_dir(), 'pg_config_test_');
+	$runner = tempnam(sys_get_temp_dir(), 'pg_config_run_');
 
 	file_put_contents($file, $content);
 
-	$code = 'ob_start(); include $argv[1]; $output = ob_get_clean(); $values = array();'
+	file_put_contents($runner, '<?php ob_start(); include $argv[1]; $output = ob_get_clean(); $values = array();'
 		. ' foreach (array_slice($argv, 2) as $name) { $values[$name] = defined($name) ? constant($name) : null; }'
-		. ' echo json_encode(array("output" => $output, "values" => $values));';
+		. ' echo json_encode(array("output" => $output, "values" => $values));');
 
-	$command = escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 -r ' . escapeshellarg($code) . ' -- ' . escapeshellarg($file);
+	$command = escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($runner) . ' ' . escapeshellarg($file);
 
 	foreach ($constants as $name) {
 		$command .= ' ' . escapeshellarg($name);
@@ -60,6 +65,7 @@ function config_file_test_run($content, $constants)
 	$result = (string) shell_exec($command . ' 2>&1');
 
 	unlink($file);
+	unlink($runner);
 
 	$decoded = json_decode($result, true);
 
