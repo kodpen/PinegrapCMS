@@ -51310,6 +51310,143 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // ── Lists inside a record ────────────────────────────────────────────
+    // A loop_area with props.source is a list: rows its record holds (the
+    // values of a field, its comma-separated parts, its attachments), drawn
+    // inside the record by the site's finish pass
+    // (includes/fn/widgets_lists.php). The widget's main loop is its first
+    // loop_area without a source. The sources (arg, whether a list without
+    // it draws nothing, the kinds offering them, the row tokens) are
+    // pg_sw_list_sources() and pg_sw_kind_lists();
+    // tests/widget_lists_editor_test.php keeps them equal. No name here
+    // holds TOKEN: tools/check_bindings.php reads SW_*TOKEN* lists as
+    // palettes.
+    var SW_LIST_SOURCES = {
+        'form_record.values': {
+            label: _sdT('Values of a field'),
+            arg: 'field', argRequired: true,
+            kinds: ['form_list_view', 'form_item_view'],
+            rows: [
+                ['__value_text',  _sdT('Value')],
+                ['__value_param', _sdT('Value for an address')]
+            ]
+        },
+        'form_record.split': {
+            label: _sdT('Parts of a field, split at commas'),
+            arg: 'field', argRequired: true,
+            kinds: ['form_list_view', 'form_item_view'],
+            rows: [
+                ['__value_text',  _sdT('Value')],
+                ['__value_param', _sdT('Value for an address')]
+            ]
+        },
+        'form_record.files': {
+            label: _sdT('Attachments'),
+            arg: 'upload_field', argRequired: false,
+            kinds: ['form_list_view', 'form_item_view'],
+            rows: [
+                ['__file_name',  _sdT('File Name')],
+                ['__file_url',   _sdT('File address')],
+                ['__file_field', _sdT('Field')],
+                ['__file_ext',   _sdT('File type')]
+            ]
+        }
+    };
+
+    // The orders a list's rows take (props.order).
+    var SW_LIST_ORDERS = [
+        ['',        _sdT('As the record keeps them')],
+        ['reverse', _sdT('Last first')],
+        ['az',      _sdT('A to Z')],
+        ['za',      _sdT('Z to A')]
+    ];
+
+    // How deep lists nest: the site draws four levels of lists in lists.
+    var SW_LIST_MAX_DEPTH = 4;
+
+    // Whether `node` is a list (pg_sw_list_is_sourced()): a loop_area
+    // whose props.source is a non-empty string, a source the editor does
+    // not know too (it draws nothing, and it is never the main loop).
+    function _sdListIsSourced(node) {
+        return !!(node && node.type === 'loop_area' && node.props && typeof node.props.source === 'string' && node.props.source !== '');
+    }
+
+    // A list's settings as the site reads them (pg_sw_list_spec()): null
+    // without a source, false when the list cannot be drawn (an unknown
+    // source, no field where one is needed, a limit outside 0-100, an
+    // unknown order), else { source, arg, limit, order }.
+    function _sdListSpec(props) {
+        if (!props || typeof props.source !== 'string' || props.source === '') return null;
+        var source = props.source;
+        if (!/^[a-z_]+\.[a-z_]+$/.test(source) || !Object.prototype.hasOwnProperty.call(SW_LIST_SOURCES, source)) return false;
+        var raw = props.sourceArg;
+        var arg = (typeof raw === 'string' || typeof raw === 'number') ? String(raw).replace(/[^a-z0-9_\-]/gi, '') : '';
+        if (arg === '' && SW_LIST_SOURCES[source].argRequired) return false;
+        var limit = (props.limit === undefined || props.limit === null || props.limit === '') ? 0 : props.limit;
+        if (typeof limit === 'number') {
+            if (!isFinite(limit) || Math.floor(limit) !== limit) return false;
+        } else if (typeof limit === 'string' && /^\d{1,3}$/.test(limit)) {
+            limit = parseInt(limit, 10);
+        } else {
+            return false;
+        }
+        if (limit < 0 || limit > 100) return false;
+        var order = (props.order === undefined || props.order === null) ? '' : props.order;
+        if (typeof order !== 'string' || !SW_LIST_ORDERS.some(function (o) { return o[0] === order; })) return false;
+        return { source: source, arg: arg, limit: limit, order: order };
+    }
+
+    // The sources a widget kind offers, in their order (pg_sw_kind_lists()).
+    function _sdKindLists(kind) {
+        return Object.keys(SW_LIST_SOURCES).filter(function (s) { return SW_LIST_SOURCES[s].kinds.indexOf(kind) !== -1; });
+    }
+
+    // The lists `node` is drawn in, the nearest first: the loop_areas with
+    // a source above it, up to the widget's main loop or root. The node
+    // itself does not count.
+    function _sdListsAbove(node) {
+        var out = [];
+        var cur = node;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            var up = _sdAnyParent(cur);
+            if (!up || !up.parent) break;
+            var p = up.parent;
+            if (p.type === 'recipient_loop_area' || p.type === 'root') break;
+            if (p.type === 'loop_area') {
+                if (!_sdListIsSourced(p)) break;
+                out.push(p);
+            }
+            cur = p;
+        }
+        return out;
+    }
+
+    // The row tokens of the lists `node` is drawn in, as { token, label },
+    // the nearest list's first; a token a nearer list gives is that list's
+    // (the site fills it so) and is not offered twice.
+    function _sdListRowOptions(node) {
+        var out = [], seen = {};
+        _sdListsAbove(node).forEach(function (list) {
+            var src = SW_LIST_SOURCES[list.props.source];
+            (src ? src.rows : []).forEach(function (r) {
+                if (seen[r[0]]) return;
+                seen[r[0]] = true;
+                out.push({ token: r[0], label: r[1] });
+            });
+        });
+        return out;
+    }
+
+    // The label of a list row token, or '' for any other token.
+    function _sdListRowLabel(token) {
+        var keys = Object.keys(SW_LIST_SOURCES);
+        for (var i = 0; i < keys.length; i++) {
+            var rows = SW_LIST_SOURCES[keys[i]].rows;
+            for (var j = 0; j < rows.length; j++) if (rows[j][0] === token) return rows[j][1];
+        }
+        return '';
+    }
+
     // The token palette (groups of [token, label]) of a widget type whose
     // tokens are fixed. The two form views have none: their tokens are the
     // form's fields (_swBindTokenOptions()).
