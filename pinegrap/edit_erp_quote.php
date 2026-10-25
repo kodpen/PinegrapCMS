@@ -435,6 +435,14 @@ $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() 
     ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
+// Where it was talked about in the workspace, and the tasks about it.
+$output_workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $output_workspace_button = ws_record_button($user, 'erp_quote', (int) $quote_id, lang('Sales quote') . ' ' . (string) $quote['full_number']);
+}
+
 echo
 pg_page_shell([
     'title' => (string) $quote['full_number'],
@@ -461,6 +469,7 @@ pg_page_shell([
                 ' . $output_mail_button . '
                 ' . $output_copy_button . '
                 ' . $output_audit_button . '
+                ' . $output_workspace_button . '
                 <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
             </nav>
 
