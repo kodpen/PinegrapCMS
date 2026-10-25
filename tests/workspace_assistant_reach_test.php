@@ -177,3 +177,51 @@ function test_workspace_assistant_reach_claude_is_the_key()
 	pg_assert_contains('api_current_device() === null', workspace_assistant_reach_test_source('ws_api_is_claude'), 'no device session');
 	pg_assert_contains('if (!ws_api_is_claude())', workspace_assistant_reach_test_source('ws_api_claude_guard'), 'the queue asks the same');
 }
+
+// Claude's application reads where a record was talked about only in the
+// channels Claude may be asked in, as it reads everywhere else: a mention, a
+// task or a customer channel elsewhere is left out of GET /workspace/refs,
+// its MCP tool and the record refs resource alike.
+function test_workspace_assistant_reach_claude_record_refs()
+{
+	$refs = array(
+		'messages' => array(
+			array('id' => 1, 'channel_id' => 30, 'channel' => 'general', 'excerpt' => 'Order 5 shipped'),
+			array('id' => 2, 'channel_id' => 31, 'channel' => 'board', 'excerpt' => 'The customer wants a refund'),
+			array('id' => 3, 'channel_id' => 30, 'channel' => 'general', 'excerpt' => 'Asked again'),
+		),
+		'tasks' => array(
+			array('id' => 7, 'channel_id' => 30),
+			array('id' => 8, 'channel_id' => 31),
+			array('id' => 9, 'channel_id' => 0),
+		),
+		'channels' => array(
+			array('id' => 31, 'name' => 'board'),
+			array('id' => 30, 'name' => 'general'),
+		),
+		'count' => 6,
+	);
+
+	$kept = ws_api_refs_within($refs, function ($channel_id) {
+		return $channel_id === 30;
+	});
+
+	pg_assert_same(array('messages', 'tasks', 'channels'), array_keys($kept), 'the three lists the route answers');
+	pg_assert_same(array(1, 3), array_column($kept['messages'], 'id'), 'messages only from channels Claude may be asked in');
+	pg_assert_same(array(7, 9), array_column($kept['tasks'], 'id'), 'tasks only from those channels, and tasks in no channel');
+	pg_assert_same(array(30), array_column($kept['channels'], 'id'), 'customer channels only those');
+	pg_assert_same($refs['messages'][1], ws_api_refs_within($refs, function () {
+		return true;
+	})['messages'][1], 'everything where every channel is allowed');
+	pg_assert_same(array(9), array_column(ws_api_refs_within($refs, function () {
+		return false;
+	})['tasks'], 'id'), 'nothing in a channel where none is');
+
+	$source = workspace_assistant_reach_test_source('ws_api_refs_get');
+	$gate = strpos($source, 'if (ws_api_is_claude())');
+
+	pg_assert_true($gate !== false, 'only for Claude\'s application');
+	pg_assert_true(strpos($source, '$refs = ws_api_refs_within($refs,') > $gate, 'the refs are narrowed');
+	pg_assert_contains('ws_claude_channel_allowed($channel)', $source, 'to where Claude may be asked');
+	pg_assert_true(strpos($source, 'foreach ($refs[\'messages\']') > $gate, 'before anything is answered');
+}
