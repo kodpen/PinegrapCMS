@@ -17,7 +17,7 @@ description: Which comment a reply may answer (pg_comment_parent_ok()): same thr
 - Log, one `add_error()` sentence for every refusal (hidden reads as missing), `set_field('parent_id', array())` (a hidden field prints the session value first), redirect to `send_to#software_add_comment`. No `output_error()`: the typed text stays.
 
 ## What checks `?reply_to=`?
-- `pg_comment_reply_to($value, $page_id, $item_type, $item_id, $viewer)`: the parent's row or null, asked before a prefill and for a `parent_id` kept after a refusal. No caller yet ([[designable-comments]]).
+- `pg_comment_reply_to($value, $page_id, $item_type, $item_id, $viewer)`: the parent's row or null, asked before a prefill and for a `parent_id` kept after a refusal; the comments widget asks it ([[comments-widget-replies]]).
 - A reply to one's own pending comment is stored: a quote or parent name shown to others comes from rows they may see.
 
 ## What does the staff e-mail say?
@@ -36,11 +36,11 @@ description: Which comment a reply may answer (pg_comment_parent_ok()): same thr
 - `pg_comment_replies_ready()` (static `pg_schema_has()`) is false: no parent is read, a reply is refused as `missing`; INSERTs name the column only when ready; the API selects `0 AS parent_id`, `?parent_id=<id>` matches nothing.
 
 ## What does the classic block do with a reply?
-- Ignores `parent_id`: it shows as a later comment.
+- Ignores `parent_id`: a later comment.
 
 ## What is not handled yet?
 - A forged reply on a product or event thread passes the review gate like any comment; those threads come to the widget later.
 
 ## How was it checked?
 - `tests/comment_parent_test.php` (tables, no-db bridge, mail line, copy map, wiring, deletes), `tests/api_comments_test.php`. job.php mail, page copy: source and pure tests only.
-- Sandbox, MariaDB 10.11 (2026-10-24), anonymous on a page thread: replies to a published comment and to one's own pending one stored; to another's pending one, another page's, an unknown id, `12abc` refused, text kept. Staff reply to a pending one stored; both mails carried the line. API field, filter, parent delete, dropped column as above.
+- Sandbox, MariaDB 10.11 (2026-10-24), anonymous on a page thread: replies to a published and to one's own pending comment stored; to another's pending one, another page's, an unknown id, `12abc` refused, text kept. Staff reply to a pending one stored; both mails carried the line. API field, filter, parent delete, dropped column as above.
