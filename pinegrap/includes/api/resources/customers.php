@@ -98,9 +98,7 @@ function api_customer_owner_filter($owner) {
 
 	}
 
-	return "contacts.id IN (SELECT contacts_contact_groups_xref.contact_id FROM contacts_contact_groups_xref"
-		. " INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id"
-		. " WHERE users_contact_groups_xref.user_id = '" . (int)$owner['id'] . "')";
+	return pg_contact_owner_sql($owner['id'], 'contacts.id');
 
 }
 

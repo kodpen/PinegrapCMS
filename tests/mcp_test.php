@@ -122,6 +122,11 @@ function test_mcp_tool_from_route()
 	$create = pg_mcp_tool_from_route(array('id' => 'products.create', 'method' => 'POST', 'path' => '/products', 'scope' => 'products:write', 'params' => array()));
 
 	pg_assert_false($create['annotations']['destructiveHint'], 'a creation only adds');
+
+	$propose = pg_mcp_tool_from_route(array('id' => 'workspace.changes.propose', 'method' => 'POST', 'path' => '/workspace/channels/{id}/changes', 'scope' => 'workspace:write', 'params' => array()));
+
+	pg_assert_false($propose['annotations']['destructiveHint'], 'a proposal only adds a card the person applies');
+	pg_assert_false($propose['annotations']['readOnlyHint'], 'and is still a write');
 	pg_assert_same('{}', json_encode($create['inputSchema']['properties']), 'no parameters is an empty object, not a list');
 }
 
