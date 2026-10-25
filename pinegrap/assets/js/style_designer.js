@@ -11165,6 +11165,27 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // Where a node of the comments widget being drawn sits: inside its
+    // loop_area (the template of one comment), inside any form (inForm,
+    // bound or not, as pg_comments_drop_nested_forms() counts it), and the
+    // actions of the bound forms around it, the way _pg_comments_control_walk()
+    // and _pg_comments_row_walk() (widgets_comments.php) meet it.
+    function _sdCommentsPlace(node) {
+        var place = { inComment: false, inForm: false, forms: [] };
+        var root = _sysWidgetRenderTreeRoot;
+        var p = root ? findParent(node, root) : null;
+        while (p) {
+            if (p.type === 'loop_area') place.inComment = true;
+            var pb = (p.props && p.props._bindings) || {};
+            if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form') {
+                place.inForm = true;
+                if (pb.action) place.forms.push(pb.action);
+            }
+            p = findParent(p, root);
+        }
+        return place;
+    }
+
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
@@ -11174,6 +11195,16 @@ const StyleDesigner = (function () {
     // setting. A page with comments off prints no widget, so the whole
     // widget fades. The attachment box and the choose-a-name select have no
     // page field in the designer yet; they join this twin with those fields.
+    // The watch form, its buttons and the watcher list follow the watcher
+    // e-mail page; a reply control fades while the page takes no new
+    // comments; a control only a button (or only a link or a button) works
+    // as fades elsewhere, and so does the pagination while the widget shows
+    // every comment on one page. What the page leaves out for where it sits
+    // fades too (_sdCommentsPlace()): reply and share outside the comment
+    // (the loop_area), the thread's controls, small forms and sections
+    // inside it, a button that sends a small form outside that form, and
+    // the comment form, a small form or the watcher list inside any form,
+    // which the page drops before it binds anything.
     function _sdCommentsBindingOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return '';
         var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
@@ -11189,14 +11220,48 @@ const StyleDesigner = (function () {
         if (b.section === 'comment_rating_input' || b.eo_visible_if === 'rating_on') {
             return (_getCmtVal('pg_comments_rating') !== '1') ? PAGE : '';
         }
-        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on') {
+        var isButton = tag === 'button' || (node.type === 'component' && node.props && node.props.componentType === 'btn');
+        var isLink = tag === 'a' || (node.type === 'content' && node.props && node.props.contentType === 'link');
+        // Only a button sends the watch form and the staff's form.
+        if (['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'].indexOf(b.action) !== -1 && !isButton) {
+            return _sdT('Off — only a button sends this form');
+        }
+        // A form inside another form is broken markup the browser ends at
+        // the first </form>: pg_comments_drop_nested_forms() leaves out a
+        // bound form and the watcher list (which holds forms) below any form.
+        var nests = (tag === 'form' && ['comment_form', 'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1) ||
+            b.section === 'comment_watchers';
+        if (nests && _sdCommentsPlace(node).inForm) return _sdT('Off — a form cannot sit inside another form');
+        // Reply and share answer one comment; the thread's controls, small
+        // forms and sections have no place in one; a button sends only the
+        // form it is in.
+        var rowOnly = ['comment_reply', 'comment_share'].indexOf(b.action) !== -1;
+        var threadOnly = ['comment_reply_cancel', 'comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen',
+            'comment_watch_form', 'comment_allow_new_form'].indexOf(b.action) !== -1 ||
+            b.section === 'comment_watchers' || b.section === 'comment_pagination';
+        if (rowOnly || threadOnly) {
+            var place = _sdCommentsPlace(node);
+            var sends = (b.action === 'comment_watch' || b.action === 'comment_unwatch') ? 'comment_watch_form'
+                : ((b.action === 'comment_close' || b.action === 'comment_reopen') ? 'comment_allow_new_form' : '');
+            if (rowOnly && !place.inComment) return _sdT('Off — works only inside a comment');
+            if (threadOnly && place.inComment) return _sdT('Off — has no place inside a comment');
+            if (sends && place.forms.indexOf(sends) === -1) return _sdT('Off — works only inside its own form');
+        }
+        if (b.value === 'comment_watcher' || b.eo_visible_if === 'watching_on' ||
+            ['comment_watch_form', 'comment_watch', 'comment_unwatch'].indexOf(b.action) !== -1 || b.section === 'comment_watchers') {
             return ((parseInt(_getCmtVal('pg_comments_email_page'), 10) || 0) <= 0) ? PAGE : '';
         }
+        if (b.action === 'comment_reply' && _getCmtVal('pg_comments_allow_new') === '0') return PAGE;
         // Only a button sends the comment; the site leaves anything else
         // bound to the send action out.
-        if (b.action === 'comment_submit' && tag !== 'button' &&
-            !(node.type === 'component' && node.props && node.props.componentType === 'btn')) {
+        if (b.action === 'comment_submit' && !isButton) {
             return _sdT('Off — only a button sends the comment');
+        }
+        if (['comment_reply', 'comment_reply_cancel', 'comment_share'].indexOf(b.action) !== -1 && !isButton && !isLink) {
+            return _sdT('Off — only a link or a button');
+        }
+        if (b.section === 'comment_pagination' && !(parseInt(cfg.per_page, 10) > 0)) {
+            return _sdT('Off — the widget shows every comment on one page');
         }
 
         // A label follows its control.
@@ -11889,6 +11954,9 @@ const StyleDesigner = (function () {
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
                     // Search results and calendar widgets.
                     pagination:           _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    // Comments widget.
+                    comment_pagination:   _sdT('Pagination (filled by the backend — hidden on a single page)'),
+                    comment_watchers:     _sdT('Watcher list (filled by the backend — only for who may manage the watchers)'),
                     calendar_picker:      _sdT('Calendar and view picker (filled by the backend)'),
                     month_grid:           _sdT('Month grid (filled by the backend — the events of each day)'),
                     reserve_form:         _sdT('Reserve button (filled by the backend — hidden when reservations are closed)'),
@@ -14519,6 +14587,80 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    // System widgets whose output is a <form> or holds one. The renderer
+    // prints a <form> around the widget's whole tree for the custom form,
+    // the member and account widgets (_pg_member_form_wrap()), the login
+    // region's sign-in form, the express order's host form and the product
+    // page widget's add-to-cart form (catalog_item_view); some print
+    // it in one state only (signed in or out, before a reset is sent), and
+    // each counts as always printing it. Account security's blocks are forms
+    // of their own, and a tree with no block bound as one is wrapped whole.
+    var _SD_FORM_WIDGET_TYPES = ['custom_form', 'login_form', 'login_region', 'forgot_password', 'registration',
+                                 'membership', 'logout', 'change_password', 'set_password', 'account_profile',
+                                 'email_preferences', 'address_book', 'account_security', 'express_order',
+                                 'catalog_item_view'];
+
+    // Does the tree of system widget `sid` sit in a <form> the server prints
+    // around it, which is not a node there? Account security is left out:
+    // its forms are its blocks, nodes _sdInForm() finds by walking up, and
+    // its whole-tree form is only the fallback for a tree with no bound
+    // block; a form dropped there to be bound is the way back to blocks.
+    function _sdWidgetPrintsForm(sid) {
+        var cfg = sid ? _cfCfgOf(sid) : null;
+        return !!cfg && cfg.regionType !== 'account_security' && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1;
+    }
+
+    // Does the drag place a <form>: the dragged element, any element below
+    // it (a newsletter or login block), a <form> written in a node's own
+    // markup, or a shared component or widget that brings one (a widget of
+    // a kind in _SD_FORM_WIDGET_TYPES, or a component whose cached tree
+    // holds one)? A block's top-level type says nothing about it, so the
+    // tree is walked. A new system widget has no tree yet and counts by its
+    // kind. Kept on the payload like _sdDragCarriesControl().
+    function _sdDragCarriesForm(data) {
+        if (!data) return false;
+        if (typeof data._sdForm === 'boolean') return data._sdForm;
+        var root = _sdDragTree(data);
+        var seen = {};
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_semTag(n) === 'form' || /<form[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+                if (n.type === 'shared_ref') {
+                    var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                    if (!sid || seen[sid]) return false;
+                    seen[sid] = true;
+                    var cfg = _cfCfgOf(sid);
+                    if (cfg && _SD_FORM_WIDGET_TYPES.indexOf(cfg.regionType) !== -1) return true;
+                    var cached = _sharedCache[sid];
+                    return !!(cached && cached.tree) && walk(cached.tree);
+                }
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : (data.type === 'system_widget'
+                ? _SD_FORM_WIDGET_TYPES.indexOf(String((data.extra || {}).regionType || '')) !== -1
+                : _semTag({ type: data.type, props: data.extra || {} }) === 'form');
+        try { data._sdForm = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a <form>, or inside one at any depth? The tree of a
+    // system widget that prints a <form> around it (_sdWidgetPrintsForm())
+    // counts as one, its root too: that <form> is not a node there.
+    function _sdInForm(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'form') return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return _sdWidgetPrintsForm(_isInsideSystemWidget(target));
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -14592,6 +14734,13 @@ const StyleDesigner = (function () {
             if (voidTags.indexOf(target.props.tag.toLowerCase()) !== -1) return false;
         }
 
+        // No <form> inside a <form>, at any depth, also when the form comes
+        // inside a dragged block: the browser drops the inner <form> tag, so
+        // the block's fields would submit with the outer form. Asked before
+        // the root's free pass, as a custom form widget's tree root is the
+        // inside of a <form> the server prints.
+        if (_sdDragCarriesForm(data) && _sdInForm(target)) return false;
+
         // Drop onto root: the auto-wrapper takes over
         if (target.type === 'root') return true;
 
@@ -14649,8 +14798,6 @@ const StyleDesigner = (function () {
             return srcTag === 'td' || srcTag === 'th';
         }
 
-        // Rule 7: <form> cannot contain another <form>
-        if (tgtTag === 'form' && srcTag === 'form') return false;
         // ────────────────────────────────────────────────────────────────────
 
         // ── loop_area scope guard — can't escape its system widget ───────────
@@ -14824,73 +14971,10 @@ const StyleDesigner = (function () {
         // Track original dropped node before any auto-wrapping so selection stays on what the user dragged
         var _origDroppedNode = n;
 
-        // 1. a row/col dropped straight onto root has to be wrapped in a container — BUT:
-        //    a widget inner tree's root is type='root' as well. EXEMPT the widget root from
-        //    auto-wrapping: a widget is already a constrained area and elements are meant to
-        //    go straight into it ("widget > col > card" rather than "widget > container > col > card").
-        //    _resolveSharedSid(target) > 0 means target is the cached tree root of a
-        //    shared_component (system widgets and shared components alike).
-        var _targetIsSharedRoot = (target.type === 'root') && _resolveSharedSid(target) > 0;
-        if (target.type === 'root' && !_targetIsSharedRoot) {
-            if (t === 'col') {
-                // col → container > row > col (user's col goes directly into row, no extra col-12 wrapper)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
-                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
-                ]);
-            } else if (t === 'row') {
-                // row → container > row (user's row goes directly into container)
-                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
-            }
-            // Auto-wrap complex component explosions (pricing, hero, features, etc.) in a container
-            if (dragData.source === 'palette' && dragData.type === 'component' && n && n.type === 'semantic') {
-                var _noWrapCtypes = ['navbar',
-                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
-                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
-                                     'carousel', 'modal', 'offcanvas', 'dropdown',
-                                     'hero-centered', 'hero-split', 'hero-image-bg',
-                                     'cta-simple', 'cta-inline', 'cta-gradient',
-                                     'features-grid', 'features-alt', 'features-list',
-                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
-                                     'image-carousel', 'image-grid', 'image-masonry',
-                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
-                                     'stats-counter', 'stats-icons', 'stats-progress',
-                                     'team-grid', 'team-minimal', 'team-leadership',
-                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
-                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
-                                     'blog-grid', 'blog-featured', 'blog-list',
-                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
-                                     'compare-vs', 'compare-table', 'compare-side-by-side',
-                                     'contact-form', 'contact-info', 'contact-map',
-                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
-                                     'login-centered', 'login-split', 'login-minimal',
-                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
-                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
-                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
-                                     'breadcrumbs-with-header',
-                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
-                                     'steps-numbered', 'booking-cta', 'booking-split',
-                                     'hours-card', 'hours-location', 'locations-cards',
-                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
-                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
-                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
-                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
-                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
-                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
-                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
-                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                var _ct = (dragData.extra || {}).componentType || '';
-                if (_noWrapCtypes.indexOf(_ct) === -1) {
-                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
-                }
-            }
-        }
-
-        // 2. col → col: wrap the inner col in a new row
-        if (target.type === 'col' && (t === 'col' || n.type === 'col')) {
-            var wrapRow = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
-            autoBalanceCols(wrapRow);
-            n = wrapRow;
-        }
+        // 1. At the page root a col, a row or a palette block gets its
+        //    container; 2. a col dropped onto a col gets a row
+        //    (_sdWrapForParent(), shared with the palette insert).
+        n = _sdWrapForParent(target, n, dragData);
 
         // 3. container → container: reject
         if (target.type === 'container' && (t === 'container')) {
@@ -14898,7 +14982,7 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // 4. container → row: reddet
+        // 4. container → row: reject
         if (target.type === 'row' && (t === 'container')) {
             undoStack.pop();
             return;
@@ -21621,29 +21705,14 @@ const StyleDesigner = (function () {
             });
                     el.addEventListener('dblclick', function () {
                         var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                        var target = selectedNode || tree;
-                        if (!target) return;
                         // Carries the id, so canDrop() can refuse placing a component inside itself.
-                        var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                        if (!canDrop(_dbData, target)) {
-                            if (target.children && target.children.length) {
-                                for (var i = target.children.length - 1; i >= 0; i--) {
-                                    if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                                }
-                            }
-                            if (!canDrop(_dbData, target)) target = tree;
-                            if (!canDrop(_dbData, target)) return;
-                        }
+                        var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                        if (!spot) return;
                         saveState();
                         var n = createFromPalette('shared_ref', extra);
                         if (!n) return;
-                        if (!target.children) target.children = [];
-                        target.children.push(n);
-                        // Placed inside a shared component: that component is saved with the next save.
-                        var _dbOwner = _sdSharedOwnerOf(target);
-                        if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                        _sdInsertAt(spot, n);
                         selectedNode = n;
-                        expandAncestors(n, tree);
                         render();
                         // Safety-net: if tree not yet cached, fetch then re-render
                         var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
@@ -21884,18 +21953,12 @@ const StyleDesigner = (function () {
                 el.addEventListener('dblclick', function () {
                     var label = this.dataset.label || _sdT('System Widget');
                     var rtype = this.dataset.regionType || '';
-                    var target = selectedNode || tree;
-                    if (!target) return;
-                    if (!canDrop({ type: 'shared_ref' }, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                        if (!canDrop({ type: 'shared_ref' }, target)) return;
-                    }
-                    _createSystemWidgetNode({ label: label, regionType: rtype }, target, null);
+                    // The payload a drag of this item carries: the widget's
+                    // kind tells canDrop() whether it brings a <form>.
+                    var spot = _sdInsertSpot({ source: 'palette', type: 'system_widget', extra: { label: label, regionType: rtype } });
+                    if (!spot) return;
+                    _createSystemWidgetNode({ label: label, regionType: rtype }, spot.parent,
+                        spot.sibling ? { sibling: spot.sibling, after: spot.after } : null);
                 });
             });
 
@@ -21927,29 +21990,14 @@ const StyleDesigner = (function () {
             });
                 el.addEventListener('dblclick', function () {
                     var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                    var target = selectedNode || tree;
-                    if (!target) return;
                     // Carries the id, so canDrop() can refuse placing a component inside itself.
-                    var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                    if (!canDrop(_dbData, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop(_dbData, target)) target = tree;
-                        if (!canDrop(_dbData, target)) return;
-                    }
+                    var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                    if (!spot) return;
                     saveState();
                     var n = createFromPalette('shared_ref', extra);
                     if (!n) return;
-                    if (!target.children) target.children = [];
-                    target.children.push(n);
-                    // Placed inside a shared component: that component is saved with the next save.
-                    var _dbOwner = _sdSharedOwnerOf(target);
-                    if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                    _sdInsertAt(spot, n);
                     selectedNode = n;
-                    expandAncestors(n, tree);
                     render();
                     var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
                     if (_dbSid > 0 && (!_sharedCache[_dbSid] || !_sharedCache[_dbSid].tree)) {
@@ -35249,7 +35297,9 @@ const StyleDesigner = (function () {
             ['__comments_label_plural',   _sdT('Comment label, plural')],
             ['__comments_intro',          _sdT('Message above the form (the page\'s comment settings)')],
             ['__comments_closed_message', _sdT('Message while new comments are closed')],
-            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')]
+            ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
+            ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
+            ['__watcher_count_text',      _sdT('How many people are told of a new comment')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
@@ -35271,11 +35321,19 @@ const StyleDesigner = (function () {
             ['__comment_file_name',         _sdT('Attachment name')],
             ['__comment_file_size',         _sdT('Attachment size')],
             ['__comment_seller_reply_html', _sdT('Reply from the store (HTML)')],
-            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')]
+            ['__comment_seller_reply_date', _sdT('Date of the store\'s reply')],
+            ['__comment_parent_id',         _sdT('Number of the comment it answers')],
+            ['__comment_parent_name',       _sdT('Name on the comment it answers')],
+            ['__comment_quote',             _sdT('Quote of the comment it answers (start of its text)')],
+            ['__comment_depth',             _sdT('Depth in the thread (0 for a top-level comment)')],
+            ['__comment_reply_count',       _sdT('Number of replies')]
         ]},
         { label: _sdT('Comment links (href)'), tokens: [
             ['__comment_file_url',          _sdT('Attachment address')],
-            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')]
+            ['__comment_edit_url',          _sdT('Edit the comment (staff only)')],
+            ['__comment_url',               _sdT('Link to the comment (opens the page that holds it)')],
+            ['__comment_reply_url',         _sdT('Answer the comment (fills the form; empty when the visitor may not answer)')],
+            ['__comment_parent_url',        _sdT('Link to the comment it answers')]
         ]}
     ];
 
@@ -36307,6 +36365,11 @@ const StyleDesigner = (function () {
             ['rating_on',                _sdT('Star ratings are on for the page')],
             ['files_on',                 _sdT('Attachments are on for the page')],
             ['watching_on',              _sdT('Notices of new comments are on for the page')],
+            ['has_more_pages',           _sdT('The comments run over more than one page')],
+            ['is_replying',              _sdT('The form answers a comment ("Replying to")')],
+            ['is_watching',              _sdT('The visitor is told of new comments')],
+            ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
+            ['can_manage_watchers',      _sdT('The visitor may manage who is told of new comments')],
             ['comment_is_featured',      _sdT('Row: featured')],
             ['comment_is_pending',       _sdT('Row: not published yet')],
             ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],
@@ -36316,7 +36379,11 @@ const StyleDesigner = (function () {
             ['comment_has_badge',        _sdT('Row: the writer has a badge')],
             ['comment_is_verified',      _sdT('Row: from a verified purchase')],
             ['comment_has_seller_reply', _sdT('Row: the store replied')],
-            ['comment_can_edit',         _sdT('Row: the visitor may edit it')]
+            ['comment_can_edit',         _sdT('Row: the visitor may edit it')],
+            ['comment_is_root',          _sdT('Row: a top-level comment')],
+            ['comment_is_reply',         _sdT('Row: a reply drawn under the comment it answers')],
+            ['comment_has_quote',        _sdT('Row: quotes the comment it answers')],
+            ['comment_has_replies',      _sdT('Row: has replies')]
         ]
     };
 
@@ -36390,6 +36457,21 @@ const StyleDesigner = (function () {
             if (region === 'comments' && (isRealButton || cur.action === 'comment_submit')) {
                 aOpts.push(['comment_submit',      _sdT('Send the comment')]);
             }
+            // A link or a button answers, leaves or shares a comment (a link
+            // works without script too); only a button sends the watch form
+            // and the staff's open-or-close form.
+            if (region === 'comments') {
+                aOpts.push(['comment_reply',        _sdT('Answer the comment (loop_area)')]);
+                aOpts.push(['comment_reply_cancel', _sdT('Stop answering a comment')]);
+                aOpts.push(['comment_share',        _sdT('Share the comment (loop_area)')]);
+            }
+            var _cmtSends = ['comment_watch', 'comment_unwatch', 'comment_close', 'comment_reopen'];
+            if (region === 'comments' && (isRealButton || _cmtSends.indexOf(cur.action) !== -1)) {
+                aOpts.push(['comment_watch',   _sdT('Notify me of new comments (watch form)')]);
+                aOpts.push(['comment_unwatch', _sdT('Stop notifying me (watch form)')]);
+                aOpts.push(['comment_close',   _sdT('Stop new comments (staff form)')]);
+                aOpts.push(['comment_reopen',  _sdT('Allow new comments again (staff form)')]);
+            }
             if (region === 'account_security') {
                 aOpts.push(['unlink_google',           _sdT('Disconnect Google')]);
                 aOpts.push(['unlink_microsoft',        _sdT('Disconnect Microsoft')]);
@@ -36413,7 +36495,11 @@ const StyleDesigner = (function () {
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
             else if (region === 'account_security') fOpts.push(['account_security_form', _sdT('Account security form')]);
-            else if (region === 'comments')        fOpts.push(['comment_form', _sdT('Add-comment form')]);
+            else if (region === 'comments') {
+                fOpts.push(['comment_form',           _sdT('Add-comment form')]);
+                fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
+                fOpts.push(['comment_allow_new_form', _sdT('Open-or-close form (staff only)')]);
+            }
             out += mkSelect('data-bind-action', cur.action || '', fOpts, _sdT('Form action'),
                 _sdT('The backend adds the right action / method values and the hidden fields.'));
         }
@@ -38511,6 +38597,8 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
                 _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
                 _sectionOpts.push(['comment_publish',      _sdT('Publish options (staff only)')]);
+                _sectionOpts.push(['comment_watchers',     _sdT('Watcher list (who may manage the watchers only)')]);
+                _sectionOpts.push(['comment_pagination',   _sdT('Pagination (hidden on a single page)')]);
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
@@ -39060,6 +39148,172 @@ const StyleDesigner = (function () {
             if (owner) return owner;
         }
         return { parent: tree, sid: 0 };
+    }
+
+    // Where a palette item added without a drag (a double-click, the command
+    // palette) goes, for the drop payload `payload`: { parent, sibling,
+    // after, sid } — the insertCtx shape _swInsertRef() takes — or null when
+    // nothing on the way takes it. Into the selection when it holds the
+    // item; else into the last of its children that does (a row's column),
+    // unless the selection takes inline content only (a button, a link, a
+    // select, a heading, a paragraph): a span or an option in it would take
+    // a block canDrop() lets through there; else right after the selection,
+    // in the nearest ancestor that takes it, in the page tree or in the
+    // shared tree the selection lives in; else at the end of the page. `sid`
+    // is the shared component whose tree gets the item (0 for the page). A
+    // component or widget (a shared_ref payload) never goes into a system
+    // widget's own tree, where a loop row would print it once per record: it
+    // goes beside the widget's placement on the open page
+    // (_sdPlacementOnPage()).
+    // A place counts only when the operator may edit it, as handleDrop()
+    // asks _sdMayEdit() of its target: an editable place on the way is taken
+    // first, and when there is none, they are told why (outside their area,
+    // another person holding the page) and nothing is added.
+    function _sdInsertSpot(payload) {
+        if (!tree) return null;
+        var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
+        if (payload && (payload.type === 'shared_ref' || payload.type === 'system_widget')) {
+            var seen = {};
+            for (var wsid = _isInsideSystemWidget(sel); wsid && !seen[wsid]; wsid = _isInsideSystemWidget(sel)) {
+                seen[wsid] = true;
+                sel = _sdPlacementOnPage(wsid) || tree;
+            }
+        }
+        var kids = (_isInteractiveNode(sel) || _sdIsTextSink(sel)) ? [] : (sel.children || []);
+        function find(takes) {
+            if (takes(sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (takes(kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+            }
+            var child = sel;
+            for (var guard = 0; guard < 500; guard++) {
+                var up = _sdAnyParent(child);
+                if (!up || !up.parent) break;
+                if (takes(up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
+                child = up.parent;
+            }
+            return (sel !== tree && takes(tree)) ? { parent: tree, sid: 0 } : null;
+        }
+        var spot = find(function (n) { return canDrop(payload, n) && _sdCanEditNode(n); });
+        if (spot) return spot;
+        var refused = find(function (n) { return canDrop(payload, n); });
+        return (refused && _sdMayEdit(refused.parent)) ? refused : null;
+    }
+
+    // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
+    // last in the parent, wrapped as a drop of `payload` there would be
+    // (_sdWrapForParent()); a column that joins a row rebalances the row's
+    // columns, as after a drop. A shared tree that gets it is saved with the
+    // next save, and the overview opens down to it.
+    function _sdInsertAt(spot, node, payload) {
+        if (!spot.parent.children) spot.parent.children = [];
+        var kids = spot.parent.children;
+        var put = _sdWrapForParent(spot.parent, node, payload);
+        var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
+        if (at === -1) kids.push(put);
+        else kids.splice(spot.after ? at + 1 : at, 0, put);
+        if (spot.parent.type === 'row' && put.type === 'col') autoBalanceCols(spot.parent);
+        if (spot.sid) _sharedDirty[spot.sid] = true;
+        expandAncestorsAnywhere(node);
+        return node;
+    }
+
+    // What goes into `parent` when `node` is placed there by a drop or an
+    // insert of `payload` (the drag payload; without one the node's own
+    // type counts): the Bootstrap structure rules both follow. At the page
+    // root a column comes in a new container > row, a row in a new
+    // container, and a ready-made block from the palette in a boxed
+    // container unless it is a full-width section. A shared component's
+    // tree root is left out: a widget is already a bounded area, so
+    // elements go straight into it. A column into a column comes in a new
+    // row there. Returns `node` itself when nothing wraps it.
+    function _sdWrapForParent(parent, node, payload) {
+        var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
+        var t = payload ? (map[payload.type] || payload.type) : node.type;
+        var n = node;
+        if (parent.type === 'root' && !(_sdSharedOwnerOf(parent) > 0)) {
+            if (t === 'col') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [
+                    createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n])
+                ]);
+            } else if (t === 'row') {
+                n = createNode('container', { fluid: true, cssClass: 'my-3' }, [n]);
+            }
+            if (payload && payload.source === 'palette' && payload.type === 'component' && n.type === 'semantic') {
+                var _noWrapCtypes = ['navbar',
+                                     'navbar-light-cta', 'navbar-search', 'navbar-dark-center',
+                                     'footer-minimal', 'footer-multi-col', 'footer-newsletter',
+                                     'carousel', 'modal', 'offcanvas', 'dropdown',
+                                     'hero-centered', 'hero-split', 'hero-image-bg',
+                                     'cta-simple', 'cta-inline', 'cta-gradient',
+                                     'features-grid', 'features-alt', 'features-list',
+                                     'testimonial-single', 'testimonial-grid', 'testimonial-carousel',
+                                     'image-carousel', 'image-grid', 'image-masonry',
+                                     'pricing-tiers', 'pricing-comparison', 'pricing-toggle',
+                                     'stats-counter', 'stats-icons', 'stats-progress',
+                                     'team-grid', 'team-minimal', 'team-leadership',
+                                     'faq-accordion', 'faq-categorized', 'faq-twocol',
+                                     'timeline-vertical', 'timeline-alternating', 'timeline-horizontal',
+                                     'blog-grid', 'blog-featured', 'blog-list',
+                                     'logos-grid', 'logos-divider', 'logos-marquee-static',
+                                     'compare-vs', 'compare-table', 'compare-side-by-side',
+                                     'contact-form', 'contact-info', 'contact-map',
+                                     'newsletter-inline', 'newsletter-split', 'newsletter-card',
+                                     'login-centered', 'login-split', 'login-minimal',
+                                     'footer-columns', 'footer-minimal-2', 'footer-newsletter-2',
+                                     'navbar-mega', 'navbar-double', 'navbar-centered-logo',
+                                     'error-404-simple', 'error-404-illustration', 'error-404-search',
+                                     'breadcrumbs-with-header',
+                                     'services-icon-cards', 'services-image-cards', 'services-price-list',
+                                     'steps-numbered', 'booking-cta', 'booking-split',
+                                     'hours-card', 'hours-location', 'locations-cards',
+                                     'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
+                                     'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
+                                     'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
+                                     'events-cards', 'notice-promo', 'legal-accessibility-statement'];
+                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                    n = createNode('container', { fluid: false, cssClass: '' }, [n]);
+                }
+            }
+        }
+        if (parent.type === 'col' && (t === 'col' || n.type === 'col')) {
+            n = createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [n]);
+            autoBalanceCols(n);
+        }
+        return n;
+    }
+
+    // The placement of shared component `sid` that the open page shows: a
+    // shared_ref on the page tree itself first, else the first one inside a
+    // component placed on this page (a widget in the header). Cached trees
+    // of components that only other pages show are not looked at, so an
+    // insert never lands in another page's header. Null when the page does
+    // not show `sid`.
+    function _sdPlacementOnPage(sid) {
+        var direct = null, nested = null, seen = {};
+        (function walk(n, inShared) {
+            if (!n || direct) return;
+            if (n.type === 'shared_ref') {
+                var s = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (s === sid) {
+                    if (!inShared) direct = n;
+                    else if (!nested) nested = n;
+                    return;
+                }
+                var c = _sharedCache[s];
+                if (s && !seen[s] && c && c.tree) {
+                    seen[s] = true;
+                    walk(c.tree, true);
+                }
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(function (k) { walk(k, inShared); });
+        })(tree, false);
+        return direct || nested;
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -48223,8 +48477,9 @@ const StyleDesigner = (function () {
             if (cfg.hide_current === undefined) cfg.hide_current = false;
         } else if (newType === 'comments') {
             // The display options, with the defaults of the PHP twin
-            // pg_comments_widget_options(). layout, max_depth and per_page
-            // are kept for the thread's later shapes.
+            // pg_comments_widget_options(): the order, the featured mode,
+            // flat or threaded replies with their depth cap, and how many
+            // top-level comments a page holds (0 = all).
             if (cfg.order === undefined) cfg.order = 'oldest';
             if (cfg.featured === undefined) cfg.featured = 'first';
             if (cfg.layout === undefined) cfg.layout = 'flat';
@@ -48653,8 +48908,8 @@ const StyleDesigner = (function () {
         'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
         'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
         'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
-        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
-        'token', 'password', 'add_watcher', 'connect_to_contact'
+        'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
+        'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
@@ -52619,46 +52874,65 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('semantic', { tag: 'div', customName: _sdT('Comment List') }, [
                             createNode('loop_area', {}, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card mb-3', customName: _sdT('Comment') }, [
-                                    createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
-                                            customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                            _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
-                                            createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
-                                                _bindings: { text: '__comment_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
-                                                _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
-                                                _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
-                                                _bindings: { eo_visible_if: 'comment_is_verified' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
-                                                _bindings: { eo_visible_if: 'comment_is_featured' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
-                                            _bindings: { text: '__comment_date' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
-                                            _bindings: { text: '__comment_message_html' } }),
-                                        createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
-                                            _bindings: { eo_visible_if: 'comment_has_file' } }, [
-                                            createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
-                                                _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
-                                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
-                                                _bindings: { text: '__comment_file_size' } })
-                                        ]),
-                                        createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
-                                            _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
-                                            createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
-                                                _bindings: { text: '__comment_seller_reply_date' } }),
-                                            createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
-                                                _bindings: { text: '__comment_seller_reply_html' } })
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex mb-3', customName: _sdT('Comment') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0 border-start border-2 ms-2 me-3', customName: _sdT('Reply Indent'),
+                                        _bindings: { eo_visible_if: 'comment_is_reply' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card flex-grow-1', customName: _sdT('Comment Card') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Comment Body') }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
+                                                customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
+                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
+                                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
+                                                    _bindings: { text: '__comment_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'small text-body-secondary', text: 'jane',
+                                                    _bindings: { text: '__comment_staff_name', eo_visible_if: 'is_staff' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-secondary', text: _sdT('Badge'),
+                                                    _bindings: { text: '__comment_badge', eo_visible_if: 'comment_has_badge' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-success', text: _sdT('Verified purchase'),
+                                                    _bindings: { eo_visible_if: 'comment_is_verified' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'badge rounded-pill text-bg-primary', text: _sdT('Featured'),
+                                                    _bindings: { eo_visible_if: 'comment_is_featured' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty', text: _sdT('2 days ago'),
+                                                _bindings: { text: '__comment_date' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 my-2 small text-body-secondary', customName: _sdT('Quote'),
+                                                _bindings: { eo_visible_if: 'comment_has_quote' } }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Jane Cooper'), href: '#', cssClass: 'fw-semibold link-secondary',
+                                                    _bindings: { href: '__comment_parent_url', text: '__comment_parent_name' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', text: _sdT('Quoted text'),
+                                                    _bindings: { text: '__comment_quote' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
+                                                _bindings: { text: '__comment_message_html' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
+                                                _bindings: { eo_visible_if: 'comment_has_file' } }, [
+                                                createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',
+                                                    _bindings: { href: '__comment_file_url', text: '__comment_file_name' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: '12 KB',
+                                                    _bindings: { text: '__comment_file_size' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'border-start border-3 ps-3 mt-3', customName: _sdT('Store Reply'),
+                                                _bindings: { eo_visible_if: 'comment_has_seller_reply' } }, [
+                                                createNode('semantic', { tag: 'div', cssClass: 'small fw-semibold', text: _sdT('Reply from the store') }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary pg-hide-if-empty',
+                                                    _bindings: { text: '__comment_seller_reply_date' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'mt-1', text: _sdT('Reply text'),
+                                                    _bindings: { text: '__comment_seller_reply_html' } })
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-3 mt-3 small', customName: _sdT('Comment Actions') }, [
+                                                createNode('content', { contentType: 'link', text: _sdT('Reply'), href: '#', cssClass: 'btn btn-link btn-sm p-0',
+                                                    _bindings: { action: 'comment_reply' } }),
+                                                createNode('content', { contentType: 'link', text: _sdT('Share'), href: '#', cssClass: 'btn btn-link btn-sm p-0 link-secondary',
+                                                    _bindings: { action: 'comment_share' } })
+                                            ])
                                         ])
                                     ])
                                 ])
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Pagination'),
+                                _bindings: { section: 'comment_pagination' } })
                         ]),
                         createNode('content', { contentType: 'paragraph', text: _sdT('No comments yet.'), cssClass: 'text-body-secondary',
                             _bindings: { eo_visible_if: 'no_comments' } }),
@@ -52678,6 +52952,13 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
                                 _bindings: { action: 'comment_form', eo_visible_if: 'can_comment' } }, [
                                 createNode('content', { contentType: 'messages', cssClass: '' }),
+                                createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small', customName: _sdT('Replying To'),
+                                    _bindings: { eo_visible_if: 'is_replying' } }, [
+                                    createNode('semantic', { tag: 'span', text: _sdT('Replying to') }),
+                                    createNode('semantic', { tag: 'strong', _bindings: { text: '__reply_to_name' } }),
+                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto',
+                                        _bindings: { action: 'comment_reply_cancel' } })
+                                ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [
                                     createNode('semantic', { tag: 'label', cssClass: 'form-label visually-hidden', text: _sdT('Comment'),
                                         _attrs: [{ name: 'for', value: 'comment_message' }] }),
@@ -52722,6 +53003,28 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add comment'),
                                         _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_submit' } })
                                 ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', customName: _sdT('Watch'),
+                            _bindings: { eo_visible_if: 'watching_on' } }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'pg-hide-if-empty', _bindings: { text: '__watcher_count_text' } }),
+                            createNode('semantic', { tag: 'form', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Watch Form'),
+                                _bindings: { action: 'comment_watch_form' } }, [
+                                createNode('content', { contentType: 'messages', cssClass: 'w-100' }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Notify me of new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_watch' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop notifying me'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_unwatch' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', customName: _sdT('Watchers'), _bindings: { section: 'comment_watchers' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-end mt-3', customName: _sdT('Staff Controls'),
+                            _bindings: { eo_visible_if: 'is_staff' } }, [
+                            createNode('semantic', { tag: 'form', customName: _sdT('Open or Close'), _bindings: { action: 'comment_allow_new_form' } }, [
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Stop new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_close' } }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Allow new comments'),
+                                    _attrs: [{ name: 'type', value: 'submit' }], _bindings: { action: 'comment_reopen' } })
                             ])
                         ])
                     ])
@@ -60284,22 +60587,16 @@ const StyleDesigner = (function () {
     }
 
     function _paletteInsert(type, extra) {
-        var target = selectedNode || tree;
-        if (!target) return;
         // The same payload a palette drag carries, so the drop rules see
         // what the item holds (_sdDragTree()), not its type alone.
         var _pd = { source: 'palette', type: type, extra: extra || {} };
-        if (!canDrop(_pd, target)) {
-            target = tree;
-            if (!canDrop(_pd, target)) return;
-        }
+        var spot = _sdInsertSpot(_pd);
+        if (!spot) return;
         saveState();
         var n = createFromPalette(type, extra || {});
         if (!n) return;
-        if (!target.children) target.children = [];
-        target.children.push(n);
+        _sdInsertAt(spot, n, _pd);
         selectedNode = n;
-        expandAncestors(n, tree);
         render();
         _trackRecentComp(type, extra || {});
         var _cl = document.getElementById('sd-comp-list');
@@ -61627,31 +61924,17 @@ const StyleDesigner = (function () {
                 var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                 var hintLabel = this.dataset.label || '';
                 var hintIcon  = this.dataset.icon || '';
-                var target = selectedNode || tree;
-                if (!target) return;
                 // The same payload a palette drag carries (see _paletteInsert()).
                 var _pd = { source: 'palette', type: type, extra: extra };
-                if (!canDrop(_pd, target)) {
-                    if (target.children && target.children.length) {
-                        for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
-                        }
-                    }
-                    if (!canDrop(_pd, target)) target = tree;
-                    if (!canDrop(_pd, target)) return;
-                }
+                var spot = _sdInsertSpot(_pd);
+                if (!spot) return;
                 saveState();
                 var n = createFromPalette(type, extra);
                 if (!n) return;
-                if (!target.children) target.children = [];
-                target.children.push(n);
+                _sdInsertAt(spot, n, _pd);
                 selectedNode = n;
-                expandAncestors(n, tree);
-                // Inserted into a widget's own tree: that tree has to be
-                // flushed, and — same rule as a drop — a control that lands
-                // inside a custom form widget is a field of it.
-                var _dcOwner = (typeof _sdAnyParent === 'function') ? _sdAnyParent(n) : null;
-                if (_dcOwner && _dcOwner.sid) _sharedDirty[_dcOwner.sid] = true;
+                // Same rule as a drop: a control that lands inside a custom
+                // form widget is a field of it.
                 if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(n);
                 render();
                 _trackRecentComp(type, extra, hintLabel, hintIcon);
