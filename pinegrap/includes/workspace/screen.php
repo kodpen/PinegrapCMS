@@ -745,7 +745,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'edit_user' => $base . 'edit_user.php',
             // The quote editor's copy (?copy=<id>), for whoever may write
             // ERP documents: the accountant's read-only right saves none.
-            'erp_quote_copy' => (!empty($viewer['erp']) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? $base . 'add_erp_quote.php' : '',
+            'erp_quote_copy' => (!empty($viewer['erp']) && empty($viewer['erp_readonly'])) ? $base . 'add_erp_quote.php' : '',
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its

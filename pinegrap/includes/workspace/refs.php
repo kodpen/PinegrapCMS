@@ -53,6 +53,13 @@ function ws_viewer($user)
 
     $viewer['erp_cash'] = $viewer['erp'] && ($staff || $yes($user['manage_erp_cash'] ?? false));
 
+    // The accountant's right (manage_erp_readonly), as USER_ERP_READONLY:
+    // every ERP record to read, none to change. It sits on the ERP right of
+    // the user role; roles 0-2 hold the ERP by their role and never this.
+    // Tags and summaries read with 'erp'; every change to ERP data refuses
+    // it (ws_change_erp_readonly_refusal()).
+    $viewer['erp_readonly'] = !$staff && $yes($user['manage_erp'] ?? false) && $yes($user['manage_erp_readonly'] ?? false);
+
     $viewer['forms'] = $staff || $yes($user['manage_forms'] ?? false);
 
     $viewer['calendars'] = $staff || $yes($user['manage_calendars'] ?? false);

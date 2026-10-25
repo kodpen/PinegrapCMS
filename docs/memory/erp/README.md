@@ -122,7 +122,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
 - erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.
-- erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, the read/accountant/write areas, USER_ERP_READONLY, and the writers outside ERP screens.
+- erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, its areas, USER_ERP_READONLY, the writers outside ERP screens, the Workspace's erp_readonly.
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132), and the bank statement suggestion offers only invoices (PR #1228).
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.

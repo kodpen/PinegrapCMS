@@ -210,7 +210,9 @@ function ws_quick_edit_check($viewer, $type, $id)
     }
 
     if (!ws_change_allowed($viewer, $type, (int) $id)) {
-        return $fail(lang('You may not change this record.'), 'rights');
+        $readonly = ws_change_erp_readonly_refusal($viewer, $type);
+
+        return $fail(($readonly !== '') ? $readonly : lang('You may not change this record.'), 'rights');
     }
 
     $record = ws_change_record($type, (int) $id);
