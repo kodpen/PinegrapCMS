@@ -795,7 +795,7 @@ function test_comments_widget_email_draws_comment_twin()
 		$trees[$name] = $case[0];
 	}
 
-	$res = comments_widget_designer_test_node(array('_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment'),
+	$res = comments_widget_designer_test_node(array('_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment', '_sdListIsSourced'),
 		'var trees = ' . json_encode($trees) . ";\nvar flags = " . json_encode($data['thread_flags']) . ";\nvar out = {};\n"
 		. "Object.keys(trees).forEach(function (k) { out[k] = _sdCommentsEmailDrawsComment(trees[k], flags); });\n"
 		. "process.stdout.write(JSON.stringify(out));\n");
