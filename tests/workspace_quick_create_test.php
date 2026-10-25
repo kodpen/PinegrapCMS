@@ -58,6 +58,25 @@ function workspace_quick_create_test_body($source, $function)
 	return substr($source, $start, ($end === false) ? strlen($source) : $end - $start);
 }
 
+// The body of one method of an object literal in workspace.js (eight spaces
+// in), up to the next method; or of a plain function, up to the next one.
+function workspace_quick_create_test_js($source, $name)
+{
+	foreach (array("\n        " . $name . ': function (' => '/\n        [A-Za-z]+: function \(/', "\n    function " . $name . '(' => '/\n    function [A-Za-z]+\(/') as $head => $next) {
+		$start = strpos($source, $head);
+
+		if ($start === false) {
+			continue;
+		}
+
+		$end = preg_match($next, $source, $match, PREG_OFFSET_CAPTURE, $start + 1) ? $match[0][1] : strlen($source);
+
+		return substr($source, $start, $end - $start);
+	}
+
+	return '';
+}
+
 // A person makes the catalogue's two kinds: products and product groups.
 function test_workspace_quick_create_types()
 {
@@ -223,6 +242,43 @@ function test_workspace_quick_create_palette_words()
 	pg_assert_false(ws_palette_create_matches('kupa', $product), 'another word');
 	pg_assert_false(ws_palette_create_matches('', $product), 'nothing typed');
 	pg_assert_false(ws_palette_create_matches('n', $product), 'one letter');
+}
+
+// The create lines come after every result: the palette makes its first
+// row active, so Enter on "ürün" or "product" still opens the first record,
+// channel or message found, and a create is chosen by arrow or click (or is
+// first when nothing else is found).
+function test_workspace_quick_create_palette_line_after_the_results()
+{
+	$search = workspace_quick_create_test_body((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/palette.php'), 'ws_palette_search');
+	$results = strpos($search, 'foreach ($types as $key) {');
+	$creates = strpos($search, 'ws_palette_creates($viewer, $query)');
+
+	pg_assert_true($results !== false, 'the search asks every group');
+	pg_assert_true($creates !== false, 'and offers the create lines');
+	pg_assert_true($creates > $results, 'the create lines are added after the result groups');
+}
+
+// A card writes only what it showed: the /product card's Create and the
+// /price card's Save send the text the card was drawn from, not what the box
+// holds when they are clicked, as the /task card does; "All fields" keeps the
+// decision in the composer's own channel (a discussion beside a channel) as
+// the card's Create does, not in the channel of the main view.
+function test_workspace_quick_create_card_writes_what_it_showed()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$card = workspace_quick_create_test_js($js, 'drawCreatePreview');
+	$price = workspace_quick_create_test_js($js, 'drawRecordPreview');
+	$task = workspace_quick_create_test_js($js, 'drawPreview');
+	$form = workspace_quick_create_test_js($js, 'quickCreateSection');
+
+	pg_assert_contains('body: pending.body', $task, 'the /task card sends the previewed text');
+	pg_assert_contains('var drawn = self.pending.body;', $card, 'the /product card keeps the text it was drawn from');
+	pg_assert_contains('self.send({ confirm: 1, body: drawn, decision: ', $card, 'and its Create sends that text');
+	pg_assert_contains('var drawn = self.pending.body;', $price, 'the /price card keeps the text it was drawn from');
+	pg_assert_contains('self.send({ confirm: 1, body: drawn, from: command.from, ', $price, 'and its Save sends that text');
+	pg_assert_contains('channelId: self.channel.id,', $card, '"All fields" names the composer\'s channel');
+	pg_assert_contains('var channelId = (options.channelId > 0) ? options.channelId', $form, 'and the new mode keeps the decision there');
 }
 
 // The drawer's new mode, the palette's entry and the /product card.

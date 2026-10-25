@@ -17,11 +17,11 @@ description: A product or group made by a person in the Workspace (ws_quick_crea
 
 ## How does /product read its text?
 - `ws_command_parse_product()`: the first `<#product_group:N>` anywhere, a price as the last word (`149,90`, `149,90 TL`), the rest the name; one word is always the name. `ws_command_product_fields()` writes the name as short description too. Another tag left in the name is refused.
-- Answer `create_preview`, checked by `ws_quick_create_input()`: rows, "On sale" tick (off), decision tick (on), Create, "All fields" (the new mode filled; a create there clears the line), Cancel. Enter draws it again; only Create writes (`confirm`, `on_sale`, `decision`).
+- Answer `create_preview`, checked by `ws_quick_create_input()`: rows, "On sale" tick (off), decision tick (on), Create, "All fields" (the new mode filled, its decision in the card's own channel, a discussion too: `options.channelId`; a create there clears the line), Cancel. Enter draws it again; only Create writes (`confirm`, `on_sale`, `decision`) with `body`, the text the card was drawn from: an edited box made a product nobody saw.
 - Names: `ws_command_create_names()`, read with `ws_command_names()` (kept as it was, as the plan asked) through `ws_command_table()`. Registry key `product`, offered with the product right.
 
 ## What is the palette line?
-- `ws_palette_creates()`, only in the search of everything (no kind, no channel): every word typed starts a word of "New product create yeni ürün oluştur" (`ws_palette_create_matches()`, folded). Group `create` comes first; the API search names its kinds and never gets it. Chosen: `PGWsKit.openCreate()`.
+- `ws_palette_creates()`, only in the search of everything (no kind, no channel): every word typed starts a word of "New product create yeni ürün oluştur" (`ws_palette_create_matches()`, folded). Group `create` comes after every result: row 0 is active, so Enter on "ürün" opens the first record found, not an empty drawer. The API search names its kinds and never gets it. Chosen: `PGWsKit.openCreate()`.
 
 ## Tests and checks?
 - tests/workspace_quick_create_test.php, workspace_commands_test.php (/product), workspace_audit_test.php (the create call). No running instance: the writes, the decision and the drawer were not tried live.

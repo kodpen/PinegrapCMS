@@ -748,17 +748,6 @@ function ws_palette_search($viewer, $q, $options = array())
         return $out;
     }
 
-    // A new product or product group, first: only in the search of
-    // everything everywhere (the API asks for its kinds by name and never
-    // gets it).
-    if (empty($options['types']) && ($channel_id === 0)) {
-        $creates = ws_palette_creates($viewer, $query);
-
-        if (!empty($creates)) {
-            $out['groups'][] = array('key' => 'create', 'title' => lang('Create'), 'icon' => 'bi-plus-lg', 'items' => $creates);
-        }
-    }
-
     $types = array_values(array_intersect(array_keys($known), array_map('strval', (array) ($options['types'] ?? array()))));
 
     if (empty($types)) {
@@ -829,6 +818,19 @@ function ws_palette_search($viewer, $q, $options = array())
 
         if (!empty($items)) {
             $out['groups'][] = array('key' => $key) + $known[$key] + array('items' => $items);
+        }
+    }
+
+    // A new product or product group, after every result: the search box
+    // makes its first row active, so Enter keeps opening the first thing
+    // found and a create is chosen by arrow or click (first only when
+    // nothing else is found). Only in the search of everything everywhere
+    // (the API asks for its kinds by name and never gets it).
+    if (empty($options['types']) && ($channel_id === 0)) {
+        $creates = ws_palette_creates($viewer, $query);
+
+        if (!empty($creates)) {
+            $out['groups'][] = array('key' => 'create', 'title' => lang('Create'), 'icon' => 'bi-plus-lg', 'items' => $creates);
         }
     }
 

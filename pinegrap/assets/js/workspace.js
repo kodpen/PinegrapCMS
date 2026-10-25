@@ -12082,10 +12082,13 @@
             tick.appendChild(tickLabel);
             card.appendChild(tick);
 
+            // Save writes the text this card was drawn from, not what the box
+            // holds by then, which nobody has seen as a card.
+            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
             var save = button('btn btn-sm btn-primary rounded-pill px-3', t('qe_save'), 'bi-check2');
             save.addEventListener('click', function () {
-                self.send({ confirm: 1, from: command.from, decision: decision.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, from: command.from, decision: decision.checked ? 1 : 0 });
             });
             actions.appendChild(save);
 
@@ -12143,10 +12146,13 @@
             card.appendChild(el('div', 'small text-body-secondary mb-1', t('qc_unticked')));
             var decision = tick(t('qe_decision'), true, 'ws-cmd-decision-');
 
+            // Create makes what the card shows: the text it was drawn from,
+            // not what the box holds by then, as on the /task card.
+            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-2 mt-2');
             var create = button('btn btn-sm btn-primary rounded-pill px-3', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
-                self.send({ confirm: 1, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
             });
             actions.appendChild(create);
 
@@ -12160,6 +12166,9 @@
                 openRecord(preview.kind, 0, '', {
                     values: values,
                     labels: command.labels || {},
+                    // The decision goes where the card's own Create puts it:
+                    // this composer's channel, also a discussion beside one.
+                    channelId: self.channel.id,
                     // Made from the drawer: the line that asked for it goes.
                     onCreated: function () {
                         self.pending = null;
@@ -18786,7 +18795,8 @@
     // the search box or a /product card. It is made off sale unless "On
     // sale" is ticked; once written, the drawer shows the new record.
     // options.values fill the form (a /product card's), options.labels name
-    // the records they pick, options.onCreated is told the new record.
+    // the records they pick, options.channelId is the channel its decision
+    // goes to (the card's composer), options.onCreated is told the new record.
     function openRecordNew(type, options) {
         var node = offcanvas('ws-record', t('workspace'));
         var body = clear(node.querySelector('.offcanvas-body'));
@@ -18902,9 +18912,10 @@
             section.appendChild(moreBox);
         }
 
-        // Kept in the channel the drawer was opened from, as a decision.
+        // Kept in the channel the drawer was opened from, as a decision: the
+        // card's composer when a /product card opened it, else the main view.
         var decision = null;
-        var channelId = (CFG.mode === 'channels' && app.channel && app.channel.id) ? app.channel.id : 0;
+        var channelId = (options.channelId > 0) ? options.channelId : ((CFG.mode === 'channels' && app.channel && app.channel.id) ? app.channel.id : 0);
 
         if (channelId) {
             var tick = el('div', 'form-check form-check-sm mt-1 mb-2');
