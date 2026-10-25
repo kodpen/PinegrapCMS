@@ -1689,6 +1689,108 @@ function api_price_history_entry_schema() {
 
 }
 
+// May this owner read a product's marketplace mappings? The marketplace screen
+// (marketplace_settings.php) is the manager role's, and products:read alone
+// also reaches a user (role 3) with commerce rights, so the API asks the same
+// role the screen does rather than opening the mappings wider than the panel.
+function api_product_marketplaces_allowed($owner) {
+
+	return is_array($owner) && isset($owner['role']) && ((string)$owner['role'] !== '') && ((int)$owner['role'] < 3);
+
+}
+
+// One mapping of a product to a marketplace account, as GET
+// /products/{id}/marketplaces answers it. remote_code is the marketplace's key
+// for the product (the seller code on n11, the barcode on Trendyol); remote_id
+// is the id the marketplace gave the listing, null until it did. last_error is
+// the last refusal or note on the mapping, null when there is none.
+function api_product_marketplace_present($row) {
+
+	return array(
+		'account_id'     => (int)$row['account_id'],
+		'account_name'   => (string)$row['account_name'],
+		'provider'       => (string)$row['provider'],
+		'account_status' => (string)$row['account_status'],
+		'remote_code'    => (string)$row['remote_code'],
+		'remote_id'      => ((string)$row['remote_id'] !== '') ? (string)$row['remote_id'] : null,
+		'status'         => (string)$row['status'],
+		'last_error'     => ((string)$row['last_error'] !== '') ? (string)$row['last_error'] : null,
+		'last_pushed_at' => api_time($row['last_pushed']),
+		'created_at'     => api_time($row['created_timestamp'])
+	);
+
+}
+
+// GET /products/{id}/marketplaces
+//
+// One page: a product is matched to a handful of accounts at most. Only the
+// account's id, name, provider and status are read from marketplace_accounts;
+// its credentials blob is never selected.
+function api_products_marketplaces($params) {
+
+	$app = api_current_app();
+
+	if (!api_product_marketplaces_allowed($app['owner'])) {
+
+		api_fail(403, 'forbidden', lang('Marketplace connections are managed from the manager role up.'));
+
+	}
+
+	$id = (int)$params['id'];
+
+	$product = api_row("SELECT id FROM products WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($product === null) {
+
+		api_fail_not_found(lang('Product'));
+
+	}
+
+	$out = array();
+
+	foreach (api_rows("SELECT
+			marketplace_product_map.account_id,
+			marketplace_product_map.remote_code,
+			marketplace_product_map.remote_id,
+			marketplace_product_map.status,
+			marketplace_product_map.last_pushed,
+			marketplace_product_map.last_error,
+			marketplace_product_map.created_timestamp,
+			marketplace_accounts.name AS account_name,
+			marketplace_accounts.provider,
+			marketplace_accounts.status AS account_status
+		FROM marketplace_product_map
+		JOIN marketplace_accounts ON marketplace_accounts.id = marketplace_product_map.account_id
+		WHERE marketplace_product_map.product_id = '" . $id . "'
+		ORDER BY marketplace_product_map.account_id ASC") as $row) {
+
+		$out[] = api_product_marketplace_present($row);
+
+	}
+
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
+// What api_product_marketplace_present() returns, declared for the OpenAPI
+// document.
+function api_product_marketplace_schema() {
+
+	return array(
+		'account_id'     => 'integer',
+		'account_name'   => 'string',
+		'provider'       => 'string',
+		'account_status' => 'string',
+		'remote_code'    => 'string',
+		'remote_id'      => 'string?',
+		'status'         => 'string',
+		'last_error'     => 'string?',
+		'last_pushed_at' => 'string?',
+		'created_at'     => 'string?'
+	);
+
+}
+
 // What api_product_present() returns, declared for the OpenAPI document.
 //
 // Beside the presenter on purpose: a field added above without a line here is

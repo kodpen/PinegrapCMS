@@ -48,6 +48,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
 - iyzipay-sdk-php71-patch.md: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched for 7.1: typed properties dropped, \stdClass in the refund mapper; why, what is left, what an SDK update re-applies
 - key-code-import.md: Key code CSV import (import_key_codes.php): a code already there is updated, not re-added (a used single-use code stays used); BOM, separator, dates, yes/no cells
+- marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, product matching, unmatched lines and their retry, relay emails.
 - marketplace-order-money.md: Amounts of an imported marketplace order: per-unit price/tax/discount, the line's discount_total, mp_order_totals(), n11 line discounts that do not divide by the quantity.

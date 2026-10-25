@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 3, 4a-4c done; A, B, 2b-ii, 5a-5c, 6 open to any session, none claimed
+description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 3, 4a-4c, 6 done; A, B, 2b-ii, 5a-5c open to any session
 ---
 
 ## Why?
@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Payout/settlement reconciliation stays out (ERP roadmap B4).
 
 ## What is done?
-- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493).
+- Trendyol 1 driver and categories (#880), 2 listing create (#906), 2b-i approval status (#1539), 3 stock/price queue (#932), 4a order import (#1452), 4b webhook receiver (#1453), 4c own-carrier shipping (#1493), 6 API endpoint and order events (#1667).
 
 ## What is open? (any session; claim one step at a time)
 - How each step was designed in a build that never reached GitHub: `marketplace-trendyol-remaining-design.md`. Follow it unless the code says otherwise.
@@ -25,7 +25,6 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - 5a. Invoice link push: the operator types the URL, as the e-document PDF needs the panel login (`trendyol-orders.md`) (S).
 - 5b. Returns (claims): read-only list on the account screen, then approve/reject with reason codes (M).
 - 5c. Buyer questions: list, then answer from the panel (M).
-- 6. API fields: `/products/{id}/marketplaces`, webhook events `marketplace.order.*` (S).
 - Each step adds what it verified to the `trendyol-*.md` files, and reads `trendyol-api-facts.md` for the call rules first.
 - Hepsiburada: the same slices, blocked until its API facts are collected (below).
 
@@ -36,9 +35,9 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 - Unverified until a live call (listed in each `trendyol-*.md`): the `barcodes` comma list, whether a rejected listing re-enters approval on a new create, whether `docNeeded` turns false once the document is in.
 
 ## Where are the finished steps' decisions?
-- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-listing-status.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`, `trendyol-own-carrier-shipping.md`. The `[NEW]` changelog line came with #932.
+- `docs/memory/commerce/trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-listing-status.md`, `trendyol-stock-price.md`, `trendyol-orders.md`, `marketplace-webhook-receiver.md`, `trendyol-own-carrier-shipping.md`, `marketplace-api-and-events.md`. The `[NEW]` changelog line came with #932.
 
 ## Where to start?
 - Owner (2026-10-24): no session holds this plan; any free session may take a step. Claim it as CLAUDE.md says (`[plan:marketplace-trendyol-hepsiburada] <step>`), one step per PR, steps of this plan one at a time.
-- Good first steps: A, B, then 2b-ii, 5a or 6. No live credentials exist: build against saved answers in `tests/fixtures/trendyol/` shaped from the documentation, as the earlier steps did, and list what stays unverified.
+- Good first steps: A, B, then 2b-ii or 5a. No live credentials exist: build against saved answers in `tests/fixtures/trendyol/` shaped from the documentation, as the earlier steps did, and list what stays unverified.
 - Read `docs/memory/commerce/README.md` first.

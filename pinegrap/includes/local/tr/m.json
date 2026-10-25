@@ -208,6 +208,7 @@
     "Marketplace account {var:1} was removed with its webhook {var:2} still registered on {var:3}; remove it in the seller panel.": "{var:1} pazaryeri hesabı, {var:2} webhook'u {var:3} üzerinde kayıtlı kalırken kaldırıldı; webhook'u satıcı panelinden kaldırın.",
     "Marketplace added. Test the connection, match some products, then switch it on.": "Pazaryeri eklendi. Bağlantıyı deneyin, ürünleri eşleştirin, sonra açın.",
     "Marketplace category": "Pazaryeri kategorisi",
+    "Marketplace connections are managed from the manager role up.": "Pazaryeri bağlantıları yönetici rolü ve üstünden yönetilir.",
     "Marketplace removed. The products themselves are untouched.": "Pazaryeri kaldırıldı. Ürünlerin kendisine dokunulmadı.",
     "Marketplace sync ({var:1}): {var:2} product(s), {var:3}.": "Pazaryeri eşitlemesi ({var:1}): {var:2} ürün, {var:3}.",
     "Marketplace synchronisation": "Pazaryeri eşitlemesi",
