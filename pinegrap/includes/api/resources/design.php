@@ -1490,11 +1490,17 @@ function api_design_prototype_links_create($params) {
 
 	$now = time();
 
+	// The password as sent: the router trims a string, which would make one
+	// of spaces alone no password at all and drop the spaces around another,
+	// while the editor and the password form take it as typed.
+	$input = api_request_input();
+	$password = (isset($input['password']) && is_scalar($input['password'])) ? (string)$input['password'] : '';
+
 	$plan = pg_proto_link_plan(array(
 		'audience'      => isset($params['audience']) ? $params['audience'] : '',
 		'start_page_id' => isset($params['start_page_id']) ? (int)$params['start_page_id'] : 0,
 		'duration'      => isset($params['duration']) ? (int)$params['duration'] : 0,
-		'password'      => isset($params['password']) ? (string)$params['password'] : ''
+		'password'      => $password
 	), $draft_ids, array_keys(pg_proto_link_durations()), $now);
 
 	if (!$plan['ok']) {

@@ -130,7 +130,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-paste-clipboard.md: Designer Ctrl+V: internal node clipboard vs external markup, /*pinegrap-nodes*/ prefix, conditional keydown preventDefault, text sinks, paste target.
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
-- designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): who makes them, audiences, expiry, the password's own lock and cookie, the token kept out of logs, the link frame, uses, API without MCP
+- designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts as a prototype (roles 0-2, or a share link): session-less signed frame, link kinds, inert forms, no tracking, the resolver in includes/fn/link_resolve.php
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-save-shortcut.md: Ctrl+S in the visual editor: it presses the main Save/Publish button, its two listeners, which dialogs keep their own, and why a toolbar hint is changed only through _sdSetButtonTitle().

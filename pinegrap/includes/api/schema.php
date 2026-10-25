@@ -2785,13 +2785,13 @@ function api_schema() {
 			'returns' => 'DesignPrototypeLinkCreated',
 			'status'  => 201,
 			'summary' => 'Share a design\'s prototype by a link',
-			'description' => 'A new link that opens the design\'s draft pages (scheduled ones too) as a clickable prototype, always as they were saved last. audience anyone opens for whoever has the link and needs duration; team opens for signed-in administrators, designers and managers, and runs for good without one. duration is one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. start_page_id is the draft it opens on, the design\'s first draft when left out. An optional password (6 to 128 characters) is asked before the prototype opens; ten wrong answers lock it for fifteen minutes. The answer carries url, the link\'s address, and the link. 422 when the design has no draft pages. Only for an application whose owner is an administrator or a designer (403 otherwise).',
+			'description' => 'A new link that opens the design\'s draft pages (scheduled ones too) as a clickable prototype, always as they were saved last. audience anyone opens for whoever has the link and needs duration, and draws no draft that goes live in a folder asking for a sign-in; team opens for signed-in administrators, designers and managers, and runs for good without one. duration is one of 3600, 86400, 259200, 604800, 2592000 or 7776000 seconds. start_page_id is the draft it opens on, the design\'s first draft when left out. An optional password (6 to 128 characters) is asked before the prototype opens; ten wrong answers lock it for fifteen minutes. The answer carries url, the link\'s address, and the link. 422 when the design has no draft pages. Only for an application whose owner is an administrator or a designer (403 otherwise).',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'audience',      'in' => 'body', 'type' => 'enum', 'values' => array('anyone', 'team'), 'required' => true, 'description' => 'anyone: whoever has the link; team: signed-in administrators, designers and managers.'),
 				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
 				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
-				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'description' => 'Asked before the prototype opens. 6 to 128 characters.')
+				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.')
 			)
 		),
 

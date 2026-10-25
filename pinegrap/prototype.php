@@ -13,14 +13,16 @@
  * (includes/fn/prototype_links.php): for anyone holding it, or for a
  * signed-in member of the team, past the link's password when it has one.
  * The parameter is not "token": that name is the panel's form token, which
- * validate_token_field() also reads from the query string.
+ * validate_token_field() also reads from the query string. The frame's links
+ * come back as prototype.php?l=<link id>, without the token, for the session
+ * that opened the link by it.
  *
  * prototype.php?frame=1&... is that frame. It runs with no session and no
  * cookie, admitted by the signed address the viewer made (design, page,
  * item, expiry; and the person, whose role is read again on every frame, or
- * the link, which must still open on every frame), and draws the draft as a
- * background render: what a signed-out visitor would get once the page is
- * published, with no status code, redirect, page cache copy, visitor
+ * the link by its id, which must still open on every frame), and draws the
+ * draft as a background render: what a signed-out visitor would get once the
+ * page is published, with no status code, redirect, page cache copy, visitor
  * statistics, Analytics tag or record view count of its own. Its links are
  * rewritten to stay in the prototype, open the site or go nowhere.
  *
@@ -44,9 +46,12 @@ $pg_proto_frame = isset($_GET['frame']) && is_string($_GET['frame']) && ($_GET['
 define('PG_PROTOTYPE_ENTRY', true);
 require_once(dirname(__FILE__) . '/includes/fn/prototype_links.php');
 
-$pg_proto_link_mode = !$pg_proto_frame && isset($_GET['link']);
+$pg_proto_link_mode = !$pg_proto_frame && (isset($_GET['link']) || isset($_GET['l']));
 
 if (isset($_GET['link'])) {
+    // Secure Mode's redirect (init.php) needs the address as it came:
+    // REQUEST_URL is made from the written-out copy below.
+    define('PG_SECURE_MODE_REDIRECT_URL', pg_proto_link_request_uri($_SERVER));
     $_SERVER = pg_proto_link_redact_server($_SERVER);
 }
 
@@ -94,8 +99,7 @@ if ($pg_proto_frame) {
     $pg_proto_now = time();
 
     if (isset($_GET['l'])) {
-        // Made for a share link: the link must still open, and the token the
-        // frame's links carry must be that link's.
+        // Made for a share link, named by its id: the link must still open.
         $parsed = pg_proto_link_frame_parse($_GET);
         $state = pg_proto_link_frame_state($parsed, $pg_proto_key, $pg_proto_now);
     } else {
@@ -113,21 +117,20 @@ if ($pg_proto_frame) {
     }
 
     if (isset($parsed['l'])) {
+        // The signature names the link; the token is never in the frame's
+        // address or its links, since the design's own scripts run here and
+        // a tag pasted into the design reports both to its vendor.
         $pg_proto_link = pg_proto_links_ready() ? pg_proto_link_get($parsed['l']) : null;
-
-        if (($pg_proto_link === null) || !hash_equals((string) $pg_proto_link['token_hash'], hash('sha256', $parsed['link']))) {
-            pg_proto_frame_offence();
-            pg_proto_frame_refuse(lang('This prototype address is not valid.'), 403);
-        }
 
         // Revoked or run out since the viewer signed the address: the frame
         // ends with it, as the viewer would.
-        if ((pg_proto_link_state($pg_proto_link, $pg_proto_now) !== 'ok') || ((int) $pg_proto_link['style_id'] !== (int) $parsed['s'])) {
+        if (($pg_proto_link === null) || (pg_proto_link_state($pg_proto_link, $pg_proto_now) !== 'ok') || ((int) $pg_proto_link['style_id'] !== (int) $parsed['s'])) {
             pg_proto_frame_refuse(lang('This link no longer works.'), 404);
         }
 
-        // The frame's links lead back through the viewer for the same link.
-        $pg_proto_base = pg_proto_link_viewer_base($pg_proto_viewer, $parsed['link']);
+        // The frame's links lead back through the viewer for the same link,
+        // by its id (pg_proto_link_session_opens()).
+        $pg_proto_base = pg_proto_link_frame_base($pg_proto_viewer, $parsed['l']);
     } else {
         // The person the address was made for must still be an administrator,
         // designer or manager: a role taken away ends their frames at once.
@@ -152,6 +155,13 @@ if ($pg_proto_frame) {
 
     if ($pg_proto_page === null) {
         pg_proto_frame_refuse(lang('This page is no longer a draft of the design.'), 404);
+    }
+
+    // A link for anyone draws a draft as a signed-out visitor would get it
+    // once published: get_page.php's folder gate is not on the frame's way,
+    // so a draft going live behind a sign-in is not drawn at all.
+    if (isset($parsed['l']) && !pg_proto_link_page_shown((string) $pg_proto_link['audience'], pg_proto_link_page_access($pg_proto_page['id']))) {
+        pg_proto_frame_refuse(lang('This page goes live behind a sign-in, so a link for anyone who has it does not show it.'), 403);
     }
 
     require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
@@ -350,8 +360,41 @@ if (!$pg_proto_link_mode) {
 
 // The viewer opened by a share link (includes/fn/prototype_links.php).
 $pg_proto_now = time();
-$pg_proto_token = is_string($_GET['link']) ? $_GET['link'] : '';
-$pg_proto_link = pg_proto_links_ready() ? pg_proto_link_by_token($pg_proto_token) : null;
+
+if (isset($_GET['link'])) {
+    $pg_proto_token = is_string($_GET['link']) ? $_GET['link'] : '';
+    $pg_proto_link = pg_proto_links_ready() ? pg_proto_link_by_token($pg_proto_token) : null;
+} else {
+    // A link clicked inside the frame names the link by its id alone. It
+    // opens only for the session that opened the link by its token, past its
+    // gates, and goes on to the link's own address when the token can be read
+    // back (pg_proto_link_token()), which the gates below check again.
+    $pg_proto_link_id = (is_string($_GET['l']) && ctype_digit($_GET['l'])) ? (int) $_GET['l'] : 0;
+    $pg_proto_link = (pg_proto_links_ready() && ($pg_proto_link_id > 0)) ? pg_proto_link_get($pg_proto_link_id) : null;
+    $pg_proto_mark = isset($_SESSION['software']['prototype_link_open'][$pg_proto_link_id]) ? $_SESSION['software']['prototype_link_open'][$pg_proto_link_id] : '';
+
+    if (!pg_proto_link_session_opens($pg_proto_mark, $pg_proto_link)) {
+        pg_proto_frame_refuse(lang('Open the link you were given again to go on with this prototype.'), 403);
+    }
+
+    $pg_proto_token = pg_proto_link_token($pg_proto_link);
+
+    if (($pg_proto_token !== '') && ($pg_proto_method !== 'POST')) {
+        $pg_proto_go = (isset($_GET['page']) && is_string($_GET['page']) && ctype_digit($_GET['page'])) ? (int) $_GET['page'] : 0;
+        $pg_proto_to = pg_proto_link_viewer_base($pg_proto_viewer, $pg_proto_token);
+
+        if ($pg_proto_go > 0) {
+            $pg_proto_to = pg_proto_viewer_url($pg_proto_to, $pg_proto_go,
+                pg_proto_clean_text(isset($_GET['sub']) ? $_GET['sub'] : '', 255),
+                pg_proto_clean_text(isset($_GET['r']) ? $_GET['r'] : '', 100),
+                pg_proto_clean_fragment(isset($_GET['anchor']) ? $_GET['anchor'] : ''));
+        }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . $pg_proto_to, true, 303);
+        exit;
+    }
+}
+
 $pg_proto_state = pg_proto_link_state($pg_proto_link, $pg_proto_now);
 $pg_proto_design = null;
 $pg_proto_pages = array();
@@ -368,16 +411,18 @@ if ($pg_proto_state === 'ok') {
 }
 
 // Revoked, run out, gone or never made: one answer for all of them, so a
-// guess learns nothing. A guess and a revoked token count toward a ban.
+// guess learns nothing. Only a guess counts toward a ban.
 if ($pg_proto_state !== 'ok') {
-    if (pg_proto_link_offence_due($pg_proto_state)) {
+    if (pg_proto_link_offence_due($pg_proto_state, $pg_proto_token)) {
         pg_proto_link_offence();
     }
 
     pg_proto_frame_refuse(lang('This link no longer works.'), 404);
 }
 
-$pg_proto_base = pg_proto_link_viewer_base($pg_proto_viewer, $pg_proto_token);
+// The viewer's own bar keeps the link's address (the frame cannot read it);
+// by its id only where the token cannot be read back.
+$pg_proto_base = ($pg_proto_token !== '') ? pg_proto_link_viewer_base($pg_proto_viewer, $pg_proto_token) : pg_proto_link_frame_base($pg_proto_viewer, $pg_proto_link['id']);
 $pg_proto_page_id = (isset($_GET['page']) && is_string($_GET['page']) && ctype_digit($_GET['page'])) ? (int) $_GET['page'] : 0;
 $pg_proto_here = ($pg_proto_page_id > 0) ? pg_proto_viewer_url($pg_proto_base, $pg_proto_page_id) : $pg_proto_base;
 
@@ -469,6 +514,10 @@ if ($pg_proto_method === 'POST') {
     exit;
 }
 
+// From here on the frame's links, which name the link by its id, lead back
+// in for this browser.
+pg_proto_link_session_mark($pg_proto_link);
+
 // A use is a person opening the prototype, not a preview a messenger draws
 // of the link or a HEAD request.
 $pg_proto_client = function_exists('waf_classify_bot') ? waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '') : array('class' => 'human');
@@ -498,7 +547,7 @@ if ($pg_proto_signature === '') {
 } else {
     $pg_proto_frame_url = pg_proto_frame_url(
         $pg_proto_viewer,
-        pg_proto_link_frame_query($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_token, $pg_proto_sub, $pg_proto_record),
+        pg_proto_link_frame_query($pg_proto_link['style_id'], $pg_proto_start['id'], $pg_proto_link['id'], $pg_proto_expires, $pg_proto_signature, $pg_proto_sub, $pg_proto_record),
         $pg_proto_anchor
     );
 }
@@ -510,7 +559,7 @@ echo pg_proto_shell_html(array(
     'pages' => $pg_proto_pages,
     'current' => $pg_proto_start['id'],
     'fallback' => $pg_proto_start['fallback'],
-    'fallback_text' => lang('The page you opened is no longer a draft of this design, so the prototype starts at its first page.'),
+    'fallback_text' => lang('The page you opened is no longer a draft of this design, so the prototype opens at its start page.'),
     'frame_url' => $pg_proto_frame_url,
     'viewer' => $pg_proto_base,
     'close_url' => '',

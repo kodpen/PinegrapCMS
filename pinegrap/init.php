@@ -944,8 +944,11 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         } else {
             // Use a temporary redirect. A 301 is cached by the browser, so a
             // misconfiguration keeps looping from cache even after the server side
-            // has been corrected.
-            header('Location: https://' . HOSTNAME_SETTING . REQUEST_URL, true, 302);
+            // has been corrected. An entry point that wrote a secret out of the
+            // request's address before this file ran (prototype.php: a share
+            // link's token) names the address as it came, which REQUEST_URL no
+            // longer is.
+            header('Location: https://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
             exit();
         }
 
@@ -955,7 +958,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . REQUEST_URL, true, 301);
+        header('Location: http://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 301);
         exit();
     }
 

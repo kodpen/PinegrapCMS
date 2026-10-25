@@ -140,8 +140,25 @@ function test_prototype_links_plan_password_is_optional_and_bounded()
 	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => array('x'))), array(11), prototype_links_test_durations(), $now);
 	pg_assert_false($plan['ok'], 'not text');
 
+	// Spaces alone are no password; spaces around one are kept as given, as
+	// the password form reads them.
+	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => '      ')), array(11), prototype_links_test_durations(), $now);
+	pg_assert_false($plan['ok'], 'spaces only');
+	pg_assert_same('password_blank', $plan['error']);
+	pg_assert_same('password', $plan['field']);
+
+	$plan = pg_proto_link_plan(prototype_links_test_input(array('password' => ' k3Fq9z')), array(11), prototype_links_test_durations(), $now);
+	pg_assert_true($plan['ok']);
+	pg_assert_same(' k3Fq9z', $plan['link']['password']);
+
+	// The API reads the password as sent, not as its router trims a string.
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/design.php');
+	preg_match('~function api_design_prototype_links_create\(.*?\n}\n~s', $api, $create);
+	pg_assert_contains('api_request_input()', isset($create[0]) ? $create[0] : '');
+	pg_assert_false(strpos(isset($create[0]) ? $create[0] : '', "(string)\$params['password']") !== false, 'not the trimmed value');
+
 	// Every refusal has a sentence for the person.
-	foreach (array('audience', 'duration', 'start_page', 'no_drafts', 'password') as $code) {
+	foreach (array('audience', 'duration', 'start_page', 'no_drafts', 'password', 'password_blank') as $code) {
 		pg_assert_true(pg_proto_link_error_message($code) !== '', $code);
 	}
 }
@@ -158,13 +175,21 @@ function test_prototype_links_state_revoked_expired_unknown_open()
 	pg_assert_same('revoked', pg_proto_link_state(array('id' => 4, 'revoked_at' => $now - 5, 'expires_at' => $now + 100), $now));
 	pg_assert_same('revoked', pg_proto_link_state(array('id' => 4, 'revoked_at' => $now - 5, 'expires_at' => $now - 100), $now), 'revoked wins');
 
-	// A guessed token and a revoked one are counted against the source; a
-	// link that ran out or lost its drafts is not.
-	pg_assert_true(pg_proto_link_offence_due('unknown'));
-	pg_assert_true(pg_proto_link_offence_due('revoked'));
-	pg_assert_false(pg_proto_link_offence_due('expired'));
-	pg_assert_false(pg_proto_link_offence_due('gone'));
-	pg_assert_false(pg_proto_link_offence_due('ok'));
+	// Only a guess is counted against the source: a token of the right
+	// shape that nobody made. A revoked token was given to whoever holds it
+	// (every click and reload of an open viewer brings it back), a token cut
+	// short or written out as *** is no guess, and a link that ran out or
+	// lost its drafts is somebody arriving late.
+	$token = prototype_links_test_token();
+	pg_assert_true(pg_proto_link_offence_due('unknown', $token));
+	pg_assert_false(pg_proto_link_offence_due('revoked', $token), 'revoked: the people it was given to');
+	pg_assert_false(pg_proto_link_offence_due('unknown', '***'), 'the written-out placeholder');
+	pg_assert_false(pg_proto_link_offence_due('unknown', substr($token, 0, 20)), 'cut short');
+	pg_assert_false(pg_proto_link_offence_due('unknown', ''), 'none');
+	pg_assert_false(pg_proto_link_offence_due('unknown', array($token)), 'an array');
+	pg_assert_false(pg_proto_link_offence_due('expired', $token));
+	pg_assert_false(pg_proto_link_offence_due('gone', $token));
+	pg_assert_false(pg_proto_link_offence_due('ok', $token));
 }
 
 function test_prototype_links_start_page_falls_back_to_the_first_draft()
@@ -235,14 +260,18 @@ function test_prototype_links_frame_signature_round_trip()
 
 	pg_assert_same(1, preg_match('/^[0-9a-f]{64}$/', $signature));
 
-	$query = pg_proto_link_frame_query(7, 12, 4, $expires, $signature, $token, 'red-shirt', 'abc');
-	pg_assert_contains('frame=1&s=7&p=12&l=4&e=' . $expires . '&sig=' . $signature . '&link=' . $token, $query);
+	$query = pg_proto_link_frame_query(7, 12, 4, $expires, $signature, 'red-shirt', 'abc');
+	pg_assert_contains('frame=1&s=7&p=12&l=4&e=' . $expires . '&sig=' . $signature, $query);
+	// The frame runs the design's own scripts, which may report its address
+	// to an analytics vendor: the token is never in it.
+	pg_assert_false(strpos($query, 'link=') !== false, 'no token parameter');
+	pg_assert_false(strpos($query, $token) !== false, 'no token');
 	parse_str($query, $source);
 
 	$parsed = pg_proto_link_frame_parse($source);
 	pg_assert_true(is_array($parsed));
 	pg_assert_same(4, $parsed['l']);
-	pg_assert_same($token, $parsed['link']);
+	pg_assert_false(isset($parsed['link']), 'the frame reads no token');
 	pg_assert_same('red-shirt', $parsed['sub']);
 	pg_assert_same('ok', pg_proto_link_frame_state($parsed, $key, $now));
 	pg_assert_same('expired', pg_proto_link_frame_state($parsed, $key, $expires + 1));
@@ -252,10 +281,9 @@ function test_prototype_links_frame_signature_refuses_changes_and_the_person_mod
 {
 	$now = 1900000000;
 	$key = 'site-key';
-	$token = prototype_links_test_token();
 	$expires = $now + 600;
 	$signature = pg_proto_link_frame_sign(7, 12, 4, $expires, $key);
-	parse_str(pg_proto_link_frame_query(7, 12, 4, $expires, $signature, $token), $good);
+	parse_str(pg_proto_link_frame_query(7, 12, 4, $expires, $signature), $good);
 
 	foreach (array('s' => '8', 'p' => '13', 'l' => '5', 'e' => (string) ($expires + 1), 'sub' => 'x', 'r' => 'y') as $name => $value) {
 		$source = $good;
@@ -269,7 +297,7 @@ function test_prototype_links_frame_signature_refuses_changes_and_the_person_mod
 
 	// An expiry further ahead than the viewer ever sets.
 	$far = $now + 7200;
-	parse_str(pg_proto_link_frame_query(7, 12, 4, $far, pg_proto_link_frame_sign(7, 12, 4, $far, $key), $token), $source);
+	parse_str(pg_proto_link_frame_query(7, 12, 4, $far, pg_proto_link_frame_sign(7, 12, 4, $far, $key)), $source);
 	pg_assert_same('invalid', pg_proto_link_frame_state(pg_proto_link_frame_parse($source), $key, $now));
 
 	// A signature the person mode made for user 4 opens no link 4, and the
@@ -281,12 +309,9 @@ function test_prototype_links_frame_signature_refuses_changes_and_the_person_mod
 	pg_assert_same('invalid', pg_proto_link_frame_state(pg_proto_link_frame_parse($source), $key, $now));
 	pg_assert_same('invalid', pg_proto_frame_state(array('s' => 7, 'p' => 12, 'u' => 4, 'e' => $expires, 'sig' => $signature, 'sub' => '', 'r' => ''), $key, $now));
 
-	// The address of a link needs its link id and a token of the right shape.
+	// The address of a link needs its link id, as a plain whole number.
 	$source = $good;
 	unset($source['l']);
-	pg_assert_same(null, pg_proto_link_frame_parse($source));
-	$source = $good;
-	$source['link'] = 'short';
 	pg_assert_same(null, pg_proto_link_frame_parse($source));
 	$source = $good;
 	$source['l'] = '04';
@@ -322,20 +347,186 @@ function test_prototype_links_token_is_redacted_from_every_logged_address()
 	pg_assert_same('link=keep', $server['HTTP_USER_AGENT'], 'not an address');
 }
 
-function test_prototype_links_viewer_addresses_carry_the_token()
+function test_prototype_links_viewer_bar_carries_the_token_the_frame_links_never_do()
 {
 	$token = prototype_links_test_token();
 	$base = pg_proto_link_viewer_base('/pinegrap/prototype.php', $token);
 
+	// The viewer's own bar (out of the frame's reach) keeps the link's
+	// address, so it can be reloaded and bookmarked.
 	pg_assert_same('/pinegrap/prototype.php?link=' . $token, $base);
 	pg_assert_same('/pinegrap/prototype.php?link=' . $token . '&page=12&r=a', pg_proto_viewer_url($base, 12, '', 'a'));
 	// The person's viewer keeps its addresses.
 	pg_assert_same('/pinegrap/prototype.php?page=12', pg_proto_viewer_url('/pinegrap/prototype.php', 12));
 
-	$ctx = prototype_links_test_ctx($base);
+	// The frame's links name the link by its id: the design's scripts read
+	// every link on the page.
+	$frame_base = pg_proto_link_frame_base('/pinegrap/prototype.php', 4);
+	pg_assert_same('/pinegrap/prototype.php?l=4', $frame_base);
+
+	$ctx = prototype_links_test_ctx($frame_base);
 	$target = pg_proto_link_target('/pricing', $ctx);
 	pg_assert_same('prototype', $target['kind']);
-	pg_assert_same($base . '&page=12', $target['href']);
+	pg_assert_same('/pinegrap/prototype.php?l=4&page=12', $target['href']);
+
+	$html = pg_proto_rewrite_links('<a href="/pricing">P</a> <a href="?r=x#top">R</a> <a href="/start#a">S</a>', function ($href) use ($ctx) {
+		return pg_proto_link_target($href, $ctx);
+	}, array());
+	pg_assert_false(strpos($html, $token) !== false, 'no token in the drawn page');
+	pg_assert_false(strpos($html, 'link=') !== false, 'no link parameter in the drawn page');
+	pg_assert_contains('href="/pinegrap/prototype.php?l=4&amp;page=12"', $html);
+
+	// prototype.php builds the frame's links on the link's id, and the frame
+	// reads the link by its id alone.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	pg_assert_contains('$pg_proto_base = pg_proto_link_frame_base($pg_proto_viewer, $parsed[\'l\']);', $source);
+	pg_assert_false(strpos($source, "\$parsed['link']") !== false, 'the frame reads no token');
+	pg_assert_false(strpos($source, '$pg_proto_signature, $pg_proto_token') !== false, 'the frame address is made without the token');
+}
+
+function test_prototype_links_frame_links_open_only_in_the_session_that_opened_the_link()
+{
+	$token = prototype_links_test_token();
+	$row = array('id' => 4, 'token_hash' => hash('sha256', $token));
+
+	pg_assert_true(pg_proto_link_session_opens(hash('sha256', $token), $row));
+	pg_assert_false(pg_proto_link_session_opens('', $row), 'no mark');
+	pg_assert_false(pg_proto_link_session_opens(null, $row), 'no mark');
+	pg_assert_false(pg_proto_link_session_opens(array(hash('sha256', $token)), $row), 'not text');
+	pg_assert_false(pg_proto_link_session_opens(hash('sha256', 'another'), $row), 'another link\'s mark');
+	pg_assert_false(pg_proto_link_session_opens(hash('sha256', $token), null), 'no link');
+
+	$kept = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+	pg_proto_link_session_mark($row);
+	pg_assert_same(hash('sha256', $token), $_SESSION['software']['prototype_link_open'][4]);
+	pg_assert_false(strpos((string) json_encode($_SESSION), $token) !== false, 'the session keeps the hash, not the token');
+	$_SESSION = $kept;
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+
+	// Marked past every gate (team sign-in, password), checked on a frame
+	// link before anything else, and sent on to the link's own address.
+	$password_gate = strpos($source, 'pg_proto_link_pass_valid(');
+	$mark = strpos($source, 'pg_proto_link_session_mark($pg_proto_link);');
+	pg_assert_true(($mark !== false) && ($mark > $password_gate), 'marked past the gates');
+	pg_assert_contains('pg_proto_link_session_opens(', $source);
+	pg_assert_contains("isset(\$_GET['link']) || isset(\$_GET['l'])", $source);
+}
+
+function test_prototype_links_password_attempt_is_counted_in_the_database_before_the_check()
+{
+	$now = 1900000000;
+	$sql = pg_proto_link_attempt_sql(7, $now);
+
+	// Only while not locked, read from the row in the database.
+	pg_assert_contains("WHERE id = '7' AND password_locked_until <= '1900000000'", $sql);
+	// The attempt that reaches the limit locks at once, before its password
+	// is checked; a right one clears it again.
+	pg_assert_contains("password_locked_until = IF(password_failures + 1 >= 10, '1900000900', password_locked_until)", $sql);
+	pg_assert_contains('password_failures = password_failures + 1', $sql);
+	// The lock is worked out from the count before this attempt whether the
+	// server assigns left to right (MySQL) or all at once (MariaDB's
+	// SIMULTANEOUS_ASSIGNMENT).
+	pg_assert_true(strpos($sql, 'password_locked_until = IF(') < strpos($sql, 'password_failures = password_failures + 1'), 'lock before count');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+	preg_match('~function pg_proto_link_password_try\(.*?\n}\n~s', $source, $match);
+	pg_assert_true(isset($match[0]), 'pg_proto_link_password_try found');
+	$body = isset($match[0]) ? $match[0] : '';
+
+	// Requests sent at once do not get past a lock written meanwhile: the
+	// lock is not read from the row the request started with.
+	pg_assert_false(strpos($body, 'pg_proto_link_password_locked(') !== false, 'not from the stale row');
+	pg_assert_true(strpos($body, 'pg_proto_link_attempt_sql(') < strpos($body, 'password_verify('), 'counted before the check');
+	pg_assert_contains('mysqli_affected_rows(db::$con)', $body);
+}
+
+function test_prototype_links_secure_mode_redirect_keeps_the_token()
+{
+	$token = prototype_links_test_token();
+
+	// The address as get_request_uri() reads it, before the token is written
+	// out of it.
+	pg_assert_same('/pinegrap/prototype.php?link=' . $token . '&page=3', pg_proto_link_request_uri(array('REQUEST_URI' => '/pinegrap/prototype.php?link=' . $token . '&page=3')));
+	pg_assert_same('/x.php?link=a', pg_proto_link_request_uri(array('HTTP_X_REWRITE_URL' => '/x.php?link=a', 'REQUEST_URI' => '/y.php')), 'IIS rewrite first');
+	pg_assert_same('/p.php?link=a', pg_proto_link_request_uri(array('PHP_SELF' => '/p.php', 'QUERY_STRING' => 'link=a')));
+	pg_assert_same('/p.php', pg_proto_link_request_uri(array('PHP_SELF' => '/p.php', 'QUERY_STRING' => '')));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	$define = strpos($source, "define('PG_SECURE_MODE_REDIRECT_URL', pg_proto_link_request_uri(\$_SERVER));");
+	$redact = strpos($source, '$_SERVER = pg_proto_link_redact_server($_SERVER);');
+	pg_assert_true(($define !== false) && ($define < $redact), 'kept before the address is written out');
+
+	// Both of Secure Mode's redirects send the visitor on to it.
+	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
+	pg_assert_same(2, substr_count($init, "HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL)"));
+	pg_assert_false(strpos($init, 'HOSTNAME_SETTING . REQUEST_URL') !== false, 'no redirect from the written-out address');
+}
+
+function test_prototype_links_end_with_their_design()
+{
+	$now = 1900000000;
+
+	pg_assert_same("UPDATE prototype_links SET revoked_at = '1900000000', revoked_by = '3' WHERE style_id IN (7,9) AND revoked_at = 0", pg_proto_links_revoke_design_sql(array(7, '9', 0, -1), 3, $now));
+	pg_assert_same("UPDATE prototype_links SET revoked_at = '1900000000', revoked_by = '0' WHERE style_id IN (7) AND revoked_at = 0", pg_proto_links_revoke_design_sql(7, 0, $now));
+	pg_assert_same('', pg_proto_links_revoke_design_sql(array(), 3, $now), 'no design');
+	pg_assert_same('', pg_proto_links_revoke_design_sql(array(0), 3, $now), 'no design');
+
+	// Every path that deletes a design's style row ends its links: a later
+	// design given the same id (InnoDB on MySQL 5.7 after a restart) never
+	// opens for them.
+	foreach (array('includes/fn/designer.php', 'view_folder_and_files_f.php', 'delete_styles.php', 'includes/install_design_template.php') as $file) {
+		pg_assert_contains('pg_proto_links_revoke_design(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+}
+
+function test_prototype_links_anyone_sees_only_drafts_a_visitor_could_open()
+{
+	// A link for anyone draws a draft as a signed-out visitor would get it
+	// once published: not one going live behind a sign-in.
+	pg_assert_true(pg_proto_link_page_shown('anyone', 'public'));
+	pg_assert_true(pg_proto_link_page_shown('anyone', 'guest'), 'a guest needs no account');
+
+	foreach (array('private', 'registration', 'membership', '') as $type) {
+		pg_assert_false(pg_proto_link_page_shown('anyone', $type), $type);
+		// The team sees every draft, as it does on the site.
+		pg_assert_true(pg_proto_link_page_shown('team', $type), 'team: ' . $type);
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+	pg_assert_contains("pg_proto_link_page_shown((string) \$pg_proto_link['audience'], pg_proto_link_page_access(\$pg_proto_page['id']))", $source);
+}
+
+function test_prototype_links_fallback_notice_names_the_start_page()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+
+	// A link falls back to its own start page, which need not be the first.
+	pg_assert_contains("lang('The page you opened is no longer a draft of this design, so the prototype opens at its start page.')", $source);
+	pg_assert_false(strpos($source, 'so the prototype starts at its first page.') !== false);
+}
+
+function test_prototype_links_share_dialog_is_named_and_copies_with_a_fallback()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$start = strpos($source, 'function _pgPrototypeShareDialog(');
+	$end = strpos($source, 'function _pgTabsSyncViewButton(');
+	$dialog = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
+
+	pg_assert_true($dialog !== '', 'the dialog found');
+
+	// The dialog and the audience radios have names a screen reader reads.
+	pg_assert_contains("el.setAttribute('aria-labelledby', 'ps-title');", $dialog);
+	pg_assert_contains('id="ps-title"', $dialog);
+	pg_assert_contains('role="radiogroup" aria-labelledby="ps-audience-label"', $dialog);
+	pg_assert_contains('id="ps-audience-label"', $dialog);
+
+	// A refused write never ends in silence: the address is shown selected
+	// with a note. Safari keeps the click's permission while the address is
+	// still on its way when the write starts inside the click.
+	pg_assert_contains('navigator.clipboard.writeText(text).then(copied, function () { copyFailed(text, field); });', $dialog);
+	pg_assert_contains('new ClipboardItem(', $dialog);
 }
 
 function prototype_links_test_ctx($viewer)
@@ -461,10 +652,10 @@ function test_prototype_links_php_redacts_before_init_and_gates_each_audience()
 	$redact = strpos($source, '$_SERVER = pg_proto_link_redact_server($_SERVER);');
 	pg_assert_true(($redact !== false) && ($redact < $init), 'redacted before init.php');
 
-	// One answer for a revoked, expired or unknown link, counted for the
-	// first two.
+	// One answer for a revoked, expired or unknown link, counted for a
+	// guessed token only.
 	pg_assert_contains("pg_proto_frame_refuse(lang('This link no longer works.'), 404);", $source);
-	pg_assert_contains('pg_proto_link_offence_due(', $source);
+	pg_assert_contains('pg_proto_link_offence_due($pg_proto_state, $pg_proto_token)', $source);
 	pg_assert_contains('pg_proto_link_offence();', $source);
 
 	// A team link asks for a signed-in manager or above; a password link

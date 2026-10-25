@@ -59240,9 +59240,10 @@ const StyleDesigner = (function () {
         var el = document.createElement('div');
         el.className = 'modal fade';
         el.tabIndex = -1;
+        el.setAttribute('aria-labelledby', 'ps-title');
         el.innerHTML =
             '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                '<div class="modal-header py-2"><h6 class="modal-title mb-0"><span class="bi bi-share me-2" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
+                '<div class="modal-header py-2"><h6 class="modal-title mb-0" id="ps-title"><span class="bi bi-share me-2" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
                     '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
                 '<div class="modal-body small">' +
                     '<p class="text-body-secondary mb-2">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
@@ -59251,8 +59252,8 @@ const StyleDesigner = (function () {
                     '<hr class="my-3">' +
                     '<h6 class="mb-2">' + esc(_sdT('New link')) + '</h6>' +
                     '<form data-ps-form novalidate>' +
-                        '<div class="mb-2">' +
-                            '<div class="form-label mb-1">' + esc(_sdT('Who can open it')) + '</div>' +
+                        '<div class="mb-2" role="radiogroup" aria-labelledby="ps-audience-label">' +
+                            '<div class="form-label mb-1" id="ps-audience-label">' + esc(_sdT('Who can open it')) + '</div>' +
                             '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="anyone" checked>' +
                                 '<span class="form-check-label">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
                             '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="team">' +
@@ -59306,12 +59307,25 @@ const StyleDesigner = (function () {
             });
             startEl.innerHTML = html;
         };
-        var copy = function (text) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                return navigator.clipboard.writeText(text).then(function () { sdToast(esc(_sdT('Address copied.')), 'success'); });
+        var copied = function () { sdToast(esc(_sdT('Address copied.')), 'success'); };
+        // A write the browser refuses (no permission, or Safari once the
+        // click is over) never ends in silence: the address is shown in
+        // `field` (an address box's input, or a row's address slot)
+        // selected, with a note to copy it by hand.
+        var copyFailed = function (text, field) {
+            var input = field && field.tagName === 'INPUT' ? field : null;
+            if (!input && field) {
+                field.innerHTML = addressBox(text);
+                input = field.querySelector('input');
             }
-            window.prompt(_sdT('Copy address'), text);
-            return Promise.resolve();
+            if (!input) { window.prompt(_sdT('Copy address'), text); return; }
+            input.focus();
+            input.select();
+            sdToast(esc(_sdT('The address could not be copied. It is selected: copy it by hand.')), 'error');
+        };
+        var copy = function (text, field) {
+            if (!navigator.clipboard || !navigator.clipboard.writeText) { copyFailed(text, field); return; }
+            navigator.clipboard.writeText(text).then(copied, function () { copyFailed(text, field); });
         };
         var addressBox = function (url) {
             return '<div class="input-group input-group-sm mt-2">' +
@@ -59383,7 +59397,11 @@ const StyleDesigner = (function () {
         });
         el.addEventListener('click', function (e) {
             var urlBtn = e.target.closest('[data-ps-copy-url]');
-            if (urlBtn) { copy(urlBtn.getAttribute('data-ps-copy-url')); return; }
+            if (urlBtn) {
+                var group = urlBtn.closest('.input-group');
+                copy(urlBtn.getAttribute('data-ps-copy-url'), group ? group.querySelector('input') : null);
+                return;
+            }
             var item = e.target.closest('[data-ps-id]');
             var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke]');
             if (!item || !btn || btn.disabled) return;
@@ -59411,11 +59429,37 @@ const StyleDesigner = (function () {
                 return;
             }
             btn.disabled = true;
-            fetchAddress(id).then(function (url) {
+            var slot = item.querySelector('[data-ps-address]');
+            var pending = fetchAddress(id);
+            var write = null;
+            if (btn.hasAttribute('data-ps-copy') && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+                // Safari lets a click write to the clipboard only while the
+                // click lasts, not once the address has come back: the write
+                // starts now and is handed the address still on its way.
+                var blob = pending.then(function (url) {
+                    if (!url) throw new Error('no address');
+                    return new Blob([url], { type: 'text/plain' });
+                });
+                blob.catch(function () {});
+                try { write = navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]); } catch (err) { write = null; }
+            }
+            if (write) {
+                write.then(function () {
+                    btn.disabled = false;
+                    copied();
+                }, function () {
+                    pending.then(function (url) {
+                        btn.disabled = false;
+                        if (url) copyFailed(url, slot);
+                    }, function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                });
+                return;
+            }
+            pending.then(function (url) {
                 btn.disabled = false;
                 if (!url) return;
-                if (btn.hasAttribute('data-ps-copy')) { copy(url); return; }
-                item.querySelector('[data-ps-address]').innerHTML = addressBox(url);
+                if (btn.hasAttribute('data-ps-copy')) { copy(url, slot); return; }
+                slot.innerHTML = addressBox(url);
             }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
         });
         form.addEventListener('submit', function (e) {

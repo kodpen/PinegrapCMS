@@ -78,6 +78,10 @@ foreach ($_POST['styles'] as $style_id) {
         db("DELETE FROM system_style_cells WHERE style_id = '" . escape($style_id) . "'");
         db("DELETE FROM preview_styles WHERE style_id = '" . escape($style_id) . "'");
 
+        // Its prototype share links end with it: a later design may get its id.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+        pg_proto_links_revoke_design($style_id, (int) $user['id']);
+
         $number_of_deleted_styles++;
     }
 }

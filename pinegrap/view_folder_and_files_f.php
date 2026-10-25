@@ -2352,6 +2352,11 @@ function pg_recycle_style($style_id, $user, $page_ids = array())
     db("DELETE FROM system_style_cells WHERE style_id = '" . e($style_id) . "'");
     db("DELETE FROM preview_styles WHERE style_id = '" . e($style_id) . "'");
 
+    // Its prototype share links end here, not on restore: a link knows its
+    // design by id alone, and a later design may be given the same id.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+    pg_proto_links_revoke_design($style_id, (int) $user['id']);
+
     log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => h($style['style_name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     $out['status'] = 'binned';

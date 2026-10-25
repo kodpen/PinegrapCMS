@@ -167,7 +167,7 @@ function pg_proto_link_whole_number($value)
  * stored. A link for anyone must run out, at one of the offered durations of
  * at most ninety days; a team link may run for good. The start page is 0
  * (the design's first draft) or one of the design's drafts. A password is
- * optional, 6 to 128 characters.
+ * optional, 6 to 128 characters, not spaces alone.
  *
  * @param array $input     audience, start_page_id, duration (seconds; 0 or
  *                         empty for none), password ('' for none)
@@ -175,8 +175,8 @@ function pg_proto_link_whole_number($value)
  * @param int[] $durations the durations offered, in seconds
  * @param int   $now
  * @return array ok, error (audience, duration, start_page, no_drafts,
- *               password), field, link (audience, start_page_id, expires_at,
- *               password)
+ *               password, password_blank), field, link (audience,
+ *               start_page_id, expires_at, password)
  */
 function pg_proto_link_plan($input, $draft_ids, $durations, $now)
 {
@@ -228,6 +228,12 @@ function pg_proto_link_plan($input, $draft_ids, $durations, $now)
         return $fail('password', 'password');
     }
 
+    // Kept as given (the password form reads it untrimmed), but spaces alone
+    // are refused rather than taken for no password.
+    if (($password !== '') && (trim($password) === '')) {
+        return $fail('password_blank', 'password');
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'link' => array(
         'audience' => $audience,
         'start_page_id' => $start,
@@ -259,6 +265,9 @@ function pg_proto_link_error_message($code)
 
         case 'password':
             return lang('A password must be 6 to 128 characters long.');
+
+        case 'password_blank':
+            return lang('A password cannot be made of spaces only.');
     }
 
     return lang('Sorry, we could not accept your request.');
@@ -298,15 +307,22 @@ function pg_proto_link_state($row, $now)
 
 /**
  * Whether a link that does not open is counted against the source as a
- * firewall offence: a token nobody made (a guess) and a revoked one. A link
- * that ran out or lost its design is somebody arriving late, and is not.
+ * firewall offence: only a guess, a token of the right shape that nobody
+ * made. A revoked token was given to whoever holds it, and every click,
+ * reload or page change of a viewer still open brings it back, so counting
+ * it would ban the people it was shared with (a whole office behind one
+ * address) and add nothing against guessing. A token of the wrong shape (cut
+ * short in a mail, the *** of a written-out address) never reaches the
+ * database and is no guess either. A link that ran out or lost its design is
+ * somebody arriving late.
  *
  * @param string $state pg_proto_link_state(), or 'gone'
+ * @param mixed  $token the token the request carried
  * @return bool
  */
-function pg_proto_link_offence_due($state)
+function pg_proto_link_offence_due($state, $token)
 {
-    return in_array((string) $state, array('unknown', 'revoked'), true);
+    return ((string) $state === 'unknown') && pg_proto_link_token_shape($token);
 }
 
 /**
@@ -346,6 +362,40 @@ function pg_proto_link_start($pages, $link_start_id, $requested_id)
 }
 
 /**
+ * Whether a link draws a draft whose folder on the site (the one it goes
+ * live in) has this access control: a team link every draft, as its members
+ * open them on the site; a link for anyone only what a signed-out visitor
+ * would get once the page is published (a public folder, or a guest one,
+ * which asks for no account). The frame runs no folder gate of its own
+ * (get_page.php's is not on its way), so a draft going live behind a sign-in
+ * would show its record widgets' rows to whoever holds the link.
+ *
+ * @param string $audience            prototype_links.audience
+ * @param string $access_control_type get_access_control_type()
+ * @return bool
+ */
+function pg_proto_link_page_shown($audience, $access_control_type)
+{
+    if ((string) $audience === 'team') {
+        return true;
+    }
+
+    return in_array((string) $access_control_type, array('public', 'guest'), true);
+}
+
+/**
+ * The access control of the folder a draft goes live in
+ * (pg_page_draft_publish_folder()), for pg_proto_link_page_shown().
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_proto_link_page_access($page_id)
+{
+    return (string) get_access_control_type(pg_page_draft_publish_folder((int) $page_id));
+}
+
+/**
  * Whether a link's password is locked now.
  *
  * @param array $row
@@ -368,6 +418,30 @@ function pg_proto_link_password_locked($row, $now)
 function pg_proto_link_lock_after($failures, $now)
 {
     return ((int) $failures >= pg_proto_link_password_limit()) ? ((int) $now + pg_proto_link_lock_seconds()) : 0;
+}
+
+/**
+ * The statement that counts one password attempt before the password is
+ * checked, and only while the password is not locked: the lock is read from
+ * the row in the database, so requests sent at once each find the lock the
+ * one before them wrote, and no burst gets more than one check past the
+ * limit. The attempt that reaches the limit locks the password at once (a
+ * right password clears it again). The lock is assigned first, from the
+ * count before this attempt, so the answer is the same whether the server
+ * assigns left to right (MySQL) or all at once (MariaDB's
+ * SIMULTANEOUS_ASSIGNMENT).
+ *
+ * @param int $link_id
+ * @param int $now
+ * @return string
+ */
+function pg_proto_link_attempt_sql($link_id, $now)
+{
+    $now = (int) $now;
+
+    return "UPDATE prototype_links SET password_locked_until = IF(password_failures + 1 >= " . pg_proto_link_password_limit()
+        . ", '" . ($now + pg_proto_link_lock_seconds()) . "', password_locked_until), password_failures = password_failures + 1"
+        . " WHERE id = '" . (int) $link_id . "' AND password_locked_until <= '" . $now . "'";
 }
 
 /**
@@ -515,20 +589,21 @@ function pg_proto_link_frame_sign($style_id, $page_id, $link_id, $expires, $key,
 
 /**
  * The query string of a link's frame address, without the leading "?". The
- * token rides along so that the frame's own links lead back through the
- * viewer for the same link; the frame checks it against the link's row.
+ * token is not in it: the frame runs the design's own scripts, and an
+ * analytics or replay tag pasted into the design reports the frame's address
+ * (and the page's links) to its vendor. The signature binds the link's id,
+ * which the frame reads the link by.
  *
  * @return string
  */
-function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $token, $sub = '', $record = '')
+function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $signature, $sub = '', $record = '')
 {
     $query = 'frame=1'
         . '&s=' . (int) $style_id
         . '&p=' . (int) $page_id
         . '&l=' . (int) $link_id
         . '&e=' . (int) $expires
-        . '&sig=' . rawurlencode((string) $signature)
-        . '&link=' . rawurlencode((string) $token);
+        . '&sig=' . rawurlencode((string) $signature);
 
     if ((string) $sub !== '') {
         $query .= '&sub=' . rawurlencode((string) $sub);
@@ -543,11 +618,11 @@ function pg_proto_link_frame_query($style_id, $page_id, $link_id, $expires, $sig
 
 /**
  * Reads a link's frame address from the request: design, page, link and
- * expiry as plain positive whole numbers, a 64-character hex signature and a
- * token of the right shape; anything else is no address.
+ * expiry as plain positive whole numbers and a 64-character hex signature;
+ * anything else is no address.
  *
  * @param mixed $source $_GET
- * @return array|null s, p, l, e (int), sig, link, sub, r (string)
+ * @return array|null s, p, l, e (int), sig, sub, r (string)
  */
 function pg_proto_link_frame_parse($source)
 {
@@ -568,14 +643,12 @@ function pg_proto_link_frame_parse($source)
     }
 
     $signature = isset($source['sig']) ? $source['sig'] : null;
-    $token = isset($source['link']) ? $source['link'] : null;
 
-    if (!is_string($signature) || (preg_match('/^[0-9a-f]{64}$/', $signature) !== 1) || !pg_proto_link_token_shape($token)) {
+    if (!is_string($signature) || (preg_match('/^[0-9a-f]{64}$/', $signature) !== 1)) {
         return null;
     }
 
     $parsed['sig'] = $signature;
-    $parsed['link'] = $token;
     $parsed['sub'] = pg_proto_clean_text(isset($source['sub']) ? $source['sub'] : '', 255);
     $parsed['r'] = pg_proto_clean_text(isset($source['r']) ? $source['r'] : '', 100);
 
@@ -628,6 +701,47 @@ function pg_proto_link_viewer_base($viewer, $token)
     return (string) $viewer . '?link=' . rawurlencode((string) $token);
 }
 
+/**
+ * The viewer's address the frame's links build on: the link named by its id,
+ * never by its token, which the design's scripts would read off the page.
+ * The viewer takes it only from a browser whose session opened the link by
+ * its token (pg_proto_link_session_opens()).
+ *
+ * @param string $viewer  PATH . SOFTWARE_DIRECTORY . '/prototype.php'
+ * @param int    $link_id
+ * @return string
+ */
+function pg_proto_link_frame_base($viewer, $link_id)
+{
+    return (string) $viewer . '?l=' . (int) $link_id;
+}
+
+/**
+ * Notes in the session that this browser opened a link by its token, past
+ * its gates: the hash of the token, under the link's id.
+ *
+ * @param array $row
+ * @return void
+ */
+function pg_proto_link_session_mark($row)
+{
+    $_SESSION['software']['prototype_link_open'][(int) $row['id']] = (string) $row['token_hash'];
+}
+
+/**
+ * Whether the session's note (pg_proto_link_session_mark()) lets a frame
+ * link by id open this link: it must hold the hash of the link's own token.
+ *
+ * @param mixed      $mark $_SESSION['software']['prototype_link_open'][<id>]
+ * @param array|null $row
+ * @return bool
+ */
+function pg_proto_link_session_opens($mark, $row)
+{
+    return is_array($row) && isset($row['token_hash']) && is_string($mark) && ($mark !== '')
+        && hash_equals((string) $row['token_hash'], $mark);
+}
+
 /* ---------------------------------------------------------------------------
    The token out of the logs
    --------------------------------------------------------------------------- */
@@ -671,6 +785,32 @@ function pg_proto_link_redact_uri($uri)
     }
 
     return $changed ? $head . implode('&', $pairs) : $uri;
+}
+
+/**
+ * The request's address as get_request_uri() reads it, taken before the
+ * token is written out of it: what Secure Mode's redirect in init.php sends
+ * the visitor on to (PG_SECURE_MODE_REDIRECT_URL), since REQUEST_URL is made
+ * from the written-out copy and would lead to "link=***".
+ *
+ * @param array $server
+ * @return string
+ */
+function pg_proto_link_request_uri($server)
+{
+    $server = is_array($server) ? $server : array();
+
+    if (isset($server['HTTP_X_REWRITE_URL'])) {
+        return (string) $server['HTTP_X_REWRITE_URL'];
+    }
+
+    if (isset($server['REQUEST_URI'])) {
+        return (string) $server['REQUEST_URI'];
+    }
+
+    $self = isset($server['PHP_SELF']) ? (string) $server['PHP_SELF'] : '';
+
+    return (isset($server['QUERY_STRING']) && ((string) $server['QUERY_STRING'] !== '')) ? $self . '?' . $server['QUERY_STRING'] : $self;
 }
 
 /**
@@ -982,6 +1122,57 @@ function pg_proto_link_revoke($row, $user_id, $username, $via = '')
 }
 
 /**
+ * The statement that revokes every link of the given designs not revoked
+ * yet; '' for no design.
+ *
+ * @param int|int[] $style_ids
+ * @param int       $user_id   0 for none
+ * @param int       $now
+ * @return string
+ */
+function pg_proto_links_revoke_design_sql($style_ids, $user_id, $now)
+{
+    $ids = array();
+
+    foreach ((array) $style_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "UPDATE prototype_links SET revoked_at = '" . (int) $now . "', revoked_by = '" . (int) $user_id . "'"
+        . " WHERE style_id IN (" . implode(',', $ids) . ") AND revoked_at = 0";
+}
+
+/**
+ * Ends the links of designs whose style rows are being deleted (the designer's
+ * delete, the recycle bin, the styles list, a template replacing the starter
+ * site). A link knows its design by id alone, and a later design can be given
+ * the same id (InnoDB on MySQL 5.7 sets the next id from the highest one left
+ * when the server restarts): its drafts would open for the old links.
+ *
+ * @param int|int[] $style_ids
+ * @param int       $user_id
+ * @return int how many links were revoked
+ */
+function pg_proto_links_revoke_design($style_ids, $user_id = 0)
+{
+    $sql = pg_proto_links_revoke_design_sql($style_ids, $user_id, time());
+
+    if (($sql === '') || !pg_proto_links_ready()) {
+        return 0;
+    }
+
+    db($sql);
+
+    return max(0, (int) mysqli_affected_rows(db::$con));
+}
+
+/**
  * Counts a use of a link: once per browser session, with its time; a later
  * view in the same session moves the time on, at most once a minute.
  *
@@ -1003,10 +1194,12 @@ function pg_proto_link_record_use($row, $now)
 }
 
 /**
- * Checks a password given for a link. A locked password is not checked at
- * all. A wrong one is counted on the row; from the limit on, each one locks
- * the password again (with a Site Log line) and, like every attempt while it
- * is locked, counts as a firewall offence.
+ * Checks a password given for a link. The attempt is counted on the row
+ * first, and only while the password is not locked
+ * (pg_proto_link_attempt_sql()); a locked password is not checked at all. A
+ * right one clears the count and the lock. From the limit on, each wrong one
+ * leaves the password locked (with a Site Log line) and, like every attempt
+ * while it is locked, counts as a firewall offence.
  *
  * @param array  $row
  * @param mixed  $password
@@ -1017,30 +1210,26 @@ function pg_proto_link_password_try($row, $password, $now)
 {
     $id = (int) $row['id'];
 
-    if (pg_proto_link_password_locked($row, $now)) {
+    // The lock is the database's, not the one in the row this request read
+    // when it began: a request sent at the same moment may have set it.
+    db(pg_proto_link_attempt_sql($id, $now));
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
         pg_proto_link_offence(429, 'prototype link password locked');
         return 'locked';
     }
 
     if (is_string($password) && ($password !== '') && password_verify($password, (string) $row['password_hash'])) {
-        if (((int) $row['password_failures'] > 0) || ((int) $row['password_locked_until'] > 0)) {
-            db("UPDATE prototype_links SET password_failures = 0, password_locked_until = 0 WHERE id = '" . $id . "'");
-        }
+        db("UPDATE prototype_links SET password_failures = 0, password_locked_until = 0 WHERE id = '" . $id . "'");
 
         return 'ok';
     }
 
-    // Counted in the row itself, so two wrong answers at once both count.
-    db("UPDATE prototype_links SET password_failures = password_failures + 1 WHERE id = '" . $id . "'");
-
     $failures = (int) db_value("SELECT password_failures FROM prototype_links WHERE id = '" . $id . "'");
-    $until = pg_proto_link_lock_after($failures, $now);
 
-    if ($until <= 0) {
+    if (pg_proto_link_lock_after($failures, $now) <= 0) {
         return 'wrong';
     }
-
-    db("UPDATE prototype_links SET password_locked_until = '" . $until . "' WHERE id = '" . $id . "'");
 
     $design = (string) pg_proto_link_design_name($row['style_id']);
 
