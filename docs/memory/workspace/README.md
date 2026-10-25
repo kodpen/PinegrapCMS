@@ -11,34 +11,47 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Put a new API scope in the owner ceiling `ws_owner_scopes()` too, or the endpoint answers 403 (`workspace-module-decisions.md`).
 - Add a new right column to all five role-3 ladder files (`core/permission-columns.md`) and `pg_user_has_ws_columns()`, or users holding only that right lose access (`workspace-module-decisions.md`).
 - Write site records only through `includes/workspace/changes.php` (`ws_change_check()`, then `ws_change_write()`, never a `ws_change_write_<kind>()` by name): it refuses binned products, bounds money and writes the audit line (`workspace-record-changes.md`).
+- Give an application one route to propose a record change, `workspace.changes.propose` (or its task twin), never one per kind: a new kind goes into `ws_change_types()`; its direct write routes stay where its scopes allow (`workspace-change-proposals.md`).
 - Gate the person's own answers with `ws_api_person_only()` and changes to their words with `ws_api_own_words_only()`; an own-words route carries `'mcp' => false` (`workspace-api-callers.md`).
 - Give every write route `'dry_run' => true`, a `*_check()` shared with the panel, then `api_dry_run_stop()` before the write (`workspace-api-dry-run.md`).
 - Delete inbox lines only with `ws_inbox_delete()` and call `ws_inbox_reach_lost()` / `_regained()` when access changes, or `changed_since` misses it (`workspace-api-sync-inbox.md`).
 - Call a panel function that logs with `$_SESSION['sessionusername']` inside `ws_api_as_owner()`, or its Site Log line has no name (`workspace-api-endpoint-rules.md`).
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
+- Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
 <!-- key-rules:end -->
 
 ## Files
 
-- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools, layout writes
+- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
+- workspace-api-layout-writes.md: Workspace API layout writes the same for everybody (a channel into a group): gated like changing the channel, not ws_api_person_only(); access writes name who comes in and leaves
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, what is planned
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
+- workspace-change-proposal-display.md: How an application's proposal is shown: its name on cards, bells, push, Site Log (every bulk slice) and decisions, the task drawer's "Proposed for" line, the agent GET /workspace/decisions gives
+- workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
+- workspace-change-text-limits.md: Workspace change catalogue text limits must fit their columns (non-strict cuts in silence): the six once over, the channel summary kept, longer values, line breaks in one-line drawer fields, the test
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
+- workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette and the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
+- workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote seam
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
-- workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, the editor, autosave, leaving and 409, focus, keys, outline view, read-only, what is left
-- workspace-flows-store.md: Workspace flows, first slice (store, graph check, API; no canvas, no runner): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
+- workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
+- workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
+- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
+- workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
+- workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
+- workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
+- workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
@@ -50,6 +63,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
 - workspace-record-changes.md: How the Workspace writes site records: changes.php pipeline and callers, Recycle Bin guard, stock flag, money ceilings, whose name the sentences carry, writes that die half way
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
+- workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers

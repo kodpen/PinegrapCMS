@@ -200,28 +200,12 @@ function api_send($status_code, $body, $error_code = '') {
 //
 // A string that is not valid UTF-8 - a form field from a client that encodes
 // Windows-1254, a value read back from a damaged row - made json_encode()
-// return false for the whole answer. Such bytes are written as U+FFFD from PHP
-// 7.2 on; on 7.1, which lacks that flag, the broken value alone becomes null.
-// What still cannot be encoded (INF, NAN) answers null.
+// return false for the whole answer. Such bytes, in keys and values, are
+// written as U+FFFD on every PHP version (pg_json_encode_answer(), shared with
+// the MCP server). What still cannot be encoded (INF, NAN) answers null.
 function api_json_encode($body) {
 
-	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-
-	if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-
-		$flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
-
-	}
-
-	$json = json_encode($body, $flags);
-
-	if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
-
-		$json = json_encode($body, $flags | JSON_PARTIAL_OUTPUT_ON_ERROR);
-
-	}
-
-	return is_string($json) ? $json : null;
+	return pg_json_encode_answer($body);
 
 }
 

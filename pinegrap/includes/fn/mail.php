@@ -470,15 +470,10 @@ function send_comment_email_to_administrators($comment_id)
             $subject = lang(array('string' => 'A {var:1} has been added and published.', 'vars' => $comment_label_lowercase));
         }
         $body = lang(array('string' => 'The following {var:1} has been added and published', 'vars' => $comment_label_lowercase)) . ':' . "\n" . "\n" . lang('Display Name') . ': ' . $comment['name'] . "\n" . "\n" . pg_comment_parent_mail_line($parent) . $comment_label . ': ' . $comment['message'] . "\n";
-        $query_string = get_query_string_for_page_url($page['type'], $comment['item_id'], $comment['item_type']);
-        // If this is the first item that is being added to the query string, then add question mark.
-        if (mb_strpos($query_string, '?') === false) {
-            $query_string .= '?';
-            // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-        } else {
-            $query_string .= '&';
-        }
-        $query_string .= 'comments=all';
+        // A record's comment on a designed page links with the record's ?r=,
+        // as add_comment.php's own mail does; every comment shows and a
+        // comments widget opens the page of the thread that holds this one.
+        $query_string = pg_comment_view_query(get_query_string_for_page_url((($comment['item_type'] == 'submitted_form') ? 'form item view' : $page['type']), $comment['item_id'], $comment['item_type']), $comment['id']);
         // Mailed links use the configured hostname: comments arrive from anonymous
         // visitors, and a spoofed Host header must not choose where this points.
         $body .= "\n" . lang(array('string' => 'The {var:1} appears at the link below.', 'vars' => $comment_label_lowercase)) . "\n" . "\n" . URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($page['name']) . $query_string . '#c-' . $comment['id'];
@@ -599,9 +594,16 @@ function send_comment_email_to_custom_form_submitter($comment_id)
 
             </div>
 
-            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . '?r=' . $reference_code . '&comments=all#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
+            <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $reference_code, $comment_id) . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
-        $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        // An e-mail page that places a comments widget is told which comment this is: the widget draws it in its
+        // own layout and the markup above is then left out (widgets_comments.php). Any other e-mail page is drawn
+        // as before, with the markup in its System region.
+        if (pg_comments_page_has_widget($comments_submitter_email_page_id)) {
+            $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true, array('comment_id' => (int) $comment_id));
+        } else {
+            $body = get_page_content($comments_submitter_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        }
         email(array(
             'to' => $email_address,
             'from_name' => ORGANIZATION_NAME,
@@ -715,16 +717,9 @@ function send_comment_email_to_watchers($comment_id)
             // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
             $output_file_attachment = '<div class="software_attachment" style="margin-top: 1.5em"><a href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank" style="background: none; padding: 0"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_attachment.png" width="16" height="16" alt="attachment" title="" border="0" style="padding-right: .5em; vertical-align: middle" /></a><a href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">' . h($file_name) . '</a> (' . convert_bytes_to_string($file_size) . ')</div>';
         }
-        $query_string = get_query_string_for_page_url($page_type, $item_id, $item_type);
-        // If this is the first item that is being added to the query string, then add question mark.
-        if (mb_strpos($query_string, '?') === false) {
-            $query_string .= '?';
-            // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-        } else {
-            $query_string .= '&';
-        }
-        // Add comments parameter now.
-        $query_string .= 'comments=all';
+        // Every comment shows and a comments widget opens the page of the
+        // thread that holds this one.
+        $query_string = pg_comment_view_query(get_query_string_for_page_url($page_type, $item_id, $item_type), $comment_id);
         // set body message
         $extra_system_content = '<div class="comment">
 
@@ -746,7 +741,14 @@ function send_comment_email_to_watchers($comment_id)
 
             <div style="margin-top: 1em;"><a class="software_input_submit_primary reply_button" href="' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . $page_name . $query_string . '#c-' . $comment_id) . '">' . lang('View or Reply') . '</a></div>';
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
-        $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        // An e-mail page that places a comments widget is told which comment this is: the widget draws it in its
+        // own layout and the markup above is then left out (widgets_comments.php). Any other e-mail page is drawn
+        // as before, with the markup in its System region.
+        if (pg_comments_page_has_widget($comments_watcher_email_page_id)) {
+            $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true, array('comment_id' => (int) $comment_id));
+        } else {
+            $body = get_page_content($comments_watcher_email_page_id, $system_content = '', $extra_system_content, $mode = 'preview', $email = true);
+        }
         // loop through all watchers in order to e-mail each one
         foreach ($watchers as $watcher) {
             // If this watcher is connected to a user, then use the user's e-mail address.
