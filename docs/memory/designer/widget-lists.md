@@ -40,4 +40,4 @@ description: Lists inside a widget record (#1680): loop_area + props.source, sou
 - `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `tests/record_files_test.php`.
 
 ## What is not covered yet?
-- Editor (W7: palette, fields, `pg_sw_kind_lists()` sub-action, JS twin of `pg_sw_list_is_sourced()`). Formats on list tokens (W14 part 2). Page links with list values (W15). Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.
+- Editor: [[widget-lists-editor]]. Formats on list tokens (W14 part 2). Page links with list values (W15). Other kinds (W9-W13). A condition on the loop_area itself. `eo_visible_if` flags inside a list are not resolved.
