@@ -143,7 +143,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
-- designer-paste-clipboard.md: Designer Ctrl+V: internal node clipboard vs external markup, /*pinegrap-nodes*/ prefix, conditional keydown preventDefault, text sinks, paste target.
+- designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2): a session-less frame signed for one browser, link kinds, inert forms, no tracking, the resolver in includes/fn/link_resolve.php
