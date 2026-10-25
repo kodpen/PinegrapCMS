@@ -49,7 +49,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-recent-editor.md: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
 - comments-widget-recent-gates.md: Which source pages a list of recent comments reads and why one adds nothing (sign-in pages included), who sees which comment, the record gate in SQL, 'mine' from the account's creation
 - comments-widget-recent-panel.md: The recent comments list's panel section: what it shows, the pages it offers and how each is labelled, tabs whose components are not loaded yet, notes, the stored page list
-- comments-widget-recent-reads.md: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the open idx_author question, page cache
+- comments-widget-recent-reads.md: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the idx_author index (11.0.36), page cache
 - comments-widget-recent.md: The Comments widget's recent mode (kind comments_recent): what a list shows, options, what it never does, tokens and flags, checks
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
 - comments-widget-save-warnings.md: Save warnings about a page's comments not drawn (block plus widget, two widgets, nested record widget, comments off; an e-mail page only two widgets): census, approximation, codes

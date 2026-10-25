@@ -1,6 +1,6 @@
 ---
 name: comments-widget-recent-reads
-description: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the open idx_author question, page cache
+description: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the idx_author index (11.0.36), page cache
 ---
 
 ## Which statements does a list send?
@@ -20,7 +20,7 @@ description: The statements a list of recent comments sends, the merge, when it 
 
 ## Which indexes serve it, and which is missing?
 - `submitted_form_info.newest_comment_id` (candidates), `comments.idx_thread` (page threads, newest per record), `created_timestamp` (record mine/pending). `idx_parent` is not used.
-- Nothing finds one author's comments: 'mine' for a member with none in the sources and no `user_created` scans; the whole read passes 300 ms. `idx_author (created_user_id, created_timestamp)` as a 2026.11.0 sub-step is an owner question (fixed rule 5), not asked yet.
+- One author's comments ('mine'): `idx_author (created_user_id, created_timestamp)`, added in 11.0.36 ([[comments-author-index]]); before it a member with none in the sources scanned the table (over 300 ms).
 
 ## Can the page cache keep it?
 - Anonymous output: yes, stale up to PAGE_CACHE_TTL. Signed-in answers and an address with a query (`?board=`, `pg_page_cache_decide()` reason `query`) are never kept.

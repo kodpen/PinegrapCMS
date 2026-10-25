@@ -1,6 +1,6 @@
 ---
 name: comments-table
-description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes idx_parent and idx_thread and their readers, copy cost on MyISAM, code that copies or exports rows.
+description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 ---
 
 ## What identifies a comment's thread?
@@ -17,7 +17,7 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 - Approved with the column under fixed rule 5 (2026-10-23).
 
 ## Which indexes serve a list of recent comments?
-- No new one ([[comments-widget-recent-reads]]): `idx_thread` (page threads skip `item_id`, `published` by hint), `created_timestamp` (no author index); `submitted_form_info.newest_comment_id` ranks records.
+- `idx_thread` (page threads skip `item_id`, `published` by hint), `created_timestamp`, `idx_author` for a member's own (11.0.36, [[comments-author-index]]); `submitted_form_info.newest_comment_id` ranks records ([[comments-widget-recent-reads]]).
 
 ## What does the step cost on a big site?
 - The column goes in with `install_add_columns_instant()` (InnoDB on MySQL 8.0.12+ / MariaDB 10.3.2+: a moment), else `install_add_column()`. An index on InnoDB is built in place.
