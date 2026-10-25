@@ -285,3 +285,32 @@ function test_consent_log_answers_without_table()
 	pg_assert_same(0, pg_consent_log_answers(array('user_id' => 4), array(), 'signup'), 'no answers');
 	pg_assert_same(0, pg_consent_log_answers(array(), array('email:marketing' => false), 'unsubscribe'), 'nobody');
 }
+
+// A checkout records the opt-in it wrote to the contact only when the box was on the screen and the buyer, not staff ghosting, answered it.
+function test_consent_checkout_answers_only_the_buyers_own()
+{
+	pg_assert_same(array('email:marketing' => true), pg_consent_checkout_answers('true', false, 1), 'shown, ticked');
+	pg_assert_same(array('email:marketing' => false), pg_consent_checkout_answers('true', false, 0), 'shown, unticked');
+	pg_assert_same(array('email:marketing' => true), pg_consent_checkout_answers('true', false, '1'), 'the value as written to the contact');
+	pg_assert_same(array(), pg_consent_checkout_answers('false', false, 1), 'not shown: the default');
+	pg_assert_same(array(), pg_consent_checkout_answers('', false, 0), 'no marker posted');
+	pg_assert_same(array(), pg_consent_checkout_answers(array('true'), false, 1), 'marker posted as an array');
+	pg_assert_same(array(), pg_consent_checkout_answers('true', true, 0), 'staff ghosting');
+	pg_assert_same(array(), pg_consent_checkout_answers('true', 1, 1), 'staff ghosting, flag as a number');
+}
+
+// The checkout's person: the billing address only when it is one, the account and the contact as numbers.
+function test_consent_checkout_person()
+{
+	pg_assert_same(array('email' => 'ali@example.com', 'user_id' => 4, 'contact_id' => 9), pg_consent_checkout_person('ali@example.com', '4', '9'), 'member');
+	pg_assert_same(array('email' => 'ali@example.com', 'user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person('ali@example.com', '', 9), 'guest');
+	pg_assert_same(array('user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person('ali@', '', '9'), 'an address the checkout refuses');
+	pg_assert_same(array('user_id' => 0, 'contact_id' => 9), pg_consent_checkout_person(null, null, '9'), 'no address');
+}
+
+// Without the table (no connection here) a checkout answer writes nothing and throws nothing.
+function test_consent_log_checkout_without_table()
+{
+	pg_assert_same(0, pg_consent_log_checkout('ali@example.com', 4, 9, 'true', false, 1), 'asked');
+	pg_assert_same(0, pg_consent_log_checkout('ali@example.com', 4, 9, 'false', false, 1), 'not asked');
+}

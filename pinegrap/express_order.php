@@ -769,13 +769,6 @@ if ($order_submitted == false) {
         $opt_in = 0;
     }
     
-    // Whether the visitor was shown the opt-in box, kept for the consent log
-    // that submit_order() writes once the order is placed: a hidden box still
-    // gives the order an answer, but not one the visitor made.
-    $_SESSION['ecommerce']['opt_in_asked'] = array(
-        'order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
-        'asked' => ($liveform->get_field_value('opt_in_displayed') === 'true'));
-    
     // if tax-exempt was checked
     if ($liveform->get_field_value('tax_exempt') == '1') {
         $tax_exempt = 1;
@@ -1050,6 +1043,11 @@ if ($order_submitted == false) {
                          "timestamp = UNIX_TIMESTAMP() " .
                      "WHERE id = '" . $contact_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // The box's answer goes to the consent log as the contact now
+            // holds it, here where the contact takes it: the order may never
+            // be submitted, and the contact keeps the answer then too.
+            pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in);
         } elseif ($liveform->field_in_session('tax_number')) {
             // The card is not updated from the billing block, but a card with no
             // tax number still takes the one typed here: the order keeps none of

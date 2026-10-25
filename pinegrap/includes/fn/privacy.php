@@ -509,3 +509,77 @@ function pg_consent_log_answers(array $person, array $answers, $source)
 
     return $written;
 }
+
+/**
+ * The e-mail marketing answer a checkout records when it writes the box's
+ * value to the contact, or array() when that value is not the buyer's own
+ * answer. Pure. The screens post opt_in_displayed 'true' only when they drew
+ * the box ('false' when the contact was opted in already, nothing from a
+ * designed express order without it): without it the contact still gets a
+ * value, but not one the buyer chose. While staff are ghosting, the box is
+ * answered by the staff member, not by the customer.
+ *
+ * @param mixed $opt_in_displayed  the posted opt_in_displayed
+ * @param mixed $ghost             $_SESSION['software']['ghost']
+ * @param mixed $opt_in            the opt_in written to the contact, 0 or 1
+ * @return array  "channel:purpose" => bool, for pg_consent_log_answers()
+ */
+function pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in)
+{
+    if (($opt_in_displayed !== 'true') || $ghost) {
+        return array();
+    }
+
+    return array('email:marketing' => ((int) $opt_in === 1));
+}
+
+/**
+ * The person a checkout answer is recorded for. Pure. The billing address
+ * only when validate_email_address() accepts it: an express order writes the
+ * contact before its billing errors stop the order, and an address the
+ * checkout refuses must not become the row's person token. The account and
+ * the contact still name the person then.
+ *
+ * @param mixed $email       the billing e-mail address written to the contact
+ * @param mixed $user_id     the buyer's account, empty for a guest
+ * @param mixed $contact_id  the contact just updated
+ * @return array  for pg_consent_log_answers()
+ */
+function pg_consent_checkout_person($email, $user_id, $contact_id)
+{
+    $person = array();
+
+    if (is_string($email) && validate_email_address($email)) {
+        $person['email'] = $email;
+    }
+
+    return $person + array('user_id' => (int) $user_id, 'contact_id' => (int) $contact_id);
+}
+
+/**
+ * Record the e-mail marketing answer a checkout has just written to the
+ * contact (billing_information.php, express_order.php, submit_order()). The
+ * handlers call it right after the UPDATE contacts that carries opt_in, in
+ * the branch that runs only when the contact is updated, so the log holds
+ * what the contact holds: a submit refused or never paid afterwards keeps its
+ * row, and a signed-in buyer whose card is not updated adds none. A repeated
+ * answer writes nothing (pg_consent_log_answers()).
+ *
+ * @param mixed $email             the billing e-mail address written to the contact
+ * @param mixed $user_id           the buyer's account, empty for a guest
+ * @param mixed $contact_id        the contact just updated
+ * @param mixed $opt_in_displayed  the posted opt_in_displayed
+ * @param mixed $ghost             $_SESSION['software']['ghost']
+ * @param mixed $opt_in            the opt_in written to the contact, 0 or 1
+ * @return int  rows written
+ */
+function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displayed, $ghost, $opt_in)
+{
+    $answers = pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in);
+
+    if (!$answers) {
+        return 0;
+    }
+
+    return pg_consent_log_answers(pg_consent_checkout_person($email, $user_id, $contact_id), $answers, 'checkout');
+}
