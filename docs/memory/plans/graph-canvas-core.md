@@ -22,7 +22,7 @@ description: Plan (2026-10-24, not started, answers open): a reusable box-and-ar
 
 ## Slices (one PR each)
 1. Commit the harness (tests/js/, run by hand; needs Node and Chromium) and record today's result.
-2. Pure refactor: core plus Flows adapter, behaviour identical, harness green before and after; new tests: core keys in tr.json and `pg_graph_canvas_js_strings()`, the core bundled; the literals the canvas test reads stay in workspace_flow.js; core printed first.
+2. Pure refactor: core plus Flows adapter, behaviour identical, harness green before and after; new tests: core keys in the shards and `pg_graph_canvas_js_strings()`, the core bundled; the literals the canvas test reads stay in workspace_flow.js; core printed first.
 3. CSS to `pgc-` with tokens.
 4. Only when a second user starts: size per node, lower minimum zoom, named ports inside a node (`{from, port, to}`, one arrow each), arrows into one frame spread out, non-box targets, stable arrow ids, a thumbnail hook, partial redraw, load without defer.
 

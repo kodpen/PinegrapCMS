@@ -36,7 +36,7 @@ write that path into its task.
 | SQL, reading tables/columns, SQL traps | `data/` |
 | High-volume counters, rollups, visitor statistics, sitemap/noindex | `visitors/` |
 | A migration step that changes the schema, versions, changelog | `release/` |
-| New file, function, folder or library; user-facing text (`lang()`, `_sdT()`, `tr.json`); JavaScript twins and bundles; CSRF, escaping, secrets, file integrity; roles and permission columns | `core/` |
+| New file, function, folder or library; user-facing text (`lang()`, `_sdT()`, language shards); JavaScript twins and bundles; CSRF, escaping, secrets, file integrity; roles and permission columns | `core/` |
 | Redirects, server rules, update/TLS, uploads, images, cookie consent | `platform/` |
 | `waf.php`, rate limits, IP lists, security headers | `waf/` |
 | Panel screen, toolbar, form, settings modal, panel JavaScript | `ui/` |
@@ -145,8 +145,8 @@ session).
    a long-running session; at most one safety check-in, never polling.
 7. **Shared hot files**: a PR does not edit `changelog.txt`; its body names
    the `[NEW]` line or the `[SCHEME]` item and the merging session writes it
-   when it lands the PR. `tr.json` keys go in with `php tools/tr_add.php`
-   (being split into sorted shards: `docs/memory/plans/tr-json-split.md`).
+   when it lands the PR. Translation keys go in with `php tools/tr_add.php`
+   (sorted shards in `includes/local/tr/`: `docs/memory/core/lang-files.md`).
    Generated memory indexes, `.min.js` bundles and
    `docs/memory/core/fn-module-map-additions.md`: append only; the merging
    session settles their conflicts (indexes and bundles by rebuilding them).
@@ -160,8 +160,8 @@ session).
 ## Fixed rules
 
 1. **Code comments in English, no exceptions** (PHP, JS, CSS, SQL, comments
-   inside strings). Translate Turkish comments in files you touch. `tr.json`
-   values and `lang()` strings are not comments.
+   inside strings). Translate Turkish comments in files you touch. Language
+   file values and `lang()` strings are not comments.
 2. **No AI or process trace** in comments, commits, PR bodies, PR comments or
    merge messages: no "user decision", "per feedback", phase numbers, plan or
    session references, `Co-Authored-By: Claude`, `Claude-Session:`,
@@ -172,7 +172,9 @@ session).
    code does and the technical why; decision history goes to memory.
 3. **Every user-facing text is translated:** `lang('English text')` in PHP and
    the panel, `_sdT('English text')` in the designer (single-quoted literal).
-   The English source is the key and must exist in `tr.json`.
+   The English source is the key and must exist in the Turkish shards
+   (`includes/local/tr/`): add it with `php tools/tr_add.php "English" "Türkçe"`,
+   never by hand.
 4. **New file:** Pinegrap header block (`Pinegrap`, not `PineGrap`); only
    URL-called files sit at the root, the rest under `includes/` with the gate
    constant; new functions in `includes/fn/<module>.php`, not `functions.php`.
@@ -216,7 +218,7 @@ In a session run the ones your change touches and the tests of your area
 
 ```bash
 php tools/lint.php              # php -l over the product tree
-php tools/check_lang.php        # lang()/_sdT() keys against tr.json
+php tools/check_lang.php        # lang()/_sdT() keys against the language shards
 php tools/check_bindings.php    # designer dropdown tokens against renderer
 php tools/check_api_schema.php  # external API fields against the schema
 php tools/test.php [filter]     # tests/*_test.php (pure functions)

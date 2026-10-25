@@ -4,7 +4,7 @@ description: Which language the software's own texts take on a site page in a la
 ---
 
 ## Which language files ship?
-- Only `includes/local/tr.json` and `en.json`. A language with a file always uses its file. No `includes/local/<code>.json` is added for a language a site is trying out.
+- Only Turkish (`includes/local/tr/`, sorted shards) and `en.json`. A language with a file or folder always uses it. No `includes/local/<code>` file or folder is added for a language a site is trying out.
 
 ## What does a page in another site language show?
 - Owner decision (2026-10-09): the software's interface language comes from the settings and is not part of the site's translation. On a page drawn in a language with no file (ko, de...) the software's texts (toolbar, dynamic code block, widget labels) stay English.

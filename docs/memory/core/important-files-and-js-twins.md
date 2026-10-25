@@ -10,7 +10,7 @@ Paths are relative to pinegrap/.
 - `api.php`: the panel's JSON endpoint (`panel-action-table.md`). `settings_pane.php`: the settings dialog's endpoint.
 - `view_folders.php`: File Manager. `view_files.php`, `view_design_files.php`: file and design file lists. `find_and_replace.php`: bulk find-replace (rewritten).
 - `data/config.php`: live config (defines; `init-constants-and-config-file.md`). `data/config(default).php`: default config template. `edit_config.php` is gone.
-- `includes/local/tr.json`: Turkish translation file.
+- `includes/local/tr/`: the Turkish translation as sorted shards; keys go in with `php tools/tr_add.php` (`lang-files.md`).
 - `install/index.php`: install screen; delegates upgrades to `includes/migrations/runner.php`. `includes/migrations/`: version history (`versions.php`), one schema file per version, `legacy.php`, `runner.php`.
 
 ## Which scripts have twins, and why does editing only `.src.js` change nothing?

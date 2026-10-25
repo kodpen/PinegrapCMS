@@ -5,7 +5,8 @@ rules that bind a change are the ones listed below.
 
 Issues and discussions may be written in Turkish or English. Code, comments,
 commit messages and UI source strings are English; user-facing text reaches
-the interface through `lang()` and is translated in `includes/local/tr.json`.
+the interface through `lang()` and is translated in `includes/local/tr/` (keys
+added with `php tools/tr_add.php "English" "Türkçe"`, never by hand).
 
 ## Setting up
 
@@ -40,7 +41,7 @@ A change is finished when all of the following hold:
 
 - `php tools/lint.php` exits 0 (syntax check of the whole product tree).
 - `php tools/check_lang.php` exits 0 (every `lang()` / `_sdT()` key exists in
-  `tr.json`; `_sdT()` takes a single-quoted literal only).
+  the Turkish shards; `_sdT()` takes a single-quoted literal only).
 - `php tools/check_bindings.php` exits 0 (every token the visual designer
   offers is produced by a renderer, and the other way round).
 - `php tools/check_api_schema.php` exits 0 when the external API changed
@@ -81,8 +82,8 @@ apply to them, plus these to keep parallel work from colliding:
 
 - One issue per fix package, one branch per topic, always off current
   `development`.
-- Before touching shared hot files (`includes/local/tr.json`,
-  `includes/migrations/`, the change log) merge `development` into the branch again.
+- Before touching shared hot files (`includes/migrations/`, the change
+  log) merge `development` into the branch again.
 - Never force-push a branch someone else may have checked out.
 - Before opening a PR, check open issues and PRs for the same `file:line`
   ranges; mention overlaps in the PR body.
