@@ -601,10 +601,12 @@ function pg_tr_label($text)
 }
 
 /**
- * Whether a language has a file of its own for the software's wording
- * (includes/local/<code>.json). One that has one speaks it; for one that has
- * none, the cookie window is translated through the site's translations
- * (pg_tr_ui_text()) and the rest of the wording stays English.
+ * Whether a language has a file of its own for the software's wording: its
+ * folder of shards (includes/local/<code>/) or its single
+ * includes/local/<code>.json (pg_lang_source()). One that has one speaks
+ * it; for one that has none, the cookie window is translated through the
+ * site's translations (pg_tr_ui_text()) and the rest of the wording stays
+ * English.
  *
  * @param string $code
  * @return bool
@@ -617,7 +619,7 @@ function pg_tr_ui_has_file($code)
 
     if (!isset($known[$code])) {
         $known[$code] = (bool) preg_match('/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/', $code)
-            && is_file(PG_FUNCTIONS_DIR . '/includes/local/' . $code . '.json');
+            && (pg_lang_source($code) !== null);
     }
 
     return $known[$code];

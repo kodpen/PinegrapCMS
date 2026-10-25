@@ -7,13 +7,13 @@
  *
  * Three contracts are enforced:
  *   1. lang('English text') in PHP and _sdT('English text') in the style
- *      designer must resolve to a key present in includes/local/tr.json, or
- *      in its shards under includes/local/tr/ once the language is split;
- *      each shard must then be in its exact form (lang_files.php).
+ *      designer must resolve to a key present in the Turkish shards under
+ *      includes/local/tr/ (or a single includes/local/tr.json when there is
+ *      no folder); each shard must be in its exact form (lang_files.php).
  *   2. _sdT() takes a single-quoted literal only. The server scans the file
  *      for that exact pattern, so _sdT("x"), _sdT($x) and _sdT('a' . $b)
  *      silently ship untranslated text.
- *   3. tr.json holds every key once. json_decode() keeps the last copy
+ *   3. The language holds every key once. json_decode() keeps the last copy
  *      without a word, so a second copy with another value hides the first
  *      one's translation. Each duplicate is reported with every line it is
  *      on, and whether the copies' values differ.
@@ -66,9 +66,9 @@ require_once(dirname(__DIR__) . '/pinegrap/functions.php');
 
 $language_path = $root_real . '/' . $language_file;
 
-// The language as shards (includes/local/tr/*.json) once it has been split:
-// docs/memory/plans/tr-json-split.md. lang() reads the folder first, so a
-// single file left beside it would be stale.
+// The language as shards (includes/local/tr/*.json): docs/memory/core/lang-files.md.
+// lang() reads the folder first (pg_lang_source()), so a single file left
+// beside it would be stale.
 $language_folder = $root_real . '/includes/local/tr';
 
 $duplicates = array();

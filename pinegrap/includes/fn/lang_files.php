@@ -23,8 +23,9 @@
 // strcmp order, one per line. A new key then lands among its alphabetical
 // neighbours, so two branches adding different keys touch different lines
 // and git merges them; a single file that every branch appends to conflicts
-// on every pair. lang() reads the folder through pg_lang_read_folder()
-// (includes/fn/core.php) and falls back to includes/local/<code>.json.
+// on every pair. lang() and every other reader take a language through
+// pg_lang_map() (includes/fn/core.php): the folder when it holds a shard,
+// else includes/local/<code>.json.
 
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;

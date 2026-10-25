@@ -19,13 +19,11 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 function _test_tt_language()
 {
-	static $language = null;
-	if ($language === null) {
-		$language = json_decode(file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
-	}
-	return $language;
+	return pg_test_language_map();
 }
 
 // The short texts the designer passes to _sdT(): at most four words and no

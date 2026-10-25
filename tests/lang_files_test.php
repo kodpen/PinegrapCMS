@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the language file helpers (includes/fn/lang_files.php) and
- * pg_lang_read_folder() (includes/fn/core.php): the shard a key belongs to,
- * the exact text of a language file, splitting, adding keys, the three-way
- * merge tools/tr_resolve.php uses, the checks tools/check_lang.php runs on a
- * shard, and reading a language kept as shards.
+ * Tests for the language file helpers (includes/fn/lang_files.php) and the
+ * readers in includes/fn/core.php (pg_lang_read_folder(), pg_lang_source(),
+ * pg_lang_map()): the shard a key belongs to, the exact text of a language
+ * file, splitting, adding keys, the three-way merge tools/tr_resolve.php
+ * uses, the checks tools/check_lang.php runs on a shard, the Turkish shards
+ * as shipped, and reading a language from its folder or its single file.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,6 +18,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/language_map.php');
 
 // Letters of either case go to their own shard, digits to 0, the rest to _.
 function test_lang_files_shard_of()
@@ -58,15 +61,22 @@ function test_lang_files_encode_keeps_order()
 	pg_assert_same("{\n    \"Save\": \"Kaydet\",\n    \"Bold\": \"Kalın\"\n}\n", pg_lang_file_encode(array('Save' => 'Kaydet', 'Bold' => 'Kalın'), false));
 }
 
-// The real tr.json is in the exact form pg_lang_file_encode() writes, so
-// tools/tr_add.php can append to it without moving any other line.
-function test_lang_files_single_file_round_trip()
+// The Turkish wording ships as shards only: every shard in its exact form
+// with each key in its own shard, and no single tr.json beside the folder.
+function test_lang_files_turkish_shards()
 {
-	$text = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json');
-	$map = json_decode($text, true);
+	$folder = PG_FUNCTIONS_DIR . '/includes/local/tr';
+	$shards = glob($folder . '/*.json');
 
-	pg_assert_true(is_array($map), 'tr.json decodes');
-	pg_assert_true($text === pg_lang_file_encode($map, false), 'tr.json is in its exact form');
+	pg_assert_true(is_array($shards) && (count($shards) > 20), 'the Turkish shards are there');
+	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), 'no single tr.json beside the folder');
+
+	foreach (is_array($shards) ? $shards : array() as $shard) {
+		pg_assert_same(array(), pg_lang_shard_problems(basename($shard, '.json'), (string) file_get_contents($shard)), basename($shard));
+	}
+
+	pg_assert_same($folder, pg_lang_source('tr'), 'lang() reads the folder');
+	pg_assert_same('Kaydet', pg_test_language_map('tr')['Save'] ?? null, 'a key read through the map');
 }
 
 function test_lang_files_split()
@@ -156,4 +166,38 @@ function test_lang_files_read_folder()
 		@unlink($dir . '/' . $name);
 	}
 	@rmdir($dir);
+}
+
+// A language's folder of shards wins over its single file, also when an
+// update left the old file beside it; an empty folder does not count.
+function test_lang_files_source_and_map()
+{
+	$local = sys_get_temp_dir() . '/pg_lang_local_' . getmypid();
+	@mkdir($local);
+	@mkdir($local . '/xx');
+
+	pg_assert_same(null, pg_lang_source('xx', $local), 'neither a shard nor a file');
+	pg_assert_same(array(), pg_lang_map('xx', $local), 'no language: an empty map');
+
+	file_put_contents($local . '/xx.json', '{"Save": "Old"}');
+
+	pg_assert_same($local . '/xx.json', pg_lang_source('xx', $local), 'an empty folder: the single file');
+	pg_assert_same(array('Save' => 'Old'), pg_lang_map('xx', $local));
+
+	file_put_contents($local . '/xx/s.json', pg_lang_file_encode(array('Save' => 'Kaydet')));
+
+	pg_assert_same($local . '/xx', pg_lang_source('xx', $local), 'the folder wins');
+	pg_assert_same(array('Save' => 'Kaydet'), pg_lang_map('xx', $local), 'the stale single file is not read');
+
+	pg_assert_same(null, pg_lang_source('../xx', $local), 'no path from the code');
+	pg_assert_same(null, pg_lang_source('', $local), 'no empty code');
+
+	file_put_contents($local . '/yy.json', '{broken');
+	pg_assert_same(array(), pg_lang_map('yy', $local), 'a single file that does not decode');
+
+	@unlink($local . '/xx/s.json');
+	@rmdir($local . '/xx');
+	@unlink($local . '/xx.json');
+	@unlink($local . '/yy.json');
+	@rmdir($local);
 }

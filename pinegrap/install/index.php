@@ -305,7 +305,7 @@ install_include_legacy();
 
 // The editor's words in the language of a starter site, for the widget layouts that the screen
 // builds with the editor's own code when a design template is chosen. The same lookup lang()
-// makes, read from the language file directly: the language of this screen is fixed by the time
+// makes, read from the language's files directly: the language of this screen is fixed by the time
 // this runs, and it need not be the starter site's. A language that config.php enforces wins,
 // as it does in lang() when the template is written.
 if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'designer_i18n')) {
@@ -326,9 +326,10 @@ if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'designer_i
 
 	if ($designer_i18n_language !== 'en') {
 
-		$designer_i18n_file = json_decode((string) @file_get_contents(dirname(__FILE__) . '/../includes/local/' . $designer_i18n_language . '.json'), true);
+		// The shards in includes/local/<code>/, else the single <code>.json.
+		$designer_i18n_file = pg_lang_map($designer_i18n_language);
 
-		if (is_array($designer_i18n_file)) {
+		if (count($designer_i18n_file) > 0) {
 
 			foreach (pg_designer_i18n_keys() as $designer_i18n_key) {
 

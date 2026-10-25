@@ -19,6 +19,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 function comments_widget_designer_test_source($path)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
@@ -1101,7 +1103,7 @@ JS;
 		return;
 	}
 
-	$tr = json_decode((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+	$tr = pg_test_language_map();
 	$names = array_merge(array($res['parent']), $res['names']);
 	$turkish = array();
 

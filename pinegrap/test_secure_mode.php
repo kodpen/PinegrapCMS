@@ -47,7 +47,7 @@ function tsm_h($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-// Minimal translator, compatible with the tr.json files used by lang().
+// Minimal translator, reading the same language files as lang().
 // SOFTWARE_LANGUAGE is stored in the database, which is not read here, so this
 // falls back to the config file overrides and then to English.
 function tsm_lang($string)
@@ -64,13 +64,23 @@ function tsm_lang($string)
             $language = DEFAULT_SOFTWARE_LANGUAGE;
         }
 
-        $path = dirname(__FILE__) . '/includes/local/' . basename($language) . '.json';
-        if (file_exists($path) && is_readable($path)) {
-            $json = @file_get_contents($path);
-            if ($json !== false) {
-                $decoded = @json_decode($json, true);
+        // The order pg_lang_map() (includes/fn/core.php, not loaded here)
+        // reads a language in: its shards in includes/local/<code>/, merged in
+        // name order, else the single includes/local/<code>.json.
+        $local = dirname(__FILE__) . '/includes/local/' . basename($language);
+        $paths = glob($local . '/*.json');
+        if (!is_array($paths) || (count($paths) === 0)) {
+            $paths = array($local . '.json');
+        }
+        sort($paths, SORT_STRING);
+
+        foreach ($paths as $path) {
+            if (file_exists($path) && is_readable($path)) {
+                $decoded = @json_decode((string) @file_get_contents($path), true);
                 if (is_array($decoded)) {
-                    $translations = $decoded;
+                    foreach ($decoded as $key => $value) {
+                        $translations[$key] = $value;
+                    }
                 }
             }
         }

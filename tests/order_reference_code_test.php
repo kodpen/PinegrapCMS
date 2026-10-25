@@ -21,6 +21,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/language_map.php');
+
 require_once(PG_FUNCTIONS_DIR . '/retrieve_order.php');
 
 // ?r= comes first; an empty value or a list is skipped for the other one.
@@ -88,7 +90,7 @@ function test_order_reference_code_history_messages_are_translated()
 		pg_assert_false(strpos($source, "_notice = ' Your") !== false, $file . ': untranslated switched-order notice');
 	}
 
-	$language = json_decode(file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr.json'), true);
+	$language = pg_test_language_map();
 
 	foreach (array('Query failed.', 'A new order has been created, and it appears below.', 'A new order has been created.', 'The order has been deleted.', 'Your previous order has been saved and may be retrieved when needed.') as $key) {
 		pg_assert_true(isset($language[$key]), $key);
