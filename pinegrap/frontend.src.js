@@ -1772,7 +1772,9 @@ var software = {
     // the form on the server); here it points the form's parent_id at the
     // comment, shows the "Replying to" box and focuses the message instead.
     // Cancel points the form at no comment. Share copies the comment's
-    // permalink, or shows it to copy by hand.
+    // permalink, or shows it to copy by hand. The watch form, the staff's
+    // open-or-close form and the watcher list's forms lock their submit
+    // buttons once sent.
     init_comment_actions: function() {
         if (software.comment_actions_ready) {
             return;
@@ -1842,6 +1844,28 @@ var software = {
                 }, ask);
             } else {
                 ask();
+            }
+        });
+
+        // The small forms, found by the ids and the class the server writes
+        // on them. A second click while the first post is on its way would
+        // send the same change again, and add_or_remove_watcher.php answers
+        // a repeated watch or unwatch with an error page. The handlers read
+        // hidden inputs only, so a disabled button loses nothing.
+        var small_forms = 'form#software_watcher, form#software_allow_or_disallow_new_comments, .pg-comment-watchers form';
+        var submits = 'button[type="submit"], input[type="submit"]';
+
+        software_$(document).on('submit', small_forms, function() {
+            software_$(this).find(submits).prop('disabled', true);
+        });
+
+        // A page the browser restores from its back/forward cache (the
+        // error page's "Go back") would keep these buttons and the comment
+        // form's locked.
+        software_$(window).on('pageshow', function(event) {
+            if (event.originalEvent && event.originalEvent.persisted) {
+                software_$(small_forms).find(submits).prop('disabled', false);
+                software_$('form[data-pg-comment-form]').find('[data-pg-comment-submit]').prop('disabled', false);
             }
         });
     },

@@ -21,7 +21,16 @@
 function get_page_content($page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = FALSE, $device_type = 'desktop') {
 
     global $user;
-    
+
+    // What the page is drawn for holds for the whole render
+    // (pg_sw_render_context()), not only for the widget pass, which adds the
+    // record the sender passed: an e-mail body draws no edit pencil, the
+    // comment pencil drawn after that pass included. The caller's context
+    // comes back once the page is drawn.
+    $pg_render_prev_ctx = function_exists('pg_sw_render_context')
+        ? pg_sw_render_context(array('email' => (bool)$email))
+        : null;
+
     // get data for the page
     $query = "SELECT * " .
              "FROM page " .
@@ -4384,7 +4393,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         WHERE
                             (
                                 (user_id = '" . USER_ID . "')
-                                || (email_address = '" . USER_EMAIL_ADDRESS . "')
+                                || (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
                             )
                             AND (page_id = '" . escape($system_region_properties['page_id']) . "')$sql_where_watchers";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -6402,6 +6411,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
     }
+
+    // The page is drawn: the caller's render context comes back (set at the
+    // top of this function).
+    if (is_array($pg_render_prev_ctx)) pg_sw_render_context($pg_render_prev_ctx);
 
     // An e-mail body takes no responsive image markup: the e-mail pass makes
     // src addresses absolute, not srcset ones (pg_img_strip_responsive()).

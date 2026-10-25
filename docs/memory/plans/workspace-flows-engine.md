@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-engine
-description: Plan (2026-10-24, not started, answers open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
+description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 ---
 
 ## What does it reuse?
@@ -16,7 +16,7 @@ description: Plan (2026-10-24, not started, answers open): Flows engine: tables,
 - `ws_flow_run_steps`: run, node_id, pass (0, no loops), status (ready, running, waiting, done, failed, skipped, interrupted), outcome, attempt, ready_at, claimed_at, wait_event, wait_key, wake_at, effect, result; UNIQUE (run, node, pass).
 
 ## How does a run move?
-- A start (Run, API, the anchor's step) writes the run (start_key `manual:<token>`, `sched:<scheduled run id>`), its trigger step done.
+- A start (Run, API, the anchor's step) writes the run (start_key `manual:<token hash>`, `sched:<scheduled run id>`), its trigger step done.
 - A step that ends marks itself, then INSERT IGNOREs each next box whose arrows in are all settled; untaken branches skip their boxes, so a join fires once.
 - `ws_flow_advance()` claims a ready step (`UPDATE … AND status='ready'`, affected_rows 1), runs it, follows its outcome.
 - Task, approval: `effect` (`task:12`), then waiting; an approval needs a channel, ends approved, rejected, expired or withdrawn. Delay: a later `ready_at`.
@@ -40,4 +40,5 @@ description: Plan (2026-10-24, not started, answers open): Flows engine: tables,
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- F1: migration, pure `ws_flow_graph_check()` (tests/workspace_flows_test.php), store, API.
+- Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md)
+- Next: F4 (`{{node.*}}` reads `result.data`), F5 retry and skip.
