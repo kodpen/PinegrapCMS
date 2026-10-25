@@ -12,6 +12,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors to
 - `reviews` (who may review a product, the product rating, AggregateRating): [[product-reviews-verified]].
 - `comments`: which thread a posted comment joins ([[comment-thread-verify]]), the record's comment counters ([[comments-moderation-counters]]), which name a member's comment gets (`pg_comment_member_name()`, [[designed-page-comment-names]]), which comment a reply may answer (`pg_comment_parent_ok()`, [[comment-replies]]), the rules a page shows a thread by (`pg_comments_*`, [[comment-thread-rules]]), the links that name one comment (`pg_comment_view_query()`, `pg_comment_return_url()`, [[comments-widget-pages]]).
 - `widgets_comments`: the comments system widget, its hand-off with the classic comments block, its add-comment form, replies, watch and staff forms and pages ([[comments-widget]], [[comments-widget-form]], [[comments-widget-replies]], [[comments-widget-watch-staff]], [[comments-widget-pages]]).
+- `lang_files`: language files kept as sorted shards: the shard of a key, the exact file text, adding keys, the three-way merge, shard checks, atomic writes ([[lang-files]]).
 - `wishlist`: a visitor's or an account's favourites, the visitor cookie, the merge at sign-in, the toggle and state endpoint (`wishlist.php`): [[wishlist]].
 
 ## Where does a module added later go?

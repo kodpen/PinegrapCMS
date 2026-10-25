@@ -3932,6 +3932,43 @@ function url_exists($url)
 // - Looks for JSON translation files in includes/local/{lang}.json relative to this file or cwd.
 // - If mbstring is not available, falls back to single-byte string helpers.
 // - in english language file you can overwrite strings.
+// The language map kept as shards in $dir (includes/local/<code>/): every
+// *.json there in name order, merged; null when $dir is not a folder or holds
+// no shard, so the caller falls back to the single <code>.json file. A shard
+// that is not valid JSON is skipped, as a broken single file is.
+function pg_lang_read_folder($dir)
+{
+    $dir = rtrim((string) $dir, '/\\');
+
+    if (($dir === '') || !is_dir($dir)) {
+        return null;
+    }
+
+    $files = glob($dir . '/*.json');
+
+    if (!is_array($files) || (count($files) === 0)) {
+        return null;
+    }
+
+    sort($files, SORT_STRING);
+
+    $map = array();
+
+    foreach ($files as $file) {
+        $decoded = @json_decode((string) @file_get_contents($file), true);
+
+        if (!is_array($decoded)) {
+            continue;
+        }
+
+        foreach ($decoded as $key => $value) {
+            $map[$key] = $value;
+        }
+    }
+
+    return $map;
+}
+
 function lang($properties = false)
 {
     static $translations = array(); // cache translations per language
@@ -4032,8 +4069,12 @@ function lang($properties = false)
         $translations[$selected_software_language] = array();
         $json = false;
 
+        // A language kept as shards (includes/local/<code>/*.json) is read
+        // from its folder; otherwise from its single file.
+        $folder_map = pg_lang_read_folder(PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language);
+
         // Prefer absolute path relative to this file
-        $pathsToTry = array(
+        $pathsToTry = ($folder_map !== null) ? array() : array(
             PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json',
             'includes/local/' . $selected_software_language . '.json',
             PG_FUNCTIONS_DIR . '/includes/local/' . $selected_software_language . '.json'
@@ -4048,7 +4089,9 @@ function lang($properties = false)
             }
         }
 
-        if ($json !== false) {
+        if ($folder_map !== null) {
+            $translations[$selected_software_language] = $folder_map;
+        } elseif ($json !== false) {
             $decoded = @json_decode($json, true);
             if (is_array($decoded)) {
                 $translations[$selected_software_language] = $decoded;
