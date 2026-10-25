@@ -18,7 +18,9 @@
  *
  * A first character changes what is looked for: # a record (with the kind's
  * prefix, "#sip 1042", only that kind), @ a person of the team, / one of the
- * writing box's commands. The screen side is assets/js/workspace_palette.js.
+ * writing box's commands. Words such as "new product" ("yeni ürün") also
+ * offer to make one, in the record drawer's new mode (quick_edit.php). The
+ * screen side is assets/js/workspace_palette.js.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -614,6 +616,87 @@ function ws_palette_commands($query, $viewer = null)
 }
 
 /**
+ * Does what is typed ask for a create line? Every word typed (from two
+ * letters on) starts a word of the line's words, in Turkish lower case with
+ * the Turkish letters folded (ws_command_fold()), so "yeni ürün", "urun" and
+ * "new prod" all find "New product".
+ *
+ * @param string $query as typed
+ * @param string $words the line's words, in every language it answers to
+ * @return bool
+ */
+function ws_palette_create_matches($query, $words)
+{
+    $typed = array_values(array_filter(preg_split('/\s+/u', ws_command_fold(trim((string) $query))), 'strlen'));
+    $known = array_values(array_filter(preg_split('/\s+/u', ws_command_fold((string) $words)), 'strlen'));
+
+    if (empty($typed) || (mb_strlen(implode(' ', $typed)) < 2)) {
+        return false;
+    }
+
+    foreach ($typed as $word) {
+        $found = false;
+
+        foreach ($known as $candidate) {
+            if (strpos($candidate, $word) === 0) {
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * The records the person may make from the search box (a new product, a new
+ * product group: ws_quick_create_types()), when what is typed asks for them.
+ * Choosing one opens the record drawer's new mode.
+ *
+ * @param array  $viewer
+ * @param string $query
+ * @return array[]
+ */
+function ws_palette_creates($viewer, $query)
+{
+    if (!function_exists('ws_quick_create_types') || !function_exists('ws_changes_ready') || !ws_changes_ready()) {
+        return array();
+    }
+
+    // Each line answers to its words in English and Turkish, whichever the
+    // screen shows.
+    $lines = array(
+        'product'       => array('icon' => 'bi-box-seam', 'words' => 'new product create yeni ürün oluştur', 'sub' => lang('Opens an empty product in the record drawer.')),
+        'product_group' => array('icon' => 'bi-collection', 'words' => 'new product group create yeni ürün grubu oluştur', 'sub' => lang('Opens an empty product group in the record drawer.')),
+    );
+    $out = array();
+
+    foreach (ws_quick_create_types() as $type) {
+        $title = ws_quick_create_title($type);
+
+        if (!isset($lines[$type]) || !ws_change_allowed($viewer, $type, 0) || !ws_palette_create_matches($query, $title . ' ' . $lines[$type]['words'])) {
+            continue;
+        }
+
+        $out[] = array(
+            'type'  => 'create',
+            'id'    => 0,
+            'kind'  => $type,
+            'title' => $title,
+            'sub'   => $lines[$type]['sub'],
+            'date'  => '',
+            'icon'  => $lines[$type]['icon'],
+        );
+    }
+
+    return $out;
+}
+
+/**
  * One search, every group the person may see.
  *
  * @param array  $viewer
@@ -663,6 +746,17 @@ function ws_palette_search($viewer, $q, $options = array())
 
     if (mb_strlen($query) < 2) {
         return $out;
+    }
+
+    // A new product or product group, first: only in the search of
+    // everything everywhere (the API asks for its kinds by name and never
+    // gets it).
+    if (empty($options['types']) && ($channel_id === 0)) {
+        $creates = ws_palette_creates($viewer, $query);
+
+        if (!empty($creates)) {
+            $out['groups'][] = array('key' => 'create', 'title' => lang('Create'), 'icon' => 'bi-plus-lg', 'items' => $creates);
+        }
     }
 
     $types = array_values(array_intersect(array_keys($known), array_map('strval', (array) ($options['types'] ?? array()))));

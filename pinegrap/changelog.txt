@@ -19,7 +19,7 @@
 ==========================================================
 2026.11.0
 [NEW] Added a code editor to the visual designer: the page is edited as HTML beside the canvas, and the design's CSS and JS files open in the same editor, with find and replace.
-[NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) from the Workspace record drawer, and the /price and /stock commands in channels, with the change kept in the channel as a decision.
+[NEW] Added editing of a record's fields (product, stock, order, contact, current account, product group, offer, event) and creating products and product groups from the Workspace record drawer, and the /price, /stock and /product commands in channels, with the change kept in the channel as a decision.
 [NEW] Added export and import of Workspace notes: one note as Markdown or a printable page, all notes as a zip that opens as a vault in other note apps, and Markdown or text files, or a zip of them such as an Obsidian vault or a Notion, Joplin or Bear export, brought in as notes.
 [NEW] Added operations alerts: a failed or stale backup, a stopped scheduled task, changed software files, a burst of PHP errors, low disk space, failing e-mail or webhooks and an expiring certificate are told on the panel bell, by e-mail and on subscribed devices.
 [NEW] Added a backup before every software update and repair: the files it replaces and the database are saved first, and Repair Software can roll the files back to it.

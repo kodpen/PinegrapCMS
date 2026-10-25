@@ -1281,6 +1281,7 @@ function ws_handle_action($action, $request)
                 'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
                 'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
                 'decision'  => !empty($request['decision']),
+                'on_sale'   => !empty($request['on_sale']),
             ));
 
             if ($command !== null) {
@@ -2459,9 +2460,12 @@ function ws_handle_action($action, $request)
             return ws_action_ok($refs);
 
         // A record's fields, edited by the person from the drawer with no
-        // assistant in between (quick_edit.php).
+        // assistant in between (quick_edit.php). No id: the empty form of a
+        // new record, the drawer's new mode.
         case 'ws_record_fields':
-            $fields = ws_quick_edit_fields($viewer, (string) ($request['type'] ?? ''), (int) ($request['id'] ?? 0));
+            $type = (string) ($request['type'] ?? '');
+            $id = (int) ($request['id'] ?? 0);
+            $fields = ($id === 0) ? ws_quick_create_fields($viewer, $type) : ws_quick_edit_fields($viewer, $type, $id);
 
             if (!$fields['ok']) {
                 $error = ws_action_error($fields['error']);
@@ -2491,6 +2495,30 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('lines' => $saved['lines'], 'decision_id' => $saved['decision_id']));
+
+        // A new product or product group from the drawer's new mode
+        // (quick_edit.php): off sale unless ticked, kept as an applied
+        // create, and as a decision in the channel when asked.
+        case 'ws_record_create':
+            $created = ws_quick_create_save(
+                $viewer,
+                (string) ($request['type'] ?? ''),
+                is_array($request['fields'] ?? null) ? $request['fields'] : array(),
+                (int) ($request['channel_id'] ?? 0),
+                !empty($request['decision'])
+            );
+
+            if (!$created['ok']) {
+                return ws_action_error($created['error']);
+            }
+
+            return ws_action_ok(array(
+                'id'          => $created['id'],
+                'name'        => $created['name'],
+                'tag'         => $created['tag'],
+                'lines'       => $created['lines'],
+                'decision_id' => $created['decision_id'],
+            ));
 
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));
