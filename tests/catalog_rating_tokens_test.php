@@ -82,8 +82,8 @@ function test_catalog_rating_columns()
 // The listing's card is drawn once for each rating state: an element shown
 // only with a rating is in the rated card alone, one shown only without it in
 // the other, a group row (no rating state of its own) draws neither unless
-// every element is flagged, and a flag no catalog evaluates leaves its
-// element drawn.
+// that leaves no token and no text, and a flag no catalog evaluates leaves
+// its element drawn.
 function test_catalog_rating_card_templates()
 {
 	$paragraph = function ($text, $flag) {
@@ -139,6 +139,37 @@ function test_catalog_rating_card_templates()
 	pg_assert_false(strpos($templates['unrated'], 'Stars') !== false, 'the card without a rating has no stars');
 	pg_assert_true($templates['group'] !== '', 'group rows still have a card');
 	pg_assert_same($templates['unrated'], $templates['group'], 'group rows take the card without a rating');
+
+	// The same two cards inside one column without a flag (the starter's
+	// col > card shape): the column alone is left, with nothing a group row
+	// can show, so group rows take the card without a rating too.
+	$card_flagged = function ($flag, $children) {
+		return array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'card', '_bindings' => array('eo_visible_if' => $flag)), 'children' => $children);
+	};
+	$alternatives = array(
+		$card_flagged('has_rating', array($paragraph('^^__name^^', ''), $paragraph('Stars', ''))),
+		$card_flagged('no_rating', array($paragraph('^^__name^^', ''), $paragraph('Be the first to review', ''))),
+	);
+	$wrappers = array(
+		'a grid column' => array('type' => 'col', 'props' => array('xs' => '12', 'md' => '4', 'cssClass' => 'mb-4'), 'children' => $alternatives),
+		'a plain div'   => array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col'), 'children' => $alternatives),
+	);
+	foreach ($wrappers as $label => $wrapper) {
+		$templates = _pg_catalog_card_templates(array($wrapper));
+
+		pg_assert_contains('<p>Stars</p>', $templates['rated'], $label);
+		pg_assert_contains('<p>Be the first to review</p>', $templates['unrated'], $label);
+		pg_assert_contains('^^__name^^', $templates['group'], $label . ': group rows draw a name');
+		pg_assert_same($templates['unrated'], $templates['group'], $label . ': group rows take the card without a rating');
+	}
+
+	// A wrapper that keeps a token or text of its own is a card for group rows.
+	$wrapper = array('type' => 'col', 'props' => array('xs' => '12'), 'children' => array_merge(array($paragraph('^^__name^^', '')), $alternatives));
+	$templates = _pg_catalog_card_templates(array($wrapper));
+
+	pg_assert_contains('<p>^^__name^^</p>', $templates['group'], 'the unflagged name stays');
+	pg_assert_false(strpos($templates['group'], 'Stars') !== false, 'a group card with a name of its own has no stars');
+	pg_assert_false(strpos($templates['group'], 'Be the first') !== false, 'nor the "be the first" text');
 }
 
 // The listing reads the columns behind the readiness check, fills both tokens
