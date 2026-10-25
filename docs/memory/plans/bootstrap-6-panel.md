@@ -26,5 +26,5 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 
 ## What is still open?
 1. Parallel sessions on independent steps: not assigned by the owner yet (CLAUDE.md).
-2. Running instances for screenshot rounds (B1, B8, the form-adorn pilot): an exception to `workflow/sandbox-and-environment.md` the owner must allow.
+2. Running instances for screenshot rounds (B1b, B8, the form-adorn pilot): an exception to `workflow/sandbox-and-environment.md` the owner must allow.
 3. Moving to a later 6.0 prerelease: when, and who decides.
