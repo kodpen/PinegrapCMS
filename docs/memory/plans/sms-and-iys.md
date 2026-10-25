@@ -28,7 +28,7 @@ description: Plan (approved 2026-10-19; SMS provider layer, Netgsm, queue, e-mai
 - İYS test environment credentials: owner provides; until then the client ships with a dry-run mode that only logs.
 - Netgsm to numbers abroad: the format was not verified, so the driver takes Turkish mobiles only.
 - Owner: marketing boxes start ticked (registration, membership, widgets; checkout from `orders.opt_in` DEFAULT 1); KVKK/GDPR and İYS expect them unticked. Untick?
-- Owner: a designed express order without the box writes `contacts.opt_in = 0` for every buyer; social sign-up 0 unasked. Keep?
+- Owner: a designed express order without the box stores `opt_in = 0` (order, updated contact); social sign-up 0 unasked. Keep?
 - Contacts opted in by DEFAULT 1 (forms, imports, API, profile) have no consent row; step 5 must not push them to İYS.
 
 ## Where to start?

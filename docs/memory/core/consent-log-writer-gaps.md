@@ -19,7 +19,7 @@ description: What the e-mail consent log writers leave unrecorded or record unas
 
 ## Open for the owner?
 - Boxes start ticked (registration, membership, widgets; checkout from `orders.opt_in` DEFAULT 1): untick?
-- A designed express order without the box writes `opt_in = 0` for every buyer; social sign-up writes 0 unasked.
+- A designed express order without the box sets `opt_in = 0` on each order and on each contact it updates; social sign-up writes 0 unasked.
 - A signed-in buyer whose card is not updated (every member on a designed express order, which has no `update_contact` box) keeps the old `contacts.opt_in`, so a refusal there is neither stored nor logged: write an asked answer to the contact anyway?
 - DEFAULT-1 contacts have no row: step 5 must not push them to İYS as consent.
 
