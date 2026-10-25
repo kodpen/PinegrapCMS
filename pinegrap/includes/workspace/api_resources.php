@@ -5366,6 +5366,7 @@ function ws_api_note_present($viewer, $note)
         'body'        => $full ? (string) $note['body'] : null,
         'created_at'  => api_time($note['created_at']),
         'updated_at'  => api_time($note['updated_at']),
+        'revision'    => isset($note['revision']) ? (int) $note['revision'] : null,
     );
 }
 
@@ -5390,6 +5391,7 @@ function ws_api_note_schema()
         'body'        => 'string?',
         'created_at'  => 'string?',
         'updated_at'  => 'string?',
+        'revision'    => 'integer?',
     );
 }
 
@@ -5493,12 +5495,13 @@ function ws_api_notes_create($params)
 /**
  * A change to a note that was refused, as the API answers it.
  *
- * @param array $result ws_note_save() or ws_note_save_check()
+ * @param array  $result ws_note_save() or ws_note_save_check()
+ * @param string $field  the field a conflict names: revision when it was sent
  */
-function ws_api_note_refused($result)
+function ws_api_note_refused($result, $field = 'base')
 {
     if ($result['conflict']) {
-        api_fail(409, 'changed_meanwhile', $result['error'], 'base');
+        api_fail(409, 'changed_meanwhile', $result['error'], $field);
     }
 
     api_fail_validation($result['error'], 'body');
@@ -5532,12 +5535,16 @@ function ws_api_notes_update($params)
         $data['base'] = (int) $params['base'];
     }
 
+    if (isset($params['revision'])) {
+        $data['revision'] = (int) $params['revision'];
+    }
+
     // The checks ws_note_save() makes, made first so that a dry run meets
     // the same refusals, the change made meanwhile among them.
     $checked = ws_note_save_check($viewer, $data);
 
     if (!$checked['ok']) {
-        ws_api_note_refused($checked);
+        ws_api_note_refused($checked, isset($data['revision']) ? 'revision' : 'base');
     }
 
     api_dry_run_stop('updated', 'workspace_note', array(
@@ -5548,7 +5555,7 @@ function ws_api_notes_update($params)
     $result = ws_note_save($viewer, $data);
 
     if (!$result['ok']) {
-        ws_api_note_refused($result);
+        ws_api_note_refused($result, isset($data['revision']) ? 'revision' : 'base');
     }
 
     api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $note['id'], 'view'))));

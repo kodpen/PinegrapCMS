@@ -98,7 +98,9 @@ function ws_note_revision_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = ws_notes_ready() && function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'revision');
+        // A column of the table answers for the table too; without a
+        // connection the answer is no.
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'revision');
     }
 
     return $ready;
@@ -559,6 +561,7 @@ function ws_notes_present($viewer, $rows, $full = false)
             'updated_at' => (int) $row['updated_at'],
             'created'    => ws_time_label($row['created_at'] ?? 0),
             'created_at' => (int) ($row['created_at'] ?? 0),
+            'revision'   => isset($row['revision']) ? (int) $row['revision'] : null,
             'versions'   => ws_note_versions_ready(),
             'source'     => $source,
             'with'       => $with,
@@ -752,7 +755,7 @@ function ws_notes_list_columns()
 {
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
-        n.created_at, n.updated_at";
+        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '');
 }
 
 /**
@@ -1080,6 +1083,10 @@ function ws_note_save($viewer, $data)
 
     if ($pin !== null) {
         $parts[] = "pinned = '" . $pin . "'";
+    }
+
+    if (!empty($parts) && ws_note_revision_ready()) {
+        $parts[] = ws_note_revision_sql(false);
     }
 
     if (!empty($parts)) {
@@ -1933,7 +1940,7 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     // so what the assistant wrote under the line can be undone.
     ws_note_version_keep($viewer, $note, $sets);
 
-    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
+    db("UPDATE ws_notes SET body = '" . e($body) . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'" . ws_note_revision_sql() . "
         WHERE id = '" . (int) $note['id'] . "'");
 
     if (function_exists('ws_blocks_index')) {

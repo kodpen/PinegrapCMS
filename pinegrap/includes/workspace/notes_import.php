@@ -1250,7 +1250,7 @@ function ws_note_import_write($viewer, &$stage, $index, $row, $mode)
     // Addresses are longer than the names they replace: a note at its limit
     // keeps the names.
     if (($linked !== $body) && (mb_strlen($linked) <= WS_NOTE_MAX)) {
-        db("UPDATE ws_notes SET body = '" . e($linked) . "' WHERE id = '" . $note_id . "'");
+        db("UPDATE ws_notes SET body = '" . e($linked) . "'" . ws_note_revision_sql() . " WHERE id = '" . $note_id . "'");
         $body = $linked;
     }
 
@@ -1408,7 +1408,7 @@ function ws_note_import_finish($viewer, &$stage)
         });
 
         if (($body !== (string) $note['body']) && (mb_strlen($body) <= WS_NOTE_MAX)) {
-            db("UPDATE ws_notes SET body = '" . e($body) . "'
+            db("UPDATE ws_notes SET body = '" . e($body) . "'" . ws_note_revision_sql() . "
                 WHERE id = '" . (int) $note['id'] . "' AND updated_at = '" . (int) $note['updated_at'] . "'");
         }
     }

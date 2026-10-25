@@ -64,6 +64,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_return_refund();    // 11.0.34
 	upgrade_2026_11_0_prototype_links();        // 11.0.35
 	upgrade_2026_11_0_comment_author_index();   // 11.0.36
+	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 
 }
 
@@ -1687,6 +1688,21 @@ function upgrade_2026_11_0_workspace_channel_icon() {
 	install_add_column('ws_channels', 'icon', "VARCHAR(40) NOT NULL DEFAULT ''");
 
 	install_note('Workspace: a channel can be given an icon of its own, chosen in the channel form. Existing channels keep their icons.');
+
+}
+
+// A Workspace note's revision (2026.11.0, 11.0.84; includes/workspace/notes.php).
+//
+// Every write of a note's title, text or pin moves ws_notes.revision on. A
+// sync client sends back the revision it read with a change, and a change
+// made meanwhile is refused (409 changed_meanwhile): to the change rather
+// than to the second, as base (updated_at) does, and also when the person
+// changed it on another device. Every note starts at 1.
+function upgrade_2026_11_0_workspace_note_revision() {
+
+	install_add_column('ws_notes', 'revision', "INT UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Workspace: every note carries a revision, so an app that keeps notes in sync is told when a note changed after it was read.');
 
 }
 
