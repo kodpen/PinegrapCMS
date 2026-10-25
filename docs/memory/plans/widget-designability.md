@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W14 part 1 #1602, W14 part 2 #1701): legacy-layout power in system widgets by one finish pass: conditions, rows, lists, fields
+description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W14 #1602 #1701): legacy-layout power in system widgets by one finish pass
 ---
 
 ## What is built, and why?
@@ -18,6 +18,8 @@ description: Plan (2026-10-24; done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 
 ## What is decided?
 - Chosen 2026-10-24 of three designs: the finish pass, with the layout gallery, widget parts, condition vectors, filters and code areas.
 - Missing page types stay in [[system-widget-missing-types]], built on this engine.
+- Owner (2026-10-24): a value condition starts as one per element; OR stays open below.
+- Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 
 ## What does the owner still answer?
 OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical old blocks; words beside a value; code areas; page-level facts; per-placement settings; gallery sources; parts with controls; express order lists; classic bridge.
@@ -28,9 +30,9 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - W3 done (#1597): row position ([[widget-loop-position]]).
 - W4 done (#1665): Bind Data "Show only when a value…" for every kind, canvas chip; never on a required control, compared text translated ([[widget-condition-panel]]).
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
-- W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 Lists in the editor. W8 Entity fields (allow-list).
+- W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 done (#1688): lists in the editor ([[widget-lists-editor]]). W8 Entity fields (allow-list).
 - W9 Product lists. W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
-- W14 part 1 done (#1602): typed fill, filters outside the shop kinds ([[widget-fill-filters]]); a format on an href binding is ignored. Part 2 done (#1701): the shop kinds, order view dates. Left: default text (owner question in #1701), the variant switch's raw values.
+- W14 done (#1602, #1701): typed fill, formats ([[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 Attribute bindings. W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 Canvas: ghosts for every loop, state preview, `_sdCondEval` twin.
@@ -40,4 +42,4 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - Claim with a draft PR `[plan:widget-designability] Wn`. A new kind reads its saved-tree checks through `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W7 (lists in the editor); W14 part 2 and W15 are free beside it.
+- W15; W8 waits for the owner's column list.

@@ -1,6 +1,6 @@
 ---
 name: widget-fill-shop
-description: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): their fills, byte-identical without a format, order view dates, the variant switch (#1701).
+description: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 ---
 
 ## Which fills read a format in the shop kinds?
@@ -19,4 +19,6 @@ description: A bound value's format in the shop widgets (catalog, catalog detail
 
 ## What is still open?
 - Catalog detail's variant switch (`pg_civ_variants.js`) writes the chosen variant's raw value into each `data-pg-bind` element, so a formatted value shows unformatted after a switch: there is no JS twin of the filters.
-- "Default text" (a text shown when the value is empty): waits for the owner's answer in #1701.
+
+## How is an empty value given fallback words?
+- Not by a format or a default-text setting: the bound element shows with `show_if not_empty`, a sibling with `show_if empty` on the same token holds the words, which the site translation reads like any node text ([[widget-conditions]]).
