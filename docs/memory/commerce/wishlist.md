@@ -31,4 +31,4 @@ description: Favourites core (includes/fn/wishlist.php, wishlist.php): owner mod
 - Privacy export section `wishlist` (after `watchers`): id, user_id, product_id, SKU, name, added_at, by account. A guest list names nobody until merged.
 
 ## What uses it?
-- The Favourites page widget (`designer/wishlist-widget.md`); the catalog heart is plan step 3b. Tests: `tests/wishlist_test.php`.
+- Catalog hearts (`wishlist-heart.md`), the Favourites page widget (`designer/wishlist-widget.md`). Tests: `tests/wishlist_test.php`.

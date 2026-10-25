@@ -43,6 +43,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/qr.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/forms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/link_resolve.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_crawlers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/meta_tags.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/content.php');

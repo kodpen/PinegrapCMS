@@ -22,6 +22,8 @@
  *        - Update every [data-pg-bind] element using the bound field map.
  *        - Refresh the carousel: rebuild slides + thumbs from new gallery.
  *        - Update product_id hidden input on the wrapping form.
+ *        - Dispatch `pg-civ-product-change` on the form (detail.productId),
+ *          which the favourite heart follows (pg_wishlist.js).
  *        - Enable the Add to Cart button.
  *        - Fire a background API call to refresh stock + computed fields.
  *
@@ -288,6 +290,11 @@
                 var pidInp = form.querySelector('input[type="hidden"][name="product_id"]');
                 if (pidInp) pidInp.value = String(p.id);
             }
+
+            // 3b. Announce the product the form now shows, for the scripts
+            //     that follow it (the favourite heart, pg_wishlist.js). The
+            //     event bubbles from the form; detail.productId is the id.
+            if (form) announceProduct(form, p.id);
 
             // 4. Update browser URL slug (without reload) so refresh /
             //    bookmark / share lands on the chosen variant. The slug
@@ -624,6 +631,21 @@
                 // Unknown prop — no-op (designer might add new bindings).
                 break;
         }
+    }
+
+    // A bubbling `pg-civ-product-change` event on the widget's form, with
+    // detail.productId. CustomEvent's constructor is missing from old
+    // browsers; createEvent() builds the same event there.
+    function announceProduct(form, productId) {
+        var detail = { productId: String(productId) };
+        var ev;
+        try {
+            ev = new CustomEvent('pg-civ-product-change', { bubbles: true, detail: detail });
+        } catch (_) {
+            ev = document.createEvent('CustomEvent');
+            ev.initCustomEvent('pg-civ-product-change', true, false, detail);
+        }
+        form.dispatchEvent(ev);
     }
 
     function escAttr(s) {

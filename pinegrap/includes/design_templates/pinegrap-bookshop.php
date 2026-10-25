@@ -154,6 +154,19 @@ $add_to_basket = function ($variant, $class = '', $outline = false) use ($button
     return $button(lang('Add to basket'), $variant, trim('position-relative z-2 ' . $class),
         array('size' => 'sm', 'outline' => $outline, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
+// The favourite heart in the corner of a product card, above the card's
+// stretched link: the listing marks it with the card's product and draws it
+// hidden, the page's script shows it, filled for a product the visitor
+// saved. A product group's card has none.
+$heart = function () use ($button, $icon, $span) {
+    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+        array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
+    $node['children'] = array(
+        $icon('bi-heart'),
+        $span(lang('Add to favourites'), 'visually-hidden', lang('Screen Reader Text')),
+    );
+    return $node;
+};
 
 // The sample picture a product card shows until the widget fills it in.
 $sample_product = 'https://picsum.photos/seed/pinegrap-bookshop-product/600/600';
@@ -541,9 +554,10 @@ $price = function ($class) use ($span, $bind) {
 
 // Bestseller: a horizontal card, the cover on the left, the name, the price
 // and the button on the right, two to a row.
-$card_bestseller = function () use ($el, $col, $icon, $span, $product_name, $product_picture, $price, $add_to_basket) {
+$card_bestseller = function () use ($el, $col, $icon, $span, $product_name, $product_picture, $price, $add_to_basket, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Product Card'), array(
+            $heart(),
             $el('div', 'row g-0 h-100', lang('Card Row'), array(
                 $el('div', 'col-4', lang('Cover'), array(
                     $product_picture('ratio ratio-1x1 h-100 bg-body-tertiary'),
@@ -567,10 +581,11 @@ $card_bestseller = function () use ($el, $col, $icon, $span, $product_name, $pro
 };
 
 // New arrival: an upright card, a 4:3 picture over the words.
-$card_new = function () use ($el, $col, $span, $product_name, $product_picture, $price, $add_to_basket) {
+$card_new = function () use ($el, $col, $span, $product_name, $product_picture, $price, $add_to_basket, $heart) {
     return $col(array(
         $el('div', 'card h-100', lang('Product Card'), array(
             $product_picture('ratio ratio-4x3 bg-body-tertiary card-img-top overflow-hidden'),
+            $heart(),
             $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
                 $span(lang('New in'), 'badge text-bg-primary align-self-start mb-2', lang('Badge')),
                 $product_name('h3', 'h6 card-title mb-1'),
@@ -582,10 +597,11 @@ $card_new = function () use ($el, $col, $span, $product_name, $product_picture, 
 };
 
 // Stationery corner: small square cards, six to a row on a wide screen.
-$card_compact = function () use ($el, $col, $product_name, $product_picture, $price, $add_to_basket) {
+$card_compact = function () use ($el, $col, $product_name, $product_picture, $price, $add_to_basket, $heart) {
     return $col(array(
         $el('div', 'card h-100 border-0 bg-transparent', lang('Product Card'), array(
             $product_picture('ratio ratio-1x1 rounded-3 overflow-hidden bg-body-tertiary mb-2'),
+            $heart(),
             $product_name('h3', 'small fw-semibold text-truncate mb-1'),
             $price('small text-body-secondary mb-2'),
             $add_to_basket('secondary', 'mt-auto w-100', true),
