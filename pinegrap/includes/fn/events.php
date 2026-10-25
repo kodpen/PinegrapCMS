@@ -41,6 +41,11 @@ function pg_announce($event, $data = array())
         pg_page_cache_mark_dirty();
     }
 
+    // A product back in stock tells whoever asked to be told.
+    if (function_exists('pg_stock_notify_heard')) {
+        pg_stock_notify_heard($event, (array) $data);
+    }
+
     if (!function_exists('api_webhook_enqueue')) {
 
         $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';

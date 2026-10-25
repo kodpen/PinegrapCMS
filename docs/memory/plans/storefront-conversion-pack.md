@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; schema, verified reviews, rating, store reply, review e-mail, rating tokens, wishlist core, heart, Favourites page done): back-in-stock, bundles later
+description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail done): Notify me field, back-in-stock SMS, API, bundles
 ---
 
 ## Why?
@@ -16,15 +16,15 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 ## What is done?
 1. Schema 11.0.14 (PR #698): comments/products columns, `wishlist_items`, `stock_notify`, `order_review_request` in the action enums.
 2a. (PR #698) Review gate, "Verified purchase" badge, rating refresh, legacy `aggregateRating`, store reply (`includes/fn/reviews.php`).
-2b. (PR #1316) `order_review_request` e-mail once per order when an account's order ships, cancelled on delete; verified filter in `view_comments.php` (`commerce/product-review-request-email.md`).
+2b. (PR #1316) Review request e-mail, verified filter (`commerce/product-review-request-email.md`).
 2c (tokens). (PR #1560) Rating tokens and flags in the catalog widgets (`designer/catalog-rating-tokens.md`).
 3a. (PR #1583) Wishlist core (`commerce/wishlist.md`).
 3b. (PR #1584) Catalog hearts, `pg_wishlist.js` (`commerce/wishlist-heart.md`).
 3c. (PR #1585) Favourites widget and page, My Account link (`designer/wishlist-widget.md`).
+4a. (PR #1659) Back-in-stock requests, the `inventory.changed` listener and e-mail (`commerce/back-in-stock-notices.md`).
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
-4a. Back-in-stock requests (`includes/fn/stock_notify.php`, `stock_notify.php`), e-mail on `inventory.changed`, trim, export (S).
 4b. "Notify me" e-mail field and button in the catalog item view, its starters and the shop templates (S).
 4c. The notice by SMS, after `sms-and-iys.md` step 3 (S).
 5. API: `/products/{id}/reviews`, `/customers/{id}/wishlist`, webhook `product.review.created`, `verified` on comments (S).
@@ -35,4 +35,4 @@ description: Plan (approved 2026-10-19; schema, verified reviews, rating, store 
 - Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
-- Step 4a, then 4b; read `commerce/wishlist.md` (the same shape).
+- Step 4b; read `commerce/back-in-stock-notices.md` and `commerce/wishlist-heart.md` (a binding in the item view).

@@ -35,6 +35,8 @@
     "Back up before updating": "Güncellemeden önce yedekle",
     "Back up the database now": "Veritabanını şimdi yedekle",
     "Back within hours": "Birkaç saat içinde dönüyoruz",
+    "Back-in-stock notices are not available on this site yet.": "Stok bildirimleri bu sitede henüz kullanılamıyor.",
+    "Back-in-stock requests": "Stok bildirimi istekleri",
     "Backed up to {var:1} ({var:2}). Files overwriting...": "{var:1} dosyasına yedeklendi ({var:2}). Dosyalar yazılıyor...",
     "Backend": "Yönetim Paneli",
     "Backend CSS URL": "Yönetim Paneli CSS URL",
