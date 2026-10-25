@@ -494,7 +494,7 @@ function test_parasut_stale_product_create_shipment_sends_once_more()
 		'$warehouse_result = parasut_ensure_default_warehouse($token, $skip_warehouse);',
 		"if (!empty(\$warehouse_result['kept'])) {",
 		"\$kept['Product'][] = \$item_parasut_product_id;",
-		'$sync = parasut_sync_product($item[\'product_id\'], $token);',
+		'$sync = parasut_sync_product($item[\'product_id\'], $token, $taken[(int) $item[\'product_id\']] ?? 0);',
 		"'answer' => \$ensure['answer'] ?? null,",
 		"\$result = _parasut_request('POST', _parasut_prefix() . '/shipment_documents', \$body, \$token);",
 		"'answer' => \$result,",
