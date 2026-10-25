@@ -1,13 +1,13 @@
 ---
 name: pr-backlog-coordination
-description: The one session that merges PRs on development: claim, take-over comments, active branches, merge order, tr.json conflicts, a PR on another PR's commits, semantic conflicts, English bodies
+description: The one session that merges PRs on development: which PRs it may push to, merge order, tr.json and changelog conflicts, a PR on another PR's commits, semantic conflicts, English bodies
 ---
 
 ## Who merges PRs into development?
-- Owner (2026-10-24): about ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one once and fixes only blocking findings on the branch (`merge-review.md`), cleans body and comments, merges in a train (`merge-train.md`) and closes the PR's claim.
+- Owner (2026-10-24): about ten sessions open PRs and one session merges them all; the others do not merge. Each round it lists the open PRs (head, `mergeable_state`, CI on the head), reviews each one once and fixes only blocking findings on the branch (`merge-review.md`), cleans body and comments, merges in a train (`merge-train.md`) and closes any claim of the PR still open.
 
-## Who clears a backlog of open PRs?
-- One coordinating session claims the whole list in a `sahiplenildi` issue (first time: #1133, 2026-10-21; again #1426, 2026-10-23) and leaves an English take-over comment on every PR it pushes to; from then on no other session pushes to those branches. A branch with commits in the last hour belongs to the session pushing to it until that session puts the `ready` label on the PR.
+## Which PRs may the merging session push to?
+- A handed-over PR (the `ready` label) or one with no push for an hour while green (`merge-train.md`); before that the branch belongs to the session pushing to it.
 - No other session merges (owner, 2026-10-25: `working-mode.md`); the merging session re-checks a PR's merge state right before each merge, never trusting an earlier "clean".
 
 ## In which order do they merge?
@@ -20,7 +20,7 @@ description: The one session that merges PRs on development: claim, take-over co
 - Not by rebasing someone else's branch: merge `origin/development` into it. A train lands by fast-forward (`merge-train-landing.md`), so the base PR's commits are in `development` unchanged and the merge is clean. Was the base PR squash-merged (before 2026-10-25, or with `--squash`)? Merge its final head first, then `development` with that head as the merge base: `git merge-tree --write-tree --merge-base=<base PR head> HEAD origin/development`, then `git commit-tree <tree> -p HEAD -p origin/development` (#1401 on #1386, 2026-10-24).
 
 ## What does git not catch?
-- Before the chain, a review of each PR's files shared with `development` and the other PRs finds merges that are textually clean but wrong. 2026-10-23 examples:
+- Before the train, a review of each PR's files shared with `development` and the other PRs finds merges that are textually clean but wrong. 2026-10-23 examples:
   - a new design template that missed a token change;
   - test pins of the stock config column count that two schema PRs each moved;
   - a mail variable two PRs each left for the other to fill;

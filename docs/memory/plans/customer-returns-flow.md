@@ -25,4 +25,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to AP
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
 
 ## Where to start?
-- What is left ("Left" in step 3): a panel form to record a request (source `panel`; `pg_return_create_check()` and `pg_return_audit_create_fields()` are ready). Read `commerce/order-returns-api.md`.
+- What is left ("Left" in step 3), a panel form to record a request (source `panel`), is in open PR #1616; when it merges the plan is finished: move its decisions to commerce/ and delete this file.

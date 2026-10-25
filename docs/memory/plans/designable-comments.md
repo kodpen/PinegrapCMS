@@ -37,5 +37,4 @@ description: Plan (1-19 and 3b done; 20 deferred): comments as a designable syst
 20. Deferred: product and event threads in the widget.
 
 ## Where to start?
-- Owner (2026-10-24): fewer, larger PRs: A = 6 + 3b (#1525); B = 7 (#1550); C = 8 + 10 + 11 (#1558); D = 12 + 13 + 14 (#1567); E = 15 + 16 + 17 + 18 (#1618); then 19 (#1620). Each group branch stacks on the one before.
-- Coordinate with #1401 (`get_captcha_fields()`), #1382 and #1402 (page cache), #1316 (mail.php).
+- Nothing open: slices 1-19 are merged (#1461-#1620). Slice 20 (product and event threads) waits for the owner, after the forum template moves to the widget (design-template-forum-leftovers D). When 20 is dropped or built, move the lasting decisions to designer/ and delete this plan.

@@ -17,9 +17,10 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Where they come from and who removes them: pr-footer-and-trailers.md.
 
 ## How do I edit shared files?
-- Shared files: `includes/local/tr.json`, `pinegrap/changelog.txt`, the open version's migration file, `init.php`.
-- Append only, in your own section; never rewrite the whole file.
-- Right before writing: `git fetch origin development && git merge origin/development`; again once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`working-mode.md`). A `tr.json` key both sides added is then written twice: keep the later copy only (`php tools/check_lang.php` fails on a duplicate, `core/translation-rules.md`).
+- Shared files: `includes/local/tr.json`, the open version's migration file, `init.php`. `pinegrap/changelog.txt` is not edited by a PR: its body names the `[NEW]` line or the `[SCHEME]` area and the merging session writes it (`working-mode.md`).
+- `tr.json`: add keys only with `php tools/tr_add.php "English" "Türkçe"`, never by hand; a conflict in it is settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
+- Migration file and `init.php`: append only, in your own section; never rewrite the whole file.
+- Merge `origin/development` once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`working-mode.md`).
 - `docs/memory/README.md` and the folder READMEs are generated: never edit or merge a file list by hand; run `php tools/memory_index.php` after the merge. Only a folder README's key-rules block is hand-written; a conflict inside it is merged by hand (`memory-index-key-rules.md`).
 - The top index's folder lines carry no file count (#1081): two branches adding a file to one folder merged into a count matching neither, and the merged tree failed CI's `--check` on other PRs.
 

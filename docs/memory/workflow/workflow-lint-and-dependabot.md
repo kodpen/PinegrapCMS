@@ -16,7 +16,7 @@ description: The actionlint job (pinned, SHA-256, shellcheck, what its data lack
 ## How does Dependabot keep the actions current?
 - `.github/dependabot.yml` (PR #891): ecosystem `github-actions`, directory `/` (the workflow files), weekly on Monday 06:00 Istanbul time, `target-branch: development` (reads the workflows there and opens PRs against it), commit prefix `CI`.
 - GitHub reads the file from the default branch, `main`, so it takes effect once a release carries it there (`.github/` is in the release tree). Until then it does nothing.
-- Refs are major tags, so every Dependabot PR is a major bump. They are not grouped: read each changelog, check the inputs as above, and squash-merge with a Turkish title like any PR. Dependabot PRs open no claim.
+- Refs are major tags, so every Dependabot PR is a major bump. They are not grouped: read each changelog and check the inputs as above; the merging session lands them in a merge train like any PR (`merge-train.md`). Dependabot PRs open no claim.
 - Not covered: the Dockerfile's base images (`php:8.3-fpm-alpine`, `nginx:stable-alpine`). A `docker` update would move the image's PHP line, a release decision.
 
 Related: docs/memory/workflow/static-analysis.md, docs/memory/platform/docker-image-publishing.md
