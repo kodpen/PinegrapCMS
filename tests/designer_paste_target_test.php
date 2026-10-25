@@ -300,6 +300,7 @@ function designer_paste_target_test_run($cases, $history = false)
 	$names = array('findParent', '_findParentInShared', '_sdAnyParent', '_sdPasteSpot', '_sdPasteRepeats', '_sdPasteShape', '_sdPasteFits', '_sdPasteNodes',
 		'isLockedEffective', 'hasLockedAncestor', 'lockedAncestorOf', 'isDescendantOf', '_nodeInTree', '_resolveSharedSid',
 		'_sdSharedOwnerOf', 'collectSharedIds', '_sdDragSharedIds', '_sdSharedChildIds', '_sdSharedReaches', '_subtreeContainsLoopArea',
+		'_sdListIsSourced', '_sdDragIsList', '_sdListsAbove',
 		'_sdHandlePaste', '_sdNodeFromEventTarget', '_sdFindNodeForEl', 'findNodeById', '_sdIsTextSink', '_sdPasteAsText', '_sdLooksLikeMarkup',
 		'_sdNodeObjects', '_sdTreeObjects');
 

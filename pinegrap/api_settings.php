@@ -1552,9 +1552,9 @@ echo pg_page_shell(array(
 .api-chip.muted { opacity: .45; }
 .api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--bs-border-color); display: inline-block; }
-.api-status.on { color: var(--bs-success); border-color: rgba(var(--bs-success-rgb), .35); }
+.api-status.on { color: var(--bs-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .api-status.off { opacity: .5; }
-.api-status.warn { color: var(--bs-warning); border-color: rgba(var(--bs-warning-rgb), .35); }
+.api-status.warn { color: var(--bs-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
 .api-meta { font-size: 11.5px; opacity: .8; }
 .api-meta small { display: block; font-size: 10.5px; opacity: .7; }
 .api-meta small.bad { color: var(--bs-danger); opacity: 1; }

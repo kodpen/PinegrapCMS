@@ -4787,3 +4787,36 @@ function pg_hosted() {
 function pg_demo() {
     return defined('PG_DEMO') && (PG_DEMO === true);
 }
+
+// Makes a key with openssl_pkey_new(). OpenSSL reads a configuration file
+// before it makes a key, and on a server where none is installed (Windows
+// unless someone put one there, or a host whose OPENSSL_CONF points at a path
+// that has since gone) the call fails with "configuration file routines: no
+// such file" whatever the arguments. The file shipped in includes/ is the
+// fallback, so the second attempt is worth making before giving up. Returns
+// the key and the arguments that made it, to be passed on to
+// openssl_pkey_export(), which reads the same file; false when no key could
+// be made.
+function pg_openssl_key_new($arguments)
+{
+    if (!function_exists('openssl_pkey_new')) {
+        return false;
+    }
+
+    $key = @openssl_pkey_new($arguments);
+
+    if (!$key) {
+        $configuration = PG_FUNCTIONS_DIR . '/includes/openssl.cnf';
+
+        if (file_exists($configuration)) {
+            $arguments['config'] = $configuration;
+            $key = @openssl_pkey_new($arguments);
+        }
+    }
+
+    if (!$key) {
+        return false;
+    }
+
+    return array('key' => $key, 'arguments' => $arguments);
+}

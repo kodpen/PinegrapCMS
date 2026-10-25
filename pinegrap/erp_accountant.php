@@ -290,11 +290,12 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                 });
                 // The link exists only in this page; once the window is closed
                 // it is taken out of the page as well.
-                modal.addEventListener("hidden.bs.modal", function () {
-                    bootstrap.Modal.getOrCreateInstance(modal).dispose();
+                pgUI.dialog.on(modal, "hidden", function () {
+                    pgUI.dialog.dispose(modal);
                     modal.parentNode.removeChild(modal);
                 });
-                var open = function () { bootstrap.Modal.getOrCreateInstance(modal).show(); };
+                // Waits for Bootstrap too: Bootstrap 6 loads as a deferred module.
+                var open = function () { pgUI.ready(function () { pgUI.dialog.show(modal); }); };
                 if (document.readyState === "loading") {
                     document.addEventListener("DOMContentLoaded", open);
                 } else {

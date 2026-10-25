@@ -1014,7 +1014,7 @@ echo
 .explorer-item { cursor: default; }
 #explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; transition: background .12s ease, box-shadow .12s ease, transform .12s ease; }
 #explorer_grid .item-card:hover { background: var(--bs-secondary-bg); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.08); }
-.explorer-item.selected .item-card { background: var(--bs-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px rgba(var(--bs-primary-rgb), .55); }
+.explorer-item.selected .item-card { background: var(--bs-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-primary) 55%, transparent); }
 tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !important; }
 .explorer-item.cut-ghost { opacity: .45; }
 /* Sold out, in the corner the tile leaves free. It stays above the selection
@@ -1328,7 +1328,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* Rubber-band selection. The band is a child of the scrolling content, so it
    lives in the same coordinate space as the items and scrolls with them
    instead of having to be repositioned on every scroll event. */
-#explorer_marquee { position: absolute; z-index: 15; pointer-events: none; border: 1px solid rgba(var(--bs-primary-rgb), .85); background: rgba(var(--bs-primary-rgb), .14); border-radius: .15rem; }
+#explorer_marquee { position: absolute; z-index: 15; pointer-events: none; border: 1px solid color-mix(in srgb, var(--pg-primary) 85%, transparent); background: color-mix(in srgb, var(--pg-primary) 14%, transparent); border-radius: .15rem; }
 
 #explorer_statusbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: .4rem .9rem; border-top: 1px solid var(--bs-border-color-translucent); font-size: .78rem; color: var(--bs-secondary-color); }
 

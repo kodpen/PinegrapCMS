@@ -1643,6 +1643,69 @@ function pg_mail_connection_deliver($account, $mime)
     return pg_connect_clip($account['label'] . ': ' . (($result['error'] !== '') ? $result['error'] : 'HTTP ' . (int) $result['status']));
 }
 
+/**
+ * The DNS TXT record a site publishes for its DKIM key: the public key's
+ * base64 body, without the PEM lines, under <selector>._domainkey.<domain>.
+ *
+ * @param string $selector
+ * @param string $domain
+ * @param string $public_pem
+ * @return string
+ */
+function pg_dkim_txt_record($selector, $domain, $public_pem)
+{
+    $public = trim(str_replace(
+        array('-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----', "\r", "\n"),
+        '',
+        $public_pem
+    ));
+
+    return $selector . '._domainkey.' . $domain . ' IN TXT "v=DKIM1; k=rsa; p=' . $public . '"';
+}
+
+/**
+ * A new RSA 2048 key pair for signing the site's mail. Nothing is written:
+ * the SMTP settings screen replaces the pair in use only once this returns
+ * one, so a server where OpenSSL cannot make a key keeps signing with the
+ * old pair.
+ *
+ * @param string $selector
+ * @param string $domain
+ * @return array|false array('private' => PEM, 'public' => PEM, 'txt_record' => string),
+ *                     or false when OpenSSL could not make or export a key
+ */
+function pg_dkim_key_pair($selector, $domain)
+{
+    if (!function_exists('openssl_pkey_new') || !function_exists('openssl_pkey_export') || !function_exists('openssl_pkey_get_details')) {
+        return false;
+    }
+
+    $made = pg_openssl_key_new(array('private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA));
+
+    if (!$made) {
+        return false;
+    }
+
+    // The export reads the same configuration file the key was made with.
+    $private = '';
+
+    if (!@openssl_pkey_export($made['key'], $private, null, $made['arguments']) || (trim((string) $private) === '')) {
+        return false;
+    }
+
+    $details = @openssl_pkey_get_details($made['key']);
+
+    if (!$details || empty($details['key'])) {
+        return false;
+    }
+
+    return array(
+        'private'    => $private,
+        'public'     => $details['key'],
+        'txt_record' => pg_dkim_txt_record($selector, $domain, $details['key']),
+    );
+}
+
 function email($properties)
 {
     $to = isset($properties['to']) ? $properties['to'] : '';
