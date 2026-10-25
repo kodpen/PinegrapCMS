@@ -143,6 +143,7 @@
     "You cannot reset your own password here.": "Kendi şifrenizi buradan sıfırlayamazsınız.",
     "You cannot return more than was sold.": "Satılandan fazlası iade edilemez.",
     "You cannot write in this channel.": "Bu kanala yazamazsınız.",
+    "You changed this note meanwhile on another screen or device.": "Bu notu bu arada başka bir ekranda ya da cihazda değiştirdiniz.",
     "You chose {var:1} on this site before, so you would be sent to it.": "Bu sitede daha önce {var:1} seçtiniz; bu yüzden oraya gönderilirdiniz.",
     "You closed {var:1} task{suffix:1} this week, and {var:2} on your list {suffix:2} still past due.": "Bu hafta {var:1} görev kapattın; listende son tarihi geçmiş {var:2} görev hâlâ duruyor.",
     "You decide who can do what with administrator, editor and contributor roles.": "Yönetici, editör, katkıda bulunan rolleri ile kimin ne yapabileceğini siz belirleyin.",

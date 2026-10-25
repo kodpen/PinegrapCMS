@@ -1265,13 +1265,14 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'      => 'WorkspaceNote',
             'summary'      => 'Change a note',
-            'description'  => 'Changes only the fields sent, on a note of the owner\'s or one shared with them to change (access edit). body replaces the whole text: read the note first and send it back changed. The state before is kept among the versions as on the screen, and the others who keep the note are told it changed. Send base, the updated_at the note was read at, to have the change refused with 409 changed_meanwhile when somebody else changed the note since. pinned is the owner\'s alone. PATCH is accepted beside POST.',
+            'description'  => 'Changes only the fields sent, on a note of the owner\'s or one shared with them to change (access edit). body replaces the whole text: read the note first and send it back changed. The state before is kept among the versions as on the screen, and the others who keep the note are told it changed. Send revision, the one the note was read at, to have the change refused with 409 changed_meanwhile when the note changed since, from any screen or device, the owner\'s own included; the answer carries the new revision. base, the updated_at the note was read at, is the older way: it refuses only a later change by somebody else, to the second, and is not looked at when revision is sent. pinned is the owner\'s alone. PATCH is accepted beside POST.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'body', 'in' => 'body', 'type' => 'string', 'max_length' => 60000, 'description' => 'The whole new text of the note, in Markdown.'),
                 array('name' => 'pinned', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'base', 'in' => 'body', 'type' => 'datetime', 'description' => 'The updated_at the note was read at.'),
+                array('name' => 'revision', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The revision the note was read at.'),
             ),
         ),
 

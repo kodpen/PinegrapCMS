@@ -58,6 +58,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
+- workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, why code checks for the column, base kept
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /product (/ürün), off sale unless ticked, applied ws_ai_changes row, decision
