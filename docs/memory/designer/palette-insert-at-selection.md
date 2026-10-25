@@ -1,6 +1,6 @@
 ---
 name: palette-insert-at-selection
-description: Where a double-clicked palette item or a command palette insert lands: into the selection, else beside it (inside a widget too); components and widgets stop at a system widget.
+description: Where a double-clicked palette item or a command palette insert lands: into the selection, else beside it (inside a widget too); components and widgets stop at a system widget (#1582).
 ---
 
 ## Where does a double-clicked palette item land?
