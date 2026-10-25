@@ -597,54 +597,88 @@ function _pg_catalog_rating_states_differ($products)
 }
 
 /**
- * The tag name of the one element $html is (whitespace around it allowed),
- * or null when it is text, several elements, or its tags do not balance.
+ * $html with each element at its top level carrying
+ * data-pg-rating-flag="<flag>", plus `hidden` when $hidden. The attribute
+ * goes into the element's own opening tag, so no box is added around it: a
+ * flagged column stays the direct child of its row, a flex or grid item
+ * stays the item and a paragraph keeps its content. A run of text at the top
+ * level has no tag of its own and goes into a <span> with the same
+ * attributes; comments and whitespace stay as they are.
  *
- * @param string $html
- * @return string|null the name as written
+ * @param string $html   the content of one has_rating / no_rating span
+ * @param string $flag   'has_rating' or 'no_rating'
+ * @param bool   $hidden whether that state is off for the product drawn first
+ * @return string|null null when the markup does not balance (an element that
+ *                     is not closed, a closing tag with no opening one, a tag
+ *                     or comment that does not end): no element end to find
  */
-function _pg_catalog_single_element_tag($html)
+function _pg_catalog_rating_flag_mark($html, $flag, $hidden)
 {
-    $html = trim((string)$html);
-    // An opening or closing tag; a quoted attribute value may hold '>'.
-    $tag_re = '(?=[\s\/>])(?:[^>"\']|"[^"]*"|\'[^\']*\')*>';
-    if (!preg_match('/^<([a-zA-Z][a-zA-Z0-9-]*)' . $tag_re . '/', $html, $open)) return null;
-
-    $void = array('area', 'br', 'col', 'embed', 'hr', 'img', 'input', 'source', 'track', 'wbr');
-    if (in_array(strtolower($open[1]), $void, true) || substr($open[0], -2) === '/>') {
-        return (strlen($open[0]) === strlen($html)) ? $open[1] : null;
-    }
-
-    // Tags of the same name, counted until the first one is closed: that
-    // close must end the HTML.
-    if (!preg_match_all('/<(\/?)' . preg_quote($open[1], '/') . $tag_re . '/i', $html, $tags, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-        return null;
-    }
-    $depth = 0;
-    foreach ($tags as $t) {
-        if ($t[1][0] === '/') {
-            $depth--;
-        } elseif (substr($t[0][0], -2) !== '/>') {
-            $depth++;
+    $html  = (string)$html;
+    $attrs = ' data-pg-rating-flag="' . preg_replace('/[^a-z0-9_]/', '', (string)$flag) . '"' . ($hidden ? ' hidden' : '');
+    // The rest of a tag after its name; a quoted attribute value may hold '>'.
+    $tag_rest = '(?=[\s\/>])(?:[^>"\']|"[^"]*"|\'[^\']*\')*>';
+    $void = array('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr');
+    $out = '';
+    $len = strlen($html);
+    $pos = 0;
+    while ($pos < $len) {
+        if (substr($html, $pos, 4) === '<!--') {
+            $close = strpos($html, '-->', $pos + 4);
+            if ($close === false) return null;
+            $out .= substr($html, $pos, $close + 3 - $pos);
+            $pos = $close + 3;
+            continue;
         }
-        if ($depth === 0) {
-            return ($t[0][1] + strlen($t[0][0]) === strlen($html)) ? $open[1] : null;
+        if (preg_match('/\G<\/[a-zA-Z]/', $html, $m, 0, $pos)) return null;
+        if (preg_match('/\G<[a-zA-Z]/', $html, $m, 0, $pos)) {
+            if (!preg_match('/\G<([a-zA-Z][a-zA-Z0-9-]*)' . $tag_rest . '/', $html, $open, 0, $pos)) return null;
+            $name = $open[1];
+            $end  = $pos + strlen($open[0]);
+            if (!in_array(strtolower($name), $void, true) && substr($open[0], -2) !== '/>') {
+                // Tags of the same name, counted from this one until it is
+                // closed. The lookahead in $tag_rest keeps <path> from
+                // counting as <p>.
+                if (!preg_match_all('/<(\/?)' . preg_quote($name, '/') . $tag_rest . '/i', $html, $tags, PREG_SET_ORDER | PREG_OFFSET_CAPTURE, $pos)) return null;
+                $end   = null;
+                $depth = 0;
+                foreach ($tags as $t) {
+                    if ($t[1][0] === '/') {
+                        $depth--;
+                    } elseif (substr($t[0][0], -2) !== '/>') {
+                        $depth++;
+                    }
+                    if ($depth === 0) {
+                        $end = $t[0][1] + strlen($t[0][0]);
+                        break;
+                    }
+                }
+                if ($end === null) return null;
+            }
+            $at = $pos + 1 + strlen($name);
+            $out .= substr($html, $pos, $at - $pos) . $attrs . substr($html, $at, $end - $at);
+            $pos = $end;
+            continue;
         }
+        // Text up to the next tag or comment; a '<' that opens neither is text.
+        $next = preg_match('/<(?:!--|\/?[a-zA-Z])/', $html, $m, PREG_OFFSET_CAPTURE, $pos + 1) ? $m[0][1] : $len;
+        $text = substr($html, $pos, $next - $pos);
+        $out .= (trim($text) === '') ? $text : '<span' . $attrs . '>' . $text . '</span>';
+        $pos = $next;
     }
-    return null;
+    return $out;
 }
 
 /**
  * The product page's has_rating / no_rating elements kept in both states,
  * for a variant group whose variants differ in rating: pg_civ_variants.js
  * shows the state of the variant picked. Each marked span loses its
- * markers, and its element carries data-pg-rating-flag="<flag>", plus
- * `hidden` when the flag is off for the product drawn first. The attribute
- * goes on the flagged element itself, never on a wrapper, so a flagged
- * column stays the direct child of its row, a flex or grid item stays the
- * item and a paragraph keeps its content. A span that is not one element
- * (plain text, several elements) has nowhere to carry it and is kept or cut
- * for the product drawn first, like a span of any other flag.
+ * markers, and every element at its top level carries
+ * data-pg-rating-flag="<flag>", plus `hidden` when the flag is off for the
+ * product drawn first; text at its top level goes into a span of its own
+ * (_pg_catalog_rating_flag_mark()). Markup that does not balance has no
+ * element end to mark and is kept or cut for the product drawn first, like
+ * a span of any other flag.
  *
  * @param string $html  HTML marked by _pg_sw_mark_visibility()
  * @param array  $flags flag => bool for the product drawn first
@@ -658,13 +692,10 @@ function _pg_catalog_rating_flags_keep($html, $flags)
         if ($m[1] !== 'has_rating' && $m[1] !== 'no_rating') {
             return $on ? _pg_catalog_rating_flags_keep($m[3], $flags) : '';
         }
-        $inner = _pg_catalog_rating_flags_keep($m[3], $flags);
-        $tag = _pg_catalog_single_element_tag($inner);
-        if ($tag === null) return $on ? $inner : '';
-        $at = strpos($inner, '<') + 1 + strlen($tag);
-        return substr($inner, 0, $at)
-            . ' data-pg-rating-flag="' . $m[1] . '"' . ($on ? '' : ' hidden')
-            . substr($inner, $at);
+        $inner  = _pg_catalog_rating_flags_keep($m[3], $flags);
+        $marked = _pg_catalog_rating_flag_mark($inner, $m[1], !$on);
+        if ($marked === null) return $on ? $inner : '';
+        return $marked;
     }, $html);
 }
 

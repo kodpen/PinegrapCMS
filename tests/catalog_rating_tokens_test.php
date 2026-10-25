@@ -277,26 +277,57 @@ function test_catalog_rating_states_differ()
 	pg_assert_true(_pg_catalog_rating_states_differ(array($rated, array('id' => 3))), 'a variant without the field has no rating');
 }
 
-// Whether a piece of HTML is one element, and its tag name as written.
-function test_catalog_single_element_tag()
+// Each top-level element of a has_rating / no_rating span carries the flag in
+// its own opening tag, with `hidden` for the state that is off; a run of text
+// goes into a span of its own; comments and whitespace stay as they are. Null
+// when the end of an element cannot be found.
+function test_catalog_rating_flag_mark()
 {
-	pg_assert_same('div', _pg_catalog_single_element_tag("\n  <div class=\"a\"><div>x</div></div>\n"), 'nested tags of the same name');
-	pg_assert_same('P', _pg_catalog_single_element_tag('<P>x</p>'), 'any letter case');
-	pg_assert_same('img', _pg_catalog_single_element_tag('<img src="a.png" alt="">'), 'an element without a closing tag');
-	pg_assert_same('span', _pg_catalog_single_element_tag('<span title="a > b">x</span>'), 'a quoted value may hold ">"');
-	pg_assert_same('p', _pg_catalog_single_element_tag('<p><svg><path d="M0"/></svg></p>'), '<path> is not <p>');
-	pg_assert_same(null, _pg_catalog_single_element_tag('x'), 'text');
-	pg_assert_same(null, _pg_catalog_single_element_tag(''), 'nothing');
-	pg_assert_same(null, _pg_catalog_single_element_tag('<p>a</p><p>b</p>'), 'two elements');
-	pg_assert_same(null, _pg_catalog_single_element_tag('<p>a</p> tail'), 'an element and text');
-	pg_assert_same(null, _pg_catalog_single_element_tag('<div><div>a</div>'), 'not closed');
-	pg_assert_same(null, _pg_catalog_single_element_tag('<!--c--><p>a</p>'), 'a comment first');
+	$a = ' data-pg-rating-flag="has_rating"';
+
+	pg_assert_same("\n  <div" . $a . " class=\"a\"><div>x</div></div>\n", _pg_catalog_rating_flag_mark("\n  <div class=\"a\"><div>x</div></div>\n", 'has_rating', false), 'nested tags of the same name');
+	pg_assert_same('<P' . $a . ' hidden>x</p>', _pg_catalog_rating_flag_mark('<P>x</p>', 'has_rating', true), 'any letter case');
+	pg_assert_same('<img' . $a . ' src="a.png" alt="">', _pg_catalog_rating_flag_mark('<img src="a.png" alt="">', 'has_rating', false), 'an element without a closing tag');
+	pg_assert_same('<i' . $a . ' class="bi"/>', _pg_catalog_rating_flag_mark('<i class="bi"/>', 'has_rating', false), 'a self-closed tag');
+	pg_assert_same('<span' . $a . ' title="a > b">x</span>', _pg_catalog_rating_flag_mark('<span title="a > b">x</span>', 'has_rating', false), 'a quoted value may hold ">"');
+	pg_assert_same('<p' . $a . '><svg><path d="M0"/></svg></p>', _pg_catalog_rating_flag_mark('<p><svg><path d="M0"/></svg></p>', 'has_rating', false), '<path> is not <p>');
+
+	// Several elements: each one carries the flag, the space between stays.
+	pg_assert_same(
+		'<i' . $a . ' hidden class="bi bi-star-fill"></i> <i' . $a . ' hidden class="bi bi-star"></i>',
+		_pg_catalog_rating_flag_mark('<i class="bi bi-star-fill"></i> <i class="bi bi-star"></i>', 'has_rating', true),
+		'two icons'
+	);
+
+	// Text has no tag to carry the flag: it goes into a span.
+	pg_assert_same('<span data-pg-rating-flag="no_rating">Be the first</span>', _pg_catalog_rating_flag_mark('Be the first', 'no_rating', false), 'text');
+	pg_assert_same(
+		'<i' . $a . ' class="bi bi-star-fill"></i><span' . $a . '> 4,6 (a < b)' . "\n" . '</span>',
+		_pg_catalog_rating_flag_mark('<i class="bi bi-star-fill"></i> 4,6 (a < b)' . "\n", 'has_rating', false),
+		'an icon and text; a "<" that opens no tag is text'
+	);
+
+	// A comment stays as it is and the element inside the pair is marked.
+	pg_assert_same(
+		'<!--pg-active:begin--><a' . $a . ' href="/r">Reviews</a><!--pg-active:end-->',
+		_pg_catalog_rating_flag_mark('<!--pg-active:begin--><a href="/r">Reviews</a><!--pg-active:end-->', 'has_rating', false),
+		'comments around an element'
+	);
+	pg_assert_same('', _pg_catalog_rating_flag_mark('', 'has_rating', true), 'nothing');
+	pg_assert_same("\n  ", _pg_catalog_rating_flag_mark("\n  ", 'has_rating', true), 'whitespace');
+
+	// Markup that does not balance.
+	pg_assert_same(null, _pg_catalog_rating_flag_mark('<div><div>a</div>', 'has_rating', false), 'not closed');
+	pg_assert_same(null, _pg_catalog_rating_flag_mark('<p>a</p></div>', 'has_rating', false), 'a closing tag without an opening one');
+	pg_assert_same(null, _pg_catalog_rating_flag_mark('a <!-- b', 'has_rating', false), 'a comment that does not end');
+	pg_assert_same(null, _pg_catalog_rating_flag_mark('<a href="x>y</a>', 'has_rating', false), 'a quote that does not end');
 }
 
 // Both rating states kept: each flagged element carries its flag, the state
 // that does not fit the product drawn first is hidden, no wrapper is added
-// and no marker is left. A span that is not one element is kept or cut as
-// without variants, and so is a span of another flag.
+// around an element and no marker is left. Text goes into a span of its own.
+// Markup that does not balance is kept or cut as without variants, and so is
+// a span of another flag.
 function test_catalog_rating_flags_keep()
 {
 	$span = function ($flag, $n, $html) {
@@ -340,12 +371,23 @@ function test_catalog_rating_flags_keep()
 		_pg_catalog_rating_flags_keep($span('has_rating', 5, '<div>' . $span('no_rating', 6, '<span>none</span>') . '</div>'), $unrated)
 	);
 
-	// Plain text, or several elements, cannot carry the attribute: kept or
-	// cut for the product drawn first.
-	pg_assert_same('Be the first', _pg_catalog_rating_flags_keep($span('no_rating', 7, 'Be the first'), $unrated));
-	pg_assert_same('', _pg_catalog_rating_flags_keep($span('no_rating', 8, 'Be the first'), $rated));
-	pg_assert_same('<b>4,6</b><i>(12)</i>', _pg_catalog_rating_flags_keep($span('has_rating', 9, '<b>4,6</b><i>(12)</i>'), $rated));
-	pg_assert_same('', _pg_catalog_rating_flags_keep($span('has_rating', 10, '<div>4,6</div><div>(12)</div>'), $unrated));
+	// Plain text goes into a span of its own, and each of several elements
+	// carries the flag, so both switch with the variant too.
+	pg_assert_same('<span data-pg-rating-flag="no_rating">Be the first</span>', _pg_catalog_rating_flags_keep($span('no_rating', 7, 'Be the first'), $unrated));
+	pg_assert_same('<span data-pg-rating-flag="no_rating" hidden>Be the first</span>', _pg_catalog_rating_flags_keep($span('no_rating', 8, 'Be the first'), $rated));
+	pg_assert_same(
+		'<b data-pg-rating-flag="has_rating">4,6</b><i data-pg-rating-flag="has_rating">(12)</i>',
+		_pg_catalog_rating_flags_keep($span('has_rating', 9, '<b>4,6</b><i>(12)</i>'), $rated)
+	);
+	pg_assert_same(
+		'<div data-pg-rating-flag="has_rating" hidden>4,6</div><div data-pg-rating-flag="has_rating" hidden>(12)</div>',
+		_pg_catalog_rating_flags_keep($span('has_rating', 10, '<div>4,6</div><div>(12)</div>'), $unrated)
+	);
+
+	// Markup that does not balance has no end to mark: kept or cut for the
+	// product drawn first.
+	pg_assert_same('<div>4,6', _pg_catalog_rating_flags_keep($span('has_rating', 13, '<div>4,6'), $rated));
+	pg_assert_same('', _pg_catalog_rating_flags_keep($span('has_rating', 14, '<div>4,6'), $unrated));
 
 	// Another flag is resolved as before.
 	pg_assert_same('<p>Edit</p>', _pg_catalog_rating_flags_keep($span('record_found', 11, '<p>Edit</p>'), array('record_found' => true)));
@@ -357,6 +399,7 @@ function test_catalog_rating_flags_keep()
 			array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Stars'), 'children' => array()),
 		)),
 		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'No reviews yet', '_bindings' => array('eo_visible_if' => 'no_rating')), 'children' => array()),
+		array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<i class="bi bi-star-fill"></i> 4,6', '_bindings' => array('eo_visible_if' => 'has_rating')), 'children' => array()),
 	));
 	_pg_sw_mark_visibility($tree, array('has_rating', 'no_rating'));
 	$html = '';
@@ -368,6 +411,7 @@ function test_catalog_rating_flags_keep()
 	pg_assert_false(strpos($kept, 'pg-vis') !== false, 'no marker is left');
 	pg_assert_true((bool) preg_match('/<div data-pg-rating-flag="has_rating" hidden class="d-flex gap-2">\s*<p>Stars<\/p>\s*<\/div>/', $kept), 'the stars row is kept, hidden');
 	pg_assert_contains('<p data-pg-rating-flag="no_rating">No reviews yet</p>', $kept, 'the text without a rating is shown');
+	pg_assert_contains('<i data-pg-rating-flag="has_rating" hidden class="bi bi-star-fill"></i><span data-pg-rating-flag="has_rating" hidden> 4,6', $kept, 'custom HTML with an icon and text is kept, hidden');
 }
 
 // The designer offers both tokens in both catalog widgets, the two flags in
