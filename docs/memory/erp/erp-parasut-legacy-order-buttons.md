@@ -18,7 +18,7 @@ description: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): 
 
 ## What does "E-Shipment" send? (#1458)
 - `POST shipment_documents` (`inflow` false) with the stock-tracked lines as `relationships.stock_movements`, each `parasut_shipment_stock_movement()`: `quantity`, `product`, `warehouse`. A line without a Paraşüt product is refused before the POST. Before #1458 the lines went as `details` (`shipment_document_details`), which Paraşüt answers 422 "Stok kalemleri doldurulmalı": the button never created a document. The list endpoint rejects `include=details` (400); read them with `include=stock_movements`. Checked live on the demo (inflow seed and outgoing document, 2026-10-24).
-- Short stock is first seeded by an inflow document built by the same helper for the shortfall (`parasut_ensure_product_stock_tracking()`).
+- Stock step: erp-parasut-legacy-shipment-stock.md; deleted products: erp-parasut-legacy-shipment-deleted-products.md.
 - A product counts as tracked by `inventory_tracking` alone (`parasut_product_stock_tracked()`); v4 has no `product_type`, so the old check failed and every press PUT the product, once into a 429. Now only an untracked one gets PUT `{inventory_tracking: true}`.
 - `_parasut_request()` sends a 429 once more after a full rate window, as the ERP driver does.
 
