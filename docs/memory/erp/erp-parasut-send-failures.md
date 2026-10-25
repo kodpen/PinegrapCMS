@@ -4,7 +4,8 @@ description: What the ERP does when a Paraşüt send step goes wrong (no answer,
 ---
 
 ## What happens when Paraşüt's conversion job fails?
-- `poll` reads the job (`erp_edoc_parasut_job_reading()`), clears it, then reads the sales invoice: no e-document, so the row becomes `created` with the job's words first and Hand to GİB is offered again (#1012).
+- `poll` reads the job (`erp_edoc_parasut_job_reading()`), clears it, then reads the sales invoice: no e-document, so the row becomes `created` with the job's words first and Hand to GİB is offered again (#1012). Cancel before that status question: erp-parasut-sent-cancel.md.
+- Until #1012 the failure was `error` with the id kept, and Send opened a second sales invoice.
 
 ## What if the create gets no answer?
 - A timeout, dropped connection or 5xx may still have written the record (`erp_edoc_parasut_answer_unsure()`; 4xx/429 wrote nothing). Before `POST sales_invoices`, `parasut_invoice_id` is set to `?<issue date>:<contact id>` (`erp_edoc_parasut_unsure_mark()`, read by `_unsure_read()`); a definite answer clears it (#1019, #1210).
@@ -19,10 +20,7 @@ description: What the ERP does when a Paraşüt send step goes wrong (no answer,
 
 ## What if the record was deleted on Paraşüt's screen?
 - `poll` reads 404 `Record was not found` / `SalesInvoice-<id>` for the row's own id (`erp_edoc_parasut_invoice_gone()`; no other 404, 401 or 5xx). A `created` or `error` row, or a `sent` row whose job this poll read as failed, is freed (`erp_edoc_parasut_gone_answer()`): `none`, `parasut_*` ids and job cleared; with the unsure mark `error` without an id, the mark kept. The service also clears `edoc_external_id`, `edoc_kind`, `gib_*` (`erp_edoc_invoice_poll_gone_set()`), so Send writes a new record (#PR).
-- Other rows are kept as they were (a switched company answers the same 404). Before #PR the row stayed held.
-
-## When is a `sent` row cancelled?
-- `cancellable()`: job window open → refused (a record mid-conversion is never deleted). After it, no e-document seen and not e-Arşiv → ok: `cancel_invoice()` reads `active_e_document`, deletes a plain record (failed job), refuses an e-Fatura. Before #PR it refused from the row as gone to GİB.
+- A switched company answers the same 404: the message names both, other rows are kept. The PDF request polls with `$free_gone = false` (no service write there) and gets the plain 404. Before #PR the row stayed held.
 
 ## Which rows are handed to GİB?
 - Only `created` (`erp_edoc_parasut_submit_refusal()`, #1210): an `error` row's wrong-total record is never converted.

@@ -5,8 +5,9 @@
  * Tests for an ERP invoice whose Paraşüt record is no longer there (deleted
  * on Paraşüt's screen): how the driver tells Paraşüt's "Record was not
  * found" for the row's own id from other 404s, what a status question then
- * answers and clears, what the e-document service writes for it, and when
- * an invoice handed to GİB may be taken back (the driver's cancellable()).
+ * answers and clears, what the e-document service writes for it, and that
+ * an e-Invoice handed to GİB is still not offered for Cancel from the row
+ * (the driver's cancellable()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -111,6 +112,7 @@ function test_erp_edoc_parasut_deleted_gone_answer_frees_the_row()
 		pg_assert_same('', $gone['answer']['kind'], $label);
 		pg_assert_contains('1104221607', $gone['answer']['message'], $label . ': names the record');
 		pg_assert_contains('deleted', $gone['answer']['message'], $label);
+		pg_assert_contains('another company is connected', $gone['answer']['message'], $label . ': a switched company answers the same');
 		pg_assert_contains('sent again', $gone['answer']['message'], $label);
 		pg_assert_same(array('parasut_invoice_id' => '', 'parasut_edoc_id' => '', 'parasut_job_id' => '', 'parasut_job_expires_at' => 0), $gone['forget'], $label . ': the driver forgets the record');
 	}
@@ -139,6 +141,7 @@ function test_erp_edoc_parasut_deleted_gone_answer_keeps_the_mark()
 		pg_assert_false(array_key_exists('parasut_invoice_id', $gone['forget']), $mark . ': the mark is kept');
 		pg_assert_same(array('parasut_edoc_id' => '', 'parasut_job_id' => '', 'parasut_job_expires_at' => 0), $gone['forget'], $mark);
 		pg_assert_contains('looks', $gone['answer']['message'], $mark . ': the next send looks for it first');
+		pg_assert_contains('another company is connected', $gone['answer']['message'], $mark);
 	}
 }
 
@@ -160,7 +163,9 @@ function test_erp_edoc_parasut_deleted_gone_answer_leaves_documents()
 
 // poll() asks whether the record is gone right after reading it, before the
 // general 404 answer, forgets the driver's ids when it is, and passes on
-// whether the job it read had failed.
+// whether the job it read had failed. The PDF request asks without freeing:
+// the service's write of the answer does not run on that path, so the row
+// would keep naming the record while the driver had forgotten it.
 function test_erp_edoc_parasut_deleted_poll_reads_the_gone_record()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
@@ -177,6 +182,12 @@ function test_erp_edoc_parasut_deleted_poll_reads_the_gone_record()
 	pg_assert_true(($general !== false) && ($answer < $general), 'before the general 404 answer');
 	pg_assert_contains("\$job_failed = (\$reading['state'] === 'error');", $section, 'the failed job is remembered');
 	pg_assert_contains("foreach (\$gone['forget'] as \$column => \$value)", $section, 'the driver forgets its ids');
+	pg_assert_contains('function erp_edoc_parasut_poll($invoice, $job_id, $free_gone = true)', $source, 'the status question frees by default');
+	pg_assert_contains('if ($free_gone && erp_edoc_parasut_invoice_gone($detail, $external_id)) {', $section, 'only a caller that writes the answer frees');
+
+	$from = strpos($source, 'function erp_edoc_parasut_fetch_document(');
+	$fetch = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+	pg_assert_contains("\$polled = erp_edoc_parasut_poll(\$invoice, (string) (\$invoice['edoc_external_id'] ?? ''), false);", $fetch, 'the PDF request does not free the row');
 }
 
 // The service writes "not at the provider" only for the driver's gone answer
@@ -207,55 +218,27 @@ function test_erp_edoc_parasut_deleted_service_poll_set()
 	pg_assert_contains("if (((\$status !== \$before) || (\$gone !== array())) && function_exists('erp_event_invoice')) {", $section, 'announced even when the status stays error');
 }
 
-// Handed to GİB and not read since: the row cannot tell an e-Invoice GİB has
-// from a conversion that failed, so Paraşüt is asked (cancel_invoice() reads
-// active_e_document and refuses an e-Invoice). While the conversion job may
-// still run, the cancel waits for a status question, so a record being
-// converted is never deleted.
-function test_erp_edoc_parasut_deleted_cancellable_sent()
+// Cancel of an e-Invoice handed to GİB stays refused from the row, whether
+// or not a status question has seen its e-document and whether or not its
+// conversion job window has passed: the row cannot tell an e-Invoice GİB
+// holds from a conversion that failed, and cancel_invoice() reads any 404
+// (also a switched company's) as a deleted record. A status question first
+// turns a failed conversion into a draft ('created'), which is cancelled.
+function test_erp_edoc_parasut_deleted_sent_einvoice_stays_refused()
 {
-	$unread = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'sent', 'edoc_kind' => 'einvoice')));
-	pg_assert_true($unread['ok'], 'an e-Invoice hand-over not read since: Paraşüt is asked');
-	pg_assert_false($unread['manual']);
-	pg_assert_contains('asked', $unread['reason']);
+	foreach (array(
+		'not read since the hand-over' => array(),
+		'the job window open' => array('parasut_job_id' => '77', 'parasut_job_expires_at' => time() + 600),
+		'the job window passed' => array('parasut_job_id' => '77', 'parasut_job_expires_at' => time() - 60),
+		'its e-document seen' => array('parasut_edoc_id' => '5551'),
+	) as $label => $overrides) {
+		$answer = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array_merge(array('edoc_status' => 'sent', 'edoc_kind' => 'einvoice'), $overrides)));
 
-	$expired = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'sent', 'edoc_kind' => 'einvoice', 'parasut_job_id' => '77', 'parasut_job_expires_at' => time() - 60)));
-	pg_assert_true($expired['ok'], 'the job window has passed');
-
-	foreach (array('einvoice', 'earchive') as $kind) {
-		$running = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'sent', 'edoc_kind' => $kind, 'parasut_job_id' => '77', 'parasut_job_expires_at' => time() + 600)));
-		pg_assert_false($running['ok'], $kind . ': the conversion may still run');
-		pg_assert_contains('ask after its status', $running['reason'], $kind);
+		pg_assert_false($answer['ok'], $label . ': no Cancel');
+		pg_assert_false($answer['manual'], $label);
+		pg_assert_contains('return invoice', $answer['reason'], $label . ': the return invoice is offered');
 	}
 
-	// A status question saw the e-Invoice on its way to GİB: refused from the row.
-	$seen = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'sent', 'edoc_kind' => 'einvoice', 'parasut_edoc_id' => '5551')));
-	pg_assert_false($seen['ok'], 'an e-Invoice Paraşüt was seen to hold');
-	pg_assert_contains('return invoice', $seen['reason']);
-
-	$archive = erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'sent', 'edoc_kind' => 'earchive', 'parasut_edoc_id' => '5552')));
-	pg_assert_true($archive['ok'], 'an e-Archive invoice is cancelled through the API');
-
-	pg_assert_false(erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'accepted', 'edoc_kind' => 'einvoice', 'parasut_edoc_id' => '5551')))['ok'], 'an accepted e-Invoice, unchanged');
-	pg_assert_true(erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'error', 'edoc_kind' => 'einvoice')))['ok'], 'an error row, unchanged');
-}
-
-// cancel_invoice() reads what Paraşüt holds and refuses an e-Invoice before
-// any DELETE: a plain record is deleted only when no e-document stands
-// behind it, and the e-Archive cancel comes after the e-Invoice refusal.
-function test_erp_edoc_parasut_deleted_cancel_refuses_an_einvoice()
-{
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
-	$from = strpos($source, 'function erp_edoc_parasut_cancel_invoice(');
-	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
-
-	$read = strpos($section, "'/sales_invoices/' . rawurlencode(\$external_id) . '?include=active_e_document'");
-	$plain = strpos($section, "if (trim((string) (\$document_reference['id'] ?? '')) === '') {");
-	$delete = strpos($section, "erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode(\$external_id), null, \$context);");
-	$einvoice = strpos($section, "if (\$document_type === 'e_invoices') {");
-	$cancel = strpos($section, "'/sales_invoices/' . rawurlencode(\$external_id) . '/cancel'");
-
-	pg_assert_true(($read !== false) && ($plain !== false) && ($read < $plain), 'the record is read first');
-	pg_assert_true(($delete !== false) && ($plain < $delete) && ($delete < $einvoice), 'the delete only inside the no-e-document branch');
-	pg_assert_true(($einvoice !== false) && ($cancel !== false) && ($einvoice < $cancel), 'the e-Invoice is refused before any cancel');
+	pg_assert_true(erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'created', 'edoc_kind' => 'einvoice')))['ok'], 'a failed conversion read back as a draft');
+	pg_assert_false(erp_edoc_parasut_cancellable(pg_test_parasut_deleted_row(array('edoc_status' => 'accepted', 'edoc_kind' => 'einvoice', 'parasut_edoc_id' => '5551')))['ok'], 'an accepted e-Invoice');
 }
