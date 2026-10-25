@@ -588,3 +588,154 @@ function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displaye
 
     return pg_consent_log_answers(pg_consent_checkout_person($email, $user_id, $contact_id), $answers, 'checkout');
 }
+
+/**
+ * What erasing a person does to each table that holds their data, in the
+ * order it is done.
+ *
+ * delete:    the person's rows are removed.
+ * anonymise: the rows stay and only the columns listed are replaced: an
+ *            order, an ERP invoice or waybill kept for the legal retention
+ *            period, a comment kept on its page, a consent kept as proof.
+ *            '{name}' becomes "Deleted customer", '{anonymous}' "Anonymous",
+ *            '{token}' the person token of their address
+ *            (pg_privacy_person_token()); any other value is written as it
+ *            is.
+ *
+ * A column not listed is kept: amounts, dates, statuses, products, payment
+ * and carrier references, the country (tax reports read it).
+ *
+ * @return array  table => array('action' => 'delete'|'anonymise', 'fields' => column => value)
+ */
+function pg_privacy_erase_tables()
+{
+    $delete = array('action' => 'delete', 'fields' => array());
+
+    return array(
+        'orders' => array('action' => 'anonymise', 'fields' => array(
+            'billing_salutation'       => '',
+            'billing_first_name'       => '{name}',
+            'billing_last_name'        => '',
+            'billing_company'          => '',
+            'billing_address_1'        => '',
+            'billing_address_2'        => '',
+            'billing_city'             => '',
+            'billing_state'            => '',
+            'billing_zip_code'         => '',
+            'billing_phone_number'     => '',
+            'billing_fax_number'       => '',
+            'billing_email_address'    => '{token}',
+            'cardholder'               => '',
+            'card_number'              => '',
+            'expiration_month'         => '',
+            'expiration_year'          => '',
+            'card_verification_number' => '',
+            'custom_field_1'           => '',
+            'custom_field_2'           => '',
+            'http_referer'             => '',
+            'ip_address'               => 0,
+            'user_id'                  => 0,
+            'contact_id'               => 0,
+        )),
+        'form_data_order' => $delete,
+        'ship_tos' => array('action' => 'anonymise', 'fields' => array(
+            'ship_to_name' => '',
+            'salutation'   => '',
+            'first_name'   => '{name}',
+            'last_name'    => '',
+            'company'      => '',
+            'address_1'    => '',
+            'address_2'    => '',
+            'city'         => '',
+            'state'        => '',
+            'zip_code'     => '',
+            'phone_number' => '',
+        )),
+        'order_documents' => array('action' => 'anonymise', 'fields' => array(
+            'ip'         => '',
+            'user_agent' => '',
+        )),
+        'order_returns' => array('action' => 'anonymise', 'fields' => array(
+            'customer_note' => '',
+            'requested_by'  => 0,
+        )),
+        'gift_cards' => array('action' => 'anonymise', 'fields' => array(
+            'from_name'               => '',
+            'message'                 => '',
+            'recipient_email_address' => '',
+        )),
+        'erp_accounts' => array('action' => 'anonymise', 'fields' => array(
+            'title'            => '{name}',
+            'tax_number'       => '',
+            'tax_office'       => '',
+            'email'            => '{token}',
+            'invoice_email'    => '',
+            'phone'            => '',
+            'address'          => '',
+            'district'         => '',
+            'city'             => '',
+            'state'            => '',
+            'postcode'         => '',
+            'einvoice_alias'   => '',
+            'einvoice_aliases' => '',
+            'notes'            => '',
+            'contact_id'       => 0,
+        )),
+        'erp_invoices' => array('action' => 'anonymise', 'fields' => array(
+            'account_title'      => '{name}',
+            'account_tax_number' => '',
+            'account_tax_office' => '',
+            'account_address'    => '',
+            'account_district'   => '',
+            'account_city'       => '',
+            'account_state'      => '',
+            'account_postcode'   => '',
+            'account_email'      => '{token}',
+        )),
+        'erp_quotes' => array('action' => 'anonymise', 'fields' => array(
+            'form_data' => '',
+        )),
+        'erp_waybills' => array('action' => 'anonymise', 'fields' => array(
+            'ship_to_title'    => '{name}',
+            'ship_to_address'  => '',
+            'ship_to_district' => '',
+            'ship_to_city'     => '',
+            'ship_to_state'    => '',
+        )),
+        'comments' => array('action' => 'anonymise', 'fields' => array(
+            'name'            => '{anonymous}',
+            'created_user_id' => 0,
+        )),
+        'consent_log' => array('action' => 'anonymise', 'fields' => array(
+            'user_id'    => 0,
+            'contact_id' => 0,
+            'ip'         => '',
+            'user_agent' => '',
+        )),
+        'ws_approval_guests' => array('action' => 'anonymise', 'fields' => array(
+            'name'          => '{anonymous}',
+            'email'         => '{token}',
+            'decided_ip'    => '',
+            'decided_agent' => '',
+        )),
+        'forms'                       => $delete,
+        'form_signatures'             => $delete,
+        'watchers'                    => $delete,
+        'wishlist_items'              => $delete,
+        'stock_notify'                => $delete,
+        'email_recipients'            => $delete,
+        'mail_outbox'                 => $delete,
+        'sms_outbox'                  => $delete,
+        'chat_conversations'          => $delete,
+        'address_book'                => $delete,
+        'push_subscriptions'          => $delete,
+        'user_passkeys'               => $delete,
+        'user_identities'             => $delete,
+        'user_mfa'                    => $delete,
+        'auth_tokens'                 => $delete,
+        'opt_in'                      => $delete,
+        'contacts_contact_groups_xref' => $delete,
+        'contacts'                    => $delete,
+        'user'                        => $delete,
+    );
+}
