@@ -264,6 +264,18 @@ function test_workspace_flow_shares_probe_and_list()
 	pg_assert_contains('ws_flow_share_rows_prime(', $list, 'their shares in one read');
 }
 
+// The canvas lists the flows of others under one heading: those shared with
+// the person, those shared in a channel they read and the live flows of a
+// home channel they read, which nobody shared. The heading names the
+// channels, not the person alone.
+function test_workspace_flow_shares_list_heading_names_the_channels()
+{
+	preg_match("/'fl_list_shared'\\s*=>\\s*lang\\('([^']*)'\\)/", ws_flow_shares_test_function('includes/workspace/flows.php', 'ws_flow_js_strings'), $heading);
+
+	pg_assert_true(isset($heading[1]), 'the heading is found');
+	pg_assert_contains('channels', $heading[1] ?? '', 'the heading names the channels');
+}
+
 // A person told of a share gets a line of their own in the bell, named by
 // the flow; the kind fits ws_inbox.kind.
 function test_workspace_flow_shares_bell_row()

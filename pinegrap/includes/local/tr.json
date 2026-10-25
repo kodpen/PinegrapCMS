@@ -28275,5 +28275,6 @@
     "Shared with {var:1}.": "{var:1} ile paylaşıldı.",
     "No longer shared with {var:1}.": "Artık {var:1} ile paylaşılmıyor.",
     "Only the owner publishes this flow; your changes are kept in its draft.": "Bu akışı yalnız sahibi yayımlar; değişiklikleriniz taslağında kalır.",
-    "Only the person's own team devices session (POST /auth/login) can share a flow or take a share back; an application key or an OAuth connection cannot do it for them.": "Bir akışı yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) paylaşabilir ya da paylaşımı geri alabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz."
+    "Only the person's own team devices session (POST /auth/login) can share a flow or take a share back; an application key or an OAuth connection cannot do it for them.": "Bir akışı yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) paylaşabilir ya da paylaşımı geri alabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz.",
+    "Shared with me and my channels": "Benimle ve kanallarımla paylaşılanlar"
 }

@@ -1326,7 +1326,7 @@ function ws_flow_js_strings()
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
         'fl_new'              => lang('New flow'),
         'fl_list_mine'        => lang('My flows'),
-        'fl_list_shared'      => lang('Shared with me'),
+        'fl_list_shared'      => lang('Shared with me and my channels'),
         'fl_none'             => lang('No flows yet.'),
         'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
         'fl_none_run'         => lang('No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.'),
