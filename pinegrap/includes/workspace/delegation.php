@@ -111,6 +111,19 @@ function ws_task_run_key($row)
 }
 
 /**
+ * Is this row on a task an application's proposal (proposals.php) rather
+ * than a run an assistant was asked for? Nobody asked for it, so the drawer
+ * draws it with the person it waits for and no instruction.
+ *
+ * @param array $row ws_ai_requests
+ * @return bool
+ */
+function ws_task_run_is_proposal($row)
+{
+    return function_exists('ws_proposal_agent_parse') && (ws_proposal_agent_parse((string) ($row['agent'] ?? '')) !== null);
+}
+
+/**
  * The assistant whose queue, limits and channel switch a key's runs go by:
  * an MCP server's alias is answered by Pinegrap AI, or by the server's own
  * agent when it is one (mcp_agent.php).
@@ -235,7 +248,9 @@ function ws_assistant($key)
 
 /**
  * The name an assistant is shown with, also for a key whose connection has
- * been switched off since: the runs it made keep their name.
+ * been switched off since: the runs it made keep their name. A proposal an
+ * application made on a task (proposals.php) sits among the runs under the
+ * application's name.
  *
  * @param string $key
  * @return string
@@ -246,6 +261,12 @@ function ws_assistant_name($key)
 
     if ($assistant) {
         return $assistant['name'];
+    }
+
+    $proposer = function_exists('ws_proposal_name') ? ws_proposal_name($key) : '';
+
+    if ($proposer !== '') {
+        return $proposer;
     }
 
     $server_id = ws_assistant_mcp_id($key);
@@ -272,6 +293,10 @@ function ws_assistant_avatar($key)
 
     if ($assistant) {
         return $assistant['avatar'];
+    }
+
+    if (function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse($key)) {
+        return ws_proposal_avatar($key);
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'claude') ? 'ws-assistant.svg' : 'ws-ai.svg');
@@ -406,6 +431,25 @@ function ws_delegation_instruction_clean($text)
 function ws_delegation_status_open($status)
 {
     return in_array((string) $status, array('queued', 'sent', 'running'), true);
+}
+
+/**
+ * The run under way among a task's request rows, newest first: the newest
+ * row whose status is open, not the newest row, since an application's
+ * proposal (proposals.php) may have been written after the run began.
+ *
+ * @param array[] $rows ws_ai_requests rows, newest first
+ * @return array|null
+ */
+function ws_task_delegation_open_row($rows)
+{
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ws_delegation_status_open($row['status'] ?? '')) {
+            return $row;
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -740,7 +784,9 @@ function ws_task_delegation_told($row, $status)
 
 /**
  * The runs on a task a new run is told about: what the assistants were
- * asked and what they answered, oldest first.
+ * asked and what they answered, oldest first. An application's proposal
+ * (proposals.php) is left out: nobody asked for it, and its words would
+ * reach the model as earlier work the person had asked for.
  *
  * @param array $task
  * @param int   $before_id only runs before this request
@@ -754,7 +800,8 @@ function ws_task_delegation_earlier($task, $before_id = 0)
 
     $rows = (array) db_items("SELECT id, agent, note_text, note_reply, status, error, requested_by, created_at" . ws_delegation_server_column() . " FROM ws_ai_requests
         WHERE task_id = '" . (int) $task['id'] . "' AND status IN ('answered', 'failed')"
-        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '') . "
+        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '')
+        . (function_exists('ws_proposal_where') ? " AND " . ws_proposal_where('', false) : '') . "
         ORDER BY id DESC LIMIT " . WS_DELEGATION_EARLIER);
 
     $out = array();
@@ -789,6 +836,11 @@ function ws_task_delegation_state($viewer, $row)
 
     if (((string) ($row['agent'] ?? '') === 'mcp') && function_exists('ws_mcp_agent_request_state')) {
         return ws_mcp_agent_request_state($row, $viewer);
+    }
+
+    // A proposal an application made on the task (proposals.php).
+    if (ws_task_run_is_proposal($row)) {
+        return ws_proposal_request_state($row);
     }
 
     return ws_claude_request_state($viewer, $row);
@@ -899,6 +951,9 @@ function ws_task_delegation_detail($viewer, $task)
             'id'          => (int) $row['id'],
             'agent'       => $agent,
             'assistant'   => array('name' => ws_assistant_name($key), 'avatar' => ws_assistant_avatar($key), 'app' => true),
+            // An application's proposal: asked_by is the person its cards
+            // wait for, not somebody who asked for it.
+            'proposal'    => ws_task_run_is_proposal($row),
             'asked_by'    => $people[(int) $row['requested_by']]['name'] ?? ws_person_name($row['requested_by']),
             'asked_at'    => ws_time_label($row['created_at']),
             'instruction' => ((string) $row['note_text'] !== '') ? ws_render_body((string) $row['note_text'], $refs) : '',
@@ -926,7 +981,9 @@ function ws_task_delegation_detail($viewer, $task)
         );
     }
 
-    $first = $rows ? $rows[0] : null;
+    // The run under way, which an application's proposal written after it
+    // began does not hide.
+    $first = ws_task_delegation_open_row($rows);
 
     // A run of an MCP server's own agent that waits for its asker's approval
     // (mcp_agent.php) has nothing for the screens to carry on until then.
@@ -1142,6 +1199,7 @@ function ws_delegation_js_strings()
         'dg_take_back'     => lang('Take the task back'),
         'dg_take_confirm'  => lang('Take the task back from the assistant? A run under way is stopped.'),
         'dg_asked'         => ws_js_template('{var:1} asked, {var:2}', 2),
+        'dg_proposed'      => ws_js_template('Proposed for {var:1}, {var:2}', 2),
         'dg_no_instruction' => lang('No instruction: the task itself.'),
         'dg_none'          => ($alias !== '')
             ? lang(array('string' => 'No assistant has worked on this task yet. A note that writes @ai, @Claude or an MCP server\'s alias such as {var:1} asks one too.', 'vars' => $alias))
