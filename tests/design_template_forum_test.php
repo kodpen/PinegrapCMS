@@ -436,14 +436,16 @@ function _test_forum_threads()
 	);
 }
 
-// The three lists of recent replies: page, what they show, how many, in
-// which order.
+// The four lists of recent replies: page, what they show, how many, in
+// which order, whether they read the topic page alone (held to the board
+// the address names).
 function _test_forum_recent_lists()
 {
 	return array(
-		'home_latest_replies' => array('home', 'published', 5, 'newest'),
-		'my_replies' => array('my_topics', 'mine', 10, 'newest'),
-		'staff_replies_waiting' => array('staff', 'pending', 10, 'oldest'),
+		'home_latest_replies' => array('home', 'published', 5, 'newest', false),
+		'board_latest_replies' => array('board', 'published', 5, 'newest', true),
+		'my_replies' => array('my_topics', 'mine', 10, 'newest', false),
+		'staff_replies_waiting' => array('staff', 'pending', 10, 'oldest', false),
 	);
 }
 
@@ -799,8 +801,9 @@ function test_forum_template_loads()
 	pg_assert_same(lang('Community Forum & Docs'), $tpl['name'], 'name');
 	pg_assert_same(1, preg_match('/^\d+\.\d+\.\d+$/', $tpl['version']), 'version x.y.z');
 	// 1.1.0: replies and feedback on the Comments widget, the lists of
-	// recent replies and the comment e-mails drawn by it.
-	pg_assert_same('1.1.0', $tpl['version'], 'version 1.1.0');
+	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
+	// page's latest replies, held to the board by a record filter.
+	pg_assert_same('1.2.0', $tpl['version'], 'version 1.2.0');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -2421,19 +2424,26 @@ function test_forum_recent_lists()
 		pg_assert_same($want[0], $w['page'], $key . ' page');
 		pg_assert_same(lang('recent-comments'), $w['slug'], $key . ' slug');
 		pg_assert_true(is_array($w['tree']), $key . ' ships its tree, not the starter');
-		pg_assert_same(array('{{tab:topic}}', '{{tab:doc}}'), $cfg['recent_page_ids'], $key . ' reads the topic and guide pages');
+		$board = $want[4];
+		$board_filter = array('field' => 'board', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'url parameter', 'dynamic_value_attribute' => 'board');
+		pg_assert_same($board ? array('{{tab:topic}}') : array('{{tab:topic}}', '{{tab:doc}}'), $cfg['recent_page_ids'], $key . ($board ? ' reads the topic page alone' : ' reads the topic and guide pages'));
 		$resolved = $cfg;
-		$resolved['recent_page_ids'] = array('11', '12');
-		pg_assert_same(array('show' => $want[1], 'page_ids' => array(11, 12), 'limit' => $want[2], 'order' => $want[3], 'filters' => array()), pg_comments_recent_options($resolved), $key . ' options');
-		pg_assert_false(isset($cfg['filters']) || isset($cfg['recent_filters']), $key . ': no record filters');
+		$resolved['recent_page_ids'] = $board ? array('11') : array('11', '12');
+		pg_assert_same(array('show' => $want[1], 'page_ids' => $board ? array(11) : array(11, 12), 'limit' => $want[2], 'order' => $want[3], 'filters' => $board ? array($board_filter) : array()),
+			pg_comments_recent_options($resolved), $key . ' options');
+		pg_assert_false(isset($cfg['filters']), $key . ': no form list filters');
+		pg_assert_same($board, isset($cfg['recent_filters']), $key . ($board ? ': held to the board' : ': no record filters'));
 
 		// The source pages: tab keys when the template opens, their ids once
 		// published.
 		$filled = _pg_tpl_fill($cfg, array('tabs' => array('topic' => 'tplx_topic', 'doc' => 'tplx_doc')));
-		pg_assert_same(array('tab:tplx_topic', 'tab:tplx_doc'), $filled['recent_page_ids'], $key . ': the editor\'s tabs when the template opens');
+		pg_assert_same($board ? array('tab:tplx_topic') : array('tab:tplx_topic', 'tab:tplx_doc'), $filled['recent_page_ids'], $key . ': the editor\'s tabs when the template opens');
 		require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 		$published = pg_designer_resolve_tab_values($filled, array('tplx_topic' => 31, 'tplx_doc' => 32));
-		pg_assert_same(array(31, 32), pg_comments_recent_options($published)['page_ids'], $key . ': their ids once published');
+		pg_assert_same($board ? array(31) : array(31, 32), pg_comments_recent_options($published)['page_ids'], $key . ': their ids once published');
+		if ($board) {
+			pg_assert_same(array($board_filter), pg_comments_recent_options($published)['filters'], $key . ': the filter survives the install');
+		}
 
 		$tree = $w['tree'];
 		if (!is_array($tree)) {
@@ -2468,7 +2478,7 @@ function test_forum_recent_lists()
 			pg_assert_same(0, count($edit), $key . ': no Edit link');
 		}
 		$status = _test_forum_bound_items($tree, 'text', '__comment_status');
-		pg_assert_same(($key === 'home_latest_replies') ? 0 : 1, count($status), $key . ': the status of a reply awaiting approval');
+		pg_assert_same(($want[1] === 'published') ? 0 : 1, count($status), $key . ': the status of a reply awaiting approval');
 		$empty = 0;
 		foreach (_test_forum_widget_items($tree) as $item) {
 			$empty += (_test_forum_flag($item[0]) === 'no_comments' && !$item[4]) ? 1 : 0;
@@ -2657,6 +2667,35 @@ function test_forum_email_comment()
 	pg_assert_true($found !== null, 'the card repeats in a loop');
 }
 
+// The board page's latest replies: the topic page's replies held to the
+// board the address names by the same filter as the board's topics, so a
+// board shows the replies of the topics it lists; the topic page's record
+// view keeps a hidden topic's replies out. A list with record filters is
+// read only on its one record source, which this is.
+function test_forum_board_latest_replies()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	$w = $tpl['widgets']['board_latest_replies'];
+	$filter = $w['config']['recent_filters'][0];
+	pg_assert_true(in_array($filter, $tpl['widgets']['board_topics']['config']['filters'], true), 'the board topics\' own address filter');
+	pg_assert_same('board', $filter['dynamic_value_attribute'], 'read from ?board=');
+	pg_assert_true(pg_comments_recent_source_decision(array('exists' => true, 'view' => true, 'comments_on' => true, 'page_type' => 'standard', 'record' => true,
+		'form_id' => 31, 'show' => 'published', 'list_filters' => true, 'sources' => count($w['config']['recent_page_ids'])))['use'], 'applied on its one record source');
+	$empty = array();
+	foreach (_test_forum_nodes($w['tree']) as $n) {
+		if (_test_forum_flag($n) === 'no_comments') {
+			$empty[] = isset($n['props']['text']) ? $n['props']['text'] : '';
+		}
+	}
+	pg_assert_same(array(lang('No replies yet.')), $empty, 'without a reply it says so, in words that fit every board too (no ?board=)');
+
+	$placed = _test_forum_placed(_test_forum_resolve($pages['board']['tree']));
+	$at = array_search('board_latest_replies', $placed, true);
+	pg_assert_true($at !== false, 'placed on the board page');
+	pg_assert_true(($at !== false) && ($at > array_search('board_topics', $placed, true)), 'after the board\'s topics');
+}
+
 // Every flag a comments widget of the template shows a part for is one its
 // mode sets: a flag the mode leaves out is off, so the part would never show
 // (fail closed).
@@ -2688,8 +2727,8 @@ function test_forum_widget_flags_fit_their_mode()
 		}
 	}
 	ksort($checked);
-	pg_assert_same(array('doc_feedback' => 'comments', 'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent',
-		'my_replies' => 'comments_recent', 'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the six comments widgets');
+	pg_assert_same(array('board_latest_replies' => 'comments_recent', 'doc_feedback' => 'comments', 'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent',
+		'my_replies' => 'comments_recent', 'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the seven comments widgets');
 }
 
 // What the FAQ says about replies: how to follow a topic, how a best answer
