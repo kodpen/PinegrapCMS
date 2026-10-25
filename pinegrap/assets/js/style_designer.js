@@ -3698,22 +3698,54 @@ const StyleDesigner = (function () {
         return { parent: par, index: at === -1 ? par.children.length : at + 1 };
     }
 
-    // The copy the last paste selected, and what was on the clipboard then.
+    // The last copy of the clipboard: the copy the last paste selected, or a
+    // Ctrl+D duplicate of it or of a copied node (onDuplicate()), and what
+    // was on the clipboard then.
     var _sdLastPaste = { node: null, key: null };
 
     // Is this paste a duplicate of the selection rather than a paste into
     // it? It is when the selection is a copied node itself (the clipboard
-    // keeps the copied node's _id), or the copy the last paste of the same
-    // clipboard selected: Ctrl+C, Ctrl+V, Ctrl+V on a section gives three
-    // sections side by side, instead of each copy going into the one
-    // before. Pasting into a container takes selecting another one. The
-    // last copy is compared by reference, not by id: an undo rebuilds the
-    // tree and hands the undone copy's id out again to the next new node.
-    // Ids repeat across pages and shared trees, so a copy from elsewhere
-    // with the selection's id also goes beside it.
+    // keeps the copied node's _id), or the last copy (_sdLastPaste) while
+    // the clipboard holds the same thing: Ctrl+C, Ctrl+V, Ctrl+V on a
+    // section gives three sections side by side, instead of each copy going
+    // into the one before. Pasting into a container takes selecting another
+    // one. The last copy is compared by reference, not by id: an undo hands
+    // the undone copy's id out again to the next new node. Undo and redo
+    // rebuild every node, so they find the last copy again by the id stored
+    // with their snapshot (_sdPasteMemo(), _sdPasteRelink()). Ids repeat
+    // across pages and shared trees, so a copy from elsewhere with the
+    // selection's id also goes beside it.
     function _sdPasteRepeats(nodes, sel, key) {
         if (_sdLastPaste.node && sel === _sdLastPaste.node && key === _sdLastPaste.key) return true;
         return nodes.some(function (n) { return !!(n && n._id && n._id === sel._id); });
+    }
+
+    // The last copy as a history snapshot keeps it (saveState(), undo(),
+    // redo()): its id, the tree it is in (0 for the page, else the shared
+    // component's or widget's id) and the clipboard key; null when it is in
+    // no tree. The id names that copy in that snapshot only, so an id handed
+    // out again after an undo never matches it. A reference walk
+    // (_nodeInTree()): findParent() would build the drag-time parent index
+    // that saveState() has just dropped, before the tree changes.
+    function _sdPasteMemo() {
+        var n = _sdLastPaste.node;
+        if (!n) return null;
+        if (_nodeInTree(n, tree)) return { id: n._id, sid: 0, key: _sdLastPaste.key };
+        var sids = Object.keys(_sharedCache);
+        for (var i = 0; i < sids.length; i++) {
+            var c = _sharedCache[sids[i]];
+            if (c && c.tree && _nodeInTree(n, c.tree)) return { id: n._id, sid: parseInt(sids[i], 10), key: _sdLastPaste.key };
+        }
+        return null;
+    }
+
+    // After undo() or redo() rebuilt the trees from a snapshot: the last copy
+    // again, by the id `memo` stored with that snapshot, in its own tree (ids
+    // repeat across trees). No copy, no repeat: the key goes with it.
+    function _sdPasteRelink(memo) {
+        var root = !memo ? null : (memo.sid ? (_sharedCache[memo.sid] && _sharedCache[memo.sid].tree) : tree);
+        var n = (root && memo.id) ? findNodeById(memo.id, root) : null;
+        _sdLastPaste = { node: n || null, key: n ? memo.key : null };
     }
 
     // May every pasted node go into `target`? The drop rules decide
@@ -4406,7 +4438,8 @@ const StyleDesigner = (function () {
         undoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
-            assets: _snapshotAssetFields()
+            assets: _snapshotAssetFields(),
+            paste:  _sdPasteMemo()
         });
         redoStack = [];
         if (undoStack.length > 50) undoStack.shift();
@@ -4427,7 +4460,8 @@ const StyleDesigner = (function () {
         redoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
-            assets: _snapshotAssetFields()
+            assets: _snapshotAssetFields(),
+            paste:  _sdPasteMemo()
         });
         var prev = undoStack.pop();
         // Backwards compat — older snapshots (pre-shared-aware) were bare strings.
@@ -4436,6 +4470,7 @@ const StyleDesigner = (function () {
         nodeIdCounter = reindex(tree);
         _restoreShared(prev.shared);
         _restoreAssetFields(prev.assets);
+        _sdPasteRelink(prev.paste);
         selectedNode = null;
         selectedNodes = [];
         render();
@@ -4447,7 +4482,8 @@ const StyleDesigner = (function () {
         undoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
-            assets: _snapshotAssetFields()
+            assets: _snapshotAssetFields(),
+            paste:  _sdPasteMemo()
         });
         var nxt = redoStack.pop();
         if (typeof nxt === 'string') nxt = { tree: nxt, shared: {}, assets: null };
@@ -4455,6 +4491,7 @@ const StyleDesigner = (function () {
         nodeIdCounter = reindex(tree);
         _restoreShared(nxt.shared);
         _restoreAssetFields(nxt.assets);
+        _sdPasteRelink(nxt.paste);
         selectedNode = null;
         selectedNodes = [];
         render();
@@ -20912,6 +20949,18 @@ const StyleDesigner = (function () {
             _sharedDirty[sharedHit.sid] = true;
         }
         selectedNode = clone;
+        // A duplicate of a copied node, or of the last copy, is one more copy
+        // of the clipboard: the next paste of the same clipboard with it
+        // selected goes beside it (_sdPasteRepeats()), so Copy, Ctrl+D,
+        // Ctrl+V gives copies side by side, as Copy, Ctrl+V, Ctrl+V does. The
+        // key is the copied nodes' JSON, as _sdPasteNodes() makes it.
+        if (node === _sdLastPaste.node) {
+            _sdLastPaste = { node: clone, key: _sdLastPaste.key };
+        } else if ((clipboardNodes || []).some(function (c) { return !!(c && c._id && c._id === node._id); })) {
+            var dupKey = null;
+            try { dupKey = JSON.stringify(clipboardNodes); } catch (e) { dupKey = null; }
+            _sdLastPaste = { node: clone, key: dupKey };
+        }
         render();
     }
 

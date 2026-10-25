@@ -12,10 +12,11 @@
  * declared twice in one scope; _sdPasteSpot(), _sdPasteRepeats(),
  * _sdPasteFits(), _sdPasteNodes() and the paste event's handler are cut out
  * of the file with the drop rules (canDrop() and the lock and shared-tree
- * helpers it asks) and run with a page tree and a widget's tree. Every paste
- * path (the paste event, the context-menu Paste, Ctrl+V without the system
- * clipboard) places its blocks through _sdPasteNodes(). On a machine without
- * Node the tests are skipped.
+ * helpers it asks) and run with a page tree and a widget's tree, some with
+ * the designer's own history (saveState(), undo(), redo()) and Ctrl+D
+ * (onDuplicate()). Every paste path (the paste event, the context-menu
+ * Paste, Ctrl+V without the system clipboard) places its blocks through
+ * _sdPasteNodes(). On a machine without Node the tests are skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -274,8 +275,11 @@ function test_designer_paste_target_function_names_are_declared_once()
 // (`{ sd: id }`) or the Overview row (`{ nid: id }`) of a node, the way the
 // caret left in it does; `own(nodes)` is the clipboard after a copy here.
 // Markup goes to the server stub, which answers with `apiKids()` when it is
-// set. `deep(list)` names the nodes with their children in brackets.
-function designer_paste_target_test_run($cases)
+// set. `deep(list)` names the nodes with their children in brackets,
+// `byId(id)` finds a node as a canvas click does, `mark` keeps ids between
+// steps. With $history the designer's own saveState(), undo(), redo() and
+// onDuplicate() run instead of a saveState() that only counts.
+function designer_paste_target_test_run($cases, $history = false)
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code = '';
@@ -286,6 +290,11 @@ function designer_paste_target_test_run($cases)
 		'isLockedEffective', 'hasLockedAncestor', 'lockedAncestorOf', 'isDescendantOf', '_nodeInTree', '_resolveSharedSid',
 		'_sdSharedOwnerOf', 'collectSharedIds', '_sdDragSharedIds', '_sdSharedChildIds', '_sdSharedReaches', '_subtreeContainsLoopArea',
 		'_sdHandlePaste', '_sdNodeFromEventTarget', '_sdFindNodeForEl', 'findNodeById', '_sdIsTextSink', '_sdPasteAsText', '_sdLooksLikeMarkup');
+
+	if ($history) {
+		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_snapshotShared', '_restoreShared',
+			'_sdPasteMemo', '_sdPasteRelink', 'onDuplicate'));
+	}
 
 	foreach ($names as $name) {
 		$offset = 0;
@@ -312,8 +321,13 @@ function designer_paste_target_test_run($cases)
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has canDrop() and its helpers');
 	$code .= substr($source, $from, $to - $from);
 
-	$script = 'var tree, selectedNode = null, selectedNodes = [], _sharedCache = {}, _sharedDirty = {};'
-		. 'var saves = 0; function saveState() { saves++; }'
+	$script = 'var tree, selectedNode = null, selectedNodes = [], _sharedCache = {}, _sharedDirty = {}, mark = {};'
+		. ($history
+			? 'var saves = 0, undoStack = [], redoStack = [], _saveStateRun = { key: null, at: 0 }, SAVE_STATE_RUN_MS = 700;'
+				. 'function _dragIndexDrop() {} function _sdEditableInvalidate() {} function scheduleAutosave() {} function updateUndoRedoState() {}'
+				. 'function _snapshotAssetFields() { return null; } function _restoreAssetFields() {}'
+				. 'function _sdMayEdit() { return true; } function _blockDuplicateWithToast() { return false; }'
+			: 'var saves = 0; function saveState() { saves++; }')
 		. 'var nodeIdCounter = 100; function gid() { return "sd_" + (++nodeIdCounter); }'
 		. 'function cloneTree(n) { return JSON.parse(JSON.stringify(n)); }'
 		. 'function expandAncestors() {} function render() {} function _parentIndexFor() { return null; }'
@@ -343,6 +357,7 @@ function designer_paste_target_test_run($cases)
 		. 'function deep(list) { return list.map(function (k) { return ids([k]) + (k.children && k.children.length ? "[" + deep(k.children) + "]" : ""); }).join(","); }'
 		. 'function spot(s) { return s.parent._id + (s.index !== undefined ? "@" + s.index : "") + (s.sid !== undefined ? "#" + s.sid : ""); }'
 		. 'function sel(node) { selectedNode = node; return true; }'
+		. 'function byId(id) { return _sdFindNodeForEl(id, null); }'
 		. 'function own(nodes) { return _SD_CLIP_TAG + JSON.stringify(nodes); }'
 		. 'function paste(text, aim) {'
 		. ' var el = function (id) { return id ? { getAttribute: function () { return id; } } : null; };'
@@ -578,8 +593,9 @@ function test_designer_paste_target_in_memory_paste_lands_like_the_paste_event()
 // clipboard holds something else, the copy the last paste selected is a
 // container like any other and takes the paste inside. The last copy is
 // known by reference, not by id: a node that only carries its id (as one
-// made after an undo can) takes the paste inside. Markup pasted twice is
-// two siblings too; other markup goes inside.
+// made after an undo can) takes the paste inside; undo and redo find the
+// copy again themselves (see the history test below). Markup pasted twice
+// is two siblings too; other markup goes inside.
 function test_designer_paste_target_repeat_means_same_clipboard_same_copy()
 {
 	$answer = designer_paste_target_test_run(array(
@@ -601,4 +617,95 @@ function test_designer_paste_target_repeat_means_same_clipboard_same_copy()
 		'C1,+M,+M',
 		'C1,+M,+M[+N] posts=3',
 	), $answer, 'a copy of C through the paste event and then the in-memory paste: two siblings; after copying X, X goes into the selected copy; a node with the last copy\'s id but not that copy takes the paste inside; the same markup twice with div C selected: into C, then beside that copy; other markup into the selected copy');
+}
+
+// Runs each scenario in a fresh copy of the trees, with the designer's own
+// history and Ctrl+D; one value per scenario, null without Node.
+function designer_paste_target_test_history($scenarios)
+{
+	$answers = array();
+
+	foreach ($scenarios as $scenario) {
+		$answer = designer_paste_target_test_run(array($scenario), true);
+
+		if ($answer === null) {
+			return null;
+		}
+
+		$answers[] = $answer[0];
+	}
+
+	return $answers;
+}
+
+// Undo and redo rebuild every node from a snapshot, so the last copy is no
+// longer the object the paste selected. The snapshot keeps it by id, in its
+// own tree, and undo() and redo() point the last paste at the rebuilt copy:
+// after Ctrl+Z (of the paste after it or of an unrelated edit) or Ctrl+Y,
+// the copy selected again takes the next paste of the same clipboard beside
+// it, on both paths. A new node that gets the undone copy's id is another
+// container and takes the paste inside, and so does a page node that has
+// the id of a copy made in the widget's tree.
+function test_designer_paste_target_undo_and_redo_keep_the_last_copy()
+{
+	$answer = designer_paste_target_test_history(array(
+		'sel(C), paste(own([C]), { sd: "C" }), mark.c1 = selectedNode._id, paste(own([C]), { sd: "C" }), undo(),'
+			. ' sel(byId(mark.c1)), paste(own([C]), { sd: mark.c1 }), deep(byId("S").children) + " undo=" + undoStack.length',
+		'clipboardNodes = [cloneTree(C)], sel(C), _sdPasteNodes(clipboardNodes), mark.c1 = selectedNode._id, undo(), redo(),'
+			. ' sel(byId(mark.c1)), _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+		'sel(C), paste(own([C]), { sd: "C" }), mark.c1 = selectedNode._id, saveState(), byId("S").children.splice(5, 1), undo(),'
+			. ' sel(byId(mark.c1)), paste(own([C]), { sd: mark.c1 }), deep(byId("S").children)',
+		'sel(C), paste(own([C]), { sd: "C" }), paste(own([C]), { sd: "C" }), mark.c2 = selectedNode._id, undo(),'
+			. ' saveState(), mark.n = N(gid(), "semantic", { tag: "div", text: "new" }), byId("S").children.push(mark.n),'
+			. ' sel(mark.n), paste(own([C]), { sd: mark.n._id }), (mark.n._id === mark.c2) + " " + deep(byId("S").children)',
+		'sel(C), paste(own([C]), { sd: "C" }), mark.c1 = selectedNode._id, undo(),'
+			. ' saveState(), mark.n = N(mark.c1, "semantic", { tag: "div", text: "new" }), byId("S").children.push(mark.n),'
+			. ' sel(mark.n), paste(own([C]), { sd: mark.n._id }), deep(byId("S").children)',
+		'tree.children.push(N("sd_101", "semantic", { tag: "div", text: "twin" })), clipboardNodes = [cloneTree(WD)], sel(WD),'
+			. ' _sdPasteNodes(clipboardNodes), mark.w1 = selectedNode._id, _sdPasteNodes(clipboardNodes), undo(),'
+			. ' sel(findNodeById(mark.w1, _sharedCache[7].tree)), _sdPasteNodes(clipboardNodes), sel(byId("sd_101")), _sdPasteNodes(clipboardNodes),'
+			. ' (mark.w1 === "sd_101") + " " + deep(_sharedCache[7].tree.children) + " page " + deep(tree.children.slice(-1))',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'A,B,C[C1],+div[+C1],+div[+C1],Q,IMG,D undo=2',
+		'A,B,C[C1],+div[+C1],+div[+C1],Q,IMG,D',
+		'A,B,C[C1],+div[+C1],+div[+C1],Q,IMG,D',
+		'true A,B,C[C1],+div[+C1],Q,IMG,D,+new[+div[+C1]]',
+		'A,B,C[C1],Q,IMG,D,+new[+div[+C1]]',
+		'true WH,WD[WD1],+div[+WD1],+div[+WD1] page +twin[+div[+WD1]]',
+	), $answer, 'paste twice and undo once: the copy left, selected again, takes the paste beside it; paste, undo, redo (in-memory path): the same; an undone unrelated edit in between: the same; a new div given the undone copy\'s id takes the paste inside, after two pastes and after one; in the widget the copy selected after an undo takes it beside, and the page node with that copy\'s id takes it inside');
+}
+
+// Ctrl+D on a copied node, or on the last copy, makes one more copy of the
+// clipboard: Copy, Ctrl+D, Ctrl+V and Copy, Ctrl+V, Ctrl+D, Ctrl+V give
+// copies side by side on both paths. A duplicate of a node that is not on
+// the clipboard is a container like any other and takes the paste inside.
+function test_designer_paste_target_duplicate_counts_as_a_copy()
+{
+	$answer = designer_paste_target_test_history(array(
+		'clipboardNodes = [cloneTree(C)], sel(C), onDuplicate(C), _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+		'clipboardNodes = [cloneTree(C)], sel(C), onDuplicate(C), paste(own([C]), { sd: selectedNode._id }), deep(byId("S").children)',
+		'clipboardNodes = [cloneTree(C)], sel(C), _sdPasteNodes(clipboardNodes), onDuplicate(selectedNode), _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+		'clipboardNodes = [X], sel(C), onDuplicate(C), _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+		'clipboardNodes = [cloneTree(C)], sel(C), onDuplicate(C), clipboardNodes = [X], _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+		'clipboardNodes = [cloneTree(C)], sel(C), onDuplicate(C), undo(), sel(byId("C")), _sdPasteNodes(clipboardNodes), deep(byId("S").children)',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'A,B,C[C1],+div[+C1],+div[+C1],Q,IMG,D',
+		'A,B,C[C1],+div[+C1],+div[+C1],Q,IMG,D',
+		'A,B,C[C1],+div[+C1],+div[+C1],+div[+C1],Q,IMG,D',
+		'A,B,C[C1],+div[+C1,+X],Q,IMG,D',
+		'A,B,C[C1],+div[+C1,+X],Q,IMG,D',
+		'A,B,C[C1],+div[+C1],Q,IMG,D',
+	), $answer, 'C copied, Ctrl+D, Ctrl+V: the paste beside the duplicate, in memory and through the paste event; C copied, Ctrl+V, Ctrl+D, Ctrl+V: three copies side by side; X copied, Ctrl+D on C, Ctrl+V: X into the duplicate; C copied, Ctrl+D, then X copied: X into the duplicate; Ctrl+D undone: C selected takes its copy beside it');
 }
