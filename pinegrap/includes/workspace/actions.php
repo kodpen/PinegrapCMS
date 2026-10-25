@@ -2113,6 +2113,26 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('card' => ws_customer_card($viewer, $channel)));
 
+        // A page of what happened with the channel's customer, for the
+        // History part of that card (includes/workspace/customer_history.php).
+        case 'ws_channel_customer_history':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $identity = ws_customer_identity($viewer, $channel);
+            $history = is_array($identity)
+                ? ws_customer_history($viewer, $channel, $identity, (int) ($request['before'] ?? 0), ws_customer_history_limit($request['limit'] ?? null))
+                : array('entries' => array(), 'more' => false, 'before' => 0);
+
+            foreach ($history['entries'] as $index => $entry) {
+                $history['entries'][$index]['at_text'] = ws_time_label($entry['at']);
+            }
+
+            return ws_action_ok(array('history' => $history));
+
         case 'ws_channel_members_add':
             $channel = ws_action_channel($viewer, $request, 'post');
 

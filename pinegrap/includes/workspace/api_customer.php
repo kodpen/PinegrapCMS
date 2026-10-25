@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the external API's side of a channel's customer: who the
- * customer is and where they stand (GET /workspace/channels/{id}/customer).
+ * customer is and where they stand (GET /workspace/channels/{id}/customer),
+ * and what happened with them (GET /workspace/channels/{id}/customer/history).
  *
  * The summary is built in customer.php beside this file, for the panel and
  * the API alike, with the rights of whoever reads it. Here the reader is the
@@ -291,5 +292,94 @@ function ws_api_customer_form_schema()
         'reference_code' => 'string',
         'complete'       => 'boolean',
         'submitted_at'   => 'string?',
+    );
+}
+
+function ws_api_channel_customer_history($params)
+{
+    list($viewer, $channel) = ws_api_assistant_channel_reader($params['id']);
+
+    $viewer = ws_api_customer_viewer($viewer, api_current_scopes());
+    $identity = ws_customer_identity($viewer, $channel);
+    $history = is_array($identity)
+        ? ws_customer_history($viewer, $channel, $identity, (int) ($params['before'] ?? 0), ws_customer_history_limit($params['limit'] ?? null))
+        : array('entries' => array(), 'more' => false, 'before' => 0);
+
+    api_ok(ws_api_customer_history_present($channel, $history, URL_SCHEME . HOSTNAME_SETTING));
+}
+
+/**
+ * A page of the customer's history: its entries, and where the next page
+ * starts when there is one.
+ *
+ * @param array  $channel a ws_channels row
+ * @param array  $history ws_customer_history()
+ * @param string $origin  scheme and host the panel's addresses are made whole with
+ * @return array
+ */
+function ws_api_customer_history_present($channel, $history, $origin)
+{
+    $entries = array();
+
+    foreach ((array) $history['entries'] as $entry) {
+        $entries[] = ws_api_customer_history_entry_present($entry, $origin);
+    }
+
+    return array(
+        'channel_id' => (int) $channel['id'],
+        'entries'    => $entries,
+        'more'       => !empty($history['more']),
+        'before'     => !empty($history['more']) ? (int) $history['before'] : null,
+    );
+}
+
+// What ws_api_customer_history_present() returns.
+function ws_api_customer_history_schema()
+{
+    return array(
+        'channel_id' => 'integer',
+        'entries'    => 'WorkspaceCustomerHistoryEntry[]',
+        'more'       => 'boolean',
+        'before'     => 'integer?',
+    );
+}
+
+/**
+ * One entry of the history.
+ *
+ * @param array  $entry  a ws_customer_history_build() entry
+ * @param string $origin see ws_api_customer_history_present()
+ * @return array
+ */
+function ws_api_customer_history_entry_present($entry, $origin)
+{
+    $url = (string) ($entry['url'] ?? '');
+
+    return array(
+        'kind'         => (string) $entry['kind'],
+        'id'           => (int) $entry['id'],
+        'at'           => api_time($entry['at']),
+        'title'        => (string) $entry['title'],
+        'detail'       => (string) $entry['detail'],
+        'status_label' => (string) $entry['status_label'],
+        'amount'       => ($entry['amount'] === null) ? null : api_money($entry['amount']),
+        'amount_text'  => (string) $entry['amount_text'],
+        'url'          => ($url !== '') ? ws_api_inbox_url($url, $origin) : null,
+    );
+}
+
+// What ws_api_customer_history_entry_present() returns.
+function ws_api_customer_history_entry_schema()
+{
+    return array(
+        'kind'         => 'string',
+        'id'           => 'integer',
+        'at'           => 'string?',
+        'title'        => 'string',
+        'detail'       => 'string',
+        'status_label' => 'string',
+        'amount'       => 'integer?',
+        'amount_text'  => 'string',
+        'url'          => 'string?',
     );
 }

@@ -5,6 +5,7 @@ description: The customer card on a Workspace channel's Summary tab (CRM seams s
 
 ## What is it?
 - CRM seams slice 3 (plans/workspace-crm-seams.md): on the Summary tab of a channel about a customer (`channel.customer`), a card above the time card: the customer (name, kind, detail, link), the ties the reader sees, then Orders (count, latest 5), Balance (current accounts), Open sales quotes (count, latest 5), Form submissions. Nothing to show: "Nothing to show for this customer yet."
+- Under the sections a History button reads the customer's history on demand (workspace-customer-history.md).
 - Code: `ws_customer_card()` and `ws_customer_card_build()` in includes/workspace/customer.php; assets/js/workspace_customer.js (`PGWsCustomer.card()`, in the workspace.min.js bundle before workspace.js); `drawSummary()` in workspace.js asks for it. Tests: tests/workspace_customer_card_test.php.
 
 ## Where does the data come from?

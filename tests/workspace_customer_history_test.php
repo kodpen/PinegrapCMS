@@ -259,3 +259,95 @@ function test_ws_customer_history_readers()
 	pg_assert_contains("\$viewer['member']", $refs, 'never for a site member');
 	pg_assert_contains('deleted_at = 0', $refs, 'no deleted message');
 }
+
+// The route: read with workspace:read, a page asked with before and limit.
+function test_ws_api_customer_history_route()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $row) {
+		if ($row['id'] === 'workspace.channels.customer_history') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_true(is_array($route), 'the route is declared');
+
+	if (!is_array($route)) {
+		return;
+	}
+
+	pg_assert_same('GET', $route['method']);
+	pg_assert_same('/workspace/channels/{id}/customer/history', $route['path']);
+	pg_assert_same('workspace:read', $route['scope']);
+	pg_assert_same('ws_api_channel_customer_history', $route['handler']);
+	pg_assert_same('WorkspaceCustomerHistory', $route['returns']);
+	pg_assert_same(array('id', 'before', 'limit'), array_column($route['params'], 'name'));
+
+	$handler = workspace_customer_history_test_source('ws_api_channel_customer_history');
+
+	pg_assert_contains('ws_api_assistant_channel_reader(', $handler, 'the channel read as the summary reads it');
+	pg_assert_contains('ws_api_customer_viewer(', $handler, 'the reader narrowed to the key\'s scopes');
+	pg_assert_contains('ws_customer_history_limit(', $handler, 'the page size bounded');
+}
+
+// The objects are registered and each presenter answers with exactly the
+// fields its declaration names.
+function test_ws_api_customer_history_present()
+{
+	$objects = ws_openapi_objects();
+
+	pg_assert_same('ws_api_customer_history_schema', $objects['WorkspaceCustomerHistory'] ?? '', 'the page is registered');
+	pg_assert_same('ws_api_customer_history_entry_schema', $objects['WorkspaceCustomerHistoryEntry'] ?? '', 'an entry is registered');
+
+	$data = workspace_customer_history_test_data();
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/pg/', 2);
+	$answer = ws_api_customer_history_present(array('id' => 30), $history, 'https://example.com');
+
+	pg_assert_same(array_keys(ws_api_customer_history_schema()), array_keys($answer), 'the page');
+	pg_assert_same(array_keys(ws_api_customer_history_entry_schema()), array_keys($answer['entries'][0]), 'an entry');
+	pg_assert_same(30, $answer['channel_id']);
+	pg_assert_same(true, $answer['more'], 'more to read');
+	pg_assert_same(1181, $answer['before'], 'where the next page starts: the form, the first entry left out');
+	pg_assert_same('https://example.com/pg/workspace_tasks.php?task=300', $answer['entries'][0]['url'], 'a panel address made whole');
+	pg_assert_same(null, $answer['entries'][0]['amount'], 'no amount');
+	pg_assert_same('1970-01-01T00:21:40Z', $answer['entries'][0]['at'], 'times as ISO-8601');
+
+	$all = ws_api_customer_history_present(array('id' => 30), ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/pg/', 20), 'https://example.com');
+
+	pg_assert_same(null, $all['before'], 'no next page');
+	pg_assert_same(12550, $all['entries'][5]['amount'], 'money in minor units');
+}
+
+// The panel action reads its channel as every channel action does and asks
+// the history for the same reader; the card asks it on demand.
+function test_ws_channel_customer_history_action()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($source, "case 'ws_channel_customer_history':");
+
+	pg_assert_true($start !== false, 'the Workspace actions answer ws_channel_customer_history');
+
+	if ($start !== false) {
+		$case = substr($source, $start, 900);
+
+		pg_assert_contains('ws_action_channel($viewer, $request)', $case, 'a channel the reader may read, else not found');
+		pg_assert_contains('ws_customer_identity($viewer, $channel)', $case, 'the customer named for the reader');
+		pg_assert_contains('ws_customer_history($viewer, $channel, $identity', $case, 'the history for that reader');
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	pg_assert_true(isset(pg_panel_actions()['ws_channel_customer_history']), 'a row of the panel action table');
+
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_customer.js');
+
+	pg_assert_contains("'ws_channel_customer_history'", $card, 'the card asks for the history');
+	pg_assert_contains('before:', $card, 'page by page');
+
+	$strings = ws_customer_js_strings();
+
+	foreach (array('cust_history', 'cust_older', 'cust_history_empty') as $key) {
+		pg_assert_true(isset($strings[$key]) && ($strings[$key] !== ''), $key);
+	}
+}
