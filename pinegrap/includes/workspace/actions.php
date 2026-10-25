@@ -220,6 +220,43 @@ function ws_action_flow_run_present($viewer, $run, $n, $full = false)
 }
 
 /**
+ * Only what a share may carry, in the shape ws_flow_share_set() reads: the
+ * kind (user or channel), the id and the level (view when left out). The
+ * share writer's own check refuses a kind or a level it does not know.
+ *
+ * @param array $request
+ * @return array target_type, target_id, level
+ */
+function ws_action_flow_share_fields($request)
+{
+    return array(
+        'target_type' => is_string($request['target_type'] ?? null) ? $request['target_type'] : '',
+        'target_id'   => (int) ($request['target_id'] ?? 0),
+        'level'       => is_string($request['level'] ?? null) ? $request['level'] : 'view',
+    );
+}
+
+/**
+ * The shares of a flow as the canvas's Share dialog reads them: in the shape
+ * the API's share routes answer with (ws_api_flow_share_present()), with
+ * whether the person manages them (the owner) and who the owner is.
+ *
+ * @param array $viewer
+ * @param array $flow ws_flow_for()
+ * @return array shares, manage, owner_id
+ */
+function ws_action_flow_shares_answer($viewer, $flow)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+    return array(
+        'shares'   => array_map('ws_api_flow_share_present', ws_flow_shares_list($viewer, $flow)),
+        'manage'   => ws_flow_share_manager($viewer, $flow),
+        'owner_id' => (int) $flow['owner_id'],
+    );
+}
+
+/**
  * The run as it stands now, read again, with its boxes; null when the person
  * no longer reaches it.
  *
@@ -605,9 +642,9 @@ function ws_handle_action($action, $request)
             ));
 
         // Flows (includes/workspace/flows.php), drawn on workspace_flows.php:
-        // the owner's own and the live ones of the channels the person reads.
-        // Every write goes through the store's *_check(), the same the API's
-        // flow routes make.
+        // the owner's own, the live ones of the channels the person reads and
+        // the ones shared with them. Every write goes through the store's
+        // *_check(), the same the API's flow routes make.
         case 'ws_flow_list':
             if (!ws_flows_ready()) {
                 return ws_action_error(lang('The database has to be updated first.'));
@@ -621,7 +658,7 @@ function ws_handle_action($action, $request)
             }, $rows)));
 
         case 'ws_flow_get':
-            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
 
             return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
 
@@ -677,7 +714,7 @@ function ws_handle_action($action, $request)
         // own checks, the ones the API's run routes make, and answered in
         // the shape those routes give.
         case 'ws_flow_run_start':
-            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
 
             if (!$flow) {
                 return ws_action_error(lang('That flow could not be found.'));
@@ -692,7 +729,7 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $result['run_id']), 'started' => (bool) $result['started']));
 
         case 'ws_flow_runs_list':
-            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'run');
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
 
             if (!$flow) {
                 return ws_action_error(lang('That flow could not be found.'));
@@ -738,6 +775,49 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
+
+        // The shares of a flow (includes/workspace/flow_shares.php), in the
+        // canvas's Share dialog: whoever reaches the flow reads them, the
+        // share writers' own checks decide who changes them (its owner), the
+        // ones the API's share routes make.
+        case 'ws_flow_shares':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            return ws_action_ok(ws_action_flow_shares_answer($viewer, $flow));
+
+        case 'ws_flow_share_set':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            $result = ws_flow_share_set($viewer, $flow, ws_action_flow_share_fields($request));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('share_id' => (int) $result['share_id'], 'created' => (bool) $result['created']) + ws_action_flow_shares_answer($viewer, $flow));
+
+        case 'ws_flow_share_remove':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            $result = ws_flow_share_remove($viewer, $flow, (int) ($request['share_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(ws_action_flow_shares_answer($viewer, $flow));
 
         // Personal notes (includes/workspace/notes.php): the person's own and
         // the ones shared with them; nobody else's, whatever their role.

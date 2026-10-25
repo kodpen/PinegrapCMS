@@ -241,6 +241,10 @@ function pg_designer_screen_render($ctx)
         'noindexReady'  => (pg_page_noindex_ready() == TRUE),
         'apiUrl'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
         'editUrl'       => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php',
+        // The prototype viewer (prototype.php): the design's saved drafts as
+        // a clickable prototype, for the roles it admits (0-2); '' for the
+        // rest, and the tab menu then offers no item for it.
+        'prototypeUrl'  => ((int)$user['role'] < 3) ? PATH . SOFTWARE_DIRECTORY . '/prototype.php' : '',
         'exitUrl'       => pg_safe_back_url($ctx['send_to'], ($ctx['from_pages'] ? 'view_pages.php' : 'view_system_styles.php')),
         'access'        => $access,
         // The schema can open shared components to content editors

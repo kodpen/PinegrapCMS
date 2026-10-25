@@ -59,6 +59,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_comment_replies();        // 11.0.31
 	upgrade_2026_11_0_workspace_channel_icon(); // 11.0.81
 	upgrade_2026_11_0_workspace_flows();        // 11.0.80
+	upgrade_2026_11_0_workspace_flow_shares(); // 11.0.83
 	upgrade_2026_11_0_comment_record_counts();  // 11.0.33
 	upgrade_2026_11_0_order_return_refund();    // 11.0.34
 
@@ -1789,6 +1790,40 @@ function upgrade_2026_11_0_workspace_flows() {
 	install_add_index('ws_scheduled_actions', 'idx_flow', "INDEX idx_flow (flow_id)");
 
 	install_note('Workspace: the tables that will keep the flows drawn on the Workspace canvas, their published versions and their runs are added. Nothing changes in the Workspace with this update.');
+
+}
+
+// Workspace flows shared with the team (2026.11.0, 11.0.83;
+// includes/workspace/flow_shares.php).
+//
+// ws_flow_shares keeps one row per flow and the person or channel it is
+// shared with: target_type user (target_id a user id) or channel (a channel
+// id), and level view, run or edit. A person shared at edit changes the flow
+// only while they are staff in the team, and runs it otherwise; a channel is
+// shared at view, for the people who read it. Sharing again with the same
+// person or channel changes the level of its row: UNIQUE (flow_id,
+// target_type, target_id). idx_target finds the flows shared with a person
+// or a channel, flow_id in the index so that the list reads no row.
+//
+// target_type and level are VARCHAR rather than ENUM, for the reason the
+// flows step gives: a value added later must not turn into '' on a server
+// that has not run its step.
+function upgrade_2026_11_0_workspace_flow_shares() {
+
+	install_create_table('ws_flow_shares', "CREATE TABLE ws_flow_shares (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		flow_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		target_type  VARCHAR(16) NOT NULL DEFAULT '',
+		target_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		level        VARCHAR(16) NOT NULL DEFAULT 'view',
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_target (flow_id, target_type, target_id),
+		KEY idx_target (target_type, target_id, flow_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the table that keeps whom a flow is shared with is added. A flow\'s owner may share it with colleagues, to look at, to run or to change, and with a channel whose readers may look at it; nothing is shared until they do.');
 
 }
 
