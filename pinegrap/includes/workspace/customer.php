@@ -599,10 +599,8 @@ function ws_customer_identity($viewer, $channel)
 }
 
 /**
- * The contacts of a set the reader may open by the address book's row rule
- * (validate_contact_access(), api_customer_owner_filter() for the API): staff
- * open every contact; a reader with the user role only one filed in a contact
- * group given to them. Asked of the reader, not of whoever is signed in.
+ * The contacts of a set the reader may open by the address book's row rule,
+ * for the summary: the Workspace's one rule, ws_viewer_contacts_open().
  *
  * @param array $viewer
  * @param int[] $contact_ids
@@ -610,22 +608,7 @@ function ws_customer_identity($viewer, $channel)
  */
 function ws_customer_contacts_open($viewer, $contact_ids)
 {
-    $ids = ws_customer_ids($contact_ids);
-
-    if (empty($ids) || ((int) $viewer['role'] < 3)) {
-        return $ids;
-    }
-
-    // Without the contacts right ws_refs_resolve() names no contact anyway.
-    if (empty($viewer['contacts'])) {
-        return array();
-    }
-
-    return ws_customer_ids(db_values("SELECT DISTINCT contacts_contact_groups_xref.contact_id
-        FROM contacts_contact_groups_xref
-        INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id
-        WHERE users_contact_groups_xref.user_id = '" . (int) $viewer['id'] . "'
-            AND contacts_contact_groups_xref.contact_id IN ('" . implode("','", $ids) . "')"));
+    return ws_viewer_contacts_open($viewer, ws_customer_ids($contact_ids));
 }
 
 /**
