@@ -335,6 +335,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                     $link(lang('Log In'), '{{page:login}}', $plain),
                     $link(lang('Sign Up'), '{{page:register}}', $plain),
                     $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
+                    $link(lang('Favourites'), '{{page:favourites}}', $plain),
                 )),
                 $el('div', 'col-6 col-lg-2', lang('Contact Details'), array(
                     $heading('h2', lang('Get in Touch'), 'h6 text-uppercase small fw-bold mb-3'),
@@ -1166,6 +1167,7 @@ $account_cards = array(
     $link_card('bi-inbox', lang('Inbox'), lang('Your conversations with us and our answers.'), '{{page:inbox}}'),
     $link_card('bi-person-vcard', lang('My Profile'), lang('Your name, phone and address.'), '#', '__profile_url'),
     $link_card('bi-journal-bookmark', lang('Address Book'), lang('Where your orders are sent.'), '#', '__address_book_url'),
+    $link_card('bi-heart', lang('Favourites'), lang('The products you saved.'), '#', '__my_account_wishlist_url'),
     $link_card('bi-shield-lock', lang('Change Password'), lang('A new password for your account.'), '#', '__change_password_url'),
     $link_card('bi-envelope-paper', lang('Email Preferences'), lang('The mailing lists you receive.'), '#', '__email_preferences_url'),
     $link_card('bi-people', lang('Staff Directory'), lang('The people you can reach, and how.'), '{{page:staff_directory}}'),
@@ -1186,6 +1188,9 @@ $pages[] = array_merge($sign_page('profile', lang('my-profile'), lang('My Profil
 $pages[] = array_merge($sign_page('change_password', lang('change-password'), lang('Change Password'), 'change_password'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('email_preferences', lang('email-preferences'), lang('Email Preferences'), 'email_preferences'), array('folder' => 'registration'));
 $pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book'), array('folder' => 'registration', 'requires' => 'ecommerce'));
+// Favourites: open to every visitor, signed in or not. noindex like the
+// cart: each visitor sees only their own list, a crawler the empty state.
+$pages[] = array_merge($sign_page('favourites', lang('favourites'), lang('Favourites'), 'wishlist'), array('requires' => 'ecommerce', 'noindex' => true));
 
 // The inbox: the member's conversations (for the staff, everybody's), and
 // the conversation page, where both sides answer as comments.
@@ -2236,6 +2241,21 @@ $widgets = array(
         'requires' => 'ecommerce',
         'slug'     => lang('address-book'),
         'config'   => array('regionType' => 'address_book', 'my_account_page_id' => '{{tab:my_account}}'),
+        'tree'     => 'starter',
+    ),
+    // The products saved with the hearts of the catalog. On a page of its
+    // own that every visitor can open: a visitor who is not signed in keeps
+    // a list in this browser until they sign in.
+    'wishlist' => array(
+        'page'     => 'favourites',
+        'requires' => 'ecommerce',
+        'slug'     => lang('favourites'),
+        'config'   => array(
+            'regionType'    => 'wishlist',
+            'max_results'   => 100,
+            'login_page_id' => '{{tab:login}}',
+            'shop_page_id'  => '{{tab:shop}}',
+        ),
         'tree'     => 'starter',
     ),
     // The support center's search: the whole store for ?query=, ten results

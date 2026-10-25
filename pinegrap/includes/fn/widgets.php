@@ -70,6 +70,7 @@ function pg_sw_type_labels()
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
         'account_invoices'    => lang('My Invoices'),
+        'wishlist'            => lang('Favourites'),
         'account_email'       => lang('Account E-mail'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
