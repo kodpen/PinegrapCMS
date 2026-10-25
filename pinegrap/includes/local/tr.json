@@ -28578,5 +28578,7 @@
     "First row (1 or empty)": "İlk satır (1 ya da boş)",
     "Last row (1 or empty)": "Son satır (1 ya da boş)",
     "Odd row (1 or empty)": "Tek numaralı satır (1 ya da boş)",
-    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)"
+    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)",
+    "The connected Paraşüt company does not have this invoice's record (id {var:1}): it was deleted there, or another company is connected now. The last send got no answer, so the next send first looks at Paraşüt for a record that send may have written; the invoice can be sent again.": "Bağlı Paraşüt şirketinde bu faturanın kaydı (id {var:1}) yok: orada silinmiş ya da artık başka bir şirket bağlı. Son gönderim yanıt alamadı; bu yüzden sonraki gönderim önce o gönderimin yazmış olabileceği kaydı Paraşüt'te arar. Fatura yeniden gönderilebilir.",
+    "The connected Paraşüt company does not have this invoice's record (id {var:1}): it was deleted there, or another company is connected now. The invoice can be sent again.": "Bağlı Paraşüt şirketinde bu faturanın kaydı (id {var:1}) yok: orada silinmiş ya da artık başka bir şirket bağlı. Fatura yeniden gönderilebilir."
 }

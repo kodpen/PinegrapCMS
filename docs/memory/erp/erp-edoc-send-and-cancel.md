@@ -10,7 +10,7 @@ description: How an ERP invoice goes through the e-document provider: the send g
 ## What if a send stops before the provider answers?
 - A request that ends inside the driver call (Windows counts the provider wait in `max_execution_time`, a killed process, a fatal error) leaves `sending` with no `edoc_external_id`. `erp_edoc_invoice_send_stalled()`: such a row last written over 15 minutes ago. The gate lets it go again like `error` without an id, and the driver's own check runs (Paraşüt's unsure mark); a fresh `sending` row is still refused (double click).
 - The order card offers the send instead of a status question; it and the invoice screen say a draft may already be at the provider. Repair and Move to today stay closed; a later write to the row restarts the 15 minutes.
-- Until #1412 the row stayed `sending` for good (poll and Hand to GİB: "not sent to a provider"); only cancelling the invoice got out.
+- Until #1412 the row stayed `sending` for good.
 
 ## How does a send run? (`erp_edoc_invoice_send()`)
 - `edoc_status = 'sending'` is written before the call, so a second click stops at the gate. The code of the account's linked provider card goes along (`erp_edoc_account_link_code()`).
@@ -20,6 +20,7 @@ description: How an ERP invoice goes through the e-document provider: the send g
 
 ## How is the status read?
 - `erp_edoc_invoice_poll()` asks the provider that carries the document: a button on the invoice, the order card, the invoice list's bulk action. Nothing polls on its own, nothing processes `erp_edoc_queue`, and neither provider has a webhook.
+- A `gone` answer (the provider has no such record) also clears `edoc_external_id`, `edoc_kind`, `gib_*`, `edoc_sent_at` (`erp_edoc_invoice_poll_gone_set()`): Send is open again (erp-parasut-send-failures.md, #1626).
 - A poll may name the provider card the invoice landed on (`party`); an account without a card is then linked to it (`erp_edoc_account_link_from_invoice()`).
 
 ## How is a sent document taken back?
