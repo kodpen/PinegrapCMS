@@ -1947,7 +1947,8 @@ function _parasut_stock_taken_read($what, $id)
  *                            inventory_quantity and the document takes out at Paraşüt;
  *                            used only when the card is opened
  * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string];
- *               'missing' => true when the products row no longer exists (no request was sent)
+ *               'missing' => true when the products row no longer exists, 'read_failed' => true
+ *               when it could not be read (no request was sent in either case)
  */
 function parasut_sync_product($product_id, $token, $taken_out = 0)
 {
@@ -1956,8 +1957,9 @@ function parasut_sync_product($product_id, $token, $taken_out = 0)
     if ($result === false) {
         // A read that failed (a column the upgrade has not added yet, say)
         // tells nothing about the row: not 'missing', so the line is refused
-        // rather than put on the default product/service.
-        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product {var:1} could not be read from the database: {var:2}', 'vars' => array($product_id, mysqli_error(db::$con))))];
+        // rather than put on the default product/service, and in words of
+        // its own, since Paraşüt was not asked (erp_edoc_parasut_line_product_pick()).
+        return ['success' => false, 'parasut_product_id' => null, 'track_stock' => false, 'error' => lang(array('string' => 'Product {var:1} could not be read from the database: {var:2}', 'vars' => array($product_id, mysqli_error(db::$con)))), 'read_failed' => true];
     }
     $product = mysqli_fetch_assoc($result);
     if (!$product) {
