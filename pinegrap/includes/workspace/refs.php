@@ -441,6 +441,28 @@ function ws_money_out($minor)
 }
 
 /**
+ * May this reader edit the folder a file, a page or a form lives in? Asked
+ * of the reader, not of whoever is signed in: an API owner reads too. Staff
+ * edit every folder; anybody else the ones they were given.
+ *
+ * @param array $viewer
+ * @param int   $folder_id
+ * @return bool
+ */
+function ws_viewer_folder_open($viewer, $folder_id)
+{
+    if ((int) $viewer['role'] < 3) {
+        return true;
+    }
+
+    if (function_exists('pg_folder_edit_access')) {
+        return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
+    }
+
+    return function_exists('check_edit_access') && check_edit_access($folder_id);
+}
+
+/**
  * Whether sales quotes can be read: the ERP is on and its quotes table is
  * there. Loads the quote helpers (erp_quote_state(), erp_quote_statuses())
  * and the money helpers (erp_money_out_currency()) alone rather than the
@@ -477,7 +499,8 @@ function ws_erp_quotes_readable()
  * @param array $viewer
  * @param array $tokens ws_tokens() rows, from any number of texts
  * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon;
- *               a channel also badge (ws_channel_icon_badge())
+ *               a channel also badge (ws_channel_icon_badge()); a tag whose
+ *               record is gone (or whose module is off) also gone (true)
  */
 function ws_refs_resolve($viewer, $tokens)
 {
@@ -508,18 +531,8 @@ function ws_refs_resolve($viewer, $tokens)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
-    // May this reader edit the folder a file, a page or a form lives in? Asked
-    // of the reader, not of whoever is signed in: an API owner reads too.
     $folder_open = function ($folder_id) use ($viewer) {
-        if ($viewer['role'] < 3) {
-            return true;
-        }
-
-        if (function_exists('pg_folder_edit_access')) {
-            return (bool) pg_folder_edit_access((int) $folder_id, (int) $viewer['id'], (int) $viewer['role']);
-        }
-
-        return function_exists('check_edit_access') && check_edit_access($folder_id);
+        return ws_viewer_folder_open($viewer, $folder_id);
     };
 
     $date_out = function ($value) {
@@ -952,12 +965,14 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
-    // Tags whose record is gone are still drawn, and say so.
+    // Tags whose record is gone are still drawn, and say so. gone tells them
+    // apart from a record the reader may not see (known false too).
     foreach ((array) $tokens as $token) {
         $key = $token['type'] . ':' . (int) $token['id'];
 
         if (!isset($out[$key])) {
             $put($token['type'], $token['id'], lang('Deleted record'), '', '', '', false, 'bi-x-circle');
+            $out[$key]['gone'] = true;
         }
     }
 
