@@ -4,8 +4,8 @@
  *
  * Checks the screen list of tools/screenshots/shoot.js
  * (tools/screenshots/screens.json): every entry names a panel file that
- * exists, names are unique and safe as file names, placeholders are ids
- * seed.php prints, and the screens kept as they are stay on the list.
+ * exists, names are unique and safe as file names, the optional fields
+ * are well formed, placeholders are ids seed.php prints, and the screens kept as they are stay on the list.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,6 +39,18 @@ function test_screenshot_screens_point_at_panel_files()
 
 		$file = preg_replace('/\?.*$/', '', (string) $screen['path']);
 		pg_assert_true(is_file($panel . $file), 'panel file exists: ' . $file);
+
+		if (isset($screen['viewports'])) {
+			pg_assert_same(array(), array_diff($screen['viewports'], array('wide', 'phone')), 'viewports are wide or phone: ' . $name);
+		}
+
+		if (isset($screen['click']) && is_array($screen['click'])) {
+			pg_assert_same(array(), array_diff(array_keys($screen['click']), array('wide', 'phone')), 'click keyed by viewport: ' . $name);
+		}
+
+		if (isset($screen['cookies'])) {
+			pg_assert_true(is_array($screen['cookies']) && $screen['cookies'] !== array(), 'cookies is a name => value map: ' . $name);
+		}
 
 		if (isset($screen['crop'])) {
 			pg_assert_true((bool) preg_match('/^[#.][A-Za-z][\w-]*$/', $screen['crop']), 'crop is one id or class: ' . $name);
