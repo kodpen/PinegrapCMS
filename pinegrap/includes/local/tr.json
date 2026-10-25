@@ -28571,5 +28571,12 @@
     "Write the product's name after the command, like /product Blue mug 149,90.": "Komuttan sonra ürünün adını yazın, örneğin /ürün Mavi kupa 149,90.",
     "Write the name as plain text: only one #group may follow it.": "Adı düz metin olarak yazın: ardından yalnızca bir #grup gelebilir.",
     "Opens an empty product in the record drawer.": "Kayıt çekmecesinde boş bir ürün açar.",
-    "Opens an empty product group in the record drawer.": "Kayıt çekmecesinde boş bir ürün grubu açar."
+    "Opens an empty product group in the record drawer.": "Kayıt çekmecesinde boş bir ürün grubu açar.",
+    "Position in the list": "Listedeki yeri",
+    "Row number": "Sıra numarası",
+    "Rows on this page": "Bu sayfadaki satır sayısı",
+    "First row (1 or empty)": "İlk satır (1 ya da boş)",
+    "Last row (1 or empty)": "Son satır (1 ya da boş)",
+    "Odd row (1 or empty)": "Tek numaralı satır (1 ya da boş)",
+    "Even row (1 or empty)": "Çift numaralı satır (1 ya da boş)"
 }

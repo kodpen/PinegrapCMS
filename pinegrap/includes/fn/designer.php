@@ -1144,7 +1144,8 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
 //   'static_tree'    => deep-cloned tree with loop_area replaced by marker (or original
 //                       tree if no loop_area was found),
 //   'loop_children'  => the loop_area's children array (per-record template), or null
-//                       if no loop_area exists,
+//                       if no loop_area exists; inside a widget render, between two
+//                       row marks when the template uses a row position token,
 //   'loop_parent'    => the element the records print into: its tag in lower
 //                       case ('ul', 'tbody', 'div'), 'row' for a grid row,
 //                       '' when the loop_area sits at the top of the widget.
@@ -1204,9 +1205,19 @@ function _split_widget_tree($tree, $outside_markers = false)
     }
     unset($parent, $grand);
 
+    // A row template that uses a row position token (__loop_index and the
+    // rest) is drawn between two row marks while a widget renders, so the
+    // finish pass can number every copy the renderer prints
+    // (widgets_finish.php). An empty loop gets none.
+    $loop_children = isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array();
+    if (pg_sw_finish_uses_positions($loop_children)) {
+        list($row_open, $row_close) = pg_sw_finish_row_marks(pg_sw_marker_nonce());
+        $loop_children = array_merge(array($marker($row_open)), $loop_children, array($marker($row_close)));
+    }
+
     return array(
         'static_tree'   => $clone,
-        'loop_children' => isset($loop['children']) && is_array($loop['children']) ? $loop['children'] : array(),
+        'loop_children' => $loop_children,
         'loop_parent'   => $tag,
     );
 }
