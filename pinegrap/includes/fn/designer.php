@@ -3157,11 +3157,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // Comments the page will not draw as the operator may expect: a comments
     // widget beside the fixed block, two of them, one whose record widget
     // sits in another component, one on a page with comments off (the
-    // switch read as the save writes it).
+    // switch read as the save writes it). A page that is another page's
+    // comment e-mail page gets only the two-widgets warning; the saved
+    // page's id lets the warnings ask that once a widget is found.
     if ($vt['ok'] && function_exists('pg_comments_save_warnings')) {
         $cw_tree = json_decode(!empty($vt['cleaned_json']) ? $vt['cleaned_json'] : $tree_raw, true);
         $cw_on   = array_key_exists('pg_comments', $page) && in_array($page['pg_comments'], array(1, '1', true), true);
-        foreach (pg_comments_save_warnings($cw_tree, $cw_on, $name) as $w) $warnings[] = $w;
+        foreach (pg_comments_save_warnings($cw_tree, $cw_on, $name, $page_id) as $w) $warnings[] = $w;
     }
 
     // The page's own JSON-LD has to be something a search engine can read.

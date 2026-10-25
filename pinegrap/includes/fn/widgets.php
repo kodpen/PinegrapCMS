@@ -5906,9 +5906,11 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * get_page_content() sets it around the widget pass: 'email' when the page is
  * the body of an e-mail, plus the dynamic properties the sender passed with
  * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
- * order receipt. A widget on an e-mail page has no address to read ?r= or
- * ?order_id= from, and the recipient is chosen by the server, so the checks
- * that keep a visitor to their own records do not apply there. 'page_id' is
+ * order receipt, 'comment_id' for a comment e-mail whose page places a
+ * comments widget (mail.php). A widget on an e-mail page has no address to
+ * read ?r= or ?order_id= from, and the recipient is chosen by the server, so
+ * the checks that keep a visitor to their own records do not apply there.
+ * The comments widget draws only the comment named, for nobody. 'page_id' is
  * the page being drawn: a widget whose data is the page's own (the comments
  * widget's thread) reads it here, never through _pg_sw_current_page_id(),
  * which is 0 on the live home page, in e-mails and in the search index, and

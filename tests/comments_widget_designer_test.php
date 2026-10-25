@@ -966,8 +966,16 @@ function test_comments_widget_designer_email_drops_twin()
 	pg_assert_true(($no_comments !== false) && ($email !== false) && ($no_comments < $email), 'no sample comments in the e-mail state');
 	pg_assert_contains('_sdCommentsEmailDrops(node)', comments_widget_designer_test_js_function($js, '_sdCommentsFlagOff'), 'the e-mail state hides what the e-mail drops');
 	pg_assert_contains('_sdCommentsEmailDrops', comments_widget_designer_test_js_function($js, '_sdCommentsStateFor'), 'and a node it hides opens another state');
-	pg_assert_contains("['is_email', _sdT('Drawn in a comment e-mail')]", $js, 'the designer offers is_email');
+	pg_assert_true((bool) preg_match("/\\['is_email',\\s+_sdT\\('Drawn in a comment e-mail'\\)\\]/", $js), 'the designer offers is_email');
 	pg_assert_contains("['email', _sdT('E-mail')]", comments_widget_designer_test_js_function($js, '_sdCommentsCanvasStates'), 'the e-mail state has a chip');
+
+	// A node a state leaves out stays out inside a flex row: the state-off
+	// rule outweighs the rules that make a wrapper see-through there
+	// (display:contents, up to five classes' weight), as the starter's
+	// buttons and featured links sit in d-flex rows.
+	pg_assert_true((bool) preg_match("/'\\.sd-wrap\\.sd-state-off:not\\(#[\\w-]+\\) \\{ display:none !important; \\}'/", $js), 'the state-off rule has an id\'s weight');
+	pg_assert_false(strpos($js, "'.sd-wrap.sd-state-off { display:none !important; }'"), 'not only two classes\' weight');
+	pg_assert_contains(".d-flex > .sd-wrap:not(.sd-shared-wrap)", $js, 'the flex row rule it has to beat');
 }
 
 // The three sample comments after the card: a reply with a quote, one

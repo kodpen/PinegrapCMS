@@ -5566,9 +5566,13 @@ const StyleDesigner = (function () {
         // framework (a "d-none d-lg-block" picture column never showed on the
         // canvas, at any width).
         '.sd-wrap.d-none:not([data-sd-type="col"]), .sd-loop-tr.d-none { display:none !important; }',
-        // A login region element that belongs to the session state the
-        // canvas is not drawing (switched on the widget's band).
-        '.sd-wrap.sd-state-off { display:none !important; }',
+        // A login region or comments widget element that belongs to a state
+        // the canvas is not drawing (switched on the widget's band). The
+        // :not(#...) gives the rule an id's weight, so it also beats the
+        // rules that make a wrapper see-through (display:contents) in a flex
+        // row, a nav or a grid; with two classes' weight alone a hidden
+        // button in a d-flex row would stay visible.
+        '.sd-wrap.sd-state-off:not(#sd-state-shown) { display:none !important; }',
         '.sd-session-chips { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; pointer-events:auto; }',
         '.sd-session-chips.sd-chips-wrap { flex-wrap:wrap; row-gap:2px; }',
         '.sd-session-chip { font:600 .6rem/1.3 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; padding:1px 7px; border:1px solid rgba(99,102,241,.45); border-radius:3px; background:#fff; color:#6366f1; cursor:pointer; }',
@@ -11352,7 +11356,7 @@ const StyleDesigner = (function () {
 
     // ── Comments widget: the canvas states ────────────────────────────────
     // The canvas twin of pg_comments_widget_thread_flags()
-    // (widgets_comments.php): the 22 thread flags from the same facts, line
+    // (widgets_comments.php): the 23 thread flags from the same facts, line
     // for line. tests/comments_widget_designer_test.php compares the two
     // under Node; a flag added there is added here.
     function _sdCommentsThreadFlags(facts) {
@@ -11369,10 +11373,11 @@ const StyleDesigner = (function () {
             return def;
         };
         var search = on('search_index');
+        var email = on('email');
         var allowNew = on('allow_new');
-        var signedIn = on('signed_in') && !search;
-        var mustSignIn = allowNew && !on('signed_in') && on('require_login') && !search;
-        var canComment = allowNew && !mustSignIn && !search;
+        var signedIn = on('signed_in') && !search && !email;
+        var mustSignIn = allowNew && !on('signed_in') && on('require_login') && !search && !email;
+        var canComment = allowNew && !mustSignIn && !search && !email;
         var count = whole('count', 0);
         var mode = (typeof facts.featured_mode === 'string') ? facts.featured_mode : 'first';
         var nameMode = (typeof facts.name_mode === 'string') ? facts.name_mode : '';
@@ -11380,34 +11385,36 @@ const StyleDesigner = (function () {
         var canWatch = on('watching_on') && signedIn && !on('submitter_notified');
 
         return {
-            comments_open: allowNew,
-            comments_closed: !allowNew,
+            comments_open: allowNew && !email,
+            comments_closed: !allowNew && !email,
             can_comment: canComment,
             must_sign_in: mustSignIn,
             is_signed_in: signedIn,
-            is_signed_out: !signedIn,
+            is_signed_out: !signedIn && !email,
             has_comments: (count > 0),
             no_comments: (count === 0),
-            featured_view: on('featured_view'),
-            has_featured: (mode !== 'none') && on('has_featured'),
-            is_staff: on('staff') && !search,
+            featured_view: on('featured_view') && !email,
+            has_featured: (mode !== 'none') && on('has_featured') && !email,
+            is_staff: on('staff') && !search && !email,
             name_is_typed: canComment && (nameMode === 'typed'),
             name_is_chosen: canComment && (nameMode === 'chosen'),
             name_is_fixed: canComment && (nameMode === 'fixed'),
             rating_on: on('rating_on'),
             files_on: on('files_on'),
             watching_on: on('watching_on'),
-            has_more_pages: (pages > 1),
+            has_more_pages: (pages > 1) && !email,
             is_replying: canComment && on('replying'),
             is_watching: canWatch && on('is_watcher'),
             not_watching: canWatch && !on('is_watcher'),
-            can_manage_watchers: on('watching_on') && signedIn && on('manage_watchers')
+            can_manage_watchers: on('watching_on') && signedIn && on('manage_watchers'),
+            is_email: email
         };
     }
 
     // The visitors the canvas draws a comments widget for, one at a time
-    // (the chips on its band, the Canvas shows select). Editor-only; the page
-    // keeps every part.
+    // (the chips on its band, the Canvas shows select), and the comment
+    // e-mail, which draws one comment without forms for nobody. Editor-only;
+    // the page keeps every part.
     function _sdCommentsCanvasStates() {
         return [
             ['comments', _sdT('Comments')],
@@ -11416,7 +11423,8 @@ const StyleDesigner = (function () {
             ['member', _sdT('Member')],
             ['sign_in', _sdT('Sign in')],
             ['closed', _sdT('Closed')],
-            ['staff', _sdT('Staff')]
+            ['staff', _sdT('Staff')],
+            ['email', _sdT('E-mail')]
         ];
     }
     var _sdCommentsCanvasState = 'comments';
@@ -11449,6 +11457,9 @@ const StyleDesigner = (function () {
             facts.signed_in = true;
             facts.staff = true;
             facts.manage_watchers = true;
+        } else if (state === 'email') {
+            facts.email = true;
+            facts.count = 1;
         }
         return facts;
     }
@@ -11458,14 +11469,37 @@ const StyleDesigner = (function () {
         return _sdCommentsThreadFlags(_sdCommentsCanvasFacts(_sdCommentsCanvasState, cfg));
     }
 
+    // The canvas twin of pg_comments_email_drops() (widgets_comments.php),
+    // line for line: what a comment e-mail leaves out of the widget's tree.
+    // A semantic form, input, select, textarea or button, a button component
+    // drawn as a button or an input, a node shown only while the form
+    // answers a comment and the control that stops answering.
+    function _sdCommentsEmailDrops(node) {
+        if (!node || typeof node !== 'object' || Array.isArray(node)) return false;
+        var type = (typeof node.type === 'string') ? node.type : '';
+        var props = (node.props && typeof node.props === 'object' && !Array.isArray(node.props)) ? node.props : {};
+        var b = (props._bindings && typeof props._bindings === 'object' && !Array.isArray(props._bindings)) ? props._bindings : {};
+        if (type === 'semantic') {
+            var tag = (typeof props.tag === 'string') ? props.tag.toLowerCase() : '';
+            if (['form', 'input', 'select', 'textarea', 'button'].indexOf(tag) !== -1) return true;
+        }
+        if (type === 'component' && props.componentType === 'btn') {
+            var element = (typeof props.btnElement === 'string') ? props.btnElement : 'a';
+            if (element === 'button' || element === 'input') return true;
+        }
+        if (b.eo_visible_if === 'is_replying') return true;
+        return b.action === 'comment_reply_cancel';
+    }
+
     // Whether the canvas leaves a node of a comments widget out of the state
     // it draws: the loop area (the comment card) without comments, a node
-    // shown only when a thread flag is false. A comment's own flags hide a
-    // node only in a sample comment (_sdCommentSample); the card shows every
-    // part of a comment.
+    // shown only when a thread flag is false, and in the e-mail state what
+    // the e-mail strips. A comment's own flags hide a node only in a sample
+    // comment (_sdCommentSample); the card shows every part of a comment.
     function _sdCommentsFlagOff(node, cfg) {
         if (!node || !cfg || cfg.regionType !== 'comments') return false;
         var flags = _sdCommentsCanvasFlags(cfg);
+        if (flags.is_email && _sdCommentsEmailDrops(node)) return true;
         if (node.type === 'loop_area') return !flags.has_comments;
         var f = (node.props && node.props._bindings) ? node.props._bindings.eo_visible_if : '';
         if (!f || typeof f !== 'string') return false;
@@ -11479,7 +11513,8 @@ const StyleDesigner = (function () {
     // The state that shows a node of the widget's tree: the one drawn when it
     // does, else the first that does, else the one drawn. Read from the
     // thread flags on the way from the root to the node (the loop area needs
-    // comments); a node outside the tree keeps the state.
+    // comments; the e-mail state, nothing it strips); a node outside the tree
+    // keeps the state.
     function _sdCommentsStateFor(root, target, cfg) {
         var current = _sdCommentsCanvasState;
         var path = null;
@@ -11498,6 +11533,7 @@ const StyleDesigner = (function () {
         });
         var shows = function (state) {
             var flags = _sdCommentsThreadFlags(_sdCommentsCanvasFacts(state, cfg));
+            if (flags.is_email && path.some(function (n) { return _sdCommentsEmailDrops(n); })) return false;
             return need.every(function (f) { return !Object.prototype.hasOwnProperty.call(flags, f) || flags[f]; });
         };
         if (shows(current)) return current;
@@ -11603,12 +11639,14 @@ const StyleDesigner = (function () {
     // Draws the sample comments after the card, while the widget's settings
     // and tree are the ones buildNodeEl() reads. They are built from the
     // card's nodes and made ghost DOM: no node id, no toolbar, inert, never
-    // selectable, never in the tree. Off with the canvas's sample switch, and
-    // in a state without comments.
+    // selectable, never in the tree. Off with the canvas's sample switch, in
+    // a state without comments and in the e-mail state, which draws the one
+    // comment an e-mail is about.
     function _sdAppendCommentSamples(doc, inner, cached, cfg) {
         if (!_sdGhostsOn || !cfg || cfg.regionType !== 'comments' || !cached || !cached.tree) return;
         var thread = _sdCommentsCanvasFlags(cfg);
         if (!thread.has_comments) return;
+        if (thread.is_email) return;
         var loop = _sdFirstLoopArea(cached.tree);
         var loopEl = inner.querySelector('.sd-loop-area');
         if (!loop || !Array.isArray(loop.children) || !loop.children.length || !loopEl) return;
@@ -36985,6 +37023,7 @@ const StyleDesigner = (function () {
             ['is_watching',              _sdT('The visitor is told of new comments')],
             ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
             ['can_manage_watchers',      _sdT('The visitor may manage who is told of new comments')],
+            ['is_email',                 _sdT('Drawn in a comment e-mail')],
             ['comment_is_featured',      _sdT('Row: featured')],
             ['comment_is_pending',       _sdT('Row: not published yet')],
             ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],

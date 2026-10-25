@@ -503,6 +503,54 @@ function test_comments_widget_email_draw_data()
 	pg_assert_same('Moderator', $badge['rows'][0]['values']['__comment_badge'], 'the site\'s badge label');
 }
 
+// An attachment and stars in an e-mail: the file on the site's absolute
+// address in place of the page's relative one, the stars as characters.
+// Drawn in a PHP process of its own: a live comment's values name the file
+// on OUTPUT_PATH, which the tests after this one must not find defined.
+function test_comments_widget_email_draw_data_file_and_stars()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcwemail');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('OUTPUT_PATH', '/site/');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. 'require ' . var_export(__FILE__, true) . ";\n"
+		. "\$data = comments_widget_email_test_data(array('comment' => array('rating' => '4', 'file_name' => 'a b.pdf', 'file_size' => '2048'), 'page' => array('comments_rating' => '1', 'comments_allow_file_attachments' => '1')));\n"
+		. "list(\$html) = comments_widget_email_test_drawn(pg_comments_default_tree(), \$data);\n"
+		. "echo json_encode(array('values' => \$data['rows'][0]['values'], 'flags' => \$data['thread_flags'], 'html' => \$html));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	pg_assert_same('https://example.com/a%20b.pdf', $res['values']['__comment_file_url'], 'the file on the site\'s absolute address, not /site/');
+	pg_assert_same('a b.pdf', $res['values']['__comment_file_name'], 'its name');
+	pg_assert_same('2 KB', $res['values']['__comment_file_size'], 'its size');
+	pg_assert_same(pg_comments_stars_text_html(4), $res['values']['__comment_stars_html'], 'text stars');
+	pg_assert_true($res['flags']['rating_on'] && $res['flags']['files_on'], 'the thread page\'s features');
+	pg_assert_contains('href="https://example.com/a%20b.pdf"', $res['html'], 'the attachment link');
+	pg_assert_contains('&#9733;&#9733;&#9733;&#9733;&#9734;', $res['html'], 'the stars');
+	pg_assert_false(strpos($res['html'], '<svg'), 'no drawing');
+	pg_assert_false(strpos($res['html'], '/site/'), 'no relative link');
+}
+
 // Strips and draws a tree as the e-mail branch does, inside an e-mail's render
 // context, with a form state in the session that must stay where it is.
 function comments_widget_email_test_drawn($tree, $data)
@@ -721,6 +769,103 @@ function test_comments_widget_email_page_without_widget_unchanged()
 	}
 }
 
+// The submitter and watcher e-mail functions with the comments widget's
+// branch folded back into the one call it stands beside. Returns the text
+// and how many branches were folded.
+function comments_widget_email_test_fold($body, $var)
+{
+	$pattern = '/\n([ \t]*)\/\/ An e-mail page that places a comments widget[^\n]*\n(?:[ \t]*\/\/[^\n]*\n)*'
+		. '[ \t]*if \(pg_comments_page_has_widget\(' . preg_quote($var, '/') . '\)\) \{\n[^\n]*\n'
+		. '[ \t]*\} else \{\n[ \t]*(\$body = get_page_content\(' . preg_quote($var, '/') . ', [^\n]*\);)\n[ \t]*\}\n/';
+	$count = 0;
+	$folded = preg_replace($pattern, "\n\$1\$2\n", $body, -1, $count);
+
+	return array(is_string($folded) ? $folded : '', $count);
+}
+
+// Byte for byte: with the comments widget's branch folded back, each comment
+// e-mail function is the text it had before an e-mail page could draw the
+// comment in a comments widget (sha1 and length of that text). Everything an
+// e-mail page without a comments widget gets - the queries, the recipients,
+// the subject, the fixed comment markup and the get_page_content() call - is
+// that code. A change to these functions on purpose updates the two values
+// in the same commit.
+function test_comments_widget_email_mail_functions_folded_back()
+{
+	$frozen = array(
+		'send_comment_email_to_custom_form_submitter' => array('$comments_submitter_email_page_id', 'c8310a63128602a260e7e1327116fbed583dc38a', 5373),
+		'send_comment_email_to_watchers' => array('$comments_watcher_email_page_id', 'fde9a34e813e7d8a892984a105256d345870ae3c', 6585),
+	);
+
+	foreach ($frozen as $fn => $want) {
+		list($folded, $count) = comments_widget_email_test_fold(comments_widget_email_test_php_body($fn), $want[0]);
+		pg_assert_same(1, $count, $fn . ': one widget branch, folded back');
+		pg_assert_same($want[2], strlen($folded), $fn . ': the length of the function an e-mail page without the widget runs');
+		pg_assert_same($want[1], sha1($folded), $fn . ': the function an e-mail page without the widget runs, byte for byte');
+	}
+
+	// The fold itself: a branch for another page variable, or a widget call
+	// that names no comment, is not taken for the widget's branch.
+	$sample = "x\n        // An e-mail page that places a comments widget is told.\n        if (pg_comments_page_has_widget(\$a)) {\n"
+		. "            \$body = get_page_content(\$a, 'w');\n        } else {\n            \$body = get_page_content(\$a, 'o');\n        }\ny";
+	pg_assert_same(array("x\n        \$body = get_page_content(\$a, 'o');\ny", 1), comments_widget_email_test_fold($sample, '$a'), 'the else branch takes the block\'s place');
+	pg_assert_same(0, comments_widget_email_test_fold($sample, '$b')[1], 'another page variable: nothing folded');
+}
+
+// An e-mail render that names no comment - every e-mail but the submitter
+// and watcher e-mails of a page that places the widget - prints nothing and
+// claims nothing in a comments widget, as before, so its page keeps the
+// fixed markup. No query runs on the way.
+function test_comments_widget_email_render_without_a_comment()
+{
+	$tree = json_encode(pg_comments_default_tree());
+	$contexts = array(
+		'no comment named' => array('email' => true, 'page_id' => 9),
+		'comment 0' => array('email' => true, 'page_id' => 9, 'comment_id' => 0),
+		'comment with letters' => array('email' => true, 'page_id' => 9, 'comment_id' => '12abc'),
+		'comment below 0' => array('email' => true, 'page_id' => 9, 'comment_id' => -12),
+		'comment as a list' => array('email' => true, 'page_id' => 9, 'comment_id' => array(12)),
+		'no e-mail page' => array('email' => true, 'page_id' => 0, 'comment_id' => 12),
+	);
+
+	foreach ($contexts as $name => $ctx) {
+		$found = pg_comments_widget_pages(array());
+		$prev = pg_sw_render_context($ctx);
+		$html = _render_system_widget_comments($tree, 4, array('regionType' => 'comments'), 'preview');
+		$record = pg_comments_widget_pages($found);
+		pg_sw_render_context($prev);
+
+		pg_assert_same('', $html, $name . ': nothing drawn');
+		pg_assert_same(array(), $record, $name . ': nothing claimed');
+		pg_assert_true(pg_comments_email_keeps_fixed_markup(true, 9, $record), $name . ': the fixed markup stays');
+	}
+
+	// In an e-mail the live renderer, which claims a page before it reads
+	// its thread, is never reached.
+	$renderer = comments_widget_email_test_php_body('_render_system_widget_comments');
+	$email = strpos($renderer, "if (!empty(\$ctx['email'])) {");
+	$claim = strpos($renderer, 'pg_comments_widget_claim($page_id)');
+	pg_assert_true(($email !== false) && ($claim !== false) && ($email < $claim), 'the e-mail check comes before the live claim');
+
+	// Only mail.php names a comment to an e-mail page.
+	$named = array();
+	$dir = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($dir as $file) {
+		if (substr((string) $file, -4) !== '.php') {
+			continue;
+		}
+
+		$count = preg_match_all('/\bget_page_content\([^\n]*\'comment_id\'/', (string) file_get_contents((string) $file));
+
+		if ($count > 0) {
+			$named[str_replace('\\', '/', substr((string) $file, strlen(PG_FUNCTIONS_DIR) + 1))] = $count;
+		}
+	}
+
+	pg_assert_same(array('includes/fn/mail.php' => 2), $named, 'the submitter and watcher e-mails, nothing else');
+}
+
 // -- wiring ------------------------------------------------------------------------
 
 // The renderer hands an e-mail to its own branch, which reads no session,
@@ -768,6 +913,8 @@ function test_comments_widget_email_renderer_wiring()
 	pg_assert_contains("\$env['badge_label']", $data, 'the badge label comes from the renderer');
 	pg_assert_contains("defined('BADGE_LABEL')", $branch, 'which reads the site\'s');
 	pg_assert_contains("'timezone_type' => 'site'", $branch, 'absolute dates in the site\'s time zone, as the fixed markup');
+	pg_assert_contains("'format' => 'plain_text'", $branch, 'as plain text: the token escape would print a <time> tag as words');
+	pg_assert_same(1, substr_count($branch, 'get_absolute_time('), 'one date writer for both dates');
 }
 
 // get_page_content.php leaves the fixed markup out only when the widget drew
