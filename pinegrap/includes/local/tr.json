@@ -28169,5 +28169,15 @@
     "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
     "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş.",
     "Marked as refunded: the money went back from the order screen.": "Ücreti iade edildi olarak işaretlendi: para sipariş ekranından geri ödendi.",
-    "The payment service has not confirmed this refund. If this note stays, check the refund on the service's screen.": "Ödeme hizmeti bu iadeyi henüz onaylamadı. Bu not kalırsa iadeyi hizmetin kendi ekranında kontrol edin."
+    "The payment service has not confirmed this refund. If this note stays, check the refund on the service's screen.": "Ödeme hizmeti bu iadeyi henüz onaylamadı. Bu not kalırsa iadeyi hizmetin kendi ekranında kontrol edin.",
+    "As it is": "Olduğu gibi",
+    "CAPITAL LETTERS": "BÜYÜK HARFLER",
+    "lower-case letters": "küçük harfler",
+    "First letter capital": "İlk harf büyük",
+    "A number, with decimals": "Ondalıklı sayı",
+    "Shortened to a number of characters": "Belirli sayıda karaktere kısaltılmış",
+    "Yes or No": "Evet veya Hayır",
+    "Line breaks kept": "Satır sonları korunur",
+    "Written: {var}": "Elle yazılan: {var}",
+    "The format shows on the page and in Preview, not on the canvas. A condition compares the value before its format.": "Biçim sayfada ve Önizleme'de görünür, tuvalde görünmez. Bir koşul, değeri biçimlenmeden önceki hâliyle karşılaştırır."
 }
