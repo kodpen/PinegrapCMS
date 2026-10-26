@@ -6,8 +6,8 @@
  * own page parameter (pg_sw_list_page_param()), the offset
  * (pg_sw_list_offset()), the page shown (pg_sw_list_current_page()), the
  * paging tokens and flags (pg_sw_list_paging()), the canonical of a later
- * page under the list's own parameter, the renderer's wiring and the
- * editor's twins.
+ * page under the list's own parameter, the wiring of the form list, catalog
+ * listing and search results renderers and the editor's twins.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -153,4 +153,71 @@ function test_list_paging_editor()
 	}
 	pg_assert_true((bool) preg_match("/\['no_records',[^\]]*\],\s*\['has_prev_page',[^\]]*\],\s*\['has_next_page',[^\]]*\],\s*\['has_more_pages',[^\]]*\]\s*\]/", $js), 'form_list_view lists the paging flags after no_records');
 	pg_assert_contains("'__page_number': '1'", $js);
+}
+
+// The source of one renderer in $file.
+function _widget_list_paging_fn($file, $name)
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $file);
+	$start = strpos($src, 'function ' . $name . '(');
+	pg_assert_true($start !== false, $name . ' is found');
+	$end = strpos($src, "\nfunction ", (int) $start + 10);
+	return substr($src, (int) $start, (int) $end - (int) $start);
+}
+
+// The catalog listing pages under its own parameter, starts after the
+// offset, fills the paging tokens everywhere and keeps or cuts the flagged
+// parts of its surround once the pages are counted.
+function test_catalog_listing_paging_wiring()
+{
+	$body = _widget_list_paging_fn('widgets_catalog.php', '_render_system_widget_catalog_listing');
+	pg_assert_contains('$page_param     = pg_sw_list_page_param($cfg);', $body);
+	pg_assert_contains('$offset_records = pg_sw_list_offset($cfg);', $body);
+	pg_assert_contains('$total_records = max(0, $total_records - $offset_records);', $body);
+	pg_assert_contains('LIMIT $page_limit OFFSET " . ($offset_records + $offset)', $body);
+	pg_assert_contains('$paging = pg_sw_list_paging($page_param, $current_page, $total_pages);', $body);
+	pg_assert_contains("_pg_sw_mark_visibility(\$split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));", $body);
+	pg_assert_contains("\$static_html = _pg_sw_resolve_visibility(\$static_html, \$paging['flags']);", $body);
+	pg_assert_contains("\$page_tokens = pg_sw_escape_token_values(\$page_tokens) + \$paging['tokens'];", $body);
+	pg_assert_false(strpos($body, "= 'page_number';") !== false, 'the page parameter is not fixed');
+	// The offset is applied to the count before max_results caps it.
+	pg_assert_true(strpos($body, '$total_records - $offset_records') < strpos($body, 'Apply max_results cap'), 'offset before the cap');
+	// The flags are resolved before the tokens go in.
+	pg_assert_true(strpos($body, "_pg_sw_resolve_visibility(\$static_html, \$paging['flags'])") < strpos($body, '$static_html = _pg_catalog_fill_page_tokens('), 'flags before tokens');
+}
+
+// The search results do the same; their flags are known before the render.
+function test_search_results_paging_wiring()
+{
+	$body = _widget_list_paging_fn('widgets.php', '_render_system_widget_search_results');
+	pg_assert_contains('$page_param = pg_sw_list_page_param($cfg);', $body);
+	pg_assert_contains('$rows  = array_slice($rows, pg_sw_list_offset($cfg));', $body);
+	pg_assert_contains('$paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);', $body);
+	pg_assert_contains(") + \$paging['flags']);", $body);
+	pg_assert_contains("), array('__result_price')) + \$paging['tokens'];", $body);
+	pg_assert_contains(")) + \$paging['tokens'];", $body);
+	pg_assert_contains('_pg_sw_hidden_query_inputs(array($param, $page_param))', $body);
+	pg_assert_false(strpos($body, "= 'page_number';") !== false, 'the page parameter is not fixed');
+	pg_assert_true(strpos($body, 'array_slice($rows, pg_sw_list_offset($cfg))') < strpos($body, '$total = count($rows);'), 'offset before the count');
+}
+
+// The two widgets' panels and palettes.
+function test_catalog_and_search_paging_editor()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_contains('((_isFormListView || _isCatalogListing) ? row(_sdT(\'Skip the first records\'),', $js);
+	pg_assert_contains("row(_sdT('Skip the first results'),", $js);
+	pg_assert_same(2, substr_count($js, 'data-sw-cfg="page_param" data-sw-cfg-kind="param"'), 'two panels write page_param');
+
+	foreach (array('SW_CATALOG_TOKEN_GROUPS', 'SW_SEARCH_RESULTS_TOKEN_GROUPS') as $var) {
+		$start = strpos($js, 'var ' . $var . ' = [');
+		pg_assert_true($start !== false, $var);
+		$list = substr($js, (int) $start, (int) strpos($js, "\n    ];", (int) $start) - (int) $start);
+		foreach (array('__page_number', '__page_count', '__prev_page_url', '__next_page_url') as $token) {
+			pg_assert_contains("['" . $token . "',", $list, $var . ' ' . $token);
+		}
+	}
+	foreach (array('search_results', 'catalog_listing') as $kind) {
+		pg_assert_true((bool) preg_match('/\n        ' . $kind . ": \\[[^\\n]*\\n(?:[^\\n]*\\n){0,8}?\\s*\\['has_prev_page',[^\\]]*\\],\\s*\\['has_next_page',[^\\]]*\\],\\s*\\['has_more_pages',[^\\]]*\\]\\s*\\]/", $js), $kind . ' lists the paging flags');
+	}
 }

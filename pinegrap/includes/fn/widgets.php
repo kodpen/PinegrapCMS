@@ -6031,9 +6031,12 @@ function pg_sw_search_index_save_item($item, $timestamp)
 //   ^^__result_section^^ (the search section the result links to, or '').
 // Bindings: form action search_form, input value search_query, button action
 //   submit_search, section pagination; visibility (eo_visible_if) has_query,
-//   has_results, no_results.
-// URL: query (the search text, as the legacy search box sends it),
-//   page_number (as the catalog and form lists page).
+//   has_results, no_results, has_prev_page, has_next_page, has_more_pages.
+// Paging tokens, as a form list gives them (pg_sw_list_paging()):
+//   ^^__page_number^^, ^^__prev_page_url^^, ^^__next_page_url^^.
+// URL: query (the search text, as the legacy search box sends it), the
+//   widget's own `page_param`, else page_number (as the catalog and form
+//   lists page). cfg `offset` skips the first results.
 function _render_system_widget_search_results($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
@@ -6048,7 +6051,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     _pg_inject_messages_node($tree, 'search_results');
 
     $param      = 'query';
-    $page_param = 'page_number';
+    $page_param = pg_sw_list_page_param($cfg);
     $query = (isset($_GET[$param]) && is_scalar($_GET[$param])) ? trim(strip_tags((string)$_GET[$param])) : '';
     if (mb_strlen($query) > 100) $query = mb_substr($query, 0, 100);
 
@@ -6057,6 +6060,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     foreach ($found['featured'] as $r) { $r['featured'] = '1'; $rows[] = $r; }
     foreach ($found['catalog']  as $r) { $r['featured'] = '';  $rows[] = $r; }
     foreach ($found['pages']    as $r) { $r['featured'] = '';  $rows[] = $r; }
+    // The results start after `offset` of them; the count and the pages
+    // run through what is left.
+    $rows  = array_slice($rows, pg_sw_list_offset($cfg));
     $total = count($rows);
 
     $per_page = (isset($cfg['results_per_page']) && (int)$cfg['results_per_page'] > 0)
@@ -6064,6 +6070,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $total_pages  = max(1, (int)ceil($total / $per_page));
     $current_page = isset($_GET[$page_param]) ? max(1, min($total_pages, (int)$_GET[$page_param])) : 1;
     $offset       = ($current_page - 1) * $per_page;
+    $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
 
     _pg_sw_apply_search_form_bindings($tree, array(
         'action_url'  => _pg_sw_current_path(),
@@ -6080,7 +6087,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         'has_query'   => $query !== '',
         'has_results' => $total > 0,
         'no_results'  => $query !== '' && $total === 0,
-    ));
+    ) + $paging['flags']);
 
     $split = _split_widget_tree($tree);
     if ($split['loop_children'] === null) {
@@ -6110,7 +6117,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
                 '__result_is_featured'  => $r['featured'],
                 '__result_number'       => (string)($offset + $i + 1),
                 '__result_section'      => isset($r['section']) ? (string)$r['section'] : '',
-            ), array('__result_price'));
+            ), array('__result_price')) + $paging['tokens'];
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $values));
             $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $offset + $i);
         }
@@ -6142,7 +6149,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         '__results_heading' => $heading,
         '__page_count'      => (string)$total_pages,
         '__empty_message'   => ($query !== '' && $total === 0) ? $empty_message : '',
-    ));
+    )) + $paging['tokens'];
 
     if ($static_html === '') {
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));
