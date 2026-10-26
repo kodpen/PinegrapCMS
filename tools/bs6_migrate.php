@@ -94,7 +94,7 @@ if ($switch) {
 			$status = 'would apply';
 		}
 
-		echo sprintf("%-12s %-8s pinegrap/%s%s\n", $status, $fix, $path, $error !== null ? "\n  $error" : '');
+		echo sprintf("%-12s %-9s %s%s\n", $status, $fix, preg_replace("#^pinegrap/\\.\\./#", "", "pinegrap/" . $path), $error !== null ? "\n  $error" : '');
 		$failed = $failed || $line[2] === 'failed' || $line[2] === 'missing';
 	}
 
