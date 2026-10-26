@@ -4955,7 +4955,7 @@
             if (target) {
                 self.open(target, parseInt(query.message || 0, 10), parseInt(query.era || 0, 10));
             } else if ((query.view === 'scheduled') && (CFG.scheduled || CFG.scheduled_messages)) {
-                self.showScheduled(false);
+                self.showScheduled(false, (query.part === 'messages') ? 'messages' : '');
             } else {
                 self.showHome(false);
             }
@@ -5497,8 +5497,12 @@
                     link(work, t('fl_nav'), 'bi-diagram-3', function () { window.location.href = CFG.urls.flows; });
                 }
 
-                if (CFG.scheduled || CFG.scheduled_messages) {
-                    link(work, CFG.scheduled ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
+                // Staff's scheduled actions, until Flows lists them; their
+                // scheduled messages stay here.
+                var actionsHere = !!CFG.scheduled && !(CFG.flows && CFG.flows.scheduled);
+
+                if (actionsHere || CFG.scheduled_messages) {
+                    link(work, actionsHere ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
                 }
             }
 
@@ -6749,13 +6753,14 @@
 
         // ── The overview ──
 
-        // Every scheduled action, for staff: the ones still to run first.
         // The scheduled screen: staff's scheduled actions, and everybody's own
         // scheduled messages. Somebody who is not staff sees their messages
-        // only, and cannot write a scheduled action here.
+        // only, and cannot write a scheduled action here; nor can staff once
+        // Flows lists their actions (CFG.flows.scheduled), who keep their
+        // messages here.
         showScheduled: function (asked, part) {
             var self = this;
-            var staff = !!CFG.scheduled;
+            var staff = !!CFG.scheduled && !(CFG.flows && CFG.flows.scheduled);
 
             part = staff ? (part || self.scheduledPart || 'actions') : 'messages';
             self.scheduledPart = part;
@@ -6777,15 +6782,6 @@
             h.appendChild(document.createTextNode(staff ? t('sa_title') : t('sm_title')));
             title.appendChild(h);
             head.appendChild(title);
-
-            if (staff && (part === 'actions')) {
-                var add = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_new_long'), 'bi-plus-lg');
-                add.addEventListener('click', function () {
-                    scheduledForm({}, null, function () { load(); });
-                });
-                head.appendChild(add);
-            }
-
             center.appendChild(head);
 
             // Staff switch between the two lists.
@@ -6813,6 +6809,14 @@
             if (part === 'messages') {
                 var mine = el('div', 'ws-sm-list');
 
+                // Staff find their scheduled actions in Flows.
+                if (CFG.scheduled && !staff) {
+                    var moved = el('a', 'small d-inline-block mb-2', t('fl_sa_moved'));
+                    moved.href = CFG.urls.flows + '?view=scheduled';
+                    moved.insertBefore(icon('bi-diagram-3', 'me-1'), moved.firstChild);
+                    body.appendChild(moved);
+                }
+
                 body.appendChild(el('p', 'small text-body-secondary', t('sm_mine_help')));
                 body.appendChild(mine);
                 scheduledMessagesList(mine, 0, null, function (item) {
@@ -6825,65 +6829,7 @@
                 return;
             }
 
-            var filters = el('div', 'ws-sa-filters');
-            var list = el('div', 'ws-sa-list');
-            var status = '';
-
-            [['', t('sa_all')], ['active', t('sa_state_active')], ['paused', t('sa_state_paused')], ['done', t('sa_state_done')], ['failed', t('sa_state_failed')], ['cancelled', t('sa_state_cancelled')]].forEach(function (option) {
-                var chip = button('btn btn-sm rounded-pill ' + (option[0] === status ? 'btn-secondary' : 'btn-outline-secondary'), option[1]);
-                chip.addEventListener('click', function () {
-                    status = option[0];
-                    Array.prototype.forEach.call(filters.children, function (node) {
-                        node.className = 'btn btn-sm rounded-pill ' + (node === chip ? 'btn-secondary' : 'btn-outline-secondary');
-                    });
-                    load();
-                });
-                filters.appendChild(chip);
-            });
-
-            body.appendChild(filters);
-            body.appendChild(el('p', 'small text-body-secondary', t('sa_help')));
-            body.appendChild(list);
-
-            function load() {
-                api('ws_scheduled_list', { status: status }).then(function (data) {
-                    if (self.view !== 'scheduled') {
-                        return;
-                    }
-
-                    clear(list);
-
-                    if (!data.items.length) {
-                        var empty = el('div', 'ws-empty');
-                        empty.appendChild(icon('bi-alarm'));
-                        empty.appendChild(document.createTextNode(t('sa_empty')));
-                        list.appendChild(empty);
-                    }
-
-                    data.items.forEach(function (item) {
-                        var wrap = el('div', 'ws-sa-list-item');
-                        var where = el('div', 'ws-sa-where');
-
-                        if (item.channel) {
-                            var go = el('a', '', '#' + item.channel.name);
-                            go.href = CFG.urls.workspace + '?channel=' + item.channel.id + (item.message_id ? '&message=' + item.message_id : '');
-                            where.appendChild(document.createTextNode(t('sa_in_channel') + ' '));
-                            where.appendChild(go);
-                        } else if (item.note) {
-                            var note = el('a', '', item.note.name);
-                            note.href = CFG.urls.notes + '?note=' + item.note.id;
-                            where.appendChild(document.createTextNode(t('sa_in_note') + ' '));
-                            where.appendChild(note);
-                        }
-
-                        wrap.appendChild(where);
-                        wrap.appendChild(scheduledCard(item, function () { load(); }));
-                        list.appendChild(wrap);
-                    });
-                }).catch(fail);
-            }
-
-            load();
+            scheduledList(body, head);
         },
 
         showHome: function (asked) {
@@ -16419,6 +16365,78 @@
         return box;
     }
 
+    // Every scheduled action, for staff, by state: the scheduled screen's
+    // list and the Scheduled actions section of Flows (workspace_flow.js,
+    // through PGWsKit). New goes into bar; the list is read again while it
+    // is still on the page.
+    function scheduledList(body, bar) {
+        var add = button('btn btn-sm btn-primary rounded-pill px-3', t('sa_new_long'), 'bi-plus-lg');
+        add.addEventListener('click', function () {
+            scheduledForm({}, null, function () { load(); });
+        });
+        bar.appendChild(add);
+
+        var filters = el('div', 'ws-sa-filters');
+        var list = el('div', 'ws-sa-list');
+        var status = '';
+
+        [['', t('sa_all')], ['active', t('sa_state_active')], ['paused', t('sa_state_paused')], ['done', t('sa_state_done')], ['failed', t('sa_state_failed')], ['cancelled', t('sa_state_cancelled')]].forEach(function (option) {
+            var chip = button('btn btn-sm rounded-pill ' + (option[0] === status ? 'btn-secondary' : 'btn-outline-secondary'), option[1]);
+            chip.addEventListener('click', function () {
+                status = option[0];
+                Array.prototype.forEach.call(filters.children, function (node) {
+                    node.className = 'btn btn-sm rounded-pill ' + (node === chip ? 'btn-secondary' : 'btn-outline-secondary');
+                });
+                load();
+            });
+            filters.appendChild(chip);
+        });
+
+        body.appendChild(filters);
+        body.appendChild(el('p', 'small text-body-secondary', t('sa_help')));
+        body.appendChild(list);
+
+        function load() {
+            api('ws_scheduled_list', { status: status }).then(function (data) {
+                if (!document.body.contains(list)) {
+                    return;
+                }
+
+                clear(list);
+
+                if (!data.items.length) {
+                    var empty = el('div', 'ws-empty');
+                    empty.appendChild(icon('bi-alarm'));
+                    empty.appendChild(document.createTextNode(t('sa_empty')));
+                    list.appendChild(empty);
+                }
+
+                data.items.forEach(function (item) {
+                    var wrap = el('div', 'ws-sa-list-item');
+                    var where = el('div', 'ws-sa-where');
+
+                    if (item.channel) {
+                        var go = el('a', '', '#' + item.channel.name);
+                        go.href = CFG.urls.workspace + '?channel=' + item.channel.id + (item.message_id ? '&message=' + item.message_id : '');
+                        where.appendChild(document.createTextNode(t('sa_in_channel') + ' '));
+                        where.appendChild(go);
+                    } else if (item.note) {
+                        var note = el('a', '', item.note.name);
+                        note.href = CFG.urls.notes + '?note=' + item.note.id;
+                        where.appendChild(document.createTextNode(t('sa_in_note') + ' '));
+                        where.appendChild(note);
+                    }
+
+                    wrap.appendChild(where);
+                    wrap.appendChild(scheduledCard(item, function () { load(); }));
+                    list.appendChild(wrap);
+                });
+            }).catch(fail);
+        }
+
+        load();
+    }
+
     // The card of one scheduled action: in its channel, in its note and in
     // the list. onChange(item) is told of the new state after a button.
     function scheduledCard(item, onChange) {
@@ -22220,6 +22238,7 @@
             taskMenu: taskMenu,
             moveTask: moveTask,
             askSeries: askSeries,
+            scheduledList: scheduledList,
             priorityFilter: priorityFilter,
             directMessage: directMessage,
             openTask: function (taskId, defaults, onSaved) {
