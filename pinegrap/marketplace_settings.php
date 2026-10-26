@@ -879,7 +879,7 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 	$chosen_category = $map ? (string)$map['remote_category_id'] : '';
 
 	$out = '
-			<div class="mp-row" style="display:block;background:var(--bs-tertiary-bg)">
+			<div class="mp-row" style="display:block;background:var(--pg-bg-1)">
 				<form method="post" action="marketplace_settings.php" class="mb-3">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="category">
@@ -1244,23 +1244,23 @@ echo pg_page_shell(array(
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
 .mp-head { padding: 0 14px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; }
-.mp-row { padding: 11px 14px; border-top: 1px solid var(--bs-border-color); }
+.mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
 .mp-row b { font-size: 13px; display: block; }
 .mp-row code { font-size: 11px; opacity: .7; }
 .mp-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
-	border: 1px solid var(--bs-border-color); display: inline-block; white-space: nowrap; }
-.mp-pill.on { color: var(--bs-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
+	border: 1px solid var(--pg-border-color); display: inline-block; white-space: nowrap; }
+.mp-pill.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .mp-pill.off { opacity: .6; }
-.mp-pill.bad { color: var(--bs-danger); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
-.mp-tab { border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 10px 14px;
+.mp-pill.bad { color: var(--pg-danger); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
+.mp-tab { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 14px;
 	text-decoration: none; color: inherit; display: block; }
-.mp-tab.sel { border-color: var(--bs-primary); background: var(--bs-tertiary-bg); }
+.mp-tab.sel { border-color: var(--pg-primary); background: var(--pg-bg-1); }
 .mp-tab small { opacity: .6; }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
 .mp-count b { font-size: 20px; display: block; line-height: 1.1; }
 .mp-count span { font-size: 11px; opacity: .6; }
-.mp-err { font-size: 11.5px; color: var(--bs-danger); word-break: break-word; }
+.mp-err { font-size: 11.5px; color: var(--pg-danger); word-break: break-word; }
 </style>
 
 <main id="content" class="container-fluid">

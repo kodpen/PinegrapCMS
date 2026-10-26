@@ -927,23 +927,23 @@ echo
 .explorer-item.catalog-off .item-name,
 .explorer-item.catalog-off .list-name,
 .explorer-item.catalog-off .item-icon,
-.explorer-item.catalog-off .list-icon { color: var(--bs-danger) !important; }
-.explorer-item.catalog-off .item-thumb { outline: 2px solid var(--bs-danger); outline-offset: -2px; }
+.explorer-item.catalog-off .list-icon { color: var(--pg-danger) !important; }
+.explorer-item.catalog-off .item-thumb { outline: 2px solid var(--pg-danger); outline-offset: -2px; }
 #explorer_tree_pane .tree-row.catalog-off .tree-label,
-#explorer_tree_pane .tree-row.catalog-off > .bi { color: var(--bs-danger) !important; }
+#explorer_tree_pane .tree-row.catalog-off > .bi { color: var(--pg-danger) !important; }
 
 .tree-count { margin-left: auto; font-size: .72rem; opacity: .55; padding-left: .4rem; }
 
-.catalog-chip { display: inline-block; border: 1px solid var(--bs-border-color); border-radius: 2rem;
+.catalog-chip { display: inline-block; border: 1px solid var(--pg-border-color); border-radius: 2rem;
   padding: 0 .45rem; font-size: .68rem; line-height: 1.5; opacity: .85; }
 
 .prev-title { font-weight: 600; margin: .5rem 0 .1rem; }
 .prev-kv { display: flex; justify-content: space-between; gap: .6rem; font-size: .8rem;
-  padding: .2rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
-.prev-kv span:first-child { color: var(--bs-secondary-color); }
+  padding: .2rem 0; border-bottom: 1px solid var(--pg-border-color-translucent); }
+.prev-kv span:first-child { color: var(--pg-fg-2); }
 .prev-kv span:last-child { text-align: right; }
 .prev-group { margin-top: .9rem; }
-.prev-group-title { color: var(--bs-secondary-color); font-size: .68rem; letter-spacing: .05em;
+.prev-group-title { color: var(--pg-fg-2); font-size: .68rem; letter-spacing: .05em;
   text-transform: uppercase; font-weight: 600; margin-bottom: .3rem; }
 .prev-row { font-size: .8rem; padding: .12rem 0; }
 .prev-row a { text-decoration: none; display: block; }
@@ -951,7 +951,7 @@ echo
 /* Edge to edge: the shell already frames the page, a second frame around
    the app just wastes pixels. */
 #content { padding: 0 !important; }
-#explorer_app { display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 480px; border: unset; border-radius: 0; background: var(--bs-body-bg); overflow: hidden; user-select: none; -webkit-user-select: none; }
+#explorer_app { display: flex; flex-direction: column; height: calc(100vh - 150px); min-height: 480px; border: unset; border-radius: 0; background: var(--pg-bg-body); overflow: hidden; user-select: none; -webkit-user-select: none; }
 /* The bar itself, the element that takes the slack and the search box all wear
    the house classes now (.pg-toolbar / .pg-toolbar-grow / .pg-toolbar-search in
    backend.src.css) -- this screen is where that pattern was first built, and it
@@ -974,36 +974,36 @@ echo
 }
 #file_scope_menu .dropdown-item [data-role="check"] { opacity: 0; }
 #file_scope_menu .dropdown-item.active [data-role="check"] { opacity: 1; }
-#file_scope_menu .dropdown-item.active { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+#file_scope_menu .dropdown-item.active { background: var(--pg-bg-2); color: var(--pg-fg-body); }
 #explorer_breadcrumb .breadcrumb { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 #explorer_breadcrumb .breadcrumb::-webkit-scrollbar { display: none; }
 #explorer_breadcrumb .breadcrumb-item { white-space: nowrap; }
 #explorer_breadcrumb .breadcrumb-item > a { cursor: pointer; text-decoration: none; padding: .15rem .45rem; border-radius: .5rem; }
-#explorer_breadcrumb .breadcrumb-item > a:hover { background: var(--bs-secondary-bg); }
-#explorer_breadcrumb .breadcrumb-item > a.drop-target { outline: 2px dashed var(--bs-primary); outline-offset: -2px; }
+#explorer_breadcrumb .breadcrumb-item > a:hover { background: var(--pg-bg-2); }
+#explorer_breadcrumb .breadcrumb-item > a.drop-target { outline: 2px dashed var(--pg-primary); outline-offset: -2px; }
 #explorer_main { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; max-width: 100%; overflow: hidden; }
-#explorer_tree_pane { width: 250px; min-width: 250px; overflow: auto; border-right: 1px solid var(--bs-border-color-translucent); padding: .55rem .45rem; font-size: .8rem; }
+#explorer_tree_pane { width: 250px; min-width: 250px; overflow: auto; border-right: 1px solid var(--pg-border-color-translucent); padding: .55rem .45rem; font-size: .8rem; }
 #explorer_tree_pane.pane-hidden, #explorer_preview_pane.pane-hidden { display: none !important; }
-#explorer_tree_pane ul { list-style: none; margin: 0 0 0 .62rem; padding-left: .55rem; border-left: 1px solid var(--bs-border-color-translucent); }
+#explorer_tree_pane ul { list-style: none; margin: 0 0 0 .62rem; padding-left: .55rem; border-left: 1px solid var(--pg-border-color-translucent); }
 #explorer_tree_pane > ul { margin-left: 0; padding-left: 0; border-left: 0; }
-#explorer_tree_pane .tree-row { display: flex; align-items: center; gap: .32rem; padding: .17rem .4rem; border-radius: .45rem; cursor: pointer; white-space: nowrap; line-height: 1.35; color: var(--bs-body-color); }
-#explorer_tree_pane .tree-row:hover { background: var(--bs-secondary-bg); }
-#explorer_tree_pane .tree-row.active { background: var(--bs-primary-bg-subtle); font-weight: 600; }
-#explorer_tree_pane .tree-row.drop-target { outline: 2px dashed var(--bs-primary); outline-offset: -2px; }
-#explorer_tree_pane .tree-toggle { width: .95rem; height: .95rem; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--bs-secondary-color); font-size: .58rem; border-radius: .3rem; transition: transform .12s ease; }
-#explorer_tree_pane .tree-toggle.bi-chevron-right:hover { background: var(--bs-tertiary-bg); }
+#explorer_tree_pane .tree-row { display: flex; align-items: center; gap: .32rem; padding: .17rem .4rem; border-radius: .45rem; cursor: pointer; white-space: nowrap; line-height: 1.35; color: var(--pg-fg-body); }
+#explorer_tree_pane .tree-row:hover { background: var(--pg-bg-2); }
+#explorer_tree_pane .tree-row.active { background: var(--pg-primary-bg-subtle); font-weight: 600; }
+#explorer_tree_pane .tree-row.drop-target { outline: 2px dashed var(--pg-primary); outline-offset: -2px; }
+#explorer_tree_pane .tree-toggle { width: .95rem; height: .95rem; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--pg-fg-2); font-size: .58rem; border-radius: .3rem; transition: transform .12s ease; }
+#explorer_tree_pane .tree-toggle.bi-chevron-right:hover { background: var(--pg-bg-1); }
 #explorer_tree_pane .tree-toggle.open { transform: rotate(90deg); }
 #explorer_tree_pane .tree-row > .bi-folder-fill, #explorer_tree_pane .tree-row > .bi-file-earmark-image { font-size: .92rem; line-height: 1; }
 #explorer_tree_pane .tree-label { overflow: hidden; text-overflow: ellipsis; }
-#explorer_tree_pane .tree-section-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-tertiary-color); padding: .55rem .45rem .2rem; user-select: none; }
+#explorer_tree_pane .tree-section-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-fg-3); padding: .55rem .45rem .2rem; user-select: none; }
 #explorer_tree_pane > .tree-row { margin-bottom: .06rem; }
 #explorer_content { flex: 1 1 auto; min-width: 0; overflow: auto; position: relative; padding: .75rem; }
-#explorer_preview_pane { width: 330px; min-width: 330px; overflow: auto; border-left: 1px solid var(--bs-border-color-translucent); padding: 1rem; }
-#explorer_preview_pane iframe { width: 100%; height: 280px; border: 1px solid var(--bs-border-color-translucent); border-radius: .6rem; background: #fff; }
+#explorer_preview_pane { width: 330px; min-width: 330px; overflow: auto; border-left: 1px solid var(--pg-border-color-translucent); padding: 1rem; }
+#explorer_preview_pane iframe { width: 100%; height: 280px; border: 1px solid var(--pg-border-color-translucent); border-radius: .6rem; background: #fff; }
 #explorer_preview_pane img.preview-media { max-width: 100%; max-height: 280px; border-radius: .6rem; }
 #explorer_content::-webkit-scrollbar, #explorer_tree_pane::-webkit-scrollbar, #explorer_preview_pane::-webkit-scrollbar { width: 10px; height: 10px; }
-#explorer_content::-webkit-scrollbar-thumb, #explorer_tree_pane::-webkit-scrollbar-thumb, #explorer_preview_pane::-webkit-scrollbar-thumb { background: var(--bs-secondary-bg); border-radius: 10px; border: 2px solid var(--bs-body-bg); }
-#explorer_content::-webkit-scrollbar-thumb:hover, #explorer_tree_pane::-webkit-scrollbar-thumb:hover, #explorer_preview_pane::-webkit-scrollbar-thumb:hover { background: var(--bs-tertiary-color); }
+#explorer_content::-webkit-scrollbar-thumb, #explorer_tree_pane::-webkit-scrollbar-thumb, #explorer_preview_pane::-webkit-scrollbar-thumb { background: var(--pg-bg-2); border-radius: 10px; border: 2px solid var(--pg-bg-body); }
+#explorer_content::-webkit-scrollbar-thumb:hover, #explorer_tree_pane::-webkit-scrollbar-thumb:hover, #explorer_preview_pane::-webkit-scrollbar-thumb:hover { background: var(--pg-fg-3); }
 /* Tile size is a setting rather than a constant: a folder of three hundred
    pictures wants them big enough to tell apart, and a folder of stylesheets
    wants as many names on screen as will fit. The three numbers move together
@@ -1013,32 +1013,32 @@ echo
 #explorer_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--pg-tile), 1fr)); gap: .45rem; }
 .explorer-item { cursor: default; }
 #explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; transition: background .12s ease, box-shadow .12s ease, transform .12s ease; }
-#explorer_grid .item-card:hover { background: var(--bs-secondary-bg); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.08); }
-.explorer-item.selected .item-card { background: var(--bs-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-primary) 55%, transparent); }
-tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !important; }
+#explorer_grid .item-card:hover { background: var(--pg-bg-2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+.explorer-item.selected .item-card { background: var(--pg-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-primary) 55%, transparent); }
+tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !important; }
 .explorer-item.cut-ghost { opacity: .45; }
 /* Sold out, in the corner the tile leaves free. It stays above the selection
    circle rather than under it: the circle appears on hover and while selected,
    and a warning that disappears exactly when the operator reaches for the row
    is worse than one that overlaps it. */
 .stock-dot { position: absolute; top: .28rem; left: .28rem; width: .55rem; height: .55rem; border-radius: 50%;
-  background: var(--bs-danger); box-shadow: 0 0 0 2px var(--bs-body-bg); z-index: 3; pointer-events: none; }
+  background: var(--pg-danger); box-shadow: 0 0 0 2px var(--pg-bg-body); z-index: 3; pointer-events: none; }
 #explorer_list_table .stock-dot { position: static; display: inline-block; box-shadow: none; margin-right: .3rem; vertical-align: middle; }
-.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--bs-tertiary-color); background: var(--bs-body-bg); display: none; align-items: center; justify-content: center; font-size: .65rem; color: #fff; cursor: pointer; z-index: 2; }
+.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--pg-fg-3); background: var(--pg-bg-body); display: none; align-items: center; justify-content: center; font-size: .65rem; color: #fff; cursor: pointer; z-index: 2; }
 #explorer_grid .item-card:hover .sel-dot, .explorer-item.selected .sel-dot { display: flex; }
-.explorer-item.selected .sel-dot { background: var(--bs-primary); border-color: var(--bs-primary); }
+.explorer-item.selected .sel-dot { background: var(--pg-primary); border-color: var(--pg-primary); }
 .item-thumb-area { height: var(--pg-tile-thumb); display: flex; align-items: center; justify-content: center; margin-bottom: .3rem; }
 .explorer-item .item-icon { font-size: var(--pg-tile-icon); line-height: 1; position: relative; display: inline-block; }
 
 /* A short link is drawn as what it is: a link, an arrow, and the thing it
    lands on. A link straight to an address off the site has nothing to point
    at, so it keeps the link glyph alone. */
-.short-link-icon { display: inline-flex; align-items: center; justify-content: center; gap: .02em; line-height: 1; color: var(--bs-primary); }
+.short-link-icon { display: inline-flex; align-items: center; justify-content: center; gap: .02em; line-height: 1; color: var(--pg-primary); }
 .short-link-icon .sl-arrow { font-size: .68em; opacity: .55; margin: 0 -.08em; }
-.short-link-icon .sl-target { color: var(--bs-body-color); opacity: .85; }
+.short-link-icon .sl-target { color: var(--pg-fg-body); opacity: .85; }
 .explorer-item .item-icon.short-link-icon { font-size: calc(var(--pg-tile-icon) * .67); height: var(--pg-tile-icon); }
 #explorer_list_table .list-icon.short-link-icon { font-size: 1.05rem; }
-.explorer-item .item-thumb { width: 100%; max-width: calc(var(--pg-tile) - 20px); height: var(--pg-tile-thumb); object-fit: cover; border-radius: .55rem; border: 1px solid var(--bs-border-color-translucent); }
+.explorer-item .item-thumb { width: 100%; max-width: calc(var(--pg-tile) - 20px); height: var(--pg-tile-thumb); object-fit: cover; border-radius: .55rem; border: 1px solid var(--pg-border-color-translucent); }
 .explorer-item .thumb-wrap { position: relative; display: inline-block; max-width: 100%; }
 /* Thumbnail loading state. A tile carries its address in data-src and gets a
    src only when its turn comes (see the thumbnail loader), so until then it is
@@ -1046,7 +1046,7 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
    broken-image icon. A shimmer fills that box so a folder mid-load reads as
    loading rather than broken; it stops the moment the picture is in. */
 .item-thumb.pg-lazy {
-  background: linear-gradient(100deg, var(--bs-secondary-bg) 25%, var(--bs-tertiary-bg) 50%, var(--bs-secondary-bg) 75%);
+  background: linear-gradient(100deg, var(--pg-bg-2) 25%, var(--pg-bg-1) 50%, var(--pg-bg-2) 75%);
   background-size: 200% 100%;
   animation: pgThumbShimmer 1.15s ease-in-out infinite;
 }
@@ -1068,9 +1068,9 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
    screen of missing files is never a screen of broken-image icons. */
 .explorer-item .item-thumb-fallback {
   width: 100%; max-width: 116px; height: 84px; border-radius: .55rem;
-  border: 1px solid var(--bs-border-color-translucent);
+  border: 1px solid var(--pg-border-color-translucent);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1.7rem; color: var(--bs-secondary-color); background: var(--bs-secondary-bg);
+  font-size: 1.7rem; color: var(--pg-fg-2); background: var(--pg-bg-2);
 }
 #explorer_list_table .item-thumb-fallback { width: 36px; max-width: 36px; height: 36px; border-radius: .4rem; font-size: 1rem; }
 /* The corner glyph says what a tile is. Over a photo a bare glyph is a smudge
@@ -1082,8 +1082,8 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
   position: absolute; right: -5px; bottom: 1px;
   display: inline-flex; align-items: center; justify-content: center;
   width: 1.5em; height: 1.5em; font-size: .85rem; line-height: 1;
-  background: var(--bs-body-bg);
-  border: 1px solid var(--bs-border-color-translucent);
+  background: var(--pg-bg-body);
+  border: 1px solid var(--pg-border-color-translucent);
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
 }
@@ -1094,18 +1094,18 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
    is its ID / SKU; neither reaches a visitor. The short description does, so it
    is shown as well -- and on a product it takes the reading weight, with the
    SKU kept above it as the small identifier it is. */
-.explorer-item .item-subname { font-size: .72rem; line-height: 1.2; color: var(--bs-secondary-color); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: .08rem; }
-.explorer-item.has-subname[data-kind="product"] .item-name { font-size: .7rem; color: var(--bs-secondary-color); -webkit-line-clamp: 1; }
-.explorer-item.has-subname[data-kind="product"] .item-subname { font-size: .82rem; color: var(--bs-body-color); }
-#explorer_list_table .list-subname { display: block; font-size: .72rem; color: var(--bs-secondary-color); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#explorer_list_table tr[data-kind="product"] .list-name { font-size: .78rem; color: var(--bs-secondary-color); }
+.explorer-item .item-subname { font-size: .72rem; line-height: 1.2; color: var(--pg-fg-2); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: .08rem; }
+.explorer-item.has-subname[data-kind="product"] .item-name { font-size: .7rem; color: var(--pg-fg-2); -webkit-line-clamp: 1; }
+.explorer-item.has-subname[data-kind="product"] .item-subname { font-size: .82rem; color: var(--pg-fg-body); }
+#explorer_list_table .list-subname { display: block; font-size: .72rem; color: var(--pg-fg-2); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#explorer_list_table tr[data-kind="product"] .list-name { font-size: .78rem; color: var(--pg-fg-2); }
 .explorer-item .item-flags { font-size: .72rem; opacity: .8; min-height: 1em; margin-top: .15rem; }
-.explorer-item.drop-target .item-card, tr.explorer-item.drop-target > td { outline: 2px dashed var(--bs-primary); outline-offset: -2px; }
-#explorer_drag_badge { position: fixed; top: -300px; left: -300px; z-index: 10000; padding: .3rem .7rem; background: var(--bs-primary); color: #fff; font-size: .85rem; border-radius: .5rem; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.explorer-item.drop-target .item-card, tr.explorer-item.drop-target > td { outline: 2px dashed var(--pg-primary); outline-offset: -2px; }
+#explorer_drag_badge { position: fixed; top: -300px; left: -300px; z-index: 10000; padding: .3rem .7rem; background: var(--pg-primary); color: #fff; font-size: .85rem; border-radius: .5rem; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 /* SEO score ring (toolbar drawing): bottom-left corner of a page tile,
    inline in list rows and in the preview header. */
 .seo-ring { display: inline-flex; line-height: 0; vertical-align: middle; }
-.seo-ring .seo-ring-track { stroke: var(--bs-border-color-translucent); }
+.seo-ring .seo-ring-track { stroke: var(--pg-border-color-translucent); }
 #explorer_grid .item-card .seo-ring { position: absolute; left: .3rem; bottom: .3rem; z-index: 2; }
 
 /* Catalog tiles are an icon over a label rather than a picture, so the ring
@@ -1114,14 +1114,14 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
 #explorer_grid .explorer-item[data-kind="product"] .item-card .seo-ring {
   left: auto; bottom: auto; right: .3rem; top: .3rem;
 }
-#preview_seo_detail .border-light { border-color: var(--bs-border-color-translucent) !important; }
+#preview_seo_detail .border-light { border-color: var(--pg-border-color-translucent) !important; }
 /* Shared folders report: one card per folder, people listed inside it. */
-#shared_list .shared-group { border: 1px solid var(--bs-border-color-translucent); border-radius: .7rem; padding: .6rem .8rem; margin-bottom: .7rem; background: var(--bs-body-bg); }
+#shared_list .shared-group { border: 1px solid var(--pg-border-color-translucent); border-radius: .7rem; padding: .6rem .8rem; margin-bottom: .7rem; background: var(--pg-bg-body); }
 #shared_list .shared-group-head { display: flex; align-items: center; flex-wrap: wrap; gap: .15rem .1rem; }
 #shared_list .shared-group-path { font-size: .74rem; margin-bottom: .4rem; }
 #shared_list table { font-size: .82rem; }
-#shared_list th { font-weight: 600; color: var(--bs-secondary-color); border-bottom: 1px solid var(--bs-border-color-translucent); }
-#shared_list td { border-bottom: 1px solid var(--bs-border-color-translucent); }
+#shared_list th { font-weight: 600; color: var(--pg-fg-2); border-bottom: 1px solid var(--pg-border-color-translucent); }
+#shared_list td { border-bottom: 1px solid var(--pg-border-color-translucent); }
 /* Laid out fixed, from a <colgroup>. That is what makes a dragged edge mean
    something and what stops eleven columns from squeezing a name down to one
    letter per line: every column has a width, and below their sum the pane
@@ -1158,9 +1158,9 @@ tr.explorer-item.selected > td { background: var(--bs-primary-bg-subtle) !import
    grip on the edge. */
 #explorer_list_table th { position: relative; user-select: none; }
 #explorer_list_table th .th-label { display: inline-block; max-width: calc(100% - 1.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-#explorer_list_table th .th-caret { margin-left: .25rem; font-size: .7em; color: var(--bs-primary); }
+#explorer_list_table th .th-caret { margin-left: .25rem; font-size: .7em; color: var(--pg-primary); }
 #explorer_list_table th.th-sortable { cursor: pointer; }
-#explorer_list_table th.th-sortable:hover { color: var(--bs-body-color); }
+#explorer_list_table th.th-sortable:hover { color: var(--pg-fg-body); }
 
 #explorer_list_table th .col-grip {
     position: absolute;
@@ -1180,7 +1180,7 @@ body.col-resizing #explorer_list_table th .col-grip::after {
     left: 3px;
     width: 2px;
     height: 70%;
-    background: var(--bs-primary);
+    background: var(--pg-primary);
     border-radius: 2px;
 }
 
@@ -1200,15 +1200,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
-    background: var(--bs-secondary-bg);
-    color: var(--bs-secondary-color);
+    background: var(--pg-bg-2);
+    color: var(--pg-fg-2);
 }
 
-.list-badge.badge-on { background: var(--bs-success-bg-subtle); color: var(--bs-success-text-emphasis); }
-.list-badge.badge-off { background: var(--bs-warning-bg-subtle); color: var(--bs-warning-text-emphasis); }
-#explorer_list_table th { white-space: nowrap; position: sticky; top: -0.8rem; background: var(--bs-body-bg); z-index: 1; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); border-bottom: 1px solid var(--bs-border-color-translucent); }
-#explorer_list_table td { vertical-align: middle; border-bottom: 1px solid var(--bs-border-color-translucent); }
-#explorer_list_table tbody tr:hover > td { background: var(--bs-secondary-bg); }
+.list-badge.badge-on { background: var(--pg-success-bg-subtle); color: var(--pg-success-fg-emphasis); }
+.list-badge.badge-off { background: var(--pg-warning-bg-subtle); color: var(--pg-warning-fg-emphasis); }
+#explorer_list_table th { white-space: nowrap; position: sticky; top: -0.8rem; background: var(--pg-bg-body); z-index: 1; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; color: var(--pg-fg-2); border-bottom: 1px solid var(--pg-border-color-translucent); }
+#explorer_list_table td { vertical-align: middle; border-bottom: 1px solid var(--pg-border-color-translucent); }
+#explorer_list_table tbody tr:hover > td { background: var(--pg-bg-2); }
 #explorer_list_table .item-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: .4rem; }
 #explorer_list_table .list-icon { font-size: 1.45rem; position: relative; display: inline-block; }
 #explorer_list_table .list-icon .access-badge { right: -6px; bottom: -3px; font-size: .62rem; }
@@ -1241,7 +1241,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
    pointer is on it, so a list of prices does not read as a list of form
    fields. */
 #explorer_list_table .cell-editable { cursor: text; border-bottom: 1px dashed transparent; }
-#explorer_list_table tr:hover .cell-editable { border-bottom-color: var(--bs-border-color); }
+#explorer_list_table tr:hover .cell-editable { border-bottom-color: var(--pg-border-color); }
 #explorer_list_table tr:hover .cell-editable::after { content: "\F4CB"; font-family: bootstrap-icons; font-size: .7em;
   margin-left: .35em; opacity: .5; vertical-align: middle; }
 #explorer_list_table .cell-editable.is-editing { border-bottom-color: transparent; display: block; }
@@ -1257,24 +1257,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* The upload window's drop area. Dashed rather than solid so it reads as a
    place to put something rather than a box that already holds something. */
 #upload_dropzone {
-    border: 2px dashed var(--bs-border-color);
+    border: 2px dashed var(--pg-border-color);
     border-radius: .8rem;
     padding: 1.4rem 1rem;
     text-align: center;
-    color: var(--bs-secondary-color);
+    color: var(--pg-fg-2);
     transition: border-color .15s ease, background-color .15s ease;
 }
 
 #upload_dropzone.is-over {
-    border-color: var(--bs-primary);
-    background: color-mix(in srgb, var(--bs-primary) 8%, transparent);
-    color: var(--bs-primary);
+    border-color: var(--pg-primary);
+    background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+    color: var(--pg-primary);
 }
 
 #upload_picked {
     max-height: 190px;
     overflow-y: auto;
-    border: 1px solid var(--bs-border-color-translucent);
+    border: 1px solid var(--pg-border-color-translucent);
     border-radius: .6rem;
     padding: .5rem .7rem;
     font-size: .84rem;
@@ -1291,58 +1291,58 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     border-radius: .25rem;
 }
 
-#upload_picked .upload-thumb { object-fit: cover; background: var(--bs-secondary-bg); }
+#upload_picked .upload-thumb { object-fit: cover; background: var(--pg-bg-2); }
 
 #upload_picked .upload-mark {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 1.05rem;
-    color: var(--bs-secondary-color);
+    color: var(--pg-fg-2);
 }
 #upload_picked .upload-row + .upload-row { margin-top: .2rem; }
 #upload_picked .upload-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#upload_picked .upload-size { flex: 0 0 auto; color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
-#upload_picked .upload-row.is-too-big .upload-size { color: var(--bs-danger); }
-#upload_picked .upload-row.is-blocked .upload-size { color: var(--bs-danger); }
+#upload_picked .upload-size { flex: 0 0 auto; color: var(--pg-fg-2); font-variant-numeric: tabular-nums; }
+#upload_picked .upload-row.is-too-big .upload-size { color: var(--pg-danger); }
+#upload_picked .upload-row.is-blocked .upload-size { color: var(--pg-danger); }
 #upload_picked .upload-row.is-blocked .upload-path { text-decoration: line-through; opacity: .7; }
 
 /* The file window. The preview is a stage the media sits on rather than a box
    it fills: a tall picture and a wide one both keep their shape, and a
    transparent one shows its transparency against the checks. */
-#file_edit_preview { display: flex; align-items: center; justify-content: center; min-height: 140px; max-height: 46vh; border-radius: .75rem; background: var(--bs-tertiary-bg); overflow: hidden; }
+#file_edit_preview { display: flex; align-items: center; justify-content: center; min-height: 140px; max-height: 46vh; border-radius: .75rem; background: var(--pg-bg-1); overflow: hidden; }
 #file_edit_preview:empty { display: none; }
 #file_edit_preview img { max-width: 100%; max-height: 46vh; object-fit: contain; background-color: #fff; background-image: linear-gradient(45deg, #e6e6e6 25%, transparent 25%), linear-gradient(-45deg, #e6e6e6 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e6e6e6 75%), linear-gradient(-45deg, transparent 75%, #e6e6e6 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
 #file_edit_preview video { max-width: 100%; max-height: 46vh; }
 #file_edit_preview audio { width: 100%; max-width: 560px; margin: 2rem 1rem; }
 #file_edit_preview iframe { width: 100%; height: 46vh; border: 0; background: #fff; }
-#file_edit_preview .file-edit-glyph { font-size: 4rem; line-height: 1; color: var(--bs-secondary-color); padding: 1.5rem 0; }
+#file_edit_preview .file-edit-glyph { font-size: 4rem; line-height: 1; color: var(--pg-fg-2); padding: 1.5rem 0; }
 #file_edit_preview .office-view { width: 100%; height: 46vh; align-self: stretch; }
 #explorer_quicklook .ql-stage .office-view { width: 100%; height: 100%; border-radius: .5rem; }
-#file_edit_editor_wrap .pg-code-editor { height: 52vh; border: 1px solid var(--bs-border-color-translucent); border-radius: .5rem; overflow: hidden; }
+#file_edit_editor_wrap .pg-code-editor { height: 52vh; border: 1px solid var(--pg-border-color-translucent); border-radius: .5rem; overflow: hidden; }
 #file_edit_editor_wrap .cm-editor { font-size: .85rem; }
 #file_edit_facts span + span::before { content: '·'; margin: 0 .45rem; opacity: .6; }
 
-#explorer_upload_overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--bs-primary) 10%, transparent); backdrop-filter: blur(2px); border: 2px dashed var(--bs-primary); border-radius: .8rem; pointer-events: none; }
+#explorer_upload_overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--pg-primary) 10%, transparent); backdrop-filter: blur(2px); border: 2px dashed var(--pg-primary); border-radius: .8rem; pointer-events: none; }
 
 /* Rubber-band selection. The band is a child of the scrolling content, so it
    lives in the same coordinate space as the items and scrolls with them
    instead of having to be repositioned on every scroll event. */
 #explorer_marquee { position: absolute; z-index: 15; pointer-events: none; border: 1px solid color-mix(in srgb, var(--pg-primary) 85%, transparent); background: color-mix(in srgb, var(--pg-primary) 14%, transparent); border-radius: .15rem; }
 
-#explorer_statusbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: .4rem .9rem; border-top: 1px solid var(--bs-border-color-translucent); font-size: .78rem; color: var(--bs-secondary-color); }
+#explorer_statusbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: .4rem .9rem; border-top: 1px solid var(--pg-border-color-translucent); font-size: .78rem; color: var(--pg-fg-2); }
 
 /* Quick look: one item, as large as the screen will draw it.
    Above the chat bubble (1080) on purpose -- while this is open it is the only
    thing on screen, and a launcher floating over a photograph is a launcher in
    the way. */
 #explorer_quicklook { position: fixed; inset: 0; z-index: 1090; display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--bs-body-bg) 92%, #000); }
+  background: color-mix(in srgb, var(--pg-bg-body) 92%, #000); }
 #explorer_quicklook.d-none { display: none !important; }
 #explorer_quicklook .ql-bar { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
-  border-bottom: 1px solid var(--bs-border-color-translucent); position: relative; z-index: 3; }
+  border-bottom: 1px solid var(--pg-border-color-translucent); position: relative; z-index: 3; }
 #explorer_quicklook .ql-name { font-weight: 600; }
-#explorer_quicklook .ql-meta { color: var(--bs-secondary-color); font-size: .8rem; }
+#explorer_quicklook .ql-meta { color: var(--pg-fg-2); font-size: .8rem; }
 #explorer_quicklook .ql-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
   padding: 1rem; position: relative; overflow: hidden; }
 /* The media box takes the whole stage. Sized by its content it left a page or
@@ -1354,12 +1354,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_quicklook .ql-stage video { max-width: 100%; max-height: 100%; border-radius: .5rem; }
 #explorer_quicklook .ql-nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
   width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center;
-  background: var(--bs-secondary-bg); color: var(--bs-body-color); opacity: .75; font-size: 1.3rem; }
+  background: var(--pg-bg-2); color: var(--pg-fg-body); opacity: .75; font-size: 1.3rem; }
 #explorer_quicklook .ql-nav:hover { opacity: 1; }
 #explorer_quicklook .ql-nav[disabled] { opacity: .25; }
 #explorer_quicklook .ql-prev { left: .75rem; }
 #explorer_quicklook .ql-next { right: .75rem; }
-#explorer_quicklook .ql-hint { text-align: center; color: var(--bs-secondary-color); font-size: .75rem; padding: 0 0 .6rem; }
+#explorer_quicklook .ql-hint { text-align: center; color: var(--pg-fg-2); font-size: .75rem; padding: 0 0 .6rem; }
 
 /* The chat bubble is fixed to the bottom right corner and floats above
    everything (z-index 1080). The status bar's right-hand end runs underneath
@@ -1398,8 +1398,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_list_table tr.erp-cancelled .list-name { text-decoration: line-through; opacity: .75; }
 .explorer-item .erp-amount { font-variant-numeric: tabular-nums; }
 #explorer_list_table .erp-amount { display: none; }
-.list-badge.badge-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
-#explorer_preview_pane .erp-preview-wait { border: 1px dashed var(--bs-border-color); border-radius: .6rem; padding: 1.1rem .9rem; }
+.list-badge.badge-danger { background: var(--pg-danger-bg-subtle); color: var(--pg-danger-fg-emphasis); }
+#explorer_preview_pane .erp-preview-wait { border: 1px dashed var(--pg-border-color); border-radius: .6rem; padding: 1.1rem .9rem; }
 #explorer_preview_pane .erp-goto .btn { min-width: 0; }
 #explorer_preview_pane .erp-goto-detail { max-width: 55%; opacity: .7; }
 #explorer_preview_pane .erp-ettn { font-size: .72rem; word-break: break-all; }
@@ -1555,8 +1555,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
          not visible is a folder that looks half empty for no reason anybody can
          see, so this strip is drawn only when there is something to say and is
          the first thing under the toolbar when there is. -->
-    <div id="explorer_filters_bar" class="d-none align-items-center flex-wrap gap-2" style="padding:.4rem .9rem;border-bottom:1px solid var(--bs-border-color-translucent);font-size:.78rem;"></div>
-    <div id="recycle_banner" class="d-none align-items-center flex-wrap gap-2" style="padding:.45rem .9rem;border-bottom:1px solid var(--bs-border-color-translucent);background:var(--bs-warning-bg-subtle);font-size:.82rem;">
+    <div id="explorer_filters_bar" class="d-none align-items-center flex-wrap gap-2" style="padding:.4rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);font-size:.78rem;"></div>
+    <div id="recycle_banner" class="d-none align-items-center flex-wrap gap-2" style="padding:.45rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);background:var(--pg-warning-bg-subtle);font-size:.82rem;">
         <span class="bi bi-trash3 text-warning-emphasis"></span>
         <span id="recycle_banner_text" class="text-warning-emphasis"></span>
         <button type="button" id="empty_bin_button" class="btn btn-sm btn-outline-danger ms-auto rounded-pill"><span class="bi bi-x-octagon me-1"></span><?php echo lang('Empty Recycle Bin'); ?></button>
@@ -3776,7 +3776,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="shared-group-head">' +
                 '<span class="bi bi-folder-fill me-2 ' + group.access_control_type + '"></span>' +
                 '<button type="button" class="btn btn-link p-0 text-decoration-none fw-semibold shared-open" data-folder-id="' + group.id + '">' + esc(group.name) + '</button>' +
-                '<span class="badge ms-2 ' + group.access_control_type + '" style="background:var(--bs-secondary-bg);">' +
+                '<span class="badge ms-2 ' + group.access_control_type + '" style="background:var(--pg-bg-2);">' +
                 '<span class="bi ' + group.access_icon + ' me-1"></span>' + esc(accessLabel(group.access_control_type)) + '</span>' +
                 (group.archived ? '<span class="badge text-bg-secondary ms-2"><span class="bi bi-archive me-1"></span>' + esc(L.archived) + '</span>' : '') +
                 '<span class="badge text-bg-light ms-2">' + esc(fmt(L.people_count, [group.grants.length])) + '</span>' +

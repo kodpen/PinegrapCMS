@@ -1523,30 +1523,30 @@ echo pg_page_shell(array(
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
 	gap: 14px; align-items: center; min-width: 900px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; }
-.api-row { padding: 13px 16px; border-top: 1px solid var(--bs-border-color); cursor: pointer; }
-.api-row:hover, .api-row:focus-visible { background: var(--bs-tertiary-bg); outline: 0; }
+.api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
+.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); outline: 0; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
 .api-name b { font-size: 13px; display: block; }
 .api-name code { font-size: 10.5px; opacity: .55; }
 .api-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--bs-border-color); opacity: .85; }
-.api-chip.w { border-color: var(--bs-primary); color: var(--bs-primary); }
+.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); opacity: .85; }
+.api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary); }
 .api-chip.muted { opacity: .45; }
 .api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
-	border: 1px solid var(--bs-border-color); display: inline-block; }
-.api-status.on { color: var(--bs-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
+	border: 1px solid var(--pg-border-color); display: inline-block; }
+.api-status.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .api-status.off { opacity: .5; }
-.api-status.warn { color: var(--bs-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
+.api-status.warn { color: var(--pg-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
 .api-meta { font-size: 11.5px; opacity: .8; }
 .api-meta small { display: block; font-size: 10.5px; opacity: .7; }
-.api-meta small.bad { color: var(--bs-danger); opacity: 1; }
-.api-empty { padding: 26px 16px; text-align: center; opacity: .6; border-top: 1px solid var(--bs-border-color); }
+.api-meta small.bad { color: var(--pg-danger); opacity: 1; }
+.api-empty { padding: 26px 16px; text-align: center; opacity: .6; border-top: 1px solid var(--pg-border-color); }
 
 /* One permission per resource, three positions. The row carries the sentence
    that says what it reaches, because "Orders: write" on its own does not. */
 .api-perm { display: flex; align-items: center; gap: 12px; padding: 13px 2px;
-	border-top: 1px solid var(--bs-border-color); }
+	border-top: 1px solid var(--pg-border-color); }
 .api-perm:first-of-type { border-top: 0; }
 .api-perm > i { font-size: 15px; width: 18px; text-align: center; opacity: .7; }
 .api-perm-text { flex: 1; min-width: 0; }
@@ -1563,36 +1563,36 @@ echo pg_page_shell(array(
 }
 .api-seg { flex: none; }
 .api-seg .btn { --bs-btn-font-size: 11px; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
-	--bs-btn-color: var(--bs-secondary-color); --bs-btn-border-color: var(--bs-border-color);
-	--bs-btn-hover-border-color: var(--bs-border-color); }
-.api-seg .btn-check:checked + .btn { color: #fff; background: var(--bs-primary); border-color: var(--bs-primary); }
+	--bs-btn-color: var(--pg-fg-2); --bs-btn-border-color: var(--pg-border-color);
+	--bs-btn-hover-border-color: var(--pg-border-color); }
+.api-seg .btn-check:checked + .btn { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); }
 /* Write implies read, so the read position shows as held-open rather than
    inviting a click that would silently do nothing. */
-.api-seg .btn.implied { color: #fff; background: var(--bs-primary); border-color: var(--bs-primary); opacity: .45; }
+.api-seg .btn.implied { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); opacity: .45; }
 .api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 34px;
-	font-size: 11px; opacity: .3; border: 1px solid var(--bs-border-color); border-left: 0; }
+	font-size: 11px; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
 .api-log { display: grid; grid-template-columns: 46px 1fr auto auto auto; gap: 9px; align-items: center;
-	padding: 8px 2px; border-top: 1px solid var(--bs-border-color); font-size: 11.5px; }
+	padding: 8px 2px; border-top: 1px solid var(--pg-border-color); font-size: 11.5px; }
 .api-log:first-child { border-top: 0; }
 .api-log .m { font-size: 9.5px; font-weight: 700; text-align: center; border-radius: 4px; padding: 2px 0;
-	background: var(--bs-tertiary-bg); }
+	background: var(--pg-bg-1); }
 .api-log code { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .api-log .s { font-size: 10.5px; font-weight: 600; }
-.api-log .s.ok { color: var(--bs-success); }
-.api-log .s.bad { color: var(--bs-danger); }
+.api-log .s.ok { color: var(--pg-success); }
+.api-log .s.bad { color: var(--pg-danger); }
 .api-log .d, .api-log .t { font-size: 10.5px; opacity: .55; }
-.api-hook { border-top: 1px solid var(--bs-border-color); padding: 11px 2px; }
+.api-hook { border-top: 1px solid var(--pg-border-color); padding: 11px 2px; }
 .api-hook:first-child { border-top: 0; }
 .api-hook-top { display: flex; align-items: center; gap: 8px; }
 .api-hook-url { flex: 1; min-width: 0; font-size: 12px; word-break: break-all; }
 .api-hook-events { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .api-hook-meta { font-size: 10.5px; opacity: .65; margin-top: 6px; }
-.api-hook-error { font-size: 10.5px; color: var(--bs-danger); margin-top: 5px; word-break: break-word; }
+.api-hook-error { font-size: 10.5px; color: var(--pg-danger); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
-.api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--bs-tertiary-bg);
-	border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 9px 11px; }
+.api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
+	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
 .api-secret-box code { flex: 1; font-size: 12px; word-break: break-all; }
-.api-guide { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: 8px;
+.api-guide { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color); border-radius: 8px;
 	padding: 10px 12px; margin-bottom: 10px; font-size: 12.5px; }
 .api-guide-title { font-weight: 600; margin-bottom: 6px; }
 .api-guide ol, .api-guide ul { padding-left: 18px; }
@@ -1601,7 +1601,7 @@ echo pg_page_shell(array(
 .api-client summary { cursor: pointer; font-weight: 500; }
 .api-client[open] summary { margin-bottom: 4px; }
 .api-snippet code { white-space: pre; overflow-x: auto; word-break: normal; }
-.api-danger-zone { border-top: 1px solid var(--bs-border-color); margin-top: 18px; padding-top: 14px; }
+.api-danger-zone { border-top: 1px solid var(--pg-border-color); margin-top: 18px; padding-top: 14px; }
 /* The site chat launcher is fixed at z-index 1080, an offcanvas is 1045, so the
    bubble sits on top of whatever the drawer puts in its bottom right corner -
    which here is Save. Hidden while the drawer is open rather than moved: the

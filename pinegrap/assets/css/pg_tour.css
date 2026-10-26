@@ -36,8 +36,8 @@
     height: 0;
     border-radius: 12px;
     box-shadow:
-        0 0 0 3px var(--bs-primary),
-        0 0 0 6px color-mix(in srgb, var(--bs-primary) 35%, transparent),
+        0 0 0 3px var(--pg-primary),
+        0 0 0 6px color-mix(in srgb, var(--pg-primary) 35%, transparent),
         0 0 0 9999px rgba(0, 0, 0, .58);
     transition: left .28s cubic-bezier(.4, 0, .2, 1),
                 top .28s cubic-bezier(.4, 0, .2, 1),
@@ -51,8 +51,8 @@
    happened".  It has to go further there. */
 [data-bs-theme="dark"] .pg-tour-hole {
     box-shadow:
-        0 0 0 3px var(--bs-primary),
-        0 0 0 6px color-mix(in srgb, var(--bs-primary) 35%, transparent),
+        0 0 0 3px var(--pg-primary),
+        0 0 0 6px color-mix(in srgb, var(--pg-primary) 35%, transparent),
         0 0 0 9999px rgba(0, 0, 0, .72);
 }
 
@@ -63,9 +63,9 @@
     max-width: calc(100vw - 24px);
     padding: .95rem 1.05rem 0.8rem;
     border-radius: .9rem;
-    background: var(--bs-body-bg);
-    color: var(--bs-body-color);
-    border: 1px solid var(--bs-border-color-translucent);
+    background: var(--pg-bg-body);
+    color: var(--pg-fg-body);
+    border: 1px solid var(--pg-border-color-translucent);
     box-shadow: 0 18px 48px rgba(0, 0, 0, .32);
     opacity: 0;
     transform: translateY(4px);
@@ -78,9 +78,9 @@
     position: absolute;
     width: 12px;
     height: 12px;
-    background: var(--bs-body-bg);
-    border-left: 1px solid var(--bs-border-color-translucent);
-    border-top: 1px solid var(--bs-border-color-translucent);
+    background: var(--pg-bg-body);
+    border-left: 1px solid var(--pg-border-color-translucent);
+    border-top: 1px solid var(--pg-border-color-translucent);
 }
 
 .pg-tour-bubble[data-side="bottom"] .pg-tour-arrow { top: -7px; transform: translateX(-50%) rotate(45deg); }
@@ -93,7 +93,7 @@
     font-size: .7rem;
     letter-spacing: .04em;
     text-transform: uppercase;
-    color: var(--bs-secondary-color);
+    color: var(--pg-fg-2);
     margin-bottom: .15rem;
 }
 
@@ -107,19 +107,19 @@
 .pg-tour-text {
     font-size: .855rem;
     line-height: 1.5;
-    color: var(--bs-secondary-color);
+    color: var(--pg-fg-2);
 }
 
 .pg-tour-text kbd {
     font-size: .75rem;
     padding: .1rem .32rem;
     border-radius: .3rem;
-    background: var(--bs-secondary-bg);
-    color: var(--bs-body-color);
-    border: 1px solid var(--bs-border-color-translucent);
+    background: var(--pg-bg-2);
+    color: var(--pg-fg-body);
+    border: 1px solid var(--pg-border-color-translucent);
 }
 
-.pg-tour-text .bi { color: var(--bs-primary); }
+.pg-tour-text .bi { color: var(--pg-primary); }
 
 .pg-tour-foot {
     display: flex;
@@ -127,7 +127,7 @@
     gap: .35rem;
     margin-top: .85rem;
     padding-top: .6rem;
-    border-top: 1px solid var(--bs-border-color-translucent);
+    border-top: 1px solid var(--pg-border-color-translucent);
 }
 
 .pg-tour-dots {
@@ -141,11 +141,11 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--bs-border-color);
+    background: var(--pg-border-color);
     transition: background .2s ease, width .2s ease;
 }
 
-.pg-tour-dot.is-on { width: 16px; border-radius: 3px; background: var(--bs-primary); }
+.pg-tour-dot.is-on { width: 16px; border-radius: 3px; background: var(--pg-primary); }
 
 .pg-tour-btn {
     border: 0;
@@ -159,19 +159,19 @@
 
 .pg-tour-ghost {
     background: transparent;
-    color: var(--bs-secondary-color);
+    color: var(--pg-fg-2);
 }
 
-.pg-tour-ghost:hover { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
+.pg-tour-ghost:hover { background: var(--pg-bg-2); color: var(--pg-fg-body); }
 
 .pg-tour-primary {
-    background: var(--bs-primary);
+    background: var(--pg-primary);
     color: #fff;
 }
 
 .pg-tour-primary:hover { filter: brightness(1.08); }
 
-.pg-tour-btn:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.pg-tour-btn:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: 2px; }
 
 /* Nothing behind the tour scrolls while it is up: a scroll would move the very
    control the ring is drawn around. */
@@ -211,32 +211,32 @@ body.pg-tour-open { overflow: hidden; }
     height: auto;
     margin: .15rem 0 .7rem;
     border-radius: 10px;
-    background: var(--bs-tertiary-bg);
+    background: var(--pg-bg-1);
 }
 
-.pg-tour-art .a-panel { fill: var(--bs-body-bg); stroke: var(--bs-border-color-translucent); stroke-width: 1; }
-.pg-tour-art .a-soft { fill: var(--bs-secondary-bg); }
-.pg-tour-art .a-line { fill: var(--bs-border-color); }
-.pg-tour-art .a-ink { fill: var(--bs-secondary-color); opacity: .6; }
+.pg-tour-art .a-panel { fill: var(--pg-bg-body); stroke: var(--pg-border-color-translucent); stroke-width: 1; }
+.pg-tour-art .a-soft { fill: var(--pg-bg-2); }
+.pg-tour-art .a-line { fill: var(--pg-border-color); }
+.pg-tour-art .a-ink { fill: var(--pg-fg-2); opacity: .6; }
 .pg-tour-art .a-white { fill: #fff; }
-.pg-tour-art .a-acc { fill: var(--bs-primary); }
-.pg-tour-art .a-acc-soft { fill: color-mix(in srgb, var(--bs-primary) 22%, transparent); }
-.pg-tour-art .a-ok { fill: var(--bs-success); }
-.pg-tour-art .a-warn { fill: var(--bs-warning); }
-.pg-tour-art .a-bad { fill: var(--bs-danger); }
-.pg-tour-art .a-bad-soft { fill: color-mix(in srgb, var(--bs-danger) 22%, transparent); }
+.pg-tour-art .a-acc { fill: var(--pg-primary); }
+.pg-tour-art .a-acc-soft { fill: color-mix(in srgb, var(--pg-primary) 22%, transparent); }
+.pg-tour-art .a-ok { fill: var(--pg-success); }
+.pg-tour-art .a-warn { fill: var(--pg-warning); }
+.pg-tour-art .a-bad { fill: var(--pg-danger); }
+.pg-tour-art .a-bad-soft { fill: color-mix(in srgb, var(--pg-danger) 22%, transparent); }
 .pg-tour-art .a-claude { fill: #7c5cf5; }
 .pg-tour-art .a-ai { fill: #0f8a7e; }
 
 .pg-tour-art [class^="a-stroke"] { fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .pg-tour-art .a-stroke,
-.pg-tour-art .a-stroke-box { stroke: var(--bs-secondary-color); }
-.pg-tour-art .a-stroke-acc { stroke: var(--bs-primary); }
-.pg-tour-art .a-stroke-ok { stroke: var(--bs-success); }
-.pg-tour-art .a-stroke-bad { stroke: var(--bs-danger); }
+.pg-tour-art .a-stroke-box { stroke: var(--pg-fg-2); }
+.pg-tour-art .a-stroke-acc { stroke: var(--pg-primary); }
+.pg-tour-art .a-stroke-ok { stroke: var(--pg-success); }
+.pg-tour-art .a-stroke-bad { stroke: var(--pg-danger); }
 .pg-tour-art .a-stroke-white,
 .pg-tour-art .a-stroke-white-box { stroke: #fff; }
-.pg-tour-art .a-stroke-dash { stroke: var(--bs-primary); stroke-dasharray: 3 5; opacity: .7; }
+.pg-tour-art .a-stroke-dash { stroke: var(--pg-primary); stroke-dasharray: 3 5; opacity: .7; }
 
 @media (max-width: 575.98px) {
 

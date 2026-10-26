@@ -746,7 +746,7 @@ if (!$_POST) {
     <style>
         /* Clipped log messages: show the first few lines and fade out the rest. */
         .pg-log-msg { white-space: normal; }
-        .pg-log-msg-code { font-family: var(--bs-font-monospace); font-size: .8125rem; }
+        .pg-log-msg-code { font-family: var(--pg-font-mono); font-size: .8125rem; }
         .pg-log-clip { position: relative; max-height: 4.8em; overflow: hidden; }
         .pg-log-clip::after {
             content: "";
@@ -755,13 +755,13 @@ if (!$_POST) {
             right: 0;
             bottom: 0;
             height: 1.6em;
-            background: linear-gradient(to bottom, transparent, var(--bs-body-bg, #fff));
+            background: linear-gradient(to bottom, transparent, var(--pg-bg-body, #fff));
             pointer-events: none;
         }
         .pg-log-tools { margin-top: .25rem; }
         /* Severity stripe on the first cell, subtler than tinting the whole row. */
-        tr.pg-log-row-error > td:first-child { box-shadow: inset 3px 0 0 var(--bs-danger); }
-        tr.pg-log-row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--bs-warning); }
+        tr.pg-log-row-error > td:first-child { box-shadow: inset 3px 0 0 var(--pg-danger); }
+        tr.pg-log-row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--pg-warning); }
     </style>
     <script>
         // Delegated handlers so they keep working after DataTables redraws the table.

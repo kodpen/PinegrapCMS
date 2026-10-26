@@ -9,6 +9,7 @@ description: Finished steps of the Bootstrap 6 panel plan with their PRs and top
 - B1a Tools: `tools/bs6_rules.php`, `tools/bs6_migrate.php`, `tools/check_bs6.php` with `tests/bs6_migrate_test.php` (`ui/bootstrap-6-codemod.md`). Done (#1670).
 - B1b Screenshots: `tools/screenshots/shoot.js` with `seed.php` and `screens.json` on a `tools/setup_sandbox.sh` instance, images on a private page (`ui/panel-screenshots.md`). Done (#1690).
 - B2a The `pgUI` adapter (`assets/js/pg_ui.js`, `ui/pg-ui-adapter.md`) with `window.pgBootstrapReady`, loaded after Bootstrap's bundle. Done (#1677).
+- B3 Token layer: panel CSS reads `--pg-*` tokens, mapped to v5 variables in one block (`ui/panel-css-tokens.md`). B3a the block, the v5 `-rgb` uses and the accent role variables (#1694); B3b the neutral variables in backend.src.css (#1711); B3c the other panel stylesheets and inline style blocks (#1723).
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node. Done (#1698): `ui/form-time-24-hour.md`, `ui/password-strength-js.md`.
 
 ## When does a step move here?
