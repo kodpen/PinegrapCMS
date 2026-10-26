@@ -65,7 +65,7 @@ $query =
     LEFT JOIN page AS next_page ON shipping_address_and_arrival_pages.next_page_id = next_page.page_id
     WHERE
         (page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "')
-        AND (page.page_type = 'shipping address and arrival')";
+        AND ((page.page_type = 'shipping address and arrival') OR (shipping_address_and_arrival_pages.page_id IS NOT NULL))";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // if a shipping address & arrival page was not found for the id that was passed, then output error
