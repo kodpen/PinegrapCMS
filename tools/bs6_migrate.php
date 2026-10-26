@@ -169,7 +169,9 @@ $reasons = array();
 foreach ($targets as $path => $lines) {
 	$file = $product . '/' . $path;
 	$source = (string) file_get_contents($file);
+	bs6_current_path($path);
 	$result = bs6_convert_source($source, $lines, bs6_reads_class_strings($path));
+	bs6_current_path(false);
 
 	foreach ($result['reviews'] as $review) {
 		$reasons[$review[2]] = isset($reasons[$review[2]]) ? $reasons[$review[2]] + 1 : 1;

@@ -429,7 +429,9 @@ function bs6_switch_run($root, $write)
 			$sources[$path]['new'] = $sources[$path]['old'];
 		}
 
+		bs6_current_path($path);
 		$result = $function($sources[$path]['new']);
+		bs6_current_path(false);
 		$sources[$path]['new'] = $result['source'];
 		$report[] = array($path, $fix, $result['status'], !empty($result['left']) ? $result['left'] . ' left for a hand' : null);
 	}
