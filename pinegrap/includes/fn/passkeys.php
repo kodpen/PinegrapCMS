@@ -1096,12 +1096,7 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
             var fields = form.elements;
             var button = form.querySelector("button[type=submit]");
             var notice = document.getElementById("pg_passkey_add_message");
-            var texts = ' . json_encode(array(
-                'cancelled' => lang('The passkey was not created. Please try again.'),
-                'duplicate' => pg_passkey_refusal('duplicate', 'register'),
-                'attempts'  => pg_mfa_reauth_message('attempts'),
-                'failed'    => lang('Your browser could not use a passkey here.'),
-            ), $json) . ';
+            var texts = ' . json_encode(pg_passkey_add_texts(), $json) . ';
             block.style.display = "";
             form.addEventListener("submit", function (event) {
                 event.preventDefault();
@@ -1126,6 +1121,103 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
                         : (code === "InvalidStateError") ? texts.duplicate
                         : (code === "attempts") ? texts.attempts
                         : texts.failed);
+                });
+            });
+        })();
+        </script>';
+}
+
+/**
+ * The sentences the add a passkey script shows when the browser or the
+ * server refuses: the classic section's and the account security widget's.
+ *
+ * @return array cancelled, duplicate, attempts, failed, unsupported
+ */
+function pg_passkey_add_texts()
+{
+    return array(
+        'cancelled'   => lang('The passkey was not created. Please try again.'),
+        'duplicate'   => pg_passkey_refusal('duplicate', 'register'),
+        'attempts'    => pg_mfa_reauth_message('attempts'),
+        'failed'      => lang('Your browser could not use a passkey here.'),
+        'unsupported' => lang('This browser cannot create passkeys.'),
+    );
+}
+
+/**
+ * The script of the account security widget's add a passkey forms
+ * (form[data-pg-passkey-add], wired by _pg_sec_apply_action_bindings()):
+ * each form stays hidden until the browser can make passkeys, else a
+ * sentence takes its place. On submit it asks passkey.php for the options
+ * with the form's name, current_password and code, lets the browser make
+ * the passkey and reloads the page; a refusal is shown in the form's
+ * [data-pg-passkey-message] element, or in one added after its last
+ * control.
+ *
+ * @return string
+ */
+function pg_passkey_add_form_script()
+{
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    return '<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js') . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_passkey.js') . '"></script>
+        <script>
+        (function () {
+            var texts = ' . json_encode(pg_passkey_add_texts(), $json) . ';
+            var url = ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ';
+            var supported = !!(window.PgPasskey && window.PgPasskey.supported());
+            Array.prototype.forEach.call(document.querySelectorAll("form[data-pg-passkey-add]"), function (form) {
+                if (!supported) {
+                    var note = document.createElement("p");
+                    note.className = "text-body-secondary";
+                    note.textContent = texts.unsupported;
+                    form.parentNode.insertBefore(note, form);
+                    return;
+                }
+                var fields = form.elements;
+                var value = function (name) {
+                    var field = fields.namedItem(name);
+                    return (field && field.value) ? field.value : "";
+                };
+                var notice = form.querySelector("[data-pg-passkey-message]");
+                if (!notice) {
+                    notice = document.createElement("div");
+                    notice.className = "text-danger small mt-2";
+                    notice.setAttribute("role", "alert");
+                    form.appendChild(notice);
+                }
+                form.hidden = false;
+                form.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    var button = form.querySelector("[type=submit]");
+                    if (button) {
+                        button.disabled = true;
+                    }
+                    notice.textContent = "";
+                    window.PgPasskey.register({
+                        url: url,
+                        token: value("token"),
+                        name: value("name"),
+                        currentPassword: value("current_password"),
+                        code: value("code")
+                    }).then(function () {
+                        window.location.reload();
+                    }).catch(function (error) {
+                        var code = error && error.code;
+                        // A code is spent once passkey.php accepts it, so a
+                        // cancelled dialog needs the next one.
+                        if (fields.namedItem("code")) {
+                            fields.namedItem("code").value = "";
+                        }
+                        if (button) {
+                            button.disabled = false;
+                        }
+                        notice.textContent = (error && error.message)
+                            || (((code === "NotAllowedError") || (code === "AbortError")) ? texts.cancelled
+                            : (code === "InvalidStateError") ? texts.duplicate
+                            : (code === "attempts") ? texts.attempts
+                            : texts.failed);
+                    });
                 });
             });
         })();
