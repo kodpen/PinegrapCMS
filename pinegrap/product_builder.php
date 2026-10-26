@@ -4680,7 +4680,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 col-lg-4 my-2">
                                         <label for="name" class="form-label">*' . lang('Product ID / SKU') . '</label>
-                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" />
+                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
@@ -5548,6 +5548,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ]);
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' . output_footer();
@@ -5969,7 +5970,47 @@ function pg_pb_sync_tag_cloud_keywords($product_id, $keywords, $enabled)
 
 
 /**
- * The checks edit_product.php runs before it writes anything.
+ * The product codes (products.name) a post of the product screen writes,
+ * read the way pg_pb_save_new_product() and edit_product.php read them: on
+ * edit the one product's code; on create the typed code, or a single matrix
+ * row's own code, or for a variant set one code per row (the typed code is
+ * then only their prefix and is not written as a product's code). Empty
+ * codes are left to the required checks.
+ *
+ * @param array $post
+ * @param int   $product_id the product being edited, 0 on create
+ * @return array
+ */
+function pg_pb_posted_product_names($post, $product_id = 0)
+{
+    $name = isset($post['name']) ? trim((string) $post['name']) : '';
+
+    if (!$product_id) {
+
+        $variants = pg_pb_decode_variants(isset($post['variants_json']) ? $post['variants_json'] : '');
+
+        if (pg_pb_mode($variants) === 'group') {
+            $names = array();
+
+            foreach ($variants as $variant) {
+                $names[] = $variant['name'];
+            }
+
+            return $names;
+        }
+
+        if ($variants && ($variants[0]['name'] !== '')) {
+            $name = $variants[0]['name'];
+        }
+    }
+
+    return ($name === '') ? array() : array($name);
+}
+
+
+/**
+ * The checks add_product.php and edit_product.php run before they write
+ * anything.
  *
  * Kept together so that neither screen can save while skipping one. Each stops
  * the request the way the legacy screen does, because there is nothing sensible
@@ -6005,6 +6046,36 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         && !empty($_POST['compare_at_price_enabled'])
         && (pg_pb_compare_at_price_from_input(isset($_POST['compare_at_price']) ? $_POST['compare_at_price'] : '') === false)) {
         output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Compare-at Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    // A product code is one product's, as the external API holds it: two
+    // products of one code cannot be told apart by an import, a marketplace
+    // or a barcode scan. Refused rather than renamed to "CODE[1]", which the
+    // operator would only notice later. On edit only a changed code is
+    // looked up, so a catalogue that already holds a duplicate still saves.
+    $names = pg_pb_posted_product_names($_POST, $product_id);
+
+    $repeated = pg_product_names_repeated($names);
+
+    if ($repeated !== '') {
+        output_error(lang(array('string' => 'Two variants have the product code {var:1}.', 'vars' => array(h($repeated)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    $stored = $product_id
+        ? trim((string) db_value("SELECT name FROM products WHERE id = '" . e((int) $product_id) . "'"))
+        : NULL;
+
+    foreach ($names as $name) {
+
+        if ($name === $stored) {
+            continue;
+        }
+
+        $holder = pg_product_name_holder($name, $product_id);
+
+        if ($holder) {
+            output_error(pg_product_name_taken_text($name, $holder, true) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
     }
 }
 
