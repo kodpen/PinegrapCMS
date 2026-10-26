@@ -31970,12 +31970,28 @@ const StyleDesigner = (function () {
     // on the page as data-pg-fx-* attributes (_sdFxAttrs(), pg_fx_attrs());
     // assets/js/pg_fx.src.js plays it on the published page and in the
     // Preview. Offered only where the page writes it: the content types
-    // whose markup carries the node's attributes, semantic and grid nodes.
+    // whose markup carries the node's attributes, semantic and grid nodes,
+    // and components on the element that takes their id (the language
+    // switcher is a placeholder drawn later). Nodes inside a widget or a
+    // shared component are drawn by the same paths.
     var _SD_FX_CONTENT = ['heading', 'paragraph', 'span', 'text', 'link', 'icon', 'image', 'divider', 'spacer', 'svg'];
     function _sdFxTakes(n) {
         if (!n || !n.props) return false;
         if (n.type === 'semantic' || n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        if (n.type === 'component') return n.props.componentType !== 'language_switcher';
         return n.type === 'content' && _SD_FX_CONTENT.indexOf(n.props.contentType) !== -1;
+    }
+
+    // A component's markup with its interaction (_sdFxAttrs()) in its first
+    // tag, as _render_component_html() writes it on the element that takes
+    // the component's id.
+    function _sdFxIntoFirstTag(html, p) {
+        var fx = _sdFxAttrs(p);
+        if (!fx) return html;
+        var m = /<[a-zA-Z][^>]*?(\/?)>/.exec(html);
+        if (!m) return html;
+        var at = m.index + m[0].length - 1 - m[1].length;
+        return html.slice(0, at) + fx + html.slice(at);
     }
 
     // The node's interaction after one field of the panel changed: the
@@ -61312,7 +61328,7 @@ const StyleDesigner = (function () {
                 if (comp && comp.toHTML) {
                     var _pcChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pcChildren += _sdEmitNode(c, indent + 1, _pcChildren.length, sink); });
-                    h += comp.toHTML(P, pad, _pcChildren);
+                    h += n.props.componentType === 'language_switcher' ? comp.toHTML(P, pad, _pcChildren) : _sdFxIntoFirstTag(comp.toHTML(P, pad, _pcChildren), n.props);
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pcChildren, base);
                 }
                 break; }
