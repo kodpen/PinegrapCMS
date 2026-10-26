@@ -8,6 +8,9 @@ description: Tracking mail-merge fields of the order_shipped and order_delivered
 - Built by `pg_shipment_merge_fields()` (pure, `tests/shipping_test.php`) from `pg_shipment_view()` of each row of `pg_shipment_rows()`; `pg_shipment_mail_fields($ship_to_ids)` reads the rows, the address's `shipping_method_code` and the site's default carrier, so the e-mail shows the carrier and link the order screen shows.
 - All three are always passed, empty when nothing is known, so `[[...^^tracking_url^^...||...]]` takes its else part. `replace_variables()` escapes them for HTML.
 
+## How is ^^tracking_url^^ written as a link?
+- `<a href="^^tracking_url^^">`, or a button made with the editor's Link dialog, which stores `http://^^tracking_url^^`. `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`, default fields `review_url` and `tracking_url`) takes that `http://` off before the fields are filled; without it the e-mail linked to `http://https://…`. An `href` starting with `^^` gets no site address or tracking code (`tests/mail_merge_hrefs_test.php`).
+
 ## Which addresses do they cover?
 - order_shipped (`update_order()`): the addresses this save marked shipped (`$recipient['shipped']`), not every address of the order.
 - order_delivered (`pg_shipment_delivered()`): that one address, read after its rows were stamped delivered.

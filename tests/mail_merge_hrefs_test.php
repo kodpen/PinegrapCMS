@@ -43,6 +43,25 @@ function test_mail_merge_hrefs_scheme_removed()
 		'the fields named by the caller');
 }
 
+// ^^tracking_url^^ of the order shipped and order delivered e-mails holds the
+// carrier's whole address too: a button the Link dialog stored as
+// http://^^tracking_url^^ links to that address, not to http://https://...
+function test_mail_merge_hrefs_tracking_url()
+{
+	$body = pg_mail_merge_address_hrefs('<a href="http://^^tracking_url^^">Track</a>');
+
+	pg_assert_same('<a href="^^tracking_url^^">Track</a>', $body, 'the scheme the Link dialog added');
+
+	$fields = pg_shipment_merge_fields(array(
+		array('number' => '1234567890', 'carrier_name' => 'Aras Kargo', 'url' => 'https://kargotakip.araskargo.com.tr/mainpage.aspx?code=1234567890'),
+	));
+
+	pg_assert_same(
+		'<a href="https://kargotakip.araskargo.com.tr/mainpage.aspx?code=1234567890">Track</a>',
+		replace_variables(array('content' => $body, 'fields' => $fields, 'format' => 'html')),
+		'filled in, the carrier\'s own address');
+}
+
 // Any other address is left as it was written.
 function test_mail_merge_hrefs_others_untouched()
 {
