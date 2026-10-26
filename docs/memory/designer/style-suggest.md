@@ -9,6 +9,8 @@ description: assets/js/pg_style_suggest.js: the lazy loader of the predictor and
 - `elementContext(el, { skipClass, skipEl })` reads tag, classes, attributes (not `class`, `style`, `data-sd-*`, `data-sw-*`) and six ancestors up to `<body>`; the designer passes `/^sd-/` and skips `.sd-wrap`. `designClasses(lists)` counts classes.
 - `dropdown(input, { items, pick, onFocus, openEmpty })` is the light dropdown (`.sd-class-ac-*` CSS): never preselects, so Enter on a typed value still adds what was typed; arrows, Tab, Enter on a highlighted row, click, Escape.
 
+- `installCode(PgCodeEditor, opts)` registers the code editors' smart completion; `configure({ complete })` names the module `load()` fetches with the predictor ([[style-complete]]).
+
 ## How does the class field use it?
 - `_attachClassAutocomplete(input, node, pick)` in `style_designer.js`: context from the selected element on the canvas (another node of a multiple selection from its props), plus `design.classes` from the tree. With nothing typed it lists what the context points at (`col*` in a `row`). A pick adds the class at once (`addClassToken` / `_addMultiClass`) and focus moves to the redrawn input.
 - `_sdClassHint(item)` turns the predictor's codes into one short `_sdT()` reason; `fixed` and `redundant` rows are dimmed.
