@@ -82,7 +82,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="col-12 col-lg-4 my-2">
                                                 <label for="state_id" class="form-label">' . lang('State') . '</label>
-                                                <select style="width:100%" class="select2 form-select' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>
+                                                <select style="width:100%" data-pg-combobox class="form-select' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>' . pg_fields_script() . '
                                             </div>
                                             <div class="col-12 col-lg-2 my-2">
                                                 <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>

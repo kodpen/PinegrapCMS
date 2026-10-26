@@ -95,10 +95,7 @@ if (!$_POST) {
         if ($item['parent_product_group_id'] != 0) {
             $output_featured_sort_order_field = $liveform->output_field(array('type'=>'text', 'class'=>'form-control text-end', 'name'=>$featured_sort_order_field_name, 'size'=>'5', 'style'=>'width:60px;', 'maxlength'=>'4', 'inputmode'=>'numeric','data-inputmask-alias'=>'decimal','data-inputmask-placeholder'=>'0', ));
             $output_new_date_field =
-                $liveform->output_field(array('type'=>'text', 'id' => $new_date_field_name, 'name'=>$new_date_field_name, 'size'=>'10', 'maxlength'=>'10','class'=>'form-control w-auto')) . '
-                <script>
-                    $("#' . $new_date_field_name . '").datepicker(datetimepicker_options);
-                </script>';
+                $liveform->output_field(array('type'=>'text', 'id' => $new_date_field_name, 'name'=>$new_date_field_name, 'size'=>'10', 'maxlength'=>'10','class'=>'form-control w-auto', 'data-pg-date' => '')) . pg_fields_script();
         }
         
         $output_item_rows .=

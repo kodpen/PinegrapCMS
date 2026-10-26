@@ -128,12 +128,10 @@ if (!defined('PG_INIT_LOADED')) {
 											'name' => 'expiration_date',
 											'class' => 'form-control',
 											'autocomplete'=>'off',
-											'maxlength' => '10'))?>
+											'maxlength' => '10',
+											'data-pg-date' => ''))?>
 										<div class="text-end form-text"><?=lang('leave blank for no expiration')?></div>
-										<?=get_date_picker_format()?>
-										<script>
-											$('#expiration_date').datepicker(datetimepicker_options);
-										</script>
+										<?=get_date_picker_format() . pg_fields_script()?>
                                     </div>
                                     <div class="col-12 my-2">
                                         <label for="notes" class="form-label"><?=lang('Notes')?></label>
