@@ -46,7 +46,7 @@ if (!$pending_valid) {
 // A pending record that did not come through the second step cannot open an
 // account that has one. The sign-in flows ask for the code before they reach
 // the device gate, so this only stops a record written some other way.
-if (empty($pending['mfa_passed']) && pg_mfa_enabled((int) $pending['user_id'])) {
+if (empty($pending['mfa_passed']) && pg_mfa_has_factor((int) $pending['user_id'])) {
     unset($_SESSION['software']['device_limit_pending']);
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php');
     exit();

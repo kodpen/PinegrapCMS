@@ -1416,6 +1416,23 @@ function erp_api_receipts_create($params)
         $data['exchange_rate_source'] = 'api';
     }
 
+    // The receipt function's own checks: the period lock, the currency and
+    // rate, and the invoice it closes (its side and whether it is still open).
+    $refusal = erp_post_receipt_check($data);
+
+    if ($refusal !== '') {
+        api_fail_validation($refusal, ($invoice_id > 0) ? 'invoice_id' : 'amount');
+    }
+
+    api_dry_run_stop('created', 'erp_receipt', array(
+        'account_id' => $account_id,
+        'cash_account_id' => (int) $data['cash_account_id'],
+        'direction' => $direction,
+        'amount' => (int) $data['amount'],
+        'date' => $data['doc_date'],
+        'invoice_id' => ($invoice_id > 0) ? $invoice_id : null,
+    ));
+
     $posted = erp_post_receipt($data);
 
     if (empty($posted['success'])) {
@@ -1465,6 +1482,19 @@ function erp_api_receipts_cancel($params)
     if ($reason === '') {
         api_fail_validation(lang('The reason is required.'), 'reason');
     }
+
+    // The cancel function's own checks, the period lock among them.
+    $checked = erp_receipt_cancel_check((int) $row['id'], $reason);
+
+    if ($checked['error'] !== '') {
+        api_fail_validation($checked['error'], 'id');
+    }
+
+    api_dry_run_stop('cancelled', 'erp_receipt', array(
+        'id' => (int) $row['id'],
+        'amount' => (int) $checked['receipt']['amount'],
+        'reopened_invoice_ids' => array_values(array_unique(array_map('intval', array_column(erp_txn_settlements((int) $checked['receipt']['ledger_id']), 'invoice_id')))),
+    ));
 
     $cancelled = erp_receipt_cancel((int) $row['id'], $reason, $owner['id']);
 

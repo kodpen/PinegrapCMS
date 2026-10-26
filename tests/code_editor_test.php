@@ -298,3 +298,103 @@ function test_code_editor_escape_it_used_stays_in_the_editor()
 	pg_assert_contains("{ key: 'Escape', run: _leaveFullscreen }", $modal, 'Escape leaves the full window first');
 	pg_assert_contains("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
 }
+
+// Runs PgCodeEditor.findAll() under Node: the function cut from the facade
+// and the script's JSON. Null when there is no Node.
+function code_editor_test_find_all_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function findAll(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => 'findAll() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodefind');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, substr($facade, $from, $to - $from + 6) . "\n"
+		. 'function hits(r) { return r.matches.map(function (m) { return [m.from, m.to, m.line, m.col, m.lineText]; }); }' . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// A plain search ignores case unless asked, takes regexp characters
+// literally, and gives each hit its line, column and line text.
+function test_code_editor_find_all_plain_search()
+{
+	$result = code_editor_test_find_all_node(
+		'var t = ".a { color: red }\n.b { COLOR: blue }\n/* a.b */";' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' any: hits(findAll(t, "color")),'
+		. ' cased: hits(findAll(t, { search: "COLOR", caseSensitive: true })),'
+		. ' literal: hits(findAll(t, "a.b")),'
+		. ' empty: findAll(t, "").matches.length,'
+		. ' none: findAll(t, "zzz").matches.length }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(array(5, 10, 1, 5, '.a { color: red }'), array(23, 28, 2, 5, '.b { COLOR: blue }')), $result['any'], 'both lines, case ignored');
+	pg_assert_same(array(array(23, 28, 2, 5, '.b { COLOR: blue }')), $result['cased'], 'match case');
+	pg_assert_same(array(array(40, 43, 3, 3, '/* a.b */')), $result['literal'], 'the dot is literal');
+	pg_assert_same(0, $result['empty'], 'an empty search finds nothing');
+	pg_assert_same(0, $result['none'], 'no hit');
+}
+
+// A regexp reads ^ per line and skips empty matches; whole words leave a
+// hit inside a longer word out; an invalid pattern is an error, and the
+// limit cuts the list and says so.
+function test_code_editor_find_all_regexp_words_and_limit()
+{
+	$result = code_editor_test_find_all_node(
+		'var t = "var x = 1;\nvar xy = x;\n";' . "\n"
+		. 'var bad = findAll(t, { search: "(", regexp: true });' . "\n"
+		. 'var cut = findAll("aaaa", "a", 3);' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' starts: hits(findAll(t, { search: "^var", regexp: true })),'
+		. ' blank: findAll(t, { search: "^", regexp: true }).matches.length,'
+		. ' words: hits(findAll(t, { search: "x", wholeWord: true })),'
+		. ' bad: [!!bad.error, bad.matches.length],'
+		. ' cut: [cut.matches.length, cut.truncated] }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(array(0, 3, 1, 0, 'var x = 1;'), array(11, 14, 2, 0, 'var xy = x;')), $result['starts'], 'one hit per line start');
+	pg_assert_same(0, $result['blank'], 'empty matches are skipped');
+	pg_assert_same(array(array(4, 5, 1, 4, 'var x = 1;'), array(20, 21, 2, 9, 'var xy = x;')), $result['words'], 'xy is not the word x');
+	pg_assert_same(array(true, 0), $result['bad'], 'an invalid pattern');
+	pg_assert_same(array(3, true), $result['cut'], 'three hits, more left out');
+}
