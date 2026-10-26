@@ -1317,7 +1317,7 @@ function pg_recycle_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = (db_item("SHOW TABLES LIKE 'recycle_bin'") && db_item("SHOW COLUMNS FROM config LIKE 'recycle_retention_days'")) ? true : false;
+        $ready = (pg_schema_has('recycle_bin') && pg_schema_has('config', 'recycle_retention_days'));
     }
 
     return $ready;
@@ -1524,11 +1524,11 @@ function pg_delete_page_record($page_id, $user)
     pg_audit_record('delete', 'page', (int) $page_id, $audit_before);
 
     // Stored SEO findings for this page; links matter in both directions.
-    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+    if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) $page_id . "')");
     }
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) $page_id . "')");
         db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) $page_id . "')");
     }
@@ -2805,7 +2805,7 @@ function pg_short_link_recycle_ready()
     }
 
     $ready = (pg_recycle_ready() == true)
-        && (db_item("SHOW COLUMNS FROM short_links LIKE 'recycled'") ? true : false);
+        && pg_schema_has('short_links', 'recycled');
 
     return $ready;
 }
@@ -3258,8 +3258,8 @@ function pg_catalog_recycle_ready()
     // into recycle_bin like everything else, and the countdown and the daily
     // purge both read the retention setting that lives beside it.
     $ready = (pg_recycle_ready() == true)
-        && (db_item("SHOW COLUMNS FROM product_groups LIKE 'recycled'") ? true : false)
-        && (db_item("SHOW COLUMNS FROM products LIKE 'recycled'") ? true : false);
+        && pg_schema_has('product_groups', 'recycled')
+        && pg_schema_has('products', 'recycled');
 
     return $ready;
 }
