@@ -286,4 +286,107 @@ function test_designer_fx_panel()
 	pg_assert_contains("optHtml += propsInteractions(selectedNode);", $js, 'the panel shows the section');
 	pg_assert_contains("_sdFxBind(selectedNode);", $js, 'and binds it');
 	pg_assert_contains("if (_sdCodeSetFxAttr(node, name, now)) return;", $js, 'the code view hands the attributes back');
+	pg_assert_contains('data-fx-play', $got['slideHtml'], 'a moving effect has a Play button');
+	pg_assert_contains("        _sdScrollers();\n        _sdFxCanvas();", $js, 'the canvas binds interactions after every render');
+	pg_assert_contains("var _fxAttrs = _sdFxAttrs(node.props);", $js, 'canvas elements carry the attributes');
+}
+
+// pg_fx.src.js on a small fake document: the editor's canvas (pgFxEditing)
+// plays the entrances there when the file starts and shows a node drawn by
+// a later render in place, a node taken out is forgotten, replay() plays
+// an effect with important transitions and gives the node back, sticky
+// gets its position where no head style gave it one.
+function test_designer_fx_script_on_the_canvas()
+{
+	$fake = <<<'JS'
+var timers = [], observed = [], unobserved = [];
+function El(attrs) {
+	var el = this;
+	this.attrs = attrs; this.children = []; this.parentNode = null; this.offsetWidth = 200; this.offsetHeight = 100;
+	this.listeners = {};
+	var cls = {};
+	this.classList = {
+		add: function (c) { cls[c] = 1; }, remove: function (c) { delete cls[c]; },
+		contains: function (c) { return !!cls[c]; },
+		toggle: function (c) { if (cls[c]) { delete cls[c]; return false; } cls[c] = 1; return true; }
+	};
+	var prio = {};
+	this.style = {
+		opacity: '', transform: '', transition: '', top: '', position: '',
+		setProperty: function (k, v, p) { this[k] = v; prio[k] = p || ''; },
+		removeProperty: function (k) { this[k] = ''; prio[k] = ''; },
+		getPropertyPriority: function (k) { return prio[k] || ''; }
+	};
+	this.getAttribute = function (n) { return Object.prototype.hasOwnProperty.call(el.attrs, n) ? el.attrs[n] : null; };
+	this.addEventListener = function (t, f) { (el.listeners[t] = el.listeners[t] || []).push(f); };
+}
+var nodes = [];
+var document = {
+	readyState: 'complete',
+	querySelectorAll: function () { return nodes.filter(function (n) { return n.attrs['data-pg-fx'] !== undefined; }); },
+	documentElement: { contains: function (el) { return nodes.indexOf(el) !== -1; }, clientHeight: 800 },
+	addEventListener: function () {}
+};
+var window = {
+	pgFxEditing: true, innerHeight: 800,
+	matchMedia: function () { return { matches: false }; },
+	getComputedStyle: function (el) { return { display: 'block', position: el.style.position || 'static' }; },
+	IntersectionObserver: function () { this.observe = function (e) { observed.push(e); }; this.unobserve = function (e) { unobserved.push(e); }; },
+	requestAnimationFrame: function (f) { f(); },
+	setTimeout: function (f) { timers.push(f); },
+	addEventListener: function () {}
+};
+function setTimeout(f) { timers.push(f); }
+function clearTimeout() {}
+var first = new El({ 'data-pg-fx': 'fade', 'data-pg-fx-trigger': 'load' });
+var sticky = new El({ 'data-pg-fx': 'sticky', 'data-pg-fx-offset': '12' });
+var viewed = new El({ 'data-pg-fx': 'slide-up', 'data-pg-fx-trigger': 'view' });
+nodes.push(first, sticky, viewed);
+JS;
+	$steps = <<<'JS'
+var out = {};
+out.first = [first.style.opacity, first.style.transition.indexOf('opacity 600ms') === 0, first.classList.contains('pg-fx-armed')];
+out.sticky = [sticky.style.position, sticky.style.top];
+out.viewed = [viewed.style.opacity, observed.indexOf(viewed) !== -1];
+nodes = [first];
+var redrawn = new El({ 'data-pg-fx': 'fade', 'data-pg-fx-trigger': 'view' });
+nodes.push(redrawn);
+window.pgFxBind(document);
+out.redrawn = [redrawn.style.opacity, redrawn.classList.contains('pg-fx-armed'), observed.indexOf(redrawn) === -1];
+out.forgotten = unobserved.indexOf(viewed) !== -1;
+var hover = new El({ 'data-pg-fx': 'scale', 'data-pg-fx-trigger': 'hover' });
+hover.style.transform = 'rotate(2deg)';
+nodes.push(hover);
+window.pgFxBind(document);
+timers = [];
+out.replay = window.pgFx.replay(hover);
+out.during = [hover.style.transform, hover.style.getPropertyPriority('transition')];
+timers.shift()();
+out.back = [hover.style.transform];
+timers.shift()();
+out.after = [hover.style.transform, hover.style.transition, hover.style.getPropertyPriority('transition')];
+timers = [];
+out.replayEntrance = window.pgFx.replay(redrawn);
+out.entranceDuring = [redrawn.style.opacity, redrawn.style.getPropertyPriority('transition')];
+out.stickyReplay = window.pgFx.replay(sticky);
+console.log(JSON.stringify(out));
+JS;
+	$script = $fake . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_fx.src.js') . $steps;
+	$got = _test_fx_node($script);
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('', true, true), $got['first'], 'the first bind plays the entrance');
+	pg_assert_same(array('sticky', '12px'), $got['sticky'], 'sticky without a head style');
+	pg_assert_same(array('0', true), $got['viewed'], 'a view entrance waits, armed');
+	pg_assert_same(array('', true, true), $got['redrawn'], 'a node drawn later shows in place');
+	pg_assert_true($got['forgotten'], 'a node taken out is no longer observed');
+	pg_assert_true($got['replay'], 'a hover effect replays');
+	pg_assert_same(array('rotate(2deg) scale(1.05)', 'important'), $got['during'], 'towards the effect, important, on top of its own transform');
+	pg_assert_same(array('rotate(2deg)'), $got['back'], 'and back');
+	pg_assert_same(array('rotate(2deg)', '', ''), $got['after'], 'its own state and transition again');
+	pg_assert_true($got['replayEntrance']);
+	pg_assert_same(array('', 'important'), $got['entranceDuring'], 'an entrance plays to its own state');
+	pg_assert_false($got['stickyReplay'], 'sticky has nothing to replay');
 }

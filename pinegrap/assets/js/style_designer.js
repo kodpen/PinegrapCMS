@@ -10521,6 +10521,7 @@ const StyleDesigner = (function () {
         _reExecuteCanvasScripts(canvasDoc.body);
         _sdThemeSwitchers();
         _sdScrollers();
+        _sdFxCanvas();
         _initCanvasTooltips();
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
@@ -10603,6 +10604,38 @@ const StyleDesigner = (function () {
         scr.id = 'pg-scroller-js';
         try { scr.src = new URL('assets/js/pg_scroller.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
+    }
+
+    // Interactions play on the canvas as on the page: the same file
+    // (pg_fx.min.js), loaded into the frame once and bound again after
+    // every render. pgFxEditing makes a node drawn again by a later render
+    // show in place instead of playing its entrance on every change; the
+    // Interactions section's Play button replays one. While the canvas's
+    // motion is paused the frame answers reduced motion, so nothing moves.
+    function _sdFxCanvas() {
+        if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
+        var win = canvasDoc.defaultView;
+        if (win && typeof win.pgFxBind === 'function') { win.pgFxBind(canvasDoc); return; }
+        if (canvasDoc.getElementById('pg-fx-js') || !canvasDoc.head) return;
+        if (win) win.pgFxEditing = true;
+        var scr = canvasDoc.createElement('script');
+        scr.id = 'pg-fx-js';
+        try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
+        canvasDoc.head.appendChild(scr);
+    }
+
+    // The Play button of the Interactions section: the node's interaction
+    // once on the canvas, whether the canvas's motion plays or not.
+    function _sdFxReplay(node) {
+        var el = _sdCanvasInnerOf(node);
+        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
+        var win = canvasDoc && canvasDoc.defaultView;
+        if (!el || !win) return;
+        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
+        // The file is not in the frame yet: load it, then play.
+        _sdFxCanvas();
+        var scr = canvasDoc.getElementById('pg-fx-js');
+        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -12437,6 +12470,18 @@ const StyleDesigner = (function () {
             _attrEl.title = node.props.tooltipTitle;
         } else if (node.props.title) {
             _attrEl.title = node.props.title;
+        }
+        // The interaction, as the page writes it (_sdFxAttrs()); a copy of
+        // its names typed into the Attributes panel gives way, as there.
+        var _fxAttrs = _sdFxAttrs(node.props);
+        if (_fxAttrs) {
+            Array.prototype.slice.call(_attrEl.attributes).forEach(function (a) {
+                if (a.name === 'data-pg-fx' || a.name.indexOf('data-pg-fx-') === 0) _attrEl.removeAttribute(a.name);
+            });
+            _fxAttrs.replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) {
+                _attrEl.setAttribute(n, v === undefined ? '' : v);
+                return all;
+            });
         }
     }
 
@@ -31984,6 +32029,10 @@ const StyleDesigner = (function () {
         }
         if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
         if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
+        if (fx.trigger) {
+            h += row('', '<button type="button" class="btn btn-sm btn-outline-secondary" data-fx-play>' +
+                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
+        }
         if (fx.effect) {
             h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
                 esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
@@ -31999,6 +32048,8 @@ const StyleDesigner = (function () {
     function _sdFxBind(n) {
         var panel = document.getElementById('sd-properties');
         if (!panel || !_sdFxTakes(n)) return;
+        var play = panel.querySelector('[data-fx-play]');
+        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
         panel.querySelectorAll('[data-fx]').forEach(function (el) {
             var field = el.getAttribute('data-fx');
             var typed = el.type === 'number';
