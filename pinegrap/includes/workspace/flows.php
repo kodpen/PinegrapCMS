@@ -1521,6 +1521,7 @@ function ws_flow_js_strings()
         'fl_cond_metric'      => lang('A count'),
         'fl_cond_metric_pick' => lang('Choose a count'),
         'fl_cond_any_channel' => lang('Every channel'),
+        'fl_cond_threshold'   => lang('At most'),
         'fl_cond_record'      => lang('A field of a record'),
         'fl_cond_field'       => lang('Field'),
         'fl_cond_field_pick'  => lang('Choose a field'),

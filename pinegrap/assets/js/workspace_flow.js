@@ -2440,7 +2440,8 @@
     }
 
     // A count compared with a number; a count of a channel's tasks reads one
-    // channel, or every one.
+    // channel, or every one, and a count measured against a number (products
+    // low in stock) takes that number.
     function conditionMetric(box, node, rule) {
         var lists = stepLists();
         var options = [['', t('fl_cond_metric_pick')]].concat(lists.metrics.map(function (item) { return [item.key, item.label]; }));
@@ -2453,8 +2454,12 @@
         var info = lists.metrics.filter(function (item) { return item.key === rule.metric; })[0];
 
         metric.addEventListener('change', function () {
+            var picked = lists.metrics.filter(function (item) { return item.key === metric.value; })[0];
+
             rule.metric = metric.value;
-            rule.param = 0;
+            // A number to measure against starts at 5, as on the scheduled
+            // form (saMetricPicker() in workspace.js).
+            rule.param = (picked && (picked.scope === 'threshold')) ? 5 : 0;
             refreshNode(node);
             drawSettings();
         });
@@ -2468,6 +2473,20 @@
                 refreshNode(node);
             });
             box.appendChild(field(t('fl_task_channel'), place));
+        }
+
+        if (info && (info.scope === 'threshold')) {
+            var most = el('input', 'form-control form-control-sm wsf-number');
+
+            most.type = 'number';
+            most.min = '0';
+            most.max = '1000000';
+            most.value = String(rule.param || 0);
+            most.addEventListener('input', function () {
+                rule.param = Math.max(0, parseInt(most.value, 10) || 0);
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_cond_threshold'), most));
         }
 
         conditionCompare(box, node, rule, lists.counts.map(function (op) { return [op, lists.operators[op] || op]; }), null);
@@ -2532,7 +2551,8 @@
     }
 
     // How the value is compared, and the value: a field's choices where it
-    // has them, else what is typed. No value for "is empty" and its twin.
+    // has them, else the value as the field holds it (conditionValue()). No
+    // value for "is empty", its twin and "has gone by".
     function conditionCompare(box, node, rule, ops, meta) {
         var op = K.select(ops, rule.op || (ops[0] ? ops[0][0] : ''));
 
@@ -2543,7 +2563,7 @@
         });
         box.appendChild(field(t('fl_cond_op'), op));
 
-        if ((rule.op === 'empty') || (rule.op === 'not_empty')) {
+        if ((rule.op === 'empty') || (rule.op === 'not_empty') || (rule.op === 'overdue')) {
             return;
         }
 
@@ -2558,13 +2578,57 @@
                 refreshNode(node);
             });
         } else {
-            input = textInput(rule.value, 500, function (value) {
+            // "Falls within the next days" takes a number of days.
+            input = conditionValue((rule.op === 'within') ? null : meta, rule.value, function (value) {
                 rule.value = value;
                 refreshNode(node);
             });
         }
 
         box.appendChild(field(t('fl_cond_value'), input, (rule.op === 'within') ? t('fl_cond_within_help') : ''));
+    }
+
+    // A value a field is compared with, kept as the record keeps it and as
+    // the scheduled form sends it (saValueInput() in workspace.js): an amount
+    // shown as a decimal and kept in minor units (changeInput()), yes or no
+    // as '1' or '0', a day as YYYY-MM-DD, a moment as YYYY-MM-DD HH:MM:00, a
+    // decimal with a dot, anything else as typed. Always text: the store
+    // would keep a true or false as '' (ws_flow_text()).
+    function conditionValue(meta, value, onChange) {
+        var kind = meta ? meta.kind : '';
+        var input;
+
+        if (kind === 'money') {
+            return changeInput(meta, value, function (minor) {
+                onChange(String(minor));
+            });
+        }
+
+        if (kind === 'bool') {
+            input = K.select([['1', t('fl_change_yes')], ['0', t('fl_change_no')]], (String(value) === '1') ? '1' : '0');
+            input.addEventListener('change', function () {
+                onChange(input.value);
+            });
+
+            return input;
+        }
+
+        input = textInput(value, 500, function (typed) {
+            if (kind === 'datetime') {
+                typed = (typed === '') ? '' : typed.replace('T', ' ').slice(0, 16) + ':00';
+            }
+
+            onChange((kind === 'decimal') ? typed.replace(',', '.') : typed);
+        });
+
+        if (kind === 'date') {
+            input.type = 'date';
+        } else if (kind === 'datetime') {
+            input.type = 'datetime-local';
+            input.value = String(value || '').replace(' ', 'T').slice(0, 16);
+        }
+
+        return input;
     }
 
     // A record changed: its kind, update or delete, its number, and for an
