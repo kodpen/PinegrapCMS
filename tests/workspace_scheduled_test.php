@@ -688,3 +688,142 @@ function test_workspace_scheduled_report_input_refuses_a_channel_not_read()
 		$last = ($at !== false) ? $at : $last;
 	}
 }
+
+/**
+ * Runs record conditions on tasks in a PHP process of its own: functions.php,
+ * stand-ins for what scheduled.php asks of the other Workspace files (the
+ * kinds of change, a task, the right to see it), then scheduled.php. Task 11
+ * is in channel 7, which the creator reads; task 12 in channel 8, which they
+ * do not; task 13 is gone.
+ *
+ * @return array|null task id => ws_scheduled_rule_input()'s ok and error;
+ *                    null where PHP cannot be started
+ */
+function workspace_scheduled_test_task_conditions_alone()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgtaskrule');
+
+	if ($file === false) {
+		return null;
+	}
+
+	$script = <<<'PHP'
+<?php
+require FUNCTIONS_FILE;
+
+if (!class_exists('db')) {
+	class db
+	{
+		public static $con;
+	}
+}
+
+pg_error_throws(true);
+
+function ws_change_types()
+{
+	return array();
+}
+
+function ws_task($task_id)
+{
+	$tasks = array(
+		11 => array('id' => 11, 'channel_id' => 7, 'creator_id' => 2, 'title' => 'Order the banners'),
+		12 => array('id' => 12, 'channel_id' => 8, 'creator_id' => 2, 'title' => 'Salary review'),
+	);
+
+	return $tasks[(int) $task_id] ?? null;
+}
+
+function ws_can_see_task($rights, $task, $assignees = null)
+{
+	return is_array($task) && in_array((int) $task['channel_id'], $rights['reads'], true);
+}
+
+require SCHEDULED_FILE;
+
+$viewer = array('id' => 5, 'role' => 0, 'member' => true, 'reads' => array(7));
+$out = array();
+
+foreach (array(11, 12, 13) as $id) {
+	try {
+		$checked = ws_scheduled_rule_input($viewer, array('type' => 'record', 'record' => 'task', 'id' => $id, 'field' => 'status', 'op' => 'eq', 'value' => 'todo'));
+		$out[$id] = array('ok' => $checked['ok'], 'error' => $checked['error']);
+	} catch (RuntimeException $e) {
+		$out[$id] = array('database' => $e->getMessage());
+	}
+}
+
+echo json_encode($out);
+PHP;
+
+	file_put_contents($file, strtr($script, array(
+		'FUNCTIONS_FILE' => var_export(PG_FUNCTIONS_DIR . '/functions.php', true),
+		'SCHEDULED_FILE' => var_export(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php', true),
+	)));
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+
+	if (($code !== 0) || !is_array($result)) {
+		throw new RuntimeException('The run of the task conditions did not answer in JSON: ' . implode("\n", $out));
+	}
+
+	return $result;
+}
+
+// A condition on a task needs its creator to see the task, as the task's own
+// screens ask (ws_can_see_task()): the condition's words name the task by its
+// title, also on a draft's card and in the answer an application gets. One in
+// a channel the creator does not read is refused with the words of a task
+// that is not there, so the refusal does not tell that it exists.
+function test_workspace_scheduled_task_condition_needs_the_right_to_see_the_task()
+{
+	$result = workspace_scheduled_test_task_conditions_alone();
+
+	if ($result === null) {
+		return;
+	}
+
+	$refused = array('ok' => false, 'error' => 'Choose the record the condition looks at.');
+
+	pg_assert_same(array('ok' => true, 'error' => ''), $result[11] ?? null, 'a task the creator sees');
+	pg_assert_same($refused, $result[12] ?? null, 'a task in a channel the creator does not read');
+	pg_assert_same($refused, $result[13] ?? null, 'refused as a task that is gone');
+}
+
+// Stored rules as the form sends them: a count in money back in major units
+// with two decimals, since the save multiplies it by 100 again; anything else
+// as it is. A change over the API that keeps the rules reads them so, and so
+// do the words of a draft on its card, which keeps them as the form reads
+// them.
+function test_workspace_scheduled_rules_as_sent()
+{
+	pg_assert_true(function_exists('ws_scheduled_rules_as_sent'), 'scheduled.php turns stored rules back');
+
+	if (!function_exists('ws_scheduled_rules_as_sent')) {
+		return;
+	}
+
+	$rules = array(
+		array('type' => 'at', 'date' => '2026-12-01', 'time' => '18:00', 'repeat' => 'daily', 'every' => 1),
+		array('type' => 'metric', 'metric' => 'sales_today', 'param' => 0, 'op' => 'gt', 'value' => 500000),
+		array('type' => 'metric', 'metric' => 'orders_today', 'param' => 0, 'op' => 'gt', 'value' => 12),
+		'not a rule',
+	);
+
+	$sent = ws_scheduled_rules_as_sent($rules, array('sales_today', 'invoices_overdue_amount'));
+
+	pg_assert_same('5000.00', $sent[1]['value'], 'money in major units');
+	pg_assert_same(12, $sent[2]['value'], 'a count as it is');
+	pg_assert_same($rules[0], $sent[0], 'a time as it is');
+	pg_assert_same('not a rule', $sent[3], 'anything else as it is');
+}
