@@ -5,7 +5,7 @@ description: Open ERP work (e-document phase 3): Paraşüt send path, queue work
 
 ## What is left of the ERP plan?
 ERP phases -1 to 9 are done (2026.4.4–2026.4.10). Open, all e-document (phase 3) or outside approval:
-1. Paraşüt driver: the send path runs live on the owner's demo company since 2026-10-19; its e-document steps wait for a company with an e-document integration. Queue worker open; Paraşüt v4 has no webhook; title lookup done (#625, #806). State and decisions: docs/memory/plans/erp-parasut-driver-design.md
+1. Paraşüt driver: the send path runs live on the owner's demo company since 2026-10-19; its e-document steps wait for a company with an e-document integration. Queue worker open; Paraşüt v4 has no webhook. State: plans/erp-parasut-driver-design.md; leftovers: plans/erp-parasut-open-work.md
 2. Worker for `erp_edoc_queue` (the table exists, nothing processes it) and the e-document error notification that hangs on it.
 3. Logo İşbaşı live key (the owner enters it). The chain works end to end on the test environment.
 4. Code lists from Logo: return and exemption codes, `eArchivePaymentType` for internet sales. GİB UBL-TR code lists v1.43 took effect 2026-09-14: review exemption and withholding codes.
