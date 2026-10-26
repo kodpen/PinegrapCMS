@@ -744,10 +744,13 @@ function pg_panel_shared_component($request, $action)
             // markup, office_use_only keeps staff fields off a public
             // layout — the designer builds a form's starter layout from
             // these, in the form's own order. translate_values says whether
-            // the answers are translated (the field panel's switch).
+            // the answers are translated (the field panel's switch);
+            // collection_kind and reference_page_id the kind of a collection
+            // field and the form a reference points into.
             $sc_ff_rows = db_items(
                 "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only"
-                     . (pg_schema_has('form_fields', 'translate_values') ? ", translate_values" : "") . "
+                     . (pg_schema_has('form_fields', 'translate_values') ? ", translate_values" : "")
+                     . (pg_coll_ready() ? ", collection_kind, reference_page_id" : "") . "
                      FROM form_fields
                      WHERE page_id = '$sc_ff_pid'
                      ORDER BY sort_order ASC, id ASC"

@@ -222,6 +222,14 @@ function pg_cf_load_page_fields($page_id)
     // Optional in older schemas — probed, never assumed.
     $has_upload_folder = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation    = pg_cf_form_fields_has_column('validation_regex');
+    $kind_by_field = array();
+    if (pg_coll_ready()) {
+        foreach ((array)db_items(
+            "SELECT id, collection_kind, reference_page_id FROM form_fields
+             WHERE page_id = '$page_id' AND form_type = 'custom'") as $k) {
+            $kind_by_field[(int)$k['id']] = array((string)$k['collection_kind'], (int)$k['reference_page_id']);
+        }
+    }
     $translate_by_field = array();
     if (pg_schema_has('form_fields', 'translate_values')) {
         foreach ((array)db_items(
@@ -286,6 +294,8 @@ function pg_cf_load_page_fields($page_id)
             'office_use_only' => ((int)$r['office_use_only'] === 1),
             'wysiwyg'         => ((int)$r['wysiwyg'] === 1),
             'translate'       => isset($translate_by_field[$id]) ? $translate_by_field[$id] : true,
+            'kind'            => isset($kind_by_field[$id]) ? $kind_by_field[$id][0] : '',
+            'reference_page_id' => isset($kind_by_field[$id]) ? $kind_by_field[$id][1] : 0,
             'rss_field'       => (string)$r['rss_field'],
             'contact_field'   => (string)$r['contact_field'],
             'default_value'   => (string)$r['default_value'],
@@ -420,7 +430,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
-        'pretty_urls' => 0, 'double_opt_in' => 0,
+        'pretty_urls' => 0, 'double_opt_in' => 0, 'collection' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
     // The 11.0.27 column is read once it is there.
@@ -432,7 +442,8 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '') . "
+                membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '')
+                . (pg_coll_ready() ? ', collection' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -468,6 +479,9 @@ function pg_cf_load_page_form_settings($page_id)
         'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
         // The contact joins the group only through the link mailed to it.
         'double_opt_in'        => ($double_opt_in_ready && (int)$row['double_opt_in'] === 1) ? 1 : 0,
+        // A collection: its records are items other forms' records may
+        // point at (includes/fn/collections.php).
+        'collection'           => (isset($row['collection']) && (int)$row['collection'] === 1) ? 1 : 0,
     );
 }
 
@@ -821,6 +835,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     if (array_key_exists('pretty_urls', $settings)) {
         $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
     }
+    if (array_key_exists('collection', $settings) && pg_coll_ready()) {
+        $set['collection'] = !empty($settings['collection']) ? '1' : '0';
+    }
     if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
         $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';
     }
@@ -947,6 +964,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $has_upload_col = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation = pg_cf_form_fields_has_column('validation_regex');
     $has_translate  = pg_schema_has('form_fields', 'translate_values');
+    $has_coll       = pg_coll_ready();
     $user_id        = (int)$user_id;
 
     // What is on the page's form right now, so we can tell an update from an
@@ -1033,6 +1051,16 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             $set['translate_values'] = pg_cf_translate_flag(
                 array_key_exists('translate', $f) ? $f['translate'] : null, $type,
                 ($id > 0 && isset($existing[$id])) ? $existing[$id] : null);
+        }
+
+        // A collection field's kind, kept only where the field's type can
+        // have it, and the form a reference points into, kept only while that
+        // page holds a form (includes/fn/collections.php).
+        if ($has_coll) {
+            $kind = pg_coll_field_kind(isset($f['kind']) ? $f['kind'] : '', $type);
+            $set['collection_kind']   = $kind;
+            $set['reference_page_id'] = pg_coll_reference_target(
+                pg_coll_field_reference($kind, isset($f['reference_page_id']) ? $f['reference_page_id'] : 0));
         }
 
         // A folder the operator cannot edit is not a folder they may upload
@@ -2119,6 +2147,10 @@ function _pg_cf_node_record($node)
         'wysiwyg'            => array_key_exists('wysiwyg', $cf) ? !empty($cf['wysiwyg']) : null,
         'translate'          => array_key_exists('translate', $cf) ? !empty($cf['translate']) : null,
         'url_param'          => (isset($cf['url_param']) && is_scalar($cf['url_param'])) ? trim((string)$cf['url_param']) : '',
+        // A collection field's kind and the form a reference points into
+        // (pg_coll_field_kind(), pg_coll_field_reference()).
+        'kind'               => (isset($cf['kind']) && is_string($cf['kind'])) ? $cf['kind'] : '',
+        'ref'                => (isset($cf['ref']) && (is_int($cf['ref']) || is_string($cf['ref']))) ? $cf['ref'] : 0,
     );
 }
 
@@ -2254,6 +2286,8 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'rss_field'       => $rss,
                         'contact_field'   => $cf['contact_field'],
                         'url_param'       => $cf['url_param'],
+                        'kind'            => $cf['kind'],
+                        'reference_page_id' => $cf['ref'],
                         'default_value'   => $default,
                         'folder_default'  => false,
                         'size'            => (int)(isset($a['size']) ? $a['size'] : 0),
