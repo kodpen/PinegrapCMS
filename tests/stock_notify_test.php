@@ -248,3 +248,14 @@ function test_stock_notify_endpoint_order()
 	pg_assert_contains('pg_safe_redirect_path(', $source, 'back to a path on the site');
 	pg_assert_contains("new liveform('catalog_detail')", $source, "the notice shows where the product page's messages are");
 }
+
+// The number a request keeps for the text message: a mobile one in the
+// international form, nothing else.
+function test_stock_notify_phone()
+{
+	pg_assert_same('905321234567', pg_stock_notify_phone('0532 123 45 67'), 'a Turkish mobile');
+	pg_assert_same('905321234567', pg_stock_notify_phone(' +90 (532) 123-45-67 '), 'with its country code');
+	pg_assert_same('', pg_stock_notify_phone('0212 123 45 67'), 'a landline takes no text');
+	pg_assert_same('', pg_stock_notify_phone(''), 'none typed');
+	pg_assert_same('', pg_stock_notify_phone(array('0532 123 45 67')), 'not a string');
+}

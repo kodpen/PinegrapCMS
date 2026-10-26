@@ -138,6 +138,23 @@ function pg_stock_notify_email($value)
 }
 
 /**
+ * The mobile number a request keeps for the text message: the international
+ * form in digits (pg_sms_number()), '' when none was typed or it is no
+ * mobile number a text can reach.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_stock_notify_phone($value)
+{
+    if (!is_string($value) || (trim($value) === '') || !function_exists('pg_sms_number')) {
+        return '';
+    }
+
+    return pg_sms_number($value);
+}
+
+/**
  * What a request comes to, in the order it is checked.
  *
  * @param bool       $ready   pg_stock_notify_ready()
