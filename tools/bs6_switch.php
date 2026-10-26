@@ -122,6 +122,8 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'names', 'bs6_switch_component_names');
 	}
 
+	$plan[] = array('assets/js/style_designer.js', 'dialogs', 'bs6_switch_editor_dialogs');
+
 	foreach (bs6_switch_texts() as $path => $pairs) {
 		$plan[] = array($path, 'texts', function ($source) use ($pairs) {
 			return bs6_switch_pins($source, $pairs);
