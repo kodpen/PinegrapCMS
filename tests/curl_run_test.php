@@ -180,3 +180,29 @@ function test_curl_run_post_without_body_is_bare()
 	pg_assert_same(true, $options['CURLOPT_POST']);
 	pg_assert_same('', $options['CURLOPT_POSTFIELDS']);
 }
+
+// Both licence checks (output.php, dashboard widget 14) post the same JSON
+// shape to the licence server: 10 s timeouts, a fresh connection, the
+// explicit Content-Length they always sent. The status check followed
+// redirects, now at most 5 and https only; widget 14 follows none.
+function test_curl_run_license_request_options()
+{
+	$data = '{"hostname":"example.com"}';
+
+	pg_assert_same(array(
+		'body'            => $data,
+		'headers'         => array('Content-Type: application/json', 'Content-Length: 26'),
+		'timeout'         => 10,
+		'connect_timeout' => 10,
+		'forbid_reuse'    => true,
+		'follow'          => 0,
+	), pg_license_request_options($data, 0));
+
+	$options = pg_curl_run_options('POST', 'https://www.kodpen.com/api2', pg_license_request_options($data, 5), curl_run_test_env());
+
+	pg_assert_same(true, $options['CURLOPT_POST']);
+	pg_assert_same($data, $options['CURLOPT_POSTFIELDS']);
+	pg_assert_same(true, $options['CURLOPT_FORBID_REUSE']);
+	pg_assert_same(5, $options['CURLOPT_MAXREDIRS']);
+	pg_assert_same('CURLPROTO_HTTPS', $options['CURLOPT_REDIR_PROTOCOLS']);
+}

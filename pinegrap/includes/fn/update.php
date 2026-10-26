@@ -277,6 +277,23 @@ function pg_curl_run($method, $url, $options = array())
 }
 
 /**
+ * The pg_curl_run() options of a licence server request ($data is the JSON
+ * body): the explicit Content-Length both licence checks always sent, 10 s
+ * timeouts, a fresh connection, $follow https redirects at most.
+ */
+function pg_license_request_options($data, $follow)
+{
+    return array(
+        'body'            => $data,
+        'headers'         => array('Content-Type: application/json', 'Content-Length: ' . strlen($data)),
+        'timeout'         => 10,
+        'connect_timeout' => 10,
+        'forbid_reuse'    => true,
+        'follow'          => (int) $follow,
+    );
+}
+
+/**
  * Turn a certificate-related cURL error number into an actionable sentence.
  *
  * Without this the operator sees "cURL error 60" and has no idea that the
