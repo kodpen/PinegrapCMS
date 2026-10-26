@@ -3,7 +3,8 @@
  *
  * Workspace - the customer card on a channel's Summary tab: who the channel's
  * customer is, the records tied to them, their latest orders, the balance of
- * their current accounts, their open sales quotes and the forms they sent.
+ * their current accounts, their open sales quotes and the forms they sent,
+ * and "Remind me" for a follow-up on a day.
  *
  * assets/js/workspace.js asks this file for the card and lends it its own
  * helpers (api, t, el, ...), so nothing here talks to the server or shows a
@@ -215,6 +216,119 @@
         return part;
     }
 
+    // A day a week from now, as a date field takes it.
+    function weekAhead() {
+        var day = new Date();
+
+        day.setDate(day.getDate() + 7);
+
+        return day.getFullYear() + '-' + ('0' + (day.getMonth() + 1)).slice(-2) + '-' + ('0' + day.getDate()).slice(-2);
+    }
+
+    // A field of the reminder form with its label.
+    function field(h, label, input, className) {
+        var wrap = h.el('div', className);
+        var caption = h.el('label', 'form-label small mb-1', label);
+
+        input.id = h.nextId('ws-cust-remind-');
+        caption.htmlFor = input.id;
+        wrap.appendChild(caption);
+        wrap.appendChild(input);
+
+        return wrap;
+    }
+
+    // "Remind me about this customer": a follow-up task for the reader on
+    // the channel, tagged with the customer, due and reminded on the day they
+    // pick (ws_customer_followup_open(), includes/workspace/followups.php).
+    function remindPart(h, channel) {
+        var part = h.el('div', 'card-body border-bottom d-none');
+        var open = h.button('btn btn-sm btn-outline-secondary', h.t('cust_remind'), 'bi-alarm', h.t('cust_remind_help'));
+
+        function close() {
+            h.clear(part);
+            part.classList.add('d-none');
+        }
+
+        function done(task) {
+            var row = h.el('div', 'd-flex flex-wrap align-items-center gap-2 small');
+            var go = h.button('btn btn-sm btn-link p-0', h.t('open_task'));
+
+            go.addEventListener('click', function () {
+                h.openTask(task.id);
+            });
+
+            row.appendChild(h.icon('bi-alarm', 'text-success'));
+            row.appendChild(h.el('span', '', h.t('cust_remind_done', task.number, task.due_label)));
+            row.appendChild(go);
+            h.clear(part);
+            part.appendChild(row);
+        }
+
+        function form() {
+            var box = h.el('form', 'd-flex flex-wrap align-items-end gap-2');
+            var what = h.el('input', 'form-control form-control-sm');
+            var day = h.el('input', 'form-control form-control-sm');
+            var time = h.el('input', 'form-control form-control-sm');
+            var save = h.el('button', 'btn btn-sm btn-primary', h.t('cust_remind_save'));
+            var cancel = h.button('btn btn-sm btn-outline-secondary', h.t('cancel'));
+            var actions = h.el('div', 'd-flex gap-2');
+            var inputs = { title: what, due_date: day, due_time: time };
+
+            what.type = 'text';
+            what.maxLength = 255;
+            what.placeholder = h.t('cust_remind_default', channel.name);
+            day.type = 'date';
+            day.required = true;
+            day.value = weekAhead();
+            time.type = 'time';
+            save.type = 'submit';
+
+            box.appendChild(field(h, h.t('cust_remind_what'), what, 'flex-grow-1'));
+            box.appendChild(field(h, h.t('cust_remind_day'), day, ''));
+            box.appendChild(field(h, h.t('cust_remind_time'), time, ''));
+            actions.appendChild(save);
+            actions.appendChild(cancel);
+            box.appendChild(actions);
+            box.appendChild(h.el('div', 'form-text w-100 mt-0', h.t('cust_remind_note')));
+
+            cancel.addEventListener('click', close);
+            box.addEventListener('submit', function (event) {
+                event.preventDefault();
+                save.disabled = true;
+
+                h.api('ws_channel_customer_followup', {
+                    channel_id: channel.id,
+                    title: what.value,
+                    due_date: day.value,
+                    due_time: time.value
+                }).then(function (data) {
+                    done(data.task);
+                }, function (error) {
+                    save.disabled = false;
+                    h.fail(error);
+                    (inputs[error.field] || day).focus();
+                });
+            });
+
+            return box;
+        }
+
+        open.addEventListener('click', function () {
+            var shown = part.querySelector('form');
+
+            close();
+
+            if (!shown) {
+                part.appendChild(form());
+                part.classList.remove('d-none');
+                part.querySelector('input').focus();
+            }
+        });
+
+        return { button: open, part: part };
+    }
+
     function card(channel, h) {
         var node = h.el('div', 'card ws-customer-card mt-4');
         var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
@@ -222,6 +336,15 @@
 
         header.appendChild(h.el('span', 'text-uppercase h5 text-primary fw-bold mb-0', h.t('customer')));
         node.appendChild(header);
+
+        // Only where the reader may write: the follow-up is a task of the channel.
+        if (channel.can_post && !channel.archived) {
+            var remind = remindPart(h, channel);
+
+            header.appendChild(remind.button);
+            node.appendChild(remind.part);
+        }
+
         node.appendChild(body);
 
         // No card for a customer gone since, or one the reader cannot read.
