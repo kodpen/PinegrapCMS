@@ -10,7 +10,8 @@
  *
  * Panel files are counted; files shared with the site and the visual editor's
  * files are listed apart, since they are converted per function. Site files
- * stay on Bootstrap 5 and are not read.
+ * stay on Bootstrap 5 and are not read, nor is code marked
+ * `/* @pg-site-output *\/` (bs6_site_output_ranges()).
  *
  * Usage:  php tools/check_bs6.php [--verbose] [--strict] [--top=N]
  *
@@ -79,6 +80,7 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 
 	$source = (string) file_get_contents($product . '/' . $path);
 	$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+	$site_output = bs6_site_output_ranges($source);
 
 	if ($ext === 'css') {
 		// A selector on a class v6 renames or drops stops matching after the
@@ -118,6 +120,10 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		}
 
 		foreach ($matches[0] as $match) {
+			if ($site_output && bs6_in_ranges($match[1], $site_output)) {
+				continue;
+			}
+
 			$add($check, $kind, $path, bs6_line_of($source, $match[1]), $match[0]);
 		}
 	}

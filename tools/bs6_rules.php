@@ -17,8 +17,8 @@
  *
  * Scope: only panel files are rewritten. Site output stays on Bootstrap 5,
  * files shared by panel and site are handled per function, and the visual
- * editor's files wait for their site-output markers
- * (docs/memory/ui/bootstrap-6-codemod.md).
+ * editor's style_designer.js is rewritten outside the code marked
+ * `/* @pg-site-output *\/` (docs/memory/ui/bootstrap-6-codemod.md).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -535,24 +535,113 @@ function bs6_line_of($source, $offset)
 }
 
 /**
+ * Byte ranges of site-output code: markup Bootstrap 5.3.8 draws (written
+ * into a page, or drawn in the editor's canvas), which the codemod and
+ * check_bs6.php leave alone. A line holding only the marker
+ * `/* @pg-site-output *\/` covers the declaration below it: up to the next
+ * line at the declaration's indentation or less that is not a closing
+ * bracket. The marker at the end of a code line covers that line.
+ *
+ * Returns a list of array(start, end) byte offsets, end exclusive.
+ */
+function bs6_site_output_ranges($source)
+{
+	$marker = '/* @pg-site-output */';
+
+	if (strpos($source, $marker) === false) {
+		return array();
+	}
+
+	$ranges = array();
+	$lines = explode("\n", $source);
+	$offsets = array();
+	$offset = 0;
+
+	foreach ($lines as $i => $line) {
+		$offsets[$i] = $offset;
+		$offset += strlen($line) + 1;
+	}
+
+	$count = count($lines);
+
+	for ($i = 0; $i < $count; $i++) {
+		if (strpos($lines[$i], $marker) === false) {
+			continue;
+		}
+
+		if (trim($lines[$i]) !== $marker) {
+			$ranges[] = array($offsets[$i], $offsets[$i] + strlen($lines[$i]));
+			continue;
+		}
+
+		$start = $i + 1;
+		if ($start >= $count) {
+			continue;
+		}
+
+		$indent = strlen($lines[$start]) - strlen(ltrim($lines[$start]));
+		$end = $start + 1;
+
+		while ($end < $count) {
+			$line = $lines[$end];
+			$text = ltrim($line);
+			$depth = strlen($line) - strlen($text);
+
+			if ($text !== '' && $depth <= $indent && strpos('}])', $text[0]) === false) {
+				break;
+			}
+
+			$end++;
+		}
+
+		$ranges[] = array($offsets[$i], $offsets[$end - 1] + strlen($lines[$end - 1]));
+		$i = $end - 1;
+	}
+
+	return $ranges;
+}
+
+// Whether a byte offset lies in one of bs6_site_output_ranges().
+function bs6_in_ranges($offset, array $ranges)
+{
+	foreach ($ranges as $range) {
+		if ($offset >= $range[0] && $offset < $range[1]) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
  * Converts the class lists in a source file. With $lines (a set of 1-based
  * line numbers as array keys) only the lists starting on those lines change:
  * that is how a branch older than the switch converts the lines it added.
  *
- * Returns array('source', 'changed' => int, 'reviews' => array of
- * array('line', 'token', 'reason')).
+ * Class lists in site-output code (bs6_site_output_ranges()) stay as they
+ * are and are counted in 'kept'.
+ *
+ * Returns array('source', 'changed' => int, 'kept' => int, 'reviews' =>
+ * array of array('line', 'token', 'reason')).
  */
 function bs6_convert_source($source, $lines = null)
 {
 	$out = '';
 	$position = 0;
 	$changed = 0;
+	$kept = 0;
 	$reviews = array();
+	$site_output = bs6_site_output_ranges($source);
 
 	foreach (bs6_find_class_lists($source) as $list) {
 		$line = bs6_line_of($source, $list['offset']);
 
 		if ($lines !== null && !isset($lines[$line])) {
+			continue;
+		}
+
+		if ($site_output && bs6_in_ranges($list['offset'], $site_output)) {
+			$kept++;
 			continue;
 		}
 
@@ -569,7 +658,7 @@ function bs6_convert_source($source, $lines = null)
 
 	$out .= substr($source, $position);
 
-	return array('source' => $out, 'changed' => $changed, 'reviews' => $reviews);
+	return array('source' => $out, 'changed' => $changed, 'kept' => $kept, 'reviews' => $reviews);
 }
 
 /**
@@ -577,8 +666,9 @@ function bs6_convert_source($source, $lines = null)
  *   'panel'  - rewritten by the codemod;
  *   'site'   - site output, stays on Bootstrap 5, never rewritten;
  *   'shared' - prints for panel and site: converted per function by hand;
- *   'editor' - the visual editor, rewritten only outside the site-output
- *              members marked in step B7;
+ *   'editor' - the visual editor: only the files of
+ *              bs6_marked_editor_files() are rewritten, outside their
+ *              site-output code; the rest is converted by hand;
  *   'adapter' - assets/js/pg_ui.js, which names both versions on purpose;
  *   'vendor' - third-party, generated or data files;
  *   'other'  - no markup the rules read (images, fonts, json, ...).
@@ -834,6 +924,21 @@ function bs6_syntax_error($path, $source)
 	}
 
 	return trim($result['err'] . ' ' . $result['out']);
+}
+
+// The visual editor's files whose site-output code carries the
+// `/* @pg-site-output */` marker, so the codemod may rewrite the rest.
+function bs6_marked_editor_files()
+{
+	return array('assets/js/style_designer.js');
+}
+
+// Whether --all, --diff and a named path rewrite this file without --force.
+function bs6_codemod_converts($path)
+{
+	$kind = bs6_scope_kind($path);
+
+	return $kind === 'panel' || ($kind === 'editor' && in_array(str_replace('\\', '/', $path), bs6_marked_editor_files(), true));
 }
 
 // Every file under $root (the pinegrap/ folder) with its scope kind, as

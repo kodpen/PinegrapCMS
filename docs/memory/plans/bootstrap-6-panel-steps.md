@@ -5,7 +5,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
 - Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B4, B5, B6 (`bootstrap-6-panel-done.md`).
-- B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
+- B7 Visual editor stage 0: B7a done (#1822, site-output markers and `pgUI` calls, `ui/bootstrap-6-editor-markers.md`). B7b: mark the two members listed there after #1808, pin the chrome look in style_designer.css.
 
 ## What happens at and after the switch?
 - B8 Switch: `bootstrap-6-switch.md`.
