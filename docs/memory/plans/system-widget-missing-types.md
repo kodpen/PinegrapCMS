@@ -37,6 +37,6 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - The multi-step checkout is done. Next: the owner's list (open question above) picks the types and their order; none starts before it. One widget per PR.
 
 ## Which steps are there?
-1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#PRNUM); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
+1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
 - Left from 4: what [[order-preview-widget]] lists under "What is left out?".
 5. The owner's list of the remaining types (table above).
