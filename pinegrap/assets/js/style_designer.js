@@ -14072,7 +14072,7 @@ const StyleDesigner = (function () {
         '__has_low_stock': 1, '__has_tax': 1, '__has_shipping': 1,
         '__has_offers': 1, '__has_terms': 1, '__is_cancelled': 1,
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
-        '__has_tracking_link': 1
+        '__has_tracking_link': 1, '__has_related': 1
     };
     // A date the way the server prints one when no format suffix is given:
     // day/month/year and a 12-hour clock. Today's date, so the canvas never

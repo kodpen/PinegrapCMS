@@ -23,7 +23,7 @@ description: Which system widget records carry the front-end edit pencil (produc
 - Customer-owned data: `shopping_cart`, `express_order`, `order_view` (lines are the customer's order, staff open it in the panel's order screen), `my_account` (the member's own submissions; their detail page has the pencil), `account_invoices`, `address_book`, `account_profile`, `email_preferences`, `account_security`, `change_password`, `set_password`, `account_email`, `logout`.
 - No record behind them: `login_form`, `login_region`, `forgot_password`, `registration`, `membership`, `cart_link`, `error_page`, `custom_form` (the form is edited in the visual editor itself).
 - `language_switcher`: its rows are the site's languages, a setting, not content.
-- `catalog_item_view`'s cross-sell cards (`_civ_render_cross_sell()`): each opens its product page, which carries the pencil.
+- `catalog_item_view`'s cross-sell cards (a `product.related` list): each opens its product page, which carries the pencil.
 - `search_results`: a row is a link to a page, product or group and carries no record id (`_pg_sw_search_collect()` rows; advanced search keeps only an address in `search_items`); the page it opens carries the pencil, so the list repeats none.
 
 ## Where does a new kind's pencil go?

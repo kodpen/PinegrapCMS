@@ -254,3 +254,114 @@ function _parts_xs_norm($node)
 	if (array_keys($node) !== range(0, count($node) - 1)) ksort($node);
 	return $node;
 }
+
+// A currency sign stored as an entity (the lira's &#8378;, &euro;): the
+// rows hold the sign itself, so a card shows it, escaped once.
+function test_widget_parts_cross_sell_prices_keep_their_sign()
+{
+	$items = array(
+		array('id' => 4, 'name' => 'CUP-1', 'short_description' => 'Tea cup', 'image_url' => '', 'url' => '/shop/cup',
+			'price_formatted' => '&#8378;15,00', 'original_price_formatted' => '&#8378;20,00', 'has_discount' => '1'),
+		array('id' => 5, 'name' => 'POT-1', 'short_description' => '', 'image_url' => '', 'url' => '/shop/pot',
+			'price_formatted' => '&euro;30,00 EUR', 'original_price_formatted' => '&euro;30,00 EUR', 'has_discount' => '0'),
+	);
+	$rows = pg_sw_list_product_related_rows($items);
+	pg_assert_same('₺15,00', $rows[0]['__related_price'], 'the lira');
+	pg_assert_same('₺20,00', $rows[0]['__related_original_price'], 'the lira before the discount');
+	pg_assert_same('€30,00 EUR', $rows[1]['__related_price'], 'the euro');
+	pg_assert_same('', $rows[1]['__related_original_price'], 'no discount, no price before it');
+
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(_parts_xs_card())),
+	));
+	$html = _parts_xs_render($tree, $items, '1');
+	pg_assert_contains('>₺15,00</span>', $html, 'the sale price');
+	pg_assert_contains('>₺20,00</span>', $html, 'the price before the discount');
+	pg_assert_contains('>€30,00 EUR</span>', $html, 'the euro');
+	pg_assert_true(strpos($html, '&amp;') === false && strpos($html, '&#8378;') === false && strpos($html, '&euro;') === false,
+		'escaped once: no entity shows as text');
+}
+
+// Switched off, the part draws nothing (__has_related empty), so the detail
+// view reads no products bought together for it; a list of them the design
+// placed where it still shows is read as before.
+function test_widget_parts_cross_sell_off_reads_nothing()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
+	pg_assert_contains("if (\$_civ_xsell_off && isset(\$_civ_listed['product.related']) && !_civ_related_list_shown_when_off(\$tree_decoded)) {\n"
+		. "            unset(\$_civ_listed['product.related']);", $src, 'the detail view leaves them out of its read');
+
+	$with_part = json_decode(pg_sw_default_parts_apply(json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(_parts_xs_card())),
+	))), 'catalog_item_view'), true);
+	pg_assert_false(_civ_related_list_shown_when_off($with_part), 'the part alone: nothing to read');
+
+	$own = array('type' => 'loop_area', 'props' => array('source' => 'product.related'), 'children' => array(_parts_xs_card()));
+	$box = function ($token, $op, $value, $children) {
+		return array('type' => 'semantic', 'props' => array_merge(array('tag' => 'div'), pg_sw_part_when($token, $op, $value)), 'children' => $children);
+	};
+	$beside = $with_part;
+	$beside['children'][] = $own;
+	pg_assert_true(_civ_related_list_shown_when_off($beside), 'a list of the design\'s own beside the part');
+	pg_assert_true(_civ_related_list_shown_when_off(array('type' => 'root', 'props' => array(), 'children' => array($own))), 'the design\'s own list');
+	pg_assert_true(_civ_related_list_shown_when_off(array('type' => 'root', 'props' => array(), 'children' => array($box('__has_discount', 'not_empty', '', array($own))))),
+		'under a condition on another value');
+	pg_assert_false(_civ_related_list_shown_when_off(array('type' => 'root', 'props' => array(), 'children' => array($box('__has_related', 'eq', '1', array($own))))),
+		'under a condition the empty value cuts');
+	pg_assert_true(_civ_related_list_shown_when_off(array('type' => 'root', 'props' => array(), 'children' => array($box('__has_related', 'empty', '', array($own))))),
+		'under one it keeps');
+	pg_assert_false(_civ_related_list_shown_when_off(array('type' => 'root', 'props' => array(), 'children' => array(_parts_xs_card()))), 'no list');
+}
+
+// On the canvas the part draws its heading and cards in the sample state
+// (__has_related reads as a flag that is set) and nothing with every value
+// empty (style_designer.js).
+function test_widget_parts_cross_sell_canvas_sample()
+{
+	if (!function_exists('exec')) return;
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) return;
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$cut = function ($from, $to) use ($js) {
+		$a = strpos($js, $from);
+		pg_assert_true($a !== false, 'found: ' . trim($from));
+		$b = strpos($js, $to, $a);
+		return substr($js, $a, $b + strlen($to) - $a);
+	};
+	$src = $cut("\n    var SD_COND_WS = ", ";\n")
+		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
+		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
+		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n");
+	foreach (array('_sdCondPlain', '_sdCondText', '_sdCondFold', '_sdCondFigureOk', '_sdCondFigureNumber', '_sdCondAmount', '_sdCondNumber',
+		'_sdCondComparable', '_sdCondIsWhole', '_sdCondEval', '_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates',
+		'_sdCondCanvasValue', '_sdCondCanvasShows', '_sdTokenPlaceholder') as $fn) {
+		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
+	}
+	// A token no preview map names reads as its placeholder, as in
+	// _displayValueForBinding().
+	$stubs = "function _sdT(s) { return s; }\nfunction _sdFormFieldOf() { return null; }\n"
+		. "function _displayValueForBinding(prop, token) { return _sdTokenPlaceholder(token, null); }\n";
+	$script = 'var part = ' . json_encode(pg_sw_part_catalog_cross_sell()) . ";\n"
+		. "var drawn = function (state) { var out = []; (function walk(n, on) {\n"
+		. "  if (!n || typeof n !== 'object') return; if (Array.isArray(n)) { n.forEach(function (c) { walk(c, on); }); return; }\n"
+		. "  var here = on && _sdCondCanvasShows(n, state);\n"
+		. "  if (here && n.props && n.props.cssClass) out.push(n.props.cssClass);\n"
+		. "  walk(n.children || [], here); })(part, true); return out; };\n"
+		. "console.log(JSON.stringify({ sample: drawn('sample'), empty: drawn('empty') }));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgpartsxs');
+	if ($file === false) return;
+	file_put_contents($file, $stubs . $src . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$a = json_decode($printed, true);
+	pg_assert_true(is_array($a), 'Node printed JSON: ' . $printed);
+	pg_assert_true(in_array('h5 mb-3', $a['sample'], true) && in_array('row g-3', $a['sample'], true), 'the heading and the cards in the sample: ' . $printed);
+	pg_assert_same(array(), $a['empty'], 'nothing with every value empty');
+}

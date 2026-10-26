@@ -115,7 +115,10 @@ function pg_sw_list_product_attr_rows($rows)
 // The rows of a related products list from the cross-sell items
 // (_civ_get_cross_sell_items(): the products ordered with this one, else
 // those of its groups). The prices are plain text: the price paid, and
-// the sticker price only when a discount applies.
+// the sticker price only when a discount applies. pg_visitor_money()
+// writes them with the currency sign as stored, an entity for some
+// (&#8378;, &euro;); the sign itself is kept, since the list pass escapes
+// every row value once and an entity would show as its text.
 function pg_sw_list_product_related_rows($items)
 {
     $out = array();
@@ -126,8 +129,10 @@ function pg_sw_list_product_related_rows($items)
             '__related_short_description' => isset($it['short_description']) ? (string)$it['short_description'] : '',
             '__related_url'               => isset($it['url']) ? (string)$it['url'] : '#',
             '__related_image_url'         => isset($it['image_url']) ? (string)$it['image_url'] : '',
-            '__related_price'             => isset($it['price_formatted']) ? (string)$it['price_formatted'] : '',
-            '__related_original_price'    => (!empty($it['has_discount']) && isset($it['original_price_formatted'])) ? (string)$it['original_price_formatted'] : '',
+            '__related_price'             => isset($it['price_formatted'])
+                ? html_entity_decode((string)$it['price_formatted'], ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
+            '__related_original_price'    => (!empty($it['has_discount']) && isset($it['original_price_formatted']))
+                ? html_entity_decode((string)$it['original_price_formatted'], ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
         );
     }
     return $out;

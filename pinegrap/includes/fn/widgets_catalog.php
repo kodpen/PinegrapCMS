@@ -3819,6 +3819,33 @@ function _civ_cross_sell_part_node($node)
     return null;
 }
 
+// Whether the detail view tree $node holds a list of the products bought
+// together (product.related) that still shows with cross-sell switched
+// off, when __has_related is empty: one that no condition on __has_related
+// cuts, on a node above it. The cross-sell part's list stands under such
+// conditions (pg_sw_part_catalog_cross_sell()), so with cross-sell off
+// nothing is read for it; a list the design placed elsewhere is read as
+// before. A condition that cannot be read draws nothing, and one on a
+// node holding a required control is ignored, as in _render_tree_node().
+function _civ_related_list_shown_when_off($node)
+{
+    if (!is_array($node)) return false;
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.related') return true;
+    $type = isset($node['type']) ? (string)$node['type'] : '';
+    if (isset($node['props']['_bindings']['show_if']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        $cond = pg_sw_cond_spec($node['props']);
+        if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
+        if ($cond === false) return false;
+        if (is_array($cond) && strtolower($cond['token']) === '__has_related' && !pg_sw_cond_eval($cond['op'], '', $cond['operand'])) {
+            return false;
+        }
+    }
+    foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
+        if (_civ_related_list_shown_when_off($child)) return true;
+    }
+    return false;
+}
+
 // The cross-sell part $node drawn alone for product $product_id of widget
 // $sid with the related rows $rows (pg_sw_list_product_related_rows()), as
 // the detail view draws it: the design's own elements and classes, values
@@ -5152,6 +5179,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         };
         $_civ_listed         = pg_sw_list_wanted('product');
         $_civ_xsell_off      = isset($cfg['cross_sell_enabled']) && !$cfg['cross_sell_enabled'];
+        // Switched off, the cross-sell part draws nothing (__has_related
+        // stays empty): the products bought together are read only for a
+        // list of them the design placed where it still shows.
+        if ($_civ_xsell_off && isset($_civ_listed['product.related']) && !_civ_related_list_shown_when_off($tree_decoded)) {
+            unset($_civ_listed['product.related']);
+        }
         // The variant script asks the server to draw the cross-sell part
         // again with cards linking to the same page.
         if ($variant_data && !$_civ_xsell_off) $variant_data['detail_page_id'] = $_civ_detail_pid();
