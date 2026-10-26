@@ -10,7 +10,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- ai-agent-prompts.md: Plan (2026-10-21, steps 1, 5 done, answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
+- ai-agent-prompts.md: Plan (2026-10-21, steps 1, 2, 5 done, answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
