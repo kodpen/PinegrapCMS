@@ -816,6 +816,7 @@
     "No receipt was kept with this expense.": "Bu giderle birlikte fiş saklanmadı.",
     "No receipt was recorded for this order, so there is no money to record going back. A card payment that reached the bank without a receipt in the ERP is not in the tills either.": "Bu sipariş için tahsilat kaydedilmemiş, bu yüzden geri ödenecek bir para kaydı yok. ERP'de tahsilatı olmadan bankaya geçen kart ödemesi kasa ve bankalarda da görünmez.",
     "No recent backup": "Yakın tarihli yedek yok",
+    "No record chosen": "Kayıt seçilmedi",
     "No record is older than {var:1} days.": "{var:1} günden eski kayıt yok.",
     "No record matches. Say so in the answer instead of proposing it.": "Eşleşen kayıt yok. Önermek yerine bunu yanıtta söyleyin.",
     "No records found.": "Kayıt bulunamadı.",

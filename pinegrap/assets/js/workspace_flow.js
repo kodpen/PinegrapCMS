@@ -119,6 +119,7 @@
         report: { icon: 'bi-bar-chart', name: 'fl_kind_report', into: true, out: ['done', 'failed'] },
         checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
+        change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
     };
 
@@ -150,6 +151,7 @@
         ['report', 'bi-bar-chart', 'fl_kind_report'],
         ['checkin', 'bi-person-check', 'fl_kind_checkin'],
         ['start_action', 'bi-alarm', 'fl_kind_start_action'],
+        ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -391,7 +393,7 @@
     function stepLists() {
         var steps = FL.steps || {};
 
-        return { metrics: steps.metrics || [], digest: steps.digest_only || {}, targets: steps.targets || [] };
+        return { metrics: steps.metrics || [], digest: steps.digest_only || {}, targets: steps.targets || [], changes: steps.changes || {} };
     }
 
     // Up to two names, then how many more.
@@ -453,6 +455,13 @@
             var target = stepLists().targets.filter(function (item) { return item.id === config.target_id; })[0];
 
             return target ? target.name : t('fl_start_none');
+        }
+
+        if (node.kind === 'change') {
+            var kind = stepLists().changes[config.record];
+            var what = kind ? kind.label : (config.record || t('fl_change_none'));
+
+            return what + (config.id ? ' #' + config.id : '') + ((config.action === 'delete') ? ' · ' + t('fl_change_delete') : '');
         }
 
         if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
@@ -1862,6 +1871,10 @@
             startFields(box, node);
         }
 
+        if (node.kind === 'change') {
+            changeFields(box, node);
+        }
+
         if (state.edit) {
             box.appendChild(connections(node));
 
@@ -2288,6 +2301,153 @@
         box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
     }
 
+    // A record changed: its kind, update or delete, its number, and for an
+    // update the fields with their new values. Somebody who may not change
+    // the flow reads the kind, the action and the names of the fields only
+    // (ws_flow_graph_present()).
+    function changeFields(box, node) {
+        var config = node.config;
+        var kinds = stepLists().changes;
+        var options = [['', t('fl_change_pick')]];
+
+        Object.keys(kinds).forEach(function (key) {
+            options.push([key, kinds[key].label]);
+        });
+
+        if (config.record && !kinds[config.record]) {
+            options.push([config.record, config.record]);
+        }
+
+        var kind = K.select(options, config.record || '');
+        var info = kinds[config.record] || null;
+        var actions = (info ? info.actions : ['update', 'delete']).map(function (action) {
+            return [action, t((action === 'delete') ? 'fl_change_delete' : 'fl_change_update')];
+        });
+        var action = K.select(actions, config.action || 'update');
+        var id = el('input', 'form-control form-control-sm wsf-number');
+
+        config.fields = (config.fields && !Array.isArray(config.fields)) ? config.fields : {};
+        kind.addEventListener('change', function () {
+            config.record = kind.value;
+            config.fields = {};
+            config.action = 'update';
+            refreshNode(node);
+            drawSettings();
+        });
+        action.addEventListener('change', function () {
+            config.action = action.value;
+
+            if (config.action === 'delete') {
+                config.fields = {};
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        id.type = 'number';
+        id.min = '1';
+        id.value = config.id ? String(config.id) : '';
+        id.addEventListener('input', function () {
+            config.id = Math.max(0, parseInt(id.value, 10) || 0);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_change_kind'), kind));
+        box.appendChild(field(t('fl_change_action'), action));
+        box.appendChild(field(t('fl_change_id'), id, state.edit ? t('fl_change_id_help') : t('fl_change_hidden')));
+
+        if (config.action !== 'delete') {
+            changeValues(box, node, info);
+        }
+    }
+
+    // The fields of an update, one row each, and a list to add another from.
+    function changeValues(box, node, info) {
+        var config = node.config;
+        var fields = info ? info.fields : {};
+        var list = el('div', 'wsf-change-fields');
+
+        Object.keys(config.fields).forEach(function (name) {
+            var meta = fields[name] || { kind: 'text', label: name, values: [], labels: {} };
+            var input = changeInput(meta, config.fields[name], function (value) {
+                config.fields[name] = value;
+                refreshNode(node);
+            });
+            var row = field(meta.label, input);
+
+            if (state.edit) {
+                var remove = K.button('btn btn-sm btn-link px-0', t('fl_change_remove'), 'bi-x');
+
+                remove.addEventListener('click', function () {
+                    delete config.fields[name];
+                    refreshNode(node);
+                    drawSettings();
+                });
+                row.appendChild(remove);
+            }
+
+            list.appendChild(row);
+        });
+
+        box.appendChild(list);
+
+        var left = Object.keys(fields).filter(function (name) {
+            return !(name in config.fields) && (fields[name].kind !== 'answers');
+        });
+
+        if (!state.edit || !left.length) {
+            return;
+        }
+
+        var add = K.select([['', t('fl_change_add')]].concat(left.map(function (name) { return [name, fields[name].label]; })), '');
+
+        add.addEventListener('change', function () {
+            var meta = fields[add.value];
+
+            if (!meta) {
+                return;
+            }
+
+            config.fields[add.value] = (meta.kind === 'bool') ? false : ((meta.kind === 'enum') ? (meta.values[0] || '') : '');
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_change_fields'), add, t('fl_change_fields_help')));
+    }
+
+    // One field's new value as the change catalogue takes it: a choice, yes
+    // or no, an amount in minor units shown as a decimal, or text.
+    function changeInput(meta, value, onChange) {
+        var input;
+
+        if (meta.kind === 'enum') {
+            input = K.select((meta.values || []).map(function (item) {
+                return [item, (meta.labels && meta.labels[item]) ? meta.labels[item] : item];
+            }), value);
+            input.addEventListener('change', function () { onChange(input.value); });
+        } else if (meta.kind === 'bool') {
+            input = K.select([['1', t('fl_change_yes')], ['0', t('fl_change_no')]], (value === true || value === 1 || value === '1') ? '1' : '0');
+            input.addEventListener('change', function () { onChange(input.value === '1'); });
+        } else if (meta.kind === 'answers') {
+            input = el('input', 'form-control form-control-sm');
+            input.type = 'text';
+            input.value = t('fl_change_answers');
+            input.disabled = true;
+        } else if (meta.kind === 'money') {
+            input = el('input', 'form-control form-control-sm');
+            input.type = 'number';
+            input.step = '0.01';
+            input.min = '0';
+            input.value = (value === '' || value === null || value === undefined) ? '' : (parseInt(value, 10) / 100).toFixed(2);
+            input.addEventListener('input', function () {
+                onChange((input.value === '') ? '' : Math.round(parseFloat(input.value) * 100));
+            });
+        } else {
+            input = textInput((value === null || value === undefined) ? '' : String(value), (meta.kind === 'long') ? 20000 : 4000, onChange, meta.kind === 'long');
+        }
+
+        return input;
+    }
+
     // The team as ticks, with a filter once it is long, drawn into wrap: the
     // ids go into the box's settings under key (assignees by default), at
     // most max of them.
@@ -2693,6 +2853,8 @@
             config = { channel_id: 0, question: '' };
         } else if (kind === 'start_action') {
             config = { target_id: 0, delay: 0 };
+        } else if (kind === 'change') {
+            config = { record: '', action: 'update', id: 0, fields: {} };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
