@@ -78,6 +78,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_wishlist.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_shipping_address.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_shipping_method.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_billing_information.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_order_preview.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_comments_recent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/custom_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signature.php');

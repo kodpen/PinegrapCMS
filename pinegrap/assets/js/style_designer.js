@@ -11098,6 +11098,7 @@ const StyleDesigner = (function () {
                     shipping_address_and_arrival: _sdT('Shipping Address and Arrival'),
                     shipping_method:      _sdT('Shipping Method'),
                     billing_information:  _sdT('Billing Information'),
+                    order_preview:        _sdT('Order Preview'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -32314,6 +32315,7 @@ const StyleDesigner = (function () {
             var _isShippingAddress = (_regionType === 'shipping_address_and_arrival');
             var _isShippingMethod  = (_regionType === 'shipping_method');
             var _isBillingInfo     = (_regionType === 'billing_information');
+            var _isOrderPreview    = (_regionType === 'order_preview');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32362,6 +32364,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isOrderPreview) {
+                _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
             } else if (_isBillingInfo) {
                 _sourceInfoHtml = _sdT('The third step of the classic checkout: the billing address, e-mail and phone of the visitor\'s order, with the order\'s own fields. A part the page does not ask for (a custom field without a label, the PO number, referral sources, tax exemption) is left out with its controls.');
             } else if (_isShippingMethod) {
@@ -33476,6 +33480,40 @@ const StyleDesigner = (function () {
                     row(_sdT('PO number'), _biSwitch('po_number') + _biHint(_sdT('While on, the purchase order number (name: <code>po_number</code>) is drawn.'))) +
                     row(_sdT('Controls'),
                         _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, update_contact</code>')))
+                );
+            }
+
+            // ── order_preview settings ───────────────────────────────────────
+            // Written into the page's order_preview_pages row, which the
+            // handler and submit_order() read; a setting never touched leaves
+            // the row as the classic page stored it.
+            if (_isOrderPreview) {
+                if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+                var _opHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
+                var _opPage = function (key, none, hint) {
+                    return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                            _swPageOptions(_cfg[key], _allPagesCache, { none: none }) +
+                        '</select>' + _opHint(esc(hint));
+                };
+                systemSection += sect('bi-bag-check', _sdT('Order Preview Settings'),
+                    row(_sdT('Next page'), _opPage('next_page_id', _sdT('— The page\'s own setting —'),
+                        _sdT('Where the visitor goes once the order is placed: the order receipt page.'))) +
+                    row(_sdT('Terms page'), _opPage('terms_page_id', _sdT('— None —'),
+                        _sdT('While a page is chosen, the visitor must tick the terms box, which links to it.'))) +
+                    row(_sdT('Security code help'), _opPage('card_verification_number_page_id', _sdT('— None —'),
+                        _sdT('A page that explains the card\'s security code, linked beside the field.'))) +
+                    row(_sdT('Order receipt e-mail'), _opPage('order_receipt_email_page_id', _sdT('— No e-mail —'),
+                        _sdT('A page drawn and sent to the billing e-mail address when the order is placed.'))) +
+                    row(_sdT('Offline payment'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="offline_payment_always_allowed" data-sw-cfg-kind="bool"' + (_cfg.offline_payment_always_allowed ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        _opHint(esc(_sdT('While on, every order may be paid offline; otherwise only an order that allows it.'))) +
+                        '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="offline_payment_label" maxlength="255" value="' + esc(_cfg.offline_payment_label || '') + '" placeholder="' + esc(_sdT('Offline Payment')) + '">' +
+                        _opHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('order_preview', '__offline_payment_label'))))) +
+                    row(_sdT('Controls'),
+                        _opHint(_sdT('The form reads its controls by name: {var}.', '<code>payment_method, card_number, expiration, card_verification_number, threedsecure, gift_card_code, submit_apply_gift_card, terms, submit_purchase_now</code>')))
                 );
             }
 
@@ -36892,7 +36930,8 @@ const StyleDesigner = (function () {
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
-        shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1
+        shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
+        order_preview: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37899,6 +37938,50 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // order_preview token palette — no loop_area. Mirrors
+    // _render_system_widget_order_preview() in widgets_order_preview.php;
+    // the figures carry the cart's and the billing the order view's names.
+    var SW_ORDER_PREVIEW_TOKEN_GROUPS = [
+        { label: _sdT('Totals'), tokens: [
+            ['__cart_subtotal',             _sdT('Subtotal (currency)')],
+            ['__cart_discount',             _sdT('Discount (currency)')],
+            ['__cart_tax',                  _sdT('VAT (currency)')],
+            ['__cart_shipping',             _sdT('Shipping (currency)')],
+            ['__cart_gift_card_discount',   _sdT('Gift card discount (currency)')],
+            ['__cart_surcharge',            _sdT('Card surcharge (currency)')],
+            ['__surcharge_percentage',      _sdT('Card surcharge percentage')],
+            ['__cart_total',                _sdT('Total — without the surcharge (currency)')],
+            ['__cart_total_with_surcharge', _sdT('Total — with the surcharge (currency)')],
+            ['__cart_total_charged',        _sdT('Amount charged — base currency and code')],
+            ['__currency_disclaimer',       _sdT('Exchange rate note (another currency)')]
+        ]},
+        { label: _sdT('Billing'), tokens: [
+            ['__billing_name',          _sdT('Full Name')],
+            ['__billing_company',       _sdT('Company')],
+            ['__billing_address_html',  _sdT('Full address (<br> block)')],
+            ['__billing_email',         _sdT('Email')],
+            ['__billing_phone',         _sdT('Phone')],
+            ['__custom_field_1_label',  _sdT('Custom field 1 label')],
+            ['__custom_field_1',        _sdT('Custom field 1')],
+            ['__custom_field_2_label',  _sdT('Custom field 2 label')],
+            ['__custom_field_2',        _sdT('Custom field 2')],
+            ['__po_number',             _sdT('PO Number')],
+            ['__billing_form_title',    _sdT('Custom billing form title')]
+        ]},
+        { label: _sdT('Payment'), tokens: [
+            ['__purchase_now_label',    _sdT('Purchase button label (the page\'s setting)')],
+            ['__offline_payment_label', _sdT('Offline payment label')],
+            ['__paypal_image_url',      _sdT('PayPal logo address')],
+            ['__iyzico_image_url',      _sdT('iyzico logo address')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__billing_update_url',    _sdT('Billing information page address')],
+            ['__terms_url',             _sdT('Terms page address (the link drops when there is none)')],
+            ['__card_verification_url', _sdT('Security code help page address')],
+            ['__cart_url',              _sdT('Cart page address (the link drops when the site has none)')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -37915,7 +37998,8 @@ const StyleDesigner = (function () {
         wishlist:          SW_WISHLIST_TOKEN_GROUPS,
         shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS,
         shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
-        billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS
+        billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
+        order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38844,6 +38928,38 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        order_preview: [
+            ['has_items',                  _sdT('The order has items')],
+            ['cart_empty',                 _sdT('The cart is empty')],
+            ['shows_subtotal',             _sdT('A discount, tax, shipping or gift card follows the subtotal')],
+            ['has_discount',               _sdT('An order discount applies')],
+            ['has_tax',                    _sdT('Tax is charged')],
+            ['has_shipping',               _sdT('Items are shipped')],
+            ['has_gift_card_discount',     _sdT('Gift cards pay part of the order')],
+            ['has_surcharge',              _sdT('A card surcharge applies')],
+            ['surcharge_message',          _sdT('The surcharge applies to card payments only (other methods offered)')],
+            ['has_currency_disclaimer',    _sdT('The visitor reads another currency than the one charged')],
+            ['has_recurring',              _sdT('The order has recurring items')],
+            ['has_applied_offers',         _sdT('Offers are applied')],
+            ['has_payment',                _sdT('A payment is needed')],
+            ['has_gift_card_code',         _sdT('A gift card can be applied')],
+            ['many_payment_methods',       _sdT('More than one payment method is offered')],
+            ['pays_by_card',               _sdT('Card payment is offered')],
+            ['pays_by_paypal',             _sdT('PayPal is offered')],
+            ['pays_by_iyzico',             _sdT('Pay with iyzico is offered')],
+            ['pays_offline',               _sdT('Offline payment is offered')],
+            ['has_card_verification_help', _sdT('A security code help page is set')],
+            ['has_installments',           _sdT('The card can be paid in installments')],
+            ['has_threedsecure',           _sdT('3-D Secure is offered')],
+            ['threedsecure_required',      _sdT('3-D Secure is required')],
+            ['has_terms',                  _sdT('A terms page is set')],
+            ['can_purchase',               _sdT('The order can be placed')],
+            ['has_billing_form',           _sdT('The order has a custom billing form')],
+            ['has_custom_field_1',         _sdT('Custom field 1 has a label')],
+            ['has_custom_field_2',         _sdT('Custom field 2 has a label')],
+            ['has_po_number',              _sdT('A PO number was given')],
+            ['is_tax_exempt',              _sdT('The order is tax-exempt')]
         ],
         billing_information: [
             ['has_custom_field_1',   _sdT('Custom field 1 has a label')],
@@ -41322,6 +41438,14 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {
                 _sectionOpts.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
+            } else if (_semSwRegion === 'order_preview') {
+                _sectionOpts.push(['order_recipients',   _sdT('Recipients and their items')]);
+                _sectionOpts.push(['applied_offers',     _sdT('Applied offers')]);
+                _sectionOpts.push(['applied_gift_cards', _sdT('Applied gift cards with their remove links')]);
+                _sectionOpts.push(['recurring_payments', _sdT('Recurring payments by period')]);
+                _sectionOpts.push(['billing_form',       _sdT('Custom billing form answers')]);
+                _sectionOpts.push(['card_installments',  _sdT('Installment choice (filled as the card number is typed)')]);
+                _sectionOpts.push(['installment_table',  _sdT('Installment table by card family')]);
             } else if (_semSwRegion === 'billing_information') {
                 _sectionOpts.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
             } else if (_semSwRegion === 'shipping_method') {
@@ -51088,7 +51212,8 @@ const StyleDesigner = (function () {
         { type: 'comments_recent',   label: _sdT('Recent Comments'),   slug: _sdT('recent-comments'),   icon: 'bi-chat-square-quote' },
         { type: 'shipping_address_and_arrival', label: _sdT('Shipping Address and Arrival'), slug: _sdT('shipping-address'), icon: 'bi-truck' },
         { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
-        { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' }
+        { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
+        { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -56846,6 +56971,182 @@ const StyleDesigner = (function () {
                         _swAcctSubmit(_sdT('Continue'), _sdT('Continue Button')),
                         createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: '',
                             _bindings: { href: '__cart_url' } })
+                    ])
+                ]);
+            }
+
+            case 'order_preview': {
+                // The last step of the classic checkout, posting to
+                // order_preview.php. The order's recipients and items, its
+                // totals as the classic page computes them, the billing
+                // details with a link back to change them, the payment
+                // method and the purchase button (named submit_purchase_now:
+                // the checkout documents' boxes go in front of it). A part the
+                // order does not need goes with its block. Mirrors
+                // _render_system_widget_order_preview().
+                var opP = function (text, css, token, flag) {
+                    var p = { contentType: 'paragraph', text: text, cssClass: css };
+                    var b = {};
+                    if (token) b.text = token;
+                    if (flag) b.eo_visible_if = flag;
+                    if (token || flag) p._bindings = b;
+                    return createNode('content', p);
+                };
+                var opRow = function (label, token, flag, css, sign) {
+                    var kids = [createNode('content', { contentType: 'span', text: label, cssClass: '' })];
+                    var amount = [];
+                    if (sign) amount.push(createNode('content', { contentType: 'span', text: sign, cssClass: '' }));
+                    amount.push(createNode('content', { contentType: 'span', text: _sdMoney(0), cssClass: '', _bindings: { text: token } }));
+                    kids.push(createNode('semantic', { tag: 'span', cssClass: 'text-nowrap', customName: _sdT('Amount') }, amount));
+                    var row = { tag: 'div', cssClass: 'd-flex justify-content-between gap-3 ' + (css || 'py-1'), customName: label };
+                    if (flag) row._bindings = { eo_visible_if: flag };
+                    return createNode('semantic', row, kids);
+                };
+                var opSection = function (name, key, flag, css) {
+                    var props = { tag: 'div', cssClass: css || 'mb-3', customName: name, _bindings: { section: key } };
+                    if (flag) props._bindings.eo_visible_if = flag;
+                    return createNode('semantic', props);
+                };
+                var opMethod = function (value, label, flag, labelToken) {
+                    var id = 'op_pm_' + value.toLowerCase().replace(/[^a-z]+/g, '_');
+                    var lp = { tag: 'label', cssClass: 'form-check-label', text: label, customName: _sdT('Label'), _attrs: [{ name: 'for', value: id }] };
+                    if (labelToken) lp._bindings = { text: labelToken };
+                    return createNode('semantic', { tag: 'div', cssClass: 'form-check mb-2', customName: label, _bindings: { eo_visible_if: flag } }, [
+                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: id,
+                            _attrs: [{ name: 'type', value: 'radio' }, { name: 'name', value: 'payment_method' },
+                                     { name: 'value', value: value }, { name: 'required', value: '' }] }),
+                        createNode('semantic', lp)
+                    ]);
+                };
+                var opCheck = function (name, id, label, flag, extra) {
+                    var attrs = [{ name: 'type', value: 'checkbox' }, { name: 'name', value: name }, { name: 'value', value: '1' }];
+                    if (name === 'terms') attrs.push({ name: 'required', value: '' });
+                    return createNode('semantic', { tag: 'div', cssClass: 'form-check mb-3', customName: label, _bindings: { eo_visible_if: flag } }, [
+                        createNode('semantic', { tag: 'input', cssClass: 'form-check-input', id: id, _attrs: attrs }),
+                        createNode('semantic', { tag: 'label', cssClass: 'form-check-label', text: label, customName: _sdT('Label'),
+                            _attrs: [{ name: 'for', value: id }] })
+                    ].concat(extra || []));
+                };
+                var opCard = function (label, id, ac, ph, col) {
+                    return _swAcctField(label, id, 'text', id, { autocomplete: ac, colCss: col,
+                        attrs: [{ name: 'inputmode', value: 'numeric' }, { name: 'placeholder', value: ph }] });
+                };
+                return _swAcctPage(_sdT('Order Preview Card'), '10', '8', [
+                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Order Preview'), cssClass: 'card-title mb-3' }),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Empty Cart'),
+                        _bindings: { eo_visible_if: 'cart_empty' } }, [
+                        opP(_sdT('Your cart is empty.'), 'text-muted mb-3'),
+                        createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: 'btn btn-primary',
+                            _bindings: { href: '__cart_url' } })
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Order'),
+                        _bindings: { eo_visible_if: 'has_items' } }, [
+                        opSection(_sdT('Recipients and Items'), 'order_recipients'),
+                        createNode('semantic', { tag: 'div', cssClass: 'small mb-3', customName: _sdT('Applied Offers'),
+                            _bindings: { eo_visible_if: 'has_applied_offers' } }, [
+                            opP(_sdT('Applied offers'), 'fw-semibold mb-1'),
+                            opSection(_sdT('Offers'), 'applied_offers', '', '')
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'border-top pt-2 mb-4', customName: _sdT('Totals') }, [
+                            opRow(_sdT('Subtotal'), '__cart_subtotal', 'shows_subtotal'),
+                            opRow(_sdT('Discount'), '__cart_discount', 'has_discount', '', '-'),
+                            opRow(_sdT('Tax'), '__cart_tax', 'has_tax'),
+                            opRow(_sdT('Shipping'), '__cart_shipping', 'has_shipping'),
+                            opRow(_sdT('Gift card'), '__cart_gift_card_discount', 'has_gift_card_discount', '', '-'),
+                            opRow(_sdT('Total'), '__cart_total', '', 'py-1 fw-bold border-top'),
+                            opRow(_sdT('Card surcharge'), '__cart_surcharge', 'has_surcharge'),
+                            opRow(_sdT('Total with the card surcharge'), '__cart_total_with_surcharge', 'has_surcharge', 'py-1 fw-bold'),
+                            opP(_sdT('The card surcharge is added only when you pay by card.'), 'small text-muted mb-1', '', 'surcharge_message'),
+                            opRow(_sdT('Amount charged'), '__cart_total_charged', 'has_currency_disclaimer', 'py-1 small'),
+                            opP(_sdT('Exchange rate note'), 'small text-muted mb-0', '__currency_disclaimer', 'has_currency_disclaimer')
+                        ]),
+                        opSection(_sdT('Applied Gift Cards'), 'applied_gift_cards', 'has_gift_card_discount'),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Recurring Payments'),
+                            _bindings: { eo_visible_if: 'has_recurring' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Recurring payments'), cssClass: 'mb-2' }),
+                            opSection(_sdT('Payment Periods'), 'recurring_payments', '', '')
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'border rounded p-3 mb-4', customName: _sdT('Billing Information') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-between align-items-start gap-2 mb-2', customName: _sdT('Heading') }, [
+                                createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Billing Information'), cssClass: 'mb-0' }),
+                                createNode('content', { contentType: 'link', text: _sdT('Change'), href: '#', cssClass: 'btn btn-sm btn-outline-secondary',
+                                    _bindings: { href: '__billing_update_url' } })
+                            ]),
+                            opP(_sdT('Full Name'), 'fw-semibold mb-0', '__billing_name'),
+                            opP(_sdT('Company'), 'mb-0', '__billing_company'),
+                            createNode('semantic', { tag: 'div', cssClass: 'small text-muted', text: _sdT('Address (lines)'), customName: _sdT('Address'),
+                                _bindings: { text: '__billing_address_html' } }),
+                            opP(_sdT('Email'), 'small mb-0', '__billing_email'),
+                            opP(_sdT('Phone'), 'small mb-0', '__billing_phone'),
+                            createNode('semantic', { tag: 'p', cssClass: 'small mb-0', customName: _sdT('Custom field 1'),
+                                _bindings: { eo_visible_if: 'has_custom_field_1' } }, [
+                                createNode('content', { contentType: 'span', text: _sdT('Custom field 1 label'), cssClass: 'text-muted me-1', _bindings: { text: '__custom_field_1_label' } }),
+                                createNode('content', { contentType: 'span', text: _sdT('Custom field 1'), cssClass: '', _bindings: { text: '__custom_field_1' } })
+                            ]),
+                            createNode('semantic', { tag: 'p', cssClass: 'small mb-0', customName: _sdT('Custom field 2'),
+                                _bindings: { eo_visible_if: 'has_custom_field_2' } }, [
+                                createNode('content', { contentType: 'span', text: _sdT('Custom field 2 label'), cssClass: 'text-muted me-1', _bindings: { text: '__custom_field_2_label' } }),
+                                createNode('content', { contentType: 'span', text: _sdT('Custom field 2'), cssClass: '', _bindings: { text: '__custom_field_2' } })
+                            ]),
+                            createNode('semantic', { tag: 'p', cssClass: 'small mb-0', customName: _sdT('PO Number'),
+                                _bindings: { eo_visible_if: 'has_po_number' } }, [
+                                createNode('content', { contentType: 'span', text: _sdT('PO Number') + ':', cssClass: 'text-muted me-1' }),
+                                createNode('content', { contentType: 'span', text: _sdT('PO Number'), cssClass: '', _bindings: { text: '__po_number' } })
+                            ]),
+                            opP(_sdT('Tax-exempt'), 'small mb-0', '', 'is_tax_exempt'),
+                            createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Custom Billing Form'),
+                                _bindings: { eo_visible_if: 'has_billing_form' } }, [
+                                opP(_sdT('Custom billing form title'), 'fw-semibold small mb-1', '__billing_form_title'),
+                                opSection(_sdT('Custom Billing Form Answers'), 'billing_form', '', 'small')
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Payment'),
+                            _bindings: { eo_visible_if: 'has_payment' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Payment'), cssClass: 'mb-3' }),
+                            createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Gift Card Code'),
+                                _bindings: { eo_visible_if: 'has_gift_card_code' } }, [
+                                createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Gift card code'), customName: _sdT('Label'),
+                                    _attrs: [{ name: 'for', value: 'op_gift_card_code' }] }),
+                                createNode('semantic', { tag: 'div', cssClass: 'input-group', customName: _sdT('Gift Card Code') }, [
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', id: 'op_gift_card_code',
+                                        _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'gift_card_code' }, { name: 'maxlength', value: '50' }] }),
+                                    createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Apply'), customName: _sdT('Apply Button'),
+                                        _attrs: [{ name: 'type', value: 'submit' }, { name: 'name', value: 'submit_apply_gift_card' },
+                                                 { name: 'value', value: '1' }, { name: 'formnovalidate', value: '' }] })
+                                ])
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Payment Methods'),
+                                _bindings: { eo_visible_if: 'many_payment_methods' } }, [
+                                opMethod('Credit/Debit Card', _sdT('Credit/Debit Card'), 'pays_by_card'),
+                                opMethod('PayPal Express Checkout', _sdT('PayPal'), 'pays_by_paypal'),
+                                opMethod('Pay With Iyzico', _sdT('Pay with iyzico'), 'pays_by_iyzico'),
+                                opMethod('Offline Payment', _sdT('Offline Payment'), 'pays_offline', '__offline_payment_label')
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'border rounded p-3 mb-3', customName: _sdT('Card'),
+                                _bindings: { eo_visible_if: 'pays_by_card' } }, [
+                                createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Card Fields') }, [
+                                    opCard(_sdT('Card Number'), 'card_number', 'cc-number', '•••• •••• •••• ••••', 'col-12'),
+                                    opCard(_sdT('Expiration'), 'expiration', 'cc-exp', _sdT('MM / YY'), 'col-6'),
+                                    opCard(_sdT('Security Code'), 'card_verification_number', 'cc-csc', 'CVC', 'col-6')
+                                ]),
+                                createNode('content', { contentType: 'link', text: _sdT('What is the security code?'), href: '#', cssClass: 'small d-inline-block mb-3',
+                                    target: '_blank', _bindings: { href: '__card_verification_url' } }),
+                                opSection(_sdT('Installments'), 'card_installments', '', ''),
+                                opSection(_sdT('Installment Table'), 'installment_table', 'has_installments'),
+                                opCheck('threedsecure', 'op_threedsecure', _sdT('Pay with 3-D Secure'), 'has_threedsecure')
+                            ])
+                        ]),
+                        opCheck('terms', 'op_terms', _sdT('I agree to the terms and conditions.'), 'has_terms', [
+                            createNode('content', { contentType: 'link', text: _sdT('Read the terms'), href: '#', cssClass: 'ms-1',
+                                target: '_blank', _bindings: { href: '__terms_url' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 align-items-center', customName: _sdT('Buttons') }, [
+                            createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary btn-lg', text: _sdT('Purchase Now'), customName: _sdT('Purchase Button'),
+                                _bindings: { eo_visible_if: 'can_purchase' },
+                                _attrs: [{ name: 'type', value: 'submit' }, { name: 'name', value: 'submit_purchase_now' }, { name: 'value', value: '1' }] }),
+                            createNode('content', { contentType: 'link', text: _sdT('Back to the cart'), href: '#', cssClass: '',
+                                _bindings: { href: '__cart_url' } })
+                        ])
                     ])
                 ]);
             }
