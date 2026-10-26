@@ -751,9 +751,12 @@ function bs6_scope_kind($path)
 		return 'editor';
 	}
 
+	// includes/fn/output.php is not among them: every class list in it is
+	// panel markup (the panel head, the main and account menus, the footer,
+	// list screens' helpers); output_toolbar() prints nothing.
 	$shared = array(
 		'get_login.php', 'liveform.class.php', 'toolbar.php', 'chat.php', 'seo.php',
-		'includes/fn/output.php', 'includes/fn/ecommerce.php', 'includes/fn/forms.php', 'includes/fn/editor.php',
+		'includes/fn/ecommerce.php', 'includes/fn/forms.php', 'includes/fn/editor.php',
 		'includes/fn/content.php', 'includes/fn/calendar.php', 'includes/fn/auth.php', 'includes/fn/seo.php',
 		'includes/fn/legal_documents.php',
 	);
