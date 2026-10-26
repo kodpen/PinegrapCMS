@@ -1794,7 +1794,8 @@ function erp_edoc_parasut_find_written($payload, $contact_id, $context, $skip_id
  * An order the order screen's Create Invoice already invoiced at Paraşüt
  * is refused first, before the invoice's own checks and any write there
  * (erp_edoc_parasut_legacy_invoice_check()); the id of such a record
- * deleted at Paraşüt since is cleared, and the refusal or 'message' says so.
+ * deleted at Paraşüt since is cleared once the invoice's own refusals have
+ * passed, and from then on the refusal or 'message' says so.
  *
  * @param array $options  'party' (erp_edoc_invoice_party() output) when the caller has it
  * @return array ['success' => bool, 'external_id' => string, 'gib_uuid' => string,
@@ -1857,9 +1858,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     // card of an invoice that cannot go anyway, and before the buyer's card
     // is looked for or opened, so a refused send writes nothing at Paraşüt.
     // A record deleted there since is no invoice of the sale: its id is
-    // cleared, only while the order still holds it, and every outcome of
-    // the send says so.
+    // cleared once the invoice's own refusals have passed (a refused send
+    // keeps it, and the next send reads it again).
     $legacy_notice = '';
+    $legacy_gone = '';
 
     if ((int) ($invoice['order_id'] ?? 0) > 0) {
         $legacy = erp_edoc_parasut_legacy_invoice_check((string) ($invoice['order_parasut_invoice_id'] ?? ''), function ($path) use ($context) {
@@ -1871,11 +1873,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         }
 
         if ($legacy['state'] === 'gone') {
-            _parasut_order_forget_record((int) $invoice['order_id'], 'parasut_invoice_id', $legacy['id']);
-            $legacy_notice = $legacy['notice'];
-            $fail = function ($error) use ($fail, $legacy_notice) {
-                return $fail($legacy_notice . ' ' . $error);
-            };
+            $legacy_gone = (string) $legacy['id'];
         }
     }
 
@@ -1949,6 +1947,17 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     if (isset($payload['error'])) {
         return $fail($payload['error']);
+    }
+
+    // Every local refusal has passed and the invoice is about to be written:
+    // the order's deleted legacy record is cleared, only while the order
+    // still holds it, and every outcome from here says so.
+    if ($legacy_gone !== '') {
+        _parasut_order_forget_record((int) $invoice['order_id'], 'parasut_invoice_id', $legacy_gone);
+        $legacy_notice = $legacy['notice'];
+        $fail = function ($error) use ($fail, $legacy_notice) {
+            return $fail($legacy_notice . ' ' . $error);
+        };
     }
 
     $mark = function ($value) use ($invoice) {

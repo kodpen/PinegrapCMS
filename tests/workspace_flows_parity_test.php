@@ -2633,6 +2633,7 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas: a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
 			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, '@ai draft Open: the action saved from the form marks the draft\'s card applied'),
+			array(array('draft kind scheduled in ws_changes_input', 'draft kind scheduled in ws_scheduled_draft_proposal_row'), 4, 'AI drafts on the canvas: an application\'s proposed draft, rehearsed by the save\'s check and kept as Pinegrap AI\'s are'),
 		),
 		'links_in' => array(
 			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),

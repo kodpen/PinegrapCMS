@@ -309,7 +309,9 @@ function test_ws_api_change_proposals_are_tools()
 			}
 		}
 
-		pg_assert_same($answer['of'], $changes['of'], $id . ' takes the answer\'s changes');
+		// A channel's route also takes a scheduled action as a draft (data).
+		pg_assert_same($answer['of'], array_diff_key($changes['of'], array('data' => true)), $id . ' takes the answer\'s changes');
+		pg_assert_same($id === 'workspace.changes.propose', isset($changes['of']['data']), $id . ': a scheduled draft in a channel only');
 		pg_assert_same(WS_CHANGES_PER_ANSWER, $changes['max_items'], $id . ' takes as many as an answer');
 
 		// What a model reads: it proposes, the person applies, nothing is

@@ -33,7 +33,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
 - designer-collections-steps.md: Plan (collections half of designer-interactions-collections, steps C1–C7): typed collections over designer forms and their schema
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
-- designer-interactions-steps.md: Plan (designer session): interaction builder for designer nodes cut into steps I1–I4: props._fx model, data-pg-fx-* attributes, pg_fx script, Interactions tab, canvas preview
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - designer-smart-completion.md: Plan (2026-10-24): deterministic smart completion for designer CSS/HTML/JS and class inputs, a per-element custom style rule, fixes first
@@ -52,7 +51,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
 - marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
-- merge-flow-tools.md: Plan (2026-10-25, steps 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
+- merge-flow-tools.md: Plan (2026-10-25, steps 1, 2, 3 and 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete, sources and unshare in sync done; later Notion/OneNote; open questions
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
@@ -60,7 +59,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
-- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #1919; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-5b, 5d and 5e done, last #1919 and #2000; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
@@ -82,9 +81,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
-- workspace-composer-tools.md: Plan (2026-10-23, 1 #1554, 2 #1725 #1897, 4a #1972 done, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+- workspace-composer-tools.md: Plan (2026-10-23; 1, 2, 4 done but autoformat; answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
@@ -97,5 +96,5 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; ERP overdue to task done; left: command registry over the API, designer task panel
 - workspace-quotes.md: Plan (2026-10-23, 1 #1546, 2 #1614, 3 #1705, 6 #1826 #1907 done, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
-- workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
+- workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
 - workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

@@ -21941,7 +21941,7 @@
 
             return window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
-                ['bold', 'italic', 'strike'],
+                ['bold', 'italic', 'strike', 'highlight'],
                 ['bullets', 'numbers', 'quote'],
                 blocks,
                 tags,

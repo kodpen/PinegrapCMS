@@ -2079,6 +2079,7 @@
     "Started by {var:1}": "{var:1} başlattı",
     "Started by {var:1}.": "{var:1} başlattı.",
     "Started from": "Başlangıç şablonu",
+    "Started on its own: {var:1}.": "Kendiliğinden başladı: {var:1}.",
     "Started on: {var:1}": "Başladığı kayıt: {var:1}",
     "Started:": "Başlangıç:",
     "Starter": "Başlangıç",
