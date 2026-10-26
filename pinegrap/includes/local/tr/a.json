@@ -2463,6 +2463,7 @@
     "At most {var:1} actions follow one another in a chain.": "Bir zincirde en fazla {var:1} işlem art arda çalışır.",
     "At most {var:1} addresses at a time.": "Bir seferde en çok {var:1} adres.",
     "At most {var:1} customers can be asked to approve.": "En çok {var:1} müşteriden onay istenebilir.",
+    "At most {var:1} files can go with one rejection.": "Bir retle en fazla {var:1} dosya gönderilebilir.",
     "At most {var:1} messages can be chosen together.": "En fazla {var:1} mesaj birlikte seçilebilir.",
     "At most {var:1} people can be asked to approve.": "En fazla {var:1} kişiden onay istenebilir.",
     "At most {var:1} per file, and {var:2} in one upload.": "Dosya başına en fazla {var:1}, tek yüklemede en fazla {var:2}.",

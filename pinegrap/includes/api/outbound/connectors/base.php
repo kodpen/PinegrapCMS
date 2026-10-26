@@ -500,6 +500,60 @@ function mp_claim_waiting($claim) {
 
 }
 
+/* ------------------------------------------------------------ multipart form */
+
+// A multipart/form-data body of files, all under one field name, as
+// array('type' => <Content-Type header value>, 'body' => <text>).
+//
+// Written here rather than left to curl: curl takes a form as a PHP array,
+// whose keys cannot repeat, and a marketplace that reads a list of files
+// wants every part under the same name. A file is {name, type, content}.
+// The name loses what could close its quoted header value or start a new
+// header line. The boundary is drawn again if a file happens to hold it.
+function mp_multipart_body($field, $files, $boundary = null) {
+
+	do {
+
+		$mark = ($boundary !== null) ? (string)$boundary : '----pg' . bin2hex(random_bytes(12));
+
+		$clash = false;
+
+		foreach ($files as $file) {
+
+			if (strpos((string)$file['content'], $mark) !== false) {
+
+				$clash = true;
+
+			}
+
+		}
+
+		$boundary = null;
+
+	} while ($clash);
+
+	$body = '';
+
+	foreach ($files as $file) {
+
+		$name = str_replace(array('"', '\\', "\r", "\n"), '_', (string)$file['name']);
+
+		$type = preg_match('#^[a-z0-9.+-]+/[a-z0-9.+-]+$#i', (string)$file['type']) ? (string)$file['type'] : 'application/octet-stream';
+
+		$body .= '--' . $mark . "\r\n"
+			. 'Content-Disposition: form-data; name="' . $field . '"; filename="' . $name . '"' . "\r\n"
+			. 'Content-Type: ' . $type . "\r\n\r\n"
+			. (string)$file['content'] . "\r\n";
+
+	}
+
+	return array(
+		'type' => 'multipart/form-data; boundary=' . $mark,
+		'body' => $body . '--' . $mark . "--\r\n"
+	);
+
+}
+
 /* ---------------------------------------------------------------- order feeds */
 
 // A moment of an order feed as the feed counts it, in whole milliseconds, or 0
