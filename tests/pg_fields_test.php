@@ -193,7 +193,15 @@ function main() {
     ['1', '2', '3'].forEach(function (v) { zones.options.push({ value: v, selected: false }); });
     a.calls.length = 0;
     a.win.pgCombobox.set(zones, ['1', 3]);
-    out.combobox = { get: a.win.pgCombobox.get(zones), redraw: a.calls };
+    out.combobox = { get: a.win.pgCombobox.get(zones), redraw: a.calls.slice() };
+
+    // Loaded again with injected markup: the first copy draws the new field
+    // and the drawn ones are left alone.
+    var firstApi = a.win.pgFields;
+    a.calls.length = 0;
+    a.doc.create('input', { id: 'late', 'data-pg-chips': '' });
+    new Function('window', 'document', PG_FIELDS_SOURCE)(a.win, a.doc);
+    out.reload = { same: a.win.pgFields === firstApi, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
     // Without the library the field stays a plain one; no error.
     var b = load({ fields: [['select', { id: 's', 'data-pg-combobox': '' }]] });
@@ -269,6 +277,7 @@ function test_pg_fields_hooks_drawn_by_v5_engine()
 	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => null, 'calls' => 0), $r['no_library'], 'no library: a plain field');
+	pg_assert_same(array('same' => true, 'calls' => array('tagin:late')), $r['reload'], 'a second load draws only the new field');
 }
 
 function test_pg_fields_set_writes_the_posted_field()

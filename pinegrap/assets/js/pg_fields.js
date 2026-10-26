@@ -39,6 +39,13 @@
 (function (window, document) {
     'use strict';
 
+    // Loaded again with markup injected later (a settings card brings its
+    // own tag): the first copy stays and draws the new fields.
+    if (window.pgFields) {
+        window.pgFields.init(document);
+        return;
+    }
+
     var HOOKS = {
         chips: 'data-pg-chips',
         combobox: 'data-pg-combobox',

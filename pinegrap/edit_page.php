@@ -849,12 +849,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12 mt-3 mb-2">
                                                                     <label for="keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
-                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-placeholder="' . lang('Add tags') . '"/>
-                                                                    <script>
-                                                                        if(document.body.contains(document.querySelector("input#search_keywords"))){
-                                                                            tagin( document.querySelector("#search_keywords") );
-                                                                        }
-                                                                    </script>
+                                                                    <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
                                                                 </div>
                                                             </div>
                                                         </div>

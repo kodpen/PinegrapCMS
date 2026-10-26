@@ -2148,11 +2148,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 col-sm-6 col-md-12 my-1">
                             <label for="member_id" class="form-label">' . lang('Expiration Date') . '</label>
-                            <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" />
-                            ' . get_date_picker_format() . '
-                            <script>
-                                $("#expiration_date").datepicker(datetimepicker_options);
-                            </script>
+                            <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date />
+                            ' . get_date_picker_format() . pg_fields_script() . '
                         </div>
                         
                         ' . $output_affiliate . '
