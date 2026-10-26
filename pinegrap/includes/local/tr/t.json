@@ -2501,6 +2501,7 @@
     "The permissions could not be changed. The server may not allow it.": "İzinler değiştirilemedi. Sunucu buna izin vermiyor olabilir.",
     "The person has been erased. The records below were deleted or kept with their personal fields replaced.": "Kişi silindi. Aşağıdaki kayıtlar silindi ya da kişisel alanları değiştirilerek saklandı.",
     "The person is in the staff directory.": "Kişi personel rehberine eklendi.",
+    "The person this is proposed to cannot schedule actions, so it cannot be proposed.": "Bunun önerildiği kişi eylem zamanlayamıyor, bu yüzden önerilemez.",
     "The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.": "Bu önerinin yapıldığı kişi bu türde bir kaydı ({var:1}) değiştiremez, bu yüzden önerilemez.",
     "The person who asked is no longer a member of the workspace.": "Soran kişi artık çalışma alanının üyesi değil.",
     "The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.": "Soran kişinin bu türde kaydı ({var:1}) değiştirme yetkisi yok. Önermek yerine bunu yanıtta söyleyin.",

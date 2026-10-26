@@ -34,7 +34,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_API_SCHEDULED_LIST_MAX', 300);
 
 /** Who may create, change and resume, as the routes describe it. */
-define('WS_API_SCHEDULED_OWN_SESSION', 'For staff in the team, from their own team devices session (POST /auth/login) only: an application key or an OAuth connection is refused with 403, and it is no MCP tool, as a scheduled action runs in the name of the person who saves it.');
+define('WS_API_SCHEDULED_OWN_SESSION', 'For staff in the team, from their own team devices session (POST /auth/login) only: an application key or an OAuth connection is refused with 403, and it is no MCP tool, as a scheduled action runs in the name of the person who saves it. An application proposes one instead, as a draft the person opens in the Scheduled actions form and saves: type scheduled in POST /workspace/channels/{id}/changes.');
 
 /**
  * The routes, merged into ws_api_routes().

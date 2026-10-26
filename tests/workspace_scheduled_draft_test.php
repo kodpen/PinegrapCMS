@@ -306,3 +306,61 @@ function test_workspace_scheduled_draft_tidy_task_digest_missed()
 	pg_assert_same(0, $tidy['data']['action']['missed'], 'not asked for');
 	pg_assert_same(0, $tidy['data']['action']['ai'], 'no summary without what was missed');
 }
+
+// A scheduled action an application proposes: the body POST
+// /workspace/scheduled-actions takes, in data. The form's four parts are
+// kept, the channel left out is the one it is proposed in, the reason is
+// the note above the form, and anything but a draft or an object refused.
+function test_workspace_scheduled_draft_proposal_input()
+{
+	$data = array(
+		'name'   => 'Monday digest',
+		'rules'  => array(array('type' => 'at', 'date' => '2026-10-19', 'time' => '09:00', 'repeat' => 'weekly', 'days' => array(1))),
+		'action' => array('type' => 'post', 'channel_id' => 3, 'body' => 'Good morning'),
+		'follow' => array(),
+		'extra'  => 'dropped',
+	);
+
+	$in = ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'draft', 'data' => $data, 'reason' => "  Every\n Monday  "), 3);
+	pg_assert_true($in['ok'], 'taken');
+	pg_assert_same(array('name', 'rules', 'action', 'follow'), array_keys($in['data']), 'the form\'s parts only');
+	pg_assert_same(3, $in['channel_id'], 'the channel it is proposed in when left out');
+	pg_assert_same(array('Every Monday'), $in['notes'], 'the reason on one line, above the form');
+
+	$elsewhere = ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => $data + array('channel_id' => 5)), 3);
+	pg_assert_true($elsewhere['ok'], 'draft is the action left out');
+	pg_assert_same(5, $elsewhere['channel_id'], 'a channel named in data');
+	pg_assert_same(array(), $elsewhere['notes'], 'no reason, no note');
+
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'update', 'data' => $data), 3)['ok'], 'only a draft');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'action' => 'draft'), 3)['ok'], 'no data');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array($data)), 3)['ok'], 'a list is no object');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array('action' => array(array('type' => 'post'))) + $data), 3)['ok'], 'a step that is a list');
+	pg_assert_false(ws_scheduled_draft_proposal_input(array('type' => 'scheduled', 'data' => array('rules' => 'daily') + $data), 3)['ok'], 'rules that are no list');
+}
+
+// The form a draft opens in is in the channel its snapshot names, else the
+// channel of its card.
+function test_workspace_scheduled_draft_home()
+{
+	pg_assert_same(5, ws_scheduled_draft_home(array('channel_id' => 3), array('channel_id' => 5)), 'the channel the proposal named');
+	pg_assert_same(3, ws_scheduled_draft_home(array('channel_id' => 3), array('sentence' => 'x')), 'Pinegrap AI\'s draft: its card\'s');
+}
+
+// A proposed draft is rehearsed with the save's own check, for the person
+// it is proposed to, and kept as Pinegrap AI's drafts are.
+function test_workspace_scheduled_draft_proposal_row_rehearses_the_save()
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+
+	$code = '';
+
+	foreach (pg_test_source_tokens(pg_test_function_source('ws_scheduled_draft_proposal_row')) as $token) {
+		$code .= pg_test_source_text($token);
+	}
+
+	pg_assert_contains('ws_scheduled_draft_proposal_input(', $code, 'the body read first');
+	pg_assert_contains('ws_scheduled_save_check(', $code, 'the save rehearsed');
+	pg_assert_false(strpos($code, 'ws_scheduled_save(') !== false, 'nothing saved');
+	pg_assert_contains("'scheduled'", $code, 'kept as a scheduled draft');
+}
