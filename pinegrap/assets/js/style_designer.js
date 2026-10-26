@@ -37477,6 +37477,20 @@ const StyleDesigner = (function () {
         ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
     ];
 
+    // An order line's allow-listed values (pg_sw_entity_fields('order_line')),
+    // offered by the order view's item loop beside the line's product values.
+    var SW_ORDER_LINE_ENTITY_TOKENS = [
+        ['__item_shipped_qty',         _sdT('Quantity shipped (when the shop shows it)')],
+        ['__item_vat',                 _sdT('Line VAT (with symbol)')],
+        ['__item_payment_period',      _sdT('Subscription payment period')],
+        ['__item_payment_count',       _sdT('Subscription number of payments')],
+        ['__item_first_payment_date',  _sdT('First payment date (subscriptions)')],
+        ['__item_event_name',          _sdT('Reserved event name')],
+        ['__item_event_date',          _sdT('Reserved event date and time')],
+        ['__item_added_by_offer',      _sdT('Added by an offer'), 'cond'],
+        ['__item_discounted_by_offer', _sdT('Discounted by an offer'), 'cond']
+    ];
+
     // An account's allow-listed values (pg_sw_entity_fields('account')),
     // offered by my account, the profile, the login region and the account
     // e-mails: the member's own account, or the e-mail's addressee.
@@ -38655,6 +38669,8 @@ const StyleDesigner = (function () {
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
+        { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],

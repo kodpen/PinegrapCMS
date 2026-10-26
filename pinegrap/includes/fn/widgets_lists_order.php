@@ -230,6 +230,8 @@ function pg_sw_list_order_shipment_row($st, $arrival)
 
 // One item's row from the order view's item (its $items entry), raw: the
 // pass escapes it once.
+// Its allow-listed line and product values ride along when the order view
+// read them ('entity').
 function pg_sw_list_order_item_row($item)
 {
     $g = function ($k) use ($item) { return isset($item[$k]) ? (string)$item[$k] : ''; };
@@ -248,7 +250,7 @@ function pg_sw_list_order_item_row($item)
         '__item_ship_to'           => $g('ship_to'),
         '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
         '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
-    );
+    ) + ((isset($item['entity']) && is_array($item['entity'])) ? $item['entity'] : array());
 }
 
 // The rows of the order lists, as pg_sw_list_publish('order') files them:
