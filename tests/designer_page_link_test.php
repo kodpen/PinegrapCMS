@@ -269,7 +269,7 @@ function test_designer_page_link_editor_panel_new_tab()
 		'var _allPagesCache = [{ page_id: "3", page_name: "home" }];'
 		. 'function _fetchAllPages() {} function renderProperties() {} function _swPageOptions() { return ""; }'
 		. 'function _swFormFieldToken(ff) { return ff.name; } function _builtinLabel(o) { return o[1]; }'
-		. 'var SW_STANDARD_FIELD_OPTIONS = [["board", "Board"]]; function _swStandardYields() { return false; }'
+		. 'var SW_STANDARD_FIELD_OPTIONS = [["board", "Board"]]; function _swStandardYields() { return false; } function _sdPageLinkRowTokens() { return []; }'
 		. $rows
 		. 'var link = { props: { _bindParams: { href: { page_id: 12, params: [{ name: "board", token: "" }, { name: "board", token: "board" }] } } } };'
 		. '_pages = [{ page_id: 12, key: "p12", page_name: "board" }];'
