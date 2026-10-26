@@ -151,6 +151,7 @@ function pg_panel_actions()
         'delete_product_barcode' => array('file' => 'commerce.php', 'handler' => 'pg_panel_delete_product_barcode', 'exempt' => true, 'token' => true, 'write' => true),
         'bulk_assign_barcodes' => array('file' => 'commerce.php', 'handler' => 'pg_panel_bulk_assign_barcodes', 'exempt' => true, 'token' => true, 'write' => true),
         'save_barcode_template' => array('file' => 'commerce.php', 'handler' => 'pg_panel_save_barcode_template', 'exempt' => true, 'token' => true, 'write' => true),
+        'product_name_check' => array('file' => 'commerce.php', 'handler' => 'pg_panel_product_name_check', 'exempt' => true, 'token' => true, 'write' => false),
         // The offer editor belongs to whoever manages the store (roles 0-2,
         // or a basic user with manage_ecommerce); pg_offer_editor_handle()
         // checks the token, the session and that rule itself.

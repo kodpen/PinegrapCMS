@@ -623,6 +623,585 @@
         return grouped;
     }
 
+    // ── Pasted HTML → markup ───────────────────────────────────────────
+    //
+    // What another program puts on the clipboard as HTML (a page, Word,
+    // Google Docs, a sheet) is read in a detached document and walked here:
+    // only its words and the marks the box stores come over, written as the
+    // stored markup, which the box then reads as it reads a saved text. No
+    // element, attribute or style of the HTML reaches the box; a link keeps
+    // only an http(s) or mailto address. The walk reads nodeType, nodeName,
+    // nodeValue, childNodes and getAttribute() only, so a test can hand it
+    // any tree.
+
+    // Elements whose content is no words of the text: dropped whole.
+    var PASTE_DROP = /^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT|IFRAME|FRAME|FRAMESET|OBJECT|EMBED|HEAD|TITLE|META|LINK|BASE|SVG|MATH|CANVAS|AUDIO|VIDEO|IMG|PICTURE|SOURCE|INPUT|BUTTON|SELECT|TEXTAREA|OPTION)$/;
+
+    // Elements that stand on lines of their own.
+    var PASTE_BLOCKS = /^(P|DIV|H[1-6]|LI|BLOCKQUOTE|TR|TD|TH|CAPTION|THEAD|TBODY|TFOOT|SECTION|ARTICLE|ASIDE|HEADER|FOOTER|NAV|MAIN|ADDRESS|FIGURE|FIGCAPTION|DL|DT|DD|HR|BODY|HTML|CENTER|DETAILS|SUMMARY|FIELDSET|LEGEND|FORM)$/;
+
+    // The addresses a link may keep: the link rule of inlineNodes().
+    var PASTE_LINK = /^(?:https?:\/\/|mailto:)[^\s()<>"]{1,1000}$/;
+
+    var PASTE_MARKS = ['bold', 'italic', 'strike', 'highlight'];
+
+    // What an element's style attribute says of the marks: Google Docs marks
+    // with font-weight and font-style on spans (its outer <b> says normal),
+    // Word with background and mso-highlight, and Word's list paragraphs
+    // carry mso-list (their bullet in a span of mso-list:Ignore).
+    function pasteStyle(node) {
+        var style = String((node.getAttribute && node.getAttribute('style')) || '').toLowerCase();
+        var read = function (name) {
+            var match = new RegExp('(?:^|;)\\s*' + name + '\\s*:\\s*([^;]+)').exec(style);
+
+            return match ? match[1].trim() : '';
+        };
+        var weight = read('font-weight');
+        var slant = read('font-style');
+        var space = read('white-space');
+        var list = read('mso-list');
+        var colour = (read('background-color') || read('background')).replace(/\s*([(),])\s*/g, '$1').split(/\s+/)[0];
+        var marker = read('mso-highlight');
+
+        return {
+            bold: /^(bold|bolder|[6-9]00)$/.test(weight) ? true : (/^(normal|lighter|[1-5]00)$/.test(weight) ? false : null),
+            italic: /^(italic|oblique)/.test(slant) ? true : ((slant === 'normal') ? false : null),
+            strike: /line-through/.test(read('text-decoration') + ' ' + read('text-decoration-line')),
+            highlight: (!!marker && marker !== 'none') || (/^(#|rgb|hsl|[a-z]+$)/.test(colour)
+                && ['transparent', 'none', 'inherit', 'initial', 'unset', 'white', 'window', '#fff', '#ffffff', 'rgb(255,255,255)', 'rgba(0,0,0,0)', 'rgba(255,255,255,1)'].indexOf(colour) === -1),
+            keep: space ? /^pre/.test(space) : null,
+            ignore: list === 'ignore',
+            list: !!list && list !== 'ignore'
+        };
+    }
+
+    // The marks an element puts on what it holds; its style wins over its
+    // tag (Google Docs' <b style="font-weight:normal"> holds the whole text).
+    function pasteMarks(name, style, ctx) {
+        var next = { bold: ctx.bold, italic: ctx.italic, strike: ctx.strike, highlight: ctx.highlight, keep: ctx.keep, href: ctx.href };
+
+        if (/^(B|STRONG|H[1-6])$/.test(name)) {
+            next.bold = true;
+        }
+
+        if (/^(I|EM|CITE|DFN|VAR)$/.test(name)) {
+            next.italic = true;
+        }
+
+        next.bold = (style.bold === null) ? next.bold : style.bold;
+        next.italic = (style.italic === null) ? next.italic : style.italic;
+        next.strike = next.strike || style.strike || /^(S|STRIKE|DEL)$/.test(name);
+        next.highlight = next.highlight || style.highlight || (name === 'MARK');
+        next.keep = (style.keep === null) ? next.keep : style.keep;
+
+        return next;
+    }
+
+    // The words of an element as written: white space kept, a <br> or a
+    // block a new line (code, a Word list's bullet).
+    function pasteWords(node) {
+        if (node.nodeType === 3) {
+            return String(node.nodeValue || '').replace(/ /g, ' ').replace(/\r\n?/g, '\n');
+        }
+
+        var name = (node.nodeType === 1) ? String(node.nodeName).toUpperCase() : '';
+
+        if (!name || PASTE_DROP.test(name)) {
+            return '';
+        }
+
+        if (name === 'BR') {
+            return '\n';
+        }
+
+        var words = '';
+
+        Array.prototype.forEach.call(node.childNodes || [], function (child) {
+            words += pasteWords(child);
+        });
+
+        return (PASTE_BLOCKS.test(name) && words !== '' && words.slice(-1) !== '\n') ? words + '\n' : words;
+    }
+
+    // Runs side by side with the same marks and link written as one, then
+    // each link around the marked words it holds.
+    function pasteRunsMarkup(runs) {
+        var merged = [];
+
+        runs.forEach(function (run) {
+            var last = merged[merged.length - 1];
+            var same = !!last && !last.code && !run.code && (last.href === run.href) && PASTE_MARKS.every(function (key) { return last[key] === run[key]; });
+
+            if (same) {
+                last.text += run.text;
+            } else {
+                merged.push({ text: run.text, code: run.code, href: run.href, bold: run.bold, italic: run.italic, strike: run.strike, highlight: run.highlight });
+            }
+        });
+
+        var out = '';
+        var i = 0;
+
+        while (i < merged.length) {
+            var href = merged[i].href;
+            var inner = '';
+
+            for (; i < merged.length && merged[i].href === href; i++) {
+                inner += pasteRunMarkup(merged[i]);
+            }
+
+            out += href ? pasteLink(inner, href) : inner;
+        }
+
+        return out;
+    }
+
+    // One run's words in its marks. A mark whose sign is in the words is
+    // left off, as serializeNode() does for a highlight: the stored text
+    // could not be read back.
+    function pasteRunMarkup(run) {
+        var text = run.text;
+
+        if (run.code) {
+            var core = text.trim();
+            var lead = /^\s*/.exec(text)[0];
+
+            if (core !== '' && core.length <= 300 && !/[`\n]/.test(core)) {
+                return lead + '`' + core + '`' + text.slice(lead.length + core.length);
+            }
+
+            return text;
+        }
+
+        if (/^\s*$/.test(text)) {
+            return text;
+        }
+
+        var signs = { highlight: ['=', '=='], strike: ['~', '~~'], italic: ['_', '_'], bold: ['*', '**'] };
+
+        ['highlight', 'strike', 'italic', 'bold'].forEach(function (key) {
+            if (run[key] && text.indexOf(signs[key][0]) === -1) {
+                text = wrapLines(text, signs[key][1]);
+            }
+        });
+
+        return text;
+    }
+
+    function pasteLink(inner, href) {
+        var lead = /^\s*/.exec(inner)[0];
+        var core = inner.replace(/\s+/g, ' ').trim();
+
+        if (core === '' || core.length > 300 || /[[\]]/.test(core)) {
+            return inner;
+        }
+
+        return lead + '[' + core + '](' + href + ')' + (/\s$/.test(inner) ? ' ' : '');
+    }
+
+    // The words gathered so far as lines. Runs of white space alone (the
+    // gaps between the source's tags) make no line; a no-break space or a
+    // <br> does (Word's empty paragraph).
+    function pasteFlush(out) {
+        var runs = out.runs;
+        var keep = out.keep;
+
+        out.runs = [];
+        out.keep = false;
+
+        if (!runs.some(function (run) { return run.solid; })) {
+            return;
+        }
+
+        pasteRunsMarkup(runs).replace(/\n$/, '').split('\n').forEach(function (line) {
+            out.lines.push(keep ? line.replace(/\s+$/, '') : line.trim());
+        });
+
+        out.wordList = null;
+    }
+
+    function pasteOut() {
+        return { lines: [], runs: [], keep: false, wordList: null };
+    }
+
+    // The words of a part (an item, a cell) on one line.
+    function pasteLine(nodes, ctx) {
+        var sub = pasteOut();
+
+        nodes.forEach(function (node) { pasteWalk(node, sub, ctx); });
+        pasteFlush(sub);
+
+        return sub.lines.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function pasteWalk(node, out, ctx) {
+        if (node.nodeType === 3) {
+            var raw = String(node.nodeValue || '');
+            var text = raw.replace(/ /g, ' ');
+
+            text = ctx.keep ? text.replace(/\r\n?/g, '\n') : text.replace(/\s+/g, ' ');
+
+            if (text !== '') {
+                out.runs.push({ text: text, solid: /[^\s]| /.test(raw), code: false, href: ctx.href, bold: ctx.bold, italic: ctx.italic, strike: ctx.strike, highlight: ctx.highlight });
+                out.keep = out.keep || ctx.keep;
+            }
+
+            return;
+        }
+
+        var name = (node.nodeType === 1) ? String(node.nodeName).toUpperCase() : '';
+
+        if (!name || PASTE_DROP.test(name)) {
+            return;
+        }
+
+        var style = pasteStyle(node);
+
+        if (style.ignore) {
+            return;
+        }
+
+        if (name === 'BR') {
+            out.runs.push({ text: '\n', solid: true, code: false, href: ctx.href, bold: false, italic: false, strike: false, highlight: false });
+            return;
+        }
+
+        var inner = pasteMarks(name, style, ctx);
+        var children = Array.prototype.slice.call(node.childNodes || []);
+
+        if (name === 'A') {
+            var href = String(node.getAttribute('href') || '').trim();
+
+            inner.href = PASTE_LINK.test(href) ? href : ctx.href;
+        }
+
+        if (/^(CODE|KBD|SAMP|TT)$/.test(name)) {
+            var code = pasteWords(node).replace(/\s+/g, ' ');
+
+            if (code !== '') {
+                out.runs.push({ text: code, solid: /\S/.test(code), code: true, href: inner.href, bold: false, italic: false, strike: false, highlight: false });
+            }
+
+            return;
+        }
+
+        if (name === 'PRE') {
+            pasteFlush(out);
+
+            var lines = pasteWords(node).replace(/\n+$/, '').split('\n');
+
+            if (lines.join('') !== '') {
+                Array.prototype.push.apply(out.lines, lines.some(function (line) { return /^\s*```/.test(line); }) ? lines : ['```'].concat(lines, ['```']));
+            }
+
+            return;
+        }
+
+        if (name === 'UL' || name === 'OL') {
+            pasteFlush(out);
+            pasteItems(node, out, inner, { numbered: name === 'OL', count: 0 });
+            return;
+        }
+
+        if (name === 'BLOCKQUOTE') {
+            pasteFlush(out);
+
+            var quote = pasteOut();
+
+            children.forEach(function (child) { pasteWalk(child, quote, inner); });
+            pasteFlush(quote);
+            quote.lines.forEach(function (line) { out.lines.push(line === '' ? '>' : '> ' + line); });
+            return;
+        }
+
+        if (name === 'TABLE') {
+            pasteFlush(out);
+
+            var table = pasteTableRows(pasteRows(node, inner));
+
+            if (table !== '') {
+                Array.prototype.push.apply(out.lines, table.split('\n'));
+                return;
+            }
+        }
+
+        // A Word list paragraph: its bullet tells a numbered list from a
+        // bulleted one; paragraphs one after another make one list.
+        if (style.list) {
+            pasteFlush(out);
+
+            var bullet = '';
+
+            (function find(at) {
+                Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                    if (!bullet && child.nodeType === 1) {
+                        if (pasteStyle(child).ignore) {
+                            bullet = pasteWords(child).trim() || ' ';
+                        } else {
+                            find(child);
+                        }
+                    }
+                });
+            })(node);
+
+            var numbered = /^\(?[0-9A-Za-z]{1,3}[.)]/.test(bullet);
+            var words = pasteLine(children, inner);
+            var list = (out.wordList && out.wordList.numbered === numbered) ? out.wordList : { numbered: numbered, count: 0 };
+
+            if (words !== '') {
+                out.lines.push((numbered ? (++list.count) + '. ' : '- ') + words);
+            }
+
+            out.wordList = list;
+            return;
+        }
+
+        if (name === 'LI') {
+            pasteFlush(out);
+            pasteItem(node, out, inner, { numbered: false, count: 0 });
+            return;
+        }
+
+        var block = PASTE_BLOCKS.test(name);
+
+        if (block) {
+            pasteFlush(out);
+        }
+
+        children.forEach(function (child) { pasteWalk(child, out, inner); });
+
+        if (block) {
+            pasteFlush(out);
+        }
+    }
+
+    // A list's items, one level: a list inside an item goes on as items of
+    // the same list (the box keeps one level).
+    function pasteItems(node, out, ctx, list) {
+        Array.prototype.forEach.call(node.childNodes || [], function (child) {
+            var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+            if (name === 'LI') {
+                pasteItem(child, out, pasteMarks(name, pasteStyle(child), ctx), list);
+            } else if (name === 'UL' || name === 'OL') {
+                pasteItems(child, out, ctx, list);
+            }
+        });
+    }
+
+    function pasteItem(item, out, ctx, list) {
+        var check = pasteCheck(item);
+        var part = [];
+        var emit = function () {
+            var words = pasteLine(part, ctx);
+
+            part = [];
+
+            if (words === '') {
+                return;
+            }
+
+            if (check !== null) {
+                out.lines.push('- [' + (check ? 'x' : ' ') + '] ' + words);
+            } else {
+                out.lines.push((list.numbered ? (++list.count) + '. ' : '- ') + words);
+            }
+        };
+
+        Array.prototype.forEach.call(item.childNodes || [], function (child) {
+            var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+            if (name === 'UL' || name === 'OL') {
+                emit();
+                pasteItems(child, out, ctx, list);
+            } else {
+                part.push(child);
+            }
+        });
+
+        emit();
+    }
+
+    // An item of a checklist: aria-checked on the item (Google Docs), or a
+    // checkbox in it before any list inside it (GitHub, Notion, the web).
+    // null for an ordinary item.
+    function pasteCheck(item) {
+        var aria = item.getAttribute('aria-checked');
+
+        if (aria === 'true' || aria === 'false') {
+            return aria === 'true';
+        }
+
+        var found = null;
+
+        (function find(at) {
+            Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+                if (found !== null || !name || name === 'UL' || name === 'OL') {
+                    return;
+                }
+
+                if (name === 'INPUT' && String(child.getAttribute('type') || '').toLowerCase() === 'checkbox') {
+                    found = child.getAttribute('checked') !== null;
+                } else {
+                    find(child);
+                }
+            });
+        })(item);
+
+        return found;
+    }
+
+    // The rows of a table, each a list of its cells' words.
+    function pasteRows(table, ctx) {
+        var rows = [];
+
+        (function find(at) {
+            Array.prototype.forEach.call(at.childNodes || [], function (child) {
+                var name = (child.nodeType === 1) ? String(child.nodeName).toUpperCase() : '';
+
+                if (name === 'TR') {
+                    var cells = [];
+
+                    Array.prototype.forEach.call(child.childNodes || [], function (cell) {
+                        var kind = (cell.nodeType === 1) ? String(cell.nodeName).toUpperCase() : '';
+
+                        if (kind === 'TD' || kind === 'TH') {
+                            cells.push(pasteLine(Array.prototype.slice.call(cell.childNodes || []), pasteMarks(kind, pasteStyle(cell), ctx)));
+                        }
+                    });
+
+                    rows.push(cells);
+                } else if (/^(THEAD|TBODY|TFOOT)$/.test(name)) {
+                    find(child);
+                }
+            });
+        })(table);
+
+        return rows;
+    }
+
+    // Rows of cells as the box's table, its first row the head; '' when it
+    // is no table the table window can hold (a layout table of one column,
+    // one row, or more than the window's 12 columns and 200 rows).
+    function pasteTableRows(rows) {
+        rows = rows.filter(function (row) { return row.some(function (cell) { return cell !== ''; }); });
+
+        var width = rows.reduce(function (most, row) { return Math.max(most, row.length); }, 0);
+
+        if (rows.length < 2 || rows.length > 201 || width < 2 || width > 12) {
+            return '';
+        }
+
+        var line = function (cells) {
+            var all = cells.slice();
+
+            while (all.length < width) {
+                all.push('');
+            }
+
+            return '| ' + all.map(function (cell) { return String(cell).replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|'); }).join(' | ') + ' |';
+        };
+        var rule = [];
+
+        while (rule.length < width) {
+            rule.push('---');
+        }
+
+        return [line(rows[0]), '| ' + rule.join(' | ') + ' |'].concat(rows.slice(1).map(line)).join('\n');
+    }
+
+    // A whole pasted document (its body) as the stored markup: empty lines
+    // run together, an empty line after a list that words follow (the
+    // server draws a list only where nothing follows it in its paragraph).
+    function pasteMarkup(root) {
+        var out = pasteOut();
+
+        pasteWalk(root, out, { bold: false, italic: false, strike: false, highlight: false, keep: false, href: '' });
+        pasteFlush(out);
+
+        var lines = [];
+        var fence = false;
+
+        out.lines.forEach(function (line) {
+            var last = lines.length ? lines[lines.length - 1] : null;
+
+            if (fence || (fenceOpen(line) !== null)) {
+                fence = !(fence && fenceClose(line));
+                lines.push(line);
+                return;
+            }
+
+            if (line === '' && (last === null || last === '')) {
+                return;
+            }
+
+            if (line !== '' && last && listLine(last) && !listLine(line)) {
+                lines.push('');
+            }
+
+            lines.push(line);
+        });
+
+        while (lines.length && lines[lines.length - 1] === '') {
+            lines.pop();
+        }
+
+        return lines.join('\n');
+    }
+
+    // A range copied from a sheet (Excel, Google Sheets, LibreOffice): rows
+    // of tab-separated cells, two rows at least, every row as wide; as the
+    // box's table, or '' for any other text.
+    function pasteSheet(text) {
+        var lines = String(text || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+        var width = lines[0].split('\t').length;
+
+        if (lines.length < 2 || width < 2 || lines.some(function (line) { return line.split('\t').length !== width; })) {
+            return '';
+        }
+
+        return pasteTableRows(lines.map(function (line) { return line.split('\t'); }));
+    }
+
+    // A pasted text that is one address alone, which links the words it is
+    // pasted over; '' for any other text.
+    function pastedUrl(text) {
+        var url = String(text || '').trim();
+
+        return PASTE_LINK.test(url) ? url : '';
+    }
+
+    // The blocks of a stored text (parseBlocks()) as the box's nodes.
+    function markupNodes(blocks, labels) {
+        var fragment = document.createDocumentFragment();
+
+        blocks.forEach(function (block, index) {
+            if (block.kind === 'text') {
+                inlineNodes(block.markup, labels, fragment);
+
+                if (index < blocks.length - 1) {
+                    fragment.appendChild(el('br'));
+                }
+            } else if (block.kind === 'list') {
+                // A list ends its line itself: no break after it.
+                var list = el(LISTS[block.list].tag.toLowerCase(), LISTS[block.list].className);
+
+                block.items.forEach(function (one) {
+                    list.appendChild(fillEmpty(inlineNodes(one.words, labels, itemNode(block.list, one.mark))));
+                });
+
+                fragment.appendChild(list);
+            } else {
+                fragment.appendChild(blockNode(block.kind, block.markup));
+                fragment.appendChild(el('br'));
+            }
+        });
+
+        return fragment;
+    }
+
     // ── Nodes → markup ─────────────────────────────────────────────────
 
     var BLOCKS = /^(DIV|P|LI|UL|OL|H[1-6]|BLOCKQUOTE|PRE|TABLE|TR)$/;
@@ -2449,19 +3028,68 @@
         return true;
     }
 
-    // Plain text only: formatting pasted from elsewhere would not survive as
-    // markup anyway. Files are left to the conversation's own paste handler.
-    function pastePlain(event, singleLine) {
+    // A paste into a surface. A one-line field, a table cell and Ctrl+Shift+V
+    // take plain text; a writing box reads the clipboard first (pasteSmart()).
+    // Files are left to the conversation's own paste handler, except in a box
+    // that takes pictures (a note): one pasted without words goes to it.
+    function paste(surface, event, singleLine) {
         var data = event.clipboardData;
+        var editor = singleLine ? null : (surface.wsEditor || null);
+        var plain = surface.wsPlainPaste;
 
-        if (!data || (data.files && data.files.length)) {
+        surface.wsPlainPaste = false;
+
+        if (!data) {
             return;
+        }
+
+        var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+        var files = Array.prototype.slice.call(data.files || []);
+
+        if (files.length) {
+            var take = editor ? editor.options.pasteFiles : null;
+            var pictures = files.filter(function (file) { return /^image\//.test(file.type || ''); });
+
+            if (!take) {
+                return;
+            }
+
+            // Words beside a picture (Word puts one of the text itself) are
+            // pasted as words.
+            if (text.trim() === '') {
+                if (pictures.length) {
+                    event.preventDefault();
+                    take(pictures);
+                }
+
+                return;
+            }
         }
 
         event.preventDefault();
 
-        var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+        if (editor && !plain && editor.pasteSmart(text, String(data.getData('text/html') || ''))) {
+            return;
+        }
 
+        pastePlain(text, singleLine);
+    }
+
+    // HTML from the clipboard as the stored markup, read in a detached
+    // document: DOMParser runs no script and loads nothing, and the document
+    // is never put in the page.
+    function pasteHtml(html) {
+        try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+
+            return (doc && doc.body) ? pasteMarkup(doc.body) : '';
+        } catch (error) {
+            return '';
+        }
+    }
+
+    // Plain text at the caret, line by line.
+    function pastePlain(text, singleLine) {
         if (singleLine) {
             command('insertText', text.replace(/\s*\n\s*/g, ' '));
             return;
@@ -2492,6 +3120,8 @@
         surface.classList.add('ws-rich-surface');
 
         surface.addEventListener('keydown', function (event) {
+            // Ctrl+Shift+V (Cmd on a Mac) pastes plain text, as before.
+            surface.wsPlainPaste = (event.ctrlKey || event.metaKey) && event.shiftKey && (String(event.key || '').toLowerCase() === 'v');
             shortcut(surface, event);
         });
 
@@ -2537,7 +3167,7 @@
         });
 
         surface.addEventListener('paste', function (event) {
-            pastePlain(event, singleLine);
+            paste(surface, event, singleLine);
         });
 
         surface.addEventListener('drop', function (event) {
@@ -3182,28 +3812,7 @@
             }
 
             node.innerHTML = '';
-
-            blocks.forEach(function (block, index) {
-                if (block.kind === 'text') {
-                    inlineNodes(block.markup, labels, node);
-
-                    if (index < blocks.length - 1) {
-                        node.appendChild(el('br'));
-                    }
-                } else if (block.kind === 'list') {
-                    // A list ends its line itself: no break after it.
-                    var list = el(LISTS[block.list].tag.toLowerCase(), LISTS[block.list].className);
-
-                    block.items.forEach(function (one) {
-                        list.appendChild(fillEmpty(inlineNodes(one.words, labels, itemNode(block.list, one.mark))));
-                    });
-
-                    node.appendChild(list);
-                } else {
-                    node.appendChild(blockNode(block.kind, block.markup));
-                    node.appendChild(el('br'));
-                }
-            });
+            node.appendChild(markupNodes(blocks, labels));
 
             this.tidy();
             this.caretToEnd();
@@ -3431,6 +4040,122 @@
 
             this.tidy();
             this.node.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+
+        /**
+         * What the clipboard holds, pasted as the box would write it: one
+         * address over selected words links them, a range from a sheet or a
+         * table alone opens the table window filled with it, HTML comes in
+         * as the box's marks, lists, quotes, code and tables. false leaves
+         * the paste to plain text.
+         */
+        pasteSmart: function (text, html) {
+            var url = pastedUrl(text);
+
+            if (url && this.linkSelection(url)) {
+                return true;
+            }
+
+            var markup = pasteSheet(text) || (html ? pasteHtml(html) : '');
+
+            if (markup === '') {
+                return false;
+            }
+
+            var blocks = parseBlocks(markup);
+
+            if (blocks.length === 1 && blocks[0].kind === 'table') {
+                this.pasteTable(blocks[0].markup);
+                return true;
+            }
+
+            return this.insertMarkup(blocks);
+        },
+
+        linkSelection: function (url) {
+            var node = this.node;
+            var range = selectionRange();
+
+            if (!range || range.collapsed || !node.contains(range.startContainer) || !node.contains(range.endContainer) || range.toString().trim() === '') {
+                return false;
+            }
+
+            var backward = selectionBackward();
+
+            return this.change(function () { return linkRange(node, range, url, backward); });
+        },
+
+        // A pasted table, in the table window before it is put in the box.
+        pasteTable: function (markup) {
+            var self = this;
+            var range = selectionRange();
+
+            if (range && self.node.contains(range.startContainer)) {
+                self.savedRange = range.cloneRange();
+                self.savedBackward = false;
+            }
+
+            openTable(markup, function (result) {
+                if (result) {
+                    self.insertBlock('table', result);
+                }
+            }, {
+                fresh: true,
+                insertLabel: (self.options.slashInserts && self.options.slashInserts.insertLabel) || '',
+                scope: function () { return self.markup(); }
+            });
+        },
+
+        // Pasted blocks in place of the selection, as the box reads a stored
+        // text. Lists and cards stand on lines of their own: below the list
+        // the caret is in, or after a line break when words stand before the
+        // caret.
+        insertMarkup: function (blocks) {
+            var self = this;
+            var node = self.node;
+
+            return self.change(function () {
+                var range = selectionRange();
+
+                if (!range || !node.contains(range.startContainer)) {
+                    self.caretToEnd();
+                    range = selectionRange();
+                }
+
+                range.deleteContents();
+
+                var words = blocks.every(function (block) { return block.kind === 'text'; });
+                var fragment = markupNodes(blocks, {});
+                var last = fragment.lastChild;
+                var item = words ? null : boundaryItem(node, range.startContainer, range.startOffset);
+
+                if (!last) {
+                    return false;
+                }
+
+                if (words) {
+                    range.insertNode(fragment);
+                } else if (item) {
+                    node.insertBefore(fragment, item.parentNode.nextSibling);
+                } else {
+                    var head = self.beforeCaret();
+                    var spot = outOfMarks(node, range);
+
+                    if (head !== '' && !/\n$/.test(head)) {
+                        fragment.insertBefore(el('br'), fragment.firstChild);
+                    }
+
+                    if (spot.parent === node) {
+                        node.insertBefore(fragment, spot.before);
+                    } else {
+                        node.appendChild(fragment);
+                    }
+                }
+
+                select(last.parentNode, indexIn(last) + 1, last.parentNode, indexIn(last) + 1);
+
+                return true;
+            });
         },
 
         editBlock: function (card) {
@@ -4814,7 +5539,7 @@
 
         draw();
 
-        footerButtons(win, !(typeof markup === 'string' && markup), function () {
+        footerButtons(win, !!options.fresh || !(typeof markup === 'string' && markup), function () {
             read();
 
             var escape = function (value) { return String(value).replace(/\|/g, '\\|'); };

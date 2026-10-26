@@ -39,9 +39,63 @@ function api_http_address_is_allowed($ip) {
 
 	}
 
+	if (api_http_ipv4_in_blocked_range($ip)) {
+
+		return false;
+
+	}
+
 	// Loopback, private ranges and the reserved blocks - which is where link
 	// local, and with it the cloud metadata address, lives.
 	return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+
+}
+
+// Whether an IPv4 address lies in a block no outgoing request is sent to.
+//
+// FILTER_FLAG_NO_RES_RANGE refuses only 0/8, 127/8, 169.254/16 and 240/4 on
+// every PHP from 7.1 to 8.5, so the blocks below that it misses are spelled
+// out, and the ones it covers are repeated so the answer never rests on the
+// flag. The private ranges stay with FILTER_FLAG_NO_PRIV_RANGE. Anything that
+// is not an IPv4 address answers false and is left to the flags.
+function api_http_ipv4_in_blocked_range($ip) {
+
+	if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+
+		return false;
+
+	}
+
+	$blocks = array(
+		'0.0.0.0/8',      // "this network"; 0.0.0.0 itself reaches this server
+		'100.64.0.0/10',  // shared address space (carrier NAT), where Alibaba Cloud's metadata service answers at 100.100.100.200
+		'127.0.0.0/8',    // loopback
+		'169.254.0.0/16', // link local, with the cloud metadata address 169.254.169.254
+		'192.0.0.0/24',   // IETF protocol assignments (DS-Lite, NAT64 discovery), never a public server
+		'198.18.0.0/15',  // benchmarking, which some networks use internally
+		'224.0.0.0/4',    // multicast, which is no single server
+		'240.0.0.0/4'     // reserved, up to the broadcast address 255.255.255.255
+	);
+
+	$address = ip2long($ip);
+
+	foreach ($blocks as $block) {
+
+		list($network, $bits) = explode('/', $block);
+
+		// The same mask on both sides, so the comparison also holds where
+		// ip2long() answers a negative number (32-bit PHP).
+		$mask = -1 << (32 - (int)$bits);
+
+		if (($address & $mask) === (ip2long($network) & $mask)) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
 
 }
 
