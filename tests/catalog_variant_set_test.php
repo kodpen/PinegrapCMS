@@ -191,6 +191,22 @@ function test_catalog_variant_set_screen_and_api_write_through_it()
 	pg_assert_contains('api_dry_run_stop(', $api, 'the route can be rehearsed');
 	pg_assert_true(strpos($api, 'api_dry_run_stop(') < strpos($api, 'pg_catalog_variant_set_create('), 'the rehearsal stops above the write');
 	pg_assert_false(strpos($api, '(int)$variant[\'price\']') !== false, 'no price cast');
+	pg_assert_contains('api_product_group_price_rule_amounts_or_fail($params[\'price_rules\']);', $api, 'rule amounts refused, not rounded or dropped');
+	pg_assert_true(strpos($api, 'api_product_group_price_rule_amounts_or_fail(') < strpos($api, 'pg_variant_price_rules_normalize('), 'before the rules are normalized');
+	pg_assert_contains("pg_audit_record('create', 'products', (int)\$product_id);", $api, 'every created product gets its audit line, as POST /products and the screen give it');
+
+	$groups = catalog_variant_set_test_source('includes/api/resources/product_groups.php');
+	$amounts = catalog_variant_set_test_body($groups, 'api_product_group_price_rule_amounts_or_fail');
+
+	pg_assert_contains("array_key_exists('amount', \$option) && !is_int(\$option['amount'])", $amounts, 'an amount is a whole number of minor units');
+
+	$rows = catalog_variant_set_test_body($groups, 'api_product_group_variant_rows');
+
+	pg_assert_contains('$quantity < 0', $rows, 'stock below zero refused');
+	pg_assert_contains('$quantity > API_INVENTORY_QUANTITY_LIMIT', $rows, 'stock above the inventory limit refused');
+
+	// The screen audits the ids itself (add_product.php), so the writer does not.
+	pg_assert_false(strpos($writer, 'pg_audit_record(') !== false, 'no audit line in the writer: the screen would get two');
 
 	$schema = catalog_variant_set_test_source('includes/api/schema.php');
 

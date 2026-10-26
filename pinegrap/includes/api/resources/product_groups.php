@@ -860,6 +860,20 @@ function api_product_group_variant_rows($raw) {
 
 		}
 
+		// The column is unsigned and the session not strict: out of range
+		// would be stored clipped. POST /products holds stock to the same range.
+		if ($quantity < 0) {
+
+			api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => 'variants.inventory_quantity')), 'variants');
+
+		}
+
+		if ($quantity > API_INVENTORY_QUANTITY_LIMIT) {
+
+			api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => 'variants.inventory_quantity')), 'variants');
+
+		}
+
 		$rows[] = array(
 			'name'               => $sku,
 			'short_description'  => $texts['short_description'][0],
@@ -918,6 +932,8 @@ function api_product_groups_variant_sets_create($params) {
 	$rules = null;
 
 	if (!empty($params['price_rules'])) {
+
+		api_product_group_price_rule_amounts_or_fail($params['price_rules']);
 
 		$rules = pg_variant_price_rules_normalize(array('attributes' => $params['price_rules']));
 
@@ -996,6 +1012,12 @@ function api_product_groups_variant_sets_create($params) {
 
 	}
 
+	foreach ($created['product_ids'] as $product_id) {
+
+		pg_audit_record('create', 'products', (int)$product_id);
+
+	}
+
 	log_activity(lang(array(
 		'string' => 'Variant set ({var:1}) with {var:2} products was added through the API by the application {var:3} (key {var:4}).',
 		'vars'   => array($created['name'], count($created['product_ids']), $app['name'], $app['api_key'])
@@ -1009,6 +1031,40 @@ function api_product_groups_variant_sets_create($params) {
 		'product_group' => api_product_group_present($row, api_product_group_extras(array($id), true), true),
 		'product_ids'   => array_map('intval', $created['product_ids'])
 	), 201);
+
+}
+
+// Every amount in the price rules a whole number of minor units, every factor
+// and percent a number: pg_variant_price_rule_value() rounds an amount and
+// drops what is not a number, so 49.90 meant as lira would price at 50 minor
+// units and "12,50" would leave the base price, both answered 201.
+function api_product_group_price_rule_amounts_or_fail($rules) {
+
+	foreach ((array)$rules as $rule) {
+
+		$options = (is_array($rule) && isset($rule['options']) && is_array($rule['options'])) ? $rule['options'] : array();
+
+		foreach ($options as $option) {
+
+			if (!is_array($option)) {
+
+				continue;
+
+			}
+
+			$bad = (array_key_exists('amount', $option) && !is_int($option['amount']))
+				|| (array_key_exists('factor', $option) && !is_int($option['factor']) && !is_float($option['factor']))
+				|| (array_key_exists('percent', $option) && !is_int($option['percent']) && !is_float($option['percent']));
+
+			if ($bad) {
+
+				api_fail_validation(lang('A price rule amount is a whole number of minor units, and a factor or percent a number.'), 'price_rules');
+
+			}
+
+		}
+
+	}
 
 }
 
