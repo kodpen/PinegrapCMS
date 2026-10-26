@@ -539,7 +539,7 @@
         btn.disabled = n > 0;
         var verb = isNew ? L.create : L.save;
         var label = n ? (verb + ' · ' + fmt(L.incomplete, [n])) : verb;
-        var slot = btn.querySelector('.btn-text');
+        var slot = btn.querySelector('.pg-btn-label');
         if (slot) { slot.textContent = label; } else { btn.textContent = label; }
         btn.classList.toggle('btn-warning', n > 0);
         btn.classList.toggle('btn-success', n === 0);

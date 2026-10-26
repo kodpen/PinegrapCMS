@@ -3741,7 +3741,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // here (edit_product.php refuses the write too); the way back is
     // restoring it in the Catalog Manager, so that is what the screen offers.
     $pg_recycled = ($pg_mode === 'edit') && !empty($context['recycled']);
-    $pg_bin_link = '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="btn-text">' . lang('Open the Recycle Bin') . '</span></a>';
+    $pg_bin_link = '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>';
 
     // What a new product starts as. Written as values rather than as markup
     // defaults so that the create screen and the edit screen read from the same
@@ -5570,10 +5570,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($pg_recycled ? $pg_bin_link : '
                             <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success">
-                                <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="btn-text">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
+                                <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="btn-text">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>

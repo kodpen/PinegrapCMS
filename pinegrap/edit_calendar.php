@@ -56,11 +56,11 @@ if (!$_POST) {
     
     // if there are no calendar events in this calendar, allow delete
     if ($number_of_calendar_events == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
     // else there is at least one calendar event in this calendar, so disable delete button
     } else {
-        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('Please delete or remove all calendar events from this calendar before deleting this calendar.') . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     echo 
@@ -111,7 +111,7 @@ if (!$_POST) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                             
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

@@ -256,10 +256,10 @@ pg_page_shell([
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_invoice
-                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Invoice the Delivery Note') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Invoice the Delivery Note') . '</span></button>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

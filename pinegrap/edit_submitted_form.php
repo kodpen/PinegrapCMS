@@ -711,14 +711,14 @@ if (!$_POST) {
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
         $output_buttons =
-            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="btn-text" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="btn-text">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
+            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-success "><span class="material-icons me-2">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
+            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-secondary"><span class="material-icons me-2">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
 
     // Otherwise the form is complete, so show different buttons.
     } else {
         $output_buttons =
-            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="btn-text" >' . lang(array('string'=>'Save') ) . '</span></button>
-            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="btn-text">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
+            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-warning "><span class="material-icons me-2">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
     }
     
     // Where it was talked about in the workspace, and the tasks about it.
@@ -849,7 +849,7 @@ if (!$_POST) {
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     ' . $output_buttons . '
-                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

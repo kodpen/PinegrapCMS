@@ -2488,7 +2488,7 @@
        assumed: the same screen is used to create and to edit, and hard-coding
        "Create" here overwrote "Save" on the edit screen the moment the page
        finished loading. */
-    var createLabel = $.trim($('#pg_pb_create .btn-text').text()) || label('Create');
+    var createLabel = $.trim($('#pg_pb_create .pg-btn-label').text()) || label('Create');
 
     /* Only the switch being turned on changes where the save goes. A product
        that already has a form is not about to be sent to the field designer —
@@ -2500,7 +2500,7 @@
     var continueText = (cfg.mode === 'edit') ? label('Save & Continue') : label('Create & Continue');
 
     $('#product_form').on('change', function () {
-        $('#pg_pb_create .btn-text').text(
+        $('#pg_pb_create .pg-btn-label').text(
             (this.checked && !formWasOn) ? continueText : createLabel);
     }).trigger('change');
 

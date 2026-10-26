@@ -216,7 +216,7 @@ function pg_settings_modal_markup($user)
                     <div class="ms-auto d-flex align-items-center gap-2">
                         <button type="button" class="btn btn-sm btn-link link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="modal">' . h(lang('Close')) . '</button>
                         <button type="button" class="btn btn-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
-                            <i class="bi bi-save me-2" aria-hidden="true"></i><span class="btn-text">' . h(lang('Save')) . '</span>
+                            <i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
                         </button>
                     </div>
                 </footer>

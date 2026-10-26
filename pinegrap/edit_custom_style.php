@@ -168,7 +168,7 @@ if (!$_POST) {
     // if style is being used by either a folder or a page
     if (($folders_using_style > 0) || ($pages_using_style > 0)) {
         // output delete button with alert
-        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '" title="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="button" value="Delete" class="btn my-1 btn-danger "  data-confirm-content="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '" title="' . lang('You may not delete this page style because it is being used by at least one folder or page.') . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
        
     } else {
         // output regular delete button
@@ -177,7 +177,7 @@ if (!$_POST) {
         $delete_confirmation = pg_recycle_style_ready()
             ? lang('This page style will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -262,8 +262,8 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="btn-text">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

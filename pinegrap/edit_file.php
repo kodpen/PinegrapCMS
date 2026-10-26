@@ -620,10 +620,10 @@ if (!isset($_POST['name'])) {
                     <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary "><span class="material-icons me-2">arrow_backsave</span><span class="btn-text" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="btn-text">' . lang('Save') . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="btn-text">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-2">delete</span><span class="btn-text" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary "><span class="material-icons me-2">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

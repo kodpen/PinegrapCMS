@@ -21,6 +21,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Call Bootstrap's JavaScript and listen to its events only through `pgUI` (`assets/js/pg_ui.js`): kinds dialog/drawer/menu, `pgUI.on()` instead of jQuery `.on('….bs.modal')`, floating layers on `pgUI.overlayHost()` (`pg-ui-adapter.md`).
 - Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
 - Panel CSS reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
+- A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
 <!-- key-rules:end -->
 
