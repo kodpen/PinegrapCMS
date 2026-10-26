@@ -2412,6 +2412,7 @@ function ws_notes_js_strings()
         'notes_empty'           => lang('No note yet.'),
         'notes_empty_shared'    => lang('Nothing is shared with you yet.'),
         'notes_empty_search'    => lang('No note matches.'),
+        'notes_none'            => lang('A clean page - your first note is one click away.'),
         'notes_intro'           => lang('Your notes are yours alone - nobody else sees them, administrators included - until you share them. Keep any message here from its menu with "Save to my notes", or write your own.'),
         'notes_pick'            => lang('Pick a note on the left, or start a new one.'),
         'notes_title'           => lang('Title'),
