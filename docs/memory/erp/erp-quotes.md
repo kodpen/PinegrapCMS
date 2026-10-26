@@ -28,5 +28,6 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 ## How is a quote tagged in the Workspace?
 - Tag kind `erp_quote`, "Sales quote" / "Satış teklifi" (never a bare "quote": an Offer is "Teklif", a quoted message "Alıntı"); `#satis` or `#salesquote` picks it, Offer keeps `#teklif`. Shown with the ERP right (`manage_erp`), as the quote screens; read over the API and by the assistants with `erp:read`.
 - The chip: number, account, total in the quote's own currency (`erp_money_out_currency()`, as the quote screens; `ws_money_out()` would print the visitor's currency), state (`erp_quote_state()`); it opens edit_erp_quote.php, which draws the Workspace button. refs.php loads quotes.php and money.php alone (`ws_erp_quotes_readable()`), not the bootstrap. The invoice chip still prints through `ws_money_out()`.
-- Its menu's "Copy as a new sales quote" opens add_erp_quote.php `?copy=<id>`, offered to whoever may write ERP documents (not `manage_erp_readonly`). Tag-only: the Workspace writes no quote.
+- Its menu's "Copy as a new sales quote" opens add_erp_quote.php `?copy=<id>`, offered to whoever may write ERP documents (not `manage_erp_readonly`).
+- The Workspace adds a quote only from a change card the person applies (kind `erp_quote`, #1705), through `erp_quote_save()`; it changes, sends or invoices none: workspace/workspace-sales-quote-change.md.
 - A channel's menu offers the same people "New sales quote", `?account_id=` on its customer's account: workspace/workspace-new-sales-quote.md.

@@ -319,10 +319,10 @@ if (!$_POST) {
                                                 'size' => '10',
                                                 'maxlength' => '10',
                                                 'class'=>'form-control',
-                                                'autocomplete'=>'off')) . '
-                                                ' . get_date_picker_format() . '
+                                                'autocomplete'=>'off',
+                                                'data-pg-date' => '')) . '
+                                                ' . get_date_picker_format() . pg_fields_script() . '
                                             <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
-                                            <script>$("#expiration_date").datepicker(datetimepicker_options);</script>
                                         </div>
                                         <div class="col-12 col-xl-8 my-2">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>

@@ -24992,7 +24992,9 @@ const StyleDesigner = (function () {
         // ── id change ──
         var idInp = panel.querySelector('.sd-attr-val[data-prop="id"]');
         if (idInp) {
+            var idUndo = _sdUndoBeforeFirstInput(idInp);
             idInp.addEventListener('input', function () {
+                idUndo();
                 var _oldId = n.props.id || '';
                 n.props.id = this.value;
                 // A <label for> that pointed at the old id now points at
@@ -25004,20 +25006,20 @@ const StyleDesigner = (function () {
                 renderHtmlTree();
                 _sdSchedulePropsRefresh();
             });
-            idInp.addEventListener('change', function () { saveState(); });
         }
 
         // ── Prop-bound builtin attr inputs (e.g. img src/alt/width/height) ──
         panel.querySelectorAll('.sd-attr-prop-val').forEach(function (inp) {
             var propKey = inp.dataset.propkey;
             if (!propKey) return;
+            var propUndo = _sdUndoBeforeFirstInput(inp);
             inp.addEventListener('input', function () {
+                propUndo();
                 n.props[propKey] = this.value;
                 renderCanvas();
                 renderHtmlTree();
             });
             inp.addEventListener('change', function () {
-                saveState();
                 // Refresh Properties panel so dedicated controls reflect the new value
                 renderProperties();
             });
@@ -25069,7 +25071,9 @@ const StyleDesigner = (function () {
         var dynEl = document.getElementById('sd-attr-dynamic');
         if (dynEl) {
             dynEl.querySelectorAll('.sd-attr-name').forEach(function (inp) {
+                var nameUndo = _sdUndoBeforeFirstInput(inp);
                 inp.addEventListener('input', function () {
+                    nameUndo();
                     n.props._attrs[parseInt(this.dataset.idx, 10)].name = this.value;
                     renderHtmlTree();
                 });
@@ -25090,15 +25094,29 @@ const StyleDesigner = (function () {
             dynEl.querySelectorAll('.sd-attr-val').forEach(function (inp) {
                 // `style` rows route through `_writeInlineStyleValue` so prop-
                 // derived decls (font-family etc.) are split back into
-                // node.props on every keystroke — keeps the font picker, the
-                // bottom Styles panel, and this Attrs row mutually consistent.
+                // node.props — keeps the font picker, the bottom Styles panel,
+                // and this Attrs row mutually consistent. The row is written
+                // on Enter or when it loses focus, as one undo step: written
+                // on every keystroke, each character was an undo step and a
+                // half-typed declaration ("font-fam") was split and redrawn.
                 if (inp.classList.contains('sd-attr-style-val')) {
-                    inp.addEventListener('input', function () {
-                        _writeInlineStyleValue(n, this.value);
+                    var written = inp.value;
+                    var commitStyle = function () {
+                        if (inp.value === written) return;
+                        written = inp.value;
+                        _writeInlineStyleValue(n, inp.value);
+                    };
+                    inp.addEventListener('keydown', function (e) {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        commitStyle();
                     });
+                    inp.addEventListener('change', commitStyle);
                     return;
                 }
+                var valueUndo = _sdUndoBeforeFirstInput(inp);
                 inp.addEventListener('input', function () {
+                    valueUndo();
                     n.props._attrs[parseInt(this.dataset.idx, 10)].value = this.value;
                     renderCanvas();
                     renderHtmlTree();
@@ -25108,7 +25126,6 @@ const StyleDesigner = (function () {
                     // two different answers to the same question.
                     _sdSchedulePropsRefresh();
                 });
-                inp.addEventListener('change', function () { saveState(); });
             });
             // Virtual `style` row's delete button → clear all inline style
             // (props.fontFamily + _attrs.style). Hits the same write path as
@@ -25155,6 +25172,21 @@ const StyleDesigner = (function () {
                 }
             });
         }
+    }
+
+    // One undo step per edit of an Attributes text field, taken before its
+    // first change: the returned function goes first in the field's `input`
+    // handler, and a new focus starts a new edit. A saveState() on `change`
+    // came after the value was already written, so Undo could not bring
+    // the old value back.
+    function _sdUndoBeforeFirstInput(inp) {
+        var taken = false;
+        inp.addEventListener('focus', function () { taken = false; });
+        return function () {
+            if (taken) return;
+            taken = true;
+            saveState();
+        };
     }
 
     function addClassToken(val, node) {

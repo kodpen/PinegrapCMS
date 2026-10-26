@@ -405,13 +405,13 @@ function erp_invoice_form_cards($liveform, $options = array())
                     <label for="account_id" class="form-label">' . ($is_order ? lang('Supplier') : lang('Account')) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                        'class' => 'form-select select2', 'options' => $account_options)) . '
+                        'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $account_options)) . '
                     ' . erp_account_quick_link('#account_id', 'auto') . '
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'issue_date', 'name' => 'issue_date',
+                        'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
@@ -420,7 +420,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="due_date" class="form-label">' . ($is_quote ? lang('Valid until') : ($is_order ? lang('Expected delivery') : lang('Due Date'))) . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'due_date', 'name' => 'due_date',
+                        'type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . ($is_quote
@@ -441,7 +441,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 <div class="col-12 col-sm-6 col-lg-3 my-2">
                     <label for="supplier_invoice_date" class="form-label">' . lang('Supplier Invoice Date') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'supplier_invoice_date', 'name' => 'supplier_invoice_date',
+                        'type' => 'text', 'id' => 'supplier_invoice_date', 'data-pg-date' => '', 'name' => 'supplier_invoice_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
@@ -457,9 +457,7 @@ function erp_invoice_form_cards($liveform, $options = array())
             </div>
         </div>
     </div>
-    ' . get_date_picker_format() . '
-    <script>$("#issue_date, #due_date, #supplier_invoice_date").datepicker(datetimepicker_options);</script>
-
+    ' . get_date_picker_format() . pg_fields_script() . '
     <div class="card my-4">
         <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>' . lang('Lines') . '</span>
