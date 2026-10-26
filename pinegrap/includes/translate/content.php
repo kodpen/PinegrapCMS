@@ -1088,7 +1088,7 @@ function pg_tr_has_column($table, $column)
 /**
  * The catalog: every enabled product and product group (the name as the
  * visitor reads it - short_description; name itself is the stock code -
- * descriptions, details, SEO title and description) and every attribute
+ * descriptions, details, keywords, SEO title and description) and every attribute
  * with its options.
  *
  * @return array('owners' => int, 'segments' => int)
@@ -1110,8 +1110,8 @@ function pg_tr_extract_catalog()
     foreach (array(
         // name is the unique stock code of a product and a group; what the
         // visitor reads as the name is short_description.
-        'product'       => array('products', array('short_description', 'full_description', 'details', 'title', 'meta_description')),
-        'product_group' => array('product_groups', array('short_description', 'full_description', 'title', 'meta_description')),
+        'product'       => array('products', array('short_description', 'full_description', 'details', 'keywords', 'title', 'meta_description')),
+        'product_group' => array('product_groups', array('short_description', 'full_description', 'details', 'keywords', 'title', 'meta_description')),
     ) as $owner_type => $spec) {
         list($table, $fields) = $spec;
         $fields = array_values(array_filter($fields, function ($field) use ($table) {

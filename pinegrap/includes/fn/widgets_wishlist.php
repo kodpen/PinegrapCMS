@@ -112,7 +112,8 @@ function pg_wishlist_widget_row_flags($row, $ctx)
  *
  * @param array $row products.id, name, short_description, address_name,
  *                   image_name, price, inventory, inventory_quantity,
- *                   backorder; wishlist_items.added_at
+ *                   backorder, the allow-listed columns
+ *                   (pg_sw_entity_select()); wishlist_items.added_at
  * @param array $ctx base_path, detail_prefix (the detail page's address and
  *                   a slash, '' for none), currency_symbol, discounted,
  *                   date_format
@@ -147,6 +148,9 @@ function pg_wishlist_widget_row_values($row, $ctx)
         '__out_of_stock_label'       => pg_wishlist_widget_can_add($row) ? '' : (string)lang('Out of stock'),
         '__added_date'               => ($added > 0) ? _pg_sw_short_date($added, isset($ctx['date_format']) ? (string)$ctx['date_format'] : 'Y-m-d') : '',
     );
+
+    // The product's allow-listed values (widgets_entity_fields.php).
+    $values += pg_sw_entity_values('product', $row, array('currency_symbol' => $symbol));
 
     return $values;
 }
@@ -522,7 +526,8 @@ function _render_system_widget_wishlist($tree_json, $widget_id, $cfg = array(), 
                 "SELECT
                     products.id, products.name, products.short_description, products.address_name,
                     products.image_name, products.price,
-                    products.inventory, products.inventory_quantity, products.backorder,
+                    products.inventory, products.inventory_quantity, products.backorder
+                    " . pg_sw_entity_select('product', 'products') . ",
                     wishlist_items.added_at
                 FROM wishlist_items
                 INNER JOIN products ON products.id = wishlist_items.product_id
