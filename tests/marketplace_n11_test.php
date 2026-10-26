@@ -456,3 +456,28 @@ function test_marketplace_n11_remote_products_knows_the_last_page()
 
 	pg_assert_true($empty['data']['last'], 'an empty page is the end');
 }
+
+// n11's city is the province and its district the town within it: the store
+// keeps the town as the city and the province as the state, the way the
+// checkout's Turkish address does.
+function test_marketplace_n11_address_puts_the_district_in_city_and_the_province_in_state()
+{
+	$entry = array('shippingAddress' => array(
+		'fullName' => 'Ayşe Yılmaz',
+		'address'  => 'Atatürk Cad. No 5',
+		'city'     => 'İstanbul',
+		'district' => 'Kadıköy',
+		'gsm'      => '5551234567',
+	));
+
+	$address = mp_n11_address($entry, 'shippingAddress');
+
+	pg_assert_same('Kadıköy', $address['city']);
+	pg_assert_same('İstanbul', $address['state']);
+
+	// Their other spellings of the two fields.
+	$other = mp_n11_address(array('billingAddress' => array('cityName' => 'Ankara', 'districtName' => 'Çankaya')), 'billingAddress');
+
+	pg_assert_same('Çankaya', $other['city']);
+	pg_assert_same('Ankara', $other['state']);
+}
