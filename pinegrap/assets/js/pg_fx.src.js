@@ -157,7 +157,21 @@
     }
 
     function arm(rec) {
-        rec.targets.forEach(function (t) { put(t, shift(rec.o)); });
+        var o = rec.o, size = 0;
+        // The observer measures the moved box, and a box moved off the
+        // screen is never seen. Without a stagger the moved node is the
+        // observed one: its slide stays below its own width (left, right)
+        // or height (up, down), so it keeps a part of the place it lands in.
+        if (!o.stagger && o.effect.indexOf('slide-') === 0) {
+            size = /left|right/.test(o.effect) ? rec.el.offsetWidth : rec.el.offsetHeight;
+        }
+        if (size && o.distance >= size) {
+            var near = {};
+            for (var k in o) near[k] = o[k];
+            near.distance = size - 1;
+            o = near;
+        }
+        rec.targets.forEach(function (t) { put(t, shift(o)); });
         // Read once so the start state is drawn before the move begins.
         void rec.el.offsetWidth;
         rec.el.classList.add('pg-fx-armed');
@@ -244,7 +258,7 @@
     function bind(root) {
         root = root || document;
         if (!seen && window.IntersectionObserver) {
-            seen = new window.IntersectionObserver(onSeen, { rootMargin: '0px 0px -8% 0px', threshold: 0.1 });
+            seen = new window.IntersectionObserver(onSeen, { threshold: 0 });
         }
         var list = root.querySelectorAll ? root.querySelectorAll('[data-pg-fx]') : [];
         for (var i = 0; i < list.length; i++) {
