@@ -588,6 +588,8 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_style_fields.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_fields.js') . '"></script>
         <!-- Per-element custom style rule in User Styles (window.PgCustomStyle). -->
         <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
+        <!-- The search keyword chips (pgChips). -->
+        ' . pg_fields_script() . '
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
@@ -2218,7 +2220,7 @@ function pg_designer_settings_modal($ctx)
                 array('for' => 'pg_page_search', 'switch' => true)) . '
             ' . pg_designer_setting(lang('Search Keywords'),
                 lang('Somebody searching for one of these words gets this page at the top of the results; a search for a part of one finds the page too. Press Enter after each word.'),
-                '<input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">',
+                '<input type="text" value="" name="page_search_keywords" id="pg_search_keywords" class="form-control form-control-sm tagin min-height-tagin sd-page-field" data-pg-chips data-page-key="page_search_keywords" data-placeholder="' . lang('Add tags') . '">',
                 array('for' => 'pg_search_keywords', 'wide' => true, 'id' => 'pg_search_kw_row')) . '
         </section>';
 
