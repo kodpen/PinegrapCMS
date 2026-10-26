@@ -27,7 +27,7 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
 - A failure's `raw.message` is the service's own words (`''` when none); with `raw.exception` set it is PHP's text, for the log (pg_payment_call(), iyzico refund's unreadable body: PR #1260).
 
 ## What stays outside?
-- `iyzipay_cancel_payment()` and the 3-D Secure return in submit_order.php (plan step 2b).
+- Nothing a request reaches since PR #1710.
 
 ## How was it verified?
 - `tests/payment_refunds_test.php`: requests through `pg_payment_call()` against a stand-in for iyzico's HTTP client, compared with the statements the old view_order.php and process_order_cancellation() blocks used (`legacy_refunds_*()`), and the outcome against the old log lines (success, refusal with or without a message, no answer, exception). A throwaway sandbox (iyzico unreachable): card and PWI orders on Iyzipay and Stripe stores, buttons, notes, void attempts, log lines; no iyzico sandbox.

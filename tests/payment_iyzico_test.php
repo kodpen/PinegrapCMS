@@ -504,6 +504,7 @@ function test_payment_iyzico_direct_payment_sends_the_legacy_request()
 	pg_assert_same('MASTER_CARD', $answer['card_brand']);
 	pg_assert_same(array(), $answer['log']);
 	pg_assert_same(array(), $kept, 'no 3-D Secure row');
+	pg_assert_same(array(), $answer['state'], 'nothing waits for a return');
 
 	pg_assert_same(
 		array('total' => 10714, 'installment_charge' => 0, 'total_without_installment_charge' => 0, 'payment_installment' => 1),
@@ -693,6 +694,7 @@ function test_payment_iyzico_threeds_start_keeps_the_row_the_return_reads()
 	pg_assert_same('redirect', $answer['status']);
 	pg_assert_same('<form id="bank"></form>', $answer['html']);
 	pg_assert_same('', $answer['transaction_id']);
+	pg_assert_same(array('installment' => 3), $answer['state'], 'the return checks the visitor\'s choice against the limit');
 	pg_assert_same(array(lang(array('string' => 'The 3D Security process has been started by {var:1} {var:2} ({var:3}).', 'vars' => array('Ayşe', 'Yılmaz', 'ayse@example.com')))), $answer['log']);
 }
 
@@ -1014,7 +1016,8 @@ function test_payment_iyzico_drivers_are_shipped()
 	pg_assert_false(strpos(pg_payment_settings_gateway_options('Iyzipay'), 'Iyzipay') !== false, 'the gateway list already has Iyzipay');
 
 	pg_assert_true(pg_payment_can('iyzico', 'authorize'));
-	pg_assert_false(pg_payment_can('iyzico', 'complete'), 'the 3-D Secure return stays in submit_order.php');
+	pg_assert_true(pg_payment_can('iyzico', 'complete'), 'the card driver finishes the 3-D Secure return');
+	pg_assert_true(pg_payment_can('iyzico', 'threeds'));
 	pg_assert_true(pg_payment_can('pay_with_iyzico', 'complete'));
 	pg_assert_true(pg_payment_can('iyzico', 'installments'));
 	pg_assert_true(pg_payment_can('iyzico', 'refund'));
@@ -1027,7 +1030,8 @@ function test_payment_iyzico_drivers_are_shipped()
 function test_payment_iyzico_checkout_driver_choice()
 {
 	pg_assert_same('iyzico', pg_payment_checkout_driver('Credit/Debit Card', 'Iyzipay', ''));
-	pg_assert_same('', pg_payment_checkout_driver('Credit/Debit Card', 'Iyzipay', 'iyzipay_threedsecure_return'), 'the bank\'s return is finished as before');
+	pg_assert_same('iyzico', pg_payment_checkout_driver('Credit/Debit Card', 'Iyzipay', 'iyzipay_threedsecure_return'), 'the bank\'s return goes to the driver');
+	pg_assert_same('Credit/Debit Card', pg_payment_return_method('iyzipay_threedsecure_return'));
 	pg_assert_same('pay_with_iyzico', pg_payment_checkout_driver('Pay With Iyzico', 'Iyzipay', ''));
 	pg_assert_same('pay_with_iyzico', pg_payment_checkout_driver('Pay With Iyzico', 'Stripe', 'pay_with_iyzico_return'));
 	pg_assert_same('', pg_payment_checkout_driver('Credit/Debit Card', 'Stripe', ''), 'a legacy gateway');
