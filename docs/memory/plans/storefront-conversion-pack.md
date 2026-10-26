@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail and form, API done): back-in-stock SMS, bundles
+description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail, form and SMS, API done): review form, bundles
 ---
 
 ## Why?
@@ -9,7 +9,7 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 ## What is decided?
 - (a) Reviews: stay on the `comments` table (no second review model): `verified_order_id`, `seller_reply`, `seller_reply_at`; a product review can be submitted only by a signed-in customer whose order containing the product is `complete` (or delivered). Review request e-mail profile `order_review_request` in `email_campaign_profiles` (day delay after delivery/ship), one per order. Average and count cached on `products.rating_avg/rating_count`, `aggregateRating` only from real rows. Reviews are never auto-deleted before 1 year. Catalog widget tokens `__rating_avg`, `__rating_count`, `__reviews` list; legacy `get_catalog.php` unchanged but the JSON-LD helper.
 - (b) Wishlist: `wishlist_items` (user or cookie token, product, added_at); catalog hearts, a Favourites page widget, the cookie list merged into the account at sign-in. Owner 2026-10-24: guests open their list before signing in; a `wishlist` widget page linked from My Account; hearts in starter catalog cards and store, boutique, bookshop product cards; no site switch or price-drop e-mail now (no schema change).
-- (c) Back in stock: `stock_notify` (product, e-mail or user, phone, sent_at); "Notify me" on out-of-stock items (widget layer); on `inventory.changed` from site writers (not imports, ERP counts) a listener mails (SMS via `sms-and-iys.md`) once per row and marks it sent.
+- (c) Back in stock: `stock_notify` (product, e-mail or user, phone, sent_at); "Notify me" on out-of-stock items (widget layer); on `inventory.changed` from site writers (not imports, ERP counts) a listener mails or texts once per row and marks it sent.
 - (d) Bundles (later, own slices): a `bundle` product of other products in fixed quantities; stock from components; price fixed or a discounted sum, charged as a normal line (express-order totals unchanged); lines keep component references for ERP stock moves. After (a)–(c).
 - Added in 2a: an unpaid bank transfer is no purchase; one review per purchase; only verified reviews count (28/B(6)); aggregateRating only where starred reviews show: `commerce/product-reviews-verified.md`.
 
@@ -23,11 +23,11 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 3c. (PR #1585) Favourites widget and page, My Account link (`designer/wishlist-widget.md`).
 4a. (PR #1659) Back-in-stock requests, the `inventory.changed` listener and e-mail (`commerce/back-in-stock-notices.md`).
 4b. (PR #1664) "Notify me" field and button in the catalog item view, `can_notify`, starter (`designer/catalog-stock-notify-form.md`).
+4c. (PR #1864) SMS notice, transactional kind `stock` (owner: "sadece işlem mesajları yer alacak"): `commerce/back-in-stock-sms.md`.
 5. (PR #1676) API: reviews, rating, a customer's favourites, `product.review.created`, `verified` (`api/api-reviews-and-wishlist.md`).
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
-4c. The notice by SMS, after `sms-and-iys.md` step 3 (S).
 6. Bundles design note before coding (owner review).
 
 ## Open questions?
@@ -35,4 +35,4 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 - Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
-- Step 6 needs the owner's review of a design note first. 4c waits for `sms-and-iys.md` step 3, 2c for designable-comments slice 20.
+- Step 6 needs the owner's review of a design note first. 2c waits for designable-comments slice 20.

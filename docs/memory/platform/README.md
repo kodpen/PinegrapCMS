@@ -90,7 +90,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - short-link-names.md: Short link names (2026.11.0): the name rule, a pasted old address as a name, how a request finds its link (as it came, then in the stored form), IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
-- sms-order-messages.md: Order SMS (received, shipped, delivered): templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
+- sms-order-messages.md: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 - sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.

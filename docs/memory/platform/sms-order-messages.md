@@ -1,10 +1,11 @@
 ---
 name: sms-order-messages
-description: Order SMS (received, shipped, delivered): templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
+description: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 ---
 
 ## What sends an order's text message?
 - `includes/fn/sms_messages.php`. Three events (`pg_sms_message_events()`): `order_received` (kind `order`), `order_shipped` and `order_delivered` (kind `shipping`). Each is queued with `pg_sms_enqueue()`, never sent in the request, to the order's `billing_phone_number`; a number that is not a mobile, an event switched off or SMS not set up sends nothing and stops nothing.
+- A fourth event, `stock_back` (kind `stock`), texts a back-in-stock notice to the number the request kept: [[back-in-stock-sms]].
 - Every event is off until switched on (Settings › Communication › SMS Messages): each message is paid, so switching SMS on for a test does not start texting every customer.
 
 ## Where is each one queued?

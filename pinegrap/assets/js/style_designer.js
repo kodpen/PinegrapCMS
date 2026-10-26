@@ -39654,6 +39654,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
+                vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -55565,7 +55566,9 @@ const StyleDesigner = (function () {
                         ]),
                         // Back-in-stock form: shown only while the product
                         // cannot be bought for want of stock (can_notify);
-                        // the address field (stock_notify_email) and the
+                        // the address field (stock_notify_email), the number
+                        // field (stock_notify_phone, drawn only while the
+                        // notice can go out as a text message) and the
                         // button (stock_notify) post stock_notify.php.
                         createNode('semantic', { tag: 'div', cssClass: 'mt-3',
                             customName: _sdT('Back-in-stock notice'),
@@ -55582,7 +55585,14 @@ const StyleDesigner = (function () {
                                 createNode('component', { componentType: 'btn',
                                     text: _sdT('Notify me'), variant: 'outline-primary', size: '', href: '#',
                                     _bindings: { action: 'stock_notify' } })
-                            ])
+                            ]),
+                            createNode('semantic', { tag: 'input',
+                                cssClass: 'form-control mt-2', customName: _sdT('Mobile number'),
+                                _attrs: [{ name: 'placeholder', value: _sdT('Mobile number for a text message (optional)') },
+                                         { name: 'aria-label', value: _sdT('Mobile number for a text message (optional)') }],
+                                _bindings: { value: 'stock_notify_phone' } }),
+                            createNode('content', { contentType: 'paragraph',
+                                text: _sdT('We will send you one message when it is back in stock.'), cssClass: 'form-text mb-0' })
                         ])
                     ])
                 ]);

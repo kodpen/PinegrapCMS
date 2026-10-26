@@ -84,16 +84,23 @@ function test_stock_notify_request_status()
 	pg_assert_same('already', pg_stock_notify_request_status(true, 'a@example.com', $out, true, PG_STOCK_NOTIFY_PENDING_LIMIT), 'asked before, at the limit');
 	pg_assert_same('limit', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT), 'too many waiting');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT - 1), 'one below the limit');
+	pg_assert_same('phone', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, false), 'a number no text reaches');
+	pg_assert_same('email', pg_stock_notify_request_status(true, '', $out, false, 0, false), 'the address first');
+	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0, true), 'a good number, or none');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0), 'first request');
 }
 
 // Every answer has a sentence for the visitor; a refusal is not a notice.
 function test_stock_notify_status_message()
 {
-	foreach (array('added', 'already', 'in_stock', 'product', 'email', 'limit', 'unavailable', 'nonsense') as $status) {
+	foreach (array('added', 'already', 'in_stock', 'product', 'email', 'phone', 'limit', 'unavailable', 'nonsense') as $status) {
 		$message = pg_stock_notify_status_message($status);
 		pg_assert_true(is_string($message) && ($message !== ''), 'a sentence for ' . $status);
 	}
+
+	// The visitor is told that one message comes, and how.
+	pg_assert_same(lang('We will send you one e-mail when this product is back in stock.'), pg_stock_notify_status_message('added'));
+	pg_assert_same(lang('We will send you one text message when this product is back in stock.'), pg_stock_notify_status_message('added', true));
 
 	pg_assert_true(pg_stock_notify_status_ok('added'), 'added is good news');
 	pg_assert_true(pg_stock_notify_status_ok('already'), 'already is good news');
@@ -258,4 +265,47 @@ function test_stock_notify_phone()
 	pg_assert_same('', pg_stock_notify_phone('0212 123 45 67'), 'a landline takes no text');
 	pg_assert_same('', pg_stock_notify_phone(''), 'none typed');
 	pg_assert_same('', pg_stock_notify_phone(array('0532 123 45 67')), 'not a string');
+}
+
+// The text message is a transactional one: its own non-commercial kind, off
+// until switched on, naming the product and its address and nothing else.
+function test_stock_notify_sms_event()
+{
+	$kinds = pg_sms_kinds();
+	pg_assert_true(isset($kinds['stock']) && ($kinds['stock'] === false), 'not commercial: no İYS consent needed');
+
+	$events = pg_sms_message_events();
+	pg_assert_same('stock', $events['stock_back']['kind']);
+	pg_assert_same(array('store', 'product', 'url'), $events['stock_back']['fields']);
+	pg_assert_false(pg_sms_message_normalize(null)['stock_back']['on'], 'off until switched on');
+
+	$fields = pg_stock_notify_sms_fields("Blue\r\nmug", 'https://example.com/shop/blue-mug');
+	pg_assert_same('Blue mug', $fields['product'], 'one line');
+	pg_assert_same(
+		'Shop: Blue mug, which you asked us about, is back in stock. https://example.com/shop/blue-mug',
+		pg_sms_message_render('^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^', $fields + array('store' => 'Shop')));
+	pg_assert_same('Shop: Blue mug, which you asked us about, is back in stock.',
+		pg_sms_message_render('^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^', pg_stock_notify_sms_fields('Blue mug', '') + array('store' => 'Shop')),
+		'no address, no gap');
+}
+
+// The sender texts a row with a number instead of mailing it, once per row
+// (the reference), reads the kept digits back with the plus, and mails when
+// the text cannot be queued; the request keeps a number only while texts go.
+function test_stock_notify_sms_wiring()
+{
+	$send = pg_test_function_source('pg_stock_notify_send');
+
+	pg_assert_contains('stock_notify.phone', $send, 'the number is read');
+	pg_assert_contains('pg_stock_notify_phone(pg_sms_dial(', $send, 'read back with the plus');
+	pg_assert_contains("pg_sms_message_queue('stock_back', pg_sms_dial(\$phone)", $send, 'queued, never sent in the request');
+	pg_assert_contains("'stock:' . (int) \$row['id']", $send, 'one text per request');
+	pg_assert_true(strpos($send, 'pg_sms_message_queue(') < strpos($send, 'email(array('), 'the text first, the mail when it is not queued');
+
+	$request = pg_test_function_source('pg_stock_notify_request');
+	pg_assert_contains('pg_stock_notify_sms_on()', $request, 'a number is kept only while texts go');
+	pg_assert_contains("e(\$phone)", $request, 'and written');
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
+	pg_assert_contains("'phone'", $endpoint, 'the endpoint reads the number');
 }

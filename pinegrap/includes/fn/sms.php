@@ -17,7 +17,8 @@
  * later needs no schema change.
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
- * sign-in code, a reminder) go out as informational messages; a commercial
+ * sign-in code, a reminder, the one back-in-stock notice a customer asked
+ * for) go out as informational messages; a commercial
  * one needs the recipient's consent recorded in İYS, and until the consent
  * records exist pg_sms_send() refuses it.
  *
@@ -163,6 +164,7 @@ function pg_sms_kinds()
         'shipping'  => false,
         'otp'       => false,
         'reminder'  => false,
+        'stock'     => false,
         'marketing' => true,
     );
 }

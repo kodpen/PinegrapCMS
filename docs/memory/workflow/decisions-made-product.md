@@ -21,3 +21,6 @@ description: Decisions list, product part: express order and order preview total
 
 ## What does a personal data erasure keep?
 - Owner decision (2026-10-26, #1706), `core/personal-data-erasure.md`: an order keeps no e-mail address, only the person token, because refunds go through the PSP reference (`transaction_id`, `refund_reference`). An accepted contract keeps its text as proof (only IP and user agent go). An invoice of a person's ERP account, issued or not, gets the replaced buyer fields (the GİB copy is unchanged). The person's `audit_log` lines lose their personal fields but keep who did what and when.
+
+## Is the back-in-stock text message a marketing message?
+- No. Owner decision (2026-10-26, #1864): "sadece işlem mesajları yer alacak". The customer asks for this one notice about one product and it is sent once, so it is transactional: kind `stock`, not commercial, sent without İYS consent. It carries no campaign, discount or other product text, and the form says one message comes (`commerce/back-in-stock-sms.md`).
