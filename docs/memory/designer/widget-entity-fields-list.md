@@ -1,10 +1,9 @@
 ---
 name: widget-entity-fields-list
-description: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (form record, order, order line, addresses, account) and the columns kept off it.
+description: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (order, order line, addresses, account) and the columns kept off it.
 ---
 
 ## What is still to build (one slice per entity family)?
-- Form record: the quiz score, on the item view only (never public lists: other people's scores).
 - Order (order view and receipt e-mail, the owner only): PO number, billing custom fields 1-2 with their settings labels, fax, gift card discount, currency, payment date, cancel date and reason, refund status (words), refund amount and date; yes/no tax exempt. The order view SELECT in `includes/fn/widgets.php` lacks them; `get_order_receipt.php` gives the classic layouts.
 - Order line: quantity shipped, line VAT, subscription period, payments and first payment date, event name and date; yes/no added or discounted by an offer; the line's product values above.
 - Ship-to and address book: address name, salutation, first and last name, address lines 1-2, city, state, zip, country, address type (words), shipped and delivered dates.

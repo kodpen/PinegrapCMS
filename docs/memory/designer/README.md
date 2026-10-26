@@ -260,8 +260,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts that draw old HTML tokens with real design elements, the order timeline and status badge, slices left
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
-- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (form record, order, order line, addresses, account) and the columns kept off it.
-- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product and calendar event values built, the group card's description.
+- widget-entity-fields-list.md: W8, the rest of the owner's entity allow-list (2026-10-26) still to build per family (order, order line, addresses, account) and the columns kept off it.
+- widget-entity-fields.md: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product, calendar event and quiz score values built, the group card's description.
 - widget-fill-filters.md: A bound widget value's format (_bindFormats): text filters or a date format, how the suffix is read, which fills read it, escaping, Turkish case, what a condition compares, typed dates (#1602).
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, the pg-hide-if-empty rerun, the edit pencil, the strip (#1592).
