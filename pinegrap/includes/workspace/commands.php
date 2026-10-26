@@ -1305,6 +1305,77 @@ function ws_command_task($viewer, $channel, $text, $options)
 }
 
 /**
+ * The live line under a command being written: what sending it now would
+ * do, read by the same parser that runs it, and what it cannot read. Only
+ * /task has one yet; any other command answers with an empty line.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $body the line as written so far
+ * @return array line (text, '' for none), warnings (texts)
+ */
+function ws_command_suggest($viewer, $channel, $body)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $split = ws_command_split($body);
+
+    if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
+        return $out;
+    }
+
+    $parsed = ws_command_parse_task($split['rest']);
+
+    foreach (array_unique($parsed['typed_people']) as $name) {
+        $out['warnings'][] = lang(array('string' => '@{var:1} is not tagged, so nobody is assigned by it: pick the person from the @ list.', 'vars' => $name));
+    }
+
+    if ($parsed['title'] === '') {
+        $out['warnings'][] = lang('Write what the task is after the command.');
+
+        return $out;
+    }
+
+    $parts = array('“' . $parsed['title'] . '”');
+
+    if (!empty($parsed['assignees'])) {
+        $names = array();
+
+        foreach (ws_people($parsed['assignees']) as $person) {
+            $names[] = $person['name'];
+        }
+
+        $parts[] = implode(', ', $names);
+    } elseif ($parsed['department_id'] > 0) {
+        $department = ws_department($parsed['department_id']);
+        $parts[] = $department ? $department['name'] : '';
+    } else {
+        $parts[] = lang('Yours');
+    }
+
+    if ($parsed['start_date']) {
+        $parts[] = lang(array('string' => 'from {var:1}', 'vars' => ws_day_label($parsed['start_date'])));
+    }
+
+    $parts[] = $parsed['due_date'] ? ws_task_due_label(array('due_date' => $parsed['due_date'], 'due_time' => $parsed['due_time'], 'status' => 'todo')) : lang('No due date');
+
+    if ($parsed['estimate_minutes'] > 0) {
+        $parts[] = ws_minutes_label($parsed['estimate_minutes']);
+    }
+
+    if ($parsed['priority'] !== 'normal') {
+        $parts[] = ws_task_priorities()[$parsed['priority']];
+    }
+
+    $out['line'] = lang(array('string' => 'Will create: {var:1}', 'vars' => implode(' · ', array_filter($parts, 'strlen'))));
+
+    if (!empty($parsed['assignees']) && !ws_can_assign_to($viewer, $parsed['assignees'])) {
+        $out['warnings'][] = lang('You may only give tasks to yourself or to the people in the departments you lead.');
+    }
+
+    return $out;
+}
+
+/**
  * /plan: somebody's next working week, only to the one who asked.
  *
  * @return array

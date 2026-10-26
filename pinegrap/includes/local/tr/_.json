@@ -251,6 +251,7 @@
     "@{var:1} has no tool turned on yet. An administrator turns them on in Workspace Settings › MCP servers.": "@{var:1} için henüz açık araç yok. Araçları bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altında açar.",
     "@{var:1} is disconnected. Nothing is sent to it until it is connected again.": "@{var:1} bağlantısı kesildi. Yeniden bağlanana kadar ona hiçbir şey gönderilmez.",
     "@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.": "@{var:1} bağlı değil ya da bağlantısı sona erdi. Bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altından yeniden bağlar.",
+    "@{var:1} is not tagged, so nobody is assigned by it: pick the person from the @ list.": "@{var:1} etiketlenmedi, bu yüzden kimseye atanmıyor: kişiyi @ listesinden seçin.",
     "@{var:1} is turned off. Nothing is sent to it until it is turned on again.": "@{var:1} kapatıldı. Yeniden açılana kadar ona hiçbir şey gönderilmez.",
     "@{var:1} is working on it": "@{var:1} üzerinde çalışıyor",
     "@{var:1} no longer signs in with OAuth, so a call that changes things cannot run there.": "@{var:1} artık OAuth ile giriş yapmıyor, bu yüzden değişiklik yapan bir çağrı orada çalışamaz.",

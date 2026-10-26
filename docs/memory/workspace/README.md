@@ -39,6 +39,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
+- workspace-command-live-line.md: The live line under a /task being written (ws_command_suggest: "Will create: …", @word warning) and what the /task parser reads: next week, datives, 14:00 as due_time, "1.5 saat" as an estimate
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette and the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams slice 3, #1666): the API's customer summary through the ws_channel_customer panel action, addresses per row, ids kept back
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
