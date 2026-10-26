@@ -51,6 +51,7 @@
     "Rather than ask this API on a timer, an application can register an address and be told. The site posts a JSON body carrying the event name, created_at as a UTC instant, and the few fields in data that identify the thing, and signs it with the subscription secret in the X-Pinegrap-Signature header. Delivery is queued and sent by the scheduled task, so nothing an outside server does can slow down a checkout. Fetch the object itself when you need more than the identifiers.": "Bir uygulama bu API'ye belirli aralıklarla sormak yerine bir adres kaydedip haber aldırabilir. Site; olay adını, UTC anı olarak created_at alanını ve data içinde ilgili kaydı tanımlayan birkaç alanı taşıyan bir JSON gövdesi gönderir ve bunu abonelik parolasıyla X-Pinegrap-Signature başlığında imzalar. Gönderim kuyruğa alınır ve zamanlanmış görev tarafından yapılır; böylece dışarıdaki bir sunucu bir ödemeyi yavaşlatamaz. Tanımlayıcılardan fazlasına ihtiyacınız olduğunda kaydın kendisini çekin.",
     "Rating": "Değerlendirme",
     "Rating (1-5)": "Puan (1-5)",
+    "Rating (words)": "Puan (yazıyla)",
     "Rating Details": "Puan Ayrıntıları",
     "Rating Summary": "Puan Özeti",
     "Ratings Row": "Puanlar Satırı",

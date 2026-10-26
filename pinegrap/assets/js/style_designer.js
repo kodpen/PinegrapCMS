@@ -13792,15 +13792,6 @@ const StyleDesigner = (function () {
     // Preview only: never saved to the tree, never sent to the server.
     /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
-        // Mirrors pg_comments_stars_html(): five stars, four of them filled.
-        '__comment_stars_html': function () {
-            var star = function (d, cls) {
-                return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi ' + cls + '" viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>';
-            };
-            var fill = star('M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z', 'bi-star-fill');
-            return '<span class="pg-comment-stars" role="img" aria-label="' + esc(_sdT('Rated {var:1} out of 5', 4)) + '">' +
-                   fill + fill + fill + fill + star('M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z', 'bi-star') + '</span>';
-        },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -37303,7 +37294,7 @@ const StyleDesigner = (function () {
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html',
+        '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__ad_content_html', '__ad_caption_html'
     ];
@@ -38076,7 +38067,8 @@ const StyleDesigner = (function () {
             ['__comment_date',              _sdT('Date ("2 days ago"; empty when the page hides dates)')],
             ['__comment_datetime',          _sdT('Date and time (takes a format)')],
             ['__comment_rating',            _sdT('Rating (1-5)')],
-            ['__comment_stars_html',        _sdT('Stars (HTML)')],
+            ['__comment_rating_label',      _sdT('Rating (words)')],
+            ['__comment_stars_text',        _sdT('Stars (characters)')],
             ['__comment_badge',             _sdT('Badge label')],
             ['__comment_status',            _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_file_name',         _sdT('Attachment name')],
@@ -38115,7 +38107,8 @@ const StyleDesigner = (function () {
             ['__comment_date',         _sdT('Date ("2 days ago"; empty when its page hides dates)')],
             ['__comment_datetime',     _sdT('Date and time (takes a format)')],
             ['__comment_rating',       _sdT('Rating (1-5)')],
-            ['__comment_stars_html',   _sdT('Stars (HTML)')],
+            ['__comment_rating_label', _sdT('Rating (words)')],
+            ['__comment_stars_text',   _sdT('Stars (characters)')],
             ['__comment_badge',        _sdT('Badge label')],
             ['__comment_status',       _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_label',        _sdT('Comment label of its page ("Reply", "Feedback")')],
@@ -39015,6 +39008,13 @@ const StyleDesigner = (function () {
             '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
             '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
             '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); }
+        },
+        comments: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A list of recent comments is a comments widget on the server.
+        comments_recent: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         }
     };
 
@@ -39156,6 +39156,31 @@ const StyleDesigner = (function () {
     // The blocks the server added after a widget whose layout placed none
     // of their tokens, now parts added to the end of the tree once
     // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    // A comment's stars (pg_sw_part_comment_stars()): five drawings said
+    // once as "Rated N out of 5", the first N filled by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStars() {
+        var stars = [];
+        for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
+        var p = _sdPartWhen('__comment_rating', 'not_empty');
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: '{{__comment_rating_label}}' }];
+        return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
+    }
+
+    // The star at `place`, filled or empty (pg_sw_part_comment_star()): the
+    // drawing _pg_comments_star_svg() draws, shown by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStar(filled, place) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi '
+            + (filled ? 'bi-star-fill' : 'bi-star') + '" viewBox="0 0 16 16" aria-hidden="true"><path d="'
+            + (filled ? 'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z' : 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z') + '"/></svg>';
+        var p = _sdPartWhen('__comment_rating', filled ? 'gte' : 'lt', String(place));
+        p.contentType = 'svg';
+        p.html = svg;
+        p.customName = filled ? _sdT('Filled star') : _sdT('Empty star');
+        return createNode('content', p, []);
+    }
+
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
@@ -58938,7 +58963,7 @@ const StyleDesigner = (function () {
                                             createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
                                                 customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
                                             createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                                _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
                                                 createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
                                                     _bindings: { text: '__comment_name' } }),
@@ -59116,7 +59141,7 @@ const StyleDesigner = (function () {
                                             _bindings: { text: '__comment_date' } })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'text-warning small mt-1', customName: _sdT('Stars'),
-                                        _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                        _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                     createNode('semantic', { tag: 'p', cssClass: 'small mb-0 mt-1', text: _sdT('Comment text'), customName: _sdT('Excerpt'),
                                         _bindings: { text: '__comment_excerpt' } })
                                 ])
