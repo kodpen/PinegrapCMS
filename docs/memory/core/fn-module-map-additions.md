@@ -23,6 +23,7 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 (errors, w
 - `designer_vocab` (the Bootstrap vocabulary of the designer's smart completion; loaded by its build tool and test only): [[designer-bootstrap-vocabulary]].
 - `widgets_shipping_address`, `widgets_shipping_method`: the classic multi-step checkout's steps as system widgets (address and arrival, shipping method): [[shipping-address-widget]], [[shipping-method-widget]].
 - `a11y` (the accessibility report's WCAG checks and its nightly pass; loaded by `seo_a11y_job.php`, `view_accessibility.php` and its test): [[accessibility-report]].
+- `widgets_menu`, `widgets_lists_menu`: [[menu-widget]].
 
 ## Where does a module added later go?
 - Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].

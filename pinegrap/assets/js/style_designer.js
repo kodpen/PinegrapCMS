@@ -11097,6 +11097,7 @@ const StyleDesigner = (function () {
                     comments_recent:      _sdT('Recent Comments'),
                     shipping_address_and_arrival: _sdT('Shipping Address and Arrival'),
                     shipping_method:      _sdT('Shipping Method'),
+                    menu_region:          _sdT('Menu'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -22280,7 +22281,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } },
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
-                { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } }
+                { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -31712,7 +31714,8 @@ const StyleDesigner = (function () {
             'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.'),
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
-            'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.')
+            'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -31891,6 +31894,7 @@ const StyleDesigner = (function () {
             var _isWishlist        = (_regionType === 'wishlist');
             var _isShippingAddress = (_regionType === 'shipping_address_and_arrival');
             var _isShippingMethod  = (_regionType === 'shipping_method');
+            var _isMenuRegion      = (_regionType === 'menu_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -31939,6 +31943,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isMenuRegion) {
+                _sourceInfoHtml = _sdT('One of the site\'s menus, read on every visit: its items, their order, links and who may see them are edited under Menus, by the users who may edit that menu, and every page that shows the widget follows. The loop repeats the top-level items; a list of the sub-items of a menu item inside a row repeats the items under it.');
             } else if (_isShippingMethod) {
                 _sourceInfoHtml = _sdT('The second step of the classic checkout: the shipping address step sends the visitor here with one recipient of the order, who picks one of the methods that can ship its items to its address by its requested arrival date. The methods and their costs are the ones the express order offers. Opened without a recipient, it shows only the block for that case.');
             } else if (_isShippingAddress) {
@@ -33018,6 +33024,25 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Controls'),
                         _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
+                );
+            }
+
+            // ── menu_region settings ─────────────────────────────────────────
+            if (_isMenuRegion) {
+                var _mrNames = (regionData && regionData.menu_regions) || [];
+                var _mrName = typeof _cfg.menu_name === 'string' ? _cfg.menu_name : '';
+                var _mrOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _mrNames.forEach(function (nm) {
+                    _mrOpts += '<option value="' + esc(nm) + '"' + (nm === _mrName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_mrName !== '' && _mrNames.indexOf(_mrName) === -1) {
+                    _mrOpts += '<option value="' + esc(_mrName) + '" selected>' + esc(_sdT('{var} (not found)', _mrName)) + '</option>';
+                }
+                systemSection += sect('bi-menu-button-wide', _sdT('Menu Settings'),
+                    row(_sdT('Menu'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
                 );
             }
 
@@ -36434,7 +36459,7 @@ const StyleDesigner = (function () {
         account_security: 1, account_invoices: 1, account_email: 1, logout: 1, error_page: 1,
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
-        shipping_address_and_arrival: 1, shipping_method: 1
+        shipping_address_and_arrival: 1, shipping_method: 1, menu_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37425,6 +37450,26 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // menu_region token palette — has loop_area (one row per top-level
+    // item); the sub-item lists give the same row tokens. Mirrors
+    // _render_system_widget_menu_region() in widgets_menu.php.
+    var SW_MENU_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Menu'), tokens: [
+            ['__menu_name',               _sdT('Menu name')]
+        ]},
+        { label: _sdT('Menu Item (loop_area)'), tokens: [
+            ['__menu_item_name',          _sdT('Menu item name')],
+            ['__menu_item_id',            _sdT('Menu item ID')],
+            ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+            ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
+            ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
+            ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__menu_item_url',           _sdT('Menu item address')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -37440,7 +37485,8 @@ const StyleDesigner = (function () {
         account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS,
         wishlist:          SW_WISHLIST_TOKEN_GROUPS,
         shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS,
-        shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS
+        shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS,
+        menu_region:       SW_MENU_REGION_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38369,6 +38415,10 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        menu_region: [
+            ['has_menu_items',             _sdT('The menu has an item the visitor may see')],
+            ['no_menu_items',              _sdT('No menu is chosen, or it has no item the visitor may see')]
         ],
         shipping_method: [
             ['has_recipient',              _sdT('A recipient of the visitor\'s order is being shown')],
@@ -50577,7 +50627,8 @@ const StyleDesigner = (function () {
         // _swKindOf().
         { type: 'comments_recent',   label: _sdT('Recent Comments'),   slug: _sdT('recent-comments'),   icon: 'bi-chat-square-quote' },
         { type: 'shipping_address_and_arrival', label: _sdT('Shipping Address and Arrival'), slug: _sdT('shipping-address'), icon: 'bi-truck' },
-        { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' }
+        { type: 'shipping_method',   label: _sdT('Shipping Method'),   slug: _sdT('shipping-method'),   icon: 'bi-box-seam' },
+        { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -50756,6 +50807,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'menu_region') {
+            // The site's first menu, so a new widget shows items at once.
+            if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
         } else if (newType === 'language_switcher') {
             if (cfg.show_codes === undefined) cfg.show_codes = false;
             if (cfg.hide_current === undefined) cfg.hide_current = false;
@@ -51774,6 +51828,22 @@ const StyleDesigner = (function () {
                 ['__related_price',             _sdT('Price')],
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
+        },
+        // The menu source (pg_sw_list_menu_sources()): the items under the
+        // row's menu item, the top level outside the main loop.
+        'menu.children': {
+            label: _sdT('Sub-items of a menu item'),
+            arg: '', argRequired: false,
+            kinds: ['menu_region'],
+            rows: [
+                ['__menu_item_name',          _sdT('Menu item name')],
+                ['__menu_item_id',            _sdT('Menu item ID')],
+                ['__menu_item_url',           _sdT('Menu item address')],
+                ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+                ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
+                ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
+                ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
+            ]
         }
     };
 
@@ -51793,7 +51863,14 @@ const StyleDesigner = (function () {
         __related_url: '#',
         __related_image_url: '',
         __related_price: '99.90',
-        __related_original_price: ''
+        __related_original_price: '',
+        __menu_item_name: _sdT('Menu item'),
+        __menu_item_id: '2',
+        __menu_item_url: '#',
+        __menu_item_target: '',
+        __menu_item_has_children: '',
+        __menu_item_is_current: '',
+        __menu_item_holds_current: ''
     };
 
     // The orders a list's rows take (props.order).
@@ -51912,6 +51989,16 @@ const StyleDesigner = (function () {
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source === 'menu.children') {
+            return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Sub-items of a menu item') }, [
+                createNode('loop_area', { source: source }, [
+                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Sub-item') }, [
+                        createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Menu item'), href: '#', customName: _sdT('Link'),
+                            _bindings: { href: '__menu_item_url', text: '__menu_item_name' } })
+                    ])
+                ])
+            ]);
+        }
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
@@ -55897,6 +55984,59 @@ const StyleDesigner = (function () {
                 ], true);
             }
 
+            case 'menu_region': {
+                // One of the site's menus as a Bootstrap navbar: the loop
+                // repeats the top-level items, an item with sub-items opens
+                // them in a dropdown (a list of its sub-items), the link to
+                // the page shown is marked active (smartActive). Mirrors
+                // _render_system_widget_menu_region().
+                var mrId = 'menu_' + Math.random().toString(36).slice(2, 7);
+                var mrWhen = function (token, op) {
+                    return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+                };
+                var mrLink = function (cls, name, extra) {
+                    var p = { tag: 'a', cssClass: cls, text: _sdT('Menu item'), href: '#', customName: name,
+                        _bindings: { href: '__menu_item_url', text: '__menu_item_name' } };
+                    Object.keys(extra || {}).forEach(function (k) { p[k] = extra[k]; });
+                    return createNode('semantic', p);
+                };
+                var mrLoop = createNode('loop_area', {}, [
+                    createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Menu Item') }, [
+                        mrLink('nav-link', _sdT('Link'), mrWhen('__menu_item_has_children', 'empty')),
+                        createNode('semantic', Object.assign({ tag: 'div', cssClass: 'dropdown', customName: _sdT('Sub-items') },
+                            mrWhen('__menu_item_has_children', 'not_empty')), [
+                            createNode('semantic', { tag: 'a', cssClass: 'nav-link dropdown-toggle', text: _sdT('Menu item'), href: '#', customName: _sdT('Toggle'),
+                                _attrs: [{ name: 'role', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }],
+                                _bindings: { text: '__menu_item_name' } }),
+                            createNode('semantic', { tag: 'ul', cssClass: 'dropdown-menu', customName: _sdT('Sub-items of a menu item') }, [
+                                createNode('loop_area', { source: 'menu.children' }, [
+                                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Sub-item') }, [
+                                        mrLink('dropdown-item', _sdT('Link'))
+                                    ])
+                                ])
+                            ])
+                        ])
+                    ])
+                ]);
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg', customName: _sdT('Menu'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Menu') }],
+                        _bindings: { eo_visible_if: 'has_menu_items' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'container-fluid px-0', customName: _sdT('Container') }, [
+                            createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Menu Button'),
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' },
+                                         { name: 'data-bs-target', value: '#' + mrId }, { name: 'aria-controls', value: mrId },
+                                         { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Open the menu') }] }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Icon') })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'collapse navbar-collapse', id: mrId, customName: _sdT('Menu Items') }, [
+                                createNode('semantic', { tag: 'ul', cssClass: 'navbar-nav', smartActive: true, customName: _sdT('Top Level') }, [mrLoop])
+                            ])
+                        ])
+                    ])
+                ]);
+            }
+
             case 'shipping_method': {
                 // The second step of the classic checkout, posting to
                 // shipping_method.php. The recipient's address and arrival
@@ -56487,7 +56627,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

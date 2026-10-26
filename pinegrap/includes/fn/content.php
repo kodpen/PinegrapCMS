@@ -47,6 +47,7 @@ function pg_menu_tree($menu_id)
             menu_items.id,
             menu_items.parent_id,
             menu_items.name,
+            menu_items.link_page_id,
             page.page_name AS link_page_name,
             page.page_folder AS link_page_folder_id,
             menu_items.link_url,

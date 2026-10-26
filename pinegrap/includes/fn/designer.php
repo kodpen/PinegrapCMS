@@ -1106,6 +1106,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'menu_region' — one of the site's menus, its items kept in
+            // the menu screen (widgets_menu.php).
+            if ($region_type === 'menu_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_menu_region($tree_json, $sid, $cfg, $mode);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';

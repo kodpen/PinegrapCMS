@@ -79,6 +79,7 @@ function pg_sw_type_labels()
         'comments_recent'     => lang('Recent Comments'),
         'shipping_address_and_arrival' => lang('Shipping Address and Arrival'),
         'shipping_method'     => lang('Shipping Method'),
+        'menu_region'         => lang('Menu'),
     );
 }
 
