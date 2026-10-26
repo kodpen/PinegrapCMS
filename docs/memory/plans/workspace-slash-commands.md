@@ -1,6 +1,6 @@
 ---
 name: workspace-slash-commands
-description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 6 /status #1896, /schedule #PRNUM, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
+description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 6 /status #1896, /schedule #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -23,7 +23,7 @@ description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 6 /status #1896
 3. Done (#1499). Argument popup (no schema): a new picker mode after `/name `, slot from the registry (`@`, `#` keep theirs); Tab/Enter write `value `, `pickerCheck()` reopens; a strip shows what is left.
 4. Done (#1731). Live line: `ws_command_suggest` runs the parser; "Will create: …", `@word` warning; "next week", datives, `14:00` (`due_time`); `1.5 saat` is an estimate; a typed `@username` assigns on one exact team match.
 5. API (no schema): `GET /workspace/commands` (workspace:read, `'mcp' => false`) lists the registry.
-6. New commands, a PR each (no schema): `/durum /status` done (#1896, workspace/workspace-command-registry.md); `/zamanla /schedule` done (#PRNUM, workspace/workspace-command-schedule.md); left: `/süre /timer` (`ws_task_time_start()`), `/izin /away`, `/toplantı /meeting` (`ws_event_save()`).
+6. New commands, a PR each (no schema): `/durum /status` done (#1896, workspace/workspace-command-registry.md); `/zamanla /schedule` done (#1938, workspace/workspace-command-schedule.md); left: `/süre /timer` (`ws_task_time_start()`), `/izin /away`, `/toplantı /meeting` (`ws_event_save()`).
 
 ## Open questions (recommendation)
 1. Answered (owner, 2026-10-26): (a) a typed `@ayse` assigns on one exact team username, else warns.
