@@ -4,7 +4,7 @@ description: Product lists in the catalog detail and listing widgets (W9): image
 ---
 
 ## Which product lists exist?
-- `pg_sw_list_product_sources()` (`includes/fn/widgets_lists_product.php`, merged into `pg_sw_list_sources()`), family `product`, key `__id`, no arg; offered by `catalog_item_view` (#1752) and, but for `product.related`, by `catalog_listing` (`pg_sw_kind_lists()`).
+- `pg_sw_list_product_sources()` (`includes/fn/widgets_lists_product.php`, merged into `pg_sw_list_sources()`), family `product`, key `__id`, no arg; offered by `catalog_item_view` (#1752) and, but for `product.related`, by `catalog_listing` (#1768; `pg_sw_kind_lists()`).
 - `product.images`: the main image first, then `products_images_xref` by file name, each address once. Token `__gallery_url`.
 - `product.attributes`: `products_attributes_xref` → attribute label (its name without one) and option label, by attribute id and option sort order; an option marked `no_value` or empty gives no row. Tokens `__attr_name`, `__attr_value`.
 - `product.related`: `_civ_get_cross_sell_items($pid, $detail_page, 12)` (ordered together, else the product's groups). Tokens `__related_name`, `__related_short_description`, `__related_url`, `__related_image_url`, `__related_price` (price paid, plain text), `__related_original_price` (sticker price, empty without a discount).

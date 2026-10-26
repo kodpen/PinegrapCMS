@@ -31,7 +31,7 @@ OR in conditions; pg-hide-if-empty everywhere; entity columns; byte-identical ol
 - W4 done (#1665): Bind Data "Show only when a value…" for every kind, canvas chip; never on a required control, compared text translated ([[widget-condition-panel]]).
 - W5 Layout gallery: Default, From templates, On this site; Try/Keep/Cancel.
 - W6 done (#1680): lists engine, field values, attachments ([[widget-lists]]). W7 done (#1688): lists in the editor ([[widget-lists-editor]]). W8 Entity fields (allow-list).
-- W9: detail #1752, cards ([[widget-lists-product]]). W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
+- W9 done #1752 #1768 ([[widget-lists-product]]). W10 Order and account lists (receipt e-mail too). W11 Cart lists, mini cart. W12 Search groups, pagination list, paging tokens, own page parameter, offset. W13 Calendar grid.
 - W14 done (#1602, #1701, #1719): typed fill, formats, list rows too ([[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 Placed beats pushed; old HTML tokens drawn by default parts.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
