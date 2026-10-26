@@ -1537,6 +1537,28 @@ function ws_flow_js_strings()
         'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
         'fl_kind_change'      => lang('Change a record'),
         'fl_kind_condition'   => lang('Condition'),
+        'fl_kind_schedule'    => lang('At a time'),
+        'fl_kind_event'       => lang('When something happens'),
+        'fl_kind_join'        => lang('When somebody joins a channel'),
+        'fl_when_none'        => lang('Not set yet'),
+        'fl_when_date'        => lang('First day'),
+        'fl_when_help'        => lang('Publishing the flow sets it to start on its own then, as its owner.'),
+        'fl_when_time'        => lang('Time'),
+        'fl_when_repeat'      => lang('Repeat'),
+        'fl_when_every'       => lang('Every'),
+        'fl_when_until'       => lang('Last day'),
+        'fl_when_until_help'  => lang('Empty for no last day.'),
+        'fl_event'            => lang('What happens'),
+        'fl_event_pick'       => lang('Choose what happens'),
+        'fl_event_help'       => lang('Each time it happens a run starts, as the flow\'s owner, while the flow is live.'),
+        'fl_event_form'       => lang('Form'),
+        'fl_event_any_form'   => lang('Any form'),
+        'fl_event_status'     => lang('Status it moves to'),
+        'fl_event_any_status' => lang('Any status'),
+        'fl_event_channel'    => lang('Channel'),
+        'fl_event_any_channel' => lang('Any channel'),
+        'fl_join_channel'     => lang('Channel joined'),
+        'fl_join_any'         => lang('Any public channel'),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -1789,7 +1811,7 @@ function ws_flow_js_config($viewer, $mode)
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
-        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array());
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null);
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
@@ -1811,6 +1833,11 @@ function ws_flow_js_config($viewer, $mode)
         $steps['records'] = (object) (is_array($scheduled) ? $scheduled['records'] : array());
         $steps['operators'] = (object) (is_array($scheduled) ? $scheduled['operators'] : array());
         $steps['counts'] = is_array($scheduled) ? $scheduled['counts'] : array();
+
+        // What the boxes that start a flow on their own offer: the ways a
+        // time repeats, and the events the person may wait for.
+        $steps['repeats'] = (object) (is_array($scheduled) ? $scheduled['repeats'] : array());
+        $steps['events'] = is_array($scheduled) ? $scheduled['events'] : null;
     }
 
     return $config + array(
