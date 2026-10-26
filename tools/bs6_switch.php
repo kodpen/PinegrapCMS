@@ -773,7 +773,12 @@ function bs6_switch_test_pins()
 		'tests/erp_edoc_service_test.php' => array(
 			array('<div class=\"col-12 my-2\">', '<div class=\"col-12 my-3\">'),
 		),
+		'tests/erp_auto_invoice_test.php' => array(
+			array("pg_assert_contains('text-warning-emphasis', \$html);", "pg_assert_contains('fg-emphasis-warning', \$html);"),
+		),
 		'tests/parasut_order_gates_test.php' => array(
+			array("'created' => 'bg-warning text-dark',", "'created' => 'bg-warning fg-black',"),
+			array("'<span class=\"badge bg-warning text-dark\">'", "'<span class=\"badge bg-warning fg-black\">'"),
 			array("pg_assert_contains('bg-success\">' . lang('Sent')", "pg_assert_contains('theme-success\">' . lang('Sent')"),
 			array("pg_assert_contains('bg-warning', \$open)", "pg_assert_contains('theme-warning', \$open)"),
 		),
@@ -785,6 +790,8 @@ function bs6_switch_test_pins()
 		),
 		'tests/signin_test.php' => array(
 			array("'bg-warning'", "'theme-warning'"),
+			array("'class=\"btn btn-primary\" href=\"/giris?a=1&amp;b=2\"'", "'class=\"btn btn-solid theme-primary\" href=\"/giris?a=1&amp;b=2\"'"),
+			array("'class=\"btn btn-outline-secondary\" href=\"/pinegrap/signin.php?provider=google\"'", "'class=\"btn btn-outline theme-secondary\" href=\"/pinegrap/signin.php?provider=google\"'"),
 		),
 		'tests/code_editor_test.php' => array(
 			array("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", "if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;"),
