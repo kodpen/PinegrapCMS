@@ -4,7 +4,8 @@
  *
  * Builds the code editor bundle the panel serves:
  * pinegrap/assets/lib/code_editor/cm6.bundle.js. The bundle is CodeMirror 6
- * and its language packages, every one of them pinned in
+ * and its language packages plus js-beautify's CSS and JavaScript
+ * formatter, every one of them pinned in
  * tools/code_editor/package.json and package-lock.json, bundled with esbuild
  * from tools/code_editor/entry.js into one IIFE that leaves window.PgCM on
  * the page. The facade pinegrap/assets/js/pg_code_editor.js loads that file
@@ -113,8 +114,9 @@ if (($status !== 0) || !is_file($output)) {
 	exit(1);
 }
 
-// The bundle carries the licenses of what it bundles: every package is MIT,
-// and the versions are the ones the lock file pinned.
+// The bundle carries the licenses of what it bundles: every package is MIT
+// (CodeMirror and js-beautify), and the versions are the ones the lock file
+// pinned.
 $manifest = json_decode(file_get_contents($source_dir . '/package.json'), true);
 $packages = array();
 foreach ((isset($manifest['dependencies']) ? $manifest['dependencies'] : array()) as $name => $version) {
@@ -124,11 +126,13 @@ foreach ((isset($manifest['dependencies']) ? $manifest['dependencies'] : array()
 $banner = "/*!\n"
 	. " * Pinegrap - Enterprise Website Platform\n"
 	. " *\n"
-	. " * Code editor bundle: CodeMirror 6 and its language packages, built by\n"
-	. " * tools/build_code_editor.php from tools/code_editor/entry.js. Do not edit;\n"
-	. " * change the sources and rebuild. Reachable on the page as window.PgCM.\n"
+	. " * Code editor bundle: CodeMirror 6 and its language packages, and the\n"
+	. " * js-beautify formatter, built by tools/build_code_editor.php from\n"
+	. " * tools/code_editor/entry.js. Do not edit; change the sources and rebuild.\n"
+	. " * Reachable on the page as window.PgCM.\n"
 	. " *\n"
-	. " * Bundled packages (MIT License, https://codemirror.net/):\n"
+	. " * Bundled packages (MIT License; https://codemirror.net/,\n"
+	. " * https://github.com/beautifier/js-beautify):\n"
 	. implode("\n", $packages) . "\n"
 	. " *\n"
 	. " * @author      Erdal Güral (Kodpen)\n"
