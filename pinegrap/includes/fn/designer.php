@@ -4337,6 +4337,7 @@ function pg_scroller_inject($content, $src = null)
  *   • Empty-element hiding rules (auto-hide discount tokens when blank)
  *   • Variant chooser visual states
  *   • The order view's timeline (.pg-ov-timeline)
+ *   • A comment's stars side by side (.pg-comment-stars)
  *
  * Called from EVERY system widget render (catalog_listing, catalog_item_view,
  * shopping_cart, …) — not just carousel. The price block + discount
@@ -4352,7 +4353,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '4';   // bump on layout css changes
+    $v = '5';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 

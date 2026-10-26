@@ -556,19 +556,14 @@ function test_comments_widget_status_text()
 	pg_assert_same('', pg_comments_widget_status_text(array(), true, 'comment', '', false), 'published');
 }
 
-function test_comments_widget_stars_html()
+// The stars part says the rating once (its aria-label).
+function test_comments_widget_rating_label()
 {
-	$three = pg_comments_stars_html(3);
-	pg_assert_same(3, substr_count($three, 'class="bi bi-star-fill"'), 'three filled');
-	pg_assert_same(2, substr_count($three, 'class="bi bi-star"'), 'two empty');
-	pg_assert_same(5, substr_count($three, 'aria-hidden="true"'), 'each drawing is hidden from screen readers');
-	pg_assert_contains('role="img" aria-label="Rated 3 out of 5"', $three, 'the rating is said once');
-	pg_assert_same(0, strpos($three, '<span class="pg-comment-stars"'), 'one span around them');
-	pg_assert_false(strpos($three, 'style'), 'no inline style');
-	pg_assert_same(4, substr_count(pg_comments_stars_html('4'), 'bi-star-fill'), 'a digit string');
+	pg_assert_same('Rated 3 out of 5', pg_comments_rating_label(3), 'three');
+	pg_assert_same('Rated 4 out of 5', pg_comments_rating_label('4'), 'a digit string');
 
 	foreach (array(0, 6, -1, 'x', array(3), null) as $bad) {
-		pg_assert_same('', pg_comments_stars_html($bad), 'no stars for ' . var_export($bad, true));
+		pg_assert_same('', pg_comments_rating_label($bad), 'no words for ' . var_export($bad, true));
 	}
 }
 
@@ -703,9 +698,10 @@ function test_comments_widget_escape_carets_once()
 	pg_assert_same(array(), pg_comments_widget_escape('x'), 'not an array');
 
 	$raw = pg_sw_raw_token_keys();
-	foreach (array('__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html') as $key) {
+	foreach (array('__comment_message_html', '__comment_seller_reply_html') as $key) {
 		pg_assert_true(isset($raw[$key]), $key . ' is raw');
 	}
+	pg_assert_false(isset($raw['__comment_stars_html']), 'the stars are a part, no markup token');
 	pg_assert_false(isset($raw['__comment_name']), 'the name is not raw');
 }
 
@@ -1469,7 +1465,9 @@ function comments_widget_test_js_bindings($block)
 // The same, walking the PHP tree depth first; with $key, that prop instead.
 function comments_widget_test_php_walk($node, &$out, $key = '')
 {
-	if (!is_array($node)) {
+	// A default part: the starter calls its editor twin, which
+	// tests/widget_default_parts_test.php compares with the server's.
+	if (!is_array($node) || (isset($node['props']['cssClass']) && $node['props']['cssClass'] === 'pg-comment-stars')) {
 		return;
 	}
 
