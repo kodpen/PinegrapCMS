@@ -341,7 +341,7 @@ function pg_collab_note_save($page_id, $node_id, $note, $user)
     // Only pages the editor owns, and only for somebody who may open the
     // editor at all — the caller has already been through validate_area_access.
     $row = db_item("SELECT page_tree_json, page_folder FROM page
-                    WHERE page_id = '$page_id' AND layout_type = 'system' LIMIT 1");
+                    WHERE page_id = '$page_id' AND " . pg_page_visual_design_sql() . " LIMIT 1");
     if (!is_array($row)) return false;
     if (function_exists('check_edit_access') && !check_edit_access($row['page_folder'])) return false;
 

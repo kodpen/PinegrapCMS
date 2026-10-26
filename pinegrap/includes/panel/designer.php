@@ -968,7 +968,7 @@ function pg_panel_designer($request, $action)
             }
             $owner = (int)db_value(
                 "SELECT page_style FROM page
-                     WHERE page_id = '$page_id' AND layout_type = 'system' LIMIT 1");
+                     WHERE page_id = '$page_id' AND " . pg_page_visual_design_sql() . " LIMIT 1");
             if ($owner <= 0) {
                 respond(array('status' => 'error', 'message' => lang('Page not found.')));
             }
@@ -1011,12 +1011,12 @@ function pg_panel_designer($request, $action)
             }
             $page = db_item(
                 "SELECT page_id, page_name, page_style FROM page
-                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND layout_type = 'system' LIMIT 1");
+                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND " . pg_page_visual_design_sql() . " LIMIT 1");
             if (!$page) {
                 respond(array('status' => 'error', 'message' => lang('Page not found.')));
             }
             $siblings = (int)db_value(
-                "SELECT COUNT(*) FROM page WHERE page_style = '$style_id' AND layout_type = 'system'" . pg_designer_not_binned_sql('page_folder'));
+                "SELECT COUNT(*) FROM page WHERE page_style = '$style_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql('page_folder'));
             if ($siblings <= 1) {
                 respond(array('status' => 'error', 'message' => lang('The last page cannot be detached from its design. Delete the design instead.')));
             }
@@ -1084,7 +1084,7 @@ function pg_panel_designer($request, $action)
             }
             $page = db_item(
                 "SELECT page_id, page_name, page_folder FROM page
-                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND layout_type = 'system' LIMIT 1");
+                     WHERE page_id = '$page_id' AND page_style = '$style_id' AND " . pg_page_visual_design_sql() . " LIMIT 1");
             if (!$page) {
                 respond(array('status' => 'error', 'message' => lang('Page not found.')));
             }
