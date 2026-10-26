@@ -13,7 +13,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 ## Which steps?
 - **C1 — reference resolution in record widgets (no schema). Done, #1981:** the `__ref` binding in `form_list_view`/`form_item_view` (`designer/collection-references.md`).
 
-- **C2 — collection flag and field kinds (Q1, Q2). Done, #PRNUM:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
+- **C2 — collection flag and field kinds (Q1, Q2). Done, #1997:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
 
 - **C3 — typed inputs.** Number (`type=number`, server numeric check), image (`accept`, preview, `pg_img_responsive_html()` on output), reference picker (select filled at render from the target's records; server accepts only a live code of the target), product/page pickers; `edit_submitted_form.php` shows the same.
 
