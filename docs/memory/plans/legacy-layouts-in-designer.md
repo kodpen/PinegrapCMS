@@ -15,7 +15,9 @@ description: Plan (2026-10-19, Y1 done): how a classic page's custom layout (lay
 
 ## What has to be built? (one PR each)
 - Y1 Queries: done (#1804): `pg_page_visual_design_sql()`, the SQL twin of `pg_page_is_visual_design()`, in every design page query (`designer/multi-page-design-model.md`).
-- Y2 Page-type pane in the designer's settings modal, classic pages only: `pg_page_form_type_fields()` plus the Layout Type radio, saved by the `edit_page.php` handler (`?properties=1` skips the redirect); roles as today.
+- Y2 Page-type pane in the designer's settings modal, classic pages only: `pg_page_form_type_fields()` plus the Layout Type radio, saved by the `edit_page.php` handler (`?properties=1` skips the redirect); roles as today. Cut in two to the PR size:
+  - Y2a (in progress): the pane (`tab-page-type`, shown for a saved page whose `page_type` is not `standard`), `edit_page.php?properties=1` reading the fragment (GET) and saving it (POST, token, page lock) in JSON; the type is shown, not changed; the Layout Type radio for every type that supports one; the fields of the simple types: email a friend, folder view, photo gallery, search results, update address book, custom form confirmation, catalog, catalog detail, order form, shipping method, order receipt, affiliate sign up form, calendar event view.
+  - Y2b: the remaining types, whose fields carry rich-text editors, show/hide scripts, per-field access checks or a form-designer redirect: custom form, form list view, form item view, form view directory, calendar view, express order, shopping cart, shipping address and arrival, billing information, order preview; and whether the pane may change the page type.
 - Y3 Layout as a code tab: the `system` node of a `layout_type = 'custom'` page opens "Layout (PHP)" in the code editor like a CSS/JS file (R4 pattern). Read and save are `pg_panel_get_layout()` / `pg_panel_update_layout()` moved to `includes/fn/`; whitespace-equal → unmodified stays; Regenerate button; designer role; read-only on hosted; the field-change warning (`add_field.php:956`) stays.
 - Y4 Canvas preview (optional): the placeholder shows the region drawn by the server for the signed-in user (`designer/legacy_region_preview`), read-only.
 - Y5 Replace with widget, opt-in per page: a system widget of the matching type with its default tree beside the region; the designer restyles it by hand and removes the `system` node when they say so. Classic `/<page>/<group>` addresses vs widget routes need 301s. Never automatic.
@@ -27,4 +29,4 @@ description: Plan (2026-10-19, Y1 done): how a classic page's custom layout (lay
 - The master-frame question (one tree per page vs one shared component) is in `legacy-page-designer-retirement.md`; it decides L1, not the layouts.
 
 ## Where to start?
-- Y1 done. Y3 builds on the code editor's file tabs (#522). Y2-Y3 before L4; Y5 after `system-widget-missing-types.md`.
+- Y1 done; Y2a in progress, Y2b after it. Y3 builds on the code editor's file tabs (#522). Y2-Y3 before L4; Y5 after `system-widget-missing-types.md`.
