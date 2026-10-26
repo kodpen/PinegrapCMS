@@ -206,6 +206,16 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'heavy',
         ),
+        // Records its run only when a pass reaches the last page, so an
+        // unfinished pass is handed out again on the next tick.
+        'seo_a11y_job' => array(
+            'label'       => lang('Accessibility report'),
+            'script'      => 'seo_a11y_job.php',
+            'interval'    => 86400,
+            'stale_after' => 259200,
+            'dispatch'    => true,
+            'lane'        => 'heavy',
+        ),
         'auto_backup' => array(
             'label'       => lang('Auto backup'),
             'script'      => 'auto_backup.php',

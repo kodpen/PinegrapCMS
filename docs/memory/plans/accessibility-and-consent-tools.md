@@ -1,6 +1,6 @@
 ---
 name: accessibility-and-consent-tools
-description: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688 and consent notice #619 done): nightly WCAG 2.2 Level A report with its PDF export left
+description: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688, consent notice #619, report checks and job #1748 done): SEO screen tab and PDF export left
 ---
 
 ## Why?
@@ -15,13 +15,15 @@ description: Plan (approved 2026-10-19; designer checks #628 #642, statement blo
 
 ## What remains?
 1. Done (PR #628, PR #642): contrast helper with the PHP-JS test, designer contrast, target size and redundant entry checks. The nightly report (2) reuses `_pg_theme_contrast()`. Left: drop `_SD_ENTRY_SOFTWARE_TWICE` (the `email_verify` exemption); PR #668 (the address asked once) is in, so nothing requires the second field any more.
-2. Nightly a11y job, storage, SEO screen tab, API filter (M).
+2. Nightly a11y report.
+   - 2a done (PR #1748): checks, job, storage, API filter (`platform/accessibility-report.md`).
+   - 2b left: finding labels, the "Accessibility" tab on the SEO screen (`pg_seo_load_issues(..., 'a11y')`), the checklist PDF export (`core/dompdf-embedding.md`), the `[NEW]` line in its PR body.
 3. Statement block: done (PR #688; palette Blocks › Legal › "Legal: Accessibility Statement", `legal-accessibility-statement`, six sections). PDF export of the checklist report comes with step 2's report.
 4. Consent notice: done (PR #619).
-5. Memory: `docs/memory/platform/accessibility-report.md` when shipped; the report's PR body names the plan's one `[NEW]` line for the merging session.
 
 ## Open questions?
 - Level AA checks (full WCAG 2.2 AA) are a later phase; Level A plus the Turkish checklist first.
+- The Turkish checklist's own items beyond WCAG Level A are not mapped yet: 2a reports by WCAG criterion. 2b should ask the owner for the checklist text if the PDF has to follow its numbering.
 
 ## Where to start?
-- Step 2; read `seo_structure.php` and `docs/memory/platform/structured-data-open-graph.md`. The report cannot run the browser checks: on the server, contrast is computable only from inline styles and known classes.
+- Step 2b; read `docs/memory/platform/accessibility-report.md` and the SEO screen in `seo.php`.

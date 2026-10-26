@@ -1698,6 +1698,7 @@ function api_schema() {
 				array('name' => 'entity_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Limit to one record, with entity_type.'),
 				array('name' => 'severity',    'in' => 'query', 'type' => 'enum', 'values' => array('error', 'warning', 'notice')),
 				array('name' => 'code',        'in' => 'query', 'type' => 'string', 'max_length' => 48, 'description' => 'One check, by its code - the way to work through a single kind of problem across the site.'),
+				array('name' => 'category',    'in' => 'query', 'type' => 'enum', 'values' => array('seo', 'a11y'), 'default' => 'seo', 'description' => 'seo: the SEO analysis. a11y: the accessibility report, the WCAG 2.2 checks of the nightly accessibility job over published pages (codes starting a11y_); not part of the SEO score.'),
 				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 255)
 			)
