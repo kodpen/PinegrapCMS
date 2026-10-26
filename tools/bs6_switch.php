@@ -790,6 +790,13 @@ function bs6_switch_test_pins()
 		'tests/payment_drivers_test.php' => array(
 			array("pg_assert_contains('alert-warning', \$unread", "pg_assert_contains('alert theme-warning', \$unread"),
 		),
+		'tests/shipping_test.php' => array(
+			array("pg_assert_same('text-bg-success', pg_shipment_status_class(", "pg_assert_same('theme-success', pg_shipment_status_class("),
+			array("pg_assert_same('text-bg-primary', pg_shipment_status_class(", "pg_assert_same('theme-primary', pg_shipment_status_class("),
+			array("pg_assert_same('text-bg-warning', pg_shipment_status_class(", "pg_assert_same('theme-warning', pg_shipment_status_class("),
+			array("pg_assert_same('text-bg-danger', pg_shipment_status_class(", "pg_assert_same('theme-danger', pg_shipment_status_class("),
+			array("pg_assert_same('text-bg-secondary', pg_shipment_status_class(", "pg_assert_same('theme-secondary', pg_shipment_status_class("),
+		),
 		'tests/signin_test.php' => array(
 			array("'bg-warning'", "'theme-warning'"),
 			array("'class=\"btn btn-primary\" href=\"/giris?a=1&amp;b=2\"'", "'class=\"btn btn-solid theme-primary\" href=\"/giris?a=1&amp;b=2\"'"),
