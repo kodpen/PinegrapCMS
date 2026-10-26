@@ -1,6 +1,6 @@
 ---
 name: widget-entity-fields
-description: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product and calendar event values built, the group card's description.
+description: W8, entity values a system widget may show (owner allow-list 2026-10-26): the mechanism, the product, calendar event and quiz score values built, the group card's description.
 ---
 
 ## How does a widget get an entity's values?
@@ -13,6 +13,7 @@ description: W8, entity values a system widget may show (owner allow-list 2026-1
 - Product (#1809), in the catalog card, the product detail and the favourites: `__keywords`, `__length`, `__width`, `__height`, `__minimum_quantity`, `__maximum_quantity`, `__preparation_days`, `__extra_shipping_cost`, `__vat_rate`, `__payment_period` and `__number_of_payments` (recurring products only), yes/no `__is_free_shipping`, `__is_gift_card`, `__is_donation`.
 - Product group card (catalog listing): `__description` held `''` before; now the group's long description, with `__details`, `__keywords` and its own `__featured` / `__is_new` (`pg_sw_catalog_is_new()`, the products' 30-day rule).
 - Calendar event (#1828), in the event view and the calendar view's event loop: `__event_spots_left` (only when places are limited; `0` shows), `__event_updated_date` (typed in the event view), `__event_reservation_price`, `__event_recurrence` (words); yes/no `__event_reservations_open`, `__event_spots_limited`, `__event_is_recurring`. Read from `get_calendar_event()` plus `pg_sw_entity_event_read()` (one query), only when the tree names one (`pg_sw_entity_wanted()`). The month grid's event lists do not carry them.
+- Form record (#PRNUM), in the form item view only (a list would show other people's scores): `__quiz_score` (percent, `0` shows), only on a quiz form (`custom_form_pages.quiz`).
 - Keywords of products and groups, and group details, are extracted for the site translation (`pg_tr_extract_catalog()`).
 
 ## What is still to build?

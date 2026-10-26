@@ -36897,9 +36897,14 @@ const StyleDesigner = (function () {
         ['__ai_perplexity_url', _sdT('Summarize with Perplexity (address)')],
         ['__ai_google_url',     _sdT('Summarize with Google AI Mode (address)')]
     ];
+    // A form record's allow-listed values (pg_sw_entity_fields('form_record')),
+    // in the record's own view only: a list would show other people's scores.
+    var SW_FORM_RECORD_ENTITY_TOKENS = [
+        ['__quiz_score', _sdT('Quiz score (percent, quiz forms)')]
+    ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
-    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS);
+    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS, SW_FORM_RECORD_ENTITY_TOKENS);
 
     // The format a date binding prints in, as the classic screens take it:
     // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
