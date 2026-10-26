@@ -17,4 +17,6 @@ description: Which screens write a person's own e-mail marketing answer to conse
 - `checkout`: `pg_consent_log_checkout()` right after the `UPDATE contacts` that writes `opt_in` (billing_information.php, express_order.php's update-cart post, submit_order()'s express block), with that value, so a submit later refused or never paid keeps its row. Only for `opt_in_displayed === 'true'`, never while ghosting; an address `validate_email_address()` refuses stays out. A signed-in buyer whose card is not updated (`update_contact` off or not posted, as on a designed express order without an `update_contact` control, the default tree included) gets none. A designed express order posts `opt_in_displayed=true` only when `_eo_tree_asks_opt_in()` finds the box after the visibility and section bindings.
 - `custom_form.php`, `form`: a choice field (`pg_cf_type_has_options()`) bound to `opt_in`, not office use only, not hidden by `?show_<id>=false` in `send_to`, not a contact filled in for somebody else; answer = the stored `contacts.opt_in`.
 
+The cookie notice's answers (channel `cookie`, source `banner`): `consent-log-cookie-notice.md`.
+
 Gaps, tests, open questions: docs/memory/core/consent-log-writer-gaps.md. Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/sms-and-iys.md
