@@ -324,3 +324,30 @@ the toggle.
         moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
 >>>
+
+Poll options whose input is a checkbox or a radio by the poll's setting.
+
+@@ assets/js/workspace.js
+<<<
+                var input = el('input', 'form-check-input');
+
+                bar.style.width = share + '%';
+===
+                var input = el('input', poll.multiple ? 'check' : 'radio');
+
+                bar.style.width = share + '%';
+>>>
+
+@@ assets/js/workspace.js
+<<<
+ai.closest('.form-check')
+===
+ai.closest('.form-field')
+>>>
+
+@@ assets/js/workspace_guest.js
+<<<
+                var pick = el('input', 'form-check-input');
+===
+                var pick = el('input', poll.multiple ? 'check' : 'radio');
+>>>
