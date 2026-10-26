@@ -19,6 +19,7 @@ description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), d
 
 ## What is left after #1808 and #1824?
 - Form blocks: `__item_form_data_html`, `__item_gift_card_html` (order view, cart rows), `__returns`/`__return_form` (still server-built inside the returns card), `__cancel_form`.
+- Where to start: the item form and gift card blocks need list sources per order item (forms per quantity > fields; cards per quantity), read in the item loop, where `_sdListPlaceOk()` refuses lists today: keyed by `__item_id` as the recipients key the items. Rows and the old markup: `_pg_render_order_item_form_data_readonly()`, `_pg_render_order_item_gift_card_readonly()` (`widgets_catalog.php`). The cart's editable twin keeps its control names.
 - Express order offers; cart row form data; catalog listing body; variant picker auto-inject; cross-sell; breadcrumb; filters (`__filter_chips` …); comment stars. Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: all six badges and every timeline icon show at once until W19's state preview.
 - A literal token inside a longer text is not given a part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.
