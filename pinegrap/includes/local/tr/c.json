@@ -750,6 +750,7 @@
     "Choose the café, the day and the time; we confirm by e-mail.": "Kafeyi, günü ve saati seçin; e-postayla onaylayalım.",
     "Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.": "Yol öğelerinin (Ana Katalog → Grup → …) tıklanabilir olması için katalog liste sayfasını seçin. Liste, sayfa içinde <code>catalog_listing</code> widget olan sayfaları içerir. Boş = yol öğeleri düz metin (tıklanmaz).",
     "Choose the channel whose tasks are sent.": "Görevleri gönderilecek kanalı seçin.",
+    "Choose the condition the box checks.": "Kutunun denetleyeceği koşulu seçin.",
     "Choose the content type first.": "Önce içerik türünü seçin.",
     "Choose the content type in the right-hand panel.": " Sağ panelden içerik türünü seçin.",
     "Choose the counts the summary lists.": "Özette yer alacak sayaçları seçin.",
