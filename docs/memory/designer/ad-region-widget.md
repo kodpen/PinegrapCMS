@@ -1,6 +1,6 @@
 ---
 name: ad-region-widget
-description: Ad Region widget (ad_region, #PRNUM): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
+description: Ad Region widget (ad_region, #1836): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
 ---
 
 ## What is it?
