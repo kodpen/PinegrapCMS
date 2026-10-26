@@ -748,6 +748,7 @@
     "Opens the form to paste a token.": "Jetonu yapıştırmak için formu açar.",
     "Opens the meeting note: attendees, agenda, decisions and action items.": "Toplantı notunu açar: katılımcılar, gündem, kararlar ve aksiyonlar.",
     "Opens the same document through this panel, with your own session instead of a key.": "Aynı belgeyi bu panel üzerinden, anahtar yerine kendi oturumunuzla açar.",
+    "Opens the task “{var:1}” and waits until it is done or cancelled.": "“{var:1}” görevini açar ve görev bitene ya da iptal edilene kadar bekler.",
     "Operating System": "İşletim Sistemi",
     "Operational": "Çalışıyor",
     "Operations": "Operasyon",

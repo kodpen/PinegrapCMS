@@ -483,6 +483,63 @@ function ws_step_fill_action($kind, $action, $values)
 }
 
 /**
+ * The {{node.<id>.<field>}} of a text the run gives no value for, each
+ * once, in the order they first appear: they would be filled in empty.
+ * Pure.
+ *
+ * @param string $text
+ * @param array  $values ws_step_node_values()
+ * @return string[]
+ */
+function ws_step_fill_missing($text, $values)
+{
+    $missing = array();
+
+    if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', (string) $text, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $match) {
+            if (!isset($values[$match[1]][$match[2]]) && !in_array($match[0], $missing, true)) {
+                $missing[] = $match[0];
+            }
+        }
+    }
+
+    return $missing;
+}
+
+/**
+ * A step's texts as the box would send them, the {{node.*}} values of a run
+ * filled in, and the values that run does not give, left empty. Pure.
+ *
+ * @param string $kind
+ * @param array  $action ws_scheduled_action_input()
+ * @param array  $values ws_step_node_values(), empty for no run
+ * @return array action (filled), texts (list of key, text), empty (placeholders)
+ */
+function ws_step_try_texts($kind, $action, $values)
+{
+    $info = ws_step_kinds()[$kind] ?? array('texts' => array());
+    $filled = ws_step_fill_action($kind, $action, $values);
+    $texts = array();
+    $empty = array();
+
+    foreach ($info['texts'] as $key) {
+        if (!isset($action[$key]) || !is_string($action[$key])) {
+            continue;
+        }
+
+        $texts[] = array('key' => $key, 'text' => (string) $filled[$key]);
+
+        foreach (ws_step_fill_missing($action[$key], $values) as $name) {
+            if (!in_array($name, $empty, true)) {
+                $empty[] = $name;
+            }
+        }
+    }
+
+    return array('action' => $filled, 'texts' => $texts, 'empty' => $empty);
+}
+
+/**
  * The Idempotency-Key a webhook box sends: one per run, box and pass, the
  * same however often the call is made. Pure.
  *
@@ -623,4 +680,156 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
+}
+
+/**
+ * What one box of a flow's draft would do, in words, without doing it: the
+ * box is checked with the owner's rights as publishing and the run check it
+ * (ws_step_check(), ws_flow_condition_check(), ws_flow_anchor_check()); a
+ * step's texts are filled with the values of a run the person chose, or left
+ * empty without one; a condition is looked at now; a start box at a time
+ * names its next times. Nothing is sent, written or called. Only whoever may
+ * change the flow tries its boxes: the draft and its settings are theirs to
+ * read.
+ *
+ * @param array $viewer
+ * @param array $flow ws_flow_for() with access
+ * @param array $data node_id, run_id (0 for none)
+ * @return array ok, error, status, field; node_id, kind, label, outcome (what
+ *               the box would leave on, '' when it would fail), refusal (why
+ *               it would fail), said, texts (key, text), empty (values left
+ *               empty), next (moments), run_id
+ */
+function ws_flow_box_try($viewer, $flow, $data)
+{
+    if (!ws_flows_ready()) {
+        return ws_flow_refusal(lang('The database has to be updated first.'), 503);
+    }
+
+    if ((string) ($flow['access'] ?? '') !== 'edit') {
+        return ws_flow_refusal(lang('Only the owner of a flow can change it.'), 403);
+    }
+
+    $graph = ws_flow_graph_of($flow);
+    $node = ws_flow_graph_node($graph, (string) ($data['node_id'] ?? ''));
+
+    if (!$node) {
+        return ws_flow_refusal(lang('That box is not in the flow.'), 404, 'node_id');
+    }
+
+    // The boxes act with the rights the flow's owner holds when they run.
+    $owner = ws_change_viewer_for_id((int) $flow['owner_id']);
+
+    if (!is_array($owner) || !ws_can_schedule($owner)) {
+        return ws_flow_refusal(lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+    }
+
+    // The values of the boxes a run of the person's choice has settled; a
+    // box it has not reached gives none.
+    $values = array();
+    $run_id = (int) ($data['run_id'] ?? 0);
+
+    if ($run_id > 0) {
+        $run = ws_flow_run_for($viewer, $run_id);
+
+        if (!$run || ((int) $run['flow_id'] !== (int) $flow['id'])) {
+            return ws_flow_refusal(lang('That run could not be found.'), 404, 'run_id');
+        }
+
+        $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
+            return ws_flow_step_settled((string) $row['status']);
+        }));
+    }
+
+    $kind = (string) $node['kind'];
+    $answer = array(
+        'ok'      => true,
+        'error'   => '',
+        'status'  => 200,
+        'field'   => '',
+        'node_id' => (string) $node['id'],
+        'kind'    => $kind,
+        'label'   => (string) (ws_flow_kinds()[$kind]['label'] ?? $kind),
+        'outcome' => '',
+        'refusal' => '',
+        'said'    => '',
+        'texts'   => array(),
+        'empty'   => array(),
+        'next'    => array(),
+        'run_id'  => $run_id,
+    );
+
+    if (!empty(ws_flow_kinds()[$kind]['step'])) {
+        $check = ws_step_check($owner, $kind, $node['config']);
+
+        if (!$check['ok']) {
+            return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
+        }
+
+        $tried = ws_step_try_texts($kind, $check['action'], $values);
+        $action = $tried['action'];
+
+        // As the run sends it: a notice names the flow it comes from.
+        if ($kind === 'notify') {
+            $action['text'] = lang(array('string' => 'Flow “{var:1}”: {var:2}', 'vars' => array((string) $flow['name'], $action['text'])));
+        }
+
+        return array(
+            'outcome' => 'done',
+            'said'    => ws_scheduled_action_text($owner, $action),
+            'texts'   => $tried['texts'],
+            'empty'   => $tried['empty'],
+        ) + $answer;
+    }
+
+    if ($kind === 'condition') {
+        $check = ws_flow_condition_check($owner, $node['config']);
+
+        if (!$check['ok']) {
+            return array('refusal' => (string) $check['error']) + $answer;
+        }
+
+        $held = ws_scheduled_rules_hold($owner, array($check['rule']), array('last_run_at' => 0));
+        $end = ws_flow_condition_settlement(!empty($held['ok']));
+
+        return array(
+            'outcome' => $end['outcome'],
+            'said'    => !empty($held['ok'])
+                ? lang(array('string' => 'The condition held: {var:1}.', 'vars' => ws_scheduled_rule_text($owner, $check['rule'])))
+                : (string) $held['reason'],
+        ) + $answer;
+    }
+
+    if (isset(ws_flow_anchor_kinds()[$kind])) {
+        $check = ws_flow_anchor_check($owner, $kind, $node['config']);
+
+        if (!$check['ok']) {
+            return array('refusal' => (string) $check['error']) + $answer;
+        }
+
+        return array(
+            'outcome' => 'next',
+            'said'    => ws_scheduled_rule_text($owner, $check['rule']),
+            'next'    => array_map('ws_scheduled_moment', ws_flow_anchor_next_times($check['rule'], time(), 3)),
+        ) + $answer;
+    }
+
+    switch ($kind) {
+        case 'manual':
+            return array('outcome' => 'next', 'said' => lang('The flow starts when somebody runs it.')) + $answer;
+
+        case 'task':
+            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values);
+
+            return array(
+                'said'  => lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled.', 'vars' => $title)),
+                'texts' => array(array('key' => 'title', 'text' => $title)),
+                'empty' => ws_step_fill_missing((string) ($node['config']['title'] ?? ''), $values),
+            ) + $answer;
+
+        case 'end':
+            return array('said' => lang('The flow reached its end.')) + $answer;
+    }
+
+    return array('refusal' => lang('This kind of box cannot run yet.')) + $answer;
 }
