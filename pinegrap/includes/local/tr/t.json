@@ -786,6 +786,7 @@
     "The application asking to connect is not known to this site. Start again from the application; if this keeps happening, remove the server there and add it again.": "Bağlanmak isteyen uygulama bu sitede tanınmıyor. Uygulamadan yeniden başlayın; tekrar olursa sunucuyu orada kaldırıp yeniden ekleyin.",
     "The application chosen for Claude is not active.": "Claude için seçilen uygulama etkin değil.",
     "The application chosen for Pinegrap AI is not active.": "Pinegrap AI için seçilen uygulama etkin değil.",
+    "The application could not be created.": "Uygulama oluşturulamadı.",
     "The application could not be found.": "Başvuru bulunamadı.",
     "The application for this provider is not set up on Connected accounts.": "Bu sağlayıcının uygulaması Bağlı hesaplar ekranında kurulmamış.",
     "The application is missing these permissions: {var:1}": "Uygulamada şu izinler eksik: {var:1}",
