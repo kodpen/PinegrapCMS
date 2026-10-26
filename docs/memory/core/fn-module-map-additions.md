@@ -28,4 +28,4 @@ description: The includes/fn/ modules added in 2026.4.8 and 2026.11.0 and the me
 - `layouts`: [[layout-code-tab]].
 
 ## Where does a module added later go?
-- Its line goes here under its version; the kinds of function each older module holds are in [[fn-module-map]].
+- In [[fn-module-map-additions-2]] (this one is full); the kinds of function each older module holds are in [[fn-module-map]].
