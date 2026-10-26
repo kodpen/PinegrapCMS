@@ -581,6 +581,7 @@
     "No comments": "Yorum yok",
     "No comments are waiting for approval.": "Onay bekleyen yorum yok.",
     "No comments yet.": "Henüz yorum yok.",
+    "No condition chosen": "Koşul seçilmedi",
     "No conditions — the offer applies to every order. Add a condition on the right to narrow it down.": "Koşul yok — teklif her siparişte geçerli. Sınırlamak için sağdan koşul ekleyin.",
     "No confirmation e-mail was sent for contact group {var:1}: the request could not be recorded in the consent log, which limits these e-mails to one a day.": "{var:1} numaralı kişi grubu için onay e-postası gönderilmedi: istek, bu e-postaları günde bire sınırlayan izin kaydına yazılamadı.",
     "No connected accounts.": "Bağlı hesap yok.",

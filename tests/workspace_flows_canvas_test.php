@@ -710,3 +710,117 @@ JS
 	pg_assert_contains('fl_run_name 31', $result['loaded'], 'then the runs');
 	pg_assert_same(2, $result['calls'], 'read twice');
 }
+
+// The value a condition box compares a record's field with is kept as the
+// record keeps it, as the scheduled form sends it: an amount typed as 100 is
+// 10000 minor units (and 10000 is shown as 100.00), yes or no '1' or '0', a
+// day YYYY-MM-DD, a moment YYYY-MM-DD HH:MM:00, a decimal with a dot. What
+// was typed used to be kept as it was, so "Price is more than 100" held for
+// any price over 1.00. A count measured against a number asks for that
+// number, 5 to start with, as the scheduled form does; it used to stay 0,
+// which counts only the products out of stock.
+function test_workspace_flows_canvas_condition_values_are_kept_as_the_field_holds_them()
+{
+	$result = ws_flows_canvas_test_node(
+		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'conditionValue', 'conditionCompare', 'conditionMetric'),
+		<<<'JS'
+var uid = 0;
+var FL = {};
+var BOOT = { channels: [] };
+state = { edit: true };
+K.select = function (options, value) {
+    var node = new FakeNode('select');
+    options.forEach(function (option) {
+        var item = new FakeNode('option', '', option[1]);
+        item.value = String(option[0]);
+        node.appendChild(item);
+    });
+    node.value = String(value);
+    return node;
+};
+function refreshNode() {}
+function drawSettings() {}
+// The controls of the fields drawn into a box, in order.
+function controls(box) { return box.children.map(function (wrap) { return wrap.children[1]; }); }
+function enter(control, value) {
+    control.value = value;
+    (control.listeners[(control.tag === 'select') ? 'change' : 'input'] || []).forEach(function (fn) { fn(); });
+}
+// A field of a kind compared by op: the value control as drawn for what is
+// kept, then what is kept once value is entered into it.
+function compare(kind, op, kept, value) {
+    var box = new FakeNode('div');
+    var rule = { type: 'record', record: 'product', id: 12, field: 'f', op: op, value: kept };
+    conditionCompare(box, { config: { rule: rule } }, rule, [[op, op]], { kind: kind, label: 'F', values: [], labels: {} });
+    var control = controls(box)[1];
+    var out = { tag: control ? control.tag : '', type: control ? (control.type || '') : '', shown: control ? control.value : null, options: control ? control.children.map(function (item) { return item.value; }) : [] };
+    if (control) {
+        enter(control, value);
+    }
+    out.kept = rule.value;
+    return out;
+}
+var out = {
+    money: compare('money', 'gt', '10000', '100'),
+    cents: compare('money', 'lt', '', '12.5'),
+    yes: compare('bool', 'eq', '', '1'),
+    no: compare('bool', 'eq', '1', '0'),
+    day: compare('date', 'gt', '', '2026-11-01'),
+    moment: compare('datetime', 'lt', '2026-10-26 14:30:00', '2026-11-01T09:15'),
+    decimal: compare('decimal', 'gte', '', '18,5'),
+    text: compare('text', 'contains', '', 'Ankara'),
+    days: compare('date', 'within', '7', '10'),
+    overdue: compare('date', 'overdue', '', '')
+};
+FL.steps = {
+    metrics: [{ key: 'tasks_open', label: 'Open tasks', scope: 'channel' }, { key: 'stock_low', label: 'Products low in stock', scope: 'threshold' }],
+    counts: ['gt'],
+    operators: { gt: 'is more than' }
+};
+var rule = { type: 'metric', metric: '', param: 0, op: 'gt', value: '' };
+var box = new FakeNode('div');
+conditionMetric(box, { config: { rule: rule } }, rule);
+enter(controls(box)[0], 'stock_low');
+out.picked = rule.param;
+box = new FakeNode('div');
+conditionMetric(box, { config: { rule: rule } }, rule);
+out.threshold = { label: textOf(box.children[1].children[0]), shown: controls(box)[1].value, type: controls(box)[1].type || '' };
+enter(controls(box)[1], '3');
+out.threshold.kept = rule.param;
+enter(controls(box)[0], 'tasks_open');
+out.channel = rule.param;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(is_array($result), 'the script printed its result');
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same('100.00', $result['money']['shown'], 'minor units shown as a decimal');
+	pg_assert_same('10000', $result['money']['kept'], 'an amount typed as 100 kept in minor units');
+	pg_assert_same('1250', $result['cents']['kept'], 'and 12.5 as 1250');
+	pg_assert_same(array('select', array('1', '0')), array($result['yes']['tag'], $result['yes']['options']), 'yes or no picked from two');
+	pg_assert_same('1', $result['yes']['kept'], 'yes kept as "1"');
+	pg_assert_same('1', $result['no']['shown'], '"1" shown as yes');
+	pg_assert_same('0', $result['no']['kept'], 'no kept as "0"');
+	pg_assert_same('date', $result['day']['type'], 'a day picked as a date');
+	pg_assert_same('2026-11-01', $result['day']['kept'], 'kept as YYYY-MM-DD');
+	pg_assert_same(array('datetime-local', '2026-10-26T14:30'), array($result['moment']['type'], $result['moment']['shown']), 'a moment picked as one');
+	pg_assert_same('2026-11-01 09:15:00', $result['moment']['kept'], 'kept as the record keeps it');
+	pg_assert_same('18.5', $result['decimal']['kept'], 'a decimal comma kept as a dot');
+	pg_assert_same(array('text', 'Ankara'), array($result['text']['type'], $result['text']['kept']), 'a text as typed');
+	pg_assert_same(array('text', '10'), array($result['days']['type'], $result['days']['kept']), '"falls within the next days" takes a number of days');
+	pg_assert_same('', $result['overdue']['tag'], '"has gone by" takes no value');
+
+	pg_assert_same(5, $result['picked'], 'a count against a number starts at 5');
+	pg_assert_same(array('fl_cond_threshold', '5', 'number'), array($result['threshold']['label'], $result['threshold']['shown'], $result['threshold']['type']), 'and asks for it');
+	pg_assert_same(3, $result['threshold']['kept'], 'what is typed is kept');
+	pg_assert_same(0, $result['channel'], 'a count of a channel\'s tasks starts at every channel');
+}

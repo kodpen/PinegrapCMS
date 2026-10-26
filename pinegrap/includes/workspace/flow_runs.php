@@ -1666,6 +1666,18 @@ function ws_flow_step_run($step)
 
             ws_flow_step_task($run, $flow, $step, $node, $owner);
             return;
+
+        // A condition, looked at with the owner's rights now.
+        case 'condition':
+            $owner = ws_change_viewer_for_id($run['actor_id']);
+
+            if (!is_array($owner) || !ws_can_schedule($owner)) {
+                ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+                return;
+            }
+
+            ws_flow_condition_run($run, $step, $node, $owner);
+            return;
     }
 
     // A step (steps.php), with the owner's rights as they are now, like a
