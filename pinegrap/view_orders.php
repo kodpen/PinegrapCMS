@@ -3203,6 +3203,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                         ' . $output_gateway_buttons . '
                     </form>
+                    <a class="btn btn-sm btn-ghost" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
                     <div class="pg-toolbar-grow"></div>
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
@@ -3248,6 +3249,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '
                                         <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
+                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-success disabled" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-2" aria-hidden="true"></i>' . lang('Mark Shipped Selected') . '</button>
                                         <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
                                         <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
