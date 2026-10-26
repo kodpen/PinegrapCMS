@@ -65,6 +65,45 @@ function pg_announce($event, $data = array())
     api_webhook_enqueue($event, (array) $data, true);
 }
 
+// What customer.consent_changed carries for a consent_log row, or null when
+// the row announces nothing: a cookie answer (no customer), a pending one (no
+// answer yet), an import (a bulk path), or no customer record to name.
+function pg_consent_changed_event($id, $row, $contact_id)
+{
+    if (($row['channel'] === 'cookie') || ($row['status'] === 'pending') || ($row['source'] === 'import') || ((int) $contact_id <= 0)) {
+        return null;
+    }
+
+    return array(
+        'id'      => (int) $contact_id,
+        'consent' => array(
+            'id'         => (int) $id,
+            'channel'    => (string) $row['channel'],
+            'purpose'    => (string) $row['purpose'],
+            'status'     => (string) $row['status'],
+            'source'     => (string) $row['source'],
+            'created_at' => gmdate('Y-m-d\TH:i:s\Z', (int) $row['created_at']),
+        ),
+    );
+}
+
+// A consent answer just written to consent_log (pg_consent_log_record()). A
+// row kept under the account alone names the account's customer record.
+function pg_announce_consent_changed($id, $row)
+{
+    $contact_id = (int) $row['contact_id'];
+
+    if (($contact_id <= 0) && ((int) $row['user_id'] > 0)) {
+        $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . (int) $row['user_id'] . "'");
+    }
+
+    $event = pg_consent_changed_event($id, $row, $contact_id);
+
+    if ($event !== null) {
+        pg_announce('customer.consent_changed', $event);
+    }
+}
+
 // A contact that did not exist a moment ago, whichever screen or form made it.
 //
 // The address book is written from eight places in this software and most of

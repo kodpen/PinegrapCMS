@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp and SMS.
+ * MailChimp, SMS and İYS.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -19,6 +19,8 @@
 if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
+
+require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 
 // ── Campaigns ──
 $pg_settings_cards[] = '
@@ -262,6 +264,21 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-3">' . pg_sms_message_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── İYS ──
+// The İYS account and the consent sync's switches (includes/iys/settings.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-iys" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('İYS') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">' . pg_iys_settings_fields() . '
                                     </div>
                                 </div>
                             </div>
