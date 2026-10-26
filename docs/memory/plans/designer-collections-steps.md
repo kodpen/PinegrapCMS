@@ -1,6 +1,6 @@
 ---
 name: designer-collections-steps
-description: Plan (collections half of designer-interactions-collections, steps C1–C7): typed collections over designer forms; schema asks waiting on the owner
+description: Plan (collections half of designer-interactions-collections, steps C1–C7): typed collections over designer forms, their schema questions
 ---
 
 ## What is the shape?
@@ -12,12 +12,19 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 ## Which steps?
 - **C1 — reference resolution in record widgets (no schema).** New module `includes/fn/collections.php`. `form_list_view`/`form_item_view` bindings get `_bindParams.<attr>.ref {page, field}`: the value is read as reference codes (or address names) of that form's records and the bound field of the target printed instead (one query per render for all rows). Only complete records, never `office_use_only` fields; translated like own values. Bind Data panel twin, canvas placeholder, tests.
+
 - **C2 — collection flag and field kinds (Q1, Q2).** Migration step, `pg_collections_ready()`; form settings switch "Use as a collection"; Form Field panel "Kind" (number, image, reference + target, slug); `_pg_cf_controls()` / `pg_cf_sync_page_form()` write the columns; `list_form_fields` returns them.
+
 - **C3 — typed inputs.** Number (`type=number`, server numeric check), image (`accept`, preview, `pg_img_responsive_html()` on output), reference picker (select filled at render from the target's records; server accepts only a live code of the target), product/page pickers; `edit_submitted_form.php` shows the same.
+
 - **C4 — list/detail by kind.** C1's `ref` defaults from the field; numeric sort for number; taxonomy filter "references" valued from the address (`?category=news` by address name, `form-list-url-filters.md` rules); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image).
+
 - **C5 — slug field and feeds.** A slug field feeds `update_submitted_form_address_name()`; RSS `category` and JSON-LD print a reference's label, not its code.
+
 - **C6 — templates opt in.** Blog, menu, events, staff templates add the flag and kinds (`design-templates-file-format.md`); a categories collection for blog. Installed sites change nothing.
+
 - **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
+
 - Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns unless the owner wants them (Q4).
 
 ## Which schema changes wait on the owner?
