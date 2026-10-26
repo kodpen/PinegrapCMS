@@ -1183,7 +1183,8 @@ function pg_sw_filter_value_html($value)
 }
 
 // The query string (without "?") that names a URL-filtered list page: the
-// applied parameters sorted by name, encoded as RFC 3986, then page_number
+// applied parameters sorted by name, encoded as RFC 3986, then the page
+// number under the list's page parameter (`page_param`, else page_number)
 // when the list showed a later page and $with_page. '' when no parameter
 // applies: a page without an address value keeps its bare canonical.
 function pg_sw_url_filter_query($state, $with_page = true)
@@ -1193,7 +1194,8 @@ function pg_sw_url_filter_query($state, $with_page = true)
     ksort($params, SORT_STRING);
     $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     $page  = (is_array($state) && isset($state['page_number'])) ? (int)$state['page_number'] : 0;
-    if ($with_page && $page > 1) $query .= '&page_number=' . $page;
+    $name  = (is_array($state) && isset($state['page_param'])) ? pg_sw_list_page_param(array('page_param' => $state['page_param'])) : 'page_number';
+    if ($with_page && $page > 1) $query .= '&' . $name . '=' . $page;
     return $query;
 }
 
@@ -1222,13 +1224,13 @@ function pg_sw_url_filter_value($filter_sql, $total_records)
 // searched page 2 is not page 2 of the list) and showed the page the
 // address asked for (a page past the last one is clamped to it, and that
 // page is not this address). 0 otherwise.
-function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active)
+function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param = 'page_number')
 {
     if (!is_array($filter_sql) || empty($filter_sql['params']) || $search_active) return 0;
     $current_page = (int)$current_page;
     if ((int)$total_pages <= 1 || $current_page <= 1) return 0;
-    if (!is_array($request) || !isset($request['page_number']) || !is_scalar($request['page_number'])) return 0;
-    return ((int)$request['page_number'] === $current_page) ? $current_page : 0;
+    if (!is_array($request) || !isset($request[$page_param]) || !is_scalar($request[$page_param])) return 0;
+    return ((int)$request[$page_param] === $current_page) ? $current_page : 0;
 }
 
 // Whether a URL-filtered list page stays out of search engines: a value
@@ -1246,7 +1248,8 @@ function pg_sw_url_filter_noindex($state)
 // an array: its applied parameters (the first value of a name wins),
 // whether one was compared inexactly, whether it found no record, its
 // title, whether that title is the list's own filter_title
-// (`title_configured`), and the page number it showed. An e-mail body and a
+// (`title_configured`), and the page number it showed (with `page_param`
+// when the list pages under a name of its own). An e-mail body and a
 // render inside another request (SEO pass, preview) add nothing.
 // Several lists on one page may read the same address (an archive and a
 // "most read" box): the page is `empty` only when every list that applied a
@@ -1277,7 +1280,11 @@ function pg_sw_url_filter_state($add = null)
         $state['title']            = $title;
         $state['title_configured'] = $configured;
     }
-    if ($state['page_number'] <= 1 && isset($add['page_number']) && (int)$add['page_number'] > 1) $state['page_number'] = (int)$add['page_number'];
+    if ($state['page_number'] <= 1 && isset($add['page_number']) && (int)$add['page_number'] > 1) {
+        $state['page_number'] = (int)$add['page_number'];
+        // The list's own page parameter names that page in the canonical.
+        if (isset($add['page_param']) && $add['page_param'] !== 'page_number') $state['page_param'] = (string)$add['page_param'];
+    }
     return $state;
 }
 
@@ -1585,8 +1592,15 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
 // cost of per-widget independence):
-//   page_number   page index (1-based)
+//   page_number   page index (1-based); a list with a `page_param` of its own
+//                 pages under that name instead (pg_sw_list_page_param())
 //   query         search query string
+//
+// `offset` skips that many matched records before the first row; the count,
+// the pages and max_results all start after them. ^^__page_number^^,
+// ^^__page_count^^, ^^__prev_page_url^^, ^^__next_page_url^^ and the flags
+// has_prev_page, has_next_page, has_more_pages describe the pages
+// (pg_sw_list_paging()).
 //
 // NOTE: We deliberately avoid the bare key `page` because Pinegrap's router
 // uses `$_GET['page']` as the URL slug (set by .htaccess rewrite). A
@@ -1644,13 +1658,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $viewer_filter_watcher   = isset($cfg['viewer_filter_watcher'])   ? !empty($cfg['viewer_filter_watcher'])   : true;
     $viewer_filter_editor    = isset($cfg['viewer_filter_editor'])    ? !empty($cfg['viewer_filter_editor'])    : true;
 
-    // ── URL params (shared) ───────────────────────────────────────────────
-    // Note: `page` and `search` are page-wide. Multiple system widgets on the
-    // same page share state — acceptable trade-off for clean URLs in the
-    // current scope (typically one list widget per page).
-    $page_param   = 'page_number';
-    $query_param  = 'query';
-    $current_page = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
+    $offset_records = pg_sw_list_offset($cfg);
+
+    // ── URL params ────────────────────────────────────────────────────────
+    // The search text is page-wide; the page number too unless the list
+    // pages under a name of its own.
+    $page_param     = pg_sw_list_page_param($cfg);
+    $query_param    = 'query';
+    $requested_page = isset($_GET[$page_param]) ? $_GET[$page_param] : null;
     // The parameters the URL filters read; none in an e-mail or a preview.
     $request      = pg_sw_filter_request();
     $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
@@ -1667,7 +1682,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Only the flags a list evaluates are marked: a flag from another widget
     // type (a pasted record block's record_found) leaves its element drawn,
     // as lists did before they had flags of their own.
-    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records', 'has_prev_page', 'has_next_page', 'has_more_pages'));
     pg_sw_record_href_bindings($tree_decoded);
     // Links to another page with the record's values: a token each, and
     // their pages read once, before the surround and the rows are drawn.
@@ -1878,6 +1893,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // ^^__result_count^^ and its flags, set once the records are counted.
     $result_count      = 0;
     $result_count_html = '0';
+    $paging_tokens     = array();
 
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
@@ -1932,13 +1948,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // (the rows come from a template resolved the same way), so the pattern
     // never spans record HTML: a long span would exceed PCRE's backtrack
     // limit and empty the list, and a record's own text could close a span.
-    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, $page_link_bare) {
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, &$paging_tokens, $page_link_bare) {
         if ($static_html === '') return $search_html . $rows . $pagination;
         $html = _pg_sw_resolve_visibility(
             pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array(
                 '__filter_value' => pg_sw_filter_value_html($filter_value),
                 '__result_count' => $result_count_html,
-            ) + $page_link_bare)),
+            ) + $paging_tokens + $page_link_bare)),
             $flags
         );
         if (strpos($html, '<!--pg-loop-before-->') !== false) {
@@ -1971,9 +1987,17 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $sql_viewer_filter"
     );
     // The number a visitor can page through, as the classic list's "Found
-    // N results" and the search results widget count it: max_results caps it.
-    $result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;
+    // N results" and the search results widget count it: what is left after
+    // the offset, capped by max_results.
+    $listed_records = max(0, $total_records - $offset_records);
+    $result_count = ($max_results > 0) ? min($listed_records, $max_results) : $listed_records;
     $result_count_html = h(pg_format_number($result_count, 0));
+
+    // The pages: a count strip draws no rows, so it has one page at most.
+    $total_pages  = $loop_empty ? min(1, $result_count) : (int)ceil($result_count / $items_per_page);
+    $current_page = pg_sw_list_current_page($requested_page, $total_pages);
+    $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
+    $paging_tokens = $paging['tokens'];
 
     // What the address applied, for this list's tokens and flags and for
     // the page's head (canonical, title, robots, feed link).
@@ -2001,7 +2025,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         'no_filter_value'  => empty($filter_sql['params']),
         'has_records'      => $result_count > 0,
         'no_records'       => $result_count === 0,
-    );
+    ) + $paging['flags'];
     // The flags are final: the per-record template is resolved once, before
     // any record is drawn into it.
     $loop_template = _pg_sw_resolve_visibility($loop_template, $flags);
@@ -2016,31 +2040,22 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         ));
     }
 
-    if ($total_records === 0) return $stitch($empty_html, '');
+    if ($result_count === 0) return $stitch($empty_html, '');
     // A count strip: the head state above is registered, no row is read.
     if ($loop_empty) return $stitch('', '');
 
-    // Apply the outer dataset cap BEFORE pagination math so the user only ever
-    // pages through the first $max_results rows. Final page's LIMIT may be
-    // shorter than $items_per_page (e.g. max=23, ipp=10 → page 3 returns 3).
-    if ($max_results > 0 && $total_records > $max_results) {
-        $total_records = $max_results;
-    }
-
-    $total_pages = (int)ceil($total_records / $items_per_page);
-    if ($current_page > $total_pages) $current_page = $total_pages;
     // A later page of an address-filtered list is its own address (the
     // classic list keeps page_number in its canonical too).
-    $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active);
+    $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param);
     if ($url_filter_page > 0) {
-        pg_sw_url_filter_state(array('page_number' => $url_filter_page));
+        pg_sw_url_filter_state(array('page_number' => $url_filter_page, 'page_param' => $page_param));
     }
-    $offset = ($current_page - 1) * $items_per_page;
-    $page_limit = $items_per_page;
-    if ($max_results > 0) {
-        $remaining = $max_results - $offset;
-        if ($remaining < $page_limit) $page_limit = max(0, $remaining);
-    }
+    // The pages run through the $result_count records after the offset, so
+    // max_results caps them: the last page's LIMIT may be shorter than
+    // $items_per_page (max=23, ipp=10 → page 3 reads 3).
+    $page_start = ($current_page - 1) * $items_per_page;
+    $page_limit = min($items_per_page, $result_count - $page_start);
+    $offset     = $offset_records + $page_start;
 
     // Resolve the detail page (if configured) once. Each row then links to
     // its own record there, matching the legacy form_list_view pattern:
@@ -2174,6 +2189,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $extra['__detail_url'] = $extra['form_item_view'];
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
         $extra['__result_count'] = $result_count_html;
+        $extra += $paging_tokens;
         // Links to another page, valued from this record.
         $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
             'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',
@@ -4980,6 +4996,65 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         'link'        => $channel_link,
         'description' => h($channel_desc),
         'items'       => $items,
+    );
+}
+
+// The query parameter a list pages under: its own `page_param` setting, a
+// name pg_sw_url_param_name() accepts (so never one the software reads
+// itself), else page_number, the name every list shared before and the one
+// running sites' addresses carry. Two lists with names of their own on one
+// page turn their pages apart.
+function pg_sw_list_page_param($cfg)
+{
+    $name = (is_array($cfg) && isset($cfg['page_param'])) ? pg_sw_url_param_name($cfg['page_param']) : '';
+    return ($name !== '') ? $name : 'page_number';
+}
+
+// How many of the matched records a list skips before its first row
+// (`offset`, 0 to 100000): a box shows the newest record, the list beside it
+// starts at the second.
+function pg_sw_list_offset($cfg)
+{
+    $n = (is_array($cfg) && isset($cfg['offset']) && is_scalar($cfg['offset'])) ? (int)$cfg['offset'] : 0;
+    return max(0, min(100000, $n));
+}
+
+// The page a list shows: the address value $requested as a whole number,
+// clamped to 1 .. $pages (a page past the last one is the last); 1 without
+// a usable value or without pages.
+function pg_sw_list_current_page($requested, $pages)
+{
+    $n = is_scalar($requested) ? (int)$requested : 1;
+    return max(1, min(max(1, (int)$pages), $n));
+}
+
+// The paging tokens and flags of a list showing page $current of $pages
+// under $page_param. Tokens, escaped once: ^^__page_number^^ (the page
+// shown), ^^__page_count^^, ^^__prev_page_url^^ and ^^__next_page_url^^
+// ('' on the first and the last page; the links keep every other query
+// parameter, as the pagination's do). Flags: has_prev_page,
+// has_next_page, has_more_pages (more than one page).
+function pg_sw_list_paging($page_param, $current, $pages)
+{
+    $current = (int)$current;
+    $pages   = (int)$pages;
+    $url = function ($n) use ($page_param) {
+        return h('?' . _pg_sw_build_query($page_param, $n));
+    };
+    $prev = ($current > 1);
+    $next = ($current < $pages);
+    return array(
+        'tokens' => array(
+            '__page_number'   => (string)$current,
+            '__page_count'    => (string)$pages,
+            '__prev_page_url' => $prev ? $url($current - 1) : '',
+            '__next_page_url' => $next ? $url($current + 1) : '',
+        ),
+        'flags' => array(
+            'has_prev_page'  => $prev,
+            'has_next_page'  => $next,
+            'has_more_pages' => ($pages > 1),
+        ),
     );
 }
 

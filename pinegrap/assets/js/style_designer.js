@@ -14046,7 +14046,7 @@ const StyleDesigner = (function () {
 
     // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
-        '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
+        '__result_count': '12', '__page_count': '2', '__page_number': '1', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
@@ -33050,6 +33050,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-max-results" data-sw-id="' + sid + '" min="1" value="' + _maxResVal + '" placeholder="' + esc(_sdT('Unlimited')) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty for no limit. Paging happens within this ceiling.')) + '</div>'
                     ) +
+                    // Offset and the list's own page parameter
+                    // (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    (_isFormListView ? row(_sdT('Skip the first records'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
+                    ) + row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) : '') +
                     row(_sdT('Detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
@@ -36403,6 +36412,10 @@ const StyleDesigner = (function () {
                     v = _swPageVal(this);
                 } else if (kind === 'bool') {
                     v = !!this.checked;
+                } else if (kind === 'param') {
+                    // A query parameter name, '' when it cannot be used.
+                    v = _swUrlParamName(this.value);
+                    this.value = v;
                 } else {
                     v = ('' + this.value).slice(0, 255);
                 }
@@ -37047,7 +37060,11 @@ const StyleDesigner = (function () {
     // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
-        ['__result_count', _sdT('Number of results')]
+        ['__result_count', _sdT('Number of results')],
+        ['__page_number',   _sdT('Page shown')],
+        ['__page_count',    _sdT('Number of pages')],
+        ['__prev_page_url', _sdT('Previous page link')],
+        ['__next_page_url', _sdT('Next page link')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -39992,7 +40009,10 @@ const StyleDesigner = (function () {
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
             ['no_filter_value',  _sdT('No value from the page address is applied')],
             ['has_records',      _sdT('The list found records')],
-            ['no_records',       _sdT('The list found nothing')]
+            ['no_records',       _sdT('The list found nothing')],
+            ['has_prev_page',    _sdT('A previous page exists')],
+            ['has_next_page',    _sdT('A next page exists')],
+            ['has_more_pages',   _sdT('The list runs over more than one page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -53638,6 +53658,11 @@ const StyleDesigner = (function () {
         'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
         'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
+    // Twin of pg_sw_list_offset(): records a list skips, 0 to 100000.
+    function _swListOffset(cfg) {
+        var n = parseInt(cfg && cfg.offset, 10);
+        return (n > 0) ? Math.min(100000, n) : 0;
+    }
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
         var n = String(v == null ? '' : v).trim().toLowerCase();
