@@ -86,7 +86,7 @@ function pg_sw_list_sources()
             ),
         ),
     ) + pg_sw_list_product_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
-        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources();
+        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
@@ -97,14 +97,15 @@ function pg_sw_list_sources()
 // sources in the order view and the member's orders in the my account
 // widget (widgets_lists_order.php), the visitor's cart in the cart link and
 // the cart widget (widgets_lists_cart.php), the sub-items of a menu item in
-// the menu widget (widgets_lists_menu.php), each kind publishing its data;
-// none in any other kind.
+// the menu widget (widgets_lists_menu.php), the member's passkeys in the
+// account security widget (widgets_account.php), each kind publishing its
+// data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
     $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record',
                       'catalog_item_view' => 'product', 'catalog_listing' => 'product', 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
-                      'menu_region' => 'menu');
+                      'menu_region' => 'menu', 'account_security' => 'security');
     $except   = array('catalog_listing' => array('product.related' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
@@ -325,7 +326,8 @@ function pg_sw_list_wanted($family)
 // pg_sw_list_product_read() builds them.
 // 'calendar': $data_rows = source => key => rows, as
 // pg_sw_list_calendar_rows() builds them; 'order' and 'account' as
-// pg_sw_list_order_rows() and pg_sw_list_account_rows() build them. Every
+// pg_sw_list_order_rows() and pg_sw_list_account_rows() build them,
+// 'security' as pg_sw_list_passkey_rows() does. Every
 // family but form_record publishes its rows so.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {

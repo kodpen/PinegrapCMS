@@ -9,7 +9,7 @@ description: Designed account widgets: the login region's two states and per-pla
 - Its Messages node is stamped with a form name nothing posts (`login_region`), so a header does not print the page's own form alerts (`member-widgets-rendering.md`).
 
 ## Why does account_security use one form per block?
-- Each block is a `semantic` `form` bound with `_bindings.action = 'account_security_form'` (posts to `account_security.php` with the CSRF token and `return_to`); each button is bound to the action it takes (`pg_sw_account_security_actions()`: `logout_all`, `mfa_begin`, `revoke_device`…). Wired by `_pg_sec_apply_action_bindings()`.
+- Each block is a `semantic` `form` bound with `_bindings.action = 'account_security_form'` (posts to `account_security.php` with the CSRF token and `return_to`); each button is bound to the action it takes (`pg_sw_account_security_actions()`: `logout_all`, `mfa_begin`, `revoke_device`…; passkeys: [[passkey-widget-list]]). Wired by `_pg_sec_apply_action_bindings()`.
 - Not one wrapper with button name/value pairs: `pg_cf_validation_script()` validates the whole form, so a required code field would stop the other buttons, and Enter presses the first submit button. A tree with no bound form is still wrapped whole in one form, so its buttons post.
 
 ## What happens to a link bound to an empty address?
