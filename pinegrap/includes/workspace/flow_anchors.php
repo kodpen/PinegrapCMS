@@ -174,6 +174,37 @@ function ws_flow_anchor_check($viewer, $kind, $config)
 }
 
 /**
+ * The next times a box's rule starts the flow after a moment, at most
+ * $count of them: none for an event or a join, which have no time of their
+ * own. Pure.
+ *
+ * @param array $rule  ws_flow_anchor_check()'s rule
+ * @param int   $after
+ * @param int   $count
+ * @return int[]
+ */
+function ws_flow_anchor_next_times($rule, $after, $count = 3)
+{
+    $times = array();
+
+    if (((string) ($rule['type'] ?? '') !== 'at')) {
+        return $times;
+    }
+
+    for ($i = 0; $i < (int) $count; $i++) {
+        $after = ws_scheduled_next_run($rule, $after);
+
+        if ($after <= 0) {
+            break;
+        }
+
+        $times[] = $after;
+    }
+
+    return $times;
+}
+
+/**
  * The anchor of a flow, decoded; null for none.
  *
  * @param int $flow_id

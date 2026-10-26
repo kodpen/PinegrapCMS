@@ -33,3 +33,6 @@ description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, 
 
 ## Why never twice?
 - Before the work `ws_step_run()` writes effect `began:<kind>` (conditional on running). A stale box with it fails (`ws_flow_effect_began()`, `ws_flow_stale_action()` → fail): a post or e-mail may have gone out. F5 brings retry and skip by hand.
+
+## Can a box be tried without running?
+- Yes, from the canvas or the API: `workspace-flows-box-try.md`.

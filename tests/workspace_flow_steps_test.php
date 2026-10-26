@@ -427,3 +427,78 @@ function test_workspace_flow_steps_change_is_kept_back()
 	pg_assert_contains('ws_step_result_shown(', ws_flow_steps_test_source('ws_api_flow_run_step_present'));
 	pg_assert_contains("ws_api_flow_run_step_present(\$step, \$graph, \$edit)", ws_flow_steps_test_source('ws_api_flow_run_present'));
 }
+
+// A box tried on its own: its texts filled with the values of a run chosen,
+// and the values that run does not give named, left empty.
+function test_workspace_flow_steps_try_texts()
+{
+	$values = array('say' => array('text' => 'written in #sales', 'outcome' => 'done', 'status' => 'done', 'message_id' => '42'));
+
+	pg_assert_same(array('{{node.mail.text}}', '{{node.say.task_id}}'), ws_step_fill_missing('{{node.say.text}} {{node.mail.text}} {{node.say.task_id}} {{node.mail.text}} {{date}}', $values));
+	pg_assert_same(array(), ws_step_fill_missing('{{node.say.message_id}}', $values));
+	pg_assert_same(array(), ws_step_fill_missing('{{node.Say.text}}', $values), 'not a box id, never filled');
+
+	$tried = ws_step_try_texts('email', array('type' => 'email', 'to' => array('{{node.say.text}}'), 'subject' => "Re:\n{{node.say.text}}", 'body' => '{{node.say.message_id}} {{node.later.text}}'), $values);
+
+	pg_assert_same(array(
+		array('key' => 'subject', 'text' => 'Re: written in #sales'),
+		array('key' => 'body', 'text' => '42 '),
+	), $tried['texts']);
+	pg_assert_same(array('{{node.later.text}}'), $tried['empty']);
+	pg_assert_same(array('{{node.say.text}}'), $tried['action']['to'], 'addresses are never filled');
+
+	// Without a run every value is left empty.
+	$bare = ws_step_try_texts('post', array('type' => 'post', 'channel_id' => 4, 'body' => 'Hi {{node.say.text}}, {{date}}'), array());
+
+	pg_assert_same(array(array('key' => 'body', 'text' => 'Hi , {{date}}')), $bare['texts']);
+	pg_assert_same(array('{{node.say.text}}'), $bare['empty']);
+	pg_assert_same(array(), ws_step_try_texts('web_check', array('type' => 'web_check', 'url' => 'https://example.com'), $values)['texts']);
+}
+
+// The next times a start box at a time starts the flow, as the scheduled
+// action's form lists them.
+function test_workspace_flow_steps_try_anchor_times()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+
+	$after = strtotime('2030-01-01 08:00:00');
+	$daily = array('type' => 'at', 'date' => '2030-01-01', 'time' => '09:00', 'repeat' => 'daily', 'every' => 1);
+
+	pg_assert_same(array(strtotime('2030-01-01 09:00:00'), strtotime('2030-01-02 09:00:00'), strtotime('2030-01-03 09:00:00')), ws_flow_anchor_next_times($daily, $after, 3));
+	pg_assert_same(array(strtotime('2030-01-01 09:00:00')), ws_flow_anchor_next_times(array('repeat' => 'none') + $daily, $after, 3), 'once');
+	pg_assert_same(array(), ws_flow_anchor_next_times(array('type' => 'event', 'event' => 'workspace.task.created'), $after, 3), 'no time of its own');
+}
+
+// Trying a box never sends, writes or calls: it checks the box with the
+// owner's rights, as publishing and the run do, for whoever may change the
+// flow, and is told nothing the run would not do.
+function test_workspace_flow_steps_try_writes_nothing()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+
+	$try = ws_flow_steps_test_source('ws_flow_box_try');
+
+	foreach (array('ws_scheduled_do(', 'ws_flow_step_settle(', 'db(', 'ws_message_send(', 'ws_scheduled_execute(', 'log_activity(') as $call) {
+		pg_assert_true(strpos($try, $call) === false, $call);
+	}
+
+	foreach (array('ws_step_check($owner', 'ws_flow_condition_check($owner', 'ws_flow_anchor_check($owner', 'ws_scheduled_rules_hold($owner', 'ws_step_try_texts(', 'ws_step_node_values(', "'edit'", 'ws_can_schedule($owner)') as $call) {
+		pg_assert_contains($call, $try);
+	}
+
+	pg_assert_contains('ws_flow_graph_of($flow)', $try, 'the draft');
+	pg_assert_contains('ws_flow_run_for($viewer', $try, 'a run the person reaches');
+
+	// The canvas and the API ask the same function; the route is a read and
+	// no MCP tool.
+	pg_assert_contains("case 'ws_flow_box_try':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php'));
+	pg_assert_contains('ws_flow_box_try($viewer, $flow', ws_flow_steps_test_source('ws_api_flows_box_try'));
+	pg_assert_contains("'ws_flow_box_try',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel lets it through');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+	$route = substr($api, strpos($api, "'id'          => 'workspace.flows.box_try'"), 400);
+
+	pg_assert_contains("'method'      => 'GET'", $route);
+	pg_assert_contains("'mcp'         => false", $route);
+}
