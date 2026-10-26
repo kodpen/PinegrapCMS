@@ -603,12 +603,7 @@ function submit_order($type) {
             // never bypassed if the column is missing. Empty submitted value
             // clears any prior note for this draft order.
             if ($liveform->field_in_session('notes')) {
-                static $_submit_order_has_notes_col = null;
-                if ($_submit_order_has_notes_col === null) {
-                    $_p = db_value("SHOW COLUMNS FROM orders LIKE 'notes'");
-                    $_submit_order_has_notes_col = ($_p !== '' && $_p !== null);
-                }
-                if ($_submit_order_has_notes_col) {
+                if (pg_schema_has('orders', 'notes')) {
                     db("UPDATE orders SET notes = '"
                         . escape($liveform->get_field_value('notes'))
                         . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
