@@ -41,4 +41,10 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (manual, task, end; workspace/workspace-flows-runner.md)
-- Next: F4 (`{{node.*}}` reads `result.data`), F5 retry and skip.
+- Next: F4 in slices (one PR each, about 1,000 product lines):
+  - F4a (in progress): steps.php `ws_step_kinds()`; post and e-mail boxes (outcomes done, failed; failed with no arrow on it fails the box); checked with the owner's rights at publish and at run time (`ws_scheduled_action_input()`), run by `ws_scheduled_do()`; `{{node.<id>.<field>}}` (text, outcome, status, `result.data` scalars) filled into the box's texts; a box that began its work is never run twice (effect `began:<kind>`, stale → failed); canvas palette and forms.
+  - F4b: the other `ws_scheduled_do()` steps as boxes (notify with its notice title, task without waiting, task_digest, webhook with `Idempotency-Key`, web_check, report, change, checkin, trigger).
+  - F4c: condition box (yes, no; `ws_scheduled_rules_hold()`, reason kept).
+  - F4d: anchor triggers: schedule, event, join on the hidden anchor row (`flow_id`), synced on publish; lists, `ws_scheduled_action()` and `ws_scheduled_report()` skip it; event context for `{{event}}` tokens.
+  - F4e: dry-run a box (route and canvas button).
+- Then F5 retry and skip.
