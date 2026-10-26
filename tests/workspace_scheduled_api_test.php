@@ -158,7 +158,7 @@ function test_workspace_scheduled_api_change_keeps_a_money_threshold()
 	pg_assert_same('75', $sent['rules'][0]['value'], 'rules sent are taken as sent');
 
 	$change = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
-	pg_assert_contains('ws_api_scheduled_change_data($row, $params, ws_api_scheduled_money_metrics())', $change, 'the change passes the money metrics');
+	pg_assert_contains('ws_api_scheduled_change_data($row, $params, ws_scheduled_money_metrics())', $change, 'the change passes the money metrics');
 }
 
 // The panel's save and the API share one check; the save writes only what

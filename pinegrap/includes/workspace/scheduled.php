@@ -451,6 +451,25 @@ function ws_scheduled_metrics()
 }
 
 /**
+ * The keys of the counts in money, whose condition is kept in minor units
+ * and sent by the form in major units.
+ *
+ * @return string[]
+ */
+function ws_scheduled_money_metrics()
+{
+    $keys = array();
+
+    foreach (ws_scheduled_metrics() as $key => $metric) {
+        if ($metric['kind'] === 'money') {
+            $keys[] = $key;
+        }
+    }
+
+    return $keys;
+}
+
+/**
  * One count now.
  *
  * @param array  $viewer the creator: a count they may not see, or one of a
@@ -1205,7 +1224,16 @@ function ws_scheduled_rule_input($viewer, $rule)
                 return $fail(lang('You may not see records of this kind.'));
             }
 
-            if (($id <= 0) || (ws_scheduled_record($record_type, $id) === null)) {
+            $record = ($id > 0) ? ws_scheduled_record($record_type, $id) : null;
+
+            if ($record === null) {
+                return $fail(lang('Choose the record the condition looks at.'));
+            }
+
+            // A task the creator may not see is refused as one that is not
+            // there: the words of the condition name the task by its title,
+            // and a refusal of its own would tell that it exists.
+            if (($record_type === 'task') && !ws_can_see_task($viewer, $record)) {
                 return $fail(lang('Choose the record the condition looks at.'));
             }
 
@@ -2734,6 +2762,28 @@ function ws_scheduled_form_data($viewer, $row)
         'action' => $label($row['action']),
         'follow' => $follow,
     );
+}
+
+/**
+ * Rules as they are kept, or as the form reads them, turned into the rules
+ * the form sends (pure): a count in money back in major units with two
+ * decimals, since ws_scheduled_input() multiplies it by 100 again. Anything
+ * else is left as it is.
+ *
+ * @param array    $rules as kept
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array
+ */
+function ws_scheduled_rules_as_sent($rules, $money)
+{
+    foreach ($rules as $i => $rule) {
+        if (is_array($rule) && (($rule['type'] ?? '') === 'metric') && isset($rule['value'])
+            && in_array((string) ($rule['metric'] ?? ''), (array) $money, true)) {
+            $rules[$i]['value'] = number_format(((int) $rule['value']) / 100, 2, '.', '');
+        }
+    }
+
+    return $rules;
 }
 
 /**
