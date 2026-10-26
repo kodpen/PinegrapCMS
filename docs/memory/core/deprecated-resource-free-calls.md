@@ -14,4 +14,4 @@ description: Handles are freed with unset(), not curl_close()/finfo_close()/open
 ## What else went with it?
 - `CURLOPT_BINARYTRANSFER` (no effect since PHP 5.1.3, deprecated 8.4) is gone from the update download in `includes/panel/software.php`.
 - `cloudflare.php` and the root `download_assistant.php` pass `ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401` to `htmlspecialchars()`: PHP 8.1's default, so nothing changes there, and PHP 7 now escapes quotes in the attribute values too.
-- What is left (files other PRs held): `plans/php-compatibility-and-bugs.md`.
+- `import_design.php` and `install/index.php` followed in #1757. What is left (files other PRs held): `plans/php-compatibility-and-bugs.md`.

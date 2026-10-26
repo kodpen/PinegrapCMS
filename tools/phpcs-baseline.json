@@ -1,25 +1,4 @@
 {
-    "pinegrap/import_contacts.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_design.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1
-    },
-    "pinegrap/import_email_campaign_profiles.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_key_codes.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_products.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_submitted_forms.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
-    "pinegrap/import_users.php": {
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1
-    },
     "pinegrap/includes/fn/ai_write.php": {
         "PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound": 2
     },
@@ -86,7 +65,6 @@
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
     },
     "pinegrap/install/index.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 1,
         "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
     },

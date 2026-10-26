@@ -114,11 +114,6 @@ if (!$_POST) {
         exit();
     }
 
-    // Fix classic Mac (CR-only) line endings: fgetcsv() splits only on LF unless this
-    // setting is on. It is deprecated since PHP 8.1 but still functional through 8.5,
-    // so the E_DEPRECATED notice is suppressed instead of dropping CR support.
-    @ini_set('auto_detect_line_endings', true);
-
     // A spreadsheet is turned into the CSV this importer already reads, and
     // everything below carries on unaware. See import_products_f.php for why
     // it is done at the door rather than inside the loop.
@@ -151,7 +146,7 @@ if (!$_POST) {
     }
 
     // get file handle for uploaded CSV file
-    $handle = fopen($import_path, "r");
+    $handle = pg_csv_open($import_path);
     // get column names from first row of CSV file
     $columns = fgetcsv($handle, 100000, ",", '"', '\\');
     
