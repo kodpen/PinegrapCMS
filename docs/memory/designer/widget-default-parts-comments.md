@@ -1,6 +1,6 @@
 ---
 name: widget-default-parts-comments
-description: The comment stars default part (W16): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
+description: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 ---
 
 ## What does the part draw?
