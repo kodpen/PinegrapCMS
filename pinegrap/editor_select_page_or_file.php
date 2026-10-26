@@ -644,9 +644,9 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
             <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
                 <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
                 <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                 </ul>
             </li>
             <li class="nav-item">
@@ -658,38 +658,38 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
     </div>
 </nav>
 <main class="container">
-    <div class="row mb-2 flex-wrap">
-        <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+    <div class="row mb-3 flex-wrap">
+        <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
             <nav id="button_bar" class="navigation " aria-label="Button Bar">
                 <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                     <div class=" btn-group btn-group-sm flex-wrap">
 
-                        <a class="btn btn-outline-secondary my-2' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
-                        <a class="btn btn-outline-secondary my-2' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
-                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>' : '') . '
+                        <a class="btn btn-outline theme-secondary my-2' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
+                        <a class="btn btn-outline theme-secondary my-2' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
+                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline theme-secondary my-2' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>' : '') . '
                     </div>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? ''))) . '
             </nav>
         </div>
-        <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-            <div class="row justify-content-center justify-content-md-end">
+        <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
+            <div class="row justify-content-center md:justify-content-end">
                 <form id="search" action="editor_select_page_or_file.php" method="get" class="search_form col-auto">
                     <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="filter_select">folder</label>
-                        <select id="folder_id" name="folder_id" class="form-select mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
+                        <select id="folder_id" name="folder_id" class="form-control mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
                     </div>
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Access') . '" for="access_control_type">verified_user</label>
-                        <select id="access_control_type" name="access_control_type" class="form-select mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
+                        <select id="access_control_type" name="access_control_type" class="form-control mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    <div class="card my-4">
+    <div class="card my-7">
         <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
         <div class="card-body p-0 position-relative">
             <table class="chart table-hover table " style="width:100%;display:none">

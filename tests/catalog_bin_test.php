@@ -380,7 +380,7 @@ function test_catalog_bin_group_screen_does_not_write_a_binned_group()
 	pg_assert_true($guard < strpos($source, 'DELETE FROM product_groups_images_xref'), 'before the save');
 
 	pg_assert_contains("lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.')", $source, 'it says so');
-	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-secondary\"", $source, 'the bin instead of Save');
+	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-solid theme-secondary\"", $source, 'the bin instead of Save');
 	pg_assert_contains("if (\$group_binned) {\n        \$output_delete_button = '';", $source, 'and no Delete');
 }
 

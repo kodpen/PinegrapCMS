@@ -148,8 +148,8 @@
     // the remove button pushed right, the error under all of it.
     function rowHtml(kind, index, type, columns, err, removeAction, removeTitle) {
         return '<div class="list-group-item' + (err ? ' bg-danger-subtle' : '') + '" data-row="' + kind + '" data-index="' + index + '">' +
-            '<div class="row g-2 align-items-center">' +
-            '<div class="col-12 col-md-auto d-flex align-items-center gap-2">' + icon(type.icon) + '<span class="fw-medium">' + esc(type.label) + '</span></div>' +
+            '<div class="row g-3 align-items-center">' +
+            '<div class="col-12 md:col-auto d-flex align-items-center gap-3">' + icon(type.icon) + '<span class="fw-medium">' + esc(type.label) + '</span></div>' +
             columns +
             '<div class="col-auto ms-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="' + removeAction + '" data-index="' + index + '" title="' + esc(removeTitle) + '">' + icon('bi-x-lg') + '</button></div>' +
             '<div class="col-12 small text-danger-emphasis' + (err ? '' : ' d-none') + '" data-error>' + esc(err) + '</div>' +
@@ -226,7 +226,7 @@
         return fmt(L.productsText, ['<b>' + esc(c.quantity || '?') + '</b>', '<b>' + esc(names.length ? names.join(' / ') : '?') + '</b>']);
     }
     function productPicker(onchange, index, exclude, selectedId, placeholder) {
-        var h = '<select class="form-select form-select-sm" data-on="' + esc(onchange) + '" data-index="' + index + '">';
+        var h = '<select class="form-control form-control-sm" data-on="' + esc(onchange) + '" data-index="' + index + '">';
         h += '<option value="">' + esc(placeholder) + '</option>';
         PRODUCTS.forEach(function (p) {
             if (exclude && exclude.indexOf(p.id) >= 0) { return; }
@@ -238,7 +238,7 @@
         return h + '</select>';
     }
     function groupPicker(index, exclude) {
-        var h = '<select class="form-select form-select-sm" data-on="cond-group-add" data-index="' + index + '">';
+        var h = '<select class="form-control form-control-sm" data-on="cond-group-add" data-index="' + index + '">';
         h += '<option value="">' + esc(GROUPS.length ? L.addGroup : L.noGroups) + '</option>';
         GROUPS.forEach(function (g) {
             if (exclude && exclude.indexOf(g.id) >= 0) { return; }
@@ -250,67 +250,67 @@
         var box = $('#pg-if-conditions');
         var h = '';
         if (!S.conditions.length) {
-            h = '<div class="list-group-item text-body-secondary">' + icon('bi-info-circle') + ' ' + esc(L.noConditions) + '</div>';
+            h = '<div class="list-group-item fg-secondary">' + icon('bi-info-circle') + ' ' + esc(L.noConditions) + '</div>';
         }
         S.conditions.forEach(function (c, i) {
             var t = CONDITION_TYPES[c.type] || { label: c.type, icon: 'bi-question' };
             var err = conditionError(c, i);
             var cols = '';
             if (c.type === 'subtotal') {
-                cols = '<div class="col-7 col-sm-5 col-md-3 col-xl-2">' +
+                cols = '<div class="col-7 sm:col-5 md:col-3 xl:col-2">' +
                     '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
                     '</div>';
             } else if (c.type === 'products') {
                 var tags = c.product_ids.map(function (id) {
                     return tagHtml(productLabel(id) || ('#' + id), 'cond-product-remove', i, id, 'primary');
                 }).join('');
-                cols = (tags ? '<div class="col-12 col-lg-auto d-flex flex-wrap align-items-center gap-1">' + tags + '</div>' : '') +
-                    '<div class="col-12 col-sm-7 col-lg-4 col-xxl-3">' + productPicker('cond-product-add', i, c.product_ids, 0, L.addProduct) + '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.atLeast) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                cols = (tags ? '<div class="col-12 lg:col-auto d-flex flex-wrap align-items-center gap-1">' + tags + '</div>' : '') +
+                    '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + productPicker('cond-product-add', i, c.product_ids, 0, L.addProduct) + '</div>' +
+                    '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.pieces) + '</div>';
+                    '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'product group') {
                 var gtags = c.group_ids.map(function (id) {
                     return tagHtml(groupLabel(id) || ('#' + id), 'cond-group-remove', i, id, 'primary');
                 }).join('');
-                cols = (gtags ? '<div class="col-12 col-lg-auto d-flex flex-wrap align-items-center gap-1">' + gtags + '</div>' : '') +
-                    '<div class="col-12 col-sm-7 col-lg-4 col-xxl-3">' + groupPicker(i, c.group_ids) + '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.atLeast) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                cols = (gtags ? '<div class="col-12 lg:col-auto d-flex flex-wrap align-items-center gap-1">' + gtags + '</div>' : '') +
+                    '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + groupPicker(i, c.group_ids) + '</div>' +
+                    '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.pieces) + '</div>';
+                    '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'cart quantity') {
-                cols = '<div class="col-auto text-body-secondary small">' + esc(L.atLeast) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                cols = '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.pieces) + '</div>';
+                    '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'usage limit') {
-                cols = '<div class="col-auto text-body-secondary small">' + esc(L.usageTotalLabel) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                cols = '<div class="col-auto fg-secondary small">' + esc(L.usageTotalLabel) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.total_limit || '') + '" data-on="cond-total-limit" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.usageCustomerLabel) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                    '<div class="col-auto fg-secondary small">' + esc(L.usageCustomerLabel) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.customer_limit || '') + '" data-on="cond-customer-limit" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-12 col-xl small text-body-secondary">' + esc(L.usageHint) + '</div>';
+                    '<div class="col-12 xl:col small fg-secondary">' + esc(L.usageHint) + '</div>';
             } else if (c.type === 'new customer') {
                 var modes = L.newCustomerModes || {};
-                var ms = '<select class="form-select form-select-sm" data-on="cond-mode" data-index="' + i + '">';
+                var ms = '<select class="form-control form-control-sm" data-on="cond-mode" data-index="' + i + '">';
                 Object.keys(modes).forEach(function (key) {
                     ms += '<option value="' + esc(key) + '"' + (c.mode === key ? ' selected' : '') + '>' + esc(modes[key]) + '</option>';
                 });
                 ms += '</select>';
-                cols = '<div class="col-12 col-sm-7 col-lg-4 col-xxl-3">' + ms + '</div>' +
-                    '<div class="col-auto text-body-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-label>' + esc(L.atLeast) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-input>' +
+                cols = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + ms + '</div>' +
+                    '<div class="col-auto fg-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-label>' + esc(L.atLeast) + '</div>' +
+                    '<div class="col-3 sm:col-2 col-lg-1' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-input>' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.days || '') + '" data-on="cond-days" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-unit>' + esc(L.days) + '</div>';
+                    '<div class="col-auto fg-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-unit>' + esc(L.days) + '</div>';
             }
             h += rowHtml('condition', i, t, cols, err, 'cond-remove', L.removeCondition);
         });
@@ -322,7 +322,7 @@
         var mh = '';
         Object.keys(CONDITION_TYPES).forEach(function (type) {
             var has = S.conditions.some(function (c) { return c.type === type; });
-            mh += '<li><a class="dropdown-item d-flex align-items-center gap-2' + (has ? ' disabled' : '') + '" href="#" data-on="cond-add" data-type="' + esc(type) + '">' + icon(CONDITION_TYPES[type].icon) + ' <span>' + esc(CONDITION_TYPES[type].label) + '</span>' + (has ? '<span class="ms-auto small text-body-secondary">' + esc(L.added) + '</span>' : '') + '</a></li>';
+            mh += '<li><a class="dropdown-item d-flex align-items-center gap-2' + (has ? ' disabled' : '') + '" href="#" data-on="cond-add" data-type="' + esc(type) + '">' + icon(CONDITION_TYPES[type].icon) + ' <span>' + esc(CONDITION_TYPES[type].label) + '</span>' + (has ? '<span class="ms-auto small fg-secondary">' + esc(L.added) + '</span>' : '') + '</a></li>';
         });
         menu.innerHTML = mh;
     }
@@ -404,7 +404,7 @@
     }
     function valueInput(a, i) {
         var shown = a.unit === 'amount' ? centsToInput(a.value) : (a.value || '');
-        return '<div class="col-7 col-sm-5 col-md-4 col-xl-3 col-xxl-2">' +
+        return '<div class="col-7 sm:col-5 md:col-4 xl:col-3 2xl:col-2">' +
             '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(shown) + '" placeholder="0" data-on="act-value" data-index="' + i + '">' + unitToggle(a, i) + '</div>' +
             '</div>';
     }
@@ -422,7 +422,7 @@
             '</div></div>';
     }
     function actionGroupPicker(a, i) {
-        var h = '<div class="col-12 col-sm-7 col-lg-4 col-xxl-3"><select class="form-select form-select-sm" data-on="act-group" data-index="' + i + '">';
+        var h = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3"><select class="form-control form-control-sm" data-on="act-group" data-index="' + i + '">';
         h += '<option value="">' + esc(GROUPS.length ? L.selectGroupPlaceholder : L.noGroups) + '</option>';
         GROUPS.forEach(function (g) {
             h += '<option value="' + g.id + '"' + (a.group_id == g.id ? ' selected' : '') + '>' + esc(g.label) + '</option>';
@@ -438,35 +438,35 @@
             '</div></div>';
     }
     function tierRows(a, i) {
-        var h = '<div class="col-12"><div class="row g-2">';
+        var h = '<div class="col-12"><div class="row g-3">';
         a.tiers.forEach(function (t, k) {
             h += '<div class="col-12">' +
-                '<div class="row g-2 align-items-center">' +
-                '<div class="col-auto text-body-secondary small">' + esc(L.tierFrom) + '</div>' +
-                '<div class="col-6 col-sm-4 col-md-3 col-xl-2">' +
+                '<div class="row g-3 align-items-center">' +
+                '<div class="col-auto fg-secondary small">' + esc(L.tierFrom) + '</div>' +
+                '<div class="col-6 sm:col-4 md:col-3 xl:col-2">' +
                 '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
                 '</div>' +
-                '<div class="col-auto text-body-secondary small">→</div>' +
-                '<div class="col-4 col-sm-3 col-md-2 col-xl-1">' +
+                '<div class="col-auto fg-secondary small">→</div>' +
+                '<div class="col-4 sm:col-3 md:col-2 xl:col-1">' +
                 '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">%</span></div>' +
                 '</div>' +
                 '<div class="col-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
                 '</div></div>';
         });
-        h += '<div class="col-12"><button type="button" class="btn btn-sm btn-outline-secondary" data-on="tier-add" data-index="' + i + '">' + icon('bi-plus-lg') + ' ' + esc(L.addTier) + '</button>' +
-            '<span class="ms-2 small text-body-secondary">' + esc(L.tierHint) + '</span></div>';
+        h += '<div class="col-12"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-on="tier-add" data-index="' + i + '">' + icon('bi-plus-lg') + ' ' + esc(L.addTier) + '</button>' +
+            '<span class="ms-3 small fg-secondary">' + esc(L.tierHint) + '</span></div>';
         return h + '</div></div>';
     }
     function renderActions() {
         var box = $('#pg-if-actions');
         var h = '';
         if (!S.actions.length) {
-            h = '<div class="list-group-item text-warning-emphasis">' + icon('bi-exclamation-triangle') + ' ' + esc(L.noActions) + '</div>';
+            h = '<div class="list-group-item fg-emphasis-warning">' + icon('bi-exclamation-triangle') + ' ' + esc(L.noActions) + '</div>';
         }
         S.actions.forEach(function (a, i) {
             var t = ACTION_TYPES[a.type] || { label: a.type, icon: 'bi-question' };
             var err = actionError(a, i);
-            var picker = '<div class="col-12 col-sm-7 col-lg-4 col-xxl-3">' + productPicker('act-product', i, null, a.product_id, L.selectProductPlaceholder) + '</div>';
+            var picker = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + productPicker('act-product', i, null, a.product_id, L.selectProductPlaceholder) + '</div>';
             var cols = '';
             if (a.type === 'discount order') {
                 cols = tierToggle(a, i) + (hasTiers(a) ? tierRows(a, i) : valueInput(a, i));
@@ -474,28 +474,28 @@
                 cols = targetToggle(a, i)
                     + (targetsCheapest(a) ? '' : (targetsGroup(a) ? actionGroupPicker(a, i) : picker))
                     + valueInput(a, i)
-                    + (targetsCheapest(a) ? '<div class="col-12 col-xl small text-body-secondary">' + esc(L.cheapestHint) + '</div>' : '');
+                    + (targetsCheapest(a) ? '<div class="col-12 xl:col small fg-secondary">' + esc(L.cheapestHint) + '</div>' : '');
             } else if (a.type === 'add product') {
                 cols = picker +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.quantity) + '</div>' +
-                    '<div class="col-3 col-sm-2 col-lg-1">' +
+                    '<div class="col-auto fg-secondary small">' + esc(L.quantity) + '</div>' +
+                    '<div class="col-3 sm:col-2 lg:col-1">' +
                     '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(a.quantity || 1) + '" data-on="act-quantity" data-index="' + i + '">' +
                     '</div>' +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.discount) + '</div>' + valueInput(a, i) +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.giftHint) + '</div>';
+                    '<div class="col-auto fg-secondary small">' + esc(L.discount) + '</div>' + valueInput(a, i) +
+                    '<div class="col-auto fg-secondary small">' + esc(L.giftHint) + '</div>';
             } else if (a.type === 'discount shipping') {
                 var tags = a.shipping_method_ids.map(function (id) {
                     return tagHtml(methodName(id) || ('#' + id), 'act-method-remove', i, id, 'secondary');
                 }).join('');
-                var sel = '<select class="form-select form-select-sm" data-on="act-method-add" data-index="' + i + '"><option value="">' + esc(L.addMethod) + '</option>';
+                var sel = '<select class="form-control form-control-sm" data-on="act-method-add" data-index="' + i + '"><option value="">' + esc(L.addMethod) + '</option>';
                 METHODS.forEach(function (m) {
                     if (a.shipping_method_ids.indexOf(m.id) < 0) { sel += '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }
                 });
                 sel += '</select>';
                 cols = valueInput(a, i) +
-                    '<div class="col-auto text-body-secondary small">' + esc(L.methods) + '</div>' +
-                    (tags ? '<div class="col-12 col-lg-auto d-flex flex-wrap align-items-center gap-1">' + tags + '</div>' : '') +
-                    (a.shipping_method_ids.length < METHODS.length ? '<div class="col-12 col-sm-7 col-lg-3 col-xxl-2">' + sel + '</div>' : '');
+                    '<div class="col-auto fg-secondary small">' + esc(L.methods) + '</div>' +
+                    (tags ? '<div class="col-12 lg:col-auto d-flex flex-wrap align-items-center gap-1">' + tags + '</div>' : '') +
+                    (a.shipping_method_ids.length < METHODS.length ? '<div class="col-12 sm:col-7 lg:col-3 2xl:col-2">' + sel + '</div>' : '');
             }
             h += rowHtml('action', i, t, cols, err, 'act-remove', L.removeResult);
         });
@@ -503,7 +503,7 @@
         var menu = $('#pg-if-add-action-menu');
         var mh = '';
         Object.keys(ACTION_TYPES).forEach(function (type) {
-            mh += '<li><a class="dropdown-item d-flex align-items-center gap-2" href="#" data-on="act-add" data-type="' + esc(type) + '">' + icon(ACTION_TYPES[type].icon) + ' <span>' + esc(ACTION_TYPES[type].label) + '</span></a></li>';
+            mh += '<li><a class="dropdown-item d-flex align-items-center gap-3" href="#" data-on="act-add" data-type="' + esc(type) + '">' + icon(ACTION_TYPES[type].icon) + ' <span>' + esc(ACTION_TYPES[type].label) + '</span></a></li>';
         });
         menu.innerHTML = mh;
     }
@@ -524,15 +524,15 @@
     }
     function renderSummary() {
         var trigger = S.offer.require_code
-            ? fmt(L.whenCode, ['<span class="text-primary">' + esc(S.offer.code || '?') + '</span>'])
-            : '<span class="text-primary">' + esc(L.automatic) + '</span>';
+            ? fmt(L.whenCode, ['<span class="fg-primary">' + esc(S.offer.code || '?') + '</span>'])
+            : '<span class="fg-primary">' + esc(L.automatic) + '</span>';
         var conds = S.conditions.length ? S.conditions.map(conditionText).join(' ' + esc(L.and) + ' ') : esc(L.everyOrder);
         var acts = S.actions.length
-            ? '<span class="text-success">' + S.actions.map(actionText).join('</span> + <span class="text-success">') + '</span>'
-            : '<span class="text-danger">' + esc(L.nothingHappens) + '</span>';
+            ? '<span class="fg-success">' + S.actions.map(actionText).join('</span> + <span class="fg-success">') + '</span>'
+            : '<span class="fg-danger">' + esc(L.nothingHappens) + '</span>';
         var meta = [periodText(), S.offer.enabled ? L.enabledWord : L.disabledWord];
         if (S.offer.upsell.enabled && cartConditions().length) { meta.push(L.upsellOn); }
-        $('#pg-if-sentence').innerHTML = trigger + ' · ' + conds + ' → ' + acts + ' <span class="text-body-secondary">· ' + esc(meta.join(' · ')) + '</span>';
+        $('#pg-if-sentence').innerHTML = trigger + ' · ' + conds + ' → ' + acts + ' <span class="fg-secondary">· ' + esc(meta.join(' · ')) + '</span>';
 
         var n = hardErrorCount();
         var btn = $('#pg-if-save');
@@ -650,7 +650,7 @@
     function softRow(sel, err) {
         var row = $(sel);
         if (!row) { return; }
-        row.classList.toggle('bg-danger-subtle', !!err);
+        row.classList.toggle('bg-subtle-danger', !!err);
         var em = row.querySelector('[data-error]');
         em.textContent = err;
         show(em, !!err);

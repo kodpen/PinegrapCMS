@@ -53,7 +53,7 @@
     function clearAnswer() {
         if (answerLine) {
             answerLine.textContent = '';
-            answerLine.classList.remove('text-danger');
+            answerLine.classList.remove('fg-danger');
         }
     }
 
@@ -93,7 +93,7 @@
                     lookup.disabled = false;
                     if (!data || !data.ok) {
                         answerLine.textContent = (data && data.message) ? data.message : modal.getAttribute('data-text-lookup-failed');
-                        answerLine.classList.add('text-danger');
+                        answerLine.classList.add('fg-danger');
                         return;
                     }
                     answerLine.textContent = data.message;
@@ -108,7 +108,7 @@
                     }
                     var use = document.createElement('button');
                     use.type = 'button';
-                    use.className = 'btn btn-sm btn-outline-primary ms-2 my-1 no-submit';
+                    use.className = 'btn btn-sm btn-outline theme-primary ms-3 my-1 no-submit';
                     use.textContent = modal.getAttribute('data-text-use');
                     use.addEventListener('click', function () {
                         use.remove();

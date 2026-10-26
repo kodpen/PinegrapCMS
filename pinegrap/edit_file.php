@@ -147,7 +147,7 @@ if (!isset($_POST['name'])) {
         // PDF preview
         $output_thumbnail = '
             <div class="col-12">
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="ratio ratio-16x9">
                         <embed 
                             src="' . OUTPUT_PATH . $file_name . '" 
@@ -162,7 +162,7 @@ if (!isset($_POST['name'])) {
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
         $output_thumbnail = '
             <div class="col-12">
-                <div class="card my-4 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
+                <div class="card my-7 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
                     <div class="ratio ratio-16x9">
                         <video 
                             src="' . OUTPUT_PATH . $file_name . '" 
@@ -181,7 +181,7 @@ if (!isset($_POST['name'])) {
         // Audio preview
         $output_thumbnail = '
             <div class="col-12">
-                <div class="card my-4">
+                <div class="card my-7">
                     <audio controls class="w-100">
                         <source src="' . OUTPUT_PATH . $file_name . '" type="audio/' . mb_strtolower($row['type']) . '">
                         Your browser does not support the audio element.
@@ -193,7 +193,7 @@ if (!isset($_POST['name'])) {
         // ICO preview
         $output_thumbnail = '
             <div class="col-auto">
-                <div class="card my-4 w-auto d-inline-flex p-3">
+                <div class="card my-7 w-auto d-inline-flex p-5">
                     <img 
                         src="' . OUTPUT_PATH . $file_name . '" 
                         class="img-fluid" 
@@ -269,7 +269,7 @@ if (!isset($_POST['name'])) {
 
         $output_thumbnail = '
         <div class="col-12">
-            <div class="card my-4 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
+            <div class="card my-7 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
                 <a href="' . OUTPUT_PATH . $file_name . '" class="stretched-link" target="_blank"></a>
                 <img style="width: auto; height: auto; max-width: 100%; max-height: 300px; position: relative; z-index: 1;" class="card-img object-fit-contain lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . $data_src . '" />
             </div>
@@ -328,16 +328,16 @@ if (!isset($_POST['name'])) {
         $read_only = (in_array($file_extension, $editable_formats) == false);
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
-        <div class="col-12 col-md-8">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+        <div class="col-12 md:col-8">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('File Content') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 my-2">
+                        <div class="col-12 my-3">
                             <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
-                                . ($read_only ? ' <span class="badge text-bg-secondary">' . lang('Read only') . '</span>' : '') . '</label>
+                                . ($read_only ? ' <span class="badge theme-secondary">' . lang('Read only') . '</span>' : '') . '</label>
                             <div id="edit_custom">
                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly="readonly"' : '') . '>' . h($code) . '</textarea>
                                 ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => $code_type, 'readonly' => $read_only)) . '
@@ -361,33 +361,33 @@ if (!isset($_POST['name'])) {
         $svg_h = (is_numeric($image_height) && $image_height > 0) ? (int)$image_height : 0;
         $output_convert_rows = '
         <div class="col-12 ' . $output_no_file_editor_classes . '">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Convert') . '
                 </div>
                 <div class="card-body">
-                    <div class="col-12 my-2">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input collapse-switcher" type="checkbox" id="convert_svg_raster" name="convert_svg_raster" value="1" data-bs-target="#convert_svg_raster_row">
-                            <label class="form-check-label" for="convert_svg_raster">' . lang('Convert this SVG to PNG, JPEG or WebP') . '</label>
+                    <div class="col-12 my-3">
+                        <div class="form-field">
+                            <div class="switch"><input class="collapse-switcher" type="checkbox" id="convert_svg_raster" name="convert_svg_raster" value="1" data-bs-target="#convert_svg_raster_row"></div>
+                            <label class="" for="convert_svg_raster">' . lang('Convert this SVG to PNG, JPEG or WebP') . '</label>
                         </div>
-                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="convert_svg_raster_row">
+                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="convert_svg_raster_row">
                             <div class="popover-arrow" style="position:absolute;left:0;transform:translate(59px,0)"></div>
                             <div class="popover-body">
-                                <div class="row g-2 align-items-end">
+                                <div class="row g-3 align-items-end">
                                     <div class="col-auto">
                                         <label class="form-label mb-1">' . lang('Format') . '</label>
-                                        <select class="form-select form-select-sm" name="svg_convert_format" id="svg_convert_format">
+                                        <select class="form-control form-control-sm" name="svg_convert_format" id="svg_convert_format">
                                             <option value="png">PNG</option>
                                             <option value="jpeg">JPEG</option>
                                             <option value="webp">WebP</option>
                                         </select>
                                     </div>
-                                    ' . ($svg_w > 0 ? '<div class="col-auto align-self-center mt-3"><small class="text-muted">' . $svg_w . ' &times; ' . $svg_h . ' px</small></div>' : '') . '
-                                    <div class="col-12 mt-2">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="svg_convert_create_copy" name="svg_convert_create_copy" value="1" checked>
-                                            <label class="form-check-label" for="svg_convert_create_copy">' . lang('Create a copy instead of replacing the original') . '</label>
+                                    ' . ($svg_w > 0 ? '<div class="col-auto align-self-center mt-5"><small class="fg-secondary">' . $svg_w . ' &times; ' . $svg_h . ' px</small></div>' : '') . '
+                                    <div class="col-12 mt-3">
+                                        <div class="form-field">
+                                            <div class="switch"><input class="" type="checkbox" id="svg_convert_create_copy" name="svg_convert_create_copy" value="1" checked></div>
+                                            <label class="" for="svg_convert_create_copy">' . lang('Create a copy instead of replacing the original') . '</label>
                                         </div>
                                     </div>
                                 </div>
@@ -420,7 +420,7 @@ if (!isset($_POST['name'])) {
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
-                $optimize_button ='<a class="btn btn-link link-secondary py-0 mb-2" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
+                $optimize_button ='<a class="btn btn-link link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
             }
 
             // The second half of the pair. Offered whatever the optimized flag
@@ -434,7 +434,7 @@ if (!isset($_POST['name'])) {
                 $image_settings = pg_image_settings();
 
                 $resize_button =
-                    '<a class="btn btn-link link-warning py-0 mb-2" href="optimize.php?id='
+                    '<a class="btn btn-link link-warning py-0 mb-3" href="optimize.php?id='
                     . h($_GET['id']) . get_token_query_string_field() . '&amp;mode=resize"><i class="bi bi-arrows-angle-contract bi-me-2"></i>'
                     . lang(array(
                         'string' => 'Resize to {var:1} pixels and optimize',
@@ -457,28 +457,28 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="name" value="' . h($file_name) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
-                    <div class="card my-4 ">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                    <div class="card my-7 ">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                             ' . lang('Convert') . '
                         </div>
                         <div class="card-body">
-                            <div class="col-12 my-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input collapse-switcher" type="checkbox" id="convert_webp" name="convert_webp" value="1" data-bs-target="#convert_webp_row">
-                                    <label class="form-check-label" for="convert_webp">' . lang('Convert this image to .webp format') . '</label>
+                            <div class="col-12 my-3">
+                                <div class="form-field">
+                                    <div class="switch"><input class="collapse-switcher" type="checkbox" id="convert_webp" name="convert_webp" value="1" data-bs-target="#convert_webp_row"></div>
+                                    <label class="" for="convert_webp">' . lang('Convert this image to .webp format') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="convert_webp_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="convert_webp_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
-                                            <div class="col-12 my-2">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="convert_webp_create_copy" name="convert_webp_create_copy" value="1">
-                                                    <label class="form-check-label" for="convert_webp_create_copy">' . lang('Create a .webp copy instead of replace orginal image') . '</label>
+                                            <div class="col-12 my-3">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" type="checkbox" id="convert_webp_create_copy" name="convert_webp_create_copy" value="1"></div>
+                                                    <label class="" for="convert_webp_create_copy">' . lang('Create a .webp copy instead of replace orginal image') . '</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -505,10 +505,10 @@ if (!isset($_POST['name'])) {
         }
 
         $output_design_rows =
-            '<div class="col-12 my-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="design" name="design" value="1" ' . $output_design_checked . '>
-                    <label class="form-check-label" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
+            '<div class="col-12 my-5">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1" ' . $output_design_checked . '></div>
+                    <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
                 </div>
             </div>';
     }
@@ -544,10 +544,10 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
 
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
-                                <div class="col-12 col-md">
+                    <div class="row mb-3  flex-wrap">
+                        <div class="col-12 sm:col-12 text-center md:text-start">
+<div class="row mb-3">
+                                <div class="col-12 md:col">
                                     
                                     <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                                     <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
@@ -556,11 +556,11 @@ if (!isset($_POST['name'])) {
                             <nav id="button_bar" class="navigation " aria-label="Button Bar">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
-                                    <a class="btn btn-link link-secondary py-0 mb-2"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                    <a class="btn btn-link link-secondary py-0 mb-2" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                    <a class="btn btn-link link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+                                    <a class="btn btn-link link-secondary py-0 mb-3" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                                 </div>
                             </nav>
-                            <div class="row mb-2">
+                            <div class="row mb-3">
                                 <div class="col-12">
                                     ' . $output_thumbnail . '
                                 </div>
@@ -571,13 +571,13 @@ if (!isset($_POST['name'])) {
                         <div class="col-12 ' . $output_content_based_classes . '">
                             <div class="row">
                                 <div class="col-12  ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Main Informations') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-2">
+                                                <div class="col-12 my-3">
                                                     <label for="name" class="form-label">' . lang('File Name') . '</label>
                                                     <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control "/>
                                                 </div>
@@ -586,26 +586,26 @@ if (!isset($_POST['name'])) {
                                     </div> 
                                 </div>
                                 <div class="col-12   ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('File Access Control') . '
                                         </div>
                                         <div class="card-body">
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                <select class="form-select" id="folder" name="folder">' . select_folder($row['folder']) . '</select>
+                                                <select class="form-control" id="folder" name="folder">' . select_folder($row['folder']) . '</select>
                                             </div>
                                             ' . $output_design_rows . '
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-12  ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Description') . '
                                         </div>
                                         <div class="card-body">
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
                                                 <textarea class="form-control" id="description" name="description" style="min-height:85px;">' . h($row['description']) . '</textarea>
                                             </div>
@@ -617,13 +617,13 @@ if (!isset($_POST['name'])) {
                         </div>
                         ' . $output_file_content_row . '
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary "><span class="material-icons me-2">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

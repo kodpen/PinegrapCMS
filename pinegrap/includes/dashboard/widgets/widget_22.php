@@ -35,8 +35,8 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             $output_data = '
             <div class="card-body d-flex align-items-center justify-content-center text-center">
                 <div>
-                    <i class="bi bi-database-exclamation d-block mb-2" style="font-size:22px;opacity:.4"></i>
-                    <p class="text-muted mb-0" style="font-size:12px">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
+                    <i class="bi bi-database-exclamation d-block mb-3" style="font-size:22px;opacity:.4"></i>
+                    <p class="fg-secondary mb-0" style="font-size:12px">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
                 </div>
             </div>';
 
@@ -157,10 +157,10 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             }
 
             $td_rows .= '
-            <div class="mb-2">
+            <div class="mb-3">
                 <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                     <span class="text-truncate' . $td_text . '" style="font-size:12px" title="' . h($td_source['category']) . '">' . h($td_label) . '</span>
-                    <span class="text-muted flex-shrink-0" style="font-size:11px">' . pg_format_number($td_hits, 0) . '</span>
+                    <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . pg_format_number($td_hits, 0) . '</span>
                 </div>
                 <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang(array(
                     'string' => '{var:1} address{suffix:1}',
@@ -174,9 +174,9 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
 
         if ($td_rows === '') {
             $td_rows = '
-            <div class="text-center py-4">
-                <i class="bi bi-shield-check d-block mb-2" style="font-size:22px;opacity:.35"></i>
-                <p class="text-muted mb-0" style="font-size:12px">' . lang('No firewall events were recorded in this period.') . '</p>
+            <div class="text-center py-7">
+                <i class="bi bi-shield-check d-block mb-3" style="font-size:22px;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No firewall events were recorded in this period.') . '</p>
             </div>';
         }
 
@@ -203,8 +203,8 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
         // starts straight away.
         $td_panel = '
             <div class="pg-split-half d-flex flex-column">
-                <div class="px-3 pt-2 pb-1 text-muted" style="font-size:11px">' . lang('Top sources') . '</div>
-                <div class="px-3 pb-2">' . $td_rows . '</div>
+                <div class="px-5 pt-3 pb-1 fg-secondary" style="font-size:11px">' . lang('Top sources') . '</div>
+                <div class="px-5 pb-3">' . $td_rows . '</div>
             </div>';
 
         // $waf_panel is filled only when widget 21 hands its event

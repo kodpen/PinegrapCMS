@@ -796,7 +796,7 @@
 
         if (!products.length) {
             var empty = document.createElement('span');
-            empty.className = 'dropdown-item-text text-body-secondary small';
+            empty.className = 'dropdown-item-text fg-secondary small';
             empty.textContent = textNoResults;
             menu.appendChild(empty);
         }
@@ -812,13 +812,13 @@
 
             if (product.sku && product.sku !== product.name) {
                 var sku = document.createElement('span');
-                sku.className = 'text-body-secondary small ms-2';
+                sku.className = 'fg-secondary small ms-3';
                 sku.textContent = product.sku;
                 item.appendChild(sku);
             }
 
             var price = document.createElement('span');
-            price.className = 'text-body-secondary small ms-2';
+            price.className = 'fg-secondary small ms-3';
             price.textContent = formatPrice(product.price);
             item.appendChild(price);
 

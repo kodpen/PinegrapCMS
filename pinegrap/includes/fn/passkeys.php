@@ -1017,7 +1017,7 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
                 : h(lang('Never'));
 
             $synced = $passkey['backup_state']
-                ? ' <span class="badge bg-secondary fw-light" title="' . h(lang('Kept in a password manager or cloud account, so your other devices can use it too.')) . '">' . h(lang('Synced')) . '</span>'
+                ? ' <span class="badge theme-secondary fw-light" title="' . h(lang('Kept in a password manager or cloud account, so your other devices can use it too.')) . '">' . h(lang('Synced')) . '</span>'
                 : '';
 
             $rename = $form('passkey_rename',
@@ -1169,7 +1169,7 @@ function pg_passkey_add_form_script()
             Array.prototype.forEach.call(document.querySelectorAll("form[data-pg-passkey-add]"), function (form) {
                 if (!supported) {
                     var note = document.createElement("p");
-                    note.className = "text-body-secondary";
+                    note.className = "fg-secondary";
                     note.textContent = texts.unsupported;
                     form.parentNode.insertBefore(note, form);
                     return;
@@ -1182,7 +1182,7 @@ function pg_passkey_add_form_script()
                 var notice = form.querySelector("[data-pg-passkey-message]");
                 if (!notice) {
                     notice = document.createElement("div");
-                    notice.className = "text-danger small mt-2";
+                    notice.className = "fg-danger small mt-3";
                     notice.setAttribute("role", "alert");
                     form.appendChild(notice);
                 }

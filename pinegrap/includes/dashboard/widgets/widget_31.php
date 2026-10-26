@@ -76,8 +76,8 @@ function pg_dashboard_widget_31($request, $user)
     $figure = function ($label, $value, $moved) {
         return '
             <div class="flex-fill">
-                <div class="text-muted" style="font-size:11px">' . h($label) . '</div>
-                <div class="d-flex align-items-baseline gap-2">
+                <div class="fg-secondary" style="font-size:11px">' . h($label) . '</div>
+                <div class="d-flex align-items-baseline gap-3">
                     <span class="fw-semibold" style="font-size:18px">' . h(pg_format_number($value, 0)) . '</span>
                     ' . $moved . '
                 </div>
@@ -100,17 +100,17 @@ function pg_dashboard_widget_31($request, $user)
     }
 
     if ($rows === '') {
-        $rows = '<p class="text-muted text-center mb-0 py-3" style="font-size:12px">' . h(lang('No search brought a click in these 28 days.')) . '</p>';
+        $rows = '<p class="fg-secondary text-center mb-0 py-5" style="font-size:12px">' . h(lang('No search brought a click in these 28 days.')) . '</p>';
     }
 
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
-        <div class="d-flex align-items-end gap-3 px-3 pt-2 pb-2">
+        <div class="d-flex align-items-end gap-5 px-5 pt-3 pb-3">
             ' . $figure(lang('Clicks'), $now['clicks'], $change($now['clicks'], $before['clicks'])) . '
             ' . $figure(lang('Impressions'), $now['impressions'], $change($now['impressions'], $before['impressions'])) . '
             <span title="' . h(lang('Clicks in the last 7 days with figures')) . '">' . pg_widget_bars($week) . '</span>
         </div>
-        <div class="text-muted px-3 pb-1" style="font-size:10px">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
+        <div class="fg-secondary px-5 pb-1" style="font-size:10px">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
         <div class="pg-list">
             ' . pg_widget_row_heading(lang('Top searches'), lang('clicks')) . '
             ' . $rows . '

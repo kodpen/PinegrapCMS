@@ -22,8 +22,8 @@ if (!defined('PG_INIT_LOADED')) {
     <?=$liveform->output_errors()?>
     <?=$liveform->get_warnings()?>
     <?=$liveform->output_notices()?>
-    <div class="pg-toolbar mb-3" id="pg-offers-toolbar">
-        <a class="btn btn-sm btn-primary rounded-pill px-3" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
+    <div class="pg-toolbar mb-5" id="pg-offers-toolbar">
+        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
         <?php
         // One chip per filter; the count rides in a badge so the active chip
         // stays readable when it fills in. A filter with nothing to show is
@@ -41,7 +41,7 @@ if (!defined('PG_INIT_LOADED')) {
         <div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="<?=lang('Filter')?>">
             <?php foreach ($filters as $f): ?>
                 <?php if (!$f['always'] && $f['count'] == 0) { continue; } ?>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center gap-2<?php if ($f['key'] == 'all'): ?> active<?php endif ?>" data-filter="<?=$f['key']?>" aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
+                <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 d-inline-flex align-items-center gap-2<?php if ($f['key'] == 'all'): ?> active<?php endif ?>" data-filter="<?=$f['key']?>" aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
                     <?=h($f['label'])?><span class="badge rounded-pill <?=isset($f['badge']) ? $f['badge'] : 'text-bg-secondary'?>" data-count><?=$f['count']?></span>
                 </button>
             <?php endforeach ?>
@@ -50,9 +50,9 @@ if (!defined('PG_INIT_LOADED')) {
         <div class="dropdown ms-auto">
             <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="dropdown" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item link-body-emphasis" href="view_key_codes.php"><i class="bi bi-key me-2" aria-hidden="true"></i><?=lang('All Key Codes')?></a></li>
+                <li><a class="dropdown-item link-body-emphasis" href="view_key_codes.php"><i class="bi bi-key me-3" aria-hidden="true"></i><?=lang('All Key Codes')?></a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item link-body-emphasis<?php if ($orphan_count == 0): ?> disabled<?php endif ?>" href="#" id="pg-offers-cleanup" data-count="<?=$orphan_count?>"><i class="bi bi-trash me-2" aria-hidden="true"></i><?=lang('Delete unused rule and result records')?> <span class="text-body-secondary small">(<?=$orphan_count?>)</span></a></li>
+                <li><a class="dropdown-item link-body-emphasis<?php if ($orphan_count == 0): ?> disabled<?php endif ?>" href="#" id="pg-offers-cleanup" data-count="<?=$orphan_count?>"><i class="bi bi-trash me-3" aria-hidden="true"></i><?=lang('Delete unused rule and result records')?> <span class="fg-secondary small">(<?=$orphan_count?>)</span></a></li>
             </ul>
         </div>
     </div>
@@ -75,43 +75,43 @@ if (!defined('PG_INIT_LOADED')) {
                     <?php foreach ($offers as $offer): ?>
                     <tr data-id="<?=$offer['id']?>" data-status="<?=$offer['status']?>" data-how="<?=$offer['require_code'] ? 'code' : 'auto'?>" data-incomplete="<?=$offer['incomplete'] ? '1' : '0'?>">
                         <td class="align-middle text-start text-nowrap">
-                            <a class="m-1 btn-data-control btn btn-outline-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
-                            <a class="m-1 btn-data-control btn btn-outline-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
-                            <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>"><i class="bi bi-power"></i></button>
+                            <a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
+                            <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
+                            <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>"><i class="bi bi-power"></i></button>
                         </td>
                         <td class="align-middle">
                             <a class="fw-semibold link-body-emphasis text-decoration-none" href="edit_offer.php?id=<?=$offer['id']?>"><?=h($offer['code'])?></a>
-                            <?php if ($offer['description'] != ''): ?><div class="small text-body-secondary"><?=h($offer['description'])?></div><?php endif ?>
+                            <?php if ($offer['description'] != ''): ?><div class="small fg-secondary"><?=h($offer['description'])?></div><?php endif ?>
                         </td>
                         <td class="align-middle" title="<?=h($offer['sentence'])?>">
                             <div class="d-flex flex-wrap align-items-center gap-1">
                                 <?php if ($offer['condition_chips']): ?>
-                                    <?php foreach ($offer['condition_chips'] as $chip): ?><span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal"><i class="bi bi-funnel" aria-hidden="true"></i> <?=h($chip)?></span><?php endforeach ?>
+                                    <?php foreach ($offer['condition_chips'] as $chip): ?><span class="badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal"><i class="bi bi-funnel" aria-hidden="true"></i> <?=h($chip)?></span><?php endforeach ?>
                                 <?php else: ?>
-                                    <span class="badge rounded-pill bg-body-tertiary text-body-secondary border fw-normal"><?=lang('Every order')?></span>
+                                    <span class="badge rounded-pill bg-body-tertiary fg-secondary border fw-normal"><?=lang('Every order')?></span>
                                 <?php endif ?>
-                                <span class="text-body-secondary small">→</span>
+                                <span class="fg-secondary small">→</span>
                                 <?php if ($offer['action_chips']): ?>
-                                    <?php foreach ($offer['action_chips'] as $chip): ?><span class="badge rounded-pill bg-success-subtle text-success-emphasis border border-success-subtle fw-normal"><i class="bi <?=$chip['icon']?>" aria-hidden="true"></i> <?=h($chip['text'])?></span><?php endforeach ?>
+                                    <?php foreach ($offer['action_chips'] as $chip): ?><span class="badge rounded-pill bg-subtle-success fg-emphasis-success border border-subtle-success fw-normal"><i class="bi <?=$chip['icon']?>" aria-hidden="true"></i> <?=h($chip['text'])?></span><?php endforeach ?>
                                 <?php else: ?>
-                                    <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis border border-danger-subtle fw-normal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?=lang('No result')?></span>
+                                    <span class="badge rounded-pill bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?=lang('No result')?></span>
                                 <?php endif ?>
-                                <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-body-tertiary text-body-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span><?php endif ?>
+                                <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-body-tertiary fg-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span><?php endif ?>
                             </div>
                         </td>
                         <td class="align-middle text-nowrap">
                             <?php if ($offer['require_code']): ?>
-                                <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal"><i class="bi bi-tag" aria-hidden="true"></i> <?=lang('Code')?></span>
+                                <span class="badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal"><i class="bi bi-tag" aria-hidden="true"></i> <?=lang('Code')?></span>
                             <?php else: ?>
-                                <span class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle fw-normal"><i class="bi bi-lightning-charge" aria-hidden="true"></i> <?=lang('Automatic')?></span>
+                                <span class="badge rounded-pill bg-subtle-info fg-emphasis-info border border-subtle-info fw-normal"><i class="bi bi-lightning-charge" aria-hidden="true"></i> <?=lang('Automatic')?></span>
                             <?php endif ?>
                         </td>
                         <td class="align-middle text-nowrap">
                             <span class="badge rounded-pill pg-offer-status fw-normal <?php if ($offer['status'] == 'active'): ?>text-bg-success<?php elseif ($offer['status'] == 'scheduled'): ?>text-bg-info<?php elseif ($offer['status'] == 'expired'): ?>text-bg-warning<?php else: ?>text-bg-secondary<?php endif ?>"><?=h($offer['status_label'])?></span>
-                            <?php if ($offer['incomplete']): ?><span class="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal" title="<?=lang('This offer cannot do anything at checkout yet.')?>"><?=lang('Incomplete')?></span><?php endif ?>
+                            <?php if ($offer['incomplete']): ?><span class="badge rounded-pill bg-subtle-warning fg-emphasis-warning border border-subtle-warning fw-normal" title="<?=lang('This offer cannot do anything at checkout yet.')?>"><?=lang('Incomplete')?></span><?php endif ?>
                         </td>
-                        <td class="align-middle text-nowrap text-body-secondary"><?=h($offer['period'])?></td>
-                        <td class="align-middle text-nowrap text-body-secondary">
+                        <td class="align-middle text-nowrap fg-secondary"><?=h($offer['period'])?></td>
+                        <td class="align-middle text-nowrap fg-secondary">
                             <?=$offer['modified']?>
                             <?php if ($offer['modified_by'] != ''): ?><?=lang(array('string' => 'by {var:1}', 'vars' => array(h($offer['modified_by']))))?><?php endif ?>
                         </td>

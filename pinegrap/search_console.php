@@ -209,7 +209,7 @@ if (!$linked) {
 	   ----------------------------------------------------------------------- */
 
 	$steps = '
-		<ul class="small mb-3">
+		<ul class="small mb-5">
 			<li>' . h(lang('finds this site among the account\'s Search Console properties, or verifies it with a meta tag on its pages and adds it;')) . '</li>
 			<li>' . h(lang('submits the sitemap;')) . '</li>
 			<li>' . h(lang('downloads the figures of the last 90 days, and from then on every day.')) . '</li>
@@ -223,8 +223,8 @@ if (!$linked) {
 
 		$setup = '
 			<p>' . h(lang('Search Console is read through a Google account connected to the site. Set up the Google application on Connected accounts first, then come back here.')) . '</p>
-			<p class="small text-body-secondary">' . h(lang('In the application\'s Google Cloud project, enable the Google Search Console API and the Site Verification API.')) . '</p>
-			<a class="btn btn-sm btn-outline-primary" href="connections.php"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>';
+			<p class="small fg-secondary">' . h(lang('In the application\'s Google Cloud project, enable the Google Search Console API and the Site Verification API.')) . '</p>
+			<a class="btn btn-sm btn-outline theme-primary" href="connections.php"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>';
 
 	} elseif (!$accounts) {
 
@@ -245,33 +245,33 @@ if (!$linked) {
 		$setup = '
 			<p>' . h(lang('Linking the site:')) . '</p>
 			' . $steps . '
-			<form method="post" action="search_console.php" id="search_console_link" class="row g-2 align-items-end">
+			<form method="post" action="search_console.php" id="search_console_link" class="row g-3 align-items-end">
 				' . get_token_field() . '
 				<input type="hidden" name="search_console_action" value="link">
-				<div class="col-12 col-md-6">
+				<div class="col-12 md:col-6">
 					<label class="form-label" for="connection_id">' . h(lang('Google account')) . '</label>
-					<select class="form-select form-select-sm" name="connection_id" id="connection_id">' . $options . '</select>
+					<select class="form-control form-control-sm" name="connection_id" id="connection_id">' . $options . '</select>
 				</div>
-				<div class="col-12 col-md-auto">
-					<button type="submit" class="btn btn-sm btn-primary" id="search_console_link_button">
+				<div class="col-12 md:col-auto">
+					<button type="submit" class="btn btn-sm btn-solid theme-primary" id="search_console_link_button">
 						<i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Link the site')) . '</button>
 				</div>
 			</form>
-			<div class="small text-body-secondary mt-3">' . h(lang('Another account:')) . ' ' . $connect_button(lang('Connect a Google account'), 'btn btn-sm btn-link p-0 align-baseline') . '</div>';
+			<div class="small fg-secondary mt-5">' . h(lang('Another account:')) . ' ' . $connect_button(lang('Connect a Google account'), 'btn btn-sm btn-link p-0 align-baseline') . '</div>';
 
 	}
 
 	$body = '
-		<div class="row g-3">
-			<div class="col-12 col-xl-8">
+		<div class="row g-5">
+			<div class="col-12 xl:col-8">
 				<div class="card h-100">
-					<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('Link the site to Google Search Console')) . '</div>
+					<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Link the site to Google Search Console')) . '</div>
 					<div class="card-body">' . $setup . '</div>
 				</div>
 			</div>
-			<div class="col-12 col-xl-4">
+			<div class="col-12 xl:col-4">
 				<div class="card h-100">
-					<div class="card-body small text-body-secondary">
+					<div class="card-body small fg-secondary">
 						<p>' . h(lang('Search Console shows which searches bring people to the site, how often its pages are shown in Google and in which position. The visitor reports count the people who arrive; Search Console counts the searches before they do.')) . '</p>
 						<p class="mb-0">' . h(lang('Google publishes the figures two or three days late and keeps sixteen months of them.')) . '</p>
 					</div>
@@ -305,9 +305,9 @@ if (!$linked) {
 	if ($latest === '') {
 
 		$figures = '
-			<div class="card my-3">
-				<div class="card-body text-center text-body-secondary py-5">
-					<i class="bi bi-hourglass-split fs-2 d-block mb-2" aria-hidden="true"></i>
+			<div class="card my-5">
+				<div class="card-body text-center fg-secondary py-12">
+					<i class="bi bi-hourglass-split fs-3xl d-block mb-3" aria-hidden="true"></i>
 					' . h(lang('No figures yet. Google publishes them two or three days late; the daily job downloads them as they come.')) . '
 				</div>
 			</div>';
@@ -329,10 +329,10 @@ if (!$linked) {
 
 		$tile = function ($label, $value, $change, $note) {
 			return '
-				<div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
-					<div class="small text-uppercase text-body-secondary">' . h($label) . '</div>
+				<div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
+					<div class="small text-uppercase fg-secondary">' . h($label) . '</div>
 					<div class="h4 mb-0">' . $value . '</div>
-					<div class="small text-body-secondary">' . (($change !== '') ? $change . ' ' : '') . h($note) . '</div>
+					<div class="small fg-secondary">' . (($change !== '') ? $change . ' ' : '') . h($note) . '</div>
 				</div></div></div>';
 		};
 
@@ -367,7 +367,7 @@ if (!$linked) {
 			}
 
 			if ($rows === '') {
-				$rows = '<tr><td colspan="5" class="text-center text-body-secondary py-4">' . h(lang('Nothing in this period.')) . '</td></tr>';
+				$rows = '<tr><td colspan="5" class="text-center fg-secondary py-7">' . h(lang('Nothing in this period.')) . '</td></tr>';
 			}
 
 			return '
@@ -387,31 +387,31 @@ if (!$linked) {
 		};
 
 		$figures = '
-			<div class="row g-3">' . $tiles . '</div>
+			<div class="row g-5">' . $tiles . '</div>
 
-			<div class="card my-3">
-				<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('By day')) . '</div>
+			<div class="card my-5">
+				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('By day')) . '</div>
 				<div class="card-body">
 					<div style="height:16rem"><canvas id="search_console_chart" aria-label="' . h(lang('Clicks and impressions by day')) . '" role="img"></canvas></div>
 				</div>
 			</div>
 
-			<div class="row g-3 my-1">
-				<div class="col-12 col-xxl-6">
+			<div class="row g-5 my-1">
+				<div class="col-12 2xl:col-6">
 					<div class="card h-100">
-						<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('Searches')) . '</div>
+						<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Searches')) . '</div>
 						<div class="card-body p-0 table-responsive" style="max-height:36rem">' . $table('query', lang('Search query')) . '</div>
 					</div>
 				</div>
-				<div class="col-12 col-xxl-6">
+				<div class="col-12 2xl:col-6">
 					<div class="card h-100">
-						<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('Pages')) . '</div>
+						<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Pages')) . '</div>
 						<div class="card-body p-0 table-responsive" style="max-height:36rem">' . $table('page', lang('Page')) . '</div>
 					</div>
 				</div>
 			</div>
 
-			<p class="small text-body-secondary my-3">' . h(lang('Searches Google keeps anonymous for privacy are in the totals but not in the list of searches, so the list adds up to less.')) . '</p>
+			<p class="small fg-secondary my-5">' . h(lang('Searches Google keeps anonymous for privacy are in the totals but not in the list of searches, so the list adds up to less.')) . '</p>
 
 			<script src="assets/lib/chartjs/chart.umd.min.js"></script>
 			<script>
@@ -461,7 +461,7 @@ if (!$linked) {
 	$facts = array(
 		array(lang('Property'), '<a href="https://search.google.com/search-console?resource_id=' . h(rawurlencode($settings['property'])) . '" target="_blank" rel="noopener" class="text-break">' . h($settings['property']) . ' <i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></a>'),
 		array(lang('Permission'), h(isset($permission_labels[$settings['permission']]) ? $permission_labels[$settings['permission']] : $settings['permission'])),
-		array(lang('Google account'), is_array($account) ? h($account['label']) : '<span class="text-danger">' . h(lang('None connected')) . '</span>'),
+		array(lang('Google account'), is_array($account) ? h($account['label']) : '<span class="fg-danger">' . h(lang('None connected')) . '</span>'),
 		array(lang('Figures up to'), ($settings['synced_to'] !== '') ? h(prepare_form_data_for_output($settings['synced_to'], 'date', false)) : '–'),
 		array(lang('Last download'), ($settings['synced_at'] > 0) ? get_relative_time(array('timestamp' => $settings['synced_at'])) : h(lang('Never'))),
 		array(lang('Sitemap submitted'), ($settings['sitemap_at'] > 0)
@@ -472,55 +472,55 @@ if (!$linked) {
 	$output_facts = '';
 
 	foreach ($facts as $fact) {
-		$output_facts .= '<dt class="col-5 fw-normal text-body-secondary">' . h($fact[0]) . '</dt><dd class="col-7">' . $fact[1] . '</dd>';
+		$output_facts .= '<dt class="col-5 fw-normal fg-secondary">' . h($fact[0]) . '</dt><dd class="col-7">' . $fact[1] . '</dd>';
 	}
 
 	$problems = '';
 
 	if (!is_array($account)) {
-		$problems .= '<div class="alert alert-warning small py-2">' . h(lang('The Google account the site was linked with is no longer connected. Connect it again to keep the figures coming.')) . '<div class="mt-2">' . $connect_button(lang('Connect a Google account')) . '</div></div>';
+		$problems .= '<div class="alert theme-warning small py-3">' . h(lang('The Google account the site was linked with is no longer connected. Connect it again to keep the figures coming.')) . '<div class="mt-3">' . $connect_button(lang('Connect a Google account')) . '</div></div>';
 	} elseif ($account['status'] === 'reauth') {
-		$problems .= '<div class="alert alert-warning small py-2">' . h(lang('Google no longer accepts the account\'s permission. Connect it again to keep the figures coming.')) . '<div class="mt-2">' . $connect_button(lang('Connect again')) . '</div></div>';
+		$problems .= '<div class="alert theme-warning small py-3">' . h(lang('Google no longer accepts the account\'s permission. Connect it again to keep the figures coming.')) . '<div class="mt-3">' . $connect_button(lang('Connect again')) . '</div></div>';
 	}
 
 	if ($settings['sync_error'] !== '') {
-		$problems .= '<div class="alert alert-danger small py-2">' . h(lang('Last download:')) . ' ' . h($settings['sync_error']) . '</div>';
+		$problems .= '<div class="alert theme-danger small py-3">' . h(lang('Last download:')) . ' ' . h($settings['sync_error']) . '</div>';
 	}
 
 	if ($settings['sitemap_error'] !== '') {
-		$problems .= '<div class="alert alert-danger small py-2">' . h(lang('Sitemap:')) . ' ' . h($settings['sitemap_error']) . '</div>';
+		$problems .= '<div class="alert theme-danger small py-3">' . h(lang('Sitemap:')) . ' ' . h($settings['sitemap_error']) . '</div>';
 	}
 
 	$buttons = '';
 
 	if ($can_manage) {
 		$buttons = '
-			<div class="d-flex flex-wrap gap-2">
-				<button type="button" class="btn btn-sm btn-outline-primary search-console-action" data-action="sync"' . (is_array($account) ? '' : ' disabled') . '>
+			<div class="d-flex flex-wrap gap-3">
+				<button type="button" class="btn btn-sm btn-outline theme-primary search-console-action" data-action="sync"' . (is_array($account) ? '' : ' disabled') . '>
 					<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Download now')) . '</button>
 				' . (in_array($settings['permission'], array('owner', 'full'), true)
-					? '<button type="button" class="btn btn-sm btn-outline-primary search-console-action" data-action="sitemap"' . (is_array($account) ? '' : ' disabled') . '>
+					? '<button type="button" class="btn btn-sm btn-outline theme-primary search-console-action" data-action="sitemap"' . (is_array($account) ? '' : ' disabled') . '>
 						<i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . h(lang('Submit the sitemap again')) . '</button>'
 					: '') . '
-				<button type="button" class="btn btn-sm btn-outline-danger search-console-action" data-action="unlink"
+				<button type="button" class="btn btn-sm btn-outline theme-danger search-console-action" data-action="unlink"
 					data-confirm="' . h(lang('The figures downloaded so far are deleted and no new ones come. The site stays verified in Search Console.')) . '">
 					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Unlink')) . '</button>
 			</div>';
 	}
 
 	$body = '
-		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+		<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-5">
 			<div class="btn-group" role="group" aria-label="' . h(lang('Period')) . '">' . $period_links . '</div>
-			' . (isset($period) ? '<div class="small text-body-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>' : '') . '
+			' . (isset($period) ? '<div class="small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>' : '') . '
 		</div>
-		<div class="row g-3">
-			<div class="col-12 col-xxl-9">' . $figures . '</div>
-			<div class="col-12 col-xxl-3">
+		<div class="row g-5">
+			<div class="col-12 2xl:col-9">' . $figures . '</div>
+			<div class="col-12 2xl:col-3">
 				<div class="card">
-					<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('Search Console')) . '</div>
+					<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Search Console')) . '</div>
 					<div class="card-body">
 						' . $problems . '
-						<dl class="row small mb-3">' . $output_facts . '</dl>
+						<dl class="row small mb-5">' . $output_facts . '</dl>
 						' . $buttons . '
 					</div>
 				</div>
@@ -554,7 +554,7 @@ echo pg_page_shell(array(
 	<div class="row"><div class="col-12">
 		' . $liveform_messages . '
 		' . ($auto_link
-			? '<div class="alert alert-info d-flex align-items-center gap-2" id="search_console_linking"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' . h(lang('Linking the site to Search Console...')) . '</div>'
+			? '<div class="alert theme-info d-flex align-items-center gap-3" id="search_console_linking"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' . h(lang('Linking the site to Search Console...')) . '</div>'
 			: '') . '
 	</div></div>
 

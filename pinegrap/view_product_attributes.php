@@ -97,7 +97,7 @@ if ($product_attributes) {
                 $output_no_value = lang(' [\'No Thanks\' Option]');
             }
 
-            $output_options .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($option['label']) . $output_no_value . '</span></li>';
+            $output_options .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($option['label']) . $output_no_value . '</span></li>';
         }
 
        
@@ -116,7 +116,7 @@ if ($product_attributes) {
         if($product_attribute['label'] != ''){
             $output_label = h($product_attribute['label']);
         }else{
-            $output_label = '<div class="text-danger">[' . lang('No Label') . ']</div>';
+            $output_label = '<div class="fg-danger">[' . lang('No Label') . ']</div>';
         }
 
 
@@ -125,8 +125,8 @@ if ($product_attributes) {
             '<tr>
                 <td></td>
                 <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product_attribute.php?id=' . $product_attribute['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product_attribute.php?id=' . $product_attribute['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="chart_label align-middle">' . h($product_attribute['name']) . '</td>
                 <td class="align-middle ">
@@ -161,17 +161,17 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_product_attribute.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_product_attribute.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_product_attributes.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>

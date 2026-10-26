@@ -245,8 +245,8 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
         $refund_rows .= '
                                     <tr>
                                         <td class="text-break">' . h((string) $refund_line['description']) . '
-                                            ' . (((float) $refund_line['returned_qty'] > 0) ? '<div class="small text-body-secondary">' . lang(array('string' => '{var:1} of {var:2} already returned', 'vars' => array(erp_quantity_out($refund_line['returned_qty']), erp_quantity_out($refund_line['quantity'])))) . '</div>' : '') . '
-                                            ' . (((int) $refund_line['line_total'] < 0) ? '<div class="small text-body-secondary">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '') . '
+                                            ' . (((float) $refund_line['returned_qty'] > 0) ? '<div class="small fg-secondary">' . lang(array('string' => '{var:1} of {var:2} already returned', 'vars' => array(erp_quantity_out($refund_line['returned_qty']), erp_quantity_out($refund_line['quantity'])))) . '</div>' : '') . '
+                                            ' . (((int) $refund_line['line_total'] < 0) ? '<div class="small fg-secondary">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '') . '
                                         </td>
                                         <td class="text-end text-nowrap">' . erp_quantity_out($refund_line['remaining_qty']) . '</td>
                                         <td style="width:6.5rem"><input type="number" class="form-control form-control-sm text-end" name="refund_qty[' . $line_id . ']" data-refund-line="' . $line_id . '"' . (((int) $refund_line['line_total'] < 0) ? ' data-refund-credit="1"' : '') . ' min="0" max="' . $remaining . '" step="1" value="0" inputmode="numeric" aria-label="' . h(lang('Quantity to refund')) . '"></td>
@@ -261,10 +261,10 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
 
     return '
                             <input type="hidden" name="refund_mode" value="lines">
-                            <p class="small text-body-secondary">' . lang('Choose what came back. The amount is worked out from the lines, the same way the return invoice will be.') . '</p>
-                            ' . (($refund_uncovered > 0) ? '<div class="alert alert-warning small py-2">' . lang(array('string' => '{var:1} refunded earlier has no return invoice yet. Issue it before refunding more, so the same goods are not refunded twice.', 'vars' => BASE_CURRENCY_SYMBOL . number_format($refund_uncovered / 100, 2, '.', ','))) . ' <a href="add_erp_return.php?invoice_id=' . (int) $source['invoice_id'] . '&back_order=' . (int) $order_id . '">' . lang('Issue the return invoice') . '</a></div>' : '') . '
+                            <p class="small fg-secondary">' . lang('Choose what came back. The amount is worked out from the lines, the same way the return invoice will be.') . '</p>
+                            ' . (($refund_uncovered > 0) ? '<div class="alert theme-warning small py-3">' . lang(array('string' => '{var:1} refunded earlier has no return invoice yet. Issue it before refunding more, so the same goods are not refunded twice.', 'vars' => BASE_CURRENCY_SYMBOL . number_format($refund_uncovered / 100, 2, '.', ','))) . ' <a href="add_erp_return.php?invoice_id=' . (int) $source['invoice_id'] . '&back_order=' . (int) $order_id . '">' . lang('Issue the return invoice') . '</a></div>' : '') . '
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-2">
+                                <table class="table table-sm align-middle mb-3">
                                     <thead><tr>
                                         <th>' . lang('Description') . '</th>
                                         <th class="text-end">' . lang('Refundable') . '</th>
@@ -275,13 +275,13 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="payment_refund_all">' . lang('Everything') . '</button>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <button type="button" class="btn btn-sm btn-outline theme-secondary" id="payment_refund_all">' . lang('Everything') . '</button>
                                 <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="payment_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
                             </div>
-                            <div class="small text-body-secondary mt-1">' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . number_format($remaining_cents / 100, 2, '.', ',') . '</div>
-                            <div class="small text-warning-emphasis d-none" id="payment_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
-                            <p class="form-text text-muted mt-2">' . (($source['source'] === 'invoice')
+                            <div class="small fg-secondary mt-1">' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . number_format($remaining_cents / 100, 2, '.', ',') . '</div>
+                            <div class="small fg-emphasis-warning d-none" id="payment_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
+                            <p class="form-text fg-secondary mt-3">' . (($source['source'] === 'invoice')
                                 ? lang(array('string' => 'After the refund, the return invoice against {var:1} opens with the same lines filled in; check it and save.', 'vars' => h($source['invoice_number'])))
                                 : lang('The order has no invoice yet. Once it is invoiced, issue a return invoice for these lines from the order\'s document card.')) . '</p>
                             <script>

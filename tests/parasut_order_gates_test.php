@@ -287,7 +287,7 @@ function test_parasut_order_gates_create_shipment_refuses_before_any_request()
 function test_parasut_order_gates_invoice_badge_says_sent_only_when_confirmed()
 {
 	$sent = parasut_order_invoice_status_badge('5001', false, true);
-	pg_assert_contains('bg-success">' . lang('Sent') . '</span>', $sent);
+	pg_assert_contains('theme-success">' . lang('Sent') . '</span>', $sent);
 	pg_assert_contains(lang('Parasut ID') . ': 5001', $sent);
 	pg_assert_contains('>' . lang('Sent') . '</span>', parasut_order_invoice_status_badge('5001', true, true));
 
@@ -295,7 +295,7 @@ function test_parasut_order_gates_invoice_badge_says_sent_only_when_confirmed()
 		$open = parasut_order_invoice_status_badge($case[0], $case[1], false);
 
 		pg_assert_false(strpos($open, '>' . lang('Sent') . '<') !== false, 'not "Sent"');
-		pg_assert_contains('bg-warning', $open);
+		pg_assert_contains('theme-warning', $open);
 		pg_assert_contains(lang('Parasut ID') . ': 5001', $open);
 		pg_assert_contains(h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.')), $open);
 	}

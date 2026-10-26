@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 :root {
     --preview-scale-width: 1;
     --preview-scale-size: 1;
@@ -391,4 +395,6 @@ ul.listtree>li:before {
     background-color: color-mix(in srgb, var(--pg-info) 7%, transparent);
     color: var(--pg-info-fg-emphasis, #055160);
     border-left: 3px solid var(--pg-info, #0dcaf0);
+}
+
 }

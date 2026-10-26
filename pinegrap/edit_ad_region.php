@@ -124,11 +124,11 @@ if (!$_POST) {
         // if there are ads assigned to this ad region, then prepare inactive delete button with alert
         if ($ads_assigned_to_this_ad_region == true) {
 
-            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete or remove all ads from this ad region before deleting this ad region.') . '\');return false; " ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete or remove all ads from this ad region before deleting this ad region.') . '\');return false; " ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
         // else there are no ads assigned to this ad region, so prepare active delete button with warning
         } else {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
         }
     }
@@ -149,8 +149,8 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         ' . $output_subheading . '
                     </div>
@@ -161,13 +161,13 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<ad>') . '</div>
@@ -175,21 +175,21 @@ if (!$_POST) {
                                                 <div class="input-group-text">' . h('</ad>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-5">' . lang('Region Behavior') . '</h5>
+                                        <h5 class="mt-12">' . lang('Region Behavior') . '</h5>
                                         <div class="col-12">
                                             <label class="form-label">' . lang('Display Type') . '</label>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-check">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'form-check-input collapse-switcher')) . '
-                                                <label class="form-check-label" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
+                                            <div class="form-field">
+                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'radio collapse-switcher')) . '
+                                                <label class="" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
                                             </div>
-                                            <div class="form-check">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
-                                                <label class="form-check-label" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
+                                            <div class="form-field">
+                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
+                                                <label class="" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
                                             </div>
                                             
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="display_type_dynamic_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_dynamic_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -197,16 +197,16 @@ if (!$_POST) {
                                                             <label class="form-label">' . lang('Transition Type') . '</label>
                                                         </div>
                                                         <div class="col-12 my-1">
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'class'=>'form-check-input')) . '
-                                                                <label class="form-check-label" for="slide">' . lang('Slide') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'class'=>'radio')) . '
+                                                                <label class="" for="slide">' . lang('Slide') . '</label>
                                                             </div>
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'form-check-input')) . '
-                                                                <label class="form-check-label" for="fade">' . lang('Fade') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'radio')) . '
+                                                                <label class="" for="fade">' . lang('Fade') . '</label>
                                                             </div>
                                                         </div>
-                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
                                                             <div class="input-group">
                                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
@@ -215,15 +215,15 @@ if (!$_POST) {
                                                             <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
                                                         </div>
                                                         <div class="col-12 my-1">
-                                                            <div class="form-check form-switch">
-                                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow', 'id'=>'slideshow', 'value'=>'1', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#slideshow_row')) . '
-                                                                <label class="form-check-label" for="slideshow">' . lang('Enable Autoplay') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow', 'id'=>'slideshow', 'value'=>'1', 'class'=>'collapse-switcher', 'data-bs-target'=>'#slideshow_row')) . '</div>
+                                                                <label class="" for="slideshow">' . lang('Enable Autoplay') . '</label>
                                                             </div>
-                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="slideshow_row">
+                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="slideshow_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
-                                                                        <div class="col-12 col-md-6 col-lg-4 my-1">
+                                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
                                                                             <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
                                                                             <div class="input-group">
                                                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
@@ -231,9 +231,9 @@ if (!$_POST) {
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <div class="form-check form-switch">
-                                                                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow_continuous', 'id'=>'slideshow_continuous', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                                                <label class="form-check-label" for="slideshow_continuous">' . lang('Play Continuously') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow_continuous', 'id'=>'slideshow_continuous', 'value'=>'1', 'class'=>'')) . '</div>
+                                                                                <label class="" for="slideshow_continuous">' . lang('Play Continuously') . '</label>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -250,10 +250,10 @@ if (!$_POST) {
                         </div>
                     </div>
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

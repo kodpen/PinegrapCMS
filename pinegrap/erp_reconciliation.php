@@ -81,7 +81,7 @@ $balance_side = ($balance['base'] > 0) ? lang('owes you') : (($balance['base'] <
 
 $output_balance_fc = '';
 if (erp_fx_enabled() && ($balance['currency'] !== '') && ($balance['currency'] !== erp_base_currency())) {
-    $output_balance_fc = '<span class="text-body-secondary">' . h(erp_money_out_currency(abs($balance['fc']), $balance['currency'])) . ' ' . h($balance['currency']) . '</span>';
+    $output_balance_fc = '<span class="fg-secondary">' . h(erp_money_out_currency(abs($balance['fc']), $balance['currency'])) . ' ' . h($balance['currency']) . '</span>';
 }
 
 $pdf_url = 'get_erp_reconciliation_pdf.php?' . h($query);
@@ -122,17 +122,17 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-outline-secondary" href="' . $pdf_url . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="' . $pdf_url . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $pdf_url . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $pdf_url . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
                     </nav>
 
-            <div class="card my-4">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
-                    <span class="text-uppercase text-body-secondary">' . lang(array('string' => 'Balance as of {var:1}', 'vars' => prepare_form_data_for_output($options['as_of'], 'date', false))) . '</span>
+            <div class="card my-7">
+                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
+                    <span class="text-uppercase fg-secondary">' . lang(array('string' => 'Balance as of {var:1}', 'vars' => prepare_form_data_for_output($options['as_of'], 'date', false))) . '</span>
                     <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance['base']))) . '</span>
-                    <span class="text-body-secondary">' . h($balance_side) . '</span>
+                    <span class="fg-secondary">' . h($balance_side) . '</span>
                     ' . $output_balance_fc . '
-                    <span class="text-body-secondary ms-auto small">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</span>
+                    <span class="fg-secondary ms-auto small">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</span>
                 </div>
                 ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
@@ -140,35 +140,35 @@ pg_page_shell([
     </div>
 
     <div class="row">
-        <div class="col-12 col-lg-4">
+        <div class="col-12 lg:col-4">
 
-            <div class="card mb-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Letter') . '</div>
+            <div class="card mb-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Letter') . '</div>
                 <div class="card-body">
                     <form method="get" action="erp_reconciliation.php">
                         <input type="hidden" name="id" value="' . $account_id . '" />
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="as_of" class="form-label">' . lang('Balance as of') . '</label>
                             <input type="date" id="as_of" name="as_of" class="form-control" value="' . h($options['as_of']) . '" max="' . h(date('Y-m-d')) . '" />
                             <div class="form-text">' . lang('The balance and the movements are read as of this date; later postings are left out.') . '</div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="from" class="form-label">' . lang('List movements from') . '</label>
                             <input type="date" id="from" name="from" class="form-control" value="' . h($options['from']) . '" max="' . h($options['as_of']) . '" />
                             <div class="form-text">' . lang('Everything before this date is one opening balance.') . '</div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="reply_days" class="form-label">' . lang('Days to reply') . '</label>
                             <input type="number" id="reply_days" name="reply_days" class="form-control" value="' . (int) $options['reply_days'] . '" min="0" max="' . (int) ERP_RECONCILIATION_MAX_REPLY_DAYS . '" step="1" />
                             <div class="form-text">' . lang('0 leaves the reply deadline out of the letter.') . '</div>
                         </div>
-                        <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i>' . lang('Update the preview') . '</button>
+                        <button type="submit" class="btn btn-outline theme-primary w-100"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Update the preview') . '</button>
                     </form>
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Send by e-mail') . '</div>
+            <div class="card mb-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Send by e-mail') . '</div>
                 <div class="card-body">
                     <form name="form" method="post" action="erp_reconciliation.php">
                         ' . get_token_field() . '
@@ -177,20 +177,20 @@ pg_page_shell([
                         <input type="hidden" name="from" value="' . h($options['from']) . '" />
                         <input type="hidden" name="reply_days" value="' . (int) $options['reply_days'] . '" />
                         <input type="hidden" name="erp_action" value="send" />
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="to" class="form-label">' . lang('Recipient e-mail') . '</label>
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                             <div class="form-text">' . h($output_send_note) . '</div>
                         </div>
-                        <button type="submit" name="submit_send" value="Send" class="btn btn-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Send the letter') . '</span></button>
+                        <button type="submit" name="submit_send" value="Send" class="btn btn-solid theme-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Send the letter') . '</span></button>
                     </form>
                 </div>
             </div>
 
         </div>
-        <div class="col-12 col-lg-8">
-            <div class="card mb-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex align-items-center">
+        <div class="col-12 lg:col-8">
+            <div class="card mb-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center">
                     <span>' . lang('Preview') . '</span>
                     <a class="btn btn-sm btn-link ms-auto" href="' . $pdf_url . '&amp;html=1" target="_blank" rel="noopener">' . lang('Open in a new tab') . '</a>
                 </div>

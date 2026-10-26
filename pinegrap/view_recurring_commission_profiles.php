@@ -91,7 +91,7 @@ $output_screen_links = '';
 
 if ($number_of_screens > 1) {
     $output_screen_links .= '
-            <nav class="mt-3 navigation " aria-label="data pagination"> 
+            <nav class="mt-5 navigation " aria-label="data pagination"> 
                 <ul class="pagination pagination-sm flex-wrap justify-content-center">';
     // build Previous button if necessary
     $previous = $screen - 1;
@@ -196,16 +196,16 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start col-reorder-none">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . $recurring_commission_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . h($recurring_commission_profile['affiliate_name']) . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['affiliate_code']) . '</td>
             <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
-            <td class="align-middle text-end"><span class="badge bg-primary text-light fw-light">' . pg_format_money($recurring_commission_profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="align-middle text-end"><span class="badge theme-primary text-light fw-light">' . pg_format_money($recurring_commission_profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle">' . prepare_form_data_for_output($recurring_commission_profile['start_date'], 'date') . '</td>
             <td class="align-middle">' . lang(ucwords($recurring_commission_profile['period'])) . '</td>
-            <td class="align-middle"><span class="badge bg-success text-light fw-light">' . $recurring_commission_profile['number_of_commissions'] . '</span></td>
+            <td class="align-middle"><span class="badge theme-success text-light fw-light">' . $recurring_commission_profile['number_of_commissions'] . '</span></td>
             <td class="align-middle">' . $recurring_commission_profile['order_number'] . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['product_name']) . h($recurring_commission_profile['product_short_description']) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $recurring_commission_profile['created_timestamp'])) . ' ' . $created_username . '</td>
@@ -228,8 +228,8 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
@@ -237,7 +237,7 @@ pg_page_shell([
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

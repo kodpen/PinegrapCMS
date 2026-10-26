@@ -82,7 +82,7 @@ if (!$_POST) {
     $output_balance_fc = '';
     if (erp_fx_enabled() && ($account_currency !== erp_base_currency())) {
         $balance_fc = (int) $account['balance_fc'];
-        $output_balance_fc = '<span class="text-body-secondary">' . h(erp_money_out_currency(abs($balance_fc), $account_currency)) . ' ' . h($account_currency) . '</span>';
+        $output_balance_fc = '<span class="fg-secondary">' . h(erp_money_out_currency(abs($balance_fc), $account_currency)) . ' ' . h($account_currency) . '</span>';
     }
 
     // The account's card at the e-document provider, when the provider hands
@@ -96,13 +96,13 @@ if (!$_POST) {
 
         if ($card_row !== null) {
             $card_diff = erp_edoc_account_diff(erp_edoc_account_erp_card($account), erp_edoc_account_stored_card($card_row));
-            $output_card_sync = '<a class="btn btn-sm btn-outline-secondary m-1" href="erp_account_sync_item.php?id=' . (int) $card_row['id'] . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>'
+            $output_card_sync = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_account_sync_item.php?id=' . (int) $card_row['id'] . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>'
                 . h(empty($card_diff)
                     ? lang(array('string' => 'Card at {var:1}: the same', 'vars' => $card_label))
                     : lang(array('string' => 'Card at {var:1}: {var:2} difference(s)', 'vars' => array($card_label, count($card_diff)))))
                 . '</a>';
         } else {
-            $output_card_sync = '<a class="btn btn-sm btn-outline-secondary m-1" href="erp_account_sync_item.php?account_id=' . $account_id . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'No card at {var:1}', 'vars' => $card_label))) . '</a>';
+            $output_card_sync = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_account_sync_item.php?account_id=' . $account_id . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'No card at {var:1}', 'vars' => $card_label))) . '</a>';
         }
     }
 
@@ -118,7 +118,7 @@ if (!$_POST) {
     $credit_state = function_exists('erp_credit_state') ? erp_credit_state($account) : null;
 
     if ($credit_state !== null) {
-        $output_credit = '<span class="ms-lg-auto small ' . ($credit_state['over'] ? 'text-danger fw-bold' : 'text-body-secondary') . '">'
+        $output_credit = '<span class="lg:ms-auto small ' . ($credit_state['over'] ? 'text-danger fw-bold' : 'text-body-secondary') . '">'
             . '<i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>'
             . h($credit_state['over']
                 ? lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($credit_state['limit']), erp_money_out($credit_state['balance'] - $credit_state['limit']))))
@@ -146,7 +146,7 @@ if (!$_POST) {
         // currency also says what it was in that currency.
         $row_currency = strtoupper(trim((string) $row['currency']));
         $output_fc = (erp_fx_enabled() && ($row_currency !== erp_base_currency()))
-            ? ' <span class="text-body-secondary small">' . h(erp_money_out_currency((int) $row['amount'], $row_currency, false)) . '</span>'
+            ? ' <span class="fg-secondary small">' . h(erp_money_out_currency((int) $row['amount'], $row_currency, false)) . '</span>'
             : '';
 
         // A receipt or payment opens on its own screen, where it can be
@@ -168,7 +168,7 @@ if (!$_POST) {
 
     if ($output_statement_rows === '') {
         $output_statement_rows = '
-            <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('There are no movements on this account yet.') . '</td></tr>';
+            <tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('There are no movements on this account yet.') . '</td></tr>';
     }
 
     // Where it was talked about in the workspace, and the tasks about it.
@@ -206,23 +206,23 @@ if (!$_POST) {
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-outline-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
-                        ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge text-bg-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
-                        <a class="btn btn-sm btn-outline-secondary" href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Open invoices') . '</a>
-                        ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
-                        ' . ($show_quotes ? '<a class="btn btn-sm btn-outline-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
-                        ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
-                        ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
-                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-outline theme-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
+                        ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge theme-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Open invoices') . '</a>
+                        ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
+                        ' . ($show_quotes ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
+                        ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                        ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
+                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
                     </nav>
 
-            <div class="card my-4">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
-                    <span class="text-uppercase text-body-secondary">' . lang('Balance') . '</span>
+            <div class="card my-7">
+                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
+                    <span class="text-uppercase fg-secondary">' . lang('Balance') . '</span>
                     <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</span>
-                    <span class="text-body-secondary">' . h($balance_side) . '</span>
+                    <span class="fg-secondary">' . h($balance_side) . '</span>
                     ' . $output_balance_fc . '
                     ' . $output_credit . '
                 </div>
@@ -233,17 +233,17 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
                 ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
             </form>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Statement') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">

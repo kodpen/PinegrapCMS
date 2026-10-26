@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /*
  * Pinegrap - the page an approval link leads to, for somebody outside the
  * team (workspace_approval.php).
@@ -114,4 +118,6 @@ body.pg-approval {
   .pg-approval-buttons .btn {
     flex: 1 1 auto;
   }
+}
+
 }

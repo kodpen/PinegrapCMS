@@ -180,8 +180,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         if ($layout_type == 'custom') {
             $output_layout_buttons =
             '<div class=" btn-group btn-group-sm flex-wrap ">
-                <a class="btn btn-link link-secondary py-0 mb-2 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name))) . '&amp;type=layout&amp;id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link link-secondary py-0 mb-2 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
+                <a class="btn btn-link link-secondary py-0 mb-3 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name))) . '&amp;type=layout&amp;id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-link link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
             </div>';
         }
     }
@@ -201,7 +201,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         $delete_data_warning = lang(' and ALL SUBMITTED FORM DATA for the selected field(s)');
     }
     $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(pg_safe_back_url(($_GET['send_to'] ?? ''), 'view_pages.php'))) . '\'';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 
     // The canvas is the record of a designer form: a field added, changed or
     // deleted here would be undone by the next design save. The list stays
@@ -211,10 +211,10 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         $output_form_designer_content_subheading = lang('The fields of this form are edited in the visual editor.');
         $output_form_designer_footer = '';
         $output_designer_form_notice =
-            '<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 mb-0" role="note">
+            '<div class="alert theme-info d-flex flex-wrap align-items-center gap-3 mt-5 mb-0" role="note">
                 <i class="bi bi-info-circle" aria-hidden="true"></i>
                 <span class="flex-grow-1">' . lang('This form was drawn in the visual editor. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field\'s variable (^^name^^) puts its value into the form\'s e-mails.') . '</span>
-                <a class="btn btn-sm btn-outline-secondary" href="' . h(pg_page_edit_url_by_id($_GET['page_id'])) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in Visual Editor') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_page_edit_url_by_id($_GET['page_id'])) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in Visual Editor') . '</a>
             </div>';
     }
 
@@ -267,9 +267,9 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_cancel_onclick = 'window.location.href=\'edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '\'';
     $output_preview_button = '
     <div class=" btn-group btn-group-sm flex-wrap ">
-        <button type="button" class="btn btn-link link-secondary py-0 mb-2 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
+        <button type="button" class="btn btn-link link-secondary py-0 mb-3 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
     </div>';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));
@@ -336,7 +336,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
 
     // No preview button: a template belongs to no single product, and
     // preview_form.php renders one product's form.
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-2"></span>' . lang('Delete Selected') . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang('WARNING: The selected field(s) will be permanently deleted.') . '"><span class="bi bi-trash me-3"></span>' . lang('Delete Selected') . '</button>';
 
     $output_product_id_to_url = '&product_group_id=' . h(escape_javascript(urlencode($_GET['product_group_id'])));
 
@@ -414,11 +414,11 @@ while ($row = mysqli_fetch_assoc($result)) {
     // and its name is shown as the variable the form's e-mails use.
     if ($designer_form) {
         $output_select_cell = '<td class="align-middle text-start"></td>';
-        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
+        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
         $output_name_cell = h($name) . '<br><code class="user-select-all">^^' . h($name) . '^^</code>';
     } else {
-        $output_select_cell = '<td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="fields[]" value="' . $id . '" class="checkbox" /></td>';
-        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>';
+        $output_select_cell = '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="fields[]" value="' . $id . '" class="checkbox" /></td>';
+        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>';
         $output_name_cell = h($name);
     }
 
@@ -427,7 +427,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             ' . $output_select_cell . '
 			<td class="align-middle text-start">
                 ' . $output_open_button . '
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label">' . $output_name_cell . '</td>
             <td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
@@ -444,11 +444,11 @@ if ($designer_form) {
     $output_create_button = '';
     $output_select_all_heading = '<th class="noVis"></th>';
 } else {
-    $output_create_button = '<a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_create_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
     $output_select_all_heading =
         '<th class="noVis">
-            <div class="form-check form-switch">
-                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+            <div class="form-field">
+                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
             </div>
         </th>';
 }
@@ -467,8 +467,8 @@ pg_page_shell(array(
     <div class="row">
         ' . $liveform->get_messages() . '
         <div class="col-12">
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
@@ -479,7 +479,7 @@ pg_page_shell(array(
                 </div>
             </div>
             ' . $output_designer_form_notice . '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form"  action="delete_fields.php" method="post"  class="disable_shortcut"> 
                         ' . get_token_field() . '

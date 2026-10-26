@@ -1822,7 +1822,7 @@ function pg_return_form_html($deliveries, $form)
                     . ' name="qty[' . $id . ']" min="0" max="' . $left . '" step="1" value="0" inputmode="numeric"'
                     . ' aria-label="' . h(lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string) $line['name'])))) . '">';
             } else {
-                $cell = '<span class="small text-muted">' . h(lang('Already in a return')) . '</span>';
+                $cell = '<span class="small fg-secondary">' . h(lang('Already in a return')) . '</span>';
             }
 
             $rows .= '<tr><td>' . h((string) $line['name']) . '</td>'
@@ -1837,26 +1837,26 @@ function pg_return_form_html($deliveries, $form)
         $label = isset($delivery['label']) ? (string) $delivery['label'] : '';
         $deadline = isset($delivery['deadline']) ? (string) $delivery['deadline'] : '';
 
-        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="pg-ov-return-form mb-4">'
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="pg-ov-return-form mb-7">'
             . (string) $form['token']
             . '<input type="hidden" name="action" value="request">'
             . '<input type="hidden" name="order_id" value="' . (int) $form['order_id'] . '">'
             . '<input type="hidden" name="ship_to_id" value="' . $ship_to_id . '">'
             . '<input type="hidden" name="send_to" value="' . h((string) $form['send_to']) . '">'
-            . (($several && ($label !== '')) ? '<h6 class="fw-semibold mb-2">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($label)))) . '</h6>' : '')
-            . (($deadline !== '') ? '<p class="small text-muted mb-2">' . h(lang(array('string' => 'You can ask to return these items until {var:1}.', 'vars' => array($deadline)))) . '</p>' : '')
-            . '<div class="table-responsive"><table class="table table-sm align-middle mb-3">'
+            . (($several && ($label !== '')) ? '<h6 class="fw-semibold mb-3">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($label)))) . '</h6>' : '')
+            . (($deadline !== '') ? '<p class="small fg-secondary mb-3">' . h(lang(array('string' => 'You can ask to return these items until {var:1}.', 'vars' => array($deadline)))) . '</p>' : '')
+            . '<div class="table-responsive"><table class="table table-sm align-middle mb-5">'
             . '<thead><tr><th scope="col">' . h(lang('Product')) . '</th>'
             . '<th scope="col" class="text-end">' . h(lang('Ordered')) . '</th>'
             . '<th scope="col" class="text-end">' . h(lang('To return')) . '</th></tr></thead>'
             . '<tbody>' . $rows . '</tbody></table></div>'
-            . '<div class="mb-3"><label for="pg-ov-return-reason-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Reason for the return')) . '</label>'
-            . '<select class="form-select" id="pg-ov-return-reason-' . $ship_to_id . '" name="reason" required>' . $options . '</select></div>'
-            . '<div class="mb-3"><label for="pg-ov-return-note-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Note (optional)')) . '</label>'
+            . '<div class="mb-5"><label for="pg-ov-return-reason-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Reason for the return')) . '</label>'
+            . '<select class="form-control" id="pg-ov-return-reason-' . $ship_to_id . '" name="reason" required>' . $options . '</select></div>'
+            . '<div class="mb-5"><label for="pg-ov-return-note-' . $ship_to_id . '" class="form-label small fw-semibold">' . h(lang('Note (optional)')) . '</label>'
             . '<textarea class="form-control" id="pg-ov-return-note-' . $ship_to_id . '" name="note" rows="2" maxlength="' . PG_RETURN_NOTE_MAX . '"'
             . ' aria-describedby="pg-ov-return-note-help-' . $ship_to_id . '"></textarea>'
             . '<div id="pg-ov-return-note-help-' . $ship_to_id . '" class="form-text">' . h(lang('Needed when the reason is "Another reason".')) . '</div></div>'
-            . '<button type="submit" class="btn btn-outline-primary"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Request a return')) . '</button>'
+            . '<button type="submit" class="btn btn-outline theme-primary"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Request a return')) . '</button>'
             . '</form>';
     }
 
@@ -1897,7 +1897,7 @@ function pg_returns_list_html($returns, $form)
     }
 
     $detail = function ($label, $value_html) {
-        return '<div class="small mb-1"><span class="text-muted">' . h($label) . ':</span> ' . $value_html . '</div>';
+        return '<div class="small mb-1"><span class="fg-secondary">' . h($label) . ':</span> ' . $value_html . '</div>';
     };
 
     $html = '<div class="pg-ov-returns">';
@@ -1910,14 +1910,14 @@ function pg_returns_list_html($returns, $form)
             $lines .= '<li>' . h((string) $line['name']) . ' × ' . (int) $line['quantity'] . '</li>';
         }
 
-        $html .= '<div class="pg-ov-return border rounded p-3 mb-3">'
-            . '<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">'
+        $html .= '<div class="pg-ov-return border rounded-4 p-5 mb-5">'
+            . '<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">'
             . '<div><div class="fw-semibold">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array($id)))) . '</div>'
-            . (((string) $return['requested'] !== '') ? '<div class="small text-muted">' . h(lang(array('string' => 'Asked on {var:1}', 'vars' => array((string) $return['requested'])))) . '</div>' : '')
+            . (((string) $return['requested'] !== '') ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Asked on {var:1}', 'vars' => array((string) $return['requested'])))) . '</div>' : '')
             . '</div>'
             . '<span class="' . h(pg_return_badge_class((string) $return['status'])) . '">' . h((string) $return['status_label']) . '</span>'
             . '</div>'
-            . (($lines !== '') ? '<ul class="small mb-2 ps-3">' . $lines . '</ul>' : '');
+            . (($lines !== '') ? '<ul class="small mb-3 ps-5">' . $lines . '</ul>' : '');
 
         if ((string) $return['reason_label'] !== '') {
             $html .= $detail(lang('Reason'), h((string) $return['reason_label']));
@@ -1946,7 +1946,7 @@ function pg_returns_list_html($returns, $form)
                 $how = h(lang('Your return was approved. You can send the goods back now.'));
             }
 
-            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . $how . '</div>';
+            $html .= '<div class="alert theme-info small py-3 my-3" role="status">' . $how . '</div>';
         }
 
         if ((string) $return['tracking_number'] !== '') {
@@ -1958,19 +1958,19 @@ function pg_returns_list_html($returns, $form)
         }
 
         if (!empty($return['can_mark_sent'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-3">'
                 . pg_return_action_fields($form, 'shipped', $id)
                 . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
                 . '<div class="input-group input-group-sm">'
                 . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
-                . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
+                . '<button type="submit" class="btn btn-solid theme-primary">' . h(lang('I have sent it')) . '</button>'
                 . '</div></form>';
         }
 
         if (!empty($return['can_withdraw'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-3">'
                 . pg_return_action_fields($form, 'withdraw', $id)
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Withdraw the request')) . '</button>'
                 . '</form>';
         }
 
@@ -2883,7 +2883,7 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         return '';
     }
 
-    $lines = empty($rows) ? '<p class="small text-muted mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
+    $lines = empty($rows) ? '<p class="small fg-secondary mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
 
     foreach ($rows as $row) {
         $quantity = 0;
@@ -2896,19 +2896,19 @@ function pg_returns_panel_card_html($rows, $add_url = '')
 
         $lines .= '<div class="row align-items-center mb-1">
                         <span class="col"><a class="link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
-                        . '<span class="d-block small text-muted">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
+                        . '<span class="d-block small fg-secondary">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
                         <span class="col-auto text-end"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
                     </div>';
     }
 
-    return '<div class="card mt-3">
+    return '<div class="card mt-5">
                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
-                    <a class="btn btn-sm btn-outline-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
+                    <a class="btn btn-sm btn-outline theme-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
                 </div>
                 <div class="card-body">
                     ' . $lines . '
-                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline-secondary mt-2" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
+                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary mt-3" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 </div>
             </div>';
 }

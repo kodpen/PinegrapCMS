@@ -170,42 +170,42 @@ function erp_account_quick_modal()
                     <button type="button" class="btn-close no-submit" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-body-secondary">' . lang('Only the name is needed. The rest can be completed on the account card later.') . '</p>
-                    <div class="alert alert-danger d-none" role="alert" data-erp-quick-error="_form"></div>
-                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="' . h(lang('Taxpayer type')) . '">
+                    <p class="small fg-secondary">' . lang('Only the name is needed. The rest can be completed on the account card later.') . '</p>
+                    <div class="alert theme-danger d-none" role="alert" data-erp-quick-error="_form"></div>
+                    <div class="btn-group btn-group-sm mb-5" role="group" aria-label="' . h(lang('Taxpayer type')) . '">
                         <input type="radio" class="btn-check" name="is_person" id="erp_quick_acc_person" value="1" checked>
-                        <label class="btn btn-outline-secondary" for="erp_quick_acc_person"><i class="bi bi-person me-1" aria-hidden="true"></i>' . lang('Person') . '</label>
+                        <label class="btn btn-outline theme-secondary" for="erp_quick_acc_person"><i class="bi bi-person me-1" aria-hidden="true"></i>' . lang('Person') . '</label>
                         <input type="radio" class="btn-check" name="is_person" id="erp_quick_acc_company" value="0">
-                        <label class="btn btn-outline-secondary" for="erp_quick_acc_company"><i class="bi bi-building me-1" aria-hidden="true"></i>' . lang('Company') . '</label>
+                        <label class="btn btn-outline theme-secondary" for="erp_quick_acc_company"><i class="bi bi-building me-1" aria-hidden="true"></i>' . lang('Company') . '</label>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <label class="form-label" for="erp_quick_acc_title">' . lang('Name and surname, or company name') . '</label>
                         <input type="text" class="form-control" id="erp_quick_acc_title" name="title" maxlength="255" required autocomplete="off">
                         <div class="invalid-feedback" data-erp-quick-error="title"></div>
                     </div>
-                    <div class="row g-2">
-                        <div class="col-sm-6">
+                    <div class="row g-3">
+                        <div class="sm:col-6">
                             <label class="form-label" for="erp_quick_acc_phone">' . lang('Phone') . '</label>
                             <input type="tel" class="form-control" id="erp_quick_acc_phone" name="phone" maxlength="50" autocomplete="off">
                         </div>
-                        <div class="col-sm-6">
+                        <div class="sm:col-6">
                             <label class="form-label" for="erp_quick_acc_email">' . lang('Email') . '</label>
                             <input type="email" class="form-control" id="erp_quick_acc_email" name="email" maxlength="255" autocomplete="off">
                             <div class="invalid-feedback" data-erp-quick-error="email"></div>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <label class="form-label" for="erp_quick_acc_tax">' . h(erp_tax_id_label($country)) . ' <span class="text-body-secondary fw-normal">(' . lang('optional') . ')</span></label>
-                        ' . ($lookup ? '<div class="input-group has-validation">' : '') . '
+                    <div class="mt-5">
+                        <label class="form-label" for="erp_quick_acc_tax">' . h(erp_tax_id_label($country)) . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
+                        ' . ($lookup ? '<div class="input-group">' : '') . '
                         <input type="text" class="form-control" id="erp_quick_acc_tax" name="tax_number"' . ($is_tr ? ' inputmode="numeric" maxlength="11"' : ' maxlength="' . (int) erp_tax_number_width() . '"') . ' autocomplete="off">
-                        ' . ($lookup ? '<button type="button" class="btn btn-outline-secondary no-submit" data-erp-quick-lookup title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '"><i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button>' : '') . '
+                        ' . ($lookup ? '<button type="button" class="btn btn-outline theme-secondary no-submit" data-erp-quick-lookup title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '"><i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button>' : '') . '
                         <div class="invalid-feedback" data-erp-quick-error="tax_number"></div>
                         ' . ($lookup ? '</div><div class="form-text text-break" data-erp-quick-answer aria-live="polite"></div>' : '') . '
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 no-submit" data-erp-quick-go>' . lang('Open and pick') . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" data-erp-quick-go>' . lang('Open and pick') . '</button>
                 </div>
             </form>
         </div>

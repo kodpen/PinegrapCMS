@@ -99,9 +99,9 @@ if (!defined('PG_INIT_LOADED')) {
             <li class="nav-item dropdown no-popover"  title="<?=lang('Software Theme')?>">
                 <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
                 <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i><?=lang('Light')?></button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i><?=lang('Dark')?></button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i><?=lang('Auto')?></button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i><?=lang('Light')?></button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i><?=lang('Dark')?></button></li>
+                    <li><button class="dropdown-item dropdown-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i><?=lang('Auto')?></button></li>
                 </ul>
             </li>
             <li class="nav-item">
@@ -115,32 +115,32 @@ if (!defined('PG_INIT_LOADED')) {
 <main id="content" class="container-fluid">
 	<form name="form">
 		<div class="row">
-			<div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-				<div class="form-floating mt-1 mb-2">
+			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
+				<div class="form-floating mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'enabled',
 						'name' => 'enabled',
-						'class'=>'form-select',
+						'class'=>'form-control',
 						'options' => $enabled_options))?>
 					<label for="enabled" class="form-label"><?=lang(array('string'=>'Status' ))?></label>
 				</div>
 			</div>
 		</div>
-		<div class="row mt-1 mb-2">
-			<div class="col-xs-12 col-sm-6 col-md-4 col-lg-3">
-				<div class="form-floating  mt-1 mb-2">
+		<div class="row mt-1 mb-3">
+			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
+				<div class="form-floating  mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'change_price_method',
 						'name' => 'change_price_method',
-						'class'=>'form-select collapse-if-selected',
+						'class'=>'form-control collapse-if-selected',
 						'data-bs-target'=>'#increase_price_row',
 						'options' => $price_change_method_options,
 						'onchange'=>'change_price_methodfunc()'))?>
 					<label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
 				</div>
-				<div class="popover fade bs-popover-bottom p-0 mb-2 w-100 collapse" id="increase_price_row">
+				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_price_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -157,20 +157,20 @@ if (!defined('PG_INIT_LOADED')) {
 				</div>
 			</div>
 		</div>
-		<div class="row mt-1 mb-2">
-			<div class="col-12 col-sm-6 col-md-4 col-lg-3">
-				<div class="form-floating mt-1 mb-2">
+		<div class="row mt-1 mb-3">
+			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
+				<div class="form-floating mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'tax_rate_method',
 						'name' => 'tax_rate_method',
-						'class'=>'form-select',
+						'class'=>'form-control',
 						'options' => $tax_rate_method_options))?>
 					<label for="tax_rate_method" class="form-label"><?=lang(array('string'=>'Tax Rate' ))?></label>
 				</div>
 			</div>
-			<div class="col-12 col-sm-6 col-md-4 col-lg-3">
-				<div class="input-group mt-1 mb-2">
+			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
+				<div class="input-group mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'number',
 						'id' => 'tax_rate_value',
@@ -185,30 +185,30 @@ if (!defined('PG_INIT_LOADED')) {
 				<div class="form-text"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
 			</div>
 		</div>
-		<div class="row mt-1 mb-2">
-			<div class="col-12 col-sm-6 col-md-4 col-lg-3">
-				<div class="form-floating  mt-1 mb-2">
+		<div class="row mt-1 mb-3">
+			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
+				<div class="form-floating  mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'inventory',
 						'name' => 'inventory',
-						'class'=>'form-select',
+						'class'=>'form-control',
 						'options' => $inventory_options))?>
 					<label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
 				</div>
 			</div>
-			<div class="col-12 col-sm-6 col-md-auto">
-				<div class="form-floating  mt-1 mb-2">
+			<div class="col-12 sm:col-6 md:col-auto">
+				<div class="form-floating  mt-1 mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'inventory_quantity_process',
 						'name' => 'inventory_quantity_process',
-						'class'=>'form-select collapse-if-selected',
+						'class'=>'form-control collapse-if-selected',
 						'data-bs-target'=>'#increase_quantity_row',
 						'options' => $inventory_quantity_process_options))?>
 					<label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
 				</div>
-				<div class="popover fade bs-popover-bottom p-0 mb-2 w-100 collapse" id="increase_quantity_row">
+				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_quantity_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -234,35 +234,35 @@ if (!defined('PG_INIT_LOADED')) {
 		</div>
 		<?php if (ECOMMERCE_SHIPPING): ?>
 		<div class="row ">
-			<div class="col-xs-12  col-sm-12 col-md-8 col-lg-6 card-group">
-				<div class="card mt-1 mb-2">
+			<div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
+				<div class="card mt-1 mb-3">
 					<div class="card-header"><?=lang(array('string'=>'Allow Shipping Zones') )?></div>
 					<div class="card-body">
 						<?php foreach($zones as $zone): ?>
-						<div class="form-check">
+						<div class="form-field">
 							<?=$liveform->output_field(array(
 								'type' => 'checkbox',
 								'id' => 'allowed_zone_' . $zone['id'],
 								'name' => 'allowed_zones',
 								'value' => $zone['id'],
-								'class' => 'checkbox form-check-input'))?>
-							<label class="form-check-label" for="allowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>    
+								'class' => 'checkbox check'))?>
+							<label class="" for="allowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>    
 						</div>
 						<?php endforeach ?>
 					</div>
 				</div>
-				<div class="card mt-1 mb-2">
+				<div class="card mt-1 mb-3">
 					<div class="card-header"><?=lang(array('string'=>'Disallow Shipping Zones') )?></div>
 					<div class="card-body">
 						<?php foreach($zones as $zone): ?>
-						<div class="form-check">
+						<div class="form-field">
 							<?=$liveform->output_field(array(
 								'type' => 'checkbox',
 								'id' => 'disallowed_zone_' . $zone['id'],
 								'name' => 'disallowed_zones',
 								'value' => $zone['id'],
-								'class' => 'checkbox form-check-input'))?>
-							<label class="form-check-label" for="disallowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>
+								'class' => 'checkbox check'))?>
+							<label class="" for="disallowed_zone_<?=$zone['id']?>"><?=h($zone['name'])?></label>
 						</div>
 						<?php endforeach ?>
 					</div>
@@ -273,9 +273,9 @@ if (!defined('PG_INIT_LOADED')) {
 		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
 			<div class="container">
 				<div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-					<button type="button" name="submit_save" value="Modify Products" class="btn mb-1 mt-1  btn-primary submit-primary" onclick="edit_products()"><span class="material-icons me-2">save</span><?=lang(array('string'=>'Modify Products') )?></button>
+					<button type="button" name="submit_save" value="Modify Products" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_products()"><span class="material-icons me-3">save</span><?=lang(array('string'=>'Modify Products') )?></button>
 					<?php if (defined('BARCODE_ENABLED') && BARCODE_ENABLED): ?>
-					<button type="button" class="btn mb-1 mt-1 btn-outline-secondary" onclick="assignBarcodes()"><i class="bi bi-upc-scan me-2"></i><?=lang('Assign Barcodes')?></button>
+					<button type="button" class="btn mb-1 mt-1 btn-outline theme-secondary" onclick="assignBarcodes()"><i class="bi bi-upc-scan me-3"></i><?=lang('Assign Barcodes')?></button>
 					<?php endif ?>
 				</div>
 			</div>

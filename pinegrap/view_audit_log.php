@@ -116,16 +116,16 @@ $audit_view_url = function (array $change) use ($audit_view_query) {
 $audit_view_cell = function (array $value) {
     switch ($value['kind']) {
         case 'none':
-            return '<span class="text-body-secondary">—</span>';
+            return '<span class="fg-secondary">—</span>';
         case 'secret':
-            return '<span class="badge text-bg-secondary">' . h(lang('Hidden')) . '</span>';
+            return '<span class="badge theme-secondary">' . h(lang('Hidden')) . '</span>';
         case 'cut':
-            return '<span class="text-break">' . h($value['text']) . '…</span> <span class="small text-body-secondary" title="SHA-1 ' . h($value['sha1']) . '">(' . h(lang(array('string' => '{var:1} bytes', 'vars' => array(pg_format_number($value['length'], 0))))) . ')</span>';
+            return '<span class="text-break">' . h($value['text']) . '…</span> <span class="small fg-secondary" title="SHA-1 ' . h($value['sha1']) . '">(' . h(lang(array('string' => '{var:1} bytes', 'vars' => array(pg_format_number($value['length'], 0))))) . ')</span>';
         case 'json':
             return '<pre class="small mb-0" style="max-height:16rem;overflow:auto;white-space:pre-wrap;word-break:break-word">' . h($value['text']) . '</pre>';
     }
 
-    return ($value['text'] === '') ? '<span class="text-body-secondary fst-italic">' . h(lang('empty')) . '</span>' : '<span class="text-break" style="white-space:pre-wrap">' . h($value['text']) . '</span>';
+    return ($value['text'] === '') ? '<span class="fg-secondary fst-italic">' . h(lang('empty')) . '</span>' : '<span class="text-break" style="white-space:pre-wrap">' . h($value['text']) . '</span>';
 };
 
 $audit_view_list = '';
@@ -146,7 +146,7 @@ foreach ($audit_view_rows as $audit_view_row) {
 
     // What: the record's name links to its whole history; the icon opens it.
     $audit_view_name = ((string) $audit_view_row['label'] !== '') ? (string) $audit_view_row['label'] : (($audit_view_id > 0) ? '#' . $audit_view_id : pg_audit_view_label('type', $audit_view_type));
-    $audit_view_record = '<div class="small text-body-secondary">' . h(pg_audit_view_label('type', $audit_view_type)) . (($audit_view_id > 0) ? ' #' . $audit_view_id : '') . '</div>';
+    $audit_view_record = '<div class="small fg-secondary">' . h(pg_audit_view_label('type', $audit_view_type)) . (($audit_view_id > 0) ? ' #' . $audit_view_id : '') . '</div>';
     $audit_view_record .= '<a class="text-break" href="' . h($audit_view_url(array('type' => $audit_view_type, 'id' => $audit_view_id, 'q' => '', 'page' => 1))) . '" title="' . h(lang('Show the history of this record')) . '">' . h($audit_view_name) . '</a>';
 
     $audit_view_open = pg_audit_view_record_url($audit_view_type, $audit_view_id);
@@ -165,15 +165,15 @@ foreach ($audit_view_rows as $audit_view_row) {
             $audit_view_change_rows .= '
                                             <tr>
                                                 <td class="text-nowrap"><code>' . h($audit_view_change['field']) . '</code></td>
-                                                <td>' . ($audit_view_change['names_only'] ? '<span class="text-body-secondary">' . h(lang('Too large to keep')) . '</span>' : $audit_view_cell($audit_view_change['before'])) . '</td>
-                                                <td>' . ($audit_view_change['names_only'] ? '<span class="text-body-secondary">' . h(lang('Too large to keep')) . '</span>' : $audit_view_cell($audit_view_change['after'])) . '</td>
+                                                <td>' . ($audit_view_change['names_only'] ? '<span class="fg-secondary">' . h(lang('Too large to keep')) . '</span>' : $audit_view_cell($audit_view_change['before'])) . '</td>
+                                                <td>' . ($audit_view_change['names_only'] ? '<span class="fg-secondary">' . h(lang('Too large to keep')) . '</span>' : $audit_view_cell($audit_view_change['after'])) . '</td>
                                             </tr>';
         }
 
         $audit_view_details = '
                                 <details>
                                     <summary class="small">' . h(lang(array('string' => '{var:1} fields', 'vars' => array(count($audit_view_changes))))) . '</summary>
-                                    <table class="table table-sm table-bordered small mt-2 mb-0" style="table-layout:fixed">
+                                    <table class="table table-sm table-bordered small mt-3 mb-0" style="table-layout:fixed">
                                         <thead>
                                             <tr>
                                                 <th style="width:30%">' . h(lang('Field')) . '</th>
@@ -205,7 +205,7 @@ foreach ($audit_view_rows as $audit_view_row) {
 if ($audit_view_list === '') {
     $audit_view_list = '
                         <tr>
-                            <td colspan="6" class="text-center text-body-secondary py-4">' . h($audit_view_query ? lang('No line matches these filters.') : lang('Nothing has been recorded yet.')) . '</td>
+                            <td colspan="6" class="text-center fg-secondary py-7">' . h($audit_view_query ? lang('No line matches these filters.') : lang('Nothing has been recorded yet.')) . '</td>
                         </tr>';
 }
 
@@ -224,7 +224,7 @@ $audit_view_select = function ($name, $kind, $column) use ($audit_view_filters) 
         $options .= '<option value="' . h($word) . '"' . (($audit_view_filters[$name] === $word) ? ' selected' : '') . '>' . h(pg_audit_view_label($kind, $word)) . '</option>';
     }
 
-    return '<select class="form-select form-select-sm" id="audit_' . $name . '" name="' . $name . '">' . $options . '</select>';
+    return '<select class="form-control form-control-sm" id="audit_' . $name . '" name="' . $name . '">' . $options . '</select>';
 };
 
 $audit_view_sources = '<option value="">' . h(lang('All')) . '</option>';
@@ -249,52 +249,52 @@ foreach (array('id', 'request') as $audit_view_key) {
 $audit_view_narrowed = '';
 
 if ($audit_view_filters['id'] > 0) {
-    $audit_view_narrowed .= '<span class="badge text-bg-light border me-2">' . h(lang('Record')) . ' #' . (int) $audit_view_filters['id'] . ' <a class="link-secondary ms-1" href="' . h($audit_view_url(array('id' => 0, 'page' => 1))) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>';
+    $audit_view_narrowed .= '<span class="badge text-bg-light border me-3">' . h(lang('Record')) . ' #' . (int) $audit_view_filters['id'] . ' <a class="link-secondary ms-1" href="' . h($audit_view_url(array('id' => 0, 'page' => 1))) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>';
 }
 
 if ($audit_view_filters['request'] !== '') {
-    $audit_view_narrowed .= '<span class="badge text-bg-light border me-2">' . h(lang('Request ID')) . ' ' . h($audit_view_filters['request']) . ' <a class="link-secondary ms-1" href="' . h($audit_view_url(array('request' => '', 'page' => 1))) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>';
+    $audit_view_narrowed .= '<span class="badge text-bg-light border me-3">' . h(lang('Request ID')) . ' ' . h($audit_view_filters['request']) . ' <a class="link-secondary ms-1" href="' . h($audit_view_url(array('request' => '', 'page' => 1))) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>';
 }
 
 $audit_view_toolbar = '
-            <form action="view_audit_log.php" method="get" class="disable_shortcut card mb-4">
+            <form action="view_audit_log.php" method="get" class="disable_shortcut card mb-7">
                 <div class="card-body">
                     ' . $audit_view_hidden . '
-                    <div class="row g-2 align-items-end">
-                        <div class="col-6 col-md-4 col-xl-2">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_from" class="form-label small mb-1">' . h(lang('From')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_from" name="from" value="' . h($audit_view_date_value('from')) . '" autocomplete="off" data-pg-date>
                         </div>
-                        <div class="col-6 col-md-4 col-xl-2">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_to" class="form-label small mb-1">' . h(lang('To')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_to" name="to" value="' . h($audit_view_date_value('to')) . '" autocomplete="off" data-pg-date>
                         </div>
-                        <div class="col-6 col-md-4 col-xl-2">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_type" class="form-label small mb-1">' . h(lang('Type')) . '</label>
                             ' . $audit_view_select('type', 'type', 'entity_type') . '
                         </div>
-                        <div class="col-6 col-md-4 col-xl-2">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_action" class="form-label small mb-1">' . h(lang('Action')) . '</label>
                             ' . $audit_view_select('action', 'action', 'action') . '
                         </div>
-                        <div class="col-6 col-md-4 col-xl-2">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_source" class="form-label small mb-1">' . h(lang('Source')) . '</label>
-                            <select class="form-select form-select-sm" id="audit_source" name="source">' . $audit_view_sources . '</select>
+                            <select class="form-control form-control-sm" id="audit_source" name="source">' . $audit_view_sources . '</select>
                         </div>
-                        <div class="col-6 col-md-4 col-xl-2">
+                        <div class="col-6 md:col-4 xl:col-2">
                             <label for="audit_user" class="form-label small mb-1">' . h(lang('User')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_user" name="user" value="' . h($audit_view_filters['user']) . '" maxlength="100" placeholder="' . h(lang('Name or ID')) . '">
                         </div>
                     </div>
-                    <div class="pg-toolbar mt-3 mb-0">
+                    <div class="pg-toolbar mt-5 mb-0">
                         <div class="input-group input-group-sm rounded-pill pg-toolbar-search">
                             <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
                             <input type="search" class="form-control" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
                         </div>
-                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
+                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
                         ' . ($audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-ghost">' . h(lang('Clear filters')) . '</a>' : '') . '
                         <div class="pg-toolbar-grow">' . $audit_view_narrowed . '</div>
-                        <a href="' . h($audit_view_url(array('export' => 'csv', 'page' => 0))) . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>
+                        <a href="' . h($audit_view_url(array('export' => 'csv', 'page' => 0))) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>
                     </div>
                 </div>
             </form>
@@ -304,10 +304,10 @@ $audit_view_pages = '';
 
 if (($audit_view_page > 1) || $audit_view_more) {
     $audit_view_pages = '
-            <nav class="d-flex justify-content-between align-items-center mb-5" aria-label="' . h(lang('Pages')) . '">
-                ' . (($audit_view_page > 1) ? '<a class="btn btn-sm btn-outline-secondary" href="' . h($audit_view_url(array('page' => (($audit_view_page > 2) ? $audit_view_page - 1 : 0)))) . '"><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>' . h(lang('Newer')) . '</a>' : '<span></span>') . '
-                <span class="small text-body-secondary">' . h(lang(array('string' => 'Page {var:1}', 'vars' => array($audit_view_page)))) . '</span>
-                ' . ($audit_view_more ? '<a class="btn btn-sm btn-outline-secondary" href="' . h($audit_view_url(array('page' => $audit_view_page + 1))) . '">' . h(lang('Older')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>' : '<span></span>') . '
+            <nav class="d-flex justify-content-between align-items-center mb-12" aria-label="' . h(lang('Pages')) . '">
+                ' . (($audit_view_page > 1) ? '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($audit_view_url(array('page' => (($audit_view_page > 2) ? $audit_view_page - 1 : 0)))) . '"><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>' . h(lang('Newer')) . '</a>' : '<span></span>') . '
+                <span class="small fg-secondary">' . h(lang(array('string' => 'Page {var:1}', 'vars' => array($audit_view_page)))) . '</span>
+                ' . ($audit_view_more ? '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($audit_view_url(array('page' => $audit_view_page + 1))) . '">' . h(lang('Older')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>' : '<span></span>') . '
             </nav>';
 }
 
@@ -324,7 +324,7 @@ pg_page_shell(array(
     <div class="row">
         <div class="col-12">
             ' . $audit_view_toolbar . '
-            <div class="card mb-3">
+            <div class="card mb-5">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-top mb-0">
                         <thead>
@@ -343,7 +343,7 @@ pg_page_shell(array(
                 </div>
             </div>
             ' . $audit_view_pages . '
-            <p class="small text-body-secondary mb-5">' . h(lang(array('string' => 'A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.', 'vars' => array(pg_format_number($audit_view_limits['export'], 0))))) . '</p>
+            <p class="small fg-secondary mb-12">' . h(lang(array('string' => 'A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.', 'vars' => array(pg_format_number($audit_view_limits['export'], 0))))) . '</p>
         </div>
     </div>
 </main>

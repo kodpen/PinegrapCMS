@@ -119,7 +119,7 @@
      * The sun takes the accent colour where one is defined.
      */
     function _markSvg() {
-        return '<svg class="me-2 flex-shrink-0" width="19" height="19" viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
+        return '<svg class="me-3 flex-shrink-0" width="19" height="19" viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
             '<rect x="1.9" y="2.9" width="16.2" height="14.2" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
             '<circle cx="6.9" cy="7.8" r="1.5" fill="var(--bs-primary, currentColor)"/>' +
             '<path d="M2.6 14.9l4.6-4.5 3 2.9 2.4-2.3 4.2 4.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
@@ -133,12 +133,12 @@
             '<div class="modal fade" id="pgImageEditorModal" tabindex="-1" aria-hidden="true">' +
                 '<div class="modal-dialog modal-xl modal-dialog-centered">' +
                     '<div class="modal-content" style="height:88vh">' +
-                        '<div class="modal-header py-2">' +
+                        '<div class="modal-header py-3">' +
                             '<h6 class="modal-title mb-0 d-flex align-items-center" id="pgImageEditorTitle">' +
                                 _markSvg() +
                                 '<span id="pgImageEditorTitleText">' + t('Pintura Image Editor') + '</span>' +
                             '</h6>' +
-                            '<button type="button" class="btn btn-sm btn-link text-body-secondary p-0 ms-auto me-2 lh-1" ' +
+                            '<button type="button" class="btn btn-sm btn-link fg-secondary p-0 ms-auto me-3 lh-1" ' +
                                 'id="pgImageEditorFull" aria-pressed="false">' +
                                 '<span class="bi bi-arrows-fullscreen" id="pgImageEditorFullIcon"></span>' +
                             '</button>' +
@@ -147,9 +147,9 @@
                         '<div class="modal-body p-0 position-relative" style="overflow:hidden">' +
                             '<div id="pgImageEditorHost" style="width:100%;height:100%"></div>' +
                         '</div>' +
-                        '<div class="modal-footer py-2 justify-content-between" id="pgImageEditorFoot">' +
-                            '<span class="small text-muted" id="pgImageEditorHint"></span>' +
-                            '<span class="d-flex align-items-center gap-2" id="pgImageEditorActions"></span>' +
+                        '<div class="modal-footer py-3 justify-content-between" id="pgImageEditorFoot">' +
+                            '<span class="small fg-secondary" id="pgImageEditorHint"></span>' +
+                            '<span class="d-flex align-items-center gap-3" id="pgImageEditorActions"></span>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -281,13 +281,13 @@
 
         hint.innerHTML =
             '<span class="bi bi-image me-1"></span><strong>' + _esc(name) + '</strong>' +
-            '<span id="pgImageEditorMeta" class="ms-2 opacity-75"></span>' +
-            (isGif ? '<span class="ms-2 text-warning">' +
+            '<span id="pgImageEditorMeta" class="ms-3 opacity-75"></span>' +
+            (isGif ? '<span class="ms-3 fg-warning">' +
                      t('Animated GIF — new file only.') + '</span>' : '');
 
         actions.innerHTML =
-            '<span class="small text-muted me-1">' + t('Save as') + '</span>' +
-            '<select class="form-select form-select-sm" id="pgImageEditorType" style="width:auto">' +
+            '<span class="small fg-secondary me-1">' + t('Save as') + '</span>' +
+            '<select class="form-control form-control-sm" id="pgImageEditorType" style="width:auto">' +
                 (isNew ? '' : '<option value="">' + t('Same format') + '</option>') +
                 '<option value="jpg">jpg</option>' +
                 // png for a new picture: it is the only one of the three that
@@ -297,14 +297,14 @@
                 '<option value="webp">webp</option>' +
             '</select>' +
             (allowCopy
-                ? '<button type="button" class="btn btn-sm btn-primary" id="pgImageEditorSaveCopy" ' +
+                ? '<button type="button" class="btn btn-sm btn-solid theme-primary" id="pgImageEditorSaveCopy" ' +
                   'title="' + t('Keeps the original file and points this page at the copy.') + '">' +
                   '<span class="bi bi-files me-1"></span>' +
                   ((_opts && _opts.saveLabel) ? _esc(_opts.saveLabel) : t('Save as new file')) +
                   '</button>'
                 : '') +
             (allowReplace
-                ? '<button type="button" class="btn btn-sm btn-outline-warning" id="pgImageEditorSaveReplace" ' +
+                ? '<button type="button" class="btn btn-sm btn-outline theme-warning" id="pgImageEditorSaveReplace" ' +
                   'title="' + t('Writes over the file. Every page using it changes.') + '">' +
                   '<span class="bi bi-arrow-repeat me-1"></span>' + t('Replace') + '</button>'
                 : '');
@@ -371,7 +371,7 @@
         actions.querySelectorAll('button, select').forEach(function (b) { b.disabled = on; });
         var hint = document.getElementById('pgImageEditorHint');
         if (on && hint) {
-            hint.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' +
+            hint.innerHTML = '<span class="spinner-border spinner-border-sm me-3"></span>' +
                              t('Saving...');
         }
     }
@@ -420,7 +420,7 @@
 
     function _footError(msg) {
         var hint = document.getElementById('pgImageEditorHint');
-        if (hint) hint.innerHTML = '<span class="text-danger"><span class="bi bi-x-circle me-1"></span>' + _esc(msg) + '</span>';
+        if (hint) hint.innerHTML = '<span class="fg-danger"><span class="bi bi-x-circle me-1"></span>' + _esc(msg) + '</span>';
     }
 
     function _post(mode, type, dataUrl) {
@@ -454,7 +454,7 @@
                     ? res.data.message
                     : (t('The image could not be saved.') + ' (' + res.status + ')');
                 var hint = document.getElementById('pgImageEditorHint');
-                if (hint) hint.innerHTML = '<span class="text-danger">' + msg + '</span>';
+                if (hint) hint.innerHTML = '<span class="fg-danger">' + msg + '</span>';
                 return;
             }
             _didSave = true;
@@ -466,7 +466,7 @@
         .catch(function () {
             _busyState(false);
             var hint = document.getElementById('pgImageEditorHint');
-            if (hint) hint.innerHTML = '<span class="text-danger">' + t('Network error.') + '</span>';
+            if (hint) hint.innerHTML = '<span class="fg-danger">' + t('Network error.') + '</span>';
         });
     }
 

@@ -265,9 +265,9 @@
             applyModal.tabIndex = -1;
             applyModal.innerHTML = '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"><div class="modal-content">'
                 + '<div class="modal-header"><h2 class="modal-title h6" data-ws-tpl-title></h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body"><p class="small text-body-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
+                + '<div class="modal-body"><p class="small fg-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
                 + '<div class="modal-footer"><a class="btn btn-sm btn-ghost me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="modal" data-ws-tpl-cancel></button>'
-                + '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-tpl-ok></button></div></div></div>';
+                + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-tpl-ok></button></div></div></div>';
             document.body.appendChild(applyModal);
         }
 

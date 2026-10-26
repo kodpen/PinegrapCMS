@@ -47,20 +47,20 @@ if (!$_POST) {
                         <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('New Referral Source Information') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
                                             <h5>' . lang('Order Preview Page Display Options') . '</h5>
                                             
-                                            <div class="col-12 col-md-6 my-2">
+                                            <div class="col-12 md:col-6 my-3">
                                                 <label for="name" class="form-label">*' . lang('Referral Source Name') . '</label>
                                                 <input type="text" name="name" class="form-control" maxlength="50" />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
-                                            <div class="col-12 col-sm-2 my-2">
+                                            <div class="col-12 sm:col-2 my-3">
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                                 <div class="input-group number-controls">
                                                     <button class="btn material-icons minus border border-end-0" type="button">remove</button>
@@ -71,9 +71,9 @@ if (!$_POST) {
 
 
                                         </div>
-                                        <div class="row mt-4">
+                                        <div class="row mt-7">
                                             <h5>' . lang('New Referral Source Code for Order Reporting') . '</h5>
-                                            <div class="col-12 col-md-4 my-2">
+                                            <div class="col-12 md:col-4 my-3">
                                                 <label for="code" class="form-label">*' . lang('Referral Source Code') . '</label>
                                                 <input type="text" name="code" class="form-control" maxlength="50" />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
@@ -84,10 +84,10 @@ if (!$_POST) {
                             </div>
                         </div>
                         <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

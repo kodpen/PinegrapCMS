@@ -23,19 +23,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
     <div id="pgset-store" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Store') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $ecommerce_checked . ' class="form-check-input" type="checkbox" id="ecommerce" name="ecommerce"/>
-                                                <label class="form-check-label" for="ecommerce">' . lang('Enable Commerce') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $ecommerce_checked . ' class="" type="checkbox" id="ecommerce" name="ecommerce"/></div>
+                                                <label class="" for="ecommerce">' . lang('Enable Commerce') . '</label>
                                             </div>
                                         </div>
 ' . ($ecommerce_checked === ''
-    ? '<div class="pg-f-xs"><div class="pg-f-xs alert alert-secondary mb-0 py-2 small">' . lang('The store is off. These settings are kept but nothing on the site uses them until Commerce is enabled.') . '</div></div>'
+    ? '<div class="pg-f-xs"><div class="pg-f-xs alert theme-secondary mb-0 py-3 small">' . lang('The store is off. These settings are kept but nothing on the site uses them until Commerce is enabled.') . '</div></div>'
     : '') . '
                                                         <div id="pgsub-store" class="pg-f-xs">
                                                             <label for="ecommerce_next_order_number" class="form-label">' . lang('Next Order Number') . '</label>
@@ -47,35 +47,35 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="product_upload_folder_id" class="form-label">' . lang('Folder for product images') . '</label>
-                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-select">' . select_folder($product_upload_folder_id, 0) . '</select>
+                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . select_folder($product_upload_folder_id, 0) . '</select>
                                                             <div class="form-text">' . lang('The product and product group screens open on this folder when an image is uploaded. It can still be changed while uploading.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_multicurrency_checked . ' class="form-check-input" type="checkbox" id="ecommerce_multicurrency" name="ecommerce_multicurrency" onclick="show_or_hide_ecommerce_payment_gateway()"/>
-                                                                <label class="form-check-label" for="ecommerce_multicurrency">' . lang('Multi-Currency') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_multicurrency_checked . ' class="" type="checkbox" id="ecommerce_multicurrency" name="ecommerce_multicurrency" onclick="show_or_hide_ecommerce_payment_gateway()"/></div>
+                                                                <label class="" for="ecommerce_multicurrency">' . lang('Multi-Currency') . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_show_product_images_checked . ' class="form-check-input" type="checkbox" id="ecommerce_show_product_images" name="ecommerce_show_product_images"/>
-                                                                <label class="form-check-label" for="ecommerce_show_product_images">' . lang('Show Product Images in Tables') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_show_product_images_checked . ' class="" type="checkbox" id="ecommerce_show_product_images" name="ecommerce_show_product_images"/></div>
+                                                                <label class="" for="ecommerce_show_product_images">' . lang('Show Product Images in Tables') . '</label>
                                                             </div>
                                                         </div>
 
                                                         <!-- ── Barcode ── -->
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $barcode_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/>
-                                                                <label class="form-check-label fw-semibold" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $barcode_enabled_checked . ' class="collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/></div>
+                                                                <label class="fw-semibold" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="barcode_settings_row">
                                                                 <div class="popover-arrow" style="position:absolute;left:0px;transform:translate(30px,0px);"></div>
                                                                 <div class="popover-body">
-                                                                    <div class="row g-2">
+                                                                    <div class="row g-3">
                                                                         <div class="pg-f-sm">
                                                                             <label class="form-label">' . lang('Default Barcode Type') . '</label>
-                                                                            <select name="barcode_default_type" id="barcode_default_type" class="form-select form-select-sm">
+                                                                            <select name="barcode_default_type" id="barcode_default_type" class="form-control form-control-sm">
                                                                                 <option value="CODE128"' . ($barcode_default_type === 'CODE128' ? ' selected' : '') . '>Code 128</option>
                                                                                 <option value="EAN13"'   . ($barcode_default_type === 'EAN13'   ? ' selected' : '') . '>EAN-13</option>
                                                                                 <option value="CODE39"'  . ($barcode_default_type === 'CODE39'  ? ' selected' : '') . '>Code 39</option>
@@ -89,23 +89,23 @@ $pg_settings_cards[] = '
                                                         <!-- ── /Barcode ── -->
 
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_tax_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_tax" name="ecommerce_tax" data-bs-target="#ecommerce_tax_row"/>
-                                                                <label class="form-check-label" for="ecommerce_tax">' . lang('Tax') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_tax_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_tax" name="ecommerce_tax" data-bs-target="#ecommerce_tax_row"/></div>
+                                                                <label class="" for="ecommerce_tax">' . lang('Tax') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_tax_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_tax_exempt_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_tax_exempt" name="ecommerce_tax_exempt" data-bs-target="#ecommerce_tax_exempt_row"/>
-                                                                                <label class="form-check-label" for="ecommerce_tax_exempt">' . lang('Allow Tax-Exempt') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_tax_exempt_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_tax_exempt" name="ecommerce_tax_exempt" data-bs-target="#ecommerce_tax_exempt_row"/></div>
+                                                                                <label class="" for="ecommerce_tax_exempt">' . lang('Allow Tax-Exempt') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_tax_exempt_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         <div class="col-12 ">
                                                                                             <label for="ecommerce_tax_exempt_label" class="form-label">' . lang('Tax-Exempt Label') . '</label>
                                                                                             <input type="text" name="ecommerce_tax_exempt_label" id="ecommerce_tax_exempt_label" class="form-control" value="' . h($ecommerce_tax_exempt_label) . '" maxlength="255"/>
@@ -127,53 +127,53 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-shipping" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Shipping') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_shipping_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_shipping" name="ecommerce_shipping" data-bs-target="#ecommerce_shipping_row"/>
-                                                                <label class="form-check-label" for="ecommerce_shipping">' . lang('Shipping') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_shipping_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_shipping" name="ecommerce_shipping" data-bs-target="#ecommerce_shipping_row"/></div>
+                                                                <label class="" for="ecommerce_shipping">' . lang('Shipping') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_shipping_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
                                                                             <label class="form-label">'. lang('Recipient Mode') . '</label>
-                                                                            <div class="form-check">
-                                                                                <input value="single recipient" class="form-check-input" type="radio" id="ecommerce_recipient_mode_single_recipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_single_recipient . '>
-                                                                                <label class="form-check-label" for="ecommerce_recipient_mode_single_recipient">'. lang('Single Recipient') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="single recipient" class="radio" type="radio" id="ecommerce_recipient_mode_single_recipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_single_recipient . '>
+                                                                                <label class="" for="ecommerce_recipient_mode_single_recipient">'. lang('Single Recipient') . '</label>
                                                                             </div>
-                                                                            <div class="form-check">
-                                                                                <input value="multi-recipient" class="form-check-input" type="radio" id="ecommerce_recipient_mode_multirecipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_multirecipient . '>
-                                                                                <label class="form-check-label" for="ecommerce_recipient_mode_multirecipient">'. lang('Multi-Recipient') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="multi-recipient" class="radio" type="radio" id="ecommerce_recipient_mode_multirecipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_multirecipient . '>
+                                                                                <label class="" for="ecommerce_recipient_mode_multirecipient">'. lang('Multi-Recipient') . '</label>
                                                                             </div>
                                                                         </div>
-                                                                        <div class="col-12 "><h6 class="text-muted mb-0">' . lang('USPS') . '</h6></div>
+                                                                        <div class="col-12 "><h6 class="fg-secondary mb-0">' . lang('USPS') . '</h6></div>
                                                                         ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set) . '
                                                                         ' . pg_carrier_api_test_button('usps') . '
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_address_verification_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_address_verification" name="ecommerce_address_verification" data-bs-target="#ecommerce_address_verification_row"/>
-                                                                                <label class="form-check-label" for="ecommerce_address_verification">' . lang('Verify US Addresses') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_address_verification_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_address_verification" name="ecommerce_address_verification" data-bs-target="#ecommerce_address_verification_row"/></div>
+                                                                                <label class="" for="ecommerce_address_verification">' . lang('Verify US Addresses') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_address_verification_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
-                                                                                        <div class="alert alert-primary">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
+                                                                                   <div class="row gy-5">
+                                                                                        <div class="alert theme-primary">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <label class="form-label">'. lang('Enforcement') . '</label>
-                                                                                            <div class="form-check">
-                                                                                                <input value="warning" class="form-check-input" type="radio" id="ecommerce_address_verification_enforcement_type_warning" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_warning_checked . '>
-                                                                                                <label class="form-check-label" for="ecommerce_address_verification_enforcement_type_warning">'. lang('Warning') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="warning" class="radio" type="radio" id="ecommerce_address_verification_enforcement_type_warning" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_warning_checked . '>
+                                                                                                <label class="" for="ecommerce_address_verification_enforcement_type_warning">'. lang('Warning') . '</label>
                                                                                             </div>
-                                                                                            <div class="form-check">
-                                                                                                <input value="error" class="form-check-input" type="radio" id="ecommerce_address_verification_enforcement_type_error" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_error_checked . '>
-                                                                                                <label class="form-check-label" for="ecommerce_address_verification_enforcement_type_error">'. lang('Error') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="error" class="radio" type="radio" id="ecommerce_address_verification_enforcement_type_error" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_error_checked . '>
+                                                                                                <label class="" for="ecommerce_address_verification_enforcement_type_error">'. lang('Error') . '</label>
                                                                                             </div>
                                                                                         </div>
                                                                                     </div>
@@ -181,14 +181,14 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ups_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ups" name="ups" data-bs-target="#ups_row"/>
-                                                                                <label class="form-check-label" for="ups">' . lang('UPS') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ups_checked . ' class="collapse-switcher" type="checkbox" id="ups" name="ups" data-bs-target="#ups_row"/></div>
+                                                                                <label class="" for="ups">' . lang('UPS') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ups_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         ' . pg_carrier_api_settings_fields('ups', $ups_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ups_account" class="form-label">' . lang('Account Number') . '</label>
@@ -201,14 +201,14 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $fedex_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="fedex" name="fedex" data-bs-target="#fedex_row"/>
-                                                                                <label class="form-check-label" for="fedex">' . lang('FedEx') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $fedex_checked . ' class="collapse-switcher" type="checkbox" id="fedex" name="fedex" data-bs-target="#fedex_row"/></div>
+                                                                                <label class="" for="fedex">' . lang('FedEx') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="fedex_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         ' . pg_carrier_api_settings_fields('fedex', $fedex_legacy_set) . '
                                                                                         <div class="pg-f-md">
                                                                                             <label for="fedex_account" class="form-label">' . lang('Account Number') . '</label>
@@ -247,20 +247,20 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-giftcards" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Gift Cards & Rewards') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_gift_card_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_gift_card" name="ecommerce_gift_card" data-bs-target="#ecommerce_gift_card_row"/>
-                                                                <label class="form-check-label" for="ecommerce_gift_card">' . lang('Accept Gift Cards') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_gift_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_gift_card" name="ecommerce_gift_card" data-bs-target="#ecommerce_gift_card_row"/></div>
+                                                                <label class="" for="ecommerce_gift_card">' . lang('Accept Gift Cards') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_gift_card_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_gift_card_validity_days" class="form-label">' . lang('Validity Length') . '</label>
                                                                             <div class="input-group">
@@ -270,15 +270,15 @@ $pg_settings_cards[] = '
                                                                             <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_givex_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_givex" name="ecommerce_givex" data-bs-target="#ecommerce_givex_row"/>
-                                                                                <label class="form-check-label" for="ecommerce_givex">' . lang('Accept Givex Cards') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_givex_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_givex" name="ecommerce_givex" data-bs-target="#ecommerce_givex_row"/></div>
+                                                                                <label class="" for="ecommerce_givex">' . lang('Accept Givex Cards') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_givex_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
-                                                                                        <div class="alert alert-primary">' . lang('Requires Givex service') . '</div>
+                                                                                   <div class="row gy-5">
+                                                                                        <div class="alert theme-primary">' . lang('Requires Givex service') . '</div>
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ecommerce_givex_primary_hostname" class="form-label">' . lang('Primary Hostname') . '</label>
                                                                                             <input type="text" name="ecommerce_givex_primary_hostname" id="ecommerce_givex_primary_hostname" class="form-control" value="' . h($ecommerce_givex_primary_hostname) . '" maxlength="100"/>
@@ -304,14 +304,14 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_reward_program_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/>
-                                                                <label class="form-check-label" for="ecommerce_reward_program">' . lang('Enable Reward Program') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/></div>
+                                                                <label class="" for="ecommerce_reward_program">' . lang('Enable Reward Program') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_reward_program_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_reward_program_points" class="form-label">' . lang('Goal') . '</label>
                                                                             <div class="input-group">
@@ -320,14 +320,14 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_reward_program_membership_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_reward_program_membership" name="ecommerce_reward_program_membership" data-bs-target="#ecommerce_reward_program_membership_row"/>
-                                                                                <label class="form-check-label" for="ecommerce_reward_program_membership">' . lang('Grant Membership') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_membership_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program_membership" name="ecommerce_reward_program_membership" data-bs-target="#ecommerce_reward_program_membership_row"/></div>
+                                                                                <label class="" for="ecommerce_reward_program_membership">' . lang('Grant Membership') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_reward_program_membership_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         <div class="pg-f-xs">
                                                                                             <label for="ecommerce_reward_program_membership_days" class="form-label">' . lang('Membership Length') . '</label>
                                                                                             <div class="input-group">
@@ -341,14 +341,14 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_reward_program_email_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_reward_program_email" name="ecommerce_reward_program_email" data-bs-target="#ecommerce_reward_program_email_row"/>
-                                                                                <label class="form-check-label" for="ecommerce_reward_program_email">' . lang('Send E-mail') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_reward_program_email_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program_email" name="ecommerce_reward_program_email" data-bs-target="#ecommerce_reward_program_email_row"/></div>
+                                                                                <label class="" for="ecommerce_reward_program_email">' . lang('Send E-mail') . '</label>
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_reward_program_email_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
                                                                                             <input type="text" value="' . h($ecommerce_reward_program_email_bcc_email_address) . '" class="form-control text-end" id="ecommerce_reward_program_email_bcc_email_address" name="ecommerce_reward_program_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
@@ -359,7 +359,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
-                                                                                            <select class="form-select" id="ecommerce_reward_program_email_page_id" name="ecommerce_reward_program_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($ecommerce_reward_program_email_page_id) . '</select>
+                                                                                            <select class="form-control" id="ecommerce_reward_program_email_page_id" name="ecommerce_reward_program_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page($ecommerce_reward_program_email_page_id) . '</select>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -378,44 +378,44 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-invoice" class="pg-set-card' . (pg_edoc_settings_shown() ? '' : ' d-none') . '">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('E-Invoice') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . (($output_erp_edoc_options !== '') ? '
+                <div class="row gy-5">' . (($output_erp_edoc_options !== '') ? '
                     <div class="col-12">
-                        <div class="form-label">' . lang('e-Document Provider') . ' <span class="text-body-secondary small">(' . lang('ERP') . ')</span></div>
-                        <div class="form-text mb-2">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
+                        <div class="form-label">' . lang('e-Document Provider') . ' <span class="fg-secondary small">(' . lang('ERP') . ')</span></div>
+                        <div class="form-text mb-3">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
                         ' . $output_erp_edoc_options . '
-                        <button type="button" class="btn btn-sm btn-outline-secondary pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug me-2"></i>' . lang('Test the connection') . '</button>
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug me-3"></i>' . lang('Test the connection') . '</button>
                         <div class="form-text">' . lang('Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.') . '</div>
-                        <div class="pg-edoc-test-result mt-2"></div>
+                        <div class="pg-edoc-test-result mt-3"></div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_edoc_autosend_checked . ' class="form-check-input" type="checkbox" id="erp_edoc_autosend" name="erp_edoc_autosend" />
-                            <label class="form-check-label" for="erp_edoc_autosend">' . lang('Hand the document to GİB in the same step') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_edoc_autosend_checked . ' class="" type="checkbox" id="erp_edoc_autosend" name="erp_edoc_autosend" /></div>
+                            <label class="" for="erp_edoc_autosend">' . lang('Hand the document to GİB in the same step') . '</label>
                         </div>
                         <div class="form-text">' . lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.') . '</div>
                     </div>
                     <div class="col-12"><hr class="my-1"></div>' : '') . '
                     <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $enable_parasut_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/>
-                                                                <label class="form-check-label" for="enable_parasut">' . lang('Enable Parasut Configuration') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $enable_parasut_checked . ' class="collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/></div>
+                                                                <label class="" for="enable_parasut">' . lang('Enable Parasut Configuration') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_parasut_configration_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                             <div class="popover-body">
-                                                               <div class="row gy-3">
-                                                                    <div class="col-12 "><h6 class="text-muted">' . lang('API Connection') . '</h6></div>
+                                                               <div class="row gy-5">
+                                                                    <div class="col-12 "><h6 class="fg-secondary">' . lang('API Connection') . '</h6></div>
                                                                     <div class="col-12">
-                                                                        <div class="alert alert-' . h($parasut_connection_tone) . ' py-2 small mb-0 pg-parasut-status d-flex align-items-center gap-2"><i class="bi ' . (($parasut_connection_tone === 'success') ? 'bi-check-circle' : 'bi-plug') . '" aria-hidden="true"></i><span>' . h($parasut_connection_text) . '</span></div>
+                                                                        <div class="alert alert-' . h($parasut_connection_tone) . ' py-3 small mb-0 pg-parasut-status d-flex align-items-center gap-3"><i class="bi ' . (($parasut_connection_tone === 'success') ? 'bi-check-circle' : 'bi-plug') . '" aria-hidden="true"></i><span>' . h($parasut_connection_text) . '</span></div>
                                                                     </div>
                                                                     <div class="col-12">
                                                                         <details class="pg-parasut-steps"' . ($parasut_connection_connected ? '' : ' open') . '>
                                                                             <summary class="form-label">' . h($parasut_connection_connected ? lang('Authorize again or connect another account') : lang('Connect in three steps')) . '</summary>
-                                                                            <div class="row gy-3 mt-0">
+                                                                            <div class="row gy-5 mt-0">
                                                                                 <div class="col-12"><div class="form-text">' . lang('1. Enter the client id and secret of the API application; Paraşüt support issues them for your account.') . '</div></div>
                                                                                 <div class="pg-f-md">
                                                                                     <label class="form-label" for="parasut_client_id">' . lang('Client ID') . '</label>
@@ -427,17 +427,17 @@ $pg_settings_cards[] = '
                                                                                     <div class="form-text">' . h($parasut_secret_help) . '</div>
                                                                                 </div>
                                                                                 <div class="col-12">
-                                                                                    <div class="form-text mb-2">' . lang('2. Open the authorization page, sign in to Paraşüt and allow Pinegrap; Paraşüt then shows a code.') . '</div>
-                                                                                    <a class="btn btn-sm btn-outline-primary pg-parasut-authorize' . (($parasut_authorize_url === '') ? ' disabled' : '') . '" href="' . h($parasut_authorize_url) . '" target="_blank" rel="noopener" data-pg-base="' . h(PARASUT_API_BASE . '/oauth/authorize') . '"><i class="bi bi-box-arrow-up-right me-2"></i>' . lang('Open the Paraşüt authorization page') . '</a>
+                                                                                    <div class="form-text mb-3">' . lang('2. Open the authorization page, sign in to Paraşüt and allow Pinegrap; Paraşüt then shows a code.') . '</div>
+                                                                                    <a class="btn btn-sm btn-outline theme-primary pg-parasut-authorize' . (($parasut_authorize_url === '') ? ' disabled' : '') . '" href="' . h($parasut_authorize_url) . '" target="_blank" rel="noopener" data-pg-base="' . h(PARASUT_API_BASE . '/oauth/authorize') . '"><i class="bi bi-box-arrow-up-right me-3"></i>' . lang('Open the Paraşüt authorization page') . '</a>
                                                                                 </div>
                                                                                 <div class="col-12">
                                                                                     <label class="form-label" for="parasut_auth_code">' . lang('3. Paste the code and press Connect') . '</label>
                                                                                     <div class="input-group pg-f-lg">
                                                                                         <input type="text" class="form-control" id="parasut_auth_code" name="parasut_auth_code" value="" autocomplete="off" spellcheck="false" placeholder="' . h(lang('Authorization code')) . '" />
-                                                                                        <button type="button" class="btn btn-primary pg-edoc-test" data-pg-fields="parasut_" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/parasut_connect.php"><i class="bi bi-plug me-2"></i>' . lang('Connect') . '</button>
+                                                                                        <button type="button" class="btn btn-solid theme-primary pg-edoc-test" data-pg-fields="parasut_" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/parasut_connect.php"><i class="bi bi-plug me-3"></i>' . lang('Connect') . '</button>
                                                                                     </div>
                                                                                     <div class="form-text">' . lang('A code works once and for a few minutes. Saving the page with a code in the box connects too. No Paraşüt password is stored this way.') . '</div>
-                                                                                    <div class="pg-edoc-test-result mt-2"></div>
+                                                                                    <div class="pg-edoc-test-result mt-3"></div>
                                                                                 </div>
                                                                             </div>
                                                                         </details>
@@ -445,9 +445,9 @@ $pg_settings_cards[] = '
                                                                     <div class="col-12">
                                                                         <details>
                                                                             <summary class="form-text">' . lang('Advanced: company number, user name and password') . '</summary>
-                                                                            <div class="row gy-3 mt-0">
+                                                                            <div class="row gy-5 mt-0">
                                                                                 <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_company_id">' . lang('Company ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')</span></label>
+                                                                                    <label class="form-label" for="parasut_company_id">' . lang('Company ID') . ' <span class="fg-secondary small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')</span></label>
                                                                                     <input type="text" class="form-control" id="parasut_company_id" name="parasut_company_id" value="' . h($parasut_company_id) . '" autocomplete="off" />
                                                                                     <div class="form-text">' . lang('Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.') . '</div>
                                                                                 </div>
@@ -464,18 +464,18 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                         </details>
                                                                     </div>
-                                                                    <div class="col-12 "><h6 class="text-muted">' . lang('Invoice Settings') . '</h6></div>
+                                                                    <div class="col-12 "><h6 class="fg-secondary">' . lang('Invoice Settings') . '</h6></div>
                                                                     <div class="pg-f-md">
                                                                         <label class="form-label" for="parasut_tc_in_field">' . lang('Select field to used as Republic of Turkey identification number') . '</label>
-                                                                        <select class="form-select" id="parasut_tc_in_field" name="parasut_tc_in_field">' . $parasut_tc_in_field_options . '</select>
+                                                                        <select class="form-control" id="parasut_tc_in_field" name="parasut_tc_in_field">' . $parasut_tc_in_field_options . '</select>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
+                                                                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="fg-secondary small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_default_product_id" name="parasut_default_product_id" value="' . h($parasut_default_product_id) . '" autocomplete="off" />
                                                                         <div class="form-text">' . lang('Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.') . '</div>
                                                                     </div>
                                                                     <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="text-muted small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
+                                                                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="fg-secondary small">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
                                                                         <input type="text" class="form-control" id="parasut_default_warehouse_id" name="parasut_default_warehouse_id" value="' . h($parasut_default_warehouse_id) . '" autocomplete="off" />
                                                                         <div class="form-text">' . lang('Fetched automatically from Parasut on first use. Override here if you have multiple warehouses.') . '</div>
                                                                     </div>
@@ -492,15 +492,15 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-erp" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('ERP') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_enabled_checked . ' class="form-check-input" type="checkbox" id="erp_enabled" name="erp_enabled" />
-                            <label class="form-check-label" for="erp_enabled">' . lang('Enable the ERP module') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_enabled_checked . ' class="" type="checkbox" id="erp_enabled" name="erp_enabled" /></div>
+                            <label class="" for="erp_enabled">' . lang('Enable the ERP module') . '</label>
                         </div>
                         <div class="form-text">' . lang('Adds accounts, cash and bank, invoices and delivery notes to the panel. Switching it off hides the screens; nothing that was entered is deleted.') . '</div>
                     </div>
@@ -511,7 +511,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_number_style">' . lang('Document numbers') . '</label>
-                        <select class="form-select" id="erp_number_style" name="erp_number_style">' . $erp_number_options . '</select>
+                        <select class="form-control" id="erp_number_style" name="erp_number_style">' . $erp_number_options . '</select>
                         <div class="form-text">' . lang('Applies to numbers taken from now on; documents already issued keep theirs. Changing it never repeats a number.') . '</div>
                     </div>
                     <div class="pg-f-md">
@@ -549,12 +549,12 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
-                        <select class="form-select" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
+                        <select class="form-control" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
                         <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
                     </div>' . ($erp_auto_invoice_ready ? '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_auto_invoice_on">' . lang('The invoice of a web order') . '</label>
-                        <select class="form-select" id="erp_auto_invoice_on" name="erp_auto_invoice_on">
+                        <select class="form-control" id="erp_auto_invoice_on" name="erp_auto_invoice_on">
                             <option value="off"' . (($erp_auto_invoice_on === 'off') ? ' selected' : '') . '>' . lang('Is issued from the order screen') . '</option>
                             <option value="order_paid"' . (($erp_auto_invoice_on === 'order_paid') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is paid') . '</option>
                             <option value="order_shipped"' . (($erp_auto_invoice_on === 'order_shipped') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is shipped') . '</option>
@@ -567,9 +567,9 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('A smaller order waits for Issue the Invoice on its screen. The amount is the whole sale the invoice states, a gift card included. 0 invoices every order.') . '</div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_auto_invoice_tax_number_only_checked . ' class="form-check-input" type="checkbox" id="erp_auto_invoice_tax_number_only" name="erp_auto_invoice_tax_number_only" />
-                            <label class="form-check-label" for="erp_auto_invoice_tax_number_only">' . lang('Only for buyers with a tax number') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_auto_invoice_tax_number_only_checked . ' class="" type="checkbox" id="erp_auto_invoice_tax_number_only" name="erp_auto_invoice_tax_number_only" /></div>
+                            <label class="" for="erp_auto_invoice_tax_number_only">' . lang('Only for buyers with a tax number') . '</label>
                         </div>
                         <div class="form-text">' . ((pg_erp_store_country() === 'TR')
                             ? lang('Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.')
@@ -577,23 +577,23 @@ $pg_settings_cards[] = '
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
-                        <select class="form-select" id="local_sale_prices" name="local_sale_prices">
+                        <select class="form-control" id="local_sale_prices" name="local_sale_prices">
                             <option value="gross"' . (($local_sale_prices === 'gross') ? ' selected' : '') . '>' . lang('With tax included (VAT countries)') . '</option>
                             <option value="net"' . (($local_sale_prices === 'net') ? ' selected' : '') . '>' . lang('Without tax, added at the total (sales-tax countries)') . '</option>
                         </select>
                         <div class="form-text">' . lang('Only what the local sale screen shows changes; product prices are kept without tax and the amount charged is the same.') . '</div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_stock_documents_checked . ' class="form-check-input" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" />
-                            <label class="form-check-label" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_stock_documents_checked . ' class="" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" /></div>
+                            <label class="" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
                         </div>
                         <div class="form-text">' . lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.') . '</div>
                     </div>' . ($erp_invoice_mail_ready ? '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_invoice_mail_auto_checked . ' class="form-check-input" type="checkbox" id="erp_invoice_mail_auto" name="erp_invoice_mail_auto" />
-                            <label class="form-check-label" for="erp_invoice_mail_auto">' . lang('E-mail each issued invoice to the customer') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_invoice_mail_auto_checked . ' class="" type="checkbox" id="erp_invoice_mail_auto" name="erp_invoice_mail_auto" /></div>
+                            <label class="" for="erp_invoice_mail_auto">' . lang('E-mail each issued invoice to the customer') . '</label>
                         </div>
                         <div class="form-text">' . lang('The invoice goes with its PDF to the account\'s invoice e-mail address (or its main address) when it is issued. Where e-documents are in use it goes once GİB has accepted it, with the official copy. Off for a single account on its card; any invoice can also be sent from its own screen.') . '</div>
                     </div>
@@ -604,29 +604,29 @@ $pg_settings_cards[] = '
                     </div>' : '') . ($erp_credit_ready ? '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_credit_limit_mode">' . lang('A sale past a customer\'s credit limit') . '</label>
-                        <select class="form-select" id="erp_credit_limit_mode" name="erp_credit_limit_mode">
+                        <select class="form-control" id="erp_credit_limit_mode" name="erp_credit_limit_mode">
                             <option value="warn"' . (($erp_credit_limit_mode === 'warn') ? ' selected' : '') . '>' . lang('Is issued, with a warning') . '</option>
                             <option value="block"' . (($erp_credit_limit_mode === 'block') ? ' selected' : '') . '>' . lang('Is refused until a payment comes in') . '</option>
                         </select>
                         <div class="form-text">' . lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.') . '</div>
                     </div>' : '') . ($erp_storefront_prices_ready ? '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_storefront_account_prices_checked . ' class="form-check-input" type="checkbox" id="erp_storefront_account_prices" name="erp_storefront_account_prices" />
-                            <label class="form-check-label" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_storefront_account_prices_checked . ' class="" type="checkbox" id="erp_storefront_account_prices" name="erp_storefront_account_prices" /></div>
+                            <label class="" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
                         </div>
                         <div class="form-text">' . lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.') . '</div>
                     </div>' : '') . ($erp_open_account_ready ? '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_open_account_payment_checked . ' class="form-check-input" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" />
-                            <label class="form-check-label" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_open_account_payment_checked . ' class="" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" /></div>
+                            <label class="" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
                         </div>
                         <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order counts as paid for an invoice issued on its own and is never cancelled for an unpaid transfer.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>
-                        <select class="form-select" id="erp_shipping_tax" name="erp_shipping_tax">
+                        <select class="form-control" id="erp_shipping_tax" name="erp_shipping_tax">
                             <option value=""' . (($erp_shipping_tax === '') ? ' selected' : '') . '>' . lang('By the store\'s country') . '</option>
                             <option value="included"' . (($erp_shipping_tax === 'included') ? ' selected' : '') . '>' . lang('Included in the amount charged, at the rate of the goods') . '</option>
                             <option value="none"' . (($erp_shipping_tax === 'none') ? ' selected' : '') . '>' . lang('Not taxed') . '</option>
@@ -634,24 +634,24 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
                     </div>
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $erp_fx_enabled_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" />
-                            <label class="form-check-label" for="erp_fx_enabled">' . lang('Enable foreign-currency invoices and accounts') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_fx_enabled_checked . ' class="collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" /></div>
+                            <label class="" for="erp_fx_enabled">' . lang('Enable foreign-currency invoices and accounts') . '</label>
                         </div>
                         <div class="form-text">' . lang('Off, everything in the ERP is in the store\'s base currency. On, an invoice, an account or a till may be kept in one of the currencies below; amounts stay in that currency and the day\'s exchange rate converts them for the ledger.') . '</div>
                         <div class="collapse popover fade bs-popover-bottom p-0 " id="erp_fx_row">
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                             <div class="popover-body">
-                                <div class="row gy-3">
+                                <div class="row gy-5">
                                     <div class="col-12">
                                         <div class="form-label">' . lang('Currencies allowed on documents') . '</div>
                                         ' . $output_erp_fx_currencies . '
                                         <div class="form-text">' . lang('The base currency is always allowed. Daily rates for these come from the Exchange rates job; run Update Exchange Rates on the currencies screen to fetch today\'s.') . '</div>
                                     </div>
                                     <div class="col-12">
-                                        <div class="form-check form-switch">
-                                            <input value="1"' . $erp_fx_auto_diff_checked . ' class="form-check-input" type="checkbox" id="erp_fx_auto_diff" name="erp_fx_auto_diff" />
-                                            <label class="form-check-label" for="erp_fx_auto_diff">' . lang('Post the exchange difference automatically when a foreign-currency invoice is paid off') . '</label>
+                                        <div class="form-field">
+                                            <div class="switch"><input value="1"' . $erp_fx_auto_diff_checked . ' class="" type="checkbox" id="erp_fx_auto_diff" name="erp_fx_auto_diff" /></div>
+                                            <label class="" for="erp_fx_auto_diff">' . lang('Post the exchange difference automatically when a foreign-currency invoice is paid off') . '</label>
                                         </div>
                                         <div class="form-text">' . lang('The invoice went on the account at the rate of its issue date and the receipts came off at the rate of their own day. When the invoice is paid, one movement in the base currency settles the gap so the account closes to zero.') . '</div>
                                     </div>
@@ -661,41 +661,41 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="col-12">
                         <div class="form-label">' . lang('Overdue receivable reminders') . '</div>
-                        <div class="form-text mb-2">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
-                        <div class="row gy-3">
-                            <div class="col-12 col-md-4">
+                        <div class="form-text mb-3">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
+                        <div class="row gy-5">
+                            <div class="col-12 md:col-4">
                                 <label class="form-label" for="erp_overdue_notify_days">' . lang('Reminder threshold (days)') . '</label>
                                 <input type="number" class="form-control" id="erp_overdue_notify_days" name="erp_overdue_notify_days" value="' . (int) $erp_overdue_notify_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
                             </div>
-                            <div class="col-6 col-md-4">
+                            <div class="col-6 md:col-4">
                                 <label class="form-label" for="erp_overdue_notify_frequency">' . lang('Frequency') . '</label>
-                                <select class="form-select" id="erp_overdue_notify_frequency" name="erp_overdue_notify_frequency">
+                                <select class="form-control" id="erp_overdue_notify_frequency" name="erp_overdue_notify_frequency">
                                     <option value="daily"' . (($erp_overdue_notify_frequency === 'daily') ? ' selected="selected"' : '') . '>' . lang('Daily') . '</option>
                                     <option value="weekly"' . (($erp_overdue_notify_frequency === 'weekly') ? ' selected="selected"' : '') . '>' . lang('Weekly') . '</option>
                                 </select>
                             </div>
-                            <div class="col-6 col-md-4">
+                            <div class="col-6 md:col-4">
                                 <label class="form-label" for="erp_overdue_notify_hour">' . lang('Hour') . '</label>
-                                <select class="form-select" id="erp_overdue_notify_hour" name="erp_overdue_notify_hour">' . $output_erp_overdue_hours . '</select>
+                                <select class="form-control" id="erp_overdue_notify_hour" name="erp_overdue_notify_hour">' . $output_erp_overdue_hours . '</select>
                             </div>
                             <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_overdue_notify_panel_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_panel" name="erp_overdue_notify_panel" />
-                                    <label class="form-check-label" for="erp_overdue_notify_panel">' . lang('Panel notification') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_overdue_notify_panel_checked . ' class="" type="checkbox" id="erp_overdue_notify_panel" name="erp_overdue_notify_panel" /></div>
+                                    <label class="" for="erp_overdue_notify_panel">' . lang('Panel notification') . '</label>
                                 </div>
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_overdue_notify_email_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_email" name="erp_overdue_notify_email" />
-                                    <label class="form-check-label" for="erp_overdue_notify_email">' . lang('E-mail') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_overdue_notify_email_checked . ' class="" type="checkbox" id="erp_overdue_notify_email" name="erp_overdue_notify_email" /></div>
+                                    <label class="" for="erp_overdue_notify_email">' . lang('E-mail') . '</label>
                                 </div>
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_overdue_notify_push_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_push" name="erp_overdue_notify_push" />
-                                    <label class="form-check-label" for="erp_overdue_notify_push">' . lang('Device notification') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_overdue_notify_push_checked . ' class="" type="checkbox" id="erp_overdue_notify_push" name="erp_overdue_notify_push" /></div>
+                                    <label class="" for="erp_overdue_notify_push">' . lang('Device notification') . '</label>
                                 </div>' . $output_erp_overdue_push_hint . '
                             </div>
                             <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_overdue_notify_customer_checked . ' class="form-check-input" type="checkbox" id="erp_overdue_notify_customer" name="erp_overdue_notify_customer" />
-                                    <label class="form-check-label" for="erp_overdue_notify_customer">' . lang('Reminder e-mail to the customer') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_overdue_notify_customer_checked . ' class="" type="checkbox" id="erp_overdue_notify_customer" name="erp_overdue_notify_customer" /></div>
+                                    <label class="" for="erp_overdue_notify_customer">' . lang('Reminder e-mail to the customer') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('When a customer\'s invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.') . '</div>
                             </div>
@@ -708,33 +708,33 @@ $pg_settings_cards[] = '
                     </div>' . ($erp_alerts_ready ? '
                     <div class="col-12">
                         <div class="form-label">' . lang('Notices as they happen') . '</div>
-                        <div class="form-text mb-2">' . lang('On the panel bell and on the devices that subscribed to notifications. The person who recorded it is not told.') . '</div>
-                        <div class="row gy-2 align-items-end">
-                            <div class="col-12 col-md-7">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_notify_collections_checked . ' class="form-check-input" type="checkbox" id="erp_notify_collections" name="erp_notify_collections" />
-                                    <label class="form-check-label" for="erp_notify_collections">' . lang('A collection is recorded') . '</label>
+                        <div class="form-text mb-3">' . lang('On the panel bell and on the devices that subscribed to notifications. The person who recorded it is not told.') . '</div>
+                        <div class="row gy-3 align-items-end">
+                            <div class="col-12 md:col-7">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_notify_collections_checked . ' class="" type="checkbox" id="erp_notify_collections" name="erp_notify_collections" /></div>
+                                    <label class="" for="erp_notify_collections">' . lang('A collection is recorded') . '</label>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-5">
+                            <div class="col-12 md:col-5">
                                 <label class="form-label" for="erp_notify_collection_min">' . h(lang(array('string' => 'From this amount up ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
                                 <input type="number" class="form-control" id="erp_notify_collection_min" name="erp_notify_collection_min" value="' . (int) $erp_notify_collection_min . '" min="0" max="100000000" step="1" inputmode="numeric" autocomplete="off" />
                             </div>
                             <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_notify_low_stock_checked . ' class="form-check-input" type="checkbox" id="erp_notify_low_stock" name="erp_notify_low_stock" />
-                                    <label class="form-check-label" for="erp_notify_low_stock">' . lang('A product drops to its minimum stock') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_notify_low_stock_checked . ' class="" type="checkbox" id="erp_notify_low_stock" name="erp_notify_low_stock" /></div>
+                                    <label class="" for="erp_notify_low_stock">' . lang('A product drops to its minimum stock') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('Checked every hour; each product is announced once each time it drops.') . '</div>' . $output_erp_overdue_push_hint . '
                             </div>' . ($erp_quote_alert_ready ? '
-                            <div class="col-12 col-md-7">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $erp_notify_quote_expiry_checked . ' class="form-check-input" type="checkbox" id="erp_notify_quote_expiry" name="erp_notify_quote_expiry" />
-                                    <label class="form-check-label" for="erp_notify_quote_expiry">' . lang('Announce quotes about to expire') . '</label>
+                            <div class="col-12 md:col-7">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_notify_quote_expiry_checked . ' class="" type="checkbox" id="erp_notify_quote_expiry" name="erp_notify_quote_expiry" /></div>
+                                    <label class="" for="erp_notify_quote_expiry">' . lang('Announce quotes about to expire') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('Checked every hour; each open quote is announced once, and again after it is opened again or its date changes.') . '</div>
                             </div>
-                            <div class="col-12 col-md-5">
+                            <div class="col-12 md:col-5">
                                 <label class="form-label" for="erp_notify_quote_expiry_days">' . lang('Days before it expires') . '</label>
                                 <input type="number" class="form-control pg-f-xs" id="erp_notify_quote_expiry_days" name="erp_notify_quote_expiry_days" value="' . (int) $erp_notify_quote_expiry_days . '" min="1" max="30" step="1" inputmode="numeric" autocomplete="off" />
                             </div>' : '') . '
@@ -749,65 +749,65 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-payments" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Payment Methods') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_credit_debit_card_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_credit_debit_card" name="ecommerce_credit_debit_card" data-bs-target="#ecommerce_credit_debit_card_row"/>
-                                                                <label class="form-check-label" for="ecommerce_credit_debit_card">' . lang('Credit/Debit Card') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_credit_debit_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_credit_debit_card" name="ecommerce_credit_debit_card" data-bs-target="#ecommerce_credit_debit_card_row"/></div>
+                                                                <label class="" for="ecommerce_credit_debit_card">' . lang('Credit/Debit Card') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_credit_debit_card_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
                                                                             <label class="form-label">'. lang('Accepted Cards') . '</label>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_american_express_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_american_express" name="ecommerce_american_express"/>
-                                                                                <label class="form-check-label" for="ecommerce_american_express">' . lang('American Express') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_american_express_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_american_express" name="ecommerce_american_express"/></div>
+                                                                                <label class="" for="ecommerce_american_express">' . lang('American Express') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_diners_club_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_diners_club" name="ecommerce_diners_club"/>
-                                                                                <label class="form-check-label" for="ecommerce_diners_club">' . lang('Diners Club') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_diners_club_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_diners_club" name="ecommerce_diners_club"/></div>
+                                                                                <label class="" for="ecommerce_diners_club">' . lang('Diners Club') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_discover_card_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_discover_card" name="ecommerce_discover_card"/>
-                                                                                <label class="form-check-label" for="ecommerce_discover_card">' . lang('Discover Card') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_discover_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_discover_card" name="ecommerce_discover_card"/></div>
+                                                                                <label class="" for="ecommerce_discover_card">' . lang('Discover Card') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_mastercard_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_mastercard" name="ecommerce_mastercard"/>
-                                                                                <label class="form-check-label" for="ecommerce_mastercard">' . lang('MasterCard') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_mastercard_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_mastercard" name="ecommerce_mastercard"/></div>
+                                                                                <label class="" for="ecommerce_mastercard">' . lang('MasterCard') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_visa_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_visa" name="ecommerce_visa"/>
-                                                                                <label class="form-check-label" for="ecommerce_visa">' . lang('Visa') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_visa_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_visa" name="ecommerce_visa"/></div>
+                                                                                <label class="" for="ecommerce_visa">' . lang('Visa') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_troy_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_troy" name="ecommerce_troy"/>
-                                                                                <label class="form-check-label" for="ecommerce_troy">' . lang('Troy') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_troy_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_troy" name="ecommerce_troy"/></div>
+                                                                                <label class="" for="ecommerce_troy">' . lang('Troy') . '</label>
                                                                             </div>
                                                                         </div>
 
                                                                         <div class="col-12 ">
-                                                                           <div class="row gy-3">
+                                                                           <div class="row gy-5">
                                                                                 <div class="pg-f-sm">
                                                                                     <label class="form-label" for="ecommerce_payment_gateway">' . lang('Payment Gateway') . '</label>
-                                                                                    <select class="form-select collapse-if-selected " name="ecommerce_payment_gateway" id="ecommerce_payment_gateway" onchange="show_or_hide_ecommerce_payment_gateway()" data-bs-target="#ecommerce_payment_gateway_row">
+                                                                                    <select class="form-control collapse-if-selected " name="ecommerce_payment_gateway" id="ecommerce_payment_gateway" onchange="show_or_hide_ecommerce_payment_gateway()" data-bs-target="#ecommerce_payment_gateway_row">
                                                                                         <option value="">-' . lang('None') . '-</option>
                                                                                         <option value="Authorize.Net"' . $ecommerce_payment_gateway_authorizenet . '>Authorize.Net</option>
                                                                                         <option value="ClearCommerce"' . $ecommerce_payment_gateway_clearcommerce . '>ClearCommerce/PayFuse</option>
@@ -823,38 +823,38 @@ $pg_settings_cards[] = '
                                                                             <div class="collapse popover fade bs-popover-bottom p-0  " id="ecommerce_payment_gateway_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                                 <div class="popover-body">
-                                                                                   <div class="row gy-3">
+                                                                                   <div class="row gy-5">
                                                                                         <div class="col-12 " id="ecommerce_payment_gateway_transaction_type_row" style="' . $ecommerce_payment_gateway_transaction_type_row_style . '">
                                                                                             <label class="form-label">'. lang('Transaction Type') . '</label>
-                                                                                            <div class="form-check">
-                                                                                                <input value="Authorize" class="form-check-input" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize . '>
-                                                                                                <label class="form-check-label" for="ecommerce_payment_gateway_transaction_type_authorize">'. lang('Authorize') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="Authorize" class="radio" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize . '>
+                                                                                                <label class="" for="ecommerce_payment_gateway_transaction_type_authorize">'. lang('Authorize') . '</label>
                                                                                             </div>
-                                                                                            <div class="form-check">
-                                                                                                <input value="Authorize &amp; Capture" class="form-check-input" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize_and_capture" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize_and_capture . '>
-                                                                                                <label class="form-check-label" for="ecommerce_payment_gateway_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="Authorize &amp; Capture" class="radio" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize_and_capture" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize_and_capture . '>
+                                                                                                <label class="" for="ecommerce_payment_gateway_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_payment_gateway_mode_row" style="' . $ecommerce_payment_gateway_mode_row_style . '">
                                                                                             <label class="form-label">'. lang('Mode') . '</label>
-                                                                                            <div class="form-check">
-                                                                                                <input value="test" class="form-check-input" type="radio" id="ecommerce_payment_gateway_mode_test" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
-                                                                                                <label class="form-check-label" for="ecommerce_payment_gateway_mode_test">'. lang('Test') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="test" class="radio" type="radio" id="ecommerce_payment_gateway_mode_test" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
+                                                                                                <label class="" for="ecommerce_payment_gateway_mode_test">'. lang('Test') . '</label>
                                                                                             </div>
-                                                                                            <div class="form-check">
-                                                                                                <input value="live" class="form-check-input" type="radio" id="ecommerce_payment_gateway_mode_live" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
-                                                                                                <label class="form-check-label" for="ecommerce_payment_gateway_mode_live">'. lang('Live') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="live" class="radio" type="radio" id="ecommerce_payment_gateway_mode_live" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
+                                                                                                <label class="" for="ecommerce_payment_gateway_mode_live">'. lang('Live') . '</label>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_paypal_payments_pro_gateway_mode_row" style="' . $ecommerce_paypal_payments_pro_gateway_mode_row_style . '">
                                                                                             <label class="form-label">'. lang('Mode') . '</label>
-                                                                                            <div class="form-check">
-                                                                                                <input value="test" class="form-check-input" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_test" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
-                                                                                                <label class="form-check-label" for="ecommerce_paypal_payments_pro_gateway_mode_test">'. lang('Sandbox') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="test" class="radio" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_test" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
+                                                                                                <label class="" for="ecommerce_paypal_payments_pro_gateway_mode_test">'. lang('Sandbox') . '</label>
                                                                                             </div>
-                                                                                            <div class="form-check">
-                                                                                                <input value="live" class="form-check-input" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_live" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
-                                                                                                <label class="form-check-label" for="ecommerce_paypal_payments_pro_gateway_mode_live">'. lang('Live') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <input value="live" class="radio" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_live" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_live . '>
+                                                                                                <label class="" for="ecommerce_paypal_payments_pro_gateway_mode_live">'. lang('Live') . '</label>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_authorizenet_api_login_id_row" style="' . $ecommerce_authorizenet_api_login_id_row_style . '">
@@ -885,7 +885,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_first_data_global_gateway_pem_file_name_row" style="' . $ecommerce_first_data_global_gateway_pem_file_name_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_first_data_global_gateway_pem_file_name">'. lang('PEM File') . '</label>
-                                                                                            <select class="form-select" name="ecommerce_first_data_global_gateway_pem_file_name" id="ecommerce_first_data_global_gateway_pem_file_name"><option value="">-' . lang('None') . '-</option>' . $ecommerce_first_data_global_gateway_pem_file_name_options . '</select>
+                                                                                            <select class="form-control" name="ecommerce_first_data_global_gateway_pem_file_name" id="ecommerce_first_data_global_gateway_pem_file_name"><option value="">-' . lang('None') . '-</option>' . $ecommerce_first_data_global_gateway_pem_file_name_options . '</select>
                                                                                         </div>
                                                                                     
                                                                                         <div class="pg-f-lg" id="ecommerce_paypal_payflow_pro_partner_row" style="' . $ecommerce_paypal_payflow_pro_partner_row_style . '">
@@ -943,7 +943,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_iyzipay_installment_row" style="' . $ecommerce_iyzipay_installment_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_iyzipay_secret_key">'. lang('Installment') . '</label>
-                                                                                            <select class="form-select" id="ecommerce_iyzipay_installment" name="ecommerce_iyzipay_installment">'.$ecommerce_iyzipay_installment_options.'</select>
+                                                                                            <select class="form-control" id="ecommerce_iyzipay_installment" name="ecommerce_iyzipay_installment">'.$ecommerce_iyzipay_installment_options.'</select>
                                                                                         </div>
                                                                                         <div class="pg-f-xs" id="ecommerce_surcharge_percentage_row" style="' . $ecommerce_surcharge_percentage_row_style . '">
                                                                                             <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
@@ -953,27 +953,27 @@ $pg_settings_cards[] = '
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
-                                                                                            <div class="form-check form-switch">
-                                                                                                <input value="1"' . $ecommerce_iyzipay_threeds_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_iyzipay_threeds" name="ecommerce_iyzipay_threeds"/>
-                                                                                                <label class="form-check-label" for="ecommerce_iyzipay_threeds">' . lang('3D Secure') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . $ecommerce_iyzipay_threeds_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_iyzipay_threeds" name="ecommerce_iyzipay_threeds"/></div>
+                                                                                                <label class="" for="ecommerce_iyzipay_threeds">' . lang('3D Secure') . '</label>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="col-12 ">
-                                                                                            <div class="form-check form-switch">
-                                                                                                <input value="1" ' . $ecommerce_pay_with_iyzico_checked . ' class="form-check-input" type="checkbox" id="ecommerce_pay_with_iyzico" name="ecommerce_pay_with_iyzico"/>
-                                                                                                <label class="form-check-label" for="ecommerce_pay_with_iyzico">' . lang('Enable Pay with Iyzico') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1" ' . $ecommerce_pay_with_iyzico_checked . ' class="" type="checkbox" id="ecommerce_pay_with_iyzico" name="ecommerce_pay_with_iyzico"/></div>
+                                                                                                <label class="" for="ecommerce_pay_with_iyzico">' . lang('Enable Pay with Iyzico') . '</label>
                                                                                             </div>
                                                                                         </div>
 
                                                                                         <div class="col-12" id="ecommerce_iyzipay_protected_currency_row" style="' . $ecommerce_iyzipay_protected_currency_row_style . '">
-                                                                                            <div class="form-check form-switch ">
-                                                                                                <input value="1"' . $enable_iyzipay_protected_currency_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="enable_iyzipay_protected_currency" name="enable_iyzipay_protected_currency" data-bs-target="#enable_iyzipay_protected_currency_row"/>
-                                                                                                <label class="form-check-label" for="enable_iyzipay_protected_currency">' . lang('Enable Iyzipay Protected Currency') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . $enable_iyzipay_protected_currency_checked . ' class="collapse-switcher" type="checkbox" id="enable_iyzipay_protected_currency" name="enable_iyzipay_protected_currency" data-bs-target="#enable_iyzipay_protected_currency_row"/></div>
+                                                                                                <label class="" for="enable_iyzipay_protected_currency">' . lang('Enable Iyzipay Protected Currency') . '</label>
                                                                                             </div>
                                                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="enable_iyzipay_protected_currency_row">
                                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                                 <div class="popover-body">
-                                                                                                   <div class="row gy-3">
+                                                                                                   <div class="row gy-5">
                                                                                                         <div class="pg-f-md">
                                                                                                             <label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>
                                                                                                             ' . $output_iyzipay_protected_currency_select . '
@@ -984,9 +984,9 @@ $pg_settings_cards[] = '
                                                                                         </div>' . pg_payment_settings_card_rows($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1)) . '
 
                                                                                         <div class="col-12 " id="ecommerce_reset_encryption_key_row" style="' . $ecommerce_reset_encryption_key_row_style . '">
-                                                                                            <div class="form-check form-switch">
-                                                                                                <input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/>
-                                                                                                <label class="form-check-label" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="collapse-switcher" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/></div>
+                                                                                                <label class="" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
                                                                                                 <div class="form-text">' . $ecommerce_reset_encryption_key_disabled_message . '</div>
                                                                                             </div>
                                                                                         </div>
@@ -999,34 +999,34 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_paypal_express_checkout_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_paypal_express_checkout" name="ecommerce_paypal_express_checkout" data-bs-target="#ecommerce_paypal_express_checkout_row"/>
-                                                                <label class="form-check-label" for="ecommerce_paypal_express_checkout">' . lang('PayPal Express Checkout') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_paypal_express_checkout_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_paypal_express_checkout" name="ecommerce_paypal_express_checkout" data-bs-target="#ecommerce_paypal_express_checkout_row"/></div>
+                                                                <label class="" for="ecommerce_paypal_express_checkout">' . lang('PayPal Express Checkout') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_paypal_express_checkout_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
                                                                             <label class="form-label">'. lang('Transaction Type') . '</label>
-                                                                            <div class="form-check">
-                                                                                <input value="Authorize" class="form-check-input" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize . '>
-                                                                                <label class="form-check-label" for="ecommerce_paypal_express_checkout_transaction_type_authorize">'. lang('Authorize') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="Authorize" class="radio" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize . '>
+                                                                                <label class="" for="ecommerce_paypal_express_checkout_transaction_type_authorize">'. lang('Authorize') . '</label>
                                                                             </div>
-                                                                            <div class="form-check">
-                                                                                <input value="Authorize &amp; Capture" class="form-check-input" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture . '>
-                                                                                <label class="form-check-label" for="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="Authorize &amp; Capture" class="radio" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture . '>
+                                                                                <label class="" for="ecommerce_paypal_express_checkout_transaction_type_authorize_and_capture">'. lang('Authorize & Capture') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <label class="form-label">'. lang('Mode') . '</label>
-                                                                            <div class="form-check">
-                                                                                <input value="sandbox" class="form-check-input" type="radio" id="ecommerce_paypal_express_checkout_mode_sandbox" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_sandbox . '>
-                                                                                <label class="form-check-label" for="ecommerce_paypal_express_checkout_mode_sandbox">'. lang('Sandbox') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="sandbox" class="radio" type="radio" id="ecommerce_paypal_express_checkout_mode_sandbox" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_sandbox . '>
+                                                                                <label class="" for="ecommerce_paypal_express_checkout_mode_sandbox">'. lang('Sandbox') . '</label>
                                                                             </div>
-                                                                            <div class="form-check">
-                                                                                <input value="live" class="form-check-input" type="radio" id="ecommerce_paypal_express_checkout_mode_live" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_live . '>
-                                                                                <label class="form-check-label" for="ecommerce_paypal_express_checkout_mode_live">'. lang('Live') . '</label>
+                                                                            <div class="form-field">
+                                                                                <input value="live" class="radio" type="radio" id="ecommerce_paypal_express_checkout_mode_live" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_live . '>
+                                                                                <label class="" for="ecommerce_paypal_express_checkout_mode_live">'. lang('Live') . '</label>
                                                                             </div>
                                                                         </div>
 
@@ -1047,18 +1047,18 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>' . pg_payment_settings_redirect_rows() . '
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $ecommerce_offline_payment_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_offline_payment" name="ecommerce_offline_payment" data-bs-target="#ecommerce_offline_payment_row"/>
-                                                                <label class="form-check-label" for="ecommerce_offline_payment">' . lang('Allow Offline Payments') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $ecommerce_offline_payment_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_offline_payment" name="ecommerce_offline_payment" data-bs-target="#ecommerce_offline_payment_row"/></div>
+                                                                <label class="" for="ecommerce_offline_payment">' . lang('Allow Offline Payments') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_offline_payment_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                   <div class="row gy-3">
+                                                                   <div class="row gy-5">
                                                                         <div class="col-12 ">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1"' . $ecommerce_offline_payment_only_specific_orders_checked . ' class="form-check-input" type="checkbox" id="ecommerce_offline_payment_only_specific_orders" name="ecommerce_offline_payment_only_specific_orders"/>
-                                                                                <label class="form-check-label" for="ecommerce_offline_payment_only_specific_orders">' . lang('Only on specific orders') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1"' . $ecommerce_offline_payment_only_specific_orders_checked . ' class="" type="checkbox" id="ecommerce_offline_payment_only_specific_orders" name="ecommerce_offline_payment_only_specific_orders"/></div>
+                                                                                <label class="" for="ecommerce_offline_payment_only_specific_orders">' . lang('Only on specific orders') . '</label>
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 ">
@@ -1072,14 +1072,14 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label class="form-label" for="ecommerce_private_folder_id">'. lang('Grant Private Access') . '</label>
-                                                            <select class="form-select" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
+                                                            <select class="form-control" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
                                                                 <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Folder')) )) . '-</option>
                                                                 ' . select_folder($ecommerce_private_folder_id, 0, 0, 0, array(), array(), 'private') . '
                                                             </select>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label class="form-label" for="ecommerce_retrieve_order_next_page_id">'. lang('Reorder/Retrieve Order Next Page') . '</label>
-                                                            <select class="form-select" id="ecommerce_retrieve_order_next_page_id" name="ecommerce_retrieve_order_next_page_id">
+                                                            <select class="form-control" id="ecommerce_retrieve_order_next_page_id" name="ecommerce_retrieve_order_next_page_id">
                                                                 <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>
                                                                 ' . select_page($ecommerce_retrieve_order_next_page_id) . '
                                                             </select>
@@ -1129,21 +1129,21 @@ if ($legal_documents_ready) {
     $pg_settings_cards[] = '
     <div id="pgset-legal" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Legal Documents') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">
+                <div class="row gy-5">
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . $ecommerce_legal_documents_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="ecommerce_legal_documents" name="ecommerce_legal_documents" data-bs-target="#ecommerce_legal_documents_row"/>
-                            <label class="form-check-label" for="ecommerce_legal_documents">' . lang('Ask customers to accept the pre-information form and the distance sales contract') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $ecommerce_legal_documents_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_legal_documents" name="ecommerce_legal_documents" data-bs-target="#ecommerce_legal_documents_row"/></div>
+                            <label class="" for="ecommerce_legal_documents">' . lang('Ask customers to accept the pre-information form and the distance sales contract') . '</label>
                         </div>
                         <div class="form-text">' . lang('Both documents are filled from the order and a copy is kept with it as the customer saw it, so a later change to a template never changes an accepted copy.') . '</div>
                         <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_legal_documents_row">
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(50px, 0px);"></div>
                             <div class="popover-body">
-                                <div class="row gy-3">
+                                <div class="row gy-5">
                                     <div class="col-12">
                                         <div class="form-text">' . lang('The templates are a starting point. Have them reviewed for your business before switching this on, and add what only you know, such as your MERSİS number and your return carrier. Clear a template to go back to the built-in one.') . '</div>
                                     </div>' . $legal_template_fields . '
@@ -1151,7 +1151,7 @@ if ($legal_documents_ready) {
                                         <details>
                                             <summary class="form-text">' . lang('Fields you can use in a template') . '</summary>
                                             <div class="form-text">' . lang('[[text ^^field^^ text]] shows the text only when the field has a value.') . '</div>
-                                            <table class="table table-sm mt-2 mb-0"><tbody>' . $legal_placeholder_rows . '</tbody></table>
+                                            <table class="table table-sm mt-3 mb-0"><tbody>' . $legal_placeholder_rows . '</tbody></table>
                                         </details>
                                     </div>
                                 </div>
@@ -1168,24 +1168,24 @@ if ($legal_documents_ready) {
 $pg_settings_cards[] = '
                         <div id="pgset-affiliate" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Affiliate Program') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $affiliate_program_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="affiliate_program" name="affiliate_program" data-bs-target="#affiliate_program_row"/>
-                                                <label class="form-check-label" for="affiliate_program">' . lang('Enable Affiliate Program') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $affiliate_program_checked . ' class="collapse-switcher" type="checkbox" id="affiliate_program" name="affiliate_program" data-bs-target="#affiliate_program_row"/></div>
+                                                <label class="" for="affiliate_program">' . lang('Enable Affiliate Program') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="affiliate_program_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(50px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $affiliate_automatic_approval_checked . ' class="form-check-input" type="checkbox" id="affiliate_automatic_approval" name="affiliate_automatic_approval"/>
-                                                                <label class="form-check-label" for="affiliate_automatic_approval">' . lang('Automatically Approve Affiliates') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $affiliate_automatic_approval_checked . ' class="" type="checkbox" id="affiliate_automatic_approval" name="affiliate_automatic_approval"/></div>
+                                                                <label class="" for="affiliate_automatic_approval">' . lang('Automatically Approve Affiliates') . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="pg-f-xs">
@@ -1197,7 +1197,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="affiliate_contact_group_id">'. lang('Affiliate Contact Group') . '</label>
-                                                            <select class="form-select" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
+                                                            <select class="form-control" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="affiliate_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
@@ -1205,7 +1205,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="affiliate_group_offer_id">'. lang('Group Offer') . '</label>
-                                                            <select class="form-select" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
+                                                            <select class="form-control" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
                                                         </div>
                                                     </div>
                                                 </div>

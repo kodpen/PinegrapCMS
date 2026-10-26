@@ -24,7 +24,7 @@ pg_tr_load();
 
 $output_translation_not_ready = '
                     <div class="col-12">
-                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('These settings arrive with the 2026.4.6 upgrade, which this site has not run yet.') . '</div>
+                        <div class="alert theme-secondary mb-0 py-3 small">' . lang('These settings arrive with the 2026.4.6 upgrade, which this site has not run yet.') . '</div>
                     </div>';
 
 $translation_known = pg_tr_known_languages();
@@ -81,29 +81,29 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     }
 
     $output_translation_rows .= '
-                        <div class="pg-tr-language border rounded p-3" data-code="' . h($translation_code) . '">
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <span class="badge text-bg-secondary font-monospace">' . h($translation_code) . '</span>
+                        <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '">
+                            <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
+                                <span class="badge theme-secondary font-monospace">' . h($translation_code) . '</span>
                                 <strong class="me-auto">' . h($translation_label) . '</strong>
-                                <div class="form-check form-switch mb-0">
-                                    <input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/>
-                                    <label class="form-check-label" for="tr_enabled_' . h($translation_code) . '">' . lang('Served') . '</label>
+                                <div class="form-field mb-0">
+                                    <div class="switch"><input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/></div>
+                                    <label class="" for="tr_enabled_' . h($translation_code) . '">' . lang('Served') . '</label>
                                 </div>' . (array_key_exists('auto_update', $translation_row) ? '
-                                <div class="form-check form-switch mb-0 ms-2" title="' . h(lang('When a page is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.')) . '">
-                                    <input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]"/>
-                                    <label class="form-check-label" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
+                                <div class="form-field mb-0 ms-3" title="' . h(lang('When a page is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.')) . '">
+                                    <div class="switch"><input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]"/></div>
+                                    <label class="" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
-                                <div class="form-check mb-0 ms-2" title="' . h(lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.')) . '">
-                                    <input value="1" class="form-check-input" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]"/>
-                                    <label class="form-check-label text-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
+                                <div class="form-field mb-0 ms-3" title="' . h(lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.')) . '">
+                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]"/>
+                                    <label class="fg-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>
                             </div>
-                            <div class="row g-3">
-                                <div class="col-12 col-md-6 col-xl-3">
+                            <div class="row g-5">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_label_' . h($translation_code) . '">' . lang('Name shown to visitors') . '</label>
                                     <input type="text" class="form-control" id="tr_label_' . h($translation_code) . '" name="' . $translation_name . '[label]" value="' . h($translation_label) . '" maxlength="100"/>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_prefix_' . h($translation_code) . '">' . lang('Address prefix') . '</label>
                                     <div class="input-group">
                                         <span class="input-group-text">' . h(PATH) . '</span>
@@ -111,27 +111,27 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                         <span class="input-group-text">/</span>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_engine_' . h($translation_code) . '">' . lang('Translation engine') . '</label>
-                                    <select class="form-select" id="tr_engine_' . h($translation_code) . '" name="' . $translation_name . '[engine]">' . $output_translation_engines . '</select>
+                                    <select class="form-control" id="tr_engine_' . h($translation_code) . '" name="' . $translation_name . '[engine]">' . $output_translation_engines . '</select>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_fallback_' . h($translation_code) . '">' . lang('Fallback engine') . '</label>
-                                    <select class="form-select" id="tr_fallback_' . h($translation_code) . '" name="' . $translation_name . '[fallback_engine]">' . $output_translation_fallbacks . '</select>
+                                    <select class="form-control" id="tr_fallback_' . h($translation_code) . '" name="' . $translation_name . '[fallback_engine]">' . $output_translation_fallbacks . '</select>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_policy_' . h($translation_code) . '">' . lang('Search engines index') . '</label>
-                                    <select class="form-select" id="tr_policy_' . h($translation_code) . '" name="' . $translation_name . '[index_policy]">' . $output_translation_policies . '</select>
+                                    <select class="form-control" id="tr_policy_' . h($translation_code) . '" name="' . $translation_name . '[index_policy]">' . $output_translation_policies . '</select>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_number_' . h($translation_code) . '">' . lang('Number format') . '</label>
                                     <input type="text" class="form-control font-monospace" id="tr_number_' . h($translation_code) . '" name="' . $translation_name . '[locale_number]" value="' . h($translation_row['locale_number']) . '" maxlength="16" placeholder="1,234.56"/>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_date_' . h($translation_code) . '">' . lang('Date format') . '</label>
                                     <input type="text" class="form-control font-monospace" id="tr_date_' . h($translation_code) . '" name="' . $translation_name . '[locale_date]" value="' . h($translation_row['locale_date']) . '" maxlength="32" placeholder="j/n/Y"/>
                                 </div>
-                                <div class="col-12 col-md-6 col-xl-3">
+                                <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_og_' . h($translation_code) . '">og:locale</label>
                                     <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="en_US"/>
                                 </div>
@@ -141,7 +141,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
 
 if ($output_translation_rows === '') {
     $output_translation_rows = '
-                        <div class="text-body-secondary small">' . lang('No target language yet. Add one below: the pages of the visual designs are then served under its address prefix as well.') . '</div>';
+                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the visual designs are then served under its address prefix as well.') . '</div>';
 }
 
 // Languages that can still be added: the known list minus the source and
@@ -160,20 +160,20 @@ $output_translation_languages = '
                     <div class="col-12">
                         <div class="pg-f-md">
                             <label for="translation_source_language" class="form-label">' . lang('Source language') . '</label>
-                            <select name="translation_source_language" id="translation_source_language" class="form-select">' . $output_translation_source_options . '</select>
+                            <select name="translation_source_language" id="translation_source_language" class="form-control">' . $output_translation_source_options . '</select>
                             <div class="form-text">' . lang('The language the pages are written in. It is separate from the panel language and starts out equal to it.') . '</div>
                         </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('Target languages') . '</label>
-                        <div class="d-flex flex-column gap-3">' . $output_translation_rows . '
+                        <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
                         <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about). Removing a language takes it off the site; the translations already made are kept and come back when the language is added again.') . '</div>
                     </div>
                     <div class="col-12">
                         <div class="pg-f-md">
                             <label for="translation_add_language" class="form-label">' . lang('Add a language') . '</label>
-                            <select name="translation_add_language" id="translation_add_language" class="form-select">' . $output_translation_add_options . '</select>
+                            <select name="translation_add_language" id="translation_add_language" class="form-control">' . $output_translation_add_options . '</select>
                             <div class="form-text">' . lang('The language is added when the settings are saved. A page, file or short link named like its code or prefix would be shadowed by the language directory, so the save stops and lists them when there are any.') . ' ' . lang('It starts with the browser engine, which needs no key; Claude or another engine can be chosen on its row afterwards.') . '</div>
                         </div>
                     </div>
@@ -188,12 +188,12 @@ $output_translation_languages = '
 $pg_settings_cards[] = '
     <div id="pgset-languages" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
-                <a class="btn btn-sm btn-outline-primary rounded-pill px-3" href="translations.php"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
+                <a class="btn btn-sm btn-outline theme-primary rounded-pill px-5" href="translations.php"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . ($translation_settings_ready ? $output_translation_languages : $output_translation_not_ready) . '
+                <div class="row gy-5">' . ($translation_settings_ready ? $output_translation_languages : $output_translation_not_ready) . '
                 </div>
             </div>
         </div>
@@ -226,9 +226,9 @@ if (!empty($language_redirect_ready)) {
         'country'  => array(lang('Location only'), lang('The languages of the country the visitor is in, whatever their browser asks for.')),
     ) as $language_redirect_mode_key => $language_redirect_mode_text) {
         $output_language_redirect_modes .= '
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="language_redirect_mode" id="language_redirect_mode_' . $language_redirect_mode_key . '" value="' . $language_redirect_mode_key . '"' . (($language_redirect_mode === $language_redirect_mode_key) ? ' checked="checked"' : '') . '/>
-                                        <label class="form-check-label" for="language_redirect_mode_' . $language_redirect_mode_key . '"><strong>' . h($language_redirect_mode_text[0]) . '</strong></label>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="language_redirect_mode" id="language_redirect_mode_' . $language_redirect_mode_key . '" value="' . $language_redirect_mode_key . '"' . (($language_redirect_mode === $language_redirect_mode_key) ? ' checked="checked"' : '') . '/>
+                                        <label class="" for="language_redirect_mode_' . $language_redirect_mode_key . '"><strong>' . h($language_redirect_mode_text[0]) . '</strong></label>
                                         <div class="form-text">' . h($language_redirect_mode_text[1]) . '</div>
                                     </div>';
     }
@@ -240,9 +240,9 @@ if (!empty($language_redirect_ready)) {
         'all'  => array(lang('Every page of a visual design'), lang('A visitor who arrives on any page of a visual design, from a search result or a shared link, is sent to that page in their language.')),
     ) as $language_redirect_scope_key => $language_redirect_scope_text) {
         $output_language_redirect_scopes .= '
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="language_redirect_scope" id="language_redirect_scope_' . $language_redirect_scope_key . '" value="' . $language_redirect_scope_key . '"' . (($language_redirect_scope === $language_redirect_scope_key) ? ' checked="checked"' : '') . '/>
-                                        <label class="form-check-label" for="language_redirect_scope_' . $language_redirect_scope_key . '"><strong>' . h($language_redirect_scope_text[0]) . '</strong></label>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="language_redirect_scope" id="language_redirect_scope_' . $language_redirect_scope_key . '" value="' . $language_redirect_scope_key . '"' . (($language_redirect_scope === $language_redirect_scope_key) ? ' checked="checked"' : '') . '/>
+                                        <label class="" for="language_redirect_scope_' . $language_redirect_scope_key . '"><strong>' . h($language_redirect_scope_text[0]) . '</strong></label>
                                         <div class="form-text">' . h($language_redirect_scope_text[1]) . '</div>
                                     </div>';
     }
@@ -280,22 +280,22 @@ if (!empty($language_redirect_ready)) {
 
         $output_language_redirect_check = '
                     <div class="col-12">
-                        <div class="alert alert-secondary mb-0 py-2 small"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($language_redirect_sentence) . '</div>
+                        <div class="alert theme-secondary mb-0 py-3 small"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($language_redirect_sentence) . '</div>
                     </div>';
     }
 
     $output_language_redirect = '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . ($language_redirect ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" type="checkbox" id="language_redirect" name="language_redirect" data-bs-target="#language_redirect_row"/>
-                            <label class="form-check-label" for="language_redirect">' . lang('Send visitors to their language') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . ($language_redirect ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="language_redirect" name="language_redirect" data-bs-target="#language_redirect_row"/></div>
+                            <label class="" for="language_redirect">' . lang('Send visitors to their language') . '</label>
                             <div class="form-text">' . lang('A visitor who arrives on a page in the source language is sent to the same page in their own language, when the site is served in it. Only the first page of a visit is redirected, and only a person\'s browser: search engines, signed-in staff and visitors already moving around the site see the page they asked for. A visitor who changes the language is remembered and not redirected again.') . '</div>
                         </div>' . (($language_redirect_targets === 0) ? '
-                        <div class="form-text text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The redirect needs a served target language. Add one under Site Languages.') . '</div>' : '') . '
+                        <div class="form-text fg-emphasis-warning"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The redirect needs a served target language. Add one under Site Languages.') . '</div>' : '') . '
                         <div class="collapse popover fade bs-popover-bottom p-0 w-100" id="language_redirect_row">
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                             <div class="popover-body">
-                                <div class="row gy-3">
+                                <div class="row gy-5">
                                     <div class="col-12">
                                         <label class="form-label">' . lang('What decides the language') . '</label>' . $output_language_redirect_modes . '
                                     </div>
@@ -305,7 +305,7 @@ if (!empty($language_redirect_ready)) {
                                     <div class="col-12">
                                         <div class="pg-f-md">
                                             <label for="language_redirect_fallback" class="form-label">' . lang('Fallback language') . '</label>
-                                            <select name="language_redirect_fallback" id="language_redirect_fallback" class="form-select">' . $output_language_redirect_fallbacks . '</select>
+                                            <select name="language_redirect_fallback" id="language_redirect_fallback" class="form-control">' . $output_language_redirect_fallbacks . '</select>
                                             <div class="form-text">' . lang('For a visitor whose languages the site is not served in, for example English for every visitor who does not read the source language. A visitor whose browser and location say nothing stays on the page.') . '</div>
                                         </div>
                                     </div>
@@ -320,13 +320,13 @@ if (!empty($language_redirect_ready)) {
 $pg_settings_cards[] = '
     <div id="pgset-language-redirect" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Automatic Language Redirect') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . (!empty($language_redirect_ready) ? $output_language_redirect : '
+                <div class="row gy-5">' . (!empty($language_redirect_ready) ? $output_language_redirect : '
                     <div class="col-12">
-                        <div class="alert alert-secondary mb-0 py-2 small">' . lang('These settings arrive with the 2026.4.10 upgrade, which this site has not run yet.') . '</div>
+                        <div class="alert theme-secondary mb-0 py-3 small">' . lang('These settings arrive with the 2026.4.10 upgrade, which this site has not run yet.') . '</div>
                     </div>') . '
                 </div>
             </div>
@@ -336,8 +336,8 @@ $pg_settings_cards[] = '
 // ── Translation Engines ──
 
 $output_translation_google_state = $translation_google_key_stored
-    ? '<span class="badge text-bg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . lang('A key is stored') . '</span>'
-    : '<span class="badge text-bg-secondary">' . lang('No key stored') . '</span>';
+    ? '<span class="badge theme-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . lang('A key is stored') . '</span>'
+    : '<span class="badge theme-secondary">' . lang('No key stored') . '</span>';
 
 // Whether the two AI engines can run here, in one line each.
 $translation_ai_state = '';
@@ -348,8 +348,8 @@ if ($translation_settings_ready) {
 
         if ($translation_ai_engine) {
             $translation_ai_state .= '<br/>' . ($translation_ai_engine['ready']
-                ? '<span class="badge text-bg-success me-1"><i class="bi bi-check-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . lang('ready')
-                : '<span class="badge text-bg-secondary me-1"><i class="bi bi-dash-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . h($translation_ai_engine['reason']));
+                ? '<span class="badge theme-success me-1"><i class="bi bi-check-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . lang('ready')
+                : '<span class="badge theme-secondary me-1"><i class="bi bi-dash-lg" aria-hidden="true"></i></span>' . h($translation_ai_engine['label']) . ': ' . h($translation_ai_engine['reason']));
         }
     }
 }
@@ -363,15 +363,15 @@ $output_translation_engines_card = '
                         </div>
                     </div>' . ($translation_google_key_stored ? '
                     <div class="col-12">
-                        <div class="form-check">
-                            <input value="1" class="form-check-input" type="checkbox" id="translation_google_key_clear" name="translation_google_key_clear"/>
-                            <label class="form-check-label" for="translation_google_key_clear">' . lang('Remove the stored key') . '</label>
+                        <div class="form-field">
+                            <input value="1" class="check" type="checkbox" id="translation_google_key_clear" name="translation_google_key_clear"/>
+                            <label class="" for="translation_google_key_clear">' . lang('Remove the stored key') . '</label>
                         </div>
                     </div>' : '') . '
                     <div class="col-12">
-                        <div class="form-check form-switch">
-                            <input value="1"' . (($translation_attribution === 1) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="translation_attribution" name="translation_attribution"/>
-                            <label class="form-check-label" for="translation_attribution">' . lang('Show the "powered by Google Translate" attribution on pages with unreviewed Google output') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . (($translation_attribution === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="translation_attribution" name="translation_attribution"/></div>
+                            <label class="" for="translation_attribution">' . lang('Show the "powered by Google Translate" attribution on pages with unreviewed Google output') . '</label>
                             <div class="form-text">' . lang('The Google Cloud terms ask for the attribution, a machine-translation mark on the page and a disclaimer wherever unmodified Google output is published. A text that has been reviewed and corrected no longer counts as unmodified.') . '</div>
                         </div>
                     </div>
@@ -397,11 +397,11 @@ $output_translation_engines_card = '
 $pg_settings_cards[] = '
     <div id="pgset-translation-engines" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Translation Engines') . '
             </div>
             <div class="card-body">
-                <div class="row gy-3">' . ($translation_settings_ready ? $output_translation_engines_card : $output_translation_not_ready) . '
+                <div class="row gy-5">' . ($translation_settings_ready ? $output_translation_engines_card : $output_translation_not_ready) . '
                 </div>
             </div>
         </div>

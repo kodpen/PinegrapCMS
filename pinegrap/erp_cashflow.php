@@ -31,7 +31,7 @@ $liveform = new liveform('erp_cashflow');
 // Two views: what happened (the report below) and what is ahead (the
 // forecast, includes/erp/cash_forecast.php), side by side in the toolbar.
 $output_view_pills = function ($active) {
-    return '<ul class="nav nav-pills nav-sm mb-0 me-2">
+    return '<ul class="nav nav-pills nav-sm mb-0 me-3">
                     <li class="nav-item"><a class="nav-link py-1 px-2' . (($active === 'flow') ? ' active' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
                     <li class="nav-item"><a class="nav-link py-1 px-2' . (($active === 'forecast') ? ' active' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
                 </ul>';
@@ -50,7 +50,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
     };
 
     $plain = function ($kurus) {
-        return ((int) $kurus === 0) ? '<span class="text-body-secondary">—</span>' : h(erp_money_out((int) $kurus));
+        return ((int) $kurus === 0) ? '<span class="fg-secondary">—</span>' : h(erp_money_out((int) $kurus));
     };
 
     // Column headings: past due, then each thirty days with its dates.
@@ -58,7 +58,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
     $output_heads = '';
     foreach ($forecast['buckets'] as $key => $bucket) {
         $caption = ($key === 'overdue') ? lang('Past due') : $range_labels[(int) substr($key, 1)];
-        $dates = ($key === 'overdue') ? '' : '<div class="small fw-normal text-body-secondary text-nowrap">'
+        $dates = ($key === 'overdue') ? '' : '<div class="small fw-normal fg-secondary text-nowrap">'
             . h(prepare_form_data_for_output($bucket['start'], 'date', false) . ' – ' . prepare_form_data_for_output($bucket['end'], 'date', false)) . '</div>';
         $output_heads .= '<th class="text-end">' . h($caption) . $dates . '</th>';
     }
@@ -71,7 +71,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
         }
         $output_kind_rows .= '
                             <tr>
-                                <td><i class="bi ' . (($info['direction'] === 'in') ? 'bi-arrow-down-left text-success' : 'bi-arrow-up-right text-danger') . ' me-2" aria-hidden="true"></i>' . h($info['label']) . '</td>
+                                <td><i class="bi ' . (($info['direction'] === 'in') ? 'bi-arrow-down-left text-success' : 'bi-arrow-up-right text-danger') . ' me-3" aria-hidden="true"></i>' . h($info['label']) . '</td>
                                 ' . $cells . '
                                 <td class="text-end fw-semibold">' . $plain($forecast['kinds'][$kind]['total']) . '</td>
                             </tr>';
@@ -105,14 +105,14 @@ if (($_GET['view'] ?? '') === 'forecast') {
                                 <td>' . h($kinds[$item['kind']]['label']) . '</td>
                                 <td>' . (((string) $item['url'] !== '') ? '<a class="link-body-emphasis" href="' . h((string) $item['url']) . '">' . $title . '</a>' : $title) . '</td>
                                 <td>' . h((string) $item['party']) . '</td>
-                                <td class="text-end text-success">' . ($in ? h(erp_money_out((int) $item['amount'])) : '') . '</td>
-                                <td class="text-end text-danger">' . ($in ? '' : h(erp_money_out((int) $item['amount']))) . '</td>
+                                <td class="text-end fg-success">' . ($in ? h(erp_money_out((int) $item['amount'])) : '') . '</td>
+                                <td class="text-end fg-danger">' . ($in ? '' : h(erp_money_out((int) $item['amount']))) . '</td>
                             </tr>';
     }
 
     if ($output_item_rows === '') {
         $output_item_rows = '
-                            <tr><td colspan="6" class="text-center text-body-secondary py-4">' . lang('Nothing is due in this period.') . '</td></tr>';
+                            <tr><td colspan="6" class="text-center fg-secondary py-7">' . lang('Nothing is due in this period.') . '</td></tr>';
     }
 
     $notes = array(lang('Amounts past their date are counted as if they settled today. Draft invoices and cancelled documents are not counted.'));
@@ -157,36 +157,36 @@ if (($_GET['view'] ?? '') === 'forecast') {
                 ' . pg_filter_select('horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon'],
                     array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('view'))) . '
                 <div class="pg-toolbar-grow"></div>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body">
-                    <div class="row g-3 text-center text-md-start">
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Cash today') . '</div>
+                    <div class="row g-5 text-center md:text-start">
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Cash today') . '</div>
                             <div class="h5 mb-0">' . h(erp_money_out($forecast['cash'])) . '</div>
-                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($forecast['today'], 'date', false)) . '</div>
+                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($forecast['today'], 'date', false)) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Expected in') . '</div>
-                            <div class="h5 mb-0 text-success">' . h(erp_money_out($forecast['in']['total'])) . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Expected in') . '</div>
+                            <div class="h5 mb-0 fg-success">' . h(erp_money_out($forecast['in']['total'])) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Expected out') . '</div>
-                            <div class="h5 mb-0 text-danger">' . h(erp_money_out($forecast['out']['total'])) . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Expected out') . '</div>
+                            <div class="h5 mb-0 fg-danger">' . h(erp_money_out($forecast['out']['total'])) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Expected balance') . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Expected balance') . '</div>
                             <div class="h5 mb-0' . (($forecast['position']['total'] < 0) ? ' text-danger' : '') . '">' . h(erp_money_out($forecast['position']['total'])) . '</div>
-                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($last_day, 'date', false)) . '</div>
+                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($last_day, 'date', false)) . '</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(erp_cash_forecast_horizons()[$forecast['horizon']]) . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(erp_cash_forecast_horizons()[$forecast['horizon']]) . '</div>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
@@ -206,11 +206,11 @@ if (($_GET['view'] ?? '') === 'forecast') {
                         </tfoot>
                     </table>
                 </div>
-                <div class="px-3 pb-3">' . $output_notes . '</div>
+                <div class="px-5 pb-5">' . $output_notes . '</div>
             </div>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Expected movements') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Expected movements') . '</div>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
@@ -339,7 +339,7 @@ foreach ($report['rows'] as $row) {
     $quiet = ($row['count'] === 0);
 
     $output_rows .= '
-                            <tr' . ($quiet ? ' class="text-body-secondary"' : '') . '>
+                            <tr' . ($quiet ? ' class="fg-secondary"' : '') . '>
                                 <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['start'])) . '">' . h($row['label']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
@@ -353,8 +353,8 @@ foreach ($report['rows'] as $row) {
 $output_till_rows = '';
 
 foreach ($by_till as $row) {
-    $name = h($row['name']) . (($row['is_active']) ? '' : ' <span class="badge text-bg-secondary">' . lang('passive') . '</span>');
-    $note = (!$row['in_base']) ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'Kept in {var:1}; movements at their booked base value, the opening figure left out.', 'vars' => $row['currency']))) . '</div>' : '';
+    $name = h($row['name']) . (($row['is_active']) ? '' : ' <span class="badge theme-secondary">' . lang('passive') . '</span>');
+    $note = (!$row['in_base']) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Kept in {var:1}; movements at their booked base value, the opening figure left out.', 'vars' => $row['currency']))) . '</div>' : '';
 
     $output_till_rows .= '
                             <tr>
@@ -371,7 +371,7 @@ foreach ($by_till as $row) {
 
 if ($output_till_rows === '') {
     $output_till_rows = '
-                            <tr data-pg-sort-fixed><td colspan="8" class="text-center text-body-secondary py-4">' . lang('There are no tills yet.') . '</td></tr>';
+                            <tr data-pg-sort-fixed><td colspan="8" class="text-center fg-secondary py-7">' . lang('There are no tills yet.') . '</td></tr>';
 }
 
 // ------------------------------------------------------------ method rows
@@ -390,7 +390,7 @@ foreach ($by_method as $row) {
 
 if ($output_method_rows === '') {
     $output_method_rows = '
-                            <tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('No movements in this period.') . '</td></tr>';
+                            <tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('No movements in this period.') . '</td></tr>';
 }
 
 // -------------------------------------------------------------- footnotes
@@ -431,54 +431,54 @@ pg_page_shell(array(
                 ' . $output_view_pills('flow') . '
                 ' . $output_group_filter . '
                 ' . $output_period_filter . '
-                <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-2 mb-0">
+                <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-3 mb-0">
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
-                    <label for="from" class="small text-body-secondary text-nowrap mb-0">' . lang('Start') . '</label>
+                    <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
                     <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
-                    <label for="to" class="small text-body-secondary text-nowrap mb-0">' . lang('End') . '</label>
+                    <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
                     <input type="date" id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
-                    <select id="till" name="till" class="form-select form-select-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
+                    <select id="till" name="till" class="form-control form-control-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
                     <button type="submit" class="btn btn-sm btn-ghost" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 <a class="btn btn-sm btn-ghost" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body">
-                    <div class="row g-3 text-center text-md-start">
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Opening') . '</div>
+                    <div class="row g-5 text-center md:text-start">
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Opening') . '</div>
                             <div class="h5 mb-0">' . h(erp_money_out($report['opening'])) . '</div>
-                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($options['from'], 'date', false)) . '</div>
+                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($options['from'], 'date', false)) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Money in') . '</div>
-                            <div class="h5 mb-0 text-success">' . h(erp_money_out($report['in'])) . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Money in') . '</div>
+                            <div class="h5 mb-0 fg-success">' . h(erp_money_out($report['in'])) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Money out') . '</div>
-                            <div class="h5 mb-0 text-danger">' . h(erp_money_out($report['out'])) . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Money out') . '</div>
+                            <div class="h5 mb-0 fg-danger">' . h(erp_money_out($report['out'])) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Net change') . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Net change') . '</div>
                             <div class="h5 mb-0">' . $signed($report['net']) . '</div>
-                            <div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} movement(s)', 'vars' => (int) $report['count']))) . '</div>
+                            <div class="small fg-secondary">' . h(lang(array('string' => '{var:1} movement(s)', 'vars' => (int) $report['count']))) . '</div>
                         </div>
-                        <div class="col-6 col-md">
-                            <div class="small text-uppercase text-body-secondary">' . lang('Closing') . '</div>
+                        <div class="col-6 md:col">
+                            <div class="small text-uppercase fg-secondary">' . lang('Closing') . '</div>
                             <div class="h5 mb-0' . (($report['closing'] < 0) ? ' text-danger' : '') . '">' . h(erp_money_out($report['closing'])) . '</div>
-                            <div class="small text-body-secondary">' . h(prepare_form_data_for_output($options['to'], 'date', false)) . '</div>
+                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($options['to'], 'date', false)) . '</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex align-items-center flex-wrap gap-2">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center flex-wrap gap-3">
                     <span>' . h($groups[$options['group']]) . '</span>
-                    <span class="small text-body-secondary fw-normal text-lowercase ms-auto">' . h($period_text) . '</span>
+                    <span class="small fg-secondary fw-normal text-lowercase ms-auto">' . h($period_text) . '</span>
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
@@ -511,13 +511,13 @@ pg_page_shell(array(
                         </tfoot>
                     </table>
                 </div>
-                ' . (($output_notes !== '') ? '<div class="px-3 pb-3">' . $output_notes . '</div>' : '') . '
+                ' . (($output_notes !== '') ? '<div class="px-5 pb-5">' . $output_notes . '</div>' : '') . '
             </div>
 
             <div class="row">
-                <div class="col-12 col-xl-8">
-                    <div class="card my-4">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('By till') . '</div>
+                <div class="col-12 xl:col-8">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By till') . '</div>
                         <div class="card-body p-0 position-relative table-responsive">
                             <table class="table table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
@@ -536,12 +536,12 @@ pg_page_shell(array(
                                 </tbody>
                             </table>
                         </div>
-                        ' . (((int) $options['till'] === 0) ? '<div class="px-3 pb-3"><div class="form-text">' . lang('Transfers are counted here: what left one till arrived in another.') . '</div></div>' : '') . '
+                        ' . (((int) $options['till'] === 0) ? '<div class="px-5 pb-5"><div class="form-text">' . lang('Transfers are counted here: what left one till arrived in another.') . '</div></div>' : '') . '
                     </div>
                 </div>
-                <div class="col-12 col-xl-4">
-                    <div class="card my-4">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('By payment method') . '</div>
+                <div class="col-12 xl:col-4">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By payment method') . '</div>
                         <div class="card-body p-0 position-relative table-responsive">
                             <table class="table table-hover align-middle mb-0" data-pg-sort>
                                 <thead>

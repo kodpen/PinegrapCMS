@@ -72,8 +72,8 @@
                             '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
                         '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
-                            '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +

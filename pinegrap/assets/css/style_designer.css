@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /* ============================================
    Pinegrap Style Designer — Visual Page Builder
    Bootstrap Studio-like drag & drop interface
@@ -836,7 +840,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     box-shadow: none;
 }
 /* Visible chevron for the dark theme (Bootstrap's default light SVG disappears on a dark background) */
-.sd-prop-control select.form-select,
+.sd-prop-control select.form-control,
 .sd-prop-control select,
 .sd-sp-row > select,
 .sd-sp-bp-item > select {
@@ -865,7 +869,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sp-bp-item > select option { background: var(--sd-panel-bg); color: var(--sd-text); }
 .sd-prop-control textarea { resize:vertical; min-height:60px; font-family:monospace; font-size:.7rem; height: auto; }
 /* Also applies to a select inside an input-group (href file picker etc.) */
-.sd-prop-control .input-group > select.form-select { height: 28px; }
+.sd-prop-control .input-group > select.form-control { height: 28px; }
 /* Normalize input-group corner radius to match other panel inputs */
 .sd-prop-control .input-group {
     --bs-border-radius: 3px;
@@ -2757,7 +2761,7 @@ body.sd-resizing * { cursor: col-resize !important; }
    data-bs-theme="dark", which gives the switches, the close button and the
    tag field their dark variants; these colours are the designer's own. */
 #styleSettingsModal .form-control,
-#styleSettingsModal .form-select,
+#styleSettingsModal .form-control,
 #styleSettingsModal textarea.form-control,
 #sdMakeTemplateModal .form-control {
     background-color: #0d1117;
@@ -2767,7 +2771,7 @@ body.sd-resizing * { cursor: col-resize !important; }
 #styleSettingsModal .form-control::placeholder,
 #sdMakeTemplateModal .form-control::placeholder { color: #6e7681; }
 #styleSettingsModal .form-control:focus,
-#styleSettingsModal .form-select:focus,
+#styleSettingsModal .form-control:focus,
 #styleSettingsModal textarea.form-control:focus,
 #sdMakeTemplateModal .form-control:focus {
     background-color: #0d1117;
@@ -2775,7 +2779,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     border-color: #58a6ff;
     box-shadow: 0 0 0 .25rem rgba(88,166,255,.15);
 }
-#styleSettingsModal .form-select option { background: #1e2127; }
+#styleSettingsModal .form-control option { background: #1e2127; }
 #styleSettingsModal .form-text,
 #styleSettingsModal small.form-text {
     color: #8b949e;
@@ -2785,9 +2789,9 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 /* A value that is shown, not set (framework, template). */
 #styleSettingsModal .form-control[readonly] { background-color: transparent; color: #8b949e; }
-#styleSettingsModal .form-check-input { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
-#styleSettingsModal .form-check-input:checked { background-color: #1f6feb; border-color: #1f6feb; }
-#styleSettingsModal .form-check-input:disabled { opacity: .35; cursor: default; }
+#styleSettingsModal :is(.check, .radio) { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
+#styleSettingsModal :is(.check, .radio):checked { background-color: #1f6feb; border-color: #1f6feb; }
+#styleSettingsModal :is(.check, .radio):disabled { opacity: .35; cursor: default; }
 /* The tag field's typing box sits inside the dark box, not on white. */
 #styleSettingsModal .tagin-input { background: transparent; color: #c9d1d9; }
 #styleSettingsModal .tagin-input::placeholder { color: #6e7681; }
@@ -3107,7 +3111,7 @@ body.sd-resizing * { cursor: col-resize !important; }
     font-size: .65rem;
     padding: .1rem .35rem;
 }
-.sd-bcp-opt-row .form-select-sm {
+.sd-bcp-opt-row .form-control-sm {
     font-size: .65rem;
     height: 1.5rem;
     padding: .1rem .5rem .1rem .25rem;
@@ -5753,8 +5757,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-set-warn { display: block; margin-top: .35rem; color: #d29922; }
 .sd-set-ctrl { min-width: 0; }
 .sd-set-switch { grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 1.25rem; }
-.sd-set-switch .form-check { min-height: 0; margin: .1rem 0 0; }
-.sd-set-switch .form-check-input { width: 2.4em; height: 1.25em; margin-top: 0; }
+.sd-set-switch .form-field:has(> .check, > .radio, > .switch) { min-height: 0; margin: .1rem 0 0; }
+.sd-set-switch :is(.check, .radio) { width: 2.4em; height: 1.25em; margin-top: 0; }
 .sd-set-value { padding: .3rem 0; font-size: .82rem; color: #c9d1d9; }
 .sd-set-status { margin-top: .45rem; font-size: .75rem; color: #8b949e; overflow-wrap: anywhere; }
 .sd-set-status:empty { display: none; }
@@ -6051,7 +6055,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; margin-bottom: 8px; }
 .sd-th-field { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: #8b949e; margin: 0; }
 .sd-th-field-wide { margin-bottom: 10px; }
-.sd-th-field .form-select, .sd-th-field .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
+.sd-th-field .form-control, .sd-th-field .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
 .sd-th-color { display: flex; gap: 6px; align-items: center; }
 .sd-th-color input[type=color] { width: 36px; height: 30px; padding: 2px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; cursor: pointer; }
 .sd-th-color .form-control { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -6280,3 +6284,5 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-inner-attr input:first-child { flex: 0 0 38%; }
 .sd-inner-acts { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .sd-inner-acts .btn { text-align: left; white-space: normal; }
+
+}

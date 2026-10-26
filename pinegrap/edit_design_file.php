@@ -97,7 +97,7 @@ if (empty($_POST['name'])) {
         $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
         
         // Output thumnail.
-        $output_thumbnail = '<div class="col-12 col-md-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
+        $output_thumbnail = '<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
         $output_image_info = ' | ' . $image_width . 'px - ' .  $image_height . 'px';
 
     }
@@ -120,9 +120,9 @@ if (empty($_POST['name'])) {
         ){
              if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
                 $optimize_button =
-                    '<a class="btn btn-link link-secondary py-0 mb-2" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
+                    '<a class="btn btn-link link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
-            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . ' <a class="btn btn-link link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
     }
 
     // Convert file size to a user friendly output.
@@ -167,7 +167,7 @@ if (empty($_POST['name'])) {
             $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
         }
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     
     }
     
@@ -177,7 +177,7 @@ if (empty($_POST['name'])) {
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
         $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
     
-        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-2">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
+        $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     }
 
     $output_theme_rows = '';
@@ -197,10 +197,10 @@ if (empty($_POST['name'])) {
         }
 
         $output_theme_rows =
-            '<div class="col-12 my-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="theme" name="theme" value="1"' . $output_theme_checked . $output_theme_disabled . '>
-                    <label class="form-check-label" for="theme" data-bs-content="' . lang('Check if Design File should be included on All Themes screen and in Theme preview') . '" title="" data-bs-original-title="' . lang('Theme') . '">' . lang('Theme') . ' (?)</label>
+            '<div class="col-12 my-5">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="theme" name="theme" value="1"' . $output_theme_checked . $output_theme_disabled . '></div>
+                    <label class="" for="theme" data-bs-content="' . lang('Check if Design File should be included on All Themes screen and in Theme preview') . '" title="" data-bs-original-title="' . lang('Theme') . '">' . lang('Theme') . ' (?)</label>
                 </div>
             </div>';
     }
@@ -227,11 +227,11 @@ if (empty($_POST['name'])) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
-<div class="row mb-2">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
+<div class="row mb-3">
                             ' . $output_thumbnail . '
-                            <div class="col-12 col-md">
+                            <div class="col-12 md:col">
                                 
                                 <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
                                 <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
@@ -240,8 +240,8 @@ if (empty($_POST['name'])) {
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
-                                <a class="btn btn-link link-secondary py-0 mb-2"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                <a class="btn btn-link link-secondary py-0 mb-2" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+                                <a class="btn btn-link link-secondary py-0 mb-3" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -252,13 +252,13 @@ if (empty($_POST['name'])) {
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-sm-4 my-2">
+                                        <div class="col-12 sm:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
                                             <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control " maxlength="100"/>
                                         </div>
@@ -266,33 +266,33 @@ if (empty($_POST['name'])) {
                                 </div>
                             </div> 
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('File Access Control') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
-                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-select" id="folder" name="folder">' . select_folder($file_folder) . '</select>
-                                    </div>
                                     <div class="col-12 my-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="design" name="design" value="1" checked="checked">
-                                            <label class="form-check-label" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
+                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
+                                        <select class="form-control" id="folder" name="folder">' . select_folder($file_folder) . '</select>
+                                    </div>
+                                    <div class="col-12 my-5">
+                                        <div class="form-field">
+                                            <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1" checked="checked"></div>
+                                            <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
                                         </div>
                                     </div>
                                     ' . $output_theme_rows . '
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7 ">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Description') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
                                         <textarea class="form-control" id="description" name="description" style="min-height:85px;">' . h($file_description) . '</textarea>
                                     </div>
@@ -300,12 +300,12 @@ if (empty($_POST['name'])) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_edit_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

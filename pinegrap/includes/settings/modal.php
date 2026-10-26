@@ -204,19 +204,19 @@ function pg_settings_modal_markup($user)
                     <div class="pg-sm-notice" id="pg_settings_modal_notice" role="status" aria-live="polite"></div>
 
                     <div id="pg_settings_modal_pane" class="pg-settings-body" tabindex="-1">
-                        <div class="pg-sm-start text-body-secondary text-center py-5">
-                            <i class="bi bi-sliders d-block fs-1 mb-2 opacity-50" aria-hidden="true"></i>
+                        <div class="pg-sm-start fg-secondary text-center py-12">
+                            <i class="bi bi-sliders d-block fs-4xl mb-3 opacity-50" aria-hidden="true"></i>
                             ' . h(lang('Choose a section.')) . '
                         </div>
                     </div>
                 </form>
 
                 <footer class="pg-sm-foot">
-                    <span class="pg-sm-meta small text-body-secondary" id="pg_settings_modal_meta"></span>
-                    <div class="ms-auto d-flex align-items-center gap-2">
+                    <span class="pg-sm-meta small fg-secondary" id="pg_settings_modal_meta"></span>
+                    <div class="ms-auto d-flex align-items-center gap-3">
                         <button type="button" class="btn btn-sm btn-link link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="modal">' . h(lang('Close')) . '</button>
-                        <button type="button" class="btn btn-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
-                            <i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
+                        <button type="button" class="btn btn-solid theme-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
+                            <i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
                         </button>
                     </div>
                 </footer>

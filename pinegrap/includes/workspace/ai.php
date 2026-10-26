@@ -4284,11 +4284,11 @@ function ws_ai_settings_card($self_url, $viewer)
     }
 
     if (empty($missing)) {
-        $state = '<span class="badge text-bg-success">' . h(lang('Ready')) . '</span>';
+        $state = '<span class="badge theme-success">' . h(lang('Ready')) . '</span>';
     } elseif (!$config['enabled']) {
-        $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
+        $state = '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
     } else {
-        $state = '<span class="badge text-bg-warning">' . h(lang('Not ready')) . '</span>';
+        $state = '<span class="badge theme-warning">' . h(lang('Not ready')) . '</span>';
     }
 
     $status_list = '';
@@ -4319,26 +4319,26 @@ function ws_ai_settings_card($self_url, $viewer)
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="text-body-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
+                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
                     <div class="small">' . h($line['label']) . '</div>
                 </div>
             </li>';
     }
 
     if ($recent === '') {
-        $recent = '<li class="text-body-secondary small">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
+        $recent = '<li class="fg-secondary small">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
     }
 
     $steps = array(
         array(
             lang('An application for Pinegrap AI'),
             lang('Press Create Pinegrap AI\'s key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude\'s, and choose it under Use another application.'),
-            '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
             lang('The licence key'),
             lang('Enter the subscription key of your Pinegrap Premium licence under Settings › General. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
         ),
         array(
             lang('Try it'),
@@ -4353,7 +4353,7 @@ function ws_ai_settings_card($self_url, $viewer)
         $guide .= '
             <li class="ws-claude-step">
                 <div class="fw-semibold">' . h($step[0]) . '</div>
-                <div class="small text-body-secondary mb-2">' . h($step[1]) . '</div>
+                <div class="small fg-secondary mb-3">' . h($step[1]) . '</div>
                 ' . $step[2] . '
             </li>';
     }
@@ -4367,10 +4367,10 @@ function ws_ai_settings_card($self_url, $viewer)
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-4">
+                        <form method="post" action="' . h($self_url) . '#ws-ai" class="ws-claude-key mb-7">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai_key_create">
-                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')) . '</button>
                             <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
                         </form>';
     } elseif ($admin) {
@@ -4381,67 +4381,67 @@ function ws_ai_settings_card($self_url, $viewer)
         $doors = (array) db_item("SELECT kind, api_secret_hash, api_secret_prev_hash, api_secret_prev_expires FROM api_apps WHERE id = '" . (int) $app['id'] . "'");
 
         $key_block = '
-                        <div class="ws-claude-key mb-4">
-                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="text-body-secondary">#' . (int) $app['id'] . '</span></div>
-                            <div class="small text-body-secondary">' . h(api_app_can_sign_in($doors, time())
+                        <div class="ws-claude-key mb-7">
+                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="fg-secondary">#' . (int) $app['id'] . '</span></div>
+                            <div class="small fg-secondary">' . h(api_app_can_sign_in($doors, time())
                                 ? lang('Pinegrap AI uses only this application\'s name and permissions; its key and secret are not needed here.')
                                 : lang('It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.')) . '</div>
                         </div>';
     }
 
     return '
-        <div class="card mt-4" id="ws-ai">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card mt-7" id="ws-ai">
+            <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . h(lang('Pinegrap AI in the channels')) . '</h2>
                 ' . $state . '
             </div>
             <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-lg-7">
+                <div class="row g-7">
+                    <div class="lg:col-7">
                         ' . $key_block . '
                         <form method="post" action="' . h($self_url) . '#ws-ai">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
-                                <label class="form-check-label" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
+                            <div class="form-field mb-5">
+                                <div class="switch"><input class="" type="checkbox" name="ai_enabled" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <label class="" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
                                 <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
                             </div>
-                            <details class="mb-3">
+                            <details class="mb-5">
                                 <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
-                                <div class="mt-2">
+                                <div class="mt-3">
                                     <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                    <select class="form-select form-select-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <select class="form-control form-control-sm" name="ai_app_id" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
                                     <div class="form-text">' . h(empty($readable)
                                         ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
                                 </div>
                             </details>
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
                                 <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Settings › General')) . '</a></div>
                             </div>
-                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
+                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         </form>
-                        <details class="mt-4 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
+                        <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
                             <summary class="fw-semibold">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-3">' . $guide . '</ol>
+                            <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
                         </details>
                     </div>
-                    <div class="col-lg-5">
+                    <div class="lg:col-5">
                         <div class="ws-claude-status">
                             <div class="small fw-semibold mb-1">' . h(lang('Licence')) . '</div>
-                            <div class="mb-3"><span class="badge text-bg-' . h($license['tone']) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
-                            ' . (($config['model'] !== '') ? '<div class="small text-body-secondary mb-3">' . h(lang('Model')) . ': <code>' . h($config['model']) . '</code></div>' : '') . '
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-3">' . $status_list . '</ul>' : '') . '
-                            ' . (($config['error'] !== '') ? '<div class="alert alert-danger small py-2">' . h($config['error']) . '</div>' : '') . '
-                            ' . (($config['hold_until'] > time()) ? '<div class="alert alert-warning small py-2">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
+                            <div class="mb-5"><span class="badge text-bg-' . h($license['tone']) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
+                            ' . (($config['model'] !== '') ? '<div class="small fg-secondary mb-5">' . h(lang('Model')) . ': <code>' . h($config['model']) . '</code></div>' : '') . '
+                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
+                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
                             ' . ($admin && $config['license_set'] ? '
-                            <form method="post" action="' . h($self_url) . '#ws-ai" class="mb-3">
+                            <form method="post" action="' . h($self_url) . '#ws-ai" class="mb-5">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="ws_action" value="ai_test">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
+                                <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>
                             </form>' : '') . '
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>

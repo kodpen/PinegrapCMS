@@ -1,5 +1,9 @@
 @charset "UTF-8";
 
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /* The @charset above must stay the first thing in this file - a comment or a
    blank line before it makes the browser ignore it. It is the stylesheet's own
    declaration of encoding, for hosts that serve .css without a charset (see
@@ -397,7 +401,7 @@
    on tone 300 sits near 2.5:1, near black clears 5.5:1 on every fill and on
    its hover and active tone. */
 
-.btn-primary {
+.btn-solid.theme-primary {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-primary);
   --bs-btn-border-color: var(--pg-primary);
@@ -413,7 +417,7 @@
   --bs-btn-disabled-border-color: var(--pg-primary);
 }
 
-.btn-success {
+.btn-solid.theme-success {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-success);
   --bs-btn-border-color: var(--pg-success);
@@ -429,7 +433,7 @@
   --bs-btn-disabled-border-color: var(--pg-success);
 }
 
-.btn-danger {
+.btn-solid.theme-danger {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-danger);
   --bs-btn-border-color: var(--pg-danger);
@@ -445,7 +449,7 @@
   --bs-btn-disabled-border-color: var(--pg-danger);
 }
 
-.btn-warning {
+.btn-solid.theme-warning {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-warning);
   --bs-btn-border-color: var(--pg-warning);
@@ -461,7 +465,7 @@
   --bs-btn-disabled-border-color: var(--pg-warning);
 }
 
-.btn-info {
+.btn-solid.theme-info {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-info);
   --bs-btn-border-color: var(--pg-info);
@@ -482,7 +486,7 @@
    and press. The border is kept rather than dropped entirely because most of
    the 760 call sites are the Cancel button beside a Save, where a shape the
    pointer can aim at matters more than the lighter look. */
-.btn-secondary {
+.btn-solid.theme-secondary {
   --bs-btn-color: var(--pg-fg-body);
   --bs-btn-bg: var(--pg-bg-body);
   --bs-btn-border-color: var(--pg-border-color);
@@ -502,7 +506,7 @@
 /* Outline variants take the readable ink for their resting label - the pastel
    fill is 2.2:1 on white and cannot carry text - and the fill itself only on
    hover, where the ink flips to --pg-on-accent. */
-.btn-outline-primary {
+.btn-outline.theme-primary {
   --bs-btn-color: var(--pg-primary-ink);
   --bs-btn-border-color: var(--pg-primary);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -517,7 +521,7 @@
   --bs-btn-disabled-border-color: var(--pg-primary);
 }
 
-.btn-outline-secondary {
+.btn-outline.theme-secondary {
   --bs-btn-color: var(--pg-secondary-ink);
   --bs-btn-border-color: var(--pg-secondary);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -533,7 +537,7 @@
   --bs-btn-disabled-border-color: var(--pg-secondary);
 }
 
-.btn-outline-success {
+.btn-outline.theme-success {
   --bs-btn-color: var(--pg-success-ink);
   --bs-btn-border-color: var(--pg-success);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -548,7 +552,7 @@
   --bs-btn-disabled-border-color: var(--pg-success);
 }
 
-.btn-outline-danger {
+.btn-outline.theme-danger {
   --bs-btn-color: var(--pg-danger-ink);
   --bs-btn-border-color: var(--pg-danger);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -563,7 +567,7 @@
   --bs-btn-disabled-border-color: var(--pg-danger);
 }
 
-.btn-outline-warning {
+.btn-outline.theme-warning {
   --bs-btn-color: var(--pg-warning-ink);
   --bs-btn-border-color: var(--pg-warning);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -578,7 +582,7 @@
   --bs-btn-disabled-border-color: var(--pg-warning);
 }
 
-.btn-outline-info {
+.btn-outline.theme-info {
   --bs-btn-color: var(--pg-info-ink);
   --bs-btn-border-color: var(--pg-info);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -597,24 +601,24 @@
    .text-primary at --bs-primary-rgb, which is now a pastel that reads at
    2.2:1 on the page background; the ink tone clears 4.5:1 in both themes.
    The opacity variables are kept so .text-opacity-* and .link-opacity-* keep
-   working. .text-secondary is included because Bootstrap 5.3 maps it to
+   working. .fg-secondary is included because Bootstrap 5.3 maps it to
    --bs-secondary-rgb, not to the neutral --bs-secondary-color. */
-.text-primary {
+.fg-primary {
   color: rgba(var(--pg-primary-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-secondary {
+.fg-secondary {
   color: rgba(var(--pg-secondary-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-success {
+.fg-success {
   color: rgba(var(--pg-success-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-danger {
+.fg-danger {
   color: rgba(var(--pg-danger-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-warning {
+.fg-warning {
   color: rgba(var(--pg-warning-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-info {
+.fg-info {
   color: rgba(var(--pg-info-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
 
@@ -659,7 +663,7 @@
    so the inherited colour is right in light and unreadable in dark (1.7:1).
    The fills therefore carry the ink themselves. Backgrounds thinned with
    .bg-opacity-* are excluded - those sit close to the page colour and must
-   keep inheriting it. A .text-white beside a pastel fill is overruled: it
+   keep inheriting it. A .fg-white beside a pastel fill is overruled: it
    dates from the saturated palette and would read at 2.2:1 now. */
 .bg-primary:not([class*="bg-opacity"]),
 .bg-secondary:not([class*="bg-opacity"]),
@@ -669,18 +673,18 @@
 .bg-info:not([class*="bg-opacity"]) {
   color: var(--pg-on-accent);
 }
-.bg-primary:not([class*="bg-opacity"]).text-white,
-.bg-secondary:not([class*="bg-opacity"]).text-white,
-.bg-success:not([class*="bg-opacity"]).text-white,
-.bg-danger:not([class*="bg-opacity"]).text-white,
-.bg-warning:not([class*="bg-opacity"]).text-white,
-.bg-info:not([class*="bg-opacity"]).text-white,
-.bg-primary:not([class*="bg-opacity"]) .text-white,
-.bg-secondary:not([class*="bg-opacity"]) .text-white,
-.bg-success:not([class*="bg-opacity"]) .text-white,
-.bg-danger:not([class*="bg-opacity"]) .text-white,
-.bg-warning:not([class*="bg-opacity"]) .text-white,
-.bg-info:not([class*="bg-opacity"]) .text-white {
+.bg-primary:not([class*="bg-opacity"]).fg-white,
+.bg-secondary:not([class*="bg-opacity"]).fg-white,
+.bg-success:not([class*="bg-opacity"]).fg-white,
+.bg-danger:not([class*="bg-opacity"]).fg-white,
+.bg-warning:not([class*="bg-opacity"]).fg-white,
+.bg-info:not([class*="bg-opacity"]).fg-white,
+.bg-primary:not([class*="bg-opacity"]) .fg-white,
+.bg-secondary:not([class*="bg-opacity"]) .fg-white,
+.bg-success:not([class*="bg-opacity"]) .fg-white,
+.bg-danger:not([class*="bg-opacity"]) .fg-white,
+.bg-warning:not([class*="bg-opacity"]) .fg-white,
+.bg-info:not([class*="bg-opacity"]) .fg-white {
   color: var(--pg-on-accent) !important;
 }
 
@@ -694,12 +698,12 @@
 .badge.bg-info {
   --bs-badge-color: var(--pg-on-accent);
 }
-.text-bg-primary,
-.text-bg-secondary,
-.text-bg-success,
-.text-bg-danger,
-.text-bg-warning,
-.text-bg-info {
+.bg-primary.fg-contrast-primary,
+.bg-secondary.fg-contrast-secondary,
+.bg-success.fg-contrast-success,
+.bg-danger.fg-contrast-danger,
+.bg-warning.fg-contrast-warning,
+.bg-info.fg-contrast-info {
   color: var(--pg-on-accent) !important;
 }
 
@@ -815,33 +819,33 @@ html[data-bs-theme="dark"] .accordion {
 /* Form controls. Bootstrap hard codes #86b7fe for the focus border and
    rgba(13,110,253,.25) for the ring on every control. */
 .form-control:focus,
-.form-select:focus,
-.form-check-input:focus,
+.form-control:focus,
+:is(.check, .radio):focus,
 .tagin-wrapper.focus {
   border-color: var(--pg-primary);
   box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
 }
-.form-check-input:checked,
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio):checked,
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   background-color: var(--pg-primary);
   border-color: var(--pg-primary);
 }
 /* The tick, the dot and the switch knob ship white; on a tone 300 fill that is
    2.2:1, under the 3:1 a graphical control needs, so all three take the ink. */
-.form-check-input:checked[type="checkbox"],
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio):checked[type="checkbox"],
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%231a1c1e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
 }
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%231a1c1e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
 }
-.form-check-input:checked[type="radio"] {
+:is(.check, .radio):checked[type="radio"] {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
-.form-switch .form-check-input:focus {
+.form-switch :is(.check, .radio):focus {
   --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2364b5f6'/%3e%3c/svg%3e");
 }
-.form-switch .form-check-input:checked {
+.form-switch :is(.check, .radio):checked {
   --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
 .form-range::-webkit-slider-thumb {
@@ -2307,7 +2311,7 @@ body:not(.toolbar) .software-content {
 
 /* Only a wrapper of buttons wraps. A form with fields stays on one line -
    its fields carry w-auto - or a date range splits from its label. */
-#button_bar > form:not(.input-group):not(:has(.form-control, .form-select)),
+#button_bar > form:not(.input-group):not(:has(.form-control, .form-control)),
 #button_bar > span,
 #button_bar > .d-inline-block {
   flex-wrap: wrap;
@@ -3214,13 +3218,13 @@ body:not(.toolbar) .software-content {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(
-    .btn-danger
-  ):not(.btn-warning):not(.btn-info):not(.btn-light):not(.btn-dark):not(
-    .btn-outline-primary
-  ):not(.btn-outline-secondary):not(.btn-outline-success):not(
-    .btn-outline-danger
-  ):not(.btn-outline-warning):not(.btn-outline-info):not(
+.btn:not(.btn-solid.theme-primary):not(.btn-solid.theme-secondary):not(.btn-solid.theme-success):not(
+    .btn-solid.theme-danger
+  ):not(.btn-solid.theme-warning):not(.btn-solid.theme-info):not(.btn-light):not(.btn-dark):not(
+    .btn-outline.theme-primary
+  ):not(.btn-outline.theme-secondary):not(.btn-outline.theme-success):not(
+    .btn-outline.theme-danger
+  ):not(.btn-outline.theme-warning):not(.btn-outline.theme-info):not(
     .btn-outline-light
   ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost) {
   --bs-btn-bg: transparent;
@@ -3728,10 +3732,10 @@ nav.buttons.navigation:not(:has(.btn:not(.disabled))) {
   margin-top: 0;
 }
 
-/* .btn-secondary is a ghost everywhere else by design, but the bar has no
+/* .btn-solid.theme-secondary is a ghost everywhere else by design, but the bar has no
    surface of its own, so a ghost here floats over table rows with nothing
    behind it. On this bar it gets a fill. */
-nav.buttons.navigation .btn-secondary {
+nav.buttons.navigation .btn-solid.theme-secondary {
   --bs-btn-bg: var(--pg-bg-body);
   --bs-btn-border-color: var(--pg-border-color);
   --bs-btn-color: var(--pg-fg-body);
@@ -4014,11 +4018,11 @@ a.dt-button {
 .advanced-filter-bar,
 .input-group-sm > .btn,
 .input-group-sm > .form-control,
-.input-group-sm > .form-select,
+.input-group-sm > .form-control,
 .input-group-sm > .input-group-text,
 .btn-group,
 .popover,
-.form-select,
+.form-control,
 .form-control,
 .tagin-tag,
 .input-group-text,
@@ -4053,16 +4057,16 @@ a.dt-button {
   display: none;
 }
 
-.form-check-input.danger:checked {
+:is(.check, .radio).danger:checked {
   background-color: var(--pg-danger);
   border-color: var(--pg-danger);
 }
 
-.form-switch .form-check-input.danger {
+.form-switch :is(.check, .radio).danger {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23dc3545'/%3e%3c/svg%3e");
 }
 
-.form-switch .form-check-input.danger:checked {
+.form-switch :is(.check, .radio).danger:checked {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
 .show-on-hovered:not(:checked) {
@@ -7610,8 +7614,8 @@ button.no-popover:focus-visible {
   margin-bottom: 0.25rem;
   font-size: 0.8125rem;
 }
-.pg-settings-body .form-check-label,
-.pg-settings-body .form-select,
+.pg-settings-body :is(.form-field > label),
+.pg-settings-body .form-control,
 .pg-settings-body .form-control {
   font-size: 0.8125rem;
 }
@@ -8030,7 +8034,7 @@ button.no-popover:focus-visible {
   flex-direction: column;
   gap: 0.625rem;
 }
-.pg-perm-switch .form-check-label {
+.pg-perm-switch :is(.form-field > label) {
   font-size: 0.8125rem;
 }
 .pg-perm-switch .form-text {
@@ -8306,7 +8310,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* Rows inside a permission list. Flex rather than Bootstrap's float, so a row
    can carry something after its label - the expiry box below - and so that box
    can take a line of its own by asking for the full basis. */
-.pg-perm-list .form-check {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -8314,12 +8318,12 @@ body.pg-side-panel-open .pg-chat-launcher {
   padding-left: 0;
   margin-bottom: 0.125rem;
 }
-.pg-perm-list .form-check > .form-check-input {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
   flex: 0 0 auto;
   float: none;
   margin: 0;
 }
-.pg-perm-list .form-check > .form-check-label {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) > :is(.form-field > label) {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -8594,8 +8598,8 @@ body.pg-side-panel-open .pg-chat-launcher {
    in a stylesheet: the screen still works, it is just plainer. */
 @supports selector(:has(*)) {
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group),
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) {
     /* The rule and the text start at the same place, which is the card's own
        content edge. A .row carries a negative horizontal margin and gives each
        cell the matching padding back, so a border drawn on the cell runs half a
@@ -8649,8 +8653,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
      only thing in it and a gap under that. */
-  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > * + [class]:has(> .form-check > input[type="checkbox"]) {
+  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group),
+  .pg-set-card .row > * + [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) {
     padding-top: .85rem;
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
   }
@@ -8671,8 +8675,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      the amount changed with the control, which is what made the card look
      crooked rather than merely offset. Sharing one row makes that row as tall
      as whichever of the two is taller and centres both in it, at any height. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group),
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 19rem);
     grid-template-areas:
@@ -8687,33 +8691,33 @@ body.pg-side-panel-open .pg-chat-launcher {
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
      before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > *,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > * {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > *,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > * {
     grid-column: 1 / -1;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-label,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-label {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .form-label,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
     font-weight: 500;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-text,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-text {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .form-text,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > input.form-control,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-select,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .input-group {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > input.form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .input-group {
     grid-area: pgctrl;
     justify-self: end;
     width: 100%;
   }
 
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-input {
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
     grid-area: pgctrl;
     justify-self: end;
     float: none;
@@ -8725,8 +8729,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      name, and the rule between settings is what keeps them apart. */
   @container (max-width: 34rem) {
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-    .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check {
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group),
+    .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
         "pgname"
@@ -8736,10 +8740,10 @@ body.pg-side-panel-open .pg-chat-launcher {
       row-gap: .4rem;
     }
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > input.form-control,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-select,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .input-group,
-    .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-input {
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > input.form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-control, > .input-group) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
       justify-self: start;
     }
   }
@@ -8838,19 +8842,19 @@ body.pg-side-panel-open .pg-chat-launcher {
    whose control is wrapped in something else keeps the whole cell, which is
    the safe way to be wrong. */
 .pg-set-card .pg-f-xs > .form-control,
-.pg-set-card .pg-f-xs > .form-select,
+.pg-set-card .pg-f-xs > .form-control,
 .pg-set-card .pg-f-xs > .input-group { max-width: 11rem; }
 
 .pg-set-card .pg-f-sm > .form-control,
-.pg-set-card .pg-f-sm > .form-select,
+.pg-set-card .pg-f-sm > .form-control,
 .pg-set-card .pg-f-sm > .input-group { max-width: 19rem; }
 
 .pg-set-card .pg-f-md > .form-control,
-.pg-set-card .pg-f-md > .form-select,
+.pg-set-card .pg-f-md > .form-control,
 .pg-set-card .pg-f-md > .input-group { max-width: 28rem; }
 
 .pg-set-card .pg-f-lg > .form-control,
-.pg-set-card .pg-f-lg > .form-select,
+.pg-set-card .pg-f-lg > .form-control,
 .pg-set-card .pg-f-lg > .input-group { max-width: 34rem; }
 
 /* ── The hub ──────────────────────────────────────────────────────────────
@@ -10749,7 +10753,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   gap: .35rem;
   margin-bottom: .4rem;
 }
-.ws-sa-follow-head .form-select {
+.ws-sa-follow-head .form-control {
   max-width: 14rem;
 }
 .ws-sa-follow-head .ws-sa-remove {
@@ -11235,7 +11239,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   display: none;
 }
 /* The hint is hidden on narrow screens; the send button still goes right. */
-.ws-composer-tools > .btn-primary:last-child {
+.ws-composer-tools > .btn-solid.theme-primary:last-child {
   margin-left: auto;
 }
 .ws-pane-messages {
@@ -11750,13 +11754,13 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   margin: 0;
   cursor: pointer;
 }
-.ws-check .form-check-input {
+.ws-check :is(.check, .radio) {
   flex-shrink: 0;
   margin: 0;
   position: relative;
   top: .15em;
 }
-.ws-check .form-check-input:disabled {
+.ws-check :is(.check, .radio):disabled {
   opacity: .7;
 }
 .ws-check.ws-checked .ws-check-text {
@@ -11829,7 +11833,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   background: rgba(var(--ws-accent-rgb), .1);
   transition: width .25s ease;
 }
-.ws-poll-option .form-check-input {
+.ws-poll-option :is(.check, .radio) {
   flex-shrink: 0;
   margin: 0;
 }
@@ -12556,7 +12560,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   align-items: flex-start;
   margin-bottom: .35rem;
 }
-.ws-sa-field-row > .form-select {
+.ws-sa-field-row > .form-control {
   flex: 0 0 11rem;
 }
 .ws-sa-picker {
@@ -12601,11 +12605,11 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   .ws-sa-field-row {
     flex-wrap: wrap;
   }
-  .ws-sa-field-row > .form-select {
+  .ws-sa-field-row > .form-control {
     flex: 1 1 100%;
   }
 }
-.ws-delete-scopes .form-check {
+.ws-delete-scopes .form-field:has(> .check, > .radio, > .switch) {
   margin-bottom: .45rem;
 }
 /* Who has seen a message. */
@@ -13287,7 +13291,7 @@ a.ws-chip:hover {
 .ws-check-edit-row:focus-within {
   background: var(--pg-bg-1);
 }
-.ws-check-edit-row > .form-check-input {
+.ws-check-edit-row > :is(.check, .radio) {
   flex-shrink: 0;
   margin: .6rem .15rem 0;
 }
@@ -16197,7 +16201,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   font-weight: 600;
   margin: 0 0 .75rem;
 }
-.ws-home .col-md-6 > .ws-home-card {
+.ws-home .md\:col-6 > .ws-home-card {
   height: 100%;
 }
 .ws-home-card + .ws-home-card {
@@ -16498,7 +16502,7 @@ button.ws-home-row:hover,
   gap: .35rem .6rem;
   margin-bottom: .4rem;
 }
-.ws-calc-settings .form-select {
+.ws-calc-settings .form-control {
   width: auto;
 }
 .ws-calc-settings .form-control {
@@ -16592,7 +16596,7 @@ button.ws-home-row:hover,
   align-items: flex-start;
   cursor: pointer;
 }
-.ws-nb-import-row .form-check-input {
+.ws-nb-import-row :is(.check, .radio) {
   flex: none;
   margin-top: .2rem;
 }
@@ -18150,7 +18154,7 @@ button.ws-ack-count:hover {
   max-width: 50%;
   text-align: right;
 }
-.wsf-share-level .form-select {
+.wsf-share-level .form-control {
   width: auto;
 }
 .wsf-main {
@@ -18672,4 +18676,12 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   font-weight: 500;
   white-space: normal;
   text-align: left;
+}
+
+}
+
+/* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
+   beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
+.software-navbar.fixed-top {
+  z-index: 1030;
 }

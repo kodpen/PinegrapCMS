@@ -1080,24 +1080,24 @@ function pg_sms_settings_fields()
 
     $html = '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" data-bs-target="#sms_row"/>
-                                                <label class="form-check-label" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
+                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">';
+                                                   <div class="row gy-5">';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert alert-warning mb-0">' . h($warning) . '</div></div>';
+                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
     }
 
     $html .= '
                                                         <div class="pg-f-md">
                                                             <label for="sms_provider" class="form-label">' . lang('Provider') . '</label>
-                                                            <select name="sms_provider" id="sms_provider" class="form-select">' . $options . '</select>
+                                                            <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
                                                         </div>';
 
     foreach (pg_sms_providers() as $key => $definition) {
@@ -1118,7 +1118,7 @@ function pg_sms_settings_fields()
                                                             <div class="form-text">' . lang('A mobile number. The message goes out at once and the provider charges it.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <button type="submit" name="sms_test" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
+                                                            <button type="submit" name="sms_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
                                                         </div>
                                                     </div>
                                                 </div>

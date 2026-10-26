@@ -43,7 +43,7 @@ function backup_list($directory){
 $output_warnings_for_backup = '';
 $disabled_fieldset_attribute = '';
 if (!extension_loaded('pdo_mysql') ) {
-	$output_warnings_for_backup = '<div class="alert alert-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Backup feature.') . '</div>';
+	$output_warnings_for_backup = '<div class="alert theme-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Backup feature.') . '</div>';
 	$disabled_fieldset_attribute = 'disabled="disabled"';
 }
 
@@ -53,7 +53,7 @@ $output_restore_notice = '';
 $unfinished_restore = pg_restore_unfinished();
 if ($unfinished_restore !== null) {
 	$output_restore_notice = '
-	<div class="alert alert-warning d-flex gap-2 align-items-start">
+	<div class="alert theme-warning d-flex gap-3 align-items-start">
 		<i class="bi bi-hourglass-split"></i>
 		<div>
 			' . h(lang(array('string' => 'A restore of the backup {var:1} is unfinished ({var:2}, last step {var:3}). The site runs on its own tables until it is finished.', 'vars' => array($unfinished_restore['folder'], pg_restore_progress_text($unfinished_restore), date('d.m.Y H:i', (int) $unfinished_restore['updated']))))) . '
@@ -70,8 +70,8 @@ if($directory){
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'
@@ -110,8 +110,8 @@ if (!$_POST) {
 	                ' . $liveform->output_notices() . '
 	                ' . $output_restore_notice . '
 
-	                <div class="row mb-2 flex-wrap">
-	                    <div class="col-12 col-sm-12 text-center text-md-start">
+	                <div class="row mb-3 flex-wrap">
+	                    <div class="col-12 sm:col-12 text-center md:text-start">
 	                        
 	                        <p>' . lang('Disk Usage') . ': ' 
 	                            . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '
@@ -122,7 +122,7 @@ if (!$_POST) {
 	                <form name="form" id="backupform" action="backups.php"
 	                      class="disable_shortcut" method="post" autocomplete="off">
 
-	                    <div class="card my-4">
+	                    <div class="card my-7">
 	                        <div class="card-body p-0 position-relative">
 	                            ' . get_token_field() . '
 
@@ -142,8 +142,8 @@ if (!$_POST) {
 	                        </div>
 	                    </div>
 
-	                    <div class="card my-4">
-	                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+	                    <div class="card my-7">
+	                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
 	                            ' . lang('Create or Update Backup') . '
 	                        </div>
 	                        <div class="card-body">
@@ -163,7 +163,7 @@ if (!$_POST) {
 	                                    </div>
 	                                    <div class="logbox form-text"></div>
 	                                </div>
-	                                <div class="col-12 col-md-auto my-1">
+	                                <div class="col-12 md:col-auto my-1">
 	                                    <label for="backup_folder_name" class="form-label">'
 	                                        . lang('Backup Name') . '
 	                                    </label>
@@ -175,7 +175,7 @@ if (!$_POST) {
 	                                            'class' => 'form-control'
 	                                        ]) . '
 	                                        <button type="button" id="backup"
-	                                                class="btn btn-success ready">'
+	                                                class="btn btn-solid theme-success ready">'
 	                                            . lang('Backup') . '
 	                                        </button>
 	                                    </fieldset>

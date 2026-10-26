@@ -222,7 +222,7 @@
         var picker = k.select(columns.map(function (column, index) {
             return [index, column.title + ' (' + column.items.length + ')'];
         }), self.current);
-        picker.classList.add('w-auto', 'ws-cb-picker', 'mb-2');
+        picker.classList.add('w-auto', 'ws-cb-picker', 'mb-3');
         picker.setAttribute('aria-label', t('cb_column'));
         picker.addEventListener('change', function () {
             self.current = parseInt(picker.value, 10) || 0;

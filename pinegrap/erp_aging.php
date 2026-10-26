@@ -74,10 +74,10 @@ foreach ($folded['accounts'] as $account) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
             </td>
             <td style="max-width:280px" class="text-nowrap text-truncate align-middle chart_label">' . h($account['title'])
-                . '<div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
+                . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
             ' . $output_cells . '
             <td class="align-middle text-end fw-bold" data-order="' . (int) $account['total'] . '"><a href="erp_invoices.php?' . h($account_query . '&filter=open') . '" class="link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
         </tr>';
@@ -96,7 +96,7 @@ foreach ($buckets as $label) {
 // The other direction keeps the date; the date form keeps the direction.
 
 $output_fx_note = erp_fx_enabled()
-    ? '<div class="form-text px-3 pb-3">' . lang('Foreign-currency documents are counted at the rate they were booked at.') . '</div>'
+    ? '<div class="form-text px-5 pb-5">' . lang('Foreign-currency documents are counted at the rate they were booked at.') . '</div>'
     : '';
 
 echo
@@ -117,20 +117,20 @@ pg_page_shell(array(
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . pg_filter_select('direction', $direction_titles, $direction, array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_aging.php', 'keep' => array('as_of'))) . '
-                <form method="get" action="erp_aging.php" class="d-flex align-items-center gap-2 mb-0">
+                <form method="get" action="erp_aging.php" class="d-flex align-items-center gap-3 mb-0">
                     <input type="hidden" name="direction" value="' . h($direction) . '" />
-                    <label for="as_of" class="small text-body-secondary text-nowrap mb-0">' . lang('As of') . '</label>
+                    <label for="as_of" class="small fg-secondary text-nowrap mb-0">' . lang('As of') . '</label>
                     <input type="date" id="as_of" name="as_of" class="form-control form-control-sm" value="' . h($as_of) . '" max="' . h(date('Y-m-d')) . '" />
                     <button type="submit" class="btn btn-sm btn-ghost" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
-                <div class="pg-toolbar-grow small text-body-secondary text-truncate">
+                <div class="pg-toolbar-grow small fg-secondary text-truncate">
                     ' . h(lang(array('string' => '{var:1} as of {var:2}: {var:3} document(s) open on {var:4} account(s)', 'vars' => array($direction_titles[$direction], prepare_form_data_for_output($as_of, 'date', false), (int) $folded['totals']['count'], count($folded['accounts']))))) . '
                 </div>
                 <a class="btn btn-sm btn-ghost" href="erp_aging.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
             </nav>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table" style="width:100%;display:none;">
                         <thead>

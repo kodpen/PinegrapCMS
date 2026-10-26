@@ -170,14 +170,14 @@ function connections_ago($timestamp) {
 function connections_status_badge($status) {
 
 	if ($status === 'active') {
-		return '<span class="badge text-bg-success fw-normal">' . h(lang('Working')) . '</span>';
+		return '<span class="badge theme-success fw-normal">' . h(lang('Working')) . '</span>';
 	}
 
 	if ($status === 'reauth') {
-		return '<span class="badge text-bg-warning fw-normal">' . h(lang('Connect again')) . '</span>';
+		return '<span class="badge theme-warning fw-normal">' . h(lang('Connect again')) . '</span>';
 	}
 
-	return '<span class="badge text-bg-secondary fw-normal">' . h(lang('Off')) . '</span>';
+	return '<span class="badge theme-secondary fw-normal">' . h(lang('Off')) . '</span>';
 
 }
 
@@ -189,9 +189,9 @@ foreach ($providers as $provider_key => $provider) {
 	$ready = pg_connect_app_ready($app);
 
 	if ($ready) {
-		$app_badge = '<span class="badge text-bg-success fw-normal">' . h(lang('Ready')) . '</span>';
+		$app_badge = '<span class="badge theme-success fw-normal">' . h(lang('Ready')) . '</span>';
 	} elseif (is_array($app) && !$app['enabled']) {
-		$app_badge = '<span class="badge text-bg-secondary fw-normal">' . h(lang('Off')) . '</span>';
+		$app_badge = '<span class="badge theme-secondary fw-normal">' . h(lang('Off')) . '</span>';
 	} else {
 		$app_badge = '<span class="badge text-bg-light border fw-normal">' . h(lang('Not set up')) . '</span>';
 	}
@@ -216,27 +216,27 @@ foreach ($providers as $provider_key => $provider) {
 
 		$account_rows .= '
 			<li class="list-group-item px-0">
-				<div class="d-flex align-items-start gap-2">
-					<i class="bi bi-person-circle fs-5 opacity-75" aria-hidden="true"></i>
+				<div class="d-flex align-items-start gap-3">
+					<i class="bi bi-person-circle fs-lg opacity-75" aria-hidden="true"></i>
 					<div class="flex-grow-1 min-w-0">
 						<div class="fw-semibold text-truncate">' . h($account['label']) . '</div>
-						<div class="small text-muted">' . h(implode(' · ', $purpose_labels)) . '</div>
-						<div class="small text-muted">' . h(implode(' · ', $meta)) . '</div>
+						<div class="small fg-secondary">' . h(implode(' · ', $purpose_labels)) . '</div>
+						<div class="small fg-secondary">' . h(implode(' · ', $meta)) . '</div>
 						' . (($account['last_error'] !== '')
-							? '<div class="small text-danger mt-1">' . h($account['last_error']) . '</div>'
+							? '<div class="small fg-danger mt-1">' . h($account['last_error']) . '</div>'
 							: '') . '
 					</div>
 					' . connections_status_badge($account['status']) . '
 				</div>
-				<div class="d-flex flex-wrap gap-2 mt-2 ms-4 ps-2">
+				<div class="d-flex flex-wrap gap-3 mt-3 ms-7 ps-3">
 					' . (($account['status'] === 'reauth')
-						? '<button type="button" class="btn btn-sm btn-primary connections-connect"
+						? '<button type="button" class="btn btn-sm btn-solid theme-primary connections-connect"
 							data-provider="' . h($provider_key) . '" data-connection="' . $account['id'] . '"' . ($ready ? '' : ' disabled') . '>
 							<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Connect again')) . '</button>'
-						: '<button type="button" class="btn btn-sm btn-outline-secondary connections-action"
+						: '<button type="button" class="btn btn-sm btn-outline theme-secondary connections-action"
 							data-action="check" data-id="' . $account['id'] . '">
 							<i class="bi bi-activity me-1" aria-hidden="true"></i>' . h(lang('Check')) . '</button>') . '
-					<button type="button" class="btn btn-sm btn-outline-danger connections-action"
+					<button type="button" class="btn btn-sm btn-outline theme-danger connections-action"
 						data-action="disconnect" data-id="' . $account['id'] . '"
 						data-confirm="' . h(lang(array('string' => 'The site will no longer use {var:1}, and every feature that does stops until an account is connected again.', 'vars' => $account['label']))) . '">
 						<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
@@ -254,7 +254,7 @@ foreach ($providers as $provider_key => $provider) {
 		$value = (is_array($app) && isset($app['options'][$option_key])) ? (string) $app['options'][$option_key] : (string) $option['default'];
 
 		$option_fields .= '
-			<div class="col-12 col-md-6">
+			<div class="col-12 md:col-6">
 				<label for="option_' . h($provider_key . '_' . $option_key) . '" class="form-label">' . h($option['label']) . '</label>
 				<input type="text" class="form-control form-control-sm" id="option_' . h($provider_key . '_' . $option_key) . '"
 					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off">
@@ -272,27 +272,27 @@ foreach ($providers as $provider_key => $provider) {
 	$secret_stored = is_array($app) && $app['secret_stored'] && ($app['source'] === 'connect');
 
 	$app_form = '
-		<form method="post" action="connections.php" class="mt-2">
+		<form method="post" action="connections.php" class="mt-3">
 			' . get_token_field() . '
 			<input type="hidden" name="connections_action" value="save_app">
 			<input type="hidden" name="provider" value="' . h($provider_key) . '">
 			' . ((is_array($app) && ($app['source'] === 'signin'))
-				? '<div class="alert alert-info small py-2">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
+				? '<div class="alert theme-info small py-3">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
 				: '') . '
-			<ol class="small ps-3 mb-3">' . $setup_steps . '</ol>
+			<ol class="small ps-5 mb-5">' . $setup_steps . '</ol>
 			<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
-			<div class="input-group input-group-sm mb-3">
+			<div class="input-group input-group-sm mb-5">
 				<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
-				<button type="button" class="btn btn-outline-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
+				<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
 					<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
 			</div>
-			<div class="row g-2">
-				<div class="col-12 col-md-6">
+			<div class="row g-3">
+				<div class="col-12 md:col-6">
 					<label for="client_id_' . h($provider_key) . '" class="form-label">' . h(lang('Client ID')) . '</label>
 					<input type="text" class="form-control form-control-sm" id="client_id_' . h($provider_key) . '" name="client_id"
 						value="' . h(is_array($app) ? $app['client_id'] : '') . '" maxlength="255" autocomplete="off">
 				</div>
-				<div class="col-12 col-md-6">
+				<div class="col-12 md:col-6">
 					<label for="client_secret_' . h($provider_key) . '" class="form-label">' . h(lang('Client secret')) . '</label>
 					<input type="password" class="form-control form-control-sm" id="client_secret_' . h($provider_key) . '" name="client_secret"
 						value="" autocomplete="new-password"
@@ -300,36 +300,36 @@ foreach ($providers as $provider_key => $provider) {
 				</div>
 				' . $option_fields . '
 				<div class="col-12">
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" role="switch" name="enabled" value="1" id="enabled_' . h($provider_key) . '"'
-							. ((!is_array($app) || $app['enabled']) ? ' checked' : '') . '>
-						<label class="form-check-label" for="enabled_' . h($provider_key) . '">' . h(lang('Connections through this application are allowed')) . '</label>
+					<div class="form-field">
+						<div class="switch"><input class="" type="checkbox" role="switch" name="enabled" value="1" id="enabled_' . h($provider_key) . '"'
+							. ((!is_array($app) || $app['enabled']) ? ' checked' : '') . '></div>
+						<label class="" for="enabled_' . h($provider_key) . '">' . h(lang('Connections through this application are allowed')) . '</label>
 					</div>
 				</div>
 			</div>
-			<div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-				<button type="submit" name="submit_save" class="btn btn-sm btn-primary"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
-				<a class="btn btn-sm btn-outline-secondary" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
+			<div class="d-flex flex-wrap align-items-center gap-3 mt-5">
+				<button type="submit" name="submit_save" class="btn btn-sm btn-solid theme-primary"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+				<a class="btn btn-sm btn-outline theme-secondary" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
 			</div>
 		</form>';
 
 	$cards .= '
-		<div class="col-12 col-xxl-6">
+		<div class="col-12 2xl:col-6">
 			<div class="card h-100">
 				<div class="card-header d-flex justify-content-between align-items-center">
-					<span class="text-uppercase h5 text-primary fw-bold mb-0" lang="en"><i class="bi ' . h($provider['icon']) . ' me-2" aria-hidden="true"></i>' . h($provider['label']) . '</span>
+					<span class="text-uppercase h5 fg-primary fw-bold mb-0" lang="en"><i class="bi ' . h($provider['icon']) . ' me-3" aria-hidden="true"></i>' . h($provider['label']) . '</span>
 					' . $app_badge . '
 				</div>
 				<div class="card-body">
 					' . (($account_rows !== '')
-						? '<ul class="list-group list-group-flush mb-3">' . $account_rows . '</ul>'
-						: '<p class="small text-muted">' . h(lang(array('string' => 'No {var:1} account is connected.', 'vars' => $provider['label']))) . '</p>') . '
-					<button type="button" class="btn btn-sm btn-primary rounded-pill px-3 connections-connect"
+						? '<ul class="list-group list-group-flush mb-5">' . $account_rows . '</ul>'
+						: '<p class="small fg-secondary">' . h(lang(array('string' => 'No {var:1} account is connected.', 'vars' => $provider['label']))) . '</p>') . '
+					<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 connections-connect"
 						data-provider="' . h($provider_key) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
 					' . ($ready ? '' : '<div class="form-text">' . h(lang('Set up the application below first.')) . '</div>') . '
-					<details class="mt-4"' . ($ready ? '' : ' open') . '>
+					<details class="mt-7"' . ($ready ? '' : ' open') . '>
 						<summary class="fw-semibold">' . h(lang('Application')) . '</summary>
 						' . $app_form . '
 					</details>
@@ -359,10 +359,10 @@ echo pg_page_shell(array(
 		' . $liveform_messages . '
 		' . ($can_seal
 			? ''
-			: '<div class="alert alert-danger">' . h(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.')) . '</div>') . '
+			: '<div class="alert theme-danger">' . h(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.')) . '</div>') . '
 	</div></div>
 
-	<div class="row g-3">' . $cards . '</div>
+	<div class="row g-5">' . $cards . '</div>
 
 	<form method="post" action="connections.php" id="connections_form" class="disable_shortcut d-none">
 		' . get_token_field() . '

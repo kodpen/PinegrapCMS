@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /**
  * Pinegrap - Enterprise Website Platform
  *
@@ -805,4 +809,6 @@ button.sdh-page:hover {
   .sdh-head-tools .input-group {
     width: 100%;
   }
+}
+
 }

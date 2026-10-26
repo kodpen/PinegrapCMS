@@ -1049,7 +1049,7 @@ function ws_task_card_html($viewer, $task, $assignees)
     }
 
     if ($people === '') {
-        $people = '<span class="text-body-secondary">' . h(lang('Nobody yet')) . '</span>';
+        $people = '<span class="fg-secondary">' . h(lang('Nobody yet')) . '</span>';
     }
 
     $progress = '';
@@ -1093,7 +1093,7 @@ function ws_task_card_html($viewer, $task, $assignees)
             $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"' . (($waits !== '') ? ' data-ws-blocked="' . h($waits) . '"' : '') . '><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
         }
 
-        $buttons .= '<button type="button" class="btn btn-sm btn-outline-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
+        $buttons .= '<button type="button" class="btn btn-sm btn-outline theme-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
     }
 
     $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-open="' . (int) $task['id'] . '"><i class="bi bi-box-arrow-up-right me-1"></i>' . h(lang('Open task')) . '</button>';

@@ -76,10 +76,10 @@ if (!$_POST) {
     // if the user is a designer or administrator, then output design rows
     if ($user['role'] <= 1) {
         $output_design_rows =
-            '<div class="col-12 my-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="design" name="design" value="1">
-                    <label class="form-check-label" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
+            '<div class="col-12 my-5">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"></div>
+                    <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
                 </div>
             </div>';
     }
@@ -122,7 +122,7 @@ if (!$_POST) {
 
     if ($upload_limits['file_max'] > 0) {
         $output_upload_limits =
-            '<p class="text-body-secondary mb-0">'
+            '<p class="fg-secondary mb-0">'
             . h(lang(array(
                 'string' => 'At most {var:1} per file, and {var:2} in one upload.',
                 'vars'   => array(
@@ -164,7 +164,7 @@ if (!$_POST) {
             dictMaxFilesExceeded : "' . lang('You can not upload any more files.') . '",
             dictCancelUpload : "' . lang('Cancel upload') . '",
 
-            dictRemoveFile : "<span class=\'material-icons btn btn-sm text-danger p-1 rounded position-absolute top-0 end-0\' style=\'z-index:20;\'>delete</span>",
+            dictRemoveFile : "<span class=\'material-icons btn btn-sm fg-danger p-1 rounded-4 position-absolute top-0 end-0\' style=\'z-index:20;\'>delete</span>",
             // Had to set high value for parallelUploads in order for
             // large number of uploads to work (overrides default which is 2).
             parallelUploads: 9999,
@@ -239,8 +239,8 @@ if (!$_POST) {
     </script>
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p class="mb-0">' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
                         ' . $output_upload_limits . '
@@ -251,8 +251,8 @@ if (!$_POST) {
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Files To Upload') . '
                                 </div>
                                 <div class="card-body">
@@ -261,9 +261,9 @@ if (!$_POST) {
                                             <div class="dz-message ">' . lang('Drop files here or click to browse') . '</div>
                                         </div>
                                         <div class="fallback">
-                                            <div class="alert alert-primary">' . lang('It appears that you are using an older browser that does not support dragging & dropping files to upload them. Please use the field below to select one or more files.') . '</div>
+                                            <div class="alert theme-primary">' . lang('It appears that you are using an older browser that does not support dragging & dropping files to upload them. Please use the field below to select one or more files.') . '</div>
                                             <input type="hidden" name="fallback" value="true" />
-                                            <div class="mb-3">
+                                            <div class="mb-5">
                                                 <label for="fallback_input" class="form-label">' . lang('Select File(s)') . '</label>
                                                 <input class="form-control form-control-sm" id="fallback_input" name="file[]" type="file" multiple="multiple">
                                             </div>
@@ -272,27 +272,27 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('File Access Control') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-select" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
+                                        <select class="form-control" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
                                     </div>
                                     ' . $output_design_rows . '
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7 ">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Description') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
                                         <textarea class="form-control" id="description" name="description" style="min-height:85px;"></textarea>
                                     </div>
@@ -300,10 +300,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>         
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1  btn-success " ><span class="material-icons me-2">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>
+                                <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

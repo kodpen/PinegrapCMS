@@ -64,9 +64,9 @@ if (!$_POST) {
         ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
         : '';
     $output_purchase_order = ($purchase_order_number !== '')
-        ? '<div class="alert alert-light d-flex align-items-center gap-2 py-2 mb-3" role="status"><i class="bi bi-cart-check" aria-hidden="true"></i><span>'
+        ? '<div class="alert alert-light d-flex align-items-center gap-3 py-3 mb-5" role="status"><i class="bi bi-cart-check" aria-hidden="true"></i><span>'
             . '<a class="link-body-emphasis" href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '">' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a>'
-            . ' <span class="text-body-secondary">' . h(lang('The order counts these lines as received once the draft is issued.')) . '</span></span></div>'
+            . ' <span class="fg-secondary">' . h(lang('The order counts these lines as received once the draft is issued.')) . '</span></span></div>'
         : '';
 
     echo
@@ -90,23 +90,23 @@ if (!$_POST) {
             ' . $liveform->output_notices() . '
             ' . $output_purchase_order . '
             ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
-                ? '<div class="alert alert-warning"><i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
+                ? '<div class="alert theme-warning"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
                 : '') . '
             ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
             </nav>' : '') . '
 
             <form name="form" action="edit_erp_invoice_draft.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 ' . erp_invoice_form_cards($liveform, array('lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
-                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline theme-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
                         </div>
                     </div>
                 </nav>

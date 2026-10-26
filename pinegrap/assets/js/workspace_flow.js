@@ -2071,7 +2071,7 @@
         var from = nodeById(edge.from);
         var pick = K.select((from ? kindOf(from).out : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
-        pick.className = 'form-select form-select-sm w-auto';
+        pick.className = 'form-control form-control-sm w-auto';
         pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
@@ -2340,7 +2340,7 @@
 
         var pick = K.select(targets.map(function (target) { return [target.id, t(kindOf(target).name) + ': ' + nameOf(target)]; }), targets[0].id);
 
-        pick.className = 'form-select';
+        pick.className = 'form-control';
         pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
 
         K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
@@ -3027,7 +3027,7 @@
         }), channels[0].id);
         var add = K.button('btn btn-sm btn-outline-secondary', t('fl_share'), 'bi-hash');
 
-        choice.classList.add('w-auto', 'mw-100');
+        choice.classList.add('w-auto', 'max-w-100');
         choice.setAttribute('aria-label', t('fl_share_channel'));
         row.appendChild(choice);
         row.appendChild(el('span', 'small text-body-secondary', t(LEVELS.view)));

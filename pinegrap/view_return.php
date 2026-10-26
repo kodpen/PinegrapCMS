@@ -234,7 +234,7 @@ foreach ($return['items'] as $item) {
 
     $output_lines .= '
                             <tr>
-                                <td>' . h((string) $item['name']) . (($line && ($line['code'] !== '')) ? '<div class="small text-muted">' . h($line['code']) . '</div>' : '') . '</td>
+                                <td>' . h((string) $item['name']) . (($line && ($line['code'] !== '')) ? '<div class="small fg-secondary">' . h($line['code']) . '</div>' : '') . '</td>
                                 <td class="text-end">' . ($line ? (int) $line['quantity'] : '') . '</td>
                                 <td class="text-end fw-semibold">' . (int) $item['quantity'] . '</td>
                                 <td class="text-end">' . ($line ? prepare_amount($line['price'] / 100) : '') . '</td>
@@ -272,32 +272,32 @@ if (in_array('approved', $actions, true)) {
     $suggested = pg_return_suggested_approval($return, $state);
 
     $output_forms .= '
-            <div class="card mb-4">
+            <div class="card mb-7">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Answer the Request')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Answer the Request')) . '</span>
                 </div>
                 <div class="card-body">
                     <form method="post" action="view_return.php">
                         ' . $form_keys . '
-                        <div class="row g-3">
+                        <div class="row g-5">
                             <div class="col-12">
                                 <label for="note" class="form-label">' . h(lang('Note to the customer')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control')) . '
                                 <div id="note_help" class="form-text">' . h(lang('Sent to the customer with the answer. Needed when you reject the request.')) . '</div>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 md:col-6">
                                 <label for="carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
-                                <select class="form-select" id="carrier" name="carrier">' . $carrier_options($field_value('carrier', $suggested['carrier']), lang('Not named')) . '</select>
+                                <select class="form-control" id="carrier" name="carrier">' . $carrier_options($field_value('carrier', $suggested['carrier']), lang('Not named')) . '</select>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 md:col-6">
                                 <label for="carrier_code" class="form-label">' . h(lang('Return code')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'carrier_code', 'id' => 'carrier_code', 'value' => $suggested['carrier_code'], 'maxlength' => '64', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                                 <div id="carrier_code_help" class="form-text">' . h(lang('The code the customer gives the carrier so that the shop pays for the parcel.')) . '</div>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap gap-2 mt-3">
-                            <button type="submit" name="action" value="approve" class="btn btn-primary"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>' . h(lang('Approve the Return')) . '</button>
-                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline-warning align-self-center" data-confirm-content="' . h(lang('The request will be rejected and the customer is told why by e-mail.')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Reject the Return')) . '</button>
+                        <div class="d-flex flex-wrap gap-3 mt-5">
+                            <button type="submit" name="action" value="approve" class="btn btn-solid theme-primary"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>' . h(lang('Approve the Return')) . '</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline theme-warning align-self-center" data-confirm-content="' . h(lang('The request will be rejected and the customer is told why by e-mail.')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Reject the Return')) . '</button>
                         </div>
                     </form>
                 </div>
@@ -310,19 +310,19 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
 
     if (in_array('shipped', $actions, true)) {
         $output_shipped = '
-                    <form method="post" action="view_return.php" class="mb-3">
+                    <form method="post" action="view_return.php" class="mb-5">
                         ' . $form_keys . '
-                        <div class="row g-3 align-items-end">
-                            <div class="col-12 col-md-5">
+                        <div class="row g-5 align-items-end">
+                            <div class="col-12 md:col-5">
                                 <label for="tracking_number" class="form-label">' . h(lang('Tracking number of the parcel')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'tracking_number', 'id' => 'tracking_number', 'maxlength' => '100', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 md:col-4">
                                 <label for="shipped_carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
-                                <select class="form-select" id="shipped_carrier" name="carrier">' . $carrier_options('', lang('As approved')) . '</select>
+                                <select class="form-control" id="shipped_carrier" name="carrier">' . $carrier_options('', lang('As approved')) . '</select>
                             </div>
-                            <div class="col-12 col-md-3">
-                                <button type="submit" name="action" value="shipped" class="btn btn-sm btn-outline-secondary w-100">' . h(lang('Record as Sent Back')) . '</button>
+                            <div class="col-12 md:col-3">
+                                <button type="submit" name="action" value="shipped" class="btn btn-sm btn-outline theme-secondary w-100">' . h(lang('Record as Sent Back')) . '</button>
                             </div>
                         </div>
                         <div class="form-text">' . h(lang('When the customer says the parcel left without doing so on their order page. The refund is due 14 days after the parcel reached the carrier.')) . '</div>
@@ -332,13 +332,13 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
     $output_received = in_array('received', $actions, true) ? '
                     <form method="post" action="view_return.php">
                         ' . $form_keys . '
-                        <button type="submit" name="action" value="received" class="btn btn-primary" data-confirm-content="' . h(lang('The goods of this return will be marked as received.')) . '"><i class="bi bi-box-seam me-1" aria-hidden="true"></i>' . h(lang('Mark the Goods Received')) . '</button>
+                        <button type="submit" name="action" value="received" class="btn btn-solid theme-primary" data-confirm-content="' . h(lang('The goods of this return will be marked as received.')) . '"><i class="bi bi-box-seam me-1" aria-hidden="true"></i>' . h(lang('Mark the Goods Received')) . '</button>
                     </form>' : '';
 
     $output_forms .= '
-            <div class="card mb-4">
+            <div class="card mb-7">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('The Goods')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('The Goods')) . '</span>
                 </div>
                 <div class="card-body">
                     ' . $output_shipped . '
@@ -365,18 +365,18 @@ if ($refund_plan !== null) {
     }
 
     $output_methods = $by_driver ? '
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="refund_method" id="refund_method_driver" value="driver"' . (($method === 'driver') ? ' checked' : '') . '>
-                                <label class="form-check-label" for="refund_method_driver">' . h(lang(array('string' => 'Refund through {var:1}', 'vars' => array($refund_plan['driver_label'])))) . '</label>
+                        <div class="mb-5">
+                            <div class="form-field">
+                                <input class="radio" type="radio" name="refund_method" id="refund_method_driver" value="driver"' . (($method === 'driver') ? ' checked' : '') . '>
+                                <label class="" for="refund_method_driver">' . h(lang(array('string' => 'Refund through {var:1}', 'vars' => array($refund_plan['driver_label'])))) . '</label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="refund_method" id="refund_method_manual" value="manual"' . (($method === 'manual') ? ' checked' : '') . '>
-                                <label class="form-check-label" for="refund_method_manual">' . h(lang('Record a refund made another way')) . '</label>
+                            <div class="form-field">
+                                <input class="radio" type="radio" name="refund_method" id="refund_method_manual" value="manual"' . (($method === 'manual') ? ' checked' : '') . '>
+                                <label class="" for="refund_method_manual">' . h(lang('Record a refund made another way')) . '</label>
                             </div>
                         </div>' : '
                         <input type="hidden" name="refund_method" value="manual">
-                        <p class="small text-muted">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>';
+                        <p class="small fg-secondary">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>';
 
     // The return invoice opens after the refund only for whoever may use the
     // ERP (the redirect above); anyone else is told it still has to be issued.
@@ -384,38 +384,38 @@ if ($refund_plan !== null) {
 
     if ((int) $refund_plan['erp']['invoice_id'] > 0) {
         $output_erp_note = '
-                        <p class="small text-muted mb-0 mt-2">' . h(pg_return_erp_hand_off($user)
+                        <p class="small fg-secondary mb-0 mt-3">' . h(pg_return_erp_hand_off($user)
                             ? lang(array('string' => 'After the refund, the return invoice for {var:1} opens with the same lines, ready to be checked and issued.', 'vars' => array($refund_plan['erp']['invoice_number'])))
                             : lang(array('string' => 'The return invoice for {var:1} is not issued here: someone who uses the ERP must issue it after the refund.', 'vars' => array($refund_plan['erp']['invoice_number'])))) . '</p>';
     }
 
     $output_forms .= '
-            <div class="card mb-4">
+            <div class="card mb-7">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
                 </div>
                 <div class="card-body">
-                    <div class="row small mb-3">
-                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('The returned items come to')) . ':</span> <strong>' . $money($refund_plan['estimate']) . '</strong></div>
-                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('Refunded on this order so far')) . ':</span> ' . $money($refund_plan['refunded']) . '</div>
-                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('Left to refund on this order')) . ':</span> ' . $money($refund_plan['remaining']) . '</div>
+                    <div class="row small mb-5">
+                        <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('The returned items come to')) . ':</span> <strong>' . $money($refund_plan['estimate']) . '</strong></div>
+                        <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('Refunded on this order so far')) . ':</span> ' . $money($refund_plan['refunded']) . '</div>
+                        <div class="col-12 md:col-4"><span class="fg-secondary">' . h(lang('Left to refund on this order')) . ':</span> ' . $money($refund_plan['remaining']) . '</div>
                     </div>
                     <form method="post" action="view_return.php">
                         ' . $form_keys . '
                         ' . $output_methods . '
-                        <div class="row g-3">
-                            <div class="col-12 col-md-4">
+                        <div class="row g-5">
+                            <div class="col-12 md:col-4">
                                 <label for="refund_amount" class="form-label">' . h(lang('Amount to refund')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'number', 'name' => 'refund_amount', 'id' => 'refund_amount', 'value' => number_format($refund_plan['suggested'] / 100, 2, '.', ''), 'min' => '0', 'max' => number_format($refund_plan['remaining'] / 100, 2, '.', ''), 'step' => '0.01', 'inputmode' => 'decimal', 'class' => 'form-control', 'required' => 'required')) . '
                             </div>
-                            <div class="col-12 col-md-8">
-                                <label for="refund_reference" class="form-label">' . h(lang('Refund reference')) . ' <span class="text-muted fw-normal">(' . h(lang('optional')) . ')</span></label>
+                            <div class="col-12 md:col-8">
+                                <label for="refund_reference" class="form-label">' . h(lang('Refund reference')) . ' <span class="fg-secondary fw-normal">(' . h(lang('optional')) . ')</span></label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'refund_reference', 'id' => 'refund_reference', 'maxlength' => '255', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                             </div>
                         </div>
                         <div class="form-text">' . h(lang('Shipping is not included; add it when the whole order comes back. Enter 0 when the money already went back from the order screen. The reference is kept only with a refund made another way.')) . '</div>
                         ' . $output_erp_note . '
-                        <button type="submit" name="action" value="refund" class="btn btn-primary mt-3" data-confirm-content="' . h(lang('The refund will be made and the return marked as refunded. The customer is told by e-mail.')) . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h(lang('Refund the Money')) . '</button>
+                        <button type="submit" name="action" value="refund" class="btn btn-solid theme-primary mt-5" data-confirm-content="' . h(lang('The refund will be made and the return marked as refunded. The customer is told by e-mail.')) . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h(lang('Refund the Money')) . '</button>
                     </form>
                 </div>
             </div>';
@@ -442,22 +442,22 @@ $output_window = '';
 if ($timing) {
     $output_window = '
                         <div class="row">
-                            <span class="col text-muted">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
+                            <span class="col fg-secondary">' . h($timing['estimated'] ? lang('Delivered (estimated)') : lang('Delivered')) . ':</span>
                             <span class="col text-end">' . h(pg_return_day_text($timing['delivered'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Return period ends')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Return period ends')) . ':</span>
                             <span class="col text-end">' . h(pg_return_day_text($timing['deadline'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Asked')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Asked')) . ':</span>
                             <span class="col text-end">' . ($timing['in_time']
-                                ? '<span class="text-success">' . h(lang('within the return period')) . '</span>'
-                                : '<span class="text-danger">' . h(lang('after the return period')) . '</span>') . '</span>
+                                ? '<span class="fg-success">' . h(lang('within the return period')) . '</span>'
+                                : '<span class="fg-danger">' . h(lang('after the return period')) . '</span>') . '</span>
                         </div>';
 } else {
     $output_window = '
-                        <p class="small text-muted mb-0">' . h(lang('No delivery date is known for this delivery, so the return period cannot be worked out.')) . '</p>';
+                        <p class="small fg-secondary mb-0">' . h(lang('No delivery date is known for this delivery, so the return period cannot be worked out.')) . '</p>';
 }
 
 $refund_due = pg_return_refund_due($return);
@@ -475,33 +475,33 @@ if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $ret
 
     if (($refund_method === 'manual') && ((int) $return['refund_amount'] === 0)) {
         $output_refund = '
-                        <div class="mt-3 small">
+                        <div class="mt-5 small">
                             <p class="mb-1">' . h(lang('Marked as refunded: the money went back from the order screen.')) . '</p>
                             ' . (($refund_reference !== '') ? '<div class="row">
-                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Refund reference')) . ':</span>
                                 <span class="col text-end text-break">' . h($refund_reference) . '</span>
                             </div>' : '') . '
                         </div>';
     } elseif (in_array($refund_method, array('driver', 'manual'), true)) {
         $output_refund = '
-                        <div class="mt-3 small">
+                        <div class="mt-5 small">
                             <div class="row">
-                                <span class="col text-muted">' . h(lang('Amount refunded')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Amount refunded')) . ':</span>
                                 <span class="col text-end fw-semibold">' . h(pg_return_money_text((int) $return['refund_amount'])) . '</span>
                             </div>
                             <div class="row">
-                                <span class="col text-muted">' . h(lang('Refund method')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Refund method')) . ':</span>
                                 <span class="col text-end">' . h(($refund_method === 'driver') ? lang('Through the payment service') : lang('Recorded, made another way')) . '</span>
                             </div>
                             ' . (($refund_reference !== '') ? '<div class="row">
-                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col fg-secondary">' . h(lang('Refund reference')) . ':</span>
                                 <span class="col text-end text-break">' . h($refund_reference) . '</span>
                             </div>' : '') . '
-                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert alert-warning small mt-2 mb-0">' . h(lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\'s screen.')) . '</div>' : '') . '
+                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert theme-warning small mt-3 mb-0">' . h(lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\'s screen.')) . '</div>' : '') . '
                         </div>';
     } else {
         $output_refund = '
-                        <p class="small text-muted mt-3 mb-0">' . h(lang('The amount and the way of this refund were not kept.')) . '</p>';
+                        <p class="small fg-secondary mt-5 mb-0">' . h(lang('The amount and the way of this refund were not kept.')) . '</p>';
     }
 }
 
@@ -542,29 +542,29 @@ foreach ($stamps as $column => $label) {
 
     $stamp_rows .= '
                         <li class="mb-1"><span class="fw-semibold">' . h($label) . '</span> · ' . h(pg_return_time_text($return[$column]))
-                        . (($who !== '') ? '<div class="small text-muted">' . h($who) . '</div>' : '') . '</li>';
+                        . (($who !== '') ? '<div class="small fg-secondary">' . h($who) . '</div>' : '') . '</li>';
 }
 
 $output_close = in_array('closed', $actions, true) ? '
-                    <form method="post" action="view_return.php" class="mt-3">
+                    <form method="post" action="view_return.php" class="mt-5">
                         ' . $form_keys . '
-                        <button type="submit" name="action" value="close" class="btn btn-sm btn-outline-warning" data-confirm-content="' . h(lang('The return will be closed and can no longer be moved. A request closed before the goods were sent frees them to be asked for again.')) . '"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Close the Return')) . '</button>
+                        <button type="submit" name="action" value="close" class="btn btn-sm btn-outline theme-warning" data-confirm-content="' . h(lang('The return will be closed and can no longer be moved. A request closed before the goods were sent frees them to be asked for again.')) . '"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Close the Return')) . '</button>
                     </form>' : '';
 
 $customer = $order ? trim(trim((string) $order['billing_first_name']) . ' ' . trim((string) $order['billing_last_name'])) : '';
 
 $output_customer_note = ((string) $return['customer_note'] !== '') ? '
-                    <div class="mt-3"><div class="small text-muted mb-1">' . h(lang('The customer\'s note')) . '</div><div class="border rounded p-2 bg-body-tertiary">' . nl2br(h((string) $return['customer_note'])) . '</div></div>' : '';
+                    <div class="mt-5"><div class="small fg-secondary mb-1">' . h(lang('The customer\'s note')) . '</div><div class="border rounded-4 p-3 bg-body-tertiary">' . nl2br(h((string) $return['customer_note'])) . '</div></div>' : '';
 
 $output_decision = '';
 
 if ((int) $return['decided_at'] > 0) {
     $output_decision = '
-                    <div class="mt-3">
-                        ' . (((string) $return['decision_note'] !== '') ? '<div class="small text-muted mb-1">' . h(lang('Note to the customer')) . '</div><div class="border rounded p-2 bg-body-tertiary mb-2">' . nl2br(h((string) $return['decision_note'])) . '</div>' : '') . '
-                        ' . (((string) $return['carrier'] !== '') ? '<div><span class="text-muted">' . h(lang('Return carrier')) . ':</span> ' . h(pg_return_carrier_label((string) $return['carrier'])) . '</div>' : '') . '
-                        ' . (((string) $return['carrier_code'] !== '') ? '<div><span class="text-muted">' . h(lang('Return code')) . ':</span> <strong>' . h((string) $return['carrier_code']) . '</strong></div>' : '') . '
-                        ' . (((string) $return['tracking_number'] !== '') ? '<div><span class="text-muted">' . h(lang('Tracking number')) . ':</span> ' . h((string) $return['tracking_number']) . '</div>' : '') . '
+                    <div class="mt-5">
+                        ' . (((string) $return['decision_note'] !== '') ? '<div class="small fg-secondary mb-1">' . h(lang('Note to the customer')) . '</div><div class="border rounded-4 p-3 bg-body-tertiary mb-3">' . nl2br(h((string) $return['decision_note'])) . '</div>' : '') . '
+                        ' . (((string) $return['carrier'] !== '') ? '<div><span class="fg-secondary">' . h(lang('Return carrier')) . ':</span> ' . h(pg_return_carrier_label((string) $return['carrier'])) . '</div>' : '') . '
+                        ' . (((string) $return['carrier_code'] !== '') ? '<div><span class="fg-secondary">' . h(lang('Return code')) . ':</span> <strong>' . h((string) $return['carrier_code']) . '</strong></div>' : '') . '
+                        ' . (((string) $return['tracking_number'] !== '') ? '<div><span class="fg-secondary">' . h(lang('Tracking number')) . ':</span> ' . h((string) $return['tracking_number']) . '</div>' : '') . '
                     </div>';
 }
 
@@ -589,11 +589,11 @@ echo
         <a class="btn btn-sm btn-ghost" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
         <a class="btn btn-sm btn-ghost" href="view_order.php?id=' . (int) $return['order_id'] . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('View Order')) . '</a>
     </nav>
-    <div class="row g-4">
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
-            <div class="card mb-4">
+    <div class="row g-7">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="card mb-7">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -610,41 +610,41 @@ echo
                             </tbody>
                         </table>
                     </div>
-                    <div class="mt-3"><span class="text-muted">' . h(lang('Reason')) . ':</span> ' . h(isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : (string) $return['reason']) . '</div>
+                    <div class="mt-5"><span class="fg-secondary">' . h(lang('Reason')) . ':</span> ' . h(isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : (string) $return['reason']) . '</div>
                     ' . $output_customer_note . '
                     ' . $output_decision . '
                 </div>
             </div>
             ' . $output_forms . '
         </div>
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:1rem;">
-                <div class="card mb-4">
+                <div class="card mb-7">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted">' . h(lang('Status')) . '</span>
-                            <span class="' . h(pg_return_badge_class($status)) . ' fs-6">' . h(pg_return_status_label($status)) . '</span>
+                        <div class="d-flex justify-content-between align-items-center mb-5">
+                            <span class="fg-secondary">' . h(lang('Status')) . '</span>
+                            <span class="' . h(pg_return_badge_class($status)) . ' fs-md">' . h(pg_return_status_label($status)) . '</span>
                         </div>
                         <ul class="list-unstyled small mb-0">' . $stamp_rows . '
                         </ul>
                         ' . $output_refund . '
-                        ' . (($refund_due !== '') ? '<div class="mt-3"><span class="text-muted">' . h(lang('Refund due by')) . ':</span> <span class="' . ((strcmp(date('Y-m-d'), $refund_due) > 0) ? 'text-danger fw-semibold' : 'fw-semibold') . '">' . h(pg_return_day_text($refund_due)) . '</span></div>' : '') . '
+                        ' . (($refund_due !== '') ? '<div class="mt-5"><span class="fg-secondary">' . h(lang('Refund due by')) . ':</span> <span class="' . ((strcmp(date('Y-m-d'), $refund_due) > 0) ? 'text-danger fw-semibold' : 'fw-semibold') . '">' . h(pg_return_day_text($refund_due)) . '</span></div>' : '') . '
                         ' . $output_close . '
                     </div>
                 </div>
-                <div class="card mb-4">
-                    <div class="card-header text-uppercase h6 text-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
+                <div class="card mb-7">
+                    <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
                     <div class="card-body small">
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Order Number')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Order Number')) . ':</span>
                             <span class="col text-end"><a href="view_order.php?id=' . (int) $return['order_id'] . '">' . h($order_number) . '</a></span>
                         </div>
                         ' . ($order ? '<div class="row">
-                            <span class="col text-muted">' . h(lang('Order Date')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Order Date')) . ':</span>
                             <span class="col text-end">' . h(pg_return_time_text($order['order_date'])) . '</span>
                         </div>
                         <div class="row">
-                            <span class="col text-muted">' . h(lang('Payment Method')) . ':</span>
+                            <span class="col fg-secondary">' . h(lang('Payment Method')) . ':</span>
                             <span class="col text-end">' . h((string) $order['payment_method']) . '</span>
                         </div>' : '') . '
                         <hr>
@@ -653,11 +653,11 @@ echo
                         ' . ($order && ((string) $order['billing_phone_number'] !== '') ? '<div>' . h((string) $order['billing_phone_number']) . '</div>' : '') . '
                     </div>
                 </div>
-                <div class="card mb-4">
-                    <div class="card-header text-uppercase h6 text-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
+                <div class="card mb-7">
+                    <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
                     <div class="card-body small">
-                        ' . (($state && ($state['ship_to']['name'] !== '')) ? '<div class="fw-semibold mb-2">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($state['ship_to']['name'])))) . '</div>' : '') . '
-                        ' . (($output_parcels !== '') ? '<ul class="ps-3 mb-2">' . $output_parcels . '</ul>' : '') . '
+                        ' . (($state && ($state['ship_to']['name'] !== '')) ? '<div class="fw-semibold mb-3">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($state['ship_to']['name'])))) . '</div>' : '') . '
+                        ' . (($output_parcels !== '') ? '<ul class="ps-5 mb-3">' . $output_parcels . '</ul>' : '') . '
                         ' . $output_window . '
                     </div>
                 </div>

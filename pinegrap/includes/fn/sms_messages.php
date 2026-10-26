@@ -284,7 +284,7 @@ function pg_sms_message_settings_fields()
 
     if (!pg_sms_ready()) {
         $html .= '
-                                        <div class="col-12"><div class="alert alert-warning mb-0">' . lang('SMS is not set up: no message is sent until an SMS account is saved and switched on.') . '</div></div>';
+                                        <div class="col-12"><div class="alert theme-warning mb-0">' . lang('SMS is not set up: no message is sent until an SMS account is saved and switched on.') . '</div></div>';
     }
 
     foreach (pg_sms_message_events() as $event => $definition) {
@@ -293,11 +293,11 @@ function pg_sms_message_settings_fields()
 
         $html .= '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($settings[$event]['on'] ? ' checked="checked"' : '') . ' class="form-check-input"/>
-                                                <label class="form-check-label" for="' . h($name) . 'on">' . h($definition['label']) . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($settings[$event]['on'] ? ' checked="checked"' : '') . ' class=""/></div>
+                                                <label class="" for="' . h($name) . 'on">' . h($definition['label']) . '</label>
                                             </div>
-                                            <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" class="form-control mt-2" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
+                                            <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" class="form-control mt-3" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
                                             <div class="form-text">' . lang(array('string' => 'Fields: {var:1}', 'vars' => array(h(pg_sms_message_field_list($definition['fields']))))) . '</div>
                                         </div>';
     }

@@ -695,10 +695,10 @@ foreach ($user_rows as $row) {
 
     // if this user is not an administrator or the number of administrators is greater than one, then we can allow this user to be deleted, so prepare checkbox
     if (($role != 0) || ($number_of_administrators > 1)) {
-        $output_checkbox = ' <input class="form-check-input " type="checkbox" name="users[]" value="' . $id . '" />';
+        $output_checkbox = ' <input class="check" type="checkbox" name="users[]" value="' . $id . '" />';
         $output_selectable_class = '';
     } else {
-        $output_checkbox = '<input type="checkbox" name="users[]" value="' . $id . '" class="form-check-input disabled" disabled="disabled"  />';
+        $output_checkbox = '<input type="checkbox" name="users[]" value="' . $id . '" class="check disabled" disabled="disabled"  />';
         
         $output_selectable_class = 'unselectable';
     }
@@ -718,7 +718,7 @@ foreach ($user_rows as $row) {
     // If the filter is not default or all my users view.
     if ($filter == 'default') {
         // output table columns
-        $output_user_role_column = '<td class="align-middle"><span class="badge bg-secondary fw-light">' . get_role_name($role) . '</span></td>';
+        $output_user_role_column = '<td class="align-middle"><span class="badge theme-secondary fw-light">' . get_role_name($role) . '</span></td>';
         
         // if user has a memeber id
         if ($user_member_id != '') {
@@ -943,7 +943,7 @@ foreach ($user_rows as $row) {
                 
                 // Loop through all folders that user has access to.
                 while ($row2 = mysqli_fetch_assoc($result2)) {
-                    $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($row2['folder_name']) . '</span></li>';
+                    $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($row2['folder_name']) . '</span></li>';
                 }
                 
                 // Output content column
@@ -992,13 +992,13 @@ foreach ($user_rows as $row) {
                     if ($row2['folder_parent'] == 0) {
                         
                         // Output folder name and then break out of loop.
-                        $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($row2['folder_name']) . '</span></li>';
+                        $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($row2['folder_name']) . '</span></li>';
                         break;
                         
                     // Else if the top most folder was not found continue loop
                     } else {
                         // output folder names
-                        $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($row2['folder_name']) . '</span></li>';
+                        $folder_names_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($row2['folder_name']) . '</span></li>';
                     }
                 }
                 
@@ -1039,7 +1039,7 @@ foreach ($user_rows as $row) {
                         users_calendars_xref.user_id = '" . $id . "'";
                 $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
                 while ($row2 = mysqli_fetch_assoc($result2)) {
-                    $calendars_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($row2['name']) . '</span></li>';
+                    $calendars_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($row2['name']) . '</span></li>';
                 }
                 
                 // Output content column
@@ -1076,7 +1076,7 @@ foreach ($user_rows as $row) {
                         // if user has access to folder that custom form is in, then output custom form
                         if (in_array($custom_form_page['page_folder'], $folders_that_user_has_access_to) == true) {
                             if ($custom_form_page['form_name'] != '') {
-                                $submitted_forms_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($custom_form_page['form_name']) . '</span></li>';
+                                $submitted_forms_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($custom_form_page['form_name']) . '</span></li>';
                              
                             }
                         }
@@ -1136,7 +1136,7 @@ foreach ($user_rows as $row) {
             while ($row2 = mysqli_fetch_assoc($result2)) {
                 // If there is a contact group then prepare to output the contact group
                 if ($row2['contact_group_name'] != '') {
-                    $contact_group_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-2" >' . h($row2['contact_group_name']) . '</span></li>';
+                    $contact_group_that_user_has_access_to .= '<li><span class="dropdown-item-text badge text-dark fw-light py-3" >' . h($row2['contact_group_name']) . '</span></li>';
                 }
             }
             
@@ -1184,7 +1184,7 @@ foreach ($user_rows as $row) {
         $sign_in_lock_minutes = max(1, (int) ceil(($sign_in_lock['until'] - time()) / 60));
 
         $output_sign_in_lock =
-            ' <span class="badge bg-danger fw-light" title="' . h(lang(array(
+            ' <span class="badge theme-danger fw-light" title="' . h(lang(array(
                 'string' => 'Signing in is locked after repeated failed attempts. Clears in {var:1} minutes.',
                 'vars'   => $sign_in_lock_minutes))) . '">' . lang('Locked') . '</span>';
     }
@@ -1206,8 +1206,8 @@ foreach ($user_rows as $row) {
         '<tr class="' . $output_selectable_class . '">
             <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			<td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle">' . h($username) . $output_sign_in_lock . $output_identity_badges . '</td>
             ' . $output_email_address_column . '
@@ -1249,7 +1249,7 @@ echo
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="import_users.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
@@ -1261,11 +1261,11 @@ echo
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <select id="filter_select" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                             </form>
                 </nav>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="delete_users.php" method="post" class="disable_shortcut"> 
                             ' . get_token_field() . '
@@ -1274,8 +1274,8 @@ echo
                                 <thead>
                                     <tr>
                                         <th class="noVis">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
@@ -1304,7 +1304,7 @@ echo
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('users')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

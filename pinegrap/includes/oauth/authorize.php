@@ -32,12 +32,12 @@ function pg_oauth_authorize_page_error($message, $detail = '') {
 	pg_oauth_authorize_headers();
 
 	echo output_header_secure(array('title' => lang('Connect an application')))
-		. '<main class="container py-4 py-md-5">
+		. '<main class="container py-7 md:py-12">
 			<div class="card mx-auto shadow-sm" style="max-width: 30rem;">
-				<div class="card-body p-4">
-					<h1 class="h5 mb-3"><i class="bi bi-plug me-2" aria-hidden="true"></i>' . h(lang('Connect an application')) . '</h1>
-					<div class="alert alert-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>'
-						. (($detail !== '') ? '<p class="small text-muted mt-3 mb-0"><code>' . h($detail) . '</code></p>' : '') . '
+				<div class="card-body p-7">
+					<h1 class="h5 mb-5"><i class="bi bi-plug me-3" aria-hidden="true"></i>' . h(lang('Connect an application')) . '</h1>
+					<div class="alert theme-danger mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($message) . '</div>'
+						. (($detail !== '') ? '<p class="small fg-secondary mt-5 mb-0"><code>' . h($detail) . '</code></p>' : '') . '
 				</div>
 			</div>
 		</main>'
@@ -388,9 +388,9 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 			$id = 'grant_' . preg_replace('/[^a-z0-9]+/', '_', $scope);
 
 			$rows .= '
-				<div class="form-check mb-1">
-					<input class="form-check-input" type="checkbox" name="grant[]" value="' . h($scope) . '" id="' . h($id) . '"' . (in_array($scope, $ticked, true) ? ' checked="checked"' : '') . '/>
-					<label class="form-check-label" for="' . h($id) . '">' . h(lang($group['label'])) . ' <span class="text-muted">&middot; ' . h($label) . '</span></label>
+				<div class="form-field mb-1">
+					<input class="check" type="checkbox" name="grant[]" value="' . h($scope) . '" id="' . h($id) . '"' . (in_array($scope, $ticked, true) ? ' checked="checked"' : '') . '/>
+					<label class="" for="' . h($id) . '">' . h(lang($group['label'])) . ' <span class="fg-secondary">&middot; ' . h($label) . '</span></label>
 				</div>';
 
 		}
@@ -407,7 +407,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 
 	$warning = function ($text) {
 
-		return '<div class="alert alert-warning small" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($text) . '</div>';
+		return '<div class="alert theme-warning small" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($text) . '</div>';
 
 	};
 
@@ -442,16 +442,16 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 	$title = lang(array('string' => 'Connect {var:1}', 'vars' => $name));
 
 	echo output_header_secure(array('title' => $title))
-		. '<main class="container py-4 py-md-5">
+		. '<main class="container py-7 md:py-12">
 			<div class="card mx-auto shadow-sm" style="max-width: 30rem;">
-				<div class="card-body p-4">
-					<h1 class="h5 mb-3"><i class="bi bi-plug me-2" aria-hidden="true"></i>' . h($title) . '</h1>
-					<p class="mb-3">' . h(lang(array(
+				<div class="card-body p-7">
+					<h1 class="h5 mb-5"><i class="bi bi-plug me-3" aria-hidden="true"></i>' . h($title) . '</h1>
+					<p class="mb-5">' . h(lang(array(
 						'string' => '{var:1} wants to use {var:2} on your behalf.',
 						'vars'   => array($name, $site)
 					))) . '</p>
 					' . $unverified . '
-					<dl class="small mb-3">
+					<dl class="small mb-5">
 						' . $identity_row . '
 						<dt>' . h(lang('Signed in as')) . '</dt>
 						<dd>' . h($owner['username']) . '</dd>
@@ -460,13 +460,13 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 					</dl>
 					<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oauth.php/authorize') . '">
 						' . $fields . '
-						<p class="fw-semibold mb-2">' . h(lang('It will be able to:')) . '</p>
-						<ul class="nav nav-pills small mb-2" aria-label="' . h(lang('Permission presets')) . '">' . $preset_links . '</ul>
-						<div class="border rounded p-3 mb-2">' . $rows . '</div>
-						<p class="small text-muted mb-3">' . h(lang('Changes to records are proposed as cards in the Workspace, for you to apply. Tick a write permission only if the application should change those records itself.')) . '</p>
-						<p class="small text-muted">' . h(lang('It never gets more than your own account may do. You can end the connection at any time on the Connected applications screen, in your account menu on the panel.')) . '</p>
-						<button type="submit" name="pg_oauth_action" value="allow" class="btn btn-primary w-100">' . h(lang('Allow')) . '</button>
-						<button type="submit" name="pg_oauth_action" value="deny" class="btn btn-outline-secondary w-100 mt-2">' . h(lang('Cancel')) . '</button>
+						<p class="fw-semibold mb-3">' . h(lang('It will be able to:')) . '</p>
+						<ul class="nav nav-pills small mb-3" aria-label="' . h(lang('Permission presets')) . '">' . $preset_links . '</ul>
+						<div class="border rounded-4 p-5 mb-3">' . $rows . '</div>
+						<p class="small fg-secondary mb-5">' . h(lang('Changes to records are proposed as cards in the Workspace, for you to apply. Tick a write permission only if the application should change those records itself.')) . '</p>
+						<p class="small fg-secondary">' . h(lang('It never gets more than your own account may do. You can end the connection at any time on the Connected applications screen, in your account menu on the panel.')) . '</p>
+						<button type="submit" name="pg_oauth_action" value="allow" class="btn btn-solid theme-primary w-100">' . h(lang('Allow')) . '</button>
+						<button type="submit" name="pg_oauth_action" value="deny" class="btn btn-outline theme-secondary w-100 mt-3">' . h(lang('Cancel')) . '</button>
 					</form>
 				</div>
 			</div>

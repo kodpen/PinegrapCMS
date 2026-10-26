@@ -71,12 +71,12 @@ $view_switcher =
 if (!$ready) {
     echo pg_page_shell($shell) . '
 <main id="content" class="container-fluid">
-    <nav id="button_bar" class="pg-toolbar my-2" aria-label="' . h(lang('Button Bar')) . '">
+    <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
         <div class="pg-toolbar-grow"></div>
         ' . $view_switcher . '
     </nav>
-    <div class="alert alert-warning my-4">
-        <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>' . h(lang('The 404 log table does not exist yet. Please run the software upgrade to create it.')) . '
+    <div class="alert theme-warning my-7">
+        <i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang('The 404 log table does not exist yet. Please run the software upgrade to create it.')) . '
     </div>
 </main>' . output_footer();
 
@@ -156,15 +156,15 @@ foreach ($rows as $row) {
     $output_create = '';
 
     if ($answer === null) {
-        $output_create = '<a class="m-1 btn-data-control btn btn-outline-primary border-2" href="' . h(pg_not_found_log_redirect_url($path)) . '" title="' . h(lang('Create redirect')) . '" aria-label="' . h(lang('Create redirect')) . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>';
+        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="' . h(pg_not_found_log_redirect_url($path)) . '" title="' . h(lang('Create redirect')) . '" aria-label="' . h(lang('Create redirect')) . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>';
     } elseif (($answer['state'] === 'redirect') || ($answer['state'] === 'pattern')) {
         // A short link answers the address now (a * pattern only once no page
         // does): no new 404 comes, and an exact link would take it from the
         // pattern.
         $output_state = ' <span class="badge rounded-pill text-bg-light border">' . h(($answer['state'] === 'pattern') ? lang('Wildcard') : lang('Short link')) . '</span>';
-        $output_create = '<a class="m-1 btn-data-control btn btn-outline-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
+        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
     } elseif ($answer['state'] === 'binned') {
-        $output_state = '<div class="small text-body-secondary">' . h(lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.')) . '</div>';
+        $output_state = '<div class="small fg-secondary">' . h(lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.')) . '</div>';
     } else {
         $output_state = ' <span class="badge rounded-pill text-bg-light border">' . h(($answer['state'] === 'page') ? lang('A page answers now') : lang('A file answers now')) . '</span>';
     }
@@ -177,13 +177,13 @@ foreach ($rows as $row) {
         '<tr>
             <td class="align-middle text-start action-buttons text-nowrap">
                 ' . $output_create . '
-                <a class="m-1 btn-data-control btn btn-outline-secondary border-2" href="' . OUTPUT_PATH . h(encode_url_path($path)) . '" target="_blank" rel="noopener" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>
-                <button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 no-submit pg-404-delete" data-id="' . (int) $row['id'] . '" data-path="' . h($path) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="' . OUTPUT_PATH . h(encode_url_path($path)) . '" target="_blank" rel="noopener" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 no-submit pg-404-delete" data-id="' . (int) $row['id'] . '" data-path="' . h($path) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
             </td>
             <td class="align-middle chart_label"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</td>
             <td class="align-middle" data-order="' . $hits . '">' . pg_format_number($hits, 0) . '</td>
-            <td class="align-middle" data-order="' . $crawler_hits . '">' . (($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="text-body-secondary">-</span>') . '</td>
-            <td class="align-middle small text-break">' . (($referrer !== '') ? h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') : '<span class="text-body-secondary">-</span>') . '</td>
+            <td class="align-middle" data-order="' . $crawler_hits . '">' . (($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="fg-secondary">-</span>') . '</td>
+            <td class="align-middle small text-break">' . (($referrer !== '') ? h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') : '<span class="fg-secondary">-</span>') . '</td>
             <td class="align-middle text-nowrap" data-order="' . (int) $row['first_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['first_seen'])) . '</td>
             <td class="align-middle text-nowrap" data-order="' . (int) $row['last_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['last_seen'])) . '</td>
         </tr>';
@@ -203,7 +203,7 @@ if ($addresses > $row_limit) {
 // ---- Screen ----------------------------------------------------------------
 
 $output_table = ($output_rows === '')
-    ? '<p class="text-body-secondary m-4">' . h(($search !== '' || $who !== '') ? lang('No address in the log matches.') : lang('No missing addresses were recorded in the last 90 days.')) . '</p>'
+    ? '<p class="fg-secondary m-7">' . h(($search !== '' || $who !== '') ? lang('No address in the log matches.') : lang('No missing addresses were recorded in the last 90 days.')) . '</p>'
     : '<table class="chart table-hover table" style="width:100%;display:none">
         <thead>
             <tr>
@@ -228,7 +228,7 @@ echo pg_page_shell($shell) . '
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <nav id="button_bar" class="pg-toolbar my-2" aria-label="' . h(lang('Button Bar')) . '">
+            <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="view_not_found_log.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
                     ' . (($who !== '') ? '<input type="hidden" name="who" value="' . h($who) . '">' : '') . '
@@ -241,12 +241,12 @@ echo pg_page_shell($shell) . '
                 <div class="dropdown">
                     <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="dropdown" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button type="button" class="dropdown-item link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-2" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
+                        <li><button type="button" class="dropdown-item link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
                     </ul>
                 </div>
             </nav>
-            <p class="small text-body-secondary mb-0">' . $output_summary . '</p>
-            <div class="card my-4">
+            <p class="small fg-secondary mb-0">' . $output_summary . '</p>
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     ' . $output_table . '
                 </div>

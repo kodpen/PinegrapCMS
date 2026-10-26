@@ -94,9 +94,9 @@ output_header_secure(array(
     </script>
 
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
-        <div class="container-fluid gap-2">
-            <span id="start" class="navbar-text d-flex align-items-center gap-2 small">
-                <span class="spinner-border spinner-border-sm text-success flex-shrink-0" role="status"></span>
+        <div class="container-fluid gap-3">
+            <span id="start" class="navbar-text d-flex align-items-center gap-3 small">
+                <span class="spinner-border spinner-border-sm fg-success flex-shrink-0" role="status"></span>
                 ' . lang('Spidering all Pages for text and files and updating the Search Index. Please leave this window open until it is complete') . '...
             </span>
             
@@ -109,7 +109,7 @@ output_header_secure(array(
             </ul>
         </div>
     </nav>
-    <main id="content" class="container py-2">
+    <main id="content" class="container py-3">
         <ul class="list-group list-group-flush">';
 // Store the current timestamp.  We will use this is order to know which search items are old and can be deleted.
 $timestamp = time();
@@ -311,12 +311,12 @@ foreach ($pages as $page) {
     }
 
     echo
-        '<li class="list-group-item px-2 py-2">
-            <div class="d-flex align-items-start gap-2">
-                <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+        '<li class="list-group-item px-3 py-3">
+            <div class="d-flex align-items-start gap-3">
+                <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
                 <div class="flex-fill overflow-hidden">
                     <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . h($title) . '</a>
-                    <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($page['meta_description'] ? ' &middot; ' . h($page['meta_description']) : '') . '</div>
+                    <div class="fg-secondary text-truncate" style="font-size:11px">' . h($url) . ($page['meta_description'] ? ' &middot; ' . h($page['meta_description']) : '') . '</div>
                 </div>
                 <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('Page') . '</span>
             </div>
@@ -487,12 +487,12 @@ foreach ($pages as $page) {
 
                                 
                                 echo
-                                    '<li class="list-group-item px-2 py-2">
-                                        <div class="d-flex align-items-start gap-2">
-                                            <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+                                    '<li class="list-group-item px-3 py-3">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
                                             <div class="flex-fill overflow-hidden">
                                                 <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . h($calendar_event['name']) . '</a>
-                                                <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($calendar_event['short_description'] ? ' &middot; ' . h($calendar_event['short_description']) : '') . '</div>
+                                                <div class="fg-secondary text-truncate" style="font-size:11px">' . h($url) . ($calendar_event['short_description'] ? ' &middot; ' . h($calendar_event['short_description']) : '') . '</div>
                                             </div>
                                             <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('Event') . '</span>
                                         </div>
@@ -935,12 +935,12 @@ foreach ($pages as $page) {
                             $form_item_view_urls[] = $url;
 
                             echo
-                                '<li class="list-group-item px-2 py-2">
-                                    <div class="d-flex align-items-start gap-2">
-                                        <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+                                '<li class="list-group-item px-3 py-3">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
                                         <div class="flex-fill overflow-hidden">
                                             <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . ($combined_title ? h($combined_title) : h($url)) . '</a>
-                                            <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($description ? ' &middot; ' . h($description) : '') . '</div>
+                                            <div class="fg-secondary text-truncate" style="font-size:11px">' . h($url) . ($description ? ' &middot; ' . h($description) : '') . '</div>
                                         </div>
                                         <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('Form') . '</span>
                                     </div>
@@ -1172,12 +1172,12 @@ foreach ($designer_hosts as $designer_host) {
             }
 
             echo
-                '<li class="list-group-item px-2 py-2">
-                    <div class="d-flex align-items-start gap-2">
-                        <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+                '<li class="list-group-item px-3 py-3">
+                    <div class="d-flex align-items-start gap-3">
+                        <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
                         <div class="flex-fill overflow-hidden">
                             <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . h($title) . '</a>
-                            <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($record_texts['description'] !== '' ? ' &middot; ' . h($record_texts['description']) : '') . '</div>
+                            <div class="fg-secondary text-truncate" style="font-size:11px">' . h($url) . ($record_texts['description'] !== '' ? ' &middot; ' . h($record_texts['description']) : '') . '</div>
                         </div>
                         <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('Form') . '</span>
                     </div>
@@ -1332,12 +1332,12 @@ foreach ($files as $file) {
         }
 
         echo
-            '<li class="list-group-item px-2 py-2">
-                <div class="d-flex align-items-start gap-2">
-                    <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+            '<li class="list-group-item px-3 py-3">
+                <div class="d-flex align-items-start gap-3">
+                    <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
                     <div class="flex-fill overflow-hidden">
                         <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . h($file['name']) . '</a>
-                        <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($description ? ' &middot; ' . h($description) : '') . '</div>
+                        <div class="fg-secondary text-truncate" style="font-size:11px">' . h($url) . ($description ? ' &middot; ' . h($description) : '') . '</div>
                     </div>
                     <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('File') . '</span>
                 </div>
@@ -1360,11 +1360,11 @@ pg_cron_ran('update_search_index');
 echo '
     </ul>
 
-    <div id="finish" class="text-center py-4" style="display:none">
-        <i class="bi bi-check-circle-fill text-success d-block mb-2" style="font-size:2.5rem"></i>
+    <div id="finish" class="text-center py-7" style="display:none">
+        <i class="bi bi-check-circle-fill fg-success d-block mb-3" style="font-size:2.5rem"></i>
         
-        <div class="fw-semibold mb-3">' . lang('The Search Index has been updated successfully!') . '</div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.close()">
+        <div class="fw-semibold mb-5">' . lang('The Search Index has been updated successfully!') . '</div>
+        <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="window.close()">
             <i class="bi bi-x-lg me-1"></i>' . lang('Close') . '
         </button>
     </div>

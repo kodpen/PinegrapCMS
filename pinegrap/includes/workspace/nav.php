@@ -288,7 +288,7 @@ function ws_screen_rail($viewer, $current)
         }
     }
 
-    $list .= $section(lang('My channels'), empty($mine) ? '<div class="small text-body-secondary px-2">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
+    $list .= $section(lang('My channels'), empty($mine) ? '<div class="small fg-secondary px-3">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
 
     if (!empty($others)) {
         $list .= $section(lang('Other channels'), implode('', array_map($channel_link, $others)));
@@ -312,7 +312,7 @@ function ws_screen_rail($viewer, $current)
 
     $drawer = '<div class="offcanvas offcanvas-start ws-nav-drawer" tabindex="-1" id="ws-nav-drawer" aria-labelledby="ws-nav-drawer-title">'
         . '<div class="offcanvas-header border-bottom">'
-        . '<h5 class="offcanvas-title" id="ws-nav-drawer-title"><i class="bi bi-clipboard2-check me-2" aria-hidden="true"></i>' . h(lang('Workspace')) . '</h5>'
+        . '<h5 class="offcanvas-title" id="ws-nav-drawer-title"><i class="bi bi-clipboard2-check me-3" aria-hidden="true"></i>' . h(lang('Workspace')) . '</h5>'
         . '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>'
         . '</div>'
         . '<div class="offcanvas-body p-0 d-flex flex-column">'

@@ -339,16 +339,16 @@ function test_signin_identity_badges()
 
 	$only = pg_signin_identity_badges(array('apple'), 3);
 	pg_assert_contains('Apple only', $only, 'the only way in');
-	pg_assert_contains('bg-warning', $only, 'as a warning');
+	pg_assert_contains('theme-warning', $only, 'as a warning');
 
 	$with_password = pg_signin_identity_badges(array('google'), 2);
 	pg_assert_contains('>Google<', $with_password, 'Google with a password');
-	pg_assert_false(strpos($with_password, 'bg-warning') !== false, 'no warning with a password');
+	pg_assert_false(strpos($with_password, 'theme-warning') !== false, 'no warning with a password');
 
 	$two = pg_signin_identity_badges(array('google', 'microsoft'), 3);
 	pg_assert_contains('>Google<', $two, 'two providers, Google');
 	pg_assert_contains('>Microsoft<', $two, 'two providers, Microsoft');
-	pg_assert_false(strpos($two, 'bg-warning') !== false, 'either one can go');
+	pg_assert_false(strpos($two, 'theme-warning') !== false, 'either one can go');
 
 	pg_assert_same(pg_signin_identity_badges(array('google'), 2), pg_connected_account_label('google', 2), 'the sessions screen reads the same');
 	pg_assert_contains('&mdash;', pg_connected_account_label('', 2), 'sessions screen, nothing');

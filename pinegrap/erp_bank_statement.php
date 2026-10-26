@@ -167,7 +167,7 @@ if ((string) $statement['status'] === 'mapping') {
 
         $separator_form = '<div class="card-body border-bottom">'
             . $post_form('<input type="hidden" name="erp_action" value="separator" /><label class="small" for="separator">' . lang('Separator') . '</label>'
-                . '<select class="form-select form-select-sm w-auto" id="separator" name="separator">' . $separator_options . '</select>', lang('Split again'), 'btn-outline-secondary')
+                . '<select class="form-control form-control-sm w-auto" id="separator" name="separator">' . $separator_options . '</select>', lang('Split again'), 'btn-outline-secondary')
             . '<div class="form-text">' . lang('If the columns come out wrong, choose the separator and split the lines again.') . '</div></div>';
     }
 
@@ -177,7 +177,7 @@ if ((string) $statement['status'] === 'mapping') {
             $options .= '<option value="' . $i . '"' . (((int) ($mapping[$key] ?? -1) === $i) ? ' selected' : '') . '>' . h(lang(array('string' => 'Column {var:1}', 'vars' => $i + 1))) . '</option>';
         }
 
-        return '<div class="col-6 col-md-2"><label class="form-label small">' . $label . '</label><select class="form-select form-select-sm" name="' . $name . '">' . $options . '</select></div>';
+        return '<div class="col-6 md:col-2"><label class="form-label small">' . $label . '</label><select class="form-control form-control-sm" name="' . $name . '">' . $options . '</select></div>';
     };
 
     $head = '<tr>';
@@ -196,26 +196,26 @@ if ((string) $statement['status'] === 'mapping') {
     }
 
     $output_body = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('The first lines of the file') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The first lines of the file') . '</div>
                 ' . $separator_form . '
                 <div class="card-body p-0 table-responsive"><table class="table table-sm table-bordered mb-0"><thead>' . $head . '</thead><tbody>' . $body . '</tbody></table></div>
             </div>
-            ' . (!$readonly ? '<form method="post" action="erp_bank_statement.php" class="card my-4">
+            ' . (!$readonly ? '<form method="post" action="erp_bank_statement.php" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $statement_id . '" />
                 <input type="hidden" name="erp_action" value="map" />
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Which column is which') . '</div>
-                <div class="card-body row g-2 align-items-end">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Which column is which') . '</div>
+                <div class="card-body row g-3 align-items-end">
                     ' . $select('col_date', 'date', lang('Date'), false) . '
                     ' . $select('col_description', 'description', lang('Description'), true) . '
                     ' . $select('col_amount', 'amount', lang('Amount (+/−)'), true) . '
                     ' . $select('col_debit', 'debit', lang('Money out'), true) . '
                     ' . $select('col_credit', 'credit', lang('Money in'), true) . '
-                    <div class="col-6 col-md-2"><label class="form-label small">' . lang('Dates are written') . '</label><select class="form-select form-select-sm" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) ($mapping['date_order'] ?? 'dmy') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
-                    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="header" name="header" value="1"' . (!empty($mapping['header']) ? ' checked' : '') . ' /><label class="form-check-label" for="header">' . lang('The first line is the column names') . '</label></div></div>
+                    <div class="col-6 md:col-2"><label class="form-label small">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) ($mapping['date_order'] ?? 'dmy') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
+                    <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header" name="header" value="1"' . (!empty($mapping['header']) ? ' checked' : '') . ' /><label class="" for="header">' . lang('The first line is the column names') . '</label></div></div>
                     <div class="col-12 form-text">' . lang('Either one amount column, with money out as a minus, or a money-out and a money-in column. Lines without a date or an amount (totals, balances, headings) are left out.') . '</div>
-                    <div class="col-12"><button type="submit" class="btn btn-primary">' . lang('Take the lines in') . '</button></div>
+                    <div class="col-12"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button></div>
                 </div>
             </form>' : '');
 } else {
@@ -244,7 +244,7 @@ if ((string) $statement['status'] === 'mapping') {
                 $title = (string) db_value("SELECT title FROM erp_accounts WHERE id = '" . (int) $suggestion['account_id'] . "' LIMIT 1");
                 $action .= $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><input type="hidden" name="account_id" value="' . (int) $suggestion['account_id'] . '" /><input type="hidden" name="invoice_id" value="' . (int) $suggestion['invoice_id'] . '" />',
                     '<i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record for {var:1}', 'vars' => $title))), 'btn-outline-success')
-                    . '<div class="small text-body-secondary">' . h($suggestion['why']) . '</div>';
+                    . '<div class="small fg-secondary">' . h($suggestion['why']) . '</div>';
             }
 
             if ($open_line === (int) $line['id']) {
@@ -255,7 +255,7 @@ if ((string) $statement['status'] === 'mapping') {
                     }
                 }
 
-                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-select form-select-sm" data-pg-combobox id="erp_bank_line_account_id" name="account_id" style="max-width:16rem" required aria-label="' . h(lang('Account')) . '"><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
+                $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><select class="form-control form-control-sm" data-pg-combobox id="erp_bank_line_account_id" name="account_id" style="max-width:16rem" required aria-label="' . h(lang('Account')) . '"><option value="">' . lang('Choose an account') . '</option>' . $all_accounts . '</select>',
                     $in ? lang('Record as a collection') : lang('Record as a payment'), 'btn-primary')
                     . erp_account_quick_link('#erp_bank_line_account_id', $in ? 'customer' : 'supplier') . '</div>';
                 $output_bank_quick = erp_account_quick_modal();
@@ -267,7 +267,7 @@ if ((string) $statement['status'] === 'mapping') {
                             $categories .= '<option value="' . (int) $category['id'] . '">' . h((string) $category['name']) . '</option>';
                         }
                     }
-                    $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="expense" /><select class="form-select form-select-sm" name="category_id" style="max-width:16rem" required><option value="">' . lang('Expense category') . '</option>' . $categories . '</select>',
+                    $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="expense" /><select class="form-control form-control-sm" name="category_id" style="max-width:16rem" required><option value="">' . lang('Expense category') . '</option>' . $categories . '</select>',
                         lang('Record as an expense'), 'btn-outline-primary') . '</div>';
                 }
             } else {
@@ -280,7 +280,7 @@ if ((string) $statement['status'] === 'mapping') {
         } elseif ((int) $line['cash_id'] > 0) {
             $link = in_array((string) $line['cash_doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $line['cash_id'] : 'erp_cash.php';
             $action = '<a class="small link-body-emphasis" href="' . h($link) . '">' . h(trim((string) $line['cash_description'])) . '</a>'
-                . (((string) $line['account_title'] !== '') ? '<div class="small text-body-secondary">' . h((string) $line['account_title']) . '</div>' : '');
+                . (((string) $line['account_title'] !== '') ? '<div class="small fg-secondary">' . h((string) $line['account_title']) . '</div>' : '');
         }
 
         $output_rows .= '
@@ -294,19 +294,19 @@ if ((string) $statement['status'] === 'mapping') {
     }
 
     if ($output_rows === '') {
-        $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('The statement has no new lines.') . '</td></tr>';
+        $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('The statement has no new lines.') . '</td></tr>';
     }
 
     $output_body = $output_bank_quick . '
-            ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-3">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-success') . '</div>' : '') . '
-            <div class="card my-4">
+            ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-5">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-success') . '</div>' : '') . '
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead><tr><th>' . lang('Date') . '</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Amount') . '</th><th>' . lang('Status') . '</th><th data-pg-sort="none"></th></tr></thead>
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . lang('Matched: the books already have the movement (same amount and way, within three days). A suggestion comes from a tax number or an account name in the line, or from the one open invoice of that amount; it is written only when you record it.') . '</div>
+                <div class="form-text px-5 pb-5">' . lang('Matched: the books already have the movement (same amount and way, within three days). A suggestion comes from a tax number or an account name in the line, or from the one open invoice of that amount; it is written only when you record it.') . '</div>
             </div>';
 }
 

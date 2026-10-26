@@ -488,12 +488,12 @@ function pg_signin_failure_card($title, $message, $links, $cancelled = false)
             . h($link['label']) . '</a>';
     }
 
-    return '<main class="container py-4 py-md-5">
+    return '<main class="container py-7 md:py-12">
         <div class="card mx-auto shadow-sm pg-signin-result" style="max-width: 32rem;">
-            <div class="card-body p-4">
-                <h1 class="h4 mb-3"><i class="bi ' . ($cancelled ? 'bi-info-circle' : 'bi-exclamation-triangle text-danger') . ' me-2" aria-hidden="true"></i>' . h($title) . '</h1>
-                <p class="mb-4" role="' . ($cancelled ? 'status' : 'alert') . '">' . h($message) . '</p>
-                ' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-2">' . $buttons . '</div>' : '') . '
+            <div class="card-body p-7">
+                <h1 class="h4 mb-5"><i class="bi ' . ($cancelled ? 'bi-info-circle' : 'bi-exclamation-triangle text-danger') . ' me-3" aria-hidden="true"></i>' . h($title) . '</h1>
+                <p class="mb-7" role="' . ($cancelled ? 'status' : 'alert') . '">' . h($message) . '</p>
+                ' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-3">' . $buttons . '</div>' : '') . '
             </div>
         </div>
     </main>';
@@ -512,13 +512,13 @@ function pg_signin_identity_badges($providers, $password_algo)
     $providers = array_values(array_filter(array_map('strval', (array) $providers), 'strlen'));
 
     if (!$providers) {
-        return '<span class="text-muted">&mdash;</span>';
+        return '<span class="fg-secondary">&mdash;</span>';
     }
 
     if ((count($providers) === 1) && ((int) $password_algo === 3)) {
         $label = pg_signin_provider_label($providers[0]);
 
-        return '<span class="badge bg-warning text-dark fw-light" title="'
+        return '<span class="badge theme-warning text-dark fw-light" title="'
             . h(lang(array('string' => 'This account has no password of its own - disconnecting {var:1} would lock it out.', 'vars' => $label))) . '">'
             . h(lang(array('string' => '{var:1} only', 'vars' => $label))) . '</span>';
     }

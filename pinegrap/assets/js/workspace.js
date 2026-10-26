@@ -241,9 +241,9 @@
                 dialog.id = 'ws-ask';
                 dialog.tabIndex = -1;
                 dialog.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">'
-                    + '<div class="modal-body"><p class="mb-2" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
+                    + '<div class="modal-body"><p class="mb-3" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
                     + '<div class="modal-footer"><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="modal" data-ws-ask-cancel></button>'
-                    + '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-ask-ok></button></div></div></div>';
+                    + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-ask-ok></button></div></div></div>';
                 document.body.appendChild(dialog);
 
                 pgUI.dialog.on(dialog, 'show', function () {
@@ -265,7 +265,7 @@
             var cancel = dialog.querySelector('[data-ws-ask-cancel]');
 
             ok.textContent = okLabel || t('ok');
-            ok.className = 'btn btn-sm rounded-pill px-3 ' + (danger ? 'btn-outline-warning' : 'btn-primary');
+            ok.className = 'btn btn-sm rounded-pill px-5 ' + (danger ? 'btn-outline-warning' : 'btn-primary');
             cancel.textContent = t('cancel');
 
             var modal = pgUI.dialog.get(dialog);
@@ -393,9 +393,9 @@
             copyModal = el('div', 'modal fade ws-copy-modal');
             copyModal.tabIndex = -1;
             copyModal.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">'
-                + '<div class="modal-header py-2"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body"><p class="small text-body-secondary mb-2" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
-                + '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-ws-copy-all></button></div>'
+                + '<div class="modal-header py-3"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
+                + '<div class="modal-body"><p class="small fg-secondary mb-3" data-ws-copy-note></p><textarea class="form-control ws-copy-area" readonly></textarea></div>'
+                + '<div class="modal-footer py-3"><button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-copy-all></button></div>'
                 + '</div></div>';
             document.body.appendChild(copyModal);
         }
@@ -589,11 +589,11 @@
             previewModal.id = 'ws-preview';
             previewModal.tabIndex = -1;
             previewModal.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down"><div class="modal-content">'
-                + '<div class="modal-header py-2"><h5 class="modal-title text-truncate"></h5>'
+                + '<div class="modal-header py-3"><h5 class="modal-title text-truncate"></h5>'
                 + '<a class="btn btn-sm btn-ghost ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
                 + '<a class="btn btn-sm btn-ghost" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body p-0"></div><div class="modal-footer py-2 d-none"></div></div></div>';
+                + '<div class="modal-body p-0"></div><div class="modal-footer py-3 d-none"></div></div></div>';
             document.body.appendChild(previewModal);
 
             // Changed cells or paragraphs are not thrown away by a click
@@ -2098,7 +2098,7 @@
         node.style.width = 'min(34rem, 100vw)';
         node.innerHTML = '<div class="offcanvas-header border-bottom"><h5 class="offcanvas-title"></h5>'
             + '<button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>'
-            + '<div class="offcanvas-body"></div><div class="offcanvas-footer d-none p-3 border-top d-flex gap-2 justify-content-end"></div>';
+            + '<div class="offcanvas-body"></div><div class="offcanvas-footer d-none p-5 border-top d-flex gap-3 justify-content-end"></div>';
         node.querySelector('.offcanvas-title').textContent = title || '';
         node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
         document.body.appendChild(node);
@@ -2175,8 +2175,8 @@
         var row = el('div', 'row g-2');
         [[formRow(t('remind_time'), time), 'col-5'], [formRow(t('remind_before'), group), 'col-7']].forEach(function (pair) {
             var cell = el('div', pair[1]);
-            pair[0].classList.remove('mb-3');
-            pair[0].classList.add('mb-2');
+            pair[0].classList.remove('mb-5');
+            pair[0].classList.add('mb-3');
             cell.appendChild(pair[0]);
             row.appendChild(cell);
         });
@@ -4643,7 +4643,7 @@
         body.appendChild(formRow(t('guest_topic'), topic));
 
         var link = guestLinkFields(conf.durations);
-        link.classList.add('mb-3');
+        link.classList.add('mb-5');
         body.appendChild(link);
 
         // Staff only; the one who starts it is in it anyway.
@@ -16385,7 +16385,7 @@
 
         function say(text, notes, error) {
             clear(said);
-            said.classList.toggle('text-danger', !!error);
+            said.classList.toggle('fg-danger', !!error);
 
             if (text) {
                 said.appendChild(el('div', '', text));
@@ -19738,7 +19738,7 @@
             node.tabIndex = -1;
             node.innerHTML = '<div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-md-down"><div class="modal-content">'
                 + '<div class="modal-header"><h5 class="modal-title text-truncate"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-                + '<div class="modal-body"></div><div class="modal-footer justify-content-start small text-body-secondary"></div></div></div>';
+                + '<div class="modal-body"></div><div class="modal-footer justify-content-start small fg-secondary"></div></div></div>';
             node.querySelector('.modal-title').appendChild(icon('bi-journal-text', 'me-2'));
             node.querySelector('.modal-title').appendChild(document.createTextNode(note.name));
             node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
@@ -22068,7 +22068,7 @@
             var picker = peoplePicker([], others);
             var right = select([[0, t('notes_can_view')], [1, t('notes_can_edit')]], 1);
 
-            right.classList.add('w-auto', 'mt-2');
+            right.classList.add('w-auto', 'mt-3');
             details.appendChild(picker);
             details.appendChild(right);
             details.appendChild(el('div', 'form-text', t('notes_share_people_help')));

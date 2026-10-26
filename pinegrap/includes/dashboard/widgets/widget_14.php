@@ -170,15 +170,15 @@ function pg_dashboard_widget_14($request, $user)
                     $opacity = '';
                 }
                 return '
-                <div class="px-2 py-2 border-bottom' . $opacity . '">
+                <div class="px-3 py-3 border-bottom' . $opacity . '">
                     <div class="d-flex justify-content-between align-items-start mb-1">
-                        <div class="d-flex align-items-center overflow-hidden me-2">
-                            <i class="bi ' . $bs_icon . ' me-2 flex-shrink-0" style="color:' . $color . ';font-size:15px"></i>
+                        <div class="d-flex align-items-center overflow-hidden me-3">
+                            <i class="bi ' . $bs_icon . ' me-3 flex-shrink-0" style="color:' . $color . ';font-size:15px"></i>
                             <span class="fw-semibold text-truncate" style="font-size:13px">' . h($heading) . '</span>
                         </div>
                         <span class="badge rounded-pill flex-shrink-0" style="background:' . $color . '22;color:' . $color . ';font-size:10px;white-space:nowrap">' . $badge_text . '</span>
                     </div>'
-                    . ($subline ? '<small class="text-muted d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
+                    . ($subline ? '<small class="fg-secondary d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
                     '<div class="rounded-pill ms-1" style="height:4px;background:#e5e7eb;overflow:hidden">
                         <div class="rounded-pill h-100" style="width:' . $pct . '%;background:' . $color . '"></div>
                     </div>

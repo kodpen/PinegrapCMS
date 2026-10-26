@@ -173,7 +173,7 @@ $output_screen_links = '';
 
 if ($number_of_screens > 1) {
     $output_screen_links .= '
-            <nav class="mt-3 navigation " aria-label="data pagination"> 
+            <nav class="mt-5 navigation " aria-label="data pagination"> 
                 <ul class="pagination pagination-sm flex-wrap justify-content-center">';
     // build Previous button if necessary
     $previous = $screen - 1;
@@ -324,8 +324,8 @@ foreach ($commissions as $commission) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start col-reorder-none">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_commission.php?id=' . $commission['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_commission.php?id=' . $commission['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label">' . h($commission['affiliate_name']) . '</td>
             <td class="align-middle">' . h($commission['affiliate_code']) . '</td>
@@ -414,31 +414,31 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
 
     $output_advanced_filters ='
     <div class="advanced_filters advanced-filter-bar position-fixed-md"  id="advanced_filters" >
-        <div class="p-2 m-1 rounded border justify-content-between d-flex flex-wrap header">
+        <div class="p-3 m-1 rounded-4 border justify-content-between d-flex flex-wrap header">
             <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
             <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
         </div>
-        <form class="advanced-filter-body p-2 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
+        <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
             <div class="row">
-                <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
+                <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                 <div class="col-12">
                     <label class="form-label">' . lang('From') . '</label>
-                    <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
+                    <select class="form-control my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
-                        <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['start_day'] ?? '')) . '</select>
-                        <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['start_year'] ?? '')) . '</select>
+                        <select class="form-control my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['start_day'] ?? '')) . '</select>
+                        <select class="form-control my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['start_year'] ?? '')) . '</select>
                     </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label">' . lang('To') . '</label>
-                    <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? '')) . '</select>
+                    <select class="form-control my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
-                        <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['stop_day'] ?? '')) . '</select>
-                        <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['stop_year'] ?? '')) . '</select>
+                        <select class="form-control my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['stop_day'] ?? '')) . '</select>
+                        <select class="form-control my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['stop_year'] ?? '')) . '</select>
                     </div>
                 </div>
-                <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                    <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
+                    <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
                 </div>
             </div>
            
@@ -463,8 +463,8 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
@@ -473,7 +473,7 @@ pg_page_shell([
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>
@@ -496,9 +496,9 @@ pg_page_shell([
                 </div>
             </div>
             ' . $output_screen_links . '
-            <div class="clearfix">
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3  float-sm-end">
-                    <div class="card my-4 border-primary">
+            <div class="d-flow-root">
+                <div class="col-12 sm:col-6 md:col-4 lg:col-3  sm:float-end">
+                    <div class="card my-7 border-primary">
                         <div class="card-body ">
                             <div class="row">
                                 <div class="col-12 text-center">
@@ -508,17 +508,17 @@ pg_page_shell([
                                 </div>
                                 <div class="col-12 text-center">
                                     <h5>' . lang('Payable Total') . '</h5>
-                                    <p class="fw-bolder text-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
+                                    <p class="fw-bolder fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center ">
                                     <h5>' . lang('Ineligible Total') . '</h5>
-                                    <p class="fw-bolder text-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
+                                    <p class="fw-bolder fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center ">
                                     <h5>' . lang('Paid Total') . '</h5>
-                                    <p class="fw-bolder text-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
+                                    <p class="fw-bolder fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                 </div>
                             </div>
                         </div>

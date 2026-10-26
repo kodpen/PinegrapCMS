@@ -21,10 +21,10 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="row">
 		<div class="col-12">
 			<?=$form->get_messages()?>
-			<div class="row mb-2  flex-wrap">
-				<div class="col-12 col-sm-12 text-center text-md-start">
+			<div class="row mb-3  flex-wrap">
+				<div class="col-12 sm:col-12 text-center md:text-start">
 					<nav class="navigation" aria-label="breadcrumb">
-						<ol class="breadcrumb justify-content-center justify-content-md-start ">
+						<ol class="breadcrumb justify-content-center md:justify-content-start ">
 							<?php if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''): ?>
 								<li class="breadcrumb-item"><a class="link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/explorer.php"><?=lang('Explorer')?></a></li>
 								<li class="breadcrumb-item"><a class="link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h($_GET['id'] ?? '')?>&send_to=<?=h($_GET['send_to'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
@@ -42,30 +42,30 @@ if (!defined('PG_INIT_LOADED')) {
 				<?=get_token_field()?>
 				<div class="row">
 					<div class="col-12">
-						<div class="card my-4">
-							<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+						<div class="card my-7">
+							<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
 								<?=lang('Duplicate Options')?>
 							</div>
 							<div class="card-body">
 								<div class="row">
 									<div class="col-12 my-1">
-										<div class="form-check form-switch">
-											<input value="1" name="find_and_replace_check" id="find_and_replace_check" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#find_and_replace_row">
-											<label class="form-check-label" for="find_and_replace_check"><?=lang('Find & Replace')?></label>
+										<div class="form-field">
+											<div class="switch"><input value="1" name="find_and_replace_check" id="find_and_replace_check" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#find_and_replace_row"></div>
+											<label class="" for="find_and_replace_check"><?=lang('Find & Replace')?></label>
 										</div>
-										<div class="collapse popover  fade bs-popover-bottom p-0 mb-2  pe-3" id="find_and_replace_row">
+										<div class="collapse popover  fade bs-popover-bottom p-0 mb-3  pe-5" id="find_and_replace_row">
 											<div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(49px, 0px);"></div>
 											<div class="popover-body">
 												<div class="row">
 													<div class="find_replace col-12 my-1">
 														<?php for ($number = 1; $number <= 10; $number++): ?>
-														<div class="find_replace_row row position-relative border bg-light p-2 my-3 rounded" >
-															<div class="col-12 col-md-6 my-1 ">
+														<div class="find_replace_row row position-relative border bg-light p-3 my-5 rounded-4" >
+															<div class="col-12 md:col-6 my-1 ">
 																<span class="position-absolute top-0 start-50 badge rounded-pill translate-middle bg-light text-dark border-top fw-light"><?=$number?></span>
 																<label for="find_<?=$number?>" class="form-label"><?=lang('Find')?></label>
 																<input placeholder="<?=lang('Find')?>" type="text" class="form-control" id="find_<?=$number?>" name="find_<?=$number?>" >
 															</div>
-															<div class="col-12 col-md-6 my-1">
+															<div class="col-12 md:col-6 my-1">
 																<label for="replace_<?=$number?>" class="form-label"><?=lang('Replace')?></label>
 																<input placeholder="<?=lang('Replace')?>" type="text" class="form-control" id="replace_<?=$number?>" name="replace_<?=$number?>">
 															</div>
@@ -81,10 +81,10 @@ if (!defined('PG_INIT_LOADED')) {
 							</div>
 						</div>
 					</div>
-					<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+					<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
 						<div class="container">
 							<div class=" btn-group flex-wrap justify-content-center">
-								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-success "><span class="material-icons me-2">control_point_duplicate</span><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
+								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
 							</div>
 						</div>
 					</nav>

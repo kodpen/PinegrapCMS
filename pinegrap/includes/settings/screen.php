@@ -103,7 +103,7 @@ if (!$_POST) {
         $pg_settings_switcher .=
             '<li><a class="dropdown-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active' : '') . '"'
             . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '">'
-            . '<i class="bi ' . h($pg_settings_other['icon']) . ' me-2" aria-hidden="true"></i>'
+            . '<i class="bi ' . h($pg_settings_other['icon']) . ' me-3" aria-hidden="true"></i>'
             . h($pg_settings_other['label']) . '</a></li>';
     }
 
@@ -180,21 +180,21 @@ if (!$_POST) {
         'head'          => $pg_settings_head,
     )) . '
 <main id="content" class="container-fluid">
-    <div class="row gy-3">
+    <div class="row gy-5">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . implode('', $pg_settings_modals) . '
 
-            <div class="pg-toolbar d-flex flex-wrap align-items-center gap-2 mb-3">
+            <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-primary rounded-pill px-3 dropdown-toggle no-popover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi ' . h($pg_settings_category['icon']) . ' me-2" aria-hidden="true"></i>' . h($pg_settings_category['label']) . '
+                    <button class="btn btn-sm btn-solid theme-primary rounded-pill px-5 dropdown-toggle no-popover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi ' . h($pg_settings_category['icon']) . ' me-3" aria-hidden="true"></i>' . h($pg_settings_category['label']) . '
                     </button>
                     <ul class="dropdown-menu">' . $pg_settings_switcher . '</ul>
                 </div>
-                <span class="text-body-secondary small d-none d-md-inline">' . h(lang(array(
+                <span class="fg-secondary small d-none md:d-inline">' . h(lang(array(
                     'string' => '{var:1} section{suffix:1}, saved together',
                     'vars'   => count($pg_settings_category['sections']),
                     'suffix' => ((count($pg_settings_category['sections']) == 1) ? '' : 's'),
@@ -239,7 +239,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky " style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
                     </div>
                 </nav>

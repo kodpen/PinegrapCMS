@@ -110,17 +110,17 @@ foreach ($rows as $row) {
     }
 
     $output_rows .=
-        '<tr' . (($row_state === 'ignored') ? ' class="text-body-secondary"' : '') . '>
+        '<tr' . (($row_state === 'ignored') ? ' class="fg-secondary"' : '') . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'erp_inbox_document.php?id=' . $id . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'erp_inbox_document.php?id=' . $id . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
             </td>
             <td class="align-middle text-nowrap" data-order="' . h($row['issue_date']) . '">' . h(prepare_form_data_for_output($row['issue_date'], 'date')) . '</td>
             <td class="align-middle text-nowrap chart_label">' . h($row['gib_number']) . '</td>
             <td style="max-width:280px" class="align-middle text-truncate">
                 <div class="text-truncate">' . h($row['supplier_title']) . '</div>
-                <div class="small text-body-secondary">' . h($row['supplier_tax_number']) . '</div>
+                <div class="small fg-secondary">' . h($row['supplier_tax_number']) . '</div>
             </td>
-            <td class="align-middle text-nowrap">' . h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small text-body-secondary">' . h($row['profile']) . '</div></td>
+            <td class="align-middle text-nowrap">' . h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small fg-secondary">' . h($row['profile']) . '</div></td>
             <td class="align-middle text-end text-nowrap" data-order="' . (int) $row['total'] . '">' . h(erp_money_out_currency((int) $row['total'], $row['currency'])) . '</td>
             <td class="align-middle">' . h($row['provider_status']) . '</td>
             <td class="align-middle">' . $output_state . '</td>
@@ -139,10 +139,10 @@ $output_filter = pg_filter_select('state', $filter_options, $state, array('label
 $output_notice = '';
 
 if (!$installed) {
-    $output_notice = '<div class="alert alert-warning my-4">' . lang('Run the software upgrade first: the incoming e-invoice table is not there yet.') . '</div>';
+    $output_notice = '<div class="alert theme-warning my-7">' . lang('Run the software upgrade first: the incoming e-invoice table is not there yet.') . '</div>';
 } elseif ($provider === '') {
     $active = erp_edoc_active();
-    $output_notice = '<div class="alert alert-info my-4">'
+    $output_notice = '<div class="alert theme-info my-7">'
         . (($active === '')
             ? lang('Incoming e-invoices are read from the e-document provider, and no provider is selected.')
             : lang(array('string' => '{var:1} does not hand over incoming invoices through this screen yet.', 'vars' => erp_edoc_info($active)['label'])))
@@ -160,12 +160,12 @@ if ($provider !== '') {
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
                     <input type="date" name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
-                    <span class="text-body-secondary">&ndash;</span>
+                    <span class="fg-secondary">&ndash;</span>
                     <input type="date" name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
                 </form>') . '
                 ' . (($read_at > 0)
-                    ? '<span class="small text-body-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
+                    ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
                     : '');
 }
 
@@ -191,7 +191,7 @@ pg_page_shell([
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_filter . '
             </nav>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>

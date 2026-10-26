@@ -430,18 +430,18 @@ if (isset($_GET['export'])) {
 
             $output_rows .=
             '<tr class="unselectable">
-                <td class="select-all align-middle text-start"><input class="form-check-input disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1"></td>
+                <td class="select-all align-middle text-start"><input class="check disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1"></td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="chart_label ' . $output_name_color_class . '">' . h($email_campaign_profile['name']) . '</td>
                 <td class="align-middle text-center ' . $output_name_color_class . '">' . $output_enabled_check_mark . '</td>
-                <td class="align-middle"><span class="badge bg-primary fw-light">' . $output_action . '</span></td>
+                <td class="align-middle"><span class="badge theme-primary fw-light">' . $output_action . '</span></td>
                 <td class="align-middle">' . $output_action_item . '</td>
                 <td class="align-middle">' . h($email_campaign_profile['subject']) . '</td>
                 <td class="align-middle">' . $output_page_name . '</td>
-                <td class="align-middle"><span class="badge border border-1 border-dark fw-light bg-secondary-subtle text-secondary-emphasis">' . $output_schedule . '</span></td>
+                <td class="align-middle"><span class="badge border border-1 border-dark fw-light bg-subtle-secondary fg-emphasis-secondary">' . $output_schedule . '</span></td>
                 <td class="align-middle">' . lang(h(ucwords($email_campaign_profile['purpose']))) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign_profile['created_timestamp'])) . ' ' . $created_username . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign_profile['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
@@ -467,11 +467,11 @@ if (isset($_GET['export'])) {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+                <div class="row mb-3 flex-wrap">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_email_campaign_profile.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_email_campaign_profile.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link link-secondary py-0 m-1" href="import_email_campaign_profiles.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
@@ -483,7 +483,7 @@ if (isset($_GET['export'])) {
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="delete_email_campaigns.php" method="post" class="disable_shortcut"> 
                             ' . get_token_field() . '
@@ -492,8 +492,8 @@ if (isset($_GET['export'])) {
                                 <thead>
                                     <tr>
                                         <th class="noVis">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input disabled" disabled title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="disabled" disabled title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 

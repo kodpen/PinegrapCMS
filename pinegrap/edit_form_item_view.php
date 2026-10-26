@@ -114,7 +114,7 @@ if (!$_POST) {
 
         // Show marker next to collection fields, so user understands which
         // fields are collection fields.
-        $collection_field_marker = ' <span class="text-success">' . lang('Collection Field') . '</span>';
+        $collection_field_marker = ' <span class="fg-success">' . lang('Collection Field') . '</span>';
     }
 
     // Get collection A info for this form item view.  We get the collection A
@@ -154,11 +154,11 @@ if (!$_POST) {
         $output = '';
         foreach ($items as $item) {
             $detail = h($item['label']) . (($item['type_label'] !== '') ? ' · ' . h($item['type_label']) : '');
-            $output .= '<li class="list-group-item py-1 px-2 d-flex align-items-center gap-2">'
+            $output .= '<li class="list-group-item py-1 px-3 d-flex align-items-center gap-3">'
                 . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none flex-grow-1 text-break" data-pg-insert="' . h($item['token']) . '">'
-                . '<code>' . h($item['token']) . '</code><span class="d-block small text-body-secondary">' . $detail . '</span></button>';
+                . '<code>' . h($item['token']) . '</code><span class="d-block small fg-secondary">' . $detail . '</span></button>';
             if ($item['example'] !== '') {
-                $output .= '<button type="button" class="btn btn-sm btn-outline-secondary no-popover" data-bs-toggle="tooltip" data-pg-insert="' . h($item['example']) . '" title="' . h($item['example']) . '"><i class="bi bi-braces" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Insert with format')) . '</span></button>';
+                $output .= '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" data-pg-insert="' . h($item['example']) . '" title="' . h($item['example']) . '"><i class="bi bi-braces" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Insert with format')) . '</span></button>';
             }
             $output .= '</li>';
         }
@@ -170,7 +170,7 @@ if (!$_POST) {
     $output_available_mail_links = $output_variable_items($variables_help['mail']);
 
     if ($output_available_custom_fields === '') {
-        $output_available_custom_fields = '<li class="list-group-item py-1 px-2 small text-body-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
+        $output_available_custom_fields = '<li class="list-group-item py-1 px-3 small fg-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
     }
 
     $output_available_formats = '';
@@ -179,9 +179,9 @@ if (!$_POST) {
         'date' => lang('Date format'),
         'checkbox' => lang('Check box as text'),
     ) as $format => $format_label) {
-        $output_available_formats .= '<li class="list-group-item py-1 px-2">'
+        $output_available_formats .= '<li class="list-group-item py-1 px-3">'
             . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 text-break" data-pg-insert="' . h($variables_help['syntax'][$format]) . '">'
-            . '<code>' . h($variables_help['syntax'][$format]) . '</code><span class="d-block small text-body-secondary">' . h($format_label) . '</span></button></li>';
+            . '<code>' . h($variables_help['syntax'][$format]) . '</code><span class="d-block small fg-secondary">' . h($format_label) . '</span></button></li>';
     }
 
     // These two are only ever produced by the form list view screen this block
@@ -216,8 +216,8 @@ if (!$_POST) {
             <div class="row">
             <div class="col-12">
                 ' . $form->get_messages() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . $output_custom_form_information . '</p>
                     </div>
@@ -231,20 +231,20 @@ if (!$_POST) {
                             </div>
                             <div class="modal-body ">
                                 <div class="row">
-                                    <div class="col-12 my-3">
+                                    <div class="col-12 my-5">
                                         <p>' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
                                         <p>' . lang('Use the following URL format to link to files and embed images') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{path}^^example^^</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">{path}^^example^^</p>
                                         <p>' . lang('Use the following format to output different content depending on whether there is a value or not') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">[[' . lang('There is a value') . ': ^^example^^ || ' . lang('There is not a value') . ']]</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">[[' . lang('There is a value') . ': ^^example^^ || ' . lang('There is not a value') . ']]</p>
                                         <p>' . lang('Use the following format to output different content depending on whether Comparison Operators.') . ' ("==","===","!=","<>","!==","<",">","<=",">=","<=>"):</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
                                         <p>' . lang(array('string'=>'Use the following format to customize the date format for date and date & time fields. The format can either be a {var:1} or "relative" for a relative time (e.g. "2 minutes ago", "2 minutes from now").','vars'=>lang('<a href="http://php.net/manual/en/function.date.php" target="_blank">PHP date format</a>'))) . '</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
                                         <p>' . lang('Use the following format to print one text for a ticked check box and another for an empty one; either text may be left empty.') . '</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">' . h('^^example^^%%' . lang('Yes') . '|' . lang('No') . '%%') . '</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">' . h('^^example^^%%' . lang('Yes') . '|' . lang('No') . '%%') . '</p>
                                         <p>' . lang('Use the following URL format to link directly to the newest comment') . ':</p>
-                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">#c-^^newest_comment_id^^</p>
+                                        <p class="mt-3 mb-7 p-5 bg-dark rounded-4 text-light">#c-^^newest_comment_id^^</p>
                                     </div>
                                 </div>
                             </div>
@@ -256,38 +256,38 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="page_id" value="' . h($_GET['page_id']) . '" />
                     <div class="row">
-                        <div class="col-12 col-md">
+                        <div class="col-12 md:col">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Field Options') . '
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-lg-8 col-xxl-9 order-1 my-2">
+                                                <div class="col-12 lg:col-8 2xl:col-9 order-1 my-3">
                                                     <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                                     <textarea id="layout" name="layout">' . h($layout) . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                                 </div>
-                                                <div class="col-12 col-lg-4 col-xxl-3 order-2 my-2" id="pg_fiv_variables">
-                                                    <div class="d-flex align-items-center justify-content-between gap-2">
-                                                        <button type="button" class="btn btn-sm btn-ghost px-1 fw-bold text-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
+                                                <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
+                                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                                        <button type="button" class="btn btn-sm btn-ghost px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
                                                         <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="modal" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
                                                     </div>
                                                     <div class="collapse show" id="pg_fiv_variables_list">
-                                                        <p class="form-text mt-1 mb-2">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
+                                                        <p class="form-text mt-1 mb-3">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
                                                         <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
-                                                        <ul class="list-group overflow-auto pe-1 mb-3" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
                                                             ' . $output_available_custom_fields . '
                                                         </ul>
-                                                        <p class="mb-0 text-primary">' . lang('System Fields') . '</p>
-                                                        <ul class="list-group overflow-auto pe-1 mb-3" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                                        <p class="mb-0 fg-primary">' . lang('System Fields') . '</p>
+                                                        <ul class="list-group overflow-auto pe-1 mb-5" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
                                                             ' . $output_available_standard_fields . '
                                                         </ul>
                                                         <p class="mb-0">' . lang('E-mail links') . '</p>
                                                         <p class="form-text mt-0 mb-1">' . lang('Filled in only in the e-mail to the person who sent the form; empty on the page and in other copies.') . '</p>
-                                                        <ul class="list-group mb-3">
+                                                        <ul class="list-group mb-5">
                                                             ' . $output_available_mail_links . '
                                                         </ul>
                                                         <p class="mb-0">' . lang('Formats') . '</p>
@@ -303,10 +303,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

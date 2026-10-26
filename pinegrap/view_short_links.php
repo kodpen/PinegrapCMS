@@ -220,14 +220,14 @@ if ($short_links) {
         }
 
         if ($short_link_state['label'] !== '') {
-            $output_name .= '<div class="small text-body-secondary">' . h($short_link_state['label']) . '</div>';
+            $output_name .= '<div class="small fg-secondary">' . h($short_link_state['label']) . '</div>';
         }
 
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . (($short_link_token || $short_link_pattern) ? '' : '<a href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                    ' . (($short_link_token || $short_link_pattern) ? '' : '<a href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
                 </td>
                 <td class="align-middle chart_label">' . $output_name . '</td>
                 <td class="align-middle">' . $output_destination_type . '</td>
@@ -257,11 +257,11 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . (pg_short_link_redirects_ready() ? '<a class="btn btn-sm btn-ghost" href="import_short_links.php"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Import') . '</a>' : '') . '
                         <a class="btn btn-sm btn-ghost" href="view_short_links.php?export=csv"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Export') . '</a>
                         <div class="pg-toolbar-grow"></div>
@@ -273,7 +273,7 @@ pg_page_shell(
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

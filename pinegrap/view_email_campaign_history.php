@@ -193,10 +193,10 @@ if ($email_campaigns) {
 
         $output_rows .=
         '<tr>
-            <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" class="checkbox" /></td>
+            <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" class="checkbox" /></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle">' . $output_to . '</td>
             <td class="align-middle">' . h($email_campaign['email_campaign_profile_name']) . '</td>
@@ -230,11 +230,11 @@ pg_page_shell(
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 "  href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY .'/add_email_campaign.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 "  href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY .'/add_email_campaign.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <div class="disable_shortcut d-inline-block">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link link-secondary py-0 m-1" href="view_email_campaigns.php"><span class="material-icons me-1">campaign</span>' . lang(array('string'=>'My Campaigns') ) . '</a>
@@ -245,7 +245,7 @@ pg_page_shell(
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/delete_email_campaigns.php" method="post" class="disable_shortcut"> 
                             ' . get_token_field() . '
@@ -254,8 +254,8 @@ pg_page_shell(
                                 <thead>
                                     <tr>
                                         <th class="noVis">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
@@ -276,7 +276,7 @@ pg_page_shell(
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

@@ -359,7 +359,7 @@
 
             if (note) {
                 var line = document.createElement('div');
-                line.className = 'small mt-2 fw-semibold';
+                line.className = 'small mt-3 fw-semibold';
                 line.textContent = text('model_fallback', config.language);
                 note.appendChild(line);
             }

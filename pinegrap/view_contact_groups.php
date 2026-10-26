@@ -25,7 +25,7 @@ $liveform = new liveform('view_contact_groups');
 
 // if user has access to manage contact groups, then prepare to output add contact group button
 if ($user['role'] < 3) {
-    $output_add_contact_group_button = '<a class="btn btn-sm btn-primary m-1 " href="add_contact_group.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_add_contact_group_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact_group.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
 
 // else user does not have access to manage contact groups, so prepare to not output buttons for contact groups
 } else {
@@ -127,9 +127,9 @@ if ($contact_groups) {
             $email_subscription = '<span class="material-icons">task_alt</span>';
 
             if ($contact_group['email_subscription_type'] == 'open') {
-                $email_subscription_type = '<span class="badge fw-light bg-primary">' . lang('Open') . '</span>';
+                $email_subscription_type = '<span class="badge fw-light theme-primary">' . lang('Open') . '</span>';
             } else {
-                $email_subscription_type = '<span class="badge fw-light bg-warning">' . lang('Closed') . '</span>';
+                $email_subscription_type = '<span class="badge fw-light theme-warning">' . lang('Closed') . '</span>';
             }
 
             $description = $contact_group['description'];
@@ -158,8 +158,8 @@ if ($contact_groups) {
         $output_rows .=
             '<tr class="unselectable">
 			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle chart_label">' . h($contact_group['name']) . '</td>
                 <td class="align-middle text-center">' . $email_subscription . '</td>
@@ -189,8 +189,8 @@ print
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                    
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $output_add_contact_group_button . '
@@ -199,7 +199,7 @@ print
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>
                             <tr>

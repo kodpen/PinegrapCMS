@@ -201,16 +201,16 @@ if (!$readonly) {
 
 $output_invoice = '';
 if (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') === 'cancelled')) {
-    $output_invoice = '<div class="alert alert-warning d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
+    $output_invoice = '<div class="alert theme-warning d-flex flex-wrap gap-3 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
         . '<span>' . lang('The invoice made from this quote was cancelled; the quote can be invoiced again.') . '</span>'
         . '<a class="ms-auto" href="edit_erp_invoice.php?id=' . (int) $quote['invoice_id'] . '">' . lang('Open the invoice') . '</a></div>';
 } elseif (((string) $quote['status'] === 'invoiced') && ((string) ($quote['invoice_status'] ?? '') !== '')) {
     $is_draft = ((string) $quote['invoice_status'] === 'draft');
-    $output_invoice = '<div class="alert alert-info d-flex flex-wrap gap-2 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
+    $output_invoice = '<div class="alert theme-info d-flex flex-wrap gap-3 align-items-center"><i class="bi bi-receipt" aria-hidden="true"></i>'
         . '<span>' . ($is_draft ? lang('This quote became an invoice draft.') : h(lang(array('string' => 'This quote became invoice {var:1}.', 'vars' => (string) $quote['invoice_number'])))) . '</span>'
         . '<a class="ms-auto" href="' . ($is_draft ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $quote['invoice_id'] . '">' . ($is_draft ? lang('Open the draft') : lang('Open the invoice')) . '</a></div>';
 } elseif (((string) $quote['status'] === 'invoiced')) {
-    $output_invoice = '<div class="alert alert-warning">' . lang('The invoice draft made from this quote was deleted; the quote can be invoiced again.') . '</div>';
+    $output_invoice = '<div class="alert theme-warning">' . lang('The invoice draft made from this quote was deleted; the quote can be invoiced again.') . '</div>';
 }
 
 // Open: the editor. Otherwise the quote as it stands.
@@ -237,9 +237,9 @@ if ($editable) {
                 <input type="hidden" name="id" value="' . $quote_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
                 ' . erp_invoice_form_cards($liveform, array('quote' => true, 'valid_days' => ERP_QUOTE_VALID_DAYS, 'lines' => erp_invoice_form_lines($liveform, erp_quote_editor_rows($quote)))) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                        <button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
             </form>
@@ -251,7 +251,7 @@ if ($editable) {
         $rows .= '
             <tr>
                 <td>' . (int) $line['line_no'] . '</td>
-                <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small text-body-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
+                <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
                 <td class="text-end">' . h(erp_quantity_text($line['quantity'])) . '</td>
                 <td class="text-end">' . $money($line['unit_price']) . '</td>
                 <td class="text-end">' . (((int) $line['discount_amount'] > 0) ? $money($line['discount_amount']) : '') . '</td>
@@ -261,7 +261,7 @@ if ($editable) {
     }
 
     $output_body = '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Quantity') . '</th><th class="text-end">' . lang('Unit price') . '</th><th class="text-end">' . lang('Discount') . '</th><th class="text-end">' . h(erp_tax_label('percent')) . '</th><th class="text-end">' . lang('Line total') . '</th></tr></thead>
@@ -270,13 +270,13 @@ if ($editable) {
                 </div>
                 <div class="card-body border-top">
                     <div class="row">
-                        <div class="col-12 col-lg-7">' . ((trim((string) $quote['notes']) !== '') ? '<div class="small text-body-secondary">' . lang('Notes') . '</div><div>' . nl2br(h((string) $quote['notes'])) . '</div>' : '') . '</div>
-                        <div class="col-12 col-lg-5">
+                        <div class="col-12 lg:col-7">' . ((trim((string) $quote['notes']) !== '') ? '<div class="small fg-secondary">' . lang('Notes') . '</div><div>' . nl2br(h((string) $quote['notes'])) . '</div>' : '') . '</div>
+                        <div class="col-12 lg:col-5">
                             <div class="d-flex justify-content-between py-1"><span>' . lang('Subtotal') . '</span><b>' . $money($quote['subtotal']) . '</b></div>
                             ' . (((int) $quote['discount_total'] !== 0) ? '<div class="d-flex justify-content-between py-1"><span>' . lang('Discount') . '</span><b>&minus;' . $money($quote['discount_total']) . '</b></div>' : '') . '
                             <div class="d-flex justify-content-between py-1"><span>' . h(erp_tax_label('tax')) . '</span><b>' . $money($quote['tax_total']) . '</b></div>
                             ' . (((int) $quote['withholding_total'] !== 0) ? '<div class="d-flex justify-content-between py-1"><span>' . lang('VAT withholding') . '</span><b>&minus;' . $money($quote['withholding_total']) . '</b></div>' : '') . '
-                            <div class="d-flex justify-content-between py-2 border-top h5 mb-0"><span>' . lang('Total') . '</span><b>' . $money($quote['grand_total']) . '</b></div>
+                            <div class="d-flex justify-content-between py-3 border-top h5 mb-0"><span>' . lang('Total') . '</span><b>' . $money($quote['grand_total']) . '</b></div>
                         </div>
                     </div>
                 </div>
@@ -305,7 +305,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
             <tr>
                 <td class="text-nowrap">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail['created_at']), 'date and time')) . '</td>
                 <td class="text-break">' . h((string) $mail['to_address'])
-                    . (((string) $mail['error'] !== '') ? '<div class="small text-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
+                    . (((string) $mail['error'] !== '') ? '<div class="small fg-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
                 <td>' . h(((string) $mail['created_by_name'] !== '') ? (string) $mail['created_by_name'] : '—') . '</td>
                 <td><span class="badge text-bg-' . h($status[1]) . '">' . h($status[0]) . '</span></td>
             </tr>';
@@ -315,18 +315,18 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-outline-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_quote.php" method="post" class="row g-2">
+            <form name="mail_form" action="edit_erp_quote.php" method="post" class="row g-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $quote_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
                     <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" autocomplete="off" required />
                     <div class="form-text">' . (((string) $defaults['to'] === '') ? lang('The account has no e-mail address. Type one, or add it to the account.') : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_subject">' . lang('Subject') . '</label>
                     <input type="text" class="form-control" id="mail_subject" name="mail_subject" value="' . h((string) $defaults['subject']) . '" maxlength="255" />
                 </div>
@@ -336,15 +336,15 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The quote PDF is attached.') . '</div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
             </form>';
     }
 
     if (($output_mail_form !== '') || ($mail_rows !== '')) {
         $output_mail = '
-            <div class="card my-4" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('E-mail to the customer') . '</div>
+            <div class="card my-7" id="erp-mail">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the customer') . '</div>
                 <div class="card-body">' . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
@@ -372,20 +372,20 @@ if ($signature !== null) {
         return '<div class="small ' . ($ok ? 'text-success' : 'text-danger') . '"><i class="bi ' . ($ok ? 'bi-check-circle' : 'bi-exclamation-triangle') . ' me-1" aria-hidden="true"></i>' . ($ok ? $good : $bad) . '</div>';
     };
 
-    $output_signature_icon = ' <i class="bi bi-pen text-success fs-6 align-middle" title="' . h(lang('Signed')) . '" aria-label="' . h(lang('Signed')) . '"></i>';
+    $output_signature_icon = ' <i class="bi bi-pen fg-success fs-md align-middle" title="' . h(lang('Signed')) . '" aria-label="' . h(lang('Signed')) . '"></i>';
     $output_signature = '
-            <div class="card my-4" id="erp-signature">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Customer signature') . '</div>
+            <div class="card my-7" id="erp-signature">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
                 <div class="card-body">
-                    <div class="row g-3 align-items-center">
-                        <div class="col-12 col-md-5">'
+                    <div class="row g-5 align-items-center">
+                        <div class="col-12 md:col-5">'
                             . (((string) $signature['file_name'] !== '')
-                                ? '<img src="' . h(OUTPUT_PATH . (string) $signature['file_name']) . '" alt="' . h(lang('Customer signature')) . '" class="img-fluid border rounded bg-white p-2" style="max-height:10rem" />'
-                                : '<span class="text-danger">' . lang('The drawing of the signature is missing.') . '</span>') . '
+                                ? '<img src="' . h(OUTPUT_PATH . (string) $signature['file_name']) . '" alt="' . h(lang('Customer signature')) . '" class="img-fluid border rounded-4 bg-white p-3" style="max-height:10rem" />'
+                                : '<span class="fg-danger">' . lang('The drawing of the signature is missing.') . '</span>') . '
                         </div>
-                        <div class="col-12 col-md-7">
-                            <div><span class="text-body-secondary">' . lang('Signed by') . '</span> <b>' . h((string) $signature['signer_name']) . '</b></div>
-                            <div class="small text-body-secondary mb-2">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $signature['signed_at']), 'date and time'))
+                        <div class="col-12 md:col-7">
+                            <div><span class="fg-secondary">' . lang('Signed by') . '</span> <b>' . h((string) $signature['signer_name']) . '</b></div>
+                            <div class="small fg-secondary mb-3">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $signature['signed_at']), 'date and time'))
                                 . (((string) ($signature['username'] ?? '') !== '') ? ' · ' . h(lang(array('string' => 'on the screen of {var:1}', 'vars' => (string) $signature['username']))) : '')
                                 . (((string) $signature['ip_address'] !== '') ? ' · ' . h((string) $signature['ip_address']) : '') . '</div>
                             ' . $check($record_intact, lang('The signature record is intact.'), lang('The signature record or its drawing was changed after it was written.')) . '
@@ -400,17 +400,17 @@ if ($signature !== null) {
     unset($_SESSION['software']['erp_quote_signer'][$quote_id]);
 
     $output_signature = '
-            <div class="card my-4" id="erp-signature">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Customer signature') . '</div>
+            <div class="card my-7" id="erp-signature">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
                 <div class="card-body">
-                    <form name="signature_form" action="edit_erp_quote.php" method="post" class="row g-3 disable_shortcut" autocomplete="off">
+                    <form name="signature_form" action="edit_erp_quote.php" method="post" class="row g-5 disable_shortcut" autocomplete="off">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $quote_id . '" />
                         <input type="hidden" name="erp_action" value="sign" />
                         <div class="col-12">
                             <div class="form-text mt-0">' . lang('The customer signs below, on this screen or a tablet showing it. The quote is then accepted, and the signature is printed on it.') . '</div>
                         </div>
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 md:col-6">
                             <label class="form-label" for="signer_name">' . lang('Name of the person signing') . '</label>
                             <input type="text" class="form-control" id="signer_name" name="signer_name" value="' . h($signer_default) . '" maxlength="255" required />
                         </div>
@@ -418,7 +418,7 @@ if ($signature !== null) {
                             ' . erp_signature_pad_markup('signature', array('id' => 'erp_quote_signature')) . '
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang('Keep this signature with the quote and mark it accepted? A signature cannot be removed.')) . '"><i class="bi bi-pen me-1" aria-hidden="true"></i>' . lang('Sign and accept') . '</button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary" data-confirm-content="' . h(lang('Keep this signature with the quote and mark it accepted? A signature cannot be removed.')) . '"><i class="bi bi-pen me-1" aria-hidden="true"></i>' . lang('Sign and accept') . '</button>
                         </div>
                     </form>
                 </div>
@@ -427,12 +427,12 @@ if ($signature !== null) {
 
 // A copy is always a new open quote, whatever became of this one.
 $output_copy_button = (!$readonly && erp_quotes_ready())
-    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_quote.php?copy=' . $quote_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_quote.php?copy=' . $quote_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.
 $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
-    ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=quote&amp;id=' . $quote_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
 // Where it was talked about in the workspace, and the tasks about it.
@@ -448,7 +448,7 @@ pg_page_shell([
     'title' => (string) $quote['full_number'],
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
-    'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-6">' . h($status[0]) . '</span>' . $output_signature_icon,
+    'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>' . $output_signature_icon,
     'heading_description' => (string) $quote['account_title'] . ' · ' . lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false))),
     'cancel' => array('enable' => 'true', 'url' => 'erp_quotes.php'),
     'breadcrumb' => array(
@@ -464,8 +464,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
                 ' . $output_mail_button . '
                 ' . $output_copy_button . '
                 ' . $output_audit_button . '
@@ -474,7 +474,7 @@ pg_page_shell([
             </nav>
 
             ' . $output_invoice . '
-            ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly) ? '<div class="form-text mb-2">' . lang('Only an open quote can be changed; "Open again" makes it editable.') . '</div>' : '') . '
+            ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly) ? '<div class="form-text mb-3">' . lang('Only an open quote can be changed; "Open again" makes it editable.') . '</div>' : '') . '
             ' . $output_body . '
             ' . $output_signature . '
             ' . $output_mail . '

@@ -1139,10 +1139,10 @@ function pg_proto_shell_html($view)
 
     $step = function ($position, $icon, $label) use ($pages, $viewer) {
         if (($position < 0) || !isset($pages[$position])) {
-            return '<span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true" title="' . h($label) . '"><span class="bi ' . $icon . '" aria-hidden="true"></span><span class="visually-hidden">' . h($label) . '</span></span>';
+            return '<span class="btn btn-sm btn-outline theme-secondary disabled" aria-disabled="true" title="' . h($label) . '"><span class="bi ' . $icon . '" aria-hidden="true"></span><span class="visually-hidden">' . h($label) . '</span></span>';
         }
 
-        return '<a class="btn btn-sm btn-outline-secondary" href="' . h(pg_proto_viewer_url($viewer, $pages[$position]['id'])) . '" title="' . h($label) . '"><span class="bi ' . $icon . '" aria-hidden="true"></span><span class="visually-hidden">' . h($label) . '</span></a>';
+        return '<a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_proto_viewer_url($viewer, $pages[$position]['id'])) . '" title="' . h($label) . '"><span class="bi ' . $icon . '" aria-hidden="true"></span><span class="visually-hidden">' . h($label) . '</span></a>';
     };
 
     $nav = '';
@@ -1150,16 +1150,16 @@ function pg_proto_shell_html($view)
     if ($pages) {
         $nav = '<div class="pg-proto-nav">'
             . $step(($index >= 0) ? $index - 1 : -1, 'bi-chevron-left', lang('Previous page'))
-            . '<select class="form-select form-select-sm" id="pg-proto-pages" aria-label="' . h(lang('Pages')) . '">' . $options . '</select>'
+            . '<select class="form-control form-control-sm" id="pg-proto-pages" aria-label="' . h(lang('Pages')) . '">' . $options . '</select>'
             . $step(($index >= 0) ? $index + 1 : -1, 'bi-chevron-right', lang('Next page'))
-            . '<span class="pg-proto-count text-body-secondary small">' . (($index >= 0) ? ($index + 1) : 0) . ' / ' . count($pages) . '</span>'
+            . '<span class="pg-proto-count fg-secondary small">' . (($index >= 0) ? ($index + 1) : 0) . ' / ' . count($pages) . '</span>'
             . '</div>';
     }
 
     $notice = '';
 
     if (!empty($view['fallback'])) {
-        $notice = '<div class="pg-proto-notice alert alert-warning rounded-0 border-0 border-bottom small py-1 px-3 mb-0" role="status">'
+        $notice = '<div class="pg-proto-notice alert theme-warning rounded-0 border-0 border-bottom small py-1 px-5 mb-0" role="status">'
             . h(isset($view['fallback_text']) ? (string) $view['fallback_text'] : lang('The page you opened is not a saved draft of this design, so the prototype starts at its first draft.')) . '</div>';
     }
 
@@ -1167,7 +1167,7 @@ function pg_proto_shell_html($view)
         $main = '<div class="pg-proto-empty"><p class="mb-0">' . h($error) . '</p></div>';
     } elseif (($frame_url === '') || !$pages) {
         $main = '<div class="pg-proto-empty"><p class="fw-semibold mb-1">' . h(lang('This design has no draft pages.')) . '</p>'
-            . '<p class="text-body-secondary small mb-0">' . h(lang('Save a page as a draft in the Visual Page Editor to play it here as a prototype.')) . '</p></div>';
+            . '<p class="fg-secondary small mb-0">' . h(lang('Save a page as a draft in the Visual Page Editor to play it here as a prototype.')) . '</p></div>';
     } else {
         $main = '<iframe id="pg-proto-frame" class="pg-proto-frame" src="' . h($frame_url) . '"'
             . ' title="' . h(lang('Prototype')) . '"'
@@ -1185,7 +1185,7 @@ function pg_proto_shell_html($view)
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . h($title) . '</title>
-<link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
+<link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>
 /* Token layer of this page, which does not load backend.src.css: the
@@ -1216,11 +1216,11 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 </head>
 <body class="pg-proto">
 <nav class="pg-proto-bar" aria-label="' . h(lang('Prototype')) . '">
-<div class="pg-proto-title"><span class="badge text-bg-primary">' . h(lang('Prototype')) . '</span><span class="pg-proto-name" title="' . h($design) . '">' . h($design) . '</span></div>
+<div class="pg-proto-title"><span class="badge theme-primary">' . h(lang('Prototype')) . '</span><span class="pg-proto-name" title="' . h($design) . '">' . h($design) . '</span></div>
 ' . $nav . '
 <div class="pg-proto-tools">
-<button type="button" class="btn btn-sm btn-outline-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
-' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
+<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
+' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
 </div>
 </nav>
 ' . $notice . '

@@ -73,9 +73,9 @@ function pg_user_permission_row($group)
 
 	return '
 			<div class="pg-perm" data-pg-perm="' . h($group['id']) . '">
-				<div class="form-check form-switch pg-perm-gate-box">
-					<input class="form-check-input pg-perm-gate" type="checkbox" role="switch"' . $gate_name . $gate_extra
-						. ' id="' . $gate_id . '"' . ($group['gate_on'] ? ' checked="checked"' : '') . ' />
+				<div class="form-field pg-perm-gate-box">
+					<div class="switch"><input class="pg-perm-gate" type="checkbox" role="switch"' . $gate_name . $gate_extra
+						. ' id="' . $gate_id . '"' . ($group['gate_on'] ? ' checked="checked"' : '') . ' /></div>
 					<label class="visually-hidden" for="' . $gate_id . '">' . h($group['title']) . '</label>
 				</div>
 				<span class="pg-perm-icon" style="--pg-perm-color:' . h($group['color']) . '"><i class="bi ' . h($group['icon']) . '"></i></span>
@@ -99,7 +99,7 @@ function pg_user_permission_panel($group)
 		<div class="offcanvas offcanvas-end pg-perm-panel" tabindex="-1" id="pgperm_panel_' . h($group['id']) . '" aria-labelledby="pgperm_title_' . h($group['id']) . '">
 			<div class="offcanvas-header">
 				<span class="pg-perm-icon" style="--pg-perm-color:' . h($group['color']) . '"><i class="bi ' . h($group['icon']) . '"></i></span>
-				<h5 class="offcanvas-title ms-2" id="pgperm_title_' . h($group['id']) . '">' . h($group['title']) . '</h5>
+				<h5 class="offcanvas-title ms-3" id="pgperm_title_' . h($group['id']) . '">' . h($group['title']) . '</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="offcanvas-body">
@@ -108,7 +108,7 @@ function pg_user_permission_panel($group)
 			</div>
 			<div class="offcanvas-footer">
 				<div class="pg-perm-panel-count" data-pg-panel-count="' . h($group['id']) . '"></div>
-				<button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-dismiss="offcanvas">' . h(lang('Done')) . '</button>
+				<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-dismiss="offcanvas">' . h(lang('Done')) . '</button>
 			</div>
 		</div>';
 }
@@ -126,9 +126,9 @@ function pg_user_permission_list($scope, $heading, $items, $checker_id)
 					' . $output_heading . '
 					<div class="card multiselect-checkbox-container pg-perm-list" data-pg-count="' . h($scope) . '">
 						<div class="card-header border-0 bg-reset">
-							<div class="form-check form-switch mb-0">
-								<input id="' . h($checker_id) . '" class="form-check-input multiselect-checkbox-checker" title="' . h(lang('Select/Deselect All')) . '" type="checkbox">
-								<label for="' . h($checker_id) . '" class="form-check-label">' . h(lang('Select All')) . '</label>
+							<div class="form-field mb-0">
+								<div class="switch"><input id="' . h($checker_id) . '" class="multiselect-checkbox-checker" title="' . h(lang('Select/Deselect All')) . '" type="checkbox"></div>
+								<label for="' . h($checker_id) . '" class="">' . h(lang('Select All')) . '</label>
 							</div>
 							<span class="pg-perm-list-count" data-pg-list-count="' . h(lang(array('string' => '{var:1} of {var:2} selected', 'vars' => array('{n}', '{m}')))) . '"></span>
 						</div>
@@ -162,9 +162,9 @@ function pg_user_permission_switch($name, $value, $checked, $label, $help = '')
 
 	return '
 						<div class="pg-perm-switch">
-							<div class="form-check form-switch mb-0">
-								<input class="form-check-input" type="checkbox" role="switch" id="' . h($name) . '" name="' . h($name) . '" value="' . h($value) . '"' . ($checked ? ' checked="checked"' : '') . ' />
-								<label class="form-check-label" for="' . h($name) . '">' . h($label) . '</label>
+							<div class="form-field mb-0">
+								<div class="switch"><input class="" type="checkbox" role="switch" id="' . h($name) . '" name="' . h($name) . '" value="' . h($value) . '"' . ($checked ? ' checked="checked"' : '') . ' /></div>
+								<label class="" for="' . h($name) . '">' . h($label) . '</label>
 							</div>
 							' . $output_help . '
 						</div>';
@@ -586,7 +586,7 @@ function pg_user_permission_everything()
 	}
 
 	return '
-			<div class="alert alert-warning mb-0">
+			<div class="alert theme-warning mb-0">
 				<div class="pg-perm-everything">
 					<i class="bi bi-shield-fill-check"></i>
 					<div>

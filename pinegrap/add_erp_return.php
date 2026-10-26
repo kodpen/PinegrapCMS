@@ -100,7 +100,7 @@ if (!$_POST) {
 
         $output_lines .= '
             <tr>
-                <td class="align-middle text-body-secondary">' . (int) $line['line_no'] . '</td>
+                <td class="align-middle fg-secondary">' . (int) $line['line_no'] . '</td>
                 <td class="align-middle">' . h($line['description']) . '</td>
                 <td class="align-middle text-end">' . h($tidy($line['quantity'])) . '</td>
                 <td class="align-middle text-end ' . (($returned > 0) ? 'text-warning' : 'text-body-secondary') . '">' . h($tidy($returned)) . '</td>
@@ -113,7 +113,7 @@ if (!$_POST) {
                             'class' => 'form-control form-control-sm text-end',
                             'inputmode' => 'decimal', 'maxlength' => '10', 'autocomplete' => 'off'))
                             . (((int) $line['line_total'] < 0) ? '<div class="form-text">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '')
-                        : '<span class="text-body-secondary">&mdash;</span>') . '</td>
+                        : '<span class="fg-secondary">&mdash;</span>') . '</td>
             </tr>';
     }
 
@@ -143,21 +143,21 @@ if (!$_POST) {
                 ' . (($back_order_id > 0) ? '<input type="hidden" name="back_order" value="' . $back_order_id . '" />' : '') . '
                 <input type="hidden" name="invoice_id" value="' . $invoice_id . '" />
 
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Return an Invoice') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-sm-6 col-lg-4 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Invoice') . '</div>
+                            <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                <div class="form-label fg-secondary">' . lang('Invoice') . '</div>
                                 <div><a href="' . h($invoice_url) . '">' . h($invoice['full_number']) . '</a></div>
                             </div>
-                            <div class="col-12 col-sm-6 col-lg-4 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Account') . '</div>
+                            <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                <div class="form-label fg-secondary">' . lang('Account') . '</div>
                                 <div>' . h($invoice['account_title']) . '</div>
                             </div>
-                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
@@ -168,8 +168,8 @@ if (!$_POST) {
                     </div>
                 </div>
 
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Lines') . '
                     </div>
                     <div class="card-body p-0 position-relative">
@@ -192,10 +192,10 @@ if (!$_POST) {
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the Return')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the Return')) . '</span></button>
                         </div>
                     </div>
                 </nav>

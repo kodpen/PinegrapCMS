@@ -346,8 +346,8 @@
         var dateRow = el('div', 'row g-2');
         [dates.startRow, dates.dueRow].forEach(function (row) {
             var cell = el('div', 'col-6');
-            row.classList.remove('mb-3');
-            row.classList.add('mb-2');
+            row.classList.remove('mb-5');
+            row.classList.add('mb-3');
             cell.appendChild(row);
             dateRow.appendChild(cell);
         });

@@ -73,12 +73,12 @@ foreach (erp_bank_statements_list() as $row) {
             <td>' . h((string) $row['till_name']) . '</td>
             <td class="small text-break">' . h((string) $row['file_name']) . '</td>
             <td class="text-end">' . (int) $row['line_count'] . '</td>
-            <td class="text-end">' . (((string) $row['status'] === 'mapping') ? '<span class="badge text-bg-warning">' . lang('Columns to choose') . '</span>' : (((int) $row['open_lines'] > 0) ? '<span class="badge text-bg-warning">' . (int) $row['open_lines'] . '</span>' : '<span class="badge text-bg-success">' . lang('Done') . '</span>')) . '</td>
+            <td class="text-end">' . (((string) $row['status'] === 'mapping') ? '<span class="badge theme-warning">' . lang('Columns to choose') . '</span>' : (((int) $row['open_lines'] > 0) ? '<span class="badge theme-warning">' . (int) $row['open_lines'] . '</span>' : '<span class="badge theme-success">' . lang('Done') . '</span>')) . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center text-body-secondary py-4">' . lang('No statement taken in yet.') . '</td></tr>';
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('No statement taken in yet.') . '</td></tr>';
 }
 
 echo
@@ -96,30 +96,30 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card my-4">
+            ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card my-7">
                 ' . get_token_field() . '
-                <div class="card-body row g-2 align-items-end">
-                    <div class="col-12 col-md-4">
+                <div class="card-body row g-3 align-items-end">
+                    <div class="col-12 md:col-4">
                         <label class="form-label" for="cash_account_id">' . lang('Bank account') . '</label>
-                        <select class="form-select" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
+                        <select class="form-control" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
                     </div>
-                    <div class="col-12 col-md-5">
+                    <div class="col-12 md:col-5">
                         <label class="form-label" for="statement">' . lang('Statement file (Excel, ODS or CSV)') . '</label>
                         <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.ods,.csv,.txt,text/csv" required />
                     </div>
-                    <div class="col-12 col-md-3">
-                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Take in') . '</button>
+                    <div class="col-12 md:col-3">
+                        <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Take in') . '</button>
                     </div>
                     <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . '</div>
                 </div>
             </form>' : '') . '
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

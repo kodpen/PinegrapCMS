@@ -334,7 +334,7 @@
         spinner.setAttribute('aria-hidden', 'true');
 
         body.textContent = '';
-        body.className = 'pg-ai-draft-body small text-body-secondary';
+        body.className = 'pg-ai-draft-body small fg-secondary';
         body.appendChild(spinner);
         body.appendChild(document.createTextNode(text));
     }
@@ -342,7 +342,7 @@
     function showError(panel, message) {
         var body = panel._pgAi.body;
 
-        body.className = 'pg-ai-draft-body small text-danger';
+        body.className = 'pg-ai-draft-body small fg-danger';
         body.textContent = message;
     }
 

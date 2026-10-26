@@ -83,8 +83,8 @@ $shell = array(
 if (!$ready) {
     echo pg_page_shell($shell) . '
 <main id="content" class="container-fluid">
-    <div class="alert alert-warning my-4">
-        <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>' . h(lang('The accessibility check needs the software upgrade and the PHP DOM extension.')) . '
+    <div class="alert theme-warning my-7">
+        <i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang('The accessibility check needs the software upgrade and the PHP DOM extension.')) . '
     </div>
 </main>' . output_footer();
 
@@ -103,11 +103,11 @@ foreach ($rules as $rule_code => $rule) {
     $found = isset($summary[$rule_code]) ? $summary[$rule_code] : null;
     $result = $found
         ? '<a class="link-danger" href="view_accessibility.php?code=' . h($rule_code) . '">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</a>'
-        : '<span class="text-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
+        : '<span class="fg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
 
     $output_checklist .=
         '<tr>
-            <td class="align-middle text-nowrap">' . h($rule['criterion']) . ' <span class="text-body-secondary">' . h(isset($criteria[$rule['criterion']]) ? $criteria[$rule['criterion']] : '') . '</span></td>
+            <td class="align-middle text-nowrap">' . h($rule['criterion']) . ' <span class="fg-secondary">' . h(isset($criteria[$rule['criterion']]) ? $criteria[$rule['criterion']] : '') . '</span></td>
             <td class="align-middle">' . h($rule['level']) . '</td>
             <td class="align-middle">' . h(pg_a11y_issue_label($rule_code)) . '</td>
             <td class="align-middle">' . $result . '</td>
@@ -157,7 +157,7 @@ echo pg_page_shell($shell) . '
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
-            <nav id="button_bar" class="pg-toolbar my-2" aria-label="' . h(lang('Button Bar')) . '">
+            <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <form method="post" action="view_accessibility.php" class="d-inline">
                     ' . get_token_field() . '
                     <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
@@ -166,8 +166,8 @@ echo pg_page_shell($shell) . '
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
             </nav>
-            <p class="small text-body-secondary mb-0">' . $output_status . '</p>
-            <div class="card my-4">
+            <p class="small fg-secondary mb-0">' . $output_status . '</p>
+            <div class="card my-7">
                 <div class="card-header">' . h(lang('Checklist')) . '</div>
                 <div class="card-body p-0">
                     <table class="table table-sm mb-0">
@@ -176,11 +176,11 @@ echo pg_page_shell($shell) . '
                     </table>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-header">' . h(lang('Findings')) . '</div>
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
-                        ? '<p class="text-body-secondary m-4">' . h(lang('Nothing was found.')) . '</p>'
+                        ? '<p class="fg-secondary m-7">' . h(lang('Nothing was found.')) . '</p>'
                         : '<table class="table table-sm table-hover mb-0">
                             <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
                             <tbody>' . $output_rows . '</tbody>

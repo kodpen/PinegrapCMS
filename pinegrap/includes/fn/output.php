@@ -259,17 +259,18 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
           document.documentElement.setAttribute("data-bs-theme", theme);
         })();   
     </script>
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/Jquery/ui/jquery-ui.min.css') . '"/>
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css') . '" />
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '"/>
+    <style>@layer colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities;</style>
+    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/Jquery/ui/jquery-ui.min.css') . '") layer(vendor);</style>
+    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css') . '") layer(vendor);</style>
+    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-6/css/bootstrap.min.css') . '"/>
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css" />
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.css" />
-    <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2-bootstrap-5-theme.min.css" />
+    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css") layer(vendor);</style>
+    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2.min.css") layer(vendor);</style>
+    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/select2/select2-bootstrap-5-theme.min.css") layer(vendor);</style>
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '"/>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_bs6_bridge.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_bs6_bridge.js') . '"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ui.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ui.js') . '"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>

@@ -397,7 +397,7 @@
                     html(asked, item.instruction);
                 } else {
                     asked.textContent = h.t('dg_no_instruction');
-                    asked.classList.add('text-body-secondary');
+                    asked.classList.add('fg-secondary');
                 }
 
                 main.appendChild(asked);

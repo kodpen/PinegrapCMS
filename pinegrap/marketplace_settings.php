@@ -1544,7 +1544,7 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 	if (!$reasons) {
 
 		return $out . '
-					<p class="mt-2 mb-0 opacity-75">' . lang('The reasons for rejecting a return were not read. Read the returns again.') . '</p>
+					<p class="mt-3 mb-0 opacity-75">' . lang('The reasons for rejecting a return were not read. Read the returns again.') . '</p>
 				</details>';
 
 	}
@@ -1560,10 +1560,10 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 		}
 
 		$units .= '
-						<div class="form-check">
-							<input class="form-check-input" type="checkbox" name="unit_ids[]" value="' . h((string)$unit['id']) . '"
+						<div class="form-field">
+							<input class="check" type="checkbox" name="unit_ids[]" value="' . h((string)$unit['id']) . '"
 								id="claim_unit_' . h((string)$unit['id']) . '" checked>
-							<label class="form-check-label" for="claim_unit_' . h((string)$unit['id']) . '">'
+							<label class="" for="claim_unit_' . h((string)$unit['id']) . '">'
 								. h((string)$unit['product'])
 								. (((string)$unit['barcode'] !== '') ? ' <code>' . h((string)$unit['barcode']) . '</code>' : '') . '</label>
 						</div>';
@@ -1580,26 +1580,26 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 	}
 
 	return $out . '
-					<form method="post" action="marketplace_settings.php" enctype="multipart/form-data" class="mt-2" style="max-width:640px"
+					<form method="post" action="marketplace_settings.php" enctype="multipart/form-data" class="mt-3" style="max-width:640px"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="claim_reject">
 						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
 						<input type="hidden" name="claim_id" value="' . h((string)$claim['claim_id']) . '">
-						<div class="mb-2">' . $units . '
+						<div class="mb-3">' . $units . '
 						</div>
 						<label class="form-label" for="claim_reason_' . $key . '">' . lang('Reason') . '</label>
-						<select class="form-select form-select-sm mb-2" id="claim_reason_' . $key . '" name="reason_id" required>'
+						<select class="form-control form-control-sm mb-3" id="claim_reason_' . $key . '" name="reason_id" required>'
 							. $options . '</select>
 						<label class="form-label" for="claim_description_' . $key . '">' . lang('Explanation') . '</label>
-						<textarea class="form-control form-control-sm mb-2" id="claim_description_' . $key . '" name="description"
+						<textarea class="form-control form-control-sm mb-3" id="claim_description_' . $key . '" name="description"
 							maxlength="500" rows="3" required></textarea>
 						<label class="form-label" for="claim_files_' . $key . '">' . lang('Documents') . '</label>
 						<input type="file" class="form-control form-control-sm" id="claim_files_' . $key . '" name="claim_files[]" multiple
 							accept="image/*,video/*,.pdf,.doc,.docx">
-						<div class="form-text mb-2">'
+						<div class="form-text mb-3">'
 							. lang('Photos, videos, PDF or Word files of what came back: at most five, 5 MB each.') . '</div>
-						<button type="submit" class="btn btn-sm btn-outline-danger">' . lang('Send rejection') . '</button>
+						<button type="submit" class="btn btn-sm btn-outline theme-danger">' . lang('Send rejection') . '</button>
 					</form>
 				</details>';
 
@@ -1615,7 +1615,7 @@ function mp_settings_invoice_form($account_id, $row) {
 	return '
 				<details class="small" style="grid-column:1/-1">
 					<summary class="link-secondary">' . lang('Send invoice link') . '</summary>
-					<form method="post" action="marketplace_settings.php" class="d-flex gap-2 flex-wrap mt-2"
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="invoice_link">
@@ -1625,7 +1625,7 @@ function mp_settings_invoice_form($account_id, $row) {
 						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
 							name="invoice_url" maxlength="1000" required style="max-width:520px"
 							placeholder="https://">
-						<button type="submit" class="btn btn-sm btn-outline-secondary">' . lang('Send') . '</button>
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
 					</form>
 					<div class="form-text">'
 						. lang('The address of the e-Archive or e-Invoice PDF that the buyer can open without signing in. The marketplace keeps it with the order and it has to stay reachable for ten years. A link once sent cannot be changed from here.') . '</div>
@@ -1648,19 +1648,19 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 
 	$out = '
 			<div class="mp-row" style="display:block;background:var(--pg-bg-1)">
-				<form method="post" action="marketplace_settings.php" class="mb-3">
+				<form method="post" action="marketplace_settings.php" class="mb-5">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="category">
 					<input type="hidden" name="account_id" value="' . (int)$account_id . '">
 					<input type="hidden" name="group_id" value="' . $group_id . '">
 					<label class="form-label small" for="cat_' . $group_id . '">'
 						. lang('Marketplace category') . '</label>
-					<div class="d-flex gap-2 flex-wrap">
+					<div class="d-flex gap-3 flex-wrap">
 						<input class="form-control form-control-sm" list="mp_categories" id="cat_' . $group_id . '"
 							name="remote_category_id" style="max-width:520px" autocomplete="off"
 							placeholder="' . lang('Type part of the category name') . '"
 							value="' . h($chosen_category) . '">
-						<button type="submit" class="btn btn-sm btn-primary">' . lang('Choose') . '</button>
+						<button type="submit" class="btn btn-sm btn-solid theme-primary">' . lang('Choose') . '</button>
 					</div>
 					<div class="form-text">'
 						. lang('Only the deepest categories can hold a product. Start typing and pick one from the list.') . '</div>
@@ -1688,7 +1688,7 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 					<input type="hidden" name="mp_action" value="attributes">
 					<input type="hidden" name="account_id" value="' . (int)$account_id . '">
 					<input type="hidden" name="group_id" value="' . $group_id . '">
-					<div class="row g-2">';
+					<div class="row g-3">';
 
 	foreach ($attributes as $attribute) {
 
@@ -1708,17 +1708,17 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 		$required = !empty($attribute['mandatory']) && !$variant;
 
 		$out .= '
-						<div class="col-12 col-md-6 col-xl-4">
+						<div class="col-12 md:col-6 xl:col-4">
 							<label class="form-label small mb-1" for="attr_' . $group_id . '_' . h($id) . '">'
 								. h((string)$attribute['name'])
-								. ($required ? ' <span class="text-danger">*</span>' : '')
+								. ($required ? ' <span class="fg-danger">*</span>' : '')
 								. ($variant ? ' <span class="mp-pill off">' . lang('from the variants') . '</span>' : '')
 								. '</label>';
 
 		if (!empty($attribute['values'])) {
 
 			$out .= '
-							<select class="form-select form-select-sm" id="attr_' . $group_id . '_' . h($id) . '"
+							<select class="form-control form-control-sm" id="attr_' . $group_id . '_' . h($id) . '"
 								name="attribute[' . h($id) . ']">
 								<option value="">' . ($required ? lang('Choose') : lang('Leave empty')) . '</option>';
 
@@ -1757,7 +1757,7 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 
 	$out .= '
 					</div>
-					<button type="submit" class="btn btn-sm btn-primary mt-3">' . lang('Save') . '</button>
+					<button type="submit" class="btn btn-sm btn-solid theme-primary mt-5">' . lang('Save') . '</button>
 				</form>
 			</div>';
 
@@ -1811,7 +1811,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 	$id = $prefix . '_' . $field;
 
 	$out = '
-			<div class="mb-3">
+			<div class="mb-5">
 				<label class="form-label" for="' . h($id) . '">' . h(lang($meta['label'])) . '</label>';
 
 	if (mp_provider_field_is_select($meta)) {
@@ -1821,7 +1821,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 			: (isset($meta['default']) ? (string)$meta['default'] : '');
 
 		$out .= '
-				<select class="form-select" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
+				<select class="form-control" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
 
 		foreach ((array)$meta['options'] as $value => $label) {
 
@@ -2004,7 +2004,7 @@ echo pg_page_shell(array(
 	'heading_description'  => lang('Keep the products you sell elsewhere in step with the ones you keep here.'),
 )) . '
 
-<style>
+<style>@layer custom {
 /* Same reasoning as the application list: six columns of real content do not
    fit a phone, so the block scrolls sideways rather than stacking every row
    into a paragraph nobody can scan. */
@@ -2029,7 +2029,7 @@ echo pg_page_shell(array(
 .mp-count b { font-size: 20px; display: block; line-height: 1.1; }
 .mp-count span { font-size: 11px; opacity: .6; }
 .mp-err { font-size: 11.5px; color: var(--pg-danger); word-break: break-word; }
-</style>
+}</style>
 
 <main id="content" class="container-fluid">
 	<div class="row"><div class="col-12">
@@ -2046,12 +2046,12 @@ if (!$accounts) {
 
 	echo '
 	<div class="card">
-		<div class="card-body text-center py-5">
+		<div class="card-body text-center py-12">
 			<i class="bi bi-shop" style="font-size:34px;opacity:.35"></i>
-			<p class="mt-3 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
-			<p class="small opacity-75 mb-4" style="max-width:520px;margin:0 auto">'
+			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
+			<p class="small opacity-75 mb-7" style="max-width:520px;margin:0 auto">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>
-			<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mp_new">
+			<button type="button" class="btn btn-solid theme-primary" data-bs-toggle="modal" data-bs-target="#mp_new">
 				<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
 		</div>
 	</div>';
@@ -2059,7 +2059,7 @@ if (!$accounts) {
 } else {
 
 	echo '
-	<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+	<div class="d-flex align-items-center gap-3 mb-5 flex-wrap">
 		<span class="small opacity-75">
 			<i class="bi bi-clock-history me-1"></i>'
 			. ($last_run
@@ -2067,11 +2067,11 @@ if (!$accounts) {
 				: lang('The scheduled job has not run yet.')) . '
 		</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#mp_new">
+		<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="modal" data-bs-target="#mp_new">
 			<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
 	</div>
 
-	<div class="row g-3 mb-3">';
+	<div class="row g-5 mb-5">';
 
 	foreach ($accounts as $row) {
 
@@ -2082,16 +2082,16 @@ if (!$accounts) {
 			: '<span class="mp-pill off">' . lang('Paused') . '</span>';
 
 		echo '
-		<div class="col-12 col-md-6 col-xl-4">
+		<div class="col-12 md:col-6 xl:col-4">
 			<a class="mp-tab' . ($is_selected ? ' sel' : '') . '" href="marketplace_settings.php?account=' . (int)$row['id'] . '">
-				<div class="d-flex align-items-center gap-2">
+				<div class="d-flex align-items-center gap-3">
 					<i class="bi bi-shop"></i>
 					<b>' . h($row['name']) . '</b>
 					<span class="ms-auto">' . $state . '</span>
 				</div>
 				<small>' . h(mp_provider_name($row['provider']))
 					. ($row['last_error'] !== ''
-						? ' &middot; <span class="text-danger">' . h(mb_substr($row['last_error'], 0, 60)) . '</span>'
+						? ' &middot; <span class="fg-danger">' . h(mb_substr($row['last_error'], 0, 60)) . '</span>'
 						: ($row['last_success']
 							? ' &middot; ' . lang(array('string' => 'worked {var:1}', 'vars' => array(mp_settings_ago((int)$row['last_success']))))
 							: ' &middot; ' . lang('not tried yet'))) . '</small>
@@ -2154,21 +2154,21 @@ if ($selected) {
 	/* ------------------------------------------------------------ account */
 
 	echo '
-	<div class="card mb-3">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-sliders me-1"></i><b>' . h($selected['name']) . '</b>
 			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
 			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
 				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
-			<div class="ms-auto d-flex gap-2">
+			<div class="ms-auto d-flex gap-3">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="test">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-plug me-1"></i>' . lang('Test connection') . '</button>
 				</form>
-				<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#mp_drawer">
+				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="offcanvas" data-bs-target="#mp_drawer">
 					<i class="bi bi-pencil me-1"></i>' . lang('Settings') . '</button>
 			</div>
 		</div>
@@ -2184,7 +2184,7 @@ if ($selected) {
 	if ($selected['status'] !== 'active') {
 
 		echo '
-			<div class="alert alert-warning small mt-3 mb-0">
+			<div class="alert theme-warning small mt-5 mb-0">
 				<i class="bi bi-pause-circle me-1"></i>'
 				. lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.') . '
 			</div>';
@@ -2194,7 +2194,7 @@ if ($selected) {
 	if ($selected['last_error'] !== '') {
 
 		echo '
-			<div class="alert alert-danger small mt-3 mb-0">
+			<div class="alert theme-danger small mt-5 mb-0">
 				<i class="bi bi-exclamation-triangle me-1"></i>' . h($selected['last_error']) . '
 			</div>';
 
@@ -2207,18 +2207,18 @@ if ($selected) {
 	/* ------------------------------------------------------------ mapping */
 
 	echo '
-	<div class="card mb-3" id="mp-map">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5" id="mp-map">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
-			<span class="small opacity-75 d-none d-lg-inline">'
+			<span class="small opacity-75 d-none lg:d-inline">'
 				. lang('The code on the left is this shop\'s; the code on the right is what the marketplace calls it.') . '</span>
-			<div class="ms-auto d-flex gap-2">'
+			<div class="ms-auto d-flex gap-3">'
 				. ($can_update_listings ? '
 				<form method="post" action="marketplace_settings.php" class="d-inline" id="mp_update_form">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="listing_update">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary"'
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary"'
 						. ($maps ? '' : ' disabled') . ' title="'
 						. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">
 						<i class="bi bi-cloud-upload me-1"></i>' . h(lang(array(
@@ -2230,19 +2230,19 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary"' . ($maps ? '' : ' disabled') . '>
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary"' . ($maps ? '' : ' disabled') . '>
 						<i class="bi bi-arrow-repeat me-1"></i>' . lang('Send all now') . '</button>
 				</form>
-				<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#mp_match">
+				<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="modal" data-bs-target="#mp_match">
 					<i class="bi bi-plus-lg me-1"></i>' . lang('Match a product') . '</button>
 			</div>
 		</div>
-		<div class="card-body px-2 py-3">';
+		<div class="card-body px-3 py-5">';
 
 	if (!$maps) {
 
 		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('No product is matched yet. Nothing is sent until at least one is.') . '</p>';
 
 	} else {
@@ -2320,7 +2320,7 @@ if ($selected) {
 			// attribute): the row already holds the remove form, and forms
 			// do not nest.
 			$map_tick = ($can_update_listings && (string)$map['remote_id'] !== '')
-				? '<input type="checkbox" class="form-check-input me-1" form="mp_update_form" name="map_ids[]" value="'
+				? '<input type="checkbox" class="check me-1" form="mp_update_form" name="map_ids[]" value="'
 					. (int)$map['id'] . '" aria-label="' . h(lang('Send changes')) . '">'
 				: '';
 
@@ -2348,7 +2348,7 @@ if ($selected) {
 						<input type="hidden" name="mp_action" value="unmap">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
 						<input type="hidden" name="map_id" value="' . (int)$map['id'] . '">
-						<button type="submit" class="btn btn-sm btn-link text-danger p-0" title="' . lang('Remove match') . '">
+						<button type="submit" class="btn btn-sm btn-link fg-danger p-0" title="' . lang('Remove match') . '">
 							<i class="bi bi-x-lg"></i></button>
 					</form>
 				</span>
@@ -2368,12 +2368,12 @@ if ($selected) {
 	/* ------------------------------------------------------------ listings */
 
 	echo '
-	<div class="card mb-3" id="mp-list">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5" id="mp-list">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-tags me-1"></i><b>' . lang('Listing articles') . '</b>
-			<span class="small opacity-75 d-none d-lg-inline">'
+			<span class="small opacity-75 d-none lg:d-inline">'
 				. lang('An article is listed once, with its variants as options. Pick the marketplace category and answer what it asks.') . '</span>
-			<div class="ms-auto d-flex align-items-center gap-2">
+			<div class="ms-auto d-flex align-items-center gap-3">
 				<span class="small opacity-75">'
 					. ($category_count
 						? h(lang(array('string' => '{var:1} categories', 'vars' => array(pg_format_number($category_count, 0)))))
@@ -2382,23 +2382,23 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="categories">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-download me-1"></i>' . lang('Fetch categories') . '</button>
 				</form>
 			</div>
 		</div>
-		<div class="card-body px-2 py-3">';
+		<div class="card-body px-3 py-5">';
 
 	if (!$category_count) {
 
 		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('Fetch the marketplace category list first. It is downloaded once and kept.') . '</p>';
 
 	} elseif (!$articles) {
 
 		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('This shop has no product group with products in it, so there is no article to list.') . '</p>';
 
 	} else {
@@ -2440,7 +2440,7 @@ if ($selected) {
 						<input type="hidden" name="mp_action" value="list_now">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
 						<input type="hidden" name="group_id" value="' . (int)$article['id'] . '">
-						<button type="submit" class="btn btn-sm btn-outline-secondary" title="' . lang('List on the marketplace') . '">
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary" title="' . lang('List on the marketplace') . '">
 							<i class="bi bi-upload"></i></button>
 					</form>';
 
@@ -2492,7 +2492,7 @@ if ($selected) {
 
 			if ($selected['status'] !== 'active' || empty($selected['pull_orders'])) {
 
-				$webhook_text .= '<div class="text-danger mt-1">' . h(lang(array(
+				$webhook_text .= '<div class="fg-danger mt-1">' . h(lang(array(
 					'string' => 'While this account is paused or does not bring orders in, the orders {var:1} sends are refused, and after repeated refusals {var:1} switches the webhook off. Remove the webhook if this lasts.',
 					'vars'   => array($provider_name)
 				))) . '</div>';
@@ -2503,7 +2503,7 @@ if ($selected) {
 
 			$webhook_onsubmit = '';
 
-			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-danger"
+			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline theme-danger"
 						onclick="return confirm(' . h(json_encode(lang('Remove the webhook?'))) . ')">
 						<i class="bi bi-x-lg me-1"></i>' . lang('Remove webhook') . '</button>';
 
@@ -2522,13 +2522,13 @@ if ($selected) {
 			// it is; it has no name, so nothing is dropped from the request.
 			$webhook_onsubmit = ' onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;"';
 
-			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-secondary">
+			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-broadcast me-1"></i>' . lang('Register webhook') . '</button>';
 
 		}
 
 		$webhook_block = '
-			<div class="d-flex align-items-center flex-wrap gap-2 small px-2 pb-3 mb-3 border-bottom" id="mp-webhook">
+			<div class="d-flex align-items-center flex-wrap gap-3 small px-3 pb-5 mb-5 border-bottom" id="mp-webhook">
 				<i class="bi bi-broadcast"></i>
 				<div class="flex-grow-1">' . $webhook_text . '</div>
 				<form method="post" action="marketplace_settings.php" class="d-inline"' . $webhook_onsubmit . '>
@@ -2546,8 +2546,8 @@ if ($selected) {
 	if ($webhook_block !== '' && empty($selected['pull_orders'])) {
 
 		echo '
-	<div class="card mb-3">
-		<div class="card-body px-2 pt-3 pb-0">' . $webhook_block . '
+	<div class="card mb-5">
+		<div class="card-body px-3 pt-5 pb-0">' . $webhook_block . '
 		</div>
 	</div>';
 
@@ -2556,8 +2556,8 @@ if ($selected) {
 	if ($can_orders && !empty($selected['pull_orders'])) {
 
 		echo '
-	<div class="card mb-3" id="mp-orders">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5" id="mp-orders">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-bag-check me-1"></i><b>' . lang('Imported orders') . '</b>
 			<span class="small opacity-75 ms-auto">'
 				. ((int)$selected['last_order_pull']
@@ -2569,17 +2569,17 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="retry_orders">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline-secondary"
+				<button type="submit" class="btn btn-sm btn-outline theme-secondary"
 					title="' . h(lang('Match the products first. The next run reads the failed orders again.')) . '">
 					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
 			</form>' : '') . '
 		</div>
-		<div class="card-body px-2 py-3">' . $webhook_block;
+		<div class="card-body px-3 py-5">' . $webhook_block;
 
 		if (!$orders) {
 
 			echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('No order has come in from this marketplace yet.') . '</p>';
 
 		} else {
@@ -2651,8 +2651,8 @@ if ($selected) {
 		$claim_reasons = mp_settings_marketplace_read($selected_id, 'claim_reasons')['claim_reasons'];
 
 		echo '
-	<div class="card mb-3" id="mp-claims">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5" id="mp-claims">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-arrow-return-left me-1"></i><b>' . h(lang(array(
 				'string' => 'Returns from {var:1}',
 				'vars'   => array(mp_provider_name($selected['provider']))
@@ -2666,22 +2666,22 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="claims_read">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline-secondary">
+				<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read returns') . '</button>
 			</form>
 		</div>
-		<div class="card-body px-2 py-3">';
+		<div class="card-body px-3 py-5">';
 
 		if (!$claims_read['read']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('Returns are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
 
 		} elseif (!$claims_read['claims']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('No return in the last two weeks.') . '</p>';
 
 		} else {
@@ -2749,7 +2749,7 @@ if ($selected) {
 						<input type="hidden" name="mp_action" value="claim_approve">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
 						<input type="hidden" name="claim_id" value="' . h((string)$claim['claim_id']) . '">
-						<button type="submit" class="btn btn-sm btn-outline-success">' . lang('Approve') . '</button>
+						<button type="submit" class="btn btn-sm btn-outline theme-success">' . lang('Approve') . '</button>
 					</form>';
 
 				}
@@ -2773,7 +2773,7 @@ if ($selected) {
 			if ($claims_read['more']) {
 
 				echo '
-			<p class="small opacity-75 mt-3 mb-0 px-2">'
+			<p class="small opacity-75 mt-5 mb-0 px-3">'
 				. lang('Only the first 200 returns are shown. The rest are in your seller panel.') . '</p>';
 
 			}
@@ -2795,8 +2795,8 @@ if ($selected) {
 		$questions_read = mp_settings_marketplace_read($selected_id, 'questions');
 
 		echo '
-	<div class="card mb-3" id="mp-questions">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+	<div class="card mb-5" id="mp-questions">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-chat-left-text me-1"></i><b>' . h(lang(array(
 				'string' => 'Questions from {var:1}',
 				'vars'   => array(mp_provider_name($selected['provider']))
@@ -2810,22 +2810,22 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="questions_read">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline-secondary">
+				<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read questions') . '</button>
 			</form>
 		</div>
-		<div class="card-body px-2 py-3">';
+		<div class="card-body px-3 py-5">';
 
 		if (!$questions_read['read']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('Questions are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
 
 		} elseif (!$questions_read['questions']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
+			<p class="small opacity-75 text-center my-7 mb-0">'
 			. lang('No question in the last two weeks.') . '</p>';
 
 		} else {
@@ -2836,7 +2836,7 @@ if ($selected) {
 
 				echo '
 			<div class="mp-row d-block">
-				<div class="d-flex flex-wrap gap-2 align-items-center small">
+				<div class="d-flex flex-wrap gap-3 align-items-center small">
 					' . (((string)$question['product_url'] !== '')
 						? '<a href="' . h((string)$question['product_url']) . '" target="_blank" rel="noopener noreferrer">'
 							. h((string)$question['product']) . '</a>'
@@ -2849,7 +2849,7 @@ if ($selected) {
 				<div class="my-1" style="white-space:pre-wrap">' . h((string)$question['text']) . '</div>'
 				. (((string)$question['answer'] !== '')
 					? '
-				<div class="small border-start ps-2 opacity-75" style="white-space:pre-wrap">' . h((string)$question['answer']) . '</div>'
+				<div class="small border-start ps-3 opacity-75" style="white-space:pre-wrap">' . h((string)$question['answer']) . '</div>'
 					: '')
 				. (((string)$question['reason'] !== '')
 					? '
@@ -2859,7 +2859,7 @@ if ($selected) {
 				if (!empty($question['waiting']) && empty($question['sent']) && $can_answer_questions) {
 
 					echo '
-				<form method="post" action="marketplace_settings.php" class="mt-2"
+				<form method="post" action="marketplace_settings.php" class="mt-3"
 					onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="question_answer">
@@ -2868,9 +2868,9 @@ if ($selected) {
 					<label class="visually-hidden" for="mp_answer_' . $question_id . '">' . lang('Answer') . '</label>
 					<textarea class="form-control form-control-sm" id="mp_answer_' . $question_id . '" name="answer"
 						rows="2" minlength="10" maxlength="2000" required></textarea>
-					<div class="d-flex align-items-center gap-2 mt-1">
+					<div class="d-flex align-items-center gap-3 mt-1">
 						<span class="form-text m-0">' . lang('10 to 2000 characters. The marketplace reviews the answer before the buyer sees it.') . '</span>
-						<button type="submit" class="btn btn-sm btn-outline-success ms-auto">' . lang('Answer') . '</button>
+						<button type="submit" class="btn btn-sm btn-outline theme-success ms-auto">' . lang('Answer') . '</button>
 					</div>
 				</form>';
 
@@ -2884,7 +2884,7 @@ if ($selected) {
 			if ($questions_read['more']) {
 
 				echo '
-			<p class="small opacity-75 mt-3 mb-0 px-2">'
+			<p class="small opacity-75 mt-5 mb-0 px-3">'
 				. lang('Only the newest 200 questions are shown. The rest are in your seller panel.') . '</p>';
 
 			}
@@ -2901,9 +2901,9 @@ if ($selected) {
 
 	echo '
 	<div class="card" id="mp-queue">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
+		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-hourglass-split me-1"></i><b>' . lang('What did not go through') . '</b>
-			<div class="ms-auto d-flex gap-2">';
+			<div class="ms-auto d-flex gap-3">';
 
 	if ($failures) {
 
@@ -2912,14 +2912,14 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="retry">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
 				</form>
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="clear_queue">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary">
+					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-trash me-1"></i>' . lang('Clear') . '</button>
 				</form>';
 
@@ -2928,12 +2928,12 @@ if ($selected) {
 	echo '
 			</div>
 		</div>
-		<div class="card-body px-3 py-3">';
+		<div class="card-body px-5 py-5">';
 
 	if (!$failures) {
 
 		echo '
-			<p class="small opacity-75 text-center my-3 mb-0">'
+			<p class="small opacity-75 text-center my-5 mb-0">'
 			. lang('Nothing has failed. Sent items disappear from here once the marketplace confirms them.') . '</p>';
 
 	} else {
@@ -2941,7 +2941,7 @@ if ($selected) {
 		foreach ($failures as $row) {
 
 			echo '
-			<div class="d-flex gap-3 py-2 border-top align-items-start">
+			<div class="d-flex gap-5 py-3 border-top align-items-start">
 				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b>'
 					. (((string)$row['operation'] === 'listing_update')
 						? '<div class="small opacity-75">' . lang('Listing changes') . '</div>' : '') . '</div>
@@ -2992,7 +2992,7 @@ foreach ($providers as $key => $meta) {
 	if (!empty($meta['help'])) {
 
 		$new_fields .= '
-					<div class="form-text mt-n2 mb-3">' . h(lang($meta['help'])) . '</div>';
+					<div class="form-text mt-n2 mb-5">' . h(lang($meta['help'])) . '</div>';
 
 	}
 
@@ -3008,30 +3008,30 @@ echo '
 			' . get_token_field() . '
 			<input type="hidden" name="mp_action" value="create">
 			<div class="modal-header">
-				<h5 class="modal-title"><i class="bi bi-shop me-2"></i>' . lang('Connect a Marketplace') . '</h5>
+				<h5 class="modal-title"><i class="bi bi-shop me-3"></i>' . lang('Connect a Marketplace') . '</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			</div>
 			<div class="modal-body">
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label" for="new_provider">' . lang('Marketplace') . '</label>
-					<select class="form-select" id="new_provider" name="provider">' . $provider_options . '</select>
+					<select class="form-control" id="new_provider" name="provider">' . $provider_options . '</select>
 				</div>
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label" for="new_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control" id="new_name" name="name"
 						placeholder="' . lang('The name you will recognise this store by') . '">
 				</div>
 				' . $new_fields . '
-				<div class="form-check form-switch">
-					<input class="form-check-input" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1" checked>
-					<label class="form-check-label" for="new_push_price">' . lang('Send prices as well as stock') . '</label>
+				<div class="form-field">
+					<div class="switch"><input class="" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1" checked></div>
+					<label class="" for="new_push_price">' . lang('Send prices as well as stock') . '</label>
 					<div class="form-text">'
 						. lang('Many shops price differently on a marketplace because of its commission. Leave this off to send only quantities.') . '</div>
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-primary">' . lang('Connect') . '</button>
+				<button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+				<button type="submit" class="btn btn-solid theme-primary">' . lang('Connect') . '</button>
 			</div>
 		</form>
 	</div>
@@ -3052,7 +3052,7 @@ if ($selected) {
 	if (!empty($providers[$selected['provider']]['help'])) {
 
 		$edit_fields .= '
-			<div class="form-text mt-n2 mb-3">' . h(lang($providers[$selected['provider']]['help'])) . '</div>';
+			<div class="form-text mt-n2 mb-5">' . h(lang($providers[$selected['provider']]['help'])) . '</div>';
 
 	}
 
@@ -3063,59 +3063,59 @@ if ($selected) {
 		<input type="hidden" name="mp_action" value="update">
 		<input type="hidden" name="account_id" value="' . $selected_id . '">
 		<div class="offcanvas-header border-bottom">
-			<h5 class="offcanvas-title"><i class="bi bi-sliders me-2"></i>' . h($selected['name']) . '</h5>
+			<h5 class="offcanvas-title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
 			<button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
 		</div>
 		<div class="offcanvas-body">
-			<div class="mb-3">
+			<div class="mb-5">
 				<label class="form-label" for="edit_name">' . lang('Name') . '</label>
 				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($selected['name']) . '">
 			</div>
 			' . $edit_fields . '
-			<div class="form-check form-switch mb-2">
-				<input class="form-check-input" type="checkbox" role="switch" id="edit_status" name="status" value="active"'
-					. ($selected['status'] === 'active' ? ' checked' : '') . '>
-				<label class="form-check-label" for="edit_status">' . lang('Send changes to this marketplace') . '</label>
+			<div class="form-field mb-3">
+				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_status" name="status" value="active"'
+					. ($selected['status'] === 'active' ? ' checked' : '') . '></div>
+				<label class="" for="edit_status">' . lang('Send changes to this marketplace') . '</label>
 			</div>
-			<div class="form-check form-switch mb-2">
-				<input class="form-check-input" type="checkbox" role="switch" id="edit_push_stock" name="push_stock" value="1"'
-					. (!empty($selected['push_stock']) ? ' checked' : '') . '>
-				<label class="form-check-label" for="edit_push_stock">' . lang('Send stock') . '</label>
+			<div class="form-field mb-3">
+				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_stock" name="push_stock" value="1"'
+					. (!empty($selected['push_stock']) ? ' checked' : '') . '></div>
+				<label class="" for="edit_push_stock">' . lang('Send stock') . '</label>
 			</div>
-			<div class="form-check form-switch mb-4">
-				<input class="form-check-input" type="checkbox" role="switch" id="edit_push_price" name="push_price" value="1"'
-					. (!empty($selected['push_price']) ? ' checked' : '') . '>
-				<label class="form-check-label" for="edit_push_price">' . lang('Send prices') . '</label>
+			<div class="form-field mb-7">
+				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_price" name="push_price" value="1"'
+					. (!empty($selected['push_price']) ? ' checked' : '') . '></div>
+				<label class="" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
 			<hr>'
 			. ($can_orders ? '
-			<div class="form-check form-switch ' . ($can_approve ? 'mb-2' : 'mb-4') . '">
-				<input class="form-check-input" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
-					. (!empty($selected['pull_orders']) ? ' checked' : '') . '>
-				<label class="form-check-label" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
+			<div class="form-field ' . ($can_approve ? 'mb-2' : 'mb-4') . '">
+				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
+					. (!empty($selected['pull_orders']) ? ' checked' : '') . '></div>
+				<label class="" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
 			</div>'
 			. ($can_approve ? '
-			<div class="form-check form-switch mb-4">
-				<input class="form-check-input" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
-					. (!empty($selected['auto_approve']) ? ' checked' : '') . '>
-				<label class="form-check-label" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
+			<div class="form-field mb-7">
+				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
+					. (!empty($selected['auto_approve']) ? ' checked' : '') . '></div>
+				<label class="" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
 			</div>' : '') : '
-			<p class="small opacity-75 mb-4">' . h(lang(array(
+			<p class="small opacity-75 mb-7">' . h(lang(array(
 				'string' => 'Orders are not brought in from {var:1} yet.',
 				'vars'   => array(mp_provider_name($selected['provider']))
 			))) . '</p>') . '
 			<hr>'
 			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
-			<div class="mb-3">
+			<div class="mb-5">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
 				<input type="text" class="form-control" id="edit_shipment_template" name="shipment_template"
 					value="' . h((string)$selected['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
 			</div>' : '') . '
-			<div class="mb-4">
+			<div class="mb-7">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
 				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30"
 					value="' . (int)$selected['preparing_day'] . '" style="max-width:110px">
@@ -3129,21 +3129,21 @@ if ($selected) {
 						'vars'   => array(mp_provider_name($selected['provider']))
 					)))
 					: lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.')) . '</p>
-			<button type="submit" class="btn btn-outline-danger btn-sm" name="mp_action" value="delete"
+			<button type="submit" class="btn btn-outline theme-danger btn-sm" name="mp_action" value="delete"
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
 				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>'
 			. (!empty($selected['credentials']['webhook_id']) ? '
-			<div class="form-check small mt-2">
-				<input class="form-check-input" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">
-				<label class="form-check-label" for="edit_webhook_force">' . h(lang(array(
+			<div class="form-field small mt-3">
+				<input class="check" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">
+				<label class="" for="edit_webhook_force">' . h(lang(array(
 					'string' => 'Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)',
 					'vars'   => array(mp_provider_name($selected['provider']))
 				))) . '</label>
 			</div>' : '') . '
 		</div>
-		<div class="offcanvas-footer border-top p-3 d-flex gap-2">
-			<button type="button" class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="offcanvas">' . lang('Cancel') . '</button>
-			<button type="submit" class="btn btn-primary flex-grow-1">' . lang('Save') . '</button>
+		<div class="offcanvas-footer border-top p-5 d-flex gap-3">
+			<button type="button" class="btn btn-outline theme-secondary flex-grow-1" data-bs-dismiss="offcanvas">' . lang('Cancel') . '</button>
+			<button type="submit" class="btn btn-solid theme-primary flex-grow-1">' . lang('Save') . '</button>
 		</div>
 	</form>
 </div>
@@ -3155,11 +3155,11 @@ if ($selected) {
 			<input type="hidden" name="mp_action" value="map">
 			<input type="hidden" name="account_id" value="' . $selected_id . '">
 			<div class="modal-header">
-				<h5 class="modal-title"><i class="bi bi-link-45deg me-2"></i>' . lang('Match a product') . '</h5>
+				<h5 class="modal-title"><i class="bi bi-link-45deg me-3"></i>' . lang('Match a product') . '</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 			</div>
 			<div class="modal-body">
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label" for="match_product">' . lang('Product') . '</label>
 					<input class="form-control" list="mp_products" id="match_product_text" name="product_code"
 						placeholder="' . lang('Type a product code') . '" autocomplete="off">
@@ -3167,7 +3167,7 @@ if ($selected) {
 					<datalist id="mp_products"></datalist>
 					<div class="form-text">' . lang('Only products that are not matched to this marketplace yet.') . '</div>
 				</div>
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label" for="match_code">' . lang('Code on the marketplace') . '</label>
 					<input type="text" class="form-control" id="match_code" name="remote_code" autocomplete="off">
 					<div class="form-text">'
@@ -3177,8 +3177,8 @@ if ($selected) {
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-primary">' . lang('Match') . '</button>
+				<button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+				<button type="submit" class="btn btn-solid theme-primary">' . lang('Match') . '</button>
 			</div>
 		</form>
 	</div>

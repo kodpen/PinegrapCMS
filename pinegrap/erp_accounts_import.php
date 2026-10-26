@@ -96,7 +96,7 @@ function erp_import_page($liveform, $body, $list_url)
 function erp_import_steps($current)
 {
     $labels = array(1 => lang('Upload'), 2 => lang('Map and preview'), 3 => lang('Result'));
-    $output = '<ol class="list-unstyled d-flex flex-wrap gap-3 mt-4 mb-0 small">';
+    $output = '<ol class="list-unstyled d-flex flex-wrap gap-5 mt-7 mb-0 small">';
 
     foreach ($labels as $number => $label) {
         $class = ($number === $current) ? 'fw-bold text-primary' : (($number < $current) ? 'text-body-secondary' : 'text-body-tertiary');
@@ -171,34 +171,34 @@ function erp_import_step_upload($liveform, $kind_options)
             <form name="form" action="erp_accounts_import.php" method="post" enctype="multipart/form-data">
                 ' . get_token_field() . '
                 <input type="hidden" name="step" value="upload" />
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Import CSV') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-lg-8 my-2">
+                            <div class="col-12 lg:col-8 my-3">
                                 <label for="file" class="form-label">' . lang('CSV file') . '</label>
                                 ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control')) . '
                                 <div class="form-text">' . lang('Upload a CSV file. The first row must hold the column names.') . ' ' . lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.') . ' ' . lang(array('string' => 'Up to {var:1} MB.', 'vars' => (int) (ERP_IMPORT_MAX_BYTES / (1024 * 1024)))) . '</div>
                             </div>
-                            <div class="col-12 col-lg-4 my-2">
+                            <div class="col-12 lg:col-4 my-3">
                                 <label for="default_kind" class="form-label">' . lang('Default type for rows without one') . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'default_kind', 'name' => 'default_kind', 'class' => 'form-select', 'options' => $kind_options)) . '
+                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'default_kind', 'name' => 'default_kind', 'class' => 'form-control', 'options' => $kind_options)) . '
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-12 my-2">
+                            <div class="col-12 my-3">
                                 <div class="form-text">' . lang('Columns are matched by name; you can correct the matching in the next step.') . ' <a href="erp_accounts_import.php?template=1" class="link-body-emphasis"><i class="bi bi-download me-1"></i>' . lang('Download template') . '</a></div>
                                 <div class="form-text">' . lang('Opening balances are not imported; enter them on the account.') . '</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Continue')) . '</span></button>
+                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Continue')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -234,9 +234,9 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
             $options .= '<option value="' . h($field) . '"' . (($chosen === $field) ? ' selected="selected"' : '') . '>' . h($definition['label']) . (($field === 'title') ? ' *' : '') . '</option>';
         }
         $output_mapping .= '
-                                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 my-2">
+                                <div class="col-12 sm:col-6 lg:col-4 xl:col-3 my-3">
                                     <label for="map_' . (int) $index . '" class="form-label text-truncate d-block" title="' . h($name) . '">' . h(($name !== '') ? $name : lang(array('string' => 'Column {var:1}', 'vars' => $index + 1))) . '</label>
-                                    <select name="map[' . (int) $index . ']" id="map_' . (int) $index . '" class="form-select form-select-sm">' . $options . '</select>
+                                    <select name="map[' . (int) $index . ']" id="map_' . (int) $index . '" class="form-control form-control-sm">' . $options . '</select>
                                 </div>';
     }
 
@@ -269,15 +269,15 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
 
         if (!empty($entry['errors'])) {
             $counts['error']++;
-            $badge = '<span class="badge text-bg-danger">' . h(lang('Error')) . '</span>';
+            $badge = '<span class="badge theme-danger">' . h(lang('Error')) . '</span>';
             $detail = h(implode(' ', $entry['errors']));
         } elseif ($entry['duplicate_of'] > 0) {
             $counts['duplicate']++;
-            $badge = '<span class="badge text-bg-secondary">' . h(lang('Skip')) . '</span>';
+            $badge = '<span class="badge theme-secondary">' . h(lang('Skip')) . '</span>';
             $detail = h(lang(array('string' => 'Duplicate of row {var:1} in this file.', 'vars' => $entry['duplicate_of'])));
         } elseif ($entry['existing_id'] > 0) {
             $counts['match']++;
-            $badge = '<span class="badge text-bg-warning">' . h(lang(array('string' => 'Already exists (#{var:1}).', 'vars' => $entry['existing_id']))) . '</span>';
+            $badge = '<span class="badge theme-warning">' . h(lang(array('string' => 'Already exists (#{var:1}).', 'vars' => $entry['existing_id']))) . '</span>';
             if ($entry['match_by'] === 'title') {
                 $badge .= ' <span class="badge text-bg-light border" title="' . h(lang('No tax number or e-mail on the row; the name alone was matched.')) . '"><i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('matched by name')) . '</span>';
             } elseif ($entry['match_by'] === 'email') {
@@ -287,7 +287,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
             }
         } else {
             $counts['create']++;
-            $badge = '<span class="badge text-bg-success">' . h(lang('Will be created')) . '</span>';
+            $badge = '<span class="badge theme-success">' . h(lang('Will be created')) . '</span>';
         }
 
         $output_cells = '';
@@ -306,31 +306,31 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
 
         $output_rows .= '
                                     <tr>
-                                        <td class="text-end text-body-secondary">' . (int) $entry['line'] . '</td>
-                                        <td class="text-nowrap">' . $badge . ($detail !== '' ? '<div class="small text-body-secondary">' . $detail . '</div>' : '') . '</td>
+                                        <td class="text-end fg-secondary">' . (int) $entry['line'] . '</td>
+                                        <td class="text-nowrap">' . $badge . ($detail !== '' ? '<div class="small fg-secondary">' . $detail . '</div>' : '') . '</td>
                                         ' . $output_cells . '
                                     </tr>';
     }
 
-    $output_summary = '<span class="me-3"><span class="badge text-bg-success">' . (int) $counts['create'] . '</span> ' . h(lang('Will be created')) . '</span>'
-        . '<span class="me-3"><span class="badge text-bg-warning">' . (int) $counts['match'] . '</span> ' . h(lang('Already on file')) . '</span>'
-        . '<span class="me-3"><span class="badge text-bg-secondary">' . (int) $counts['duplicate'] . '</span> ' . h(lang('Repeated in the file')) . '</span>'
-        . '<span class="me-3"><span class="badge text-bg-danger">' . (int) $counts['error'] . '</span> ' . h(lang('Error')) . '</span>';
+    $output_summary = '<span class="me-5"><span class="badge theme-success">' . (int) $counts['create'] . '</span> ' . h(lang('Will be created')) . '</span>'
+        . '<span class="me-5"><span class="badge theme-warning">' . (int) $counts['match'] . '</span> ' . h(lang('Already on file')) . '</span>'
+        . '<span class="me-5"><span class="badge theme-secondary">' . (int) $counts['duplicate'] . '</span> ' . h(lang('Repeated in the file')) . '</span>'
+        . '<span class="me-5"><span class="badge theme-danger">' . (int) $counts['error'] . '</span> ' . h(lang('Error')) . '</span>';
 
-    $title_warning = $has_title ? '' : '<div class="alert alert-warning">' . h(lang('Map a column to Name to continue.')) . '</div>';
+    $title_warning = $has_title ? '' : '<div class="alert theme-warning">' . h(lang('Map a column to Name to continue.')) . '</div>';
 
     return erp_import_steps(2) . '
             <form name="form" action="erp_accounts_import.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="step" value="map" />
                 <input type="hidden" name="import_token" value="' . h($staged['token']) . '" />
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Column mapping') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 my-2">
+                            <div class="col-12 my-3">
                                 <div class="form-text"><i class="bi bi-file-earmark-text me-1"></i>' . h($staged['name']) . ' — ' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</div>
                             </div>
                         </div>
@@ -340,38 +340,38 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     </div>
                 </div>
 
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Options') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-lg-6 my-2">
+                            <div class="col-12 lg:col-6 my-3">
                                 <label class="form-label">' . lang('If the account already exists') . '</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
-                                    <label class="form-check-label" for="duplicate_mode_update">' . lang('Update it') . '</label>
+                                <div class="form-field">
+                                    <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
+                                    <label class="" for="duplicate_mode_update">' . lang('Update it') . '</label>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
-                                    <label class="form-check-label" for="duplicate_mode_skip">' . lang('Skip it') . '</label>
+                                <div class="form-field">
+                                    <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
+                                    <label class="" for="duplicate_mode_skip">' . lang('Skip it') . '</label>
                                 </div>
                                 <div class="form-text">' . lang('Matched by tax number, then e-mail, then exact name.') . ' ' . lang('An update writes only the columns the file supplies; balances are never touched.') . '</div>
                             </div>
-                            <div class="col-12 col-lg-6 my-2">
+                            <div class="col-12 lg:col-6 my-3">
                                 <label for="default_kind" class="form-label">' . lang('Default type for rows without one') . '</label>
-                                <select name="default_kind" id="default_kind" class="form-select">' . $output_kind_options . '</select>
+                                <select name="default_kind" id="default_kind" class="form-control">' . $output_kind_options . '</select>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang(array('string' => 'Preview (first {var:1} rows)', 'vars' => count($plan))) . '
                     </div>
                     <div class="card-body">
-                        <div class="mb-3 small">' . $output_summary . '</div>
+                        <div class="mb-5 small">' . $output_summary . '</div>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
@@ -385,15 +385,15 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                                 </tbody>
                             </table>
                         </div>
-                        <div class="form-text mt-2">' . lang('Only the first rows are shown; the whole file is checked the same way when the import runs.') . '</div>
+                        <div class="form-text mt-3">' . lang('Only the first rows are shown; the whole file is checked the same way when the import runs.') . '</div>
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline-secondary"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
-                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Start import')) . '</span></button>
+                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
+                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Start import')) . '</span></button>
                         </div>
                     </div>
                 </nav>
@@ -413,10 +413,10 @@ function erp_import_step_result($outcome, $list_url)
 
     $output_counts = '
                         <div class="row text-center">
-                            <div class="col-6 col-md-3 my-2"><div class="display-6 text-success">' . (int) $counts['created'] . '</div><div class="small text-body-secondary">' . lang('Created') . '</div></div>
-                            <div class="col-6 col-md-3 my-2"><div class="display-6 text-primary">' . (int) $counts['updated'] . '</div><div class="small text-body-secondary">' . lang('Updated') . '</div></div>
-                            <div class="col-6 col-md-3 my-2"><div class="display-6 text-body-secondary">' . (int) $counts['skipped'] . '</div><div class="small text-body-secondary">' . lang('Skipped') . '</div></div>
-                            <div class="col-6 col-md-3 my-2"><div class="display-6 text-danger">' . (int) $counts['failed'] . '</div><div class="small text-body-secondary">' . lang('Failed') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="display-6 fg-success">' . (int) $counts['created'] . '</div><div class="small fg-secondary">' . lang('Created') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="display-6 fg-primary">' . (int) $counts['updated'] . '</div><div class="small fg-secondary">' . lang('Updated') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="display-6 fg-secondary">' . (int) $counts['skipped'] . '</div><div class="small fg-secondary">' . lang('Skipped') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="display-6 fg-danger">' . (int) $counts['failed'] . '</div><div class="small fg-secondary">' . lang('Failed') . '</div></div>
                         </div>';
 
     $output_rows = '';
@@ -424,10 +424,10 @@ function erp_import_step_result($outcome, $list_url)
         if (($result['status'] === 'created') || ($result['status'] === 'updated')) {
             continue;
         }
-        $badge = ($result['status'] === 'failed') ? '<span class="badge text-bg-danger">' . h(lang('Failed')) . '</span>' : '<span class="badge text-bg-secondary">' . h(lang('Skipped')) . '</span>';
+        $badge = ($result['status'] === 'failed') ? '<span class="badge theme-danger">' . h(lang('Failed')) . '</span>' : '<span class="badge theme-secondary">' . h(lang('Skipped')) . '</span>';
         $output_rows .= '
                                     <tr>
-                                        <td class="text-end text-body-secondary">' . (int) $line . '</td>
+                                        <td class="text-end fg-secondary">' . (int) $line . '</td>
                                         <td>' . $badge . '</td>
                                         <td>' . h($result['reason']) . ($result['id'] > 0 ? ' <a href="edit_erp_account.php?id=' . (int) $result['id'] . '" class="link-body-emphasis">#' . (int) $result['id'] . '</a>' : '') . '</td>
                                     </tr>';
@@ -436,8 +436,8 @@ function erp_import_step_result($outcome, $list_url)
     $output_table = '';
     if ($output_rows !== '') {
         $output_table = '
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Rows that were not written') . '
                     </div>
                     <div class="card-body">
@@ -459,19 +459,19 @@ function erp_import_step_result($outcome, $list_url)
     }
 
     return erp_import_steps(3) . '
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Import complete.') . '
                     </div>
                     <div class="card-body">' . $output_counts . '
                     </div>
                 </div>
                 ' . $output_table . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <a href="' . h($list_url) . '" class="btn my-1 btn-primary"><i class="bi bi-people me-2" aria-hidden="true"></i>' . lang('Accounts') . '</a>
-                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline-secondary"><i class="bi bi-upload me-2" aria-hidden="true"></i>' . lang('Import another file') . '</a>
+                            <a href="' . h($list_url) . '" class="btn my-1 btn-solid theme-primary"><i class="bi bi-people me-3" aria-hidden="true"></i>' . lang('Accounts') . '</a>
+                            <a href="erp_accounts_import.php" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import another file') . '</a>
                         </div>
                     </div>
                 </nav>';

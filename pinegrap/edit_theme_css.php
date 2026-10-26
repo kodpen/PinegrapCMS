@@ -53,7 +53,7 @@ if (!$_POST) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     } else {
         $code = '';
-        $output_file_missing = '<div class="alert alert-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+        $output_file_missing = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
     }
 
     $output_breadcrumb_content = '';
@@ -87,8 +87,8 @@ if (!$_POST) {
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . $output_file_missing . '
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 col-sm-12 text-center text-md-start">
+                    <div class="row mb-3  flex-wrap">
+                        <div class="col-12 sm:col-12 text-center md:text-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . lang('You are editing this CSS file.') . '" title="' . lang('Edit CSS') . '">[' . h($file_name) . ']</h2>
                         </div>
                     </div>
@@ -100,13 +100,13 @@ if (!$_POST) {
                         <input type="hidden" name="from" value="' . h($_REQUEST['from'] ?? '') . '">
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label class="form-label">' . lang('CSS File') . '</label>
                                                 <div id="edit_custom">
                                                     <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
@@ -118,12 +118,12 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-primary"><span class="material-icons me-2">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-secondary"><span class="material-icons me-2">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                                    <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
+                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

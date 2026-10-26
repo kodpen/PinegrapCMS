@@ -872,7 +872,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     if ($number_of_screens > 1) {
 
         $output_screen_links .= '
-            <nav class="mt-3 navigation " aria-label="data pagination"> 
+            <nav class="mt-5 navigation " aria-label="data pagination"> 
                 <ul class="pagination pagination-sm flex-wrap justify-content-center">';
         // build Previous button if necessary
         $previous = $screen - 1;
@@ -933,9 +933,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $last_modified_timestamp = $forms[$key]['last_modified_timestamp'];
 
         if ($complete) {
-            $status = '<span class="badge bg-success">' . lang('Complete') . '</span>';
+            $status = '<span class="badge theme-success">' . lang('Complete') . '</span>';
         } else {
-            $status = '<span class="badge bg-warning text-dark">' . lang('Incomplete') . '</span>';
+            $status = '<span class="badge theme-warning text-dark">' . lang('Incomplete') . '</span>';
         }
 
         if ($contact_id) {
@@ -967,9 +967,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
         $output_rows .=
         '<tr>
-            <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" /></td>
+            <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" /></td>
             <td class="align-middle text-start action-buttons">
-                <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label">' . h($form_name) . '</td>
             <td class="align-middle">' . h($reference_code) . '</td>
@@ -986,7 +986,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         
         $output_custom_form_selection = '
             <label class="input-group-text material-icons" title="' . lang('Custom Form') . '" for="custom_form">format_list_bulleted</label>
-            <select id="custom_form" name="custom_form" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'advanced_filters_form\')">' . $output_custom_form_options . '</select>';
+            <select id="custom_form" name="custom_form" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'advanced_filters_form\')">' . $output_custom_form_options . '</select>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
         $output_advanced_filters = '';
@@ -999,7 +999,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
        
         $output_custom_form_selection = '
         <label class="input-group-text material-icons" title="' . lang('Custom Form') . '" for="custom_form_fake">format_list_bulleted</label>
-        <select id="custom_form_fake" name="custom_form_fake" disabled class="form-select disabled" title="' . lang('Content that viewed') . '"><option value="">' . lang('Disabled') . '</option></select>';
+        <select id="custom_form_fake" name="custom_form_fake" disabled class="form-control disabled" title="' . lang('Content that viewed') . '"><option value="">' . lang('Disabled') . '</option></select>';
         $output_advanced_filters_value = 'false';
         $output_advanced_filters_label = lang('Remove Advanced Filters');
         $advanced_filters_icon = 'bi-funnel-fill';
@@ -1055,7 +1055,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                     $field_name = $row['name'];
 
                     $output_form_fields .=
-                    '<div class="col-12 col-sm-6 col-md-12 my-1">
+                    '<div class="col-12 sm:col-6 md:col-12 my-1">
                         <label for="form_field_' . $field_id . '" class="form-label">' . h($custom_form['name']) . ' :: ' . h($field_name) . '</label>
                         <input type="text" id="form_field_' . $field_id . '" name="form_field_' . $field_id . '" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') . '" />
                     </div>';
@@ -1064,65 +1064,65 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 $checked = '';
             }
 
-            $output_custom_forms .= '<div class="form-check"><input type="checkbox" name="custom_forms[]" id="custom_form_' . $custom_form['id'] . '" value="' . $custom_form['id'] . '"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="custom_form_' . $custom_form['id'] . '">' . h($custom_form['name']) . ' (' . $number_of_forms . ')</label></div>';
+            $output_custom_forms .= '<div class="form-field"><input type="checkbox" name="custom_forms[]" id="custom_form_' . $custom_form['id'] . '" value="' . $custom_form['id'] . '"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="custom_form_' . $custom_form['id'] . '">' . h($custom_form['name']) . ' (' . $number_of_forms . ')</label></div>';
         }
 
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
-                <div class="p-2 border justify-content-between d-flex flex-wrap header">
+                <div class="p-3 border justify-content-between d-flex flex-wrap header">
                     <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
-                <form class="advanced-filter-body p-2 pt-0 disable_shortcut" id="search_advanced" action="view_submitted_forms.php" method="get">
+                <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_submitted_forms.php" method="get">
                     <div class="row">
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('General') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('General') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="reference_code" class="form-label">' . lang('Reference Code') . '</label>
                             <input type="text" id="reference_code" name="reference_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="status" class="form-label">' . lang('Status') . '</label>
-                            <select name="status" id="status" class="form-select"><option value="any"' . $status_any_selected . '>[' . lang('Any') . ']</option><option value="incomplete"' . $status_incomplete_selected . '>' . lang('Incomplete') . '</option><option value="complete"' . $status_complete_selected . '>' . lang('Complete') . '</option></select>
+                            <select name="status" id="status" class="form-control"><option value="any"' . $status_any_selected . '>[' . lang('Any') . ']</option><option value="incomplete"' . $status_incomplete_selected . '>' . lang('Incomplete') . '</option><option value="complete"' . $status_complete_selected . '>' . lang('Complete') . '</option></select>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
                             <input type="text" id="tracking_code" name="tracking_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="http_referer" class="form-label">' . lang('Referring URL') . '</label>
                             <input type="text" id="http_referer" name="http_referer" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="contact_name" class="form-label">' . lang('Contact Name') . '</label>
                             <input type="text" id="contact_name" name="contact_name" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                             <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="ip_address" class="form-label">' . lang('IP Address') . '</label>
                             <input type="text" id="ip_address" name="ip_address" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="username" class="form-label">' . lang('Username') . '</label>
                             <input type="text" id="username" name="username" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="form_editor" class="form-label">' . lang('Form Editor') . '</label>
                             <input type="text" id="form_editor" name="form_editor" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Custom Forms') . '</h5></div>
-                        <div class="col-12 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Custom Forms') . '</h5></div>
+                        <div class="col-12 md:col-12 my-1">
                             <div class="card multiselect-checkbox-container rounded-0">
                                 <div class="card-header border-0 bg-reset">
-                                    <div class="form-check form-switch">
-                                        <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                        <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
+                                    <div class="form-field">
+                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                        <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                                     </div>
                                 </div>
                                 <div class="card-body overflow-auto" style="max-height:200px">
@@ -1131,8 +1131,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Custom Form Fields') . '</h5></div>
-                        <div class="col-12 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Custom Form Fields') . '</h5></div>
+                        <div class="col-12 md:col-12 my-1">
                             <div class="card rounded-0 bg-body-tertiary">
                                 <div class="card-body overflow-auto" style="max-height:400px">
                                     <div class="row">
@@ -1141,25 +1141,25 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="start_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="stop_month">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_day">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
-                        <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                        <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -1257,7 +1257,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="' . $output_add_submitted_form_url . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1" href="' . $output_add_submitted_form_url . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
                                 ' . get_token_field() . '
                                 <div class=" btn-group btn-group-sm flex-wrap">
@@ -1282,7 +1282,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) . '
                 </nav>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut"> 
                             ' . get_token_field() . '
@@ -1290,8 +1290,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 <thead>
                                     <tr>
                                         <th class="noVis">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
@@ -1311,7 +1311,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

@@ -135,7 +135,7 @@ function pg_dashboard_widget_1($request, $user)
             'maps'  => $sm_maps,
             'rows'  => array(),
             'names' => array(),
-            'none'  => '<span class="text-muted">' . h(lang('No sales')) . '</span>');
+            'none'  => '<span class="fg-secondary">' . h(lang('No sales')) . '</span>');
 
         foreach ($sm_views as $sm_view_key => $sm_view_label) {
 
@@ -205,8 +205,8 @@ function pg_dashboard_widget_1($request, $user)
                     '<div class="pg-head' . $sm_hidden . '" data-smap-head="' . $sm_slot . '">'
                     . '<div class="pg-head-line">'
                     . '<span class="pg-head-num">' . $sm_money($sm_total) . '</span>'
-                    . '<span class="pg-head-unit text-muted">' . h($sm_period['label']) . '</span>'
-                    . '<span class="pg-head-total text-muted">'
+                    . '<span class="pg-head-unit fg-secondary">' . h($sm_period['label']) . '</span>'
+                    . '<span class="pg-head-total fg-secondary">'
                     . $sm_orders($sm_orders_count)
                     . ' &middot; '
                     . lang(array(
@@ -323,7 +323,7 @@ function pg_dashboard_widget_1($request, $user)
                             . $sm_orders($sm_entry['count']) . '</span>'
                             . '<span>' . lang(array('string' => '{var:1}% share', 'vars' => $sm_share)) . '</span>'
                             . (!empty($sm_detail)
-                                ? '<span class="text-muted">' . implode(', ', $sm_detail) . '</span>'
+                                ? '<span class="fg-secondary">' . implode(', ', $sm_detail) . '</span>'
                                 : ''));
                 }
 

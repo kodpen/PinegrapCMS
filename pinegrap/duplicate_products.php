@@ -1457,15 +1457,15 @@ if (!$_POST) {
             }else{
 
                 $output_inventory_headers ='<th>' . get_column_heading(lang('Inventory Quantity'), $sort_levels, '', '', 'inventory_quantity') . '</th>';
-                $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
+                $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
                 if ($inventory == 1){
                     if ($inventory_quantity >= 10){
-                        $output_inventory_columns ='<td class="align-middle text-center text-success h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }else{
-                        $output_inventory_columns ='<td class="align-middle text-center text-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }
                     if ($inventory_quantity == 0){
-                        $output_inventory_columns ='<td class="align-middle text-center text-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
+                        $output_inventory_columns ='<td class="align-middle text-center fg-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
                     }
                 }
 
@@ -1473,7 +1473,7 @@ if (!$_POST) {
 
             $output_rows .=
             '<tr>
-                <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="products[]" value="' . $row['id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $row['id'] . '" class="checkbox" /></td>
         
                 ' . $output_image_column . '
                 <td class="align-middle chart_label ' . $output_name_and_short_description_color_class . '">' . $name . '</td>
@@ -1503,15 +1503,15 @@ if (!$_POST) {
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 text-center text-md-start">
+                    <div class="row mb-3 flex-wrap">
+                        <div class="col-12 text-center md:text-start">
                             <nav id="button_bar" class="navigation " aria-label="Button Bar">
                                 <div class="pg-toolbar-grow"></div>
                                 ' . pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default) . '
                             </nav>
                         </div>
                     </div>
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-body p-0 position-relative">
                             <form name="form"  action="duplicate_products.php" method="post"> 
                                 ' . get_token_field() . '
@@ -1530,8 +1530,8 @@ if (!$_POST) {
                                     <thead>
                                         <tr>
                                             <th class="noVis">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                                 </div>
                                             </th>
 
@@ -1560,7 +1560,7 @@ if (!$_POST) {
                                 </table>
                                 
                               
-                                <div class="row g-2 p-3 mb-4">
+                                <div class="row g-3 p-5 mb-7">
                                     <div class="col-12">
                                     <p>' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                                     </div>
@@ -1588,7 +1588,7 @@ if (!$_POST) {
                                         <option value="93" >Assortment X</option>
                                         <option value="135" >Assortment Y</option>
                                     </select></div>
-                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-4 btn btn-secondary"><span class="material-icons me-2">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
+                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-7 btn btn-solid theme-secondary"><span class="material-icons me-3">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
                                 </div>
                                 
                             </form>

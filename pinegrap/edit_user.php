@@ -340,7 +340,7 @@ if (!$_POST) {
     // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
     // It might also cause confusion for the user about what happens if they do that.
     if ($id != USER_ID) {
-        $output_login_as_user_button = '<a class="btn btn-sm btn-outline-secondary rounded-pill px-3" href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-box-arrow-in-right me-1"></i>' . lang('Login as User') . '</a>';
+        $output_login_as_user_button = '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-5" href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-box-arrow-in-right me-1"></i>' . lang('Login as User') . '</a>';
     }
 
     // Resetting a password revokes every remembered session of that account
@@ -356,7 +356,7 @@ if (!$_POST) {
     $output_reset_password_form   = '';
 
     if ($id != USER_ID) {
-        $output_reset_password_button = '<a class="btn btn-sm btn-outline-warning rounded-pill px-3" href="#" onclick="event.preventDefault(); pgConfirm({title:\'' . lang('Reset & Send Password') . '\', message:\'' . lang('Are you sure you want to reset the user\'s password and email a new password to the user?') . '\', confirmText:\'' . lang('Reset & Send Password') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok) document.reset_password_form.submit();}); return false;"><i class="bi bi-key me-1"></i>' . lang('Reset & Send Password') . '</a>';
+        $output_reset_password_button = '<a class="btn btn-sm btn-outline theme-warning rounded-pill px-5" href="#" onclick="event.preventDefault(); pgConfirm({title:\'' . lang('Reset & Send Password') . '\', message:\'' . lang('Are you sure you want to reset the user\'s password and email a new password to the user?') . '\', confirmText:\'' . lang('Reset & Send Password') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok) document.reset_password_form.submit();}); return false;"><i class="bi bi-key me-1"></i>' . lang('Reset & Send Password') . '</a>';
 
         $output_reset_password_form =
             '<form name="reset_password_form" action="reset_password.php" method="post">'
@@ -366,14 +366,14 @@ if (!$_POST) {
             . '</form>';
 
     } else {
-        $output_reset_password_button = '<span class="text-body-secondary small">' . h(lang('You cannot reset your own password here.')) . '</span>';
+        $output_reset_password_button = '<span class="fg-secondary small">' . h(lang('You cannot reset your own password here.')) . '</span>';
 
         // Linked only where the site actually has a change password page: a
         // button pointing at a page that is not there is worse than no button.
         $own_password_url = get_page_type_url('change password');
 
         if ($own_password_url) {
-            $output_reset_password_button .= '<a class="btn btn-sm btn-outline-secondary rounded-pill px-3" href="' . h($own_password_url) . '"><i class="bi bi-key me-1"></i>' . lang('Change Password') . '</a>';
+            $output_reset_password_button .= '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-5" href="' . h($own_password_url) . '"><i class="bi bi-key me-1"></i>' . lang('Change Password') . '</a>';
         }
     }
 
@@ -401,9 +401,9 @@ if (!$_POST) {
     }
 
     if ($allow_delete == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-2"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('user')))) . '"><i class="bi bi-trash me-3"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-danger disabled"><i class="bi bi-trash me-2"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" class="btn my-1 btn-solid theme-danger disabled"><i class="bi bi-trash me-3"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete')) . '</span></button>';
     }
 
     $output_password_hint_field = "";
@@ -411,7 +411,7 @@ if (!$_POST) {
     // Find out if password hint is enabled in the settings
     if (PASSWORD_HINT == TRUE) {
         $output_password_hint_field = 
-            '<div class="col-12 col-xl-6 my-2">
+            '<div class="col-12 xl:col-6 my-3">
                 <label for="password_hint" class="form-label">' . lang('User Password Hint') . '</label>
                 <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" />
             </div>';
@@ -579,7 +579,7 @@ if (!$_POST) {
                 $calendar_count++;
             }
 
-            $output_calendars .= '<div class="form-check"><input type="checkbox" name="calendar_' . $calendar['id'] . '" id="calendar_' . $calendar['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . (($calendar_checked != '') ? ' checked="checked"' : '') . ' /><label class="form-check-label" for="calendar_' . $calendar['id'] . '"> ' . h($calendar['name']) . '</label></div>';
+            $output_calendars .= '<div class="form-field"><input type="checkbox" name="calendar_' . $calendar['id'] . '" id="calendar_' . $calendar['id'] . '" value="1" class="check multiselect-checkbox"' . (($calendar_checked != '') ? ' checked="checked"' : '') . ' /><label class="" for="calendar_' . $calendar['id'] . '"> ' . h($calendar['name']) . '</label></div>';
         }
 
         $permission_panels['calendars'] = $output_calendars;
@@ -634,7 +634,7 @@ if (!$_POST) {
             $contact_group_count++;
         }
 
-        $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . (($contact_group_checked != '') ? ' checked="checked"' : '') . ' /><label class="form-check-label" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
+        $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="check multiselect-checkbox"' . (($contact_group_checked != '') ? ' checked="checked"' : '') . ' /><label class="" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
     }
 
     $permission_panels['contact_groups'] = $output_contact_groups;
@@ -758,17 +758,17 @@ if (!$_POST) {
             $edit_user_session_tags = '';
 
             if (($edit_user_current_selector !== '') && hash_equals((string) $edit_user_session['selector'], $edit_user_current_selector)) {
-                $edit_user_session_tags .= '<span class="badge text-bg-success fw-light">' . h(lang('This device')) . '</span>';
+                $edit_user_session_tags .= '<span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>';
             }
 
             if ((time() - $edit_user_session_fresh) < 300) {
-                $edit_user_session_tags .= '<span class="badge text-bg-success fw-light">' . h(lang('Online')) . '</span>';
+                $edit_user_session_tags .= '<span class="badge theme-success fw-light">' . h(lang('Online')) . '</span>';
             }
 
             $edit_user_session_pinned = ($edit_user_pin_column && isset($edit_user_session['pinned']) && (((int) $edit_user_session['pinned']) === 1));
 
             if ($edit_user_session_pinned) {
-                $edit_user_session_tags .= '<span class="badge text-bg-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>';
+                $edit_user_session_tags .= '<span class="badge theme-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>';
             }
 
             $edit_user_session_pin_button = '';
@@ -797,7 +797,7 @@ if (!$_POST) {
                 . '<input type="hidden" name="pg_session_action" value="revoke"/>'
                 . '<input type="hidden" name="pg_selector" value="' . h((string) $edit_user_session['selector']) . '"/>'
                 . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
-                . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Sign out')) . '</button>'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang('Sign out')) . '</button>'
                 . '</form></div></div>';
         }
     }
@@ -813,15 +813,15 @@ if (!$_POST) {
 
         $sign_in_lock_minutes = max(1, (int) ceil(($sign_in_lock['until'] - time()) / 60));
 
-        $output_identity_lock_tag = '<span class="badge text-bg-danger fw-light"><i class="bi bi-lock-fill me-1"></i>' . h(lang('Sign-in Locked')) . '</span>';
+        $output_identity_lock_tag = '<span class="badge theme-danger fw-light"><i class="bi bi-lock-fill me-1"></i>' . h(lang('Sign-in Locked')) . '</span>';
 
         $output_sign_in_lock_notice =
-            '<div class="alert alert-danger d-flex align-items-center gap-2 py-2">'
+            '<div class="alert theme-danger d-flex align-items-center gap-3 py-3">'
             . '<i class="bi bi-lock-fill"></i>'
             . '<span><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
                 'string' => 'Too many failed attempts. Clears on its own in {var:1} minutes.',
                 'vars'   => $sign_in_lock_minutes))) . '</span>'
-            . '<a class="btn btn-sm btn-outline-danger rounded-pill px-3 ms-auto" href="#" onclick="event.preventDefault(); document.unlock_sign_in_form.submit(); return false;"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</a>'
+            . '<a class="btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto" href="#" onclick="event.preventDefault(); document.unlock_sign_in_form.submit(); return false;"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</a>'
             . '</div>';
 
         $output_sign_in_unlock_form =
@@ -835,14 +835,14 @@ if (!$_POST) {
 
     // ── Identity tags ────────────────────────────────────────────────────
     $output_identity_tags =
-        '<span class="badge text-bg-primary fw-light">' . h(pg_user_role_name($role)) . '</span>'
+        '<span class="badge theme-primary fw-light">' . h(pg_user_role_name($role)) . '</span>'
         . implode('', array_map(function ($identity_provider) {
             $identity_definition = pg_connect_provider($identity_provider);
             $identity_label = pg_signin_provider_label($identity_provider);
             return '<span class="badge text-bg-light border fw-light" title="' . h(lang(array('string' => 'This account can sign in with {var:1}.', 'vars' => $identity_label))) . '">'
                 . '<i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . ' me-1"></i>' . h($identity_label) . '</span>';
         }, array_keys($user_identities)))
-        . ((($edit_user_session_latest > 0) && ((time() - $edit_user_session_latest) < 300)) ? '<span class="badge text-bg-success fw-light">' . h(lang('Online')) . '</span>' : '')
+        . ((($edit_user_session_latest > 0) && ((time() - $edit_user_session_latest) < 300)) ? '<span class="badge theme-success fw-light">' . h(lang('Online')) . '</span>' : '')
         . $output_identity_lock_tag;
 
     // ── Contact card ─────────────────────────────────────────────────────
@@ -858,9 +858,9 @@ if (!$_POST) {
             '<a class="pg-contact-card link-body-emphasis text-decoration-none" href="edit_contact.php?id=' . (int) $contact_id . '&send_to=' . h(urlencode(get_request_uri())) . '">'
             . (($identity_photo != '')
                 ? '<img class="pg-contact-pic" src="' . h($identity_photo) . '" alt="" />'
-                : '<span class="pg-contact-pic d-inline-flex align-items-center justify-content-center bg-secondary-subtle text-body-secondary fs-4"><i class="bi bi-person"></i></span>')
+                : '<span class="pg-contact-pic d-inline-flex align-items-center justify-content-center bg-subtle-secondary fg-secondary fs-xl"><i class="bi bi-person"></i></span>')
             . '<span class="pg-contact-who"><b>' . h($identity_name) . '</b>' . $output_contact_lines . '</span>'
-            . '<i class="bi bi-chevron-right ms-auto text-body-secondary"></i>'
+            . '<i class="bi bi-chevron-right ms-auto fg-secondary"></i>'
             . '</a>';
 
         $output_contact_header =
@@ -880,7 +880,7 @@ if (!$_POST) {
                 $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
 
                 $output_contact_header .=
-                    '<a class="btn btn-sm btn-ghost" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . h(lang('Ledger account')) . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+                    '<a class="btn btn-sm btn-ghost" href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . h(lang('Ledger account')) . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="fg-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
             } else {
                 $output_contact_header .=
                     '<a class="btn btn-sm btn-ghost" href="add_erp_account.php?contact_id=' . (int) $contact_id . '"><i class="bi bi-journal-plus me-1"></i>' . h(lang('Open an Account')) . '</a>';
@@ -890,16 +890,16 @@ if (!$_POST) {
     } else {
 
         $output_contact_body =
-            '<p class="small text-body-secondary mb-2">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
-            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
+            '<p class="small fg-secondary mb-3">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
+            . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
 
         $output_contact_header = '';
     }
 
     $output_contact_card =
-        '<div class="card mb-3">
+        '<div class="card mb-5">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Contact')) . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Contact')) . '</span>
                 <span class="d-flex flex-wrap justify-content-end gap-1">' . $output_contact_header . '</span>
             </div>
             <div class="card-body">' . $output_contact_body . '</div>
@@ -988,9 +988,9 @@ if (!$_POST) {
         : '';
 
     $output_sign_in_card =
-        '<div class="card mb-3">
+        '<div class="card mb-5">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Sign-in and Sessions')) . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Sign-in and Sessions')) . '</span>
             </div>
             <div class="card-body">
                 <div class="pg-fact">
@@ -1031,13 +1031,13 @@ if (!$_POST) {
     }
 
     $output_activity_card =
-        '<div class="card mb-3">
+        '<div class="card mb-5">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
                 ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="offcanvas" data-bs-target="#pg_activity_panel">' . h(lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
             </div>
             <div class="card-body">
-                ' . (($log_count > 0) ? $log_recent_rows : '<p class="small text-body-secondary mb-0">' . h(lang('No activity recorded yet.')) . '</p>') . '
+                ' . (($log_count > 0) ? $log_recent_rows : '<p class="small fg-secondary mb-0">' . h(lang('No activity recorded yet.')) . '</p>') . '
             </div>
         </div>';
 
@@ -1053,7 +1053,7 @@ if (!$_POST) {
         $identity_label = pg_signin_provider_label($identity_provider);
         $output_identity_panel .= '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => $identity_label))) . '</div>
-                <div class="d-flex align-items-start gap-3 border rounded p-3">
+                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
                     <div class="flex-grow-1">
                         <p class="small mb-0">' . h(lang(array('string' => 'The connection is tied to the {var:1} account itself, not to the email address - changing the email here does not remove it.', 'vars' => $identity_label))) . '</p>
@@ -1062,7 +1062,7 @@ if (!$_POST) {
                         . '<input type="hidden" name="pg_unlink_identity" value="' . h($identity_provider) . '"/>'
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button>'
+                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button>'
                     . '</form>
                 </div>
             </div>';
@@ -1076,7 +1076,7 @@ if (!$_POST) {
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <p class="small text-body-secondary mb-0">' . h(lang('Two-step verification cannot be changed while signed in as another user.')) . '</p>
+                <p class="small fg-secondary mb-0">' . h(lang('Two-step verification cannot be changed while signed in as another user.')) . '</p>
             </div>';
 
     } elseif ($edit_user_mfa_on) {
@@ -1088,7 +1088,7 @@ if (!$_POST) {
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <div class="d-flex align-items-start gap-3 border rounded p-3">
+                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
                     <div class="flex-grow-1">
                         <p class="small mb-0">' . h($output_mfa_note) . '</p>
@@ -1097,7 +1097,7 @@ if (!$_POST) {
                         . '<input type="hidden" name="pg_mfa_reset" value="1"/>'
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . h(lang('Turn off two-step verification')) . '</button>'
+                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang('Turn off two-step verification')) . '</button>'
                     . '</form>
                 </div>
             </div>';
@@ -1107,20 +1107,20 @@ if (!$_POST) {
         ? '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</div>
                 <div class="card"><div class="card-body p-0">' . $edit_user_session_rows . '</div></div>
-                <form method="post" action="view_sessions.php" class="mt-2">' . get_token_field()
+                <form method="post" action="view_sessions.php" class="mt-3">' . get_token_field()
                     . '<input type="hidden" name="pg_session_action" value="revoke_user"/>'
                     . '<input type="hidden" name="pg_user_id" value="' . (int) $_GET['id'] . '"/>'
                     . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
-                    . '<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-right me-1"></i>' . h(lang('Sign out all sessions')) . '</button>'
+                    . '<button type="submit" class="btn btn-sm btn-outline theme-danger"><i class="bi bi-box-arrow-right me-1"></i>' . h(lang('Sign out all sessions')) . '</button>'
                 . '</form>
             </div>'
-        : '<p class="small text-body-secondary">' . h(lang('No active sessions.')) . '</p>';
+        : '<p class="small fg-secondary">' . h(lang('No active sessions.')) . '</p>';
 
     $output_sessions_panel =
         '<div class="offcanvas offcanvas-end pg-perm-panel" tabindex="-1" id="pg_sessions_panel" aria-labelledby="pg_sessions_panel_title">
             <div class="offcanvas-header">
                 <span class="pg-perm-icon" style="--pg-perm-color:#64b5f6"><i class="bi bi-shield-lock"></i></span>
-                <h5 class="offcanvas-title ms-2" id="pg_sessions_panel_title">' . h(lang('Sign-in and Sessions')) . '</h5>
+                <h5 class="offcanvas-title ms-3" id="pg_sessions_panel_title">' . h(lang('Sign-in and Sessions')) . '</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
             </div>
             <div class="offcanvas-body">
@@ -1129,14 +1129,14 @@ if (!$_POST) {
             </div>
             <div class="offcanvas-footer">
                 <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>
-                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-dismiss="offcanvas">' . h(lang('Done')) . '</button>
+                <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-dismiss="offcanvas">' . h(lang('Done')) . '</button>
             </div>
         </div>'
         . (($log_count > 5)
             ? '<div class="offcanvas offcanvas-end pg-perm-panel" tabindex="-1" id="pg_activity_panel" aria-labelledby="pg_activity_panel_title">
                 <div class="offcanvas-header">
                     <span class="pg-perm-icon" style="--pg-perm-color:#9aa3ab"><i class="bi bi-clock-history"></i></span>
-                    <h5 class="offcanvas-title ms-2" id="pg_activity_panel_title">' . h(lang('Recent Activity')) . '</h5>
+                    <h5 class="offcanvas-title ms-3" id="pg_activity_panel_title">' . h(lang('Recent Activity')) . '</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
                 </div>
                 <div class="offcanvas-body">' . $log_panel_rows . '</div>
@@ -1170,8 +1170,8 @@ if (!$_POST) {
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
-                <div class="card mb-3">
-                    <div class="card-body py-3">
+                <div class="card mb-5">
+                    <div class="card-body py-5">
                         <div class="pg-identity">
                             ' . $output_identity_picture . '
                             <div class="pg-identity-who">
@@ -1195,57 +1195,57 @@ if (!$_POST) {
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <input type="hidden" name="current_url" value="' . h(get_request_uri()) . '" />
-                    <div class="row g-3">
-                        <div class="col-12 col-xl-8">
+                    <div class="row g-5">
+                        <div class="col-12 xl:col-8">
 
-                            <div class="card mb-3">
+                            <div class="card mb-5">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Role') . '</span>
-                                    <span class="small text-body-secondary">' . lang('Changing the role changes the rights below.') . '</span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
+                                    <span class="small fg-secondary">' . lang('Changing the role changes the rights below.') . '</span>
                                 </div>
                                 <div class="card-body">
                                     ' . pg_user_role_cards($role, $user['role'], $role_cards_disabled) . '
                                 </div>
                             </div>
 
-                            <div class="card mb-3">
+                            <div class="card mb-5">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Account') . '</span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row g-3">
-                                        <div class="col-12 col-lg-4">
+                                    <div class="row g-5">
+                                        <div class="col-12 lg:col-4">
                                             <label for="username" class="form-label">' . lang('Username') . '</label>
                                             <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
                                             <div class="form-text">' . lang('Used when signing in.') . '</div>
                                         </div>
-                                        <div class="col-12 col-lg-4">
+                                        <div class="col-12 lg:col-4">
                                             <label class="form-label" for="email">' . lang('User Email') . '</label>
                                             <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
                                             <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                         </div>
-                                        <div class="col-12 col-lg-4">
+                                        <div class="col-12 lg:col-4">
                                             <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
-                                            <select class="form-select" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
+                                            <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                         </div>
                                     </div>
 
-                                    <hr class="border-secondary-subtle opacity-50 my-3">
-                                    <div class="text-uppercase small fw-semibold text-body-secondary mb-2">' . lang('Optional') . '</div>
+                                    <hr class="border-subtle-secondary opacity-50 my-5">
+                                    <div class="text-uppercase small fw-semibold fg-secondary mb-3">' . lang('Optional') . '</div>
 
-                                    <div class="row g-3">
+                                    <div class="row g-5">
                                         ' . $output_password_hint_field . '
-                                        <div class="col-12 col-sm-6 col-lg-4">
+                                        <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                             <input value="' . h($reward_points) . '" type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input type="checkbox"' . $badge_checked . ' id="badge" name="badge" value="1" class="form-check-input collapse-switcher" data-bs-target="#badge_row"/>
-                                                <label class="form-check-label" for="badge">' . lang('Show badge next to username') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox"' . $badge_checked . ' id="badge" name="badge" value="1" class="collapse-switcher" data-bs-target="#badge_row"/></div>
+                                                <label class="" for="badge">' . lang('Show badge next to username') . '</label>
                                             </div>
-                                            <div class="collapse ms-4 mt-1 mb-2' . (($badge_checked != '') ? ' show' : '') . '" id="badge_row" style="max-width:22rem">
+                                            <div class="collapse ms-7 mt-1 mb-2' . (($badge_checked != '') ? ' show' : '') . '" id="badge_row" style="max-width:22rem">
                                                 <input value="' . h($badge_label) . '" type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" size="20" maxlength="100" />
                                                 ' . $output_badge_label_info . '
                                             </div>
@@ -1254,19 +1254,19 @@ if (!$_POST) {
                                 </div>
                             </div>
 
-                            <div class="card mb-3 d-none" id="pg_permissions_everything">
+                            <div class="card mb-5 d-none" id="pg_permissions_everything">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
                                 </div>
                                 <div class="card-body">
                                     ' . pg_user_permission_everything() . '
                                 </div>
                             </div>
 
-                            <div class="card mb-3" id="pg_permissions_block">
+                            <div class="card mb-5" id="pg_permissions_block">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                                    <span class="small text-body-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                                    <span class="small fg-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
                                 </div>
                                 <div class="card-body p-0">
                                     <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
@@ -1275,7 +1275,7 @@ if (!$_POST) {
                             </div>
                         </div>
 
-                        <div class="col-12 col-xl-4">
+                        <div class="col-12 xl:col-4">
                             ' . $output_contact_card . '
                             ' . $output_sign_in_card . '
                             ' . $output_activity_card . '
@@ -1284,10 +1284,10 @@ if (!$_POST) {
 
                     ' . $permission_ui['panels'] . '
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="bi bi-floppy me-2"></span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-floppy me-3"></span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

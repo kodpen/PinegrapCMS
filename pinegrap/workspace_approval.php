@@ -87,7 +87,7 @@ if ($view['state'] === 'open') {
     }
 
     if ($error !== '') {
-        $card .= '<div class="alert alert-warning py-2" role="alert">' . h($error) . '</div>';
+        $card .= '<div class="alert theme-warning py-3" role="alert">' . h($error) . '</div>';
     }
 
     $card .= '<form method="post" action="' . h($self) . '" class="pg-approval-form">'
@@ -96,8 +96,8 @@ if ($view['state'] === 'open') {
         . '<textarea class="form-control" id="pg-approval-note" name="note" rows="3" maxlength="' . (int) WS_APPROVAL_GUEST_NOTE_MAX . '">' . h($note) . '</textarea>'
         . '<div class="form-text">' . h(lang('Optional when you approve. When you reject it, say why.')) . '</div>'
         . '<div class="pg-approval-buttons">'
-        . '<button type="submit" name="decision" value="approve" class="btn btn-success"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Approve')) . '</button>'
-        . '<button type="submit" name="decision" value="reject" class="btn btn-outline-danger"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Reject')) . '</button>'
+        . '<button type="submit" name="decision" value="approve" class="btn btn-solid theme-success"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Approve')) . '</button>'
+        . '<button type="submit" name="decision" value="reject" class="btn btn-outline theme-danger"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Reject')) . '</button>'
         . '</div>'
         . '<p class="pg-approval-fine">' . h(lang(array('string' => 'Your answer goes to {var:1} and cannot be changed afterwards. This link works until {var:2}.', 'vars' => array($view['asker'], $view['expires'])))) . '</p>'
         . '</form>';
@@ -141,7 +141,7 @@ echo '<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . $title . '</title>
-<link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
+<link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/css/workspace_approval.css?v=' . $version('/assets/css/workspace_approval.css') . '">
 </head>

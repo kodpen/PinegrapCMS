@@ -420,7 +420,7 @@ function ws_mcp_form_field_html($field, $value, $error = '')
     $required = $field['required'] ? ' required' : '';
     // The panel marks the label of a required field itself.
     $label = h($field['label'])
-        . (($field['label'] !== $field['name']) ? ' <code class="small text-body-secondary">' . h($field['name']) . '</code>' : '');
+        . (($field['label'] !== $field['name']) ? ' <code class="small fg-secondary">' . h($field['name']) . '</code>' : '');
 
     if (!empty($field['enum'])) {
         $options = '<option value="">' . h($field['required'] ? lang('Choose…') : lang('(empty)')) . '</option>';
@@ -429,9 +429,9 @@ function ws_mcp_form_field_html($field, $value, $error = '')
             $options .= '<option value="' . h($choice) . '"' . (($choice === $value) ? ' selected' : '') . '>' . h($choice) . '</option>';
         }
 
-        $input = '<select class="form-select form-select-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>' . $options . '</select>';
+        $input = '<select class="form-control form-select-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>' . $options . '</select>';
     } elseif ($field['type'] === 'boolean') {
-        $input = '<select class="form-select form-select-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>'
+        $input = '<select class="form-control form-select-sm' . $invalid . '" name="' . $name . '" id="' . $id . '"' . $required . '>'
             . '<option value="">' . h($field['required'] ? lang('Choose…') : lang('(empty)')) . '</option>'
             . '<option value="1"' . (($value === '1') ? ' selected' : '') . '>' . h(lang('Yes')) . '</option>'
             . '<option value="0"' . (($value === '0') ? ' selected' : '') . '>' . h(lang('No')) . '</option>'
@@ -457,7 +457,7 @@ function ws_mcp_form_field_html($field, $value, $error = '')
     }
 
     return '
-        <div class="mb-2">
+        <div class="mb-3">
             <label class="form-label small mb-1" for="' . $id . '">' . $label . '</label>
             ' . $input . '
             ' . (($error !== '') ? '<div class="invalid-feedback">' . h($error) . '</div>' : '') . '
