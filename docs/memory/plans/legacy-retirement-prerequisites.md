@@ -15,7 +15,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
 - R1 Content-editable shared component (owner approved the schema steps 2026-10-19): done: schema 11.0.8 and the server side, the designer switch, content-level editing on the canvas, grants on the user screens (`designer/shared-component-content-editing.md`).
 - R2 Common region -> shared component (one per `cregion` with `cregion_designer_type = 'no'`): content through the converter into one `_editable` block, rights carried over. One source of truth while classic styles still print `<cregion>name</cregion>` (see open question).
 - R3 Designer region -> designer-only shared component: PHP blocks lifted to `custom_php` nodes before parsing, nested designer regions as nested shared refs, inner placeholders as region nodes (the placeholder half of L1).
-- R4 Dynamic region stays PHP: done (PR #PRNUM): region node attribute, code-view tab for administrators, the classic screen's right (`designer/dynamic-region-in-designer.md`).
+- R4 Dynamic region stays PHP: done (PR #1788): region node attribute, code-view tab for administrators, the classic screen's right (`designer/dynamic-region-in-designer.md`).
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
 - R6 Widgets for menu / menu sequence (items still edited in the menu screen), ad region (rotation) and tag cloud. Mobile switch and PDF stay region nodes unless asked.
 - Missing system widget types: `system-widget-missing-types.md`. Custom layouts of classic pages (half the pages of the starting site; `edit_page.php` and the design's page queries hide them): `legacy-layouts-in-designer.md`, Y1 first.
