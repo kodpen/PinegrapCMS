@@ -1303,11 +1303,11 @@ Work through the queue:
       rights of the person who asked (GET /workspace/claude/requests/{id}/change-types
       lists the kinds, their fields and limits). For a new one, check that it is
       not there already. Then add it to the answer as
-      "changes": [{"type": "...", "action": "update|create|delete|add|remove",
+      "changes": [{"type": "...", "action": "update|create|delete|add|remove|invoice",
       "id": ID, "fields": {"field": "new value"}, "product_ids": [ids],
       "reason": "..."}], at most 10, with every field the request asks for.
-      action is update when left out; create takes no id, delete no fields, add and
-      remove product_ids instead of fields. The kinds, their actions and fields:
+      action is update when left out; create takes no id, delete and invoice no
+      fields, add and remove product_ids instead of fields. The kinds, their actions and fields:
         product (update, create, delete): name, title, short_description,
           full_description, details, meta_description, meta_keywords, keywords,
           brand, gtin, mpn, google_product_category, price (minor units, as
@@ -1342,7 +1342,7 @@ Work through the queue:
           invoice_email, invoice_mail, overdue_notify_days, overdue_notify_customer,
           status (active|passive), notes. A new one also takes kind
           (customer|supplier|both) and is_person, and needs title.
-        erp_quote (create): a sales quote, never a cart quote. account_id (a list
+        erp_quote (create, invoice): a sales quote, never a cart quote. account_id (a list
           of one active current account, not a supplier alone), issue_date and
           valid_until (YYYY-MM-DD; today and 30 days later when left out),
           currency (three letters; the store's when left out), notes, lines (a
@@ -1351,7 +1351,10 @@ Work through the queue:
           tax_rate, tax2_rate, withholding_code, withholding_rate; a line with a
           product_id takes the product's name and VAT rate where they are left
           out, any other line needs description and tax_rate). Needs account_id
-          and lines; numbered when applied.
+          and lines; numbered when applied. invoice takes the id of an open,
+          expired or accepted quote and no fields: applied, it becomes an
+          invoice draft dated today at the prices quoted; an invoiced, rejected
+          or cancelled quote is refused.
         product_group (update, create, delete, add, remove): name, title,
           short_description, full_description, meta_description, meta_keywords,
           keywords, enabled. A new one also takes parent_id (a group id; the top of

@@ -3976,7 +3976,7 @@ $messages = function ($class = '') {
 $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $attr, $bind, $show_when, $loop, $widget_root, $messages, $people) {
     $body = array();
     if ($w['rating']) {
-        $body[] = $el('div', 'text-warning small mb-1', lang('Stars'), array(), array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')));
+        $body[] = $el('div', 'text-warning small mb-1', lang('Stars'), pg_sw_part_comment_stars(), array('_bindings' => array('eo_visible_if' => 'comment_has_rating')));
     }
     $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array(
         $span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')),
@@ -4169,7 +4169,7 @@ $recent_list = function ($w) use ($el, $para, $link, $span, $bind, $dot, $show_w
             $span(lang('2 hours ago'), 'pg-field-value', lang('Value'), $bind('__comment_date')),
         )),
     ));
-    $row[] = $el('div', 'text-warning small mb-1', lang('Stars'), array(), array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')));
+    $row[] = $el('div', 'text-warning small mb-1', lang('Stars'), pg_sw_part_comment_stars(), array('_bindings' => array('eo_visible_if' => 'comment_has_rating')));
     $row[] = $el('p', 'small text-body-secondary mb-0 pf-clamp-3', lang('Excerpt'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_excerpt')));
     if ($w['edit']) {
         $row[] = $el('p', 'small mt-2 mb-0', lang('Link'), array(
@@ -4203,8 +4203,8 @@ $mail_comment_tree = $widget_root(array(
                     $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true'), $attr('style', 'color:#5b6070;margin:0 6px')))),
                     $span(lang('Date'), 'text-body-secondary', lang('Date'), array_merge($bind('__comment_date'), $mail_style('color:#5b6070'))),
                 ), $mail_style('margin:0 0 8px')),
-                $el('div', '', lang('Stars'), array(), array_merge(
-                    array('_bindings' => array('text' => '__comment_stars_html', 'eo_visible_if' => 'comment_has_rating')),
+                $el('div', '', lang('Stars'), pg_sw_part_comment_stars(), array_merge(
+                    array('_bindings' => array('eo_visible_if' => 'comment_has_rating')),
                     $mail_style('color:#b45309;margin:0 0 8px'))),
                 $el('blockquote', '', lang('Quote'), array(
                     $el('p', 'small mb-1', lang('In reply to'), array(

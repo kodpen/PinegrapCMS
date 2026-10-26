@@ -2521,7 +2521,7 @@ function ws_ai_change_out($change)
 
     if (in_array($change['action'], array('add', 'remove'), true)) {
         $out['product_ids'] = array_values((array) ($change['product_ids'] ?? array()));
-    } elseif ($change['action'] !== 'delete') {
+    } elseif (!in_array($change['action'], array('delete', 'invoice'), true)) {
         $out['fields'] = (array) ($change['fields'] ?? array());
     }
 
@@ -2556,7 +2556,7 @@ function ws_ai_propose_change($row, &$state, $args)
         $field = substr($field, strrpos($field, '.') + 1);
     }
 
-    if (!in_array($action, array('update', 'create', 'delete', 'add', 'remove'), true)) {
+    if (!in_array($action, array('update', 'create', 'delete', 'add', 'remove', 'invoice'), true)) {
         $action = 'update';
     }
 
@@ -2619,7 +2619,7 @@ function ws_ai_propose_change($row, &$state, $args)
         if (empty($change['product_ids'])) {
             return array('error' => 'Give the product ids in value, separated by commas.');
         }
-    } elseif ($action !== 'delete') {
+    } elseif (($action !== 'delete') && ($action !== 'invoice')) {
         if (($field === '') || !ws_change_field($types[$type], $field)) {
             return array('error' => 'Name the field to set. A ' . $type . ' has these fields: ' . implode(', ', array_keys(ws_change_fields_for($types[$type], $action))) . '.');
         }
@@ -3084,7 +3084,7 @@ function ws_ai_changes_guide($asker, $channel_id)
 
         // Added whole: the lines are one field, given at once.
         if ($key === 'erp_quote') {
-            $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list';
+            $line .= '. A new one is a sales quote (never a cart quote) and needs account_id and lines; give lines in one call, the whole list. invoice turns an open, expired or accepted quote (its id, no field) into an invoice draft dated today at the prices quoted';
         }
 
         $lines[] = $line . '.';
@@ -3095,7 +3095,7 @@ function ws_ai_changes_guide($asker, $channel_id)
     }
 
     return "Records whose changes you may propose (type (actions): fields):\n" . implode("\n", $lines) . "\n"
-        . 'action is update when left out; create takes id 0, delete no field. The stock of a product is changed with type stock, field quantity and the product\'s id. A channel change takes the id of this channel and the whole summary as it should read. '
+        . 'action is update when left out; create takes id 0, delete and invoice no field. The stock of a product is changed with type stock, field quantity and the product\'s id. A channel change takes the id of this channel and the whole summary as it should read. '
         . 'Asked to rename a product, change name and short_description both where both hold the old name. '
         . 'A deleted product, product group, page or file goes to the Recycle Bin; a deleted contact, offer or calendar event is gone for good.';
 }
@@ -3501,9 +3501,9 @@ function ws_ai_tools($row)
     if (!$note) {
         $tools[] = $tool('propose_change', 'Propose a new value for one field of a record, only when the request asks to change, add or delete records. Call it once per field; calls for the same record make one change. The person who asked applies it with one click.', array(
             'type'   => array('type' => 'string', 'description' => 'The kind of record, from the list in the instructions.'),
-            'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove')),
+            'action' => array('type' => 'string', 'enum' => array('update', 'create', 'delete', 'add', 'remove', 'invoice')),
             'id'     => array('type' => 'integer', 'description' => 'The record id, as read; 0 for create.'),
-            'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete; product_ids for add and remove.'),
+            'field'  => array('type' => 'string', 'description' => 'The field to set; empty for delete and invoice; product_ids for add and remove.'),
             'value'  => array('type' => 'string', 'description' => 'The new value as text; a list as comma-separated items; a sales quote\'s lines as a JSON list of line objects.'),
             'reason' => array('type' => 'string', 'description' => 'One line on why.'),
         ), array('type', 'action'));

@@ -77,6 +77,74 @@ function pg_op_flags($d)
 }
 
 /**
+ * Stamp the classes software.init_payment_method() (frontend.js) switches
+ * while the visitor picks among more than one payment method: the card
+ * fields (credit_debit_card) show only for the card, and with a card
+ * surcharge the surcharge rows (surcharge_row, surcharge_total_row) replace
+ * the total row (total_row). The classes go on nodes found by their
+ * bindings, so a saved tree works unchanged: the pays_by_card node holding
+ * the card_number control (not the card's radio row), the has_surcharge
+ * rows (the one with the total including the surcharge is the total row),
+ * and the outermost node holding __cart_total and no other figure. Run after
+ * the visibility bindings, which drop what the order does not offer.
+ *
+ * @param array $tree  the widget tree, changed in place
+ * @param array $flags pg_op_flags()
+ * @return void
+ */
+function pg_op_stamp_method_classes(&$tree, $flags)
+{
+    if (!is_array($tree) || empty($flags['many_payment_methods'])) return;
+    _pg_op_stamp_method_node($tree, !empty($flags['has_surcharge']));
+}
+
+// The text bindings (tokens) and control names in a node's subtree.
+function _pg_op_subtree_marks($node)
+{
+    $marks = array('tokens' => array(), 'controls' => array());
+    if (!is_array($node)) return $marks;
+    if (!empty($node['props']['_bindings']['text'])) $marks['tokens'][(string)$node['props']['_bindings']['text']] = true;
+    $name = _pg_member_control_name($node);
+    if ($name !== '') $marks['controls'][$name] = true;
+    foreach ((array)($node['children'] ?? array()) as $child) {
+        $sub = _pg_op_subtree_marks($child);
+        $marks['tokens'] += $sub['tokens'];
+        $marks['controls'] += $sub['controls'];
+    }
+    return $marks;
+}
+
+// Add one class to a node's cssClass, once.
+function _pg_op_add_class(&$node, $class)
+{
+    $css = trim((string)($node['props']['cssClass'] ?? ''));
+    if (in_array($class, preg_split('/\s+/', $css), true)) return;
+    $node['props']['cssClass'] = $css === '' ? $class : $css . ' ' . $class;
+}
+
+// pg_op_stamp_method_classes() for one node and, where it is not the total
+// row itself, its children.
+function _pg_op_stamp_method_node(&$node, $surcharge)
+{
+    if (!is_array($node)) return;
+    $flag = (string)($node['props']['_bindings']['eo_visible_if'] ?? '');
+    $marks = _pg_op_subtree_marks($node);
+    if ($flag === 'pays_by_card' && isset($marks['controls']['card_number'])) {
+        _pg_op_add_class($node, 'credit_debit_card');
+    }
+    if ($surcharge && $flag === 'has_surcharge') {
+        $total = isset($marks['tokens']['__cart_total_with_surcharge']) && !isset($marks['tokens']['__cart_surcharge']);
+        _pg_op_add_class($node, $total ? 'surcharge_total_row' : 'surcharge_row');
+    } elseif ($surcharge && array_keys($marks['tokens']) === array('__cart_total')) {
+        _pg_op_add_class($node, 'total_row');
+        return;
+    }
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as &$child) _pg_op_stamp_method_node($child, $surcharge);
+    unset($child);
+}
+
+/**
  * The columns of the page's order_preview_pages row the widget's settings
  * change. Only a setting the widget has is written, so a converted classic
  * page keeps what its own screen stored; no next page leaves the stored one.
@@ -319,6 +387,7 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     }
     if (!$op_flags['has_terms']) _pg_member_drop_control($tree, 'terms');
     if (!$op_flags['can_purchase']) _pg_member_drop_control($tree, 'submit_purchase_now');
+    pg_op_stamp_method_classes($tree, $op_flags);
     if ($op_flags['threedsecure_required']) {
         // The gateway always asks for 3-D Secure: shown ticked, not changeable.
         _pg_member_edit_control($tree, 'threedsecure', function (&$node) {

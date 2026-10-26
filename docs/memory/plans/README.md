@@ -40,6 +40,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y3, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
+- marketplace-product-matching.md: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; step 1 done (#1880), step 2 next
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
 - merge-flow-tools.md: Plan (2026-10-25, step 2 done): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
@@ -57,22 +58,23 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713 (installer lockout); open: eval order, form renderers, CVV, gateway secrets, designed-form rich text; owner questions
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
-- shipping-management.md: Shipping plan (2026-10-08; phases 1-4 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- shipping-management.md: Shipping plan (2026-10-08; phases 1-4 and 6 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers and İYS client done; left: İYS settings card, COD code and member OTP, consent API
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
+- storefront-bundles-design.md: Bundles design note (storefront-conversion-pack step 6, for the owner's review): model, stock, price, schema; hooks and steps in storefront-bundles-hooks.md
+- storefront-bundles-hooks.md: Bundles design note, part 2: hook points checked in the code, steps, owner questions
 - storefront-conversion-pack.md: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail and form, API done): back-in-stock SMS, bundles
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, multi-step checkout done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
-- widget-designability.md: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
+- widget-designability.md: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W10, W11, W14 #1602 #1701, W15 #1734): legacy-layout power in widgets
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1a done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
-- workspace-composer-lists.md: Step 2 of plans/workspace-composer-tools.md (lists and quotes): 2a server done (#1725); 2b editor open, with an unmerged reference branch and its editor findings
-- workspace-composer-tools.md: Plan (2026-10-23, 1 done #1554, 2 handed over, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+- workspace-composer-tools.md: Plan (2026-10-23, 1 done #1554, 2 done #1725 #1897, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
@@ -84,6 +86,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; ERP overdue to task done; left: command registry over the API, designer task panel
-- workspace-quotes.md: Plan (2026-10-23, 1 done #1546, 2 done #1614, 3 done #1705, 6 done #1826, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+- workspace-quotes.md: Plan (2026-10-23, 1 #1546, 2 #1614, 3 #1705, 6 #1826 #1907 done, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 6 /status #1896, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
 - workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
