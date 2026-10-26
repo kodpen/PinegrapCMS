@@ -47,13 +47,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_cron_ran($job_name)
 {
-    static $table_exists = null;
-
-    if ($table_exists === null) {
-        $table_exists = (bool) db_item("SHOW TABLES LIKE 'cron_runs'");
-    }
-
-    if (!$table_exists) {
+    if (!pg_schema_has('cron_runs')) {
         return false;
     }
 
@@ -77,7 +71,7 @@ function pg_cron_ran($job_name)
  */
 function pg_cron_last_runs()
 {
-    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+    if (!pg_schema_has('cron_runs')) {
         return null;
     }
 
@@ -484,11 +478,11 @@ function pg_waf_refresh_ai_ranges($force = false)
 {
     // Schema gate: both objects arrive with 2026.4.4. On an install that took
     // the code without the upgrade this quietly does nothing.
-    if (!db_item("SHOW TABLES LIKE 'waf_bot_ranges'")) {
+    if (!pg_schema_has('waf_bot_ranges')) {
         return false;
     }
 
-    $has_throttle_column = (bool) db_item("SHOW COLUMNS FROM config LIKE 'waf_ai_ranges_checked'");
+    $has_throttle_column = pg_schema_has('config', 'waf_ai_ranges_checked');
 
     // Attempt throttle, 6 hours. The callers piggybacking on panel traffic
     // must not turn every dashboard load into four outbound HTTP requests
@@ -759,14 +753,7 @@ function pg_cron_job_is_enabled($name)
  */
 function pg_cron_lock_ready()
 {
-    static $ready = null;
-
-    if ($ready === null) {
-        $ready = db_item("SHOW TABLES LIKE 'cron_runs'")
-            && db_item("SHOW COLUMNS FROM cron_runs WHERE Field = 'locked_until'");
-    }
-
-    return $ready;
+    return pg_schema_has('cron_runs', 'locked_until');
 }
 
 /**
@@ -781,7 +768,7 @@ function pg_cron_lock_ready()
  */
 function pg_cron_run_rows()
 {
-    if (!db_item("SHOW TABLES LIKE 'cron_runs'")) {
+    if (!pg_schema_has('cron_runs')) {
         return null;
     }
 
