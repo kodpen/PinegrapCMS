@@ -201,12 +201,14 @@ function pg_settings_categories()
                 'pgset-chat'      => lang('Chat'),
                 'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
+                'pgset-sms-messages' => lang('SMS Messages'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
+                'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
             ),
         ),
 
