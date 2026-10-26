@@ -11,7 +11,7 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 - One live round of what never ran against Paraşüt:
   - #1627: the last commit of the stale-id resend;
   - #1600: purchase-bill totals (no purchase bill was ever read live);
-  - #1626: a driver poll's 404 frees the row;
+  - #1626: a driver poll's 404 frees the row; #2025: only when the company answers for the row's contact or product card (404 wording of `contacts/{id}`, `products/{id}`; a job read per company);
   - #1628 and #1660: the order gates and the ERP badge;
   - #1629: the ERP send of a legacy-invoiced order;
   - #1630: the opening stock and the per-product seed;
