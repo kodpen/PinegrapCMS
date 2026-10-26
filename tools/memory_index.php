@@ -89,6 +89,11 @@ const FOLDERS = array(
 	'workspace' => 'Workspace module: channels, tasks, plan board, rights, Claude in channels',
 );
 
+// The test runner loads this file for the functions below.
+if (defined('PG_TEST_RUNNER')) {
+	return;
+}
+
 $check = in_array('--check', array_slice($argv, 1), true);
 
 $repository = dirname(__DIR__);
