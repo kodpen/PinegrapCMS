@@ -13158,6 +13158,15 @@
 
                 if (self.channel) {
                     mcpAliases();
+
+                    // Outside applications a mention here reaches, by their
+                    // handle or name (app_handles.php); before the people,
+                    // as the list is cut at ten.
+                    (self.channel.apps || []).forEach(function (app) {
+                        if (!needle || app.shown.slice(1).indexOf(needle) === 0 || app.meta.toLocaleLowerCase().indexOf(needle) === 0) {
+                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
+                        }
+                    });
                 }
 
                 BOOT.people.forEach(function (member) {

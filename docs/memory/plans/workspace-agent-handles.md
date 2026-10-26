@@ -1,6 +1,6 @@
 ---
 name: workspace-agent-handles
-description: Plan (2026-10-21, step 1a done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
+description: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 ---
 
 ## What is asked? (owner, 2026-10-21)
@@ -8,7 +8,7 @@ description: Plan (2026-10-21, step 1a done, answers open): each askable agent g
 
 ## What is there today?
 - Asked by name: `@Claude` (routine), `@ai` (Pinegrap AI), MCP aliases (`ws_mcp_boot()`; agent mode answers on its own, mcp_agent.php).
-- An outside application tagged `<@app:N>` hears it on its webhook (#809) and its tag reads with its own name (#1885), but the @ picker never offers it, it reads with its owner's reach and no channel can allow or refuse it.
+- An outside application tagged `<@app:N>` hears it on its webhook (#809), reads with its own name and is offered by the picker (step 1), but reads with its owner's reach and no channel can allow or refuse it.
 - An AI app connected as an MCP client (ChatGPT, Claude, Cursor: connected_apps.php) cannot be called from the site: it acts only while somebody talks to it there. A real `@chatgpt` needs the site to call the model with a key, or a service that answers mentions.
 
 ## What is proposed? (not approved yet)
@@ -17,8 +17,8 @@ description: Plan (2026-10-21, step 1a done, answers open): each askable agent g
 - Prompts and briefing come from plans/ai-agent-prompts.md.
 
 ## Slices
-1. No schema: an application's tag is drawn with its own name and a handle made from it; only Claude's reads "@Claude". The picker lists applications that hear mentions (`ws_app_hears_mentions()` and an active `workspace.app.mentioned` subscription). Reach stays the owner's until 2. Handles never take reserved words (`ws_mcp_reserved_aliases()`) or an MCP alias.
-   - 1a done (#1885, workspace-app-handles.md); 1b, the picker, remains.
+1. No schema: an application's tag reads with a handle from its own name; the picker lists applications a mention reaches. Reach stays the owner's until 2.
+   - 1a done (#1885, workspace-app-handles.md); 1b, the picker, done (#1975).
 2. Registry and permission (schema, ask first): a table of agents an administrator adds (kind, handle, name, app id, provider, model, sealed key, status; keys `app:<id>`, `model:<id>`) and each channel's choice per agent; then an outside app hears a mention by invitation where the channel allows it (`ws_app_reads_channel()`). `claude_access`, `ai_access` stay.
 3. Model assistants with the site's own key: OpenAI-compatible chat APIs (OpenAI, Gemini, Mistral, DeepSeek, OpenRouter with PKCE sign-in (plans/reverse-oauth-leftovers.md), Azure OpenAI, a custom address such as Ollama) answered by the Pinegrap AI engine (`ws_ai_step()` with that address, key and model): the same tools, proposals and approvals. A card each: handle (`@chatgpt`), name, avatar, sealed key, model, test. `ws_ai_requests.agent` `model:<id>`.
 4. Application membership endpoints (item 1 of plans/workspace-phase3-leftovers.md): add or remove an application in a channel; only a member adds one to a private channel.
@@ -32,4 +32,4 @@ description: Plan (2026-10-21, step 1a done, answers open): each askable agent g
 5. An OAuth-connected app's messages as "ChatGPT (via Ayşe)": plans/claude-code-channel.md C5, a separate decision.
 
 ## Where to start?
-- Step 1b (no schema): the picker. Before step 3 recheck each provider's API, tool-call format and data terms.
+- Step 2 needs the schema and the owner's answers to the open questions. Before step 3 recheck each provider's API, tool-call format and data terms.
