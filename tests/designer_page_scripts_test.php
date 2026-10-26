@@ -284,6 +284,7 @@ function _test_page_scripts_preview_doc($raw, $js_rows)
 		. 'function _sdIconsUrl() { return "https://cdn.test/bootstrap-icons.min.css"; }'
 		. 'function _sdIsBootstrapCssHref(h) { return /bootstrap(\.min)?\.css/.test(h || ""); }'
 		. 'function _sdPreviewHarness() { return ""; }'
+		. 'function _sdPreviewPlayHarness() { return ""; }'
 		. 'console.log(JSON.stringify(_sdPreviewDocHtml({}, ' . json_encode($raw) . ')));'
 	);
 }

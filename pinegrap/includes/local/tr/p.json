@@ -437,6 +437,7 @@
     "Payment block, whole block (filled by backend)": "Ödeme bloğu, tüm blok (arka uç doldurur)",
     "Payment could not be initiated. Please try again.": "Ödeme başlatılamadı. Lütfen tekrar deneyiniz.",
     "Payment could not be verified. Please try again.": "Ödeme doğrulanamadı. Lütfen tekrar deneyiniz.",
+    "Payment date": "Ödeme tarihi",
     "Payment failed. Please try again.": "Ödeme başarısız. Lütfen tekrar deneyiniz.",
     "Payment information": "Ödeme bilgisi",
     "Payment intermediary": "Ödeme aracısı",

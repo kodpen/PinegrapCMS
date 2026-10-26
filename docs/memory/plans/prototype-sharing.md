@@ -1,6 +1,6 @@
 ---
 name: prototype-sharing
-description: Plan (2026-10-24; slices 2, 3, 4 done: #1579, #1595, #1578; all eight answered): a design's drafts play as a clickable prototype shared by a view-only link; flows with the team, a link later
+description: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -19,7 +19,7 @@ description: Plan (2026-10-24; slices 2, 3, 4 done: #1579, #1595, #1578; all eig
 - Schema (approved 2026-10-24): `prototype_links` (style, start page, token hash and secret (7 b), hint, expiry, password hash, audience, maker, revoked, uses) on general label 11.0.35; `ws_flow_shares` 11.0.83 (done #1578).
 
 ## Slices (one PR each)
-1. Preview as prototype, no schema: a link whose page name matches an open tab (an unsaved tab's typed name too) plays its preview, others open the site in a new tab; hotspots toggle; designer-prototype-links slice 3 brought forward.
+1. Done #1867: Preview as prototype, no schema (designer/designer-preview-play.md); designer-prototype-links slice 3 brought forward.
 2. Done #1579: prototype.php for signed-in roles 0-2, no schema: the signed-out view and the resolver.
 3. Done #1595: share links (schema 11.0.35): dialog, list, revoke, password, WAF offence; a link-signed frame beside the person's, bound to the viewer's session.
 4. Done #1578: F7 flow shares (schema 11.0.83).
@@ -36,4 +36,4 @@ description: Plan (2026-10-24; slices 2, 3, 4 done: #1579, #1595, #1578; all eig
 8. An anyone link and a draft going live behind a sign-in: (a) not drawn, a note, (b) drawn with record widgets empty → a, as recommended (ask).
 
 ## Where to start?
-- Slice 1 open, slice 5 later (ask). Read plans/prototype-sharing-code.md, designer/page-drafts.md, designer/designer-live-preview.md, workspace/workspace-flows-store.md; claim first.
+- Slices 1-4 done; slice 5 later (ask the owner first). Read plans/prototype-sharing-code.md, workspace/workspace-flows-store.md; claim first.

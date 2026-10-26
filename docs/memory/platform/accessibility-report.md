@@ -20,7 +20,7 @@ description: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_
 - A page whose render fails keeps its earlier findings; the run logs how many failed.
 
 ## Where is the report shown?
-- `view_accessibility.php` (managers and up), linked from the Pages list's SEO buttons and the panel search; no menu entry yet. A checklist row per check (criterion, level, pages and times found), the findings worst first (1,000 rows, filter by check), Check Pages Now (the same pass, `SEO_ANALYZE_BUTTON_BUDGET`, carries on from the job's place), and the PDF.
+- `view_accessibility.php` (managers and up), linked from the main menu's Pages panel (managers and up, beside the 404 Log), the Pages list's SEO buttons and the panel search. Legal background and the related tools: accessibility-compliance.md. A checklist row per check (criterion, level, pages and times found), the findings worst first (1,000 rows, filter by check), Check Pages Now (the same pass, `SEO_ANALYZE_BUTTON_BUDGET`, carries on from the job's place), and the PDF.
 - Download PDF: `pg_a11y_report_html()` (checklist then up to 2,000 findings) rendered by `pg_privacy_export_pdf()`, the shared dompdf call. Both the screen and the PDF say an automatic check covers only part of each criterion.
 - Not on the SEO detail panel or in the page's SEO block: those read `pg_seo_load_issues()` with category `seo`.
 

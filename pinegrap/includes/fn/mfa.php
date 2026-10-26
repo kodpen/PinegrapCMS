@@ -418,6 +418,53 @@ function pg_mfa_enabled($user_id)
 }
 
 /**
+ * Whether the account has a passkey that can answer the second step: one is
+ * kept and passkeys work on this site. On a site that cannot run a ceremony
+ * (plain http, an IP address, no table) a passkey cannot be asked for, so it
+ * does not count; an authenticator key or the required-role setup still do.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_has_passkey($user_id)
+{
+    return function_exists('pg_passkeys_available') && pg_passkeys_available()
+        && (pg_passkey_count($user_id) > 0);
+}
+
+/**
+ * Whether the account has any second factor sign-in asks for: an
+ * authenticator key or a passkey.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_mfa_has_factor($user_id)
+{
+    return pg_mfa_enabled($user_id) || pg_mfa_has_passkey($user_id);
+}
+
+/**
+ * The step a sign-in owes: 'verify' when the account has an authenticator
+ * key or a passkey, 'setup' when its role requires a factor and it has
+ * neither, '' when nothing is owed. A passkey satisfies the required role
+ * as a key does.
+ *
+ * @param bool $totp_on  pg_mfa_enabled()
+ * @param bool $passkey  pg_mfa_has_passkey()
+ * @param bool $required pg_mfa_required_for_user()
+ * @return string
+ */
+function pg_mfa_gate_mode($totp_on, $passkey, $required)
+{
+    if ($totp_on || $passkey) {
+        return 'verify';
+    }
+
+    return $required ? 'setup' : '';
+}
+
+/**
  * Accounts whose role is at or below this value must have a second factor;
  * 99 means no role is required to.
  *
@@ -521,17 +568,14 @@ function pg_mfa_pending_clear()
 // the browser in on its next request through initialize_user() with no code
 // asked. Returns false when nothing is owed and the caller carries on;
 // otherwise it stashes the verified identity as a short-lived pending record
-// and sends the visitor to mfa.php without returning. 'setup' mode is for an
-// account whose role must have a second factor and has none yet.
+// and sends the visitor to mfa.php without returning. 'verify' asks for a
+// code or a passkey; 'setup' mode is for an account whose role must have a
+// second factor and has neither yet.
 function pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)
 {
-    $mode = '';
-
-    if (pg_mfa_enabled($user_id)) {
-        $mode = 'verify';
-    } elseif (pg_mfa_required_for_user($user_id)) {
-        $mode = 'setup';
-    }
+    $totp_on = pg_mfa_enabled($user_id);
+    $passkey = !$totp_on && pg_mfa_has_passkey($user_id);
+    $mode = pg_mfa_gate_mode($totp_on, $passkey, !$totp_on && !$passkey && pg_mfa_required_for_user($user_id));
 
     if ($mode === '') {
         return false;

@@ -156,6 +156,83 @@ function test_widget_entity_fields_quiz_score()
 	pg_assert_same('', $v['__quiz_score'], 'not a quiz form');
 }
 
+function _wef_order($extra = array())
+{
+	return $extra + array(
+		'po_number' => ' PO-77 ',
+		'custom_field_1' => 'Blue',
+		'custom_field_1_label' => 'Colour',
+		'custom_field_2' => '',
+		'custom_field_2_label' => 'Gift note',
+		'billing_fax_number' => '',
+		'gift_card_discount' => '2500',
+		'currency_code' => 'EUR',
+		'paid_at' => strtotime('2026-10-21 09:00:00'),
+		'cancelled_at' => null,
+		'cancellation_reason' => 'Changed my mind',
+		'refund_status' => '',
+		'refunded_amount' => '0',
+		'refunded_at' => null,
+		'tax_exempt' => '1',
+	);
+}
+
+function test_widget_entity_fields_order_values()
+{
+	$v = pg_sw_entity_values('order', _wef_order(), array('date_format' => 'd.m.Y', 'currency_symbol' => '$'));
+
+	pg_assert_same('PO-77', $v['__order_po_number']);
+	pg_assert_same('Blue', $v['__order_custom_field_1']);
+	pg_assert_same('Colour', $v['__order_custom_field_1_label']);
+	pg_assert_same('', $v['__order_custom_field_2_label'], 'no value: no label either');
+	pg_assert_same('', $v['__billing_fax']);
+	pg_assert_contains('25', $v['__order_gift_card_discount']);
+	pg_assert_same('EUR', $v['__order_currency']);
+	pg_assert_same('21.10.2026', $v['__order_paid_date']);
+	pg_assert_same('', $v['__order_cancelled_date'], 'NULL stamp: not cancelled');
+	pg_assert_same('', $v['__order_cancellation_reason'], 'a reason only on a cancelled order');
+	pg_assert_same('', $v['__order_refund_status']);
+	pg_assert_same('', $v['__order_refunded_amount']);
+	pg_assert_same('', $v['__order_refunded_date']);
+	pg_assert_same('1', $v['__order_is_tax_exempt']);
+}
+
+function test_widget_entity_fields_order_refund_and_cancel()
+{
+	$cancelled = strtotime('2026-10-22 10:00:00');
+	$v = pg_sw_entity_values('order', _wef_order(array(
+		'cancelled_at' => $cancelled,
+		'refund_status' => 'refunded',
+		'refunded_amount' => '9900',
+		'refunded_at' => $cancelled,
+		'tax_exempt' => '0',
+	)), array('format_stamp' => function ($ts) { return 'day ' . date('j', $ts); }));
+
+	pg_assert_same('day 22', $v['__order_cancelled_date'], 'the widget\'s own date formatter');
+	pg_assert_same('Changed my mind', $v['__order_cancellation_reason']);
+	pg_assert_same(lang('Refunded'), $v['__order_refund_status'], 'translated words');
+	pg_assert_contains('99', $v['__order_refunded_amount']);
+	pg_assert_same('day 22', $v['__order_refunded_date']);
+	pg_assert_same('', $v['__order_is_tax_exempt']);
+
+	foreach (array('pending', 'failed', 'manual_required') as $status) {
+		pg_assert_same(lang('Refund in progress'), pg_sw_entity_refund_words($status), $status . ' reads as in progress to the customer');
+	}
+	pg_assert_same('', pg_sw_entity_refund_words('elsewhere'));
+}
+
+// Secrets and staff-only order columns never enter the allow-list.
+function test_widget_entity_fields_order_no_secrets()
+{
+	$columns = array();
+	foreach (pg_sw_entity_fields('order') as $spec) $columns[] = $spec[0];
+	foreach (array('card_number', 'card_verification_number', 'expiration_month', 'expiration_year', 'cardholder',
+		'authorization_code', 'ip_address', 'http_referer', 'utm_source', 'utm_campaign', 'notes', 'commission',
+		'erp_account_id', 'erp_invoice_id', 'parasut_invoice_id', 'refund_reference', 'cancelled_by', 'affiliate_code') as $secret) {
+		pg_assert_false(in_array($secret, $columns, true), $secret . ' stays off');
+	}
+}
+
 // The list view never offers the record's allow-listed values.
 function test_widget_entity_fields_quiz_not_in_list_view()
 {
@@ -170,7 +247,7 @@ function test_widget_entity_fields_editor_twin()
 {
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
-	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS') as $entity => $name) {
+	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');
 
 		preg_match_all("/\['(__[a-z0-9_]+)',[^\n]*?(, 'cond')?\]/", $m[1], $rows, PREG_SET_ORDER);

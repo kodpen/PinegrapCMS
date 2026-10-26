@@ -37,10 +37,14 @@ function test_erp_cheque_receipt_every_cancel_asks()
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_resources.php');
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_receipt.php');
 
+	$check = substr($cash, strpos($cash, 'function erp_receipt_cancel_check('));
+	$check = substr($check, 0, strpos($check, 'function erp_receipt_cancel('));
+	pg_assert_contains('erp_cheque_for_cash((int) $receipt[\'id\'])', $check, 'erp_receipt_cancel_check() asks');
+	pg_assert_contains('return $refuse(erp_cheque_receipt_refusal($cheque));', $check, 'and refuses with the reason');
+
 	$cancel = substr($cash, strpos($cash, 'function erp_receipt_cancel('));
 	$cancel = substr($cancel, 0, strpos($cancel, 'erp_tx_begin()'));
-	pg_assert_contains('erp_cheque_for_cash((int) $receipt[\'id\'])', $cancel, 'erp_receipt_cancel() asks before it writes');
-	pg_assert_contains('return $fail(erp_cheque_receipt_refusal($cheque));', $cancel, 'and refuses with the reason');
+	pg_assert_contains('erp_receipt_cancel_check(', $cancel, 'erp_receipt_cancel() asks before it writes');
 
 	$route = substr($api, strpos($api, 'function erp_api_receipts_cancel('));
 	$route = substr($route, 0, strpos($route, 'erp_receipt_cancel('));

@@ -27,5 +27,8 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 ## What does a visitor see on a refusal?
 - One sentence per site/session/list code (`unavailable`, `host`, `challenge`, `none`, `limit`, `duplicate`); every refusal of the credential itself reads "The passkey was not accepted." The code goes to the activity log (`access denied (passkey not accepted: …)`, `passkey not added (…)`).
 
+## When does a passkey count as the second factor?
+- [[passkey-second-factor]] (PR #1862).
+
 ## What is not built yet? (plans/passkeys.md)
-- The gate: an account with passkeys but no TOTP is not asked for a second step; a required role still sets up TOTP. Passwordless sign-in: `pg_passkey_signin_begin(0)` and the check already handle it (user handle required, UV required) but no screen offers it.
+- Recovery codes for passkey-only accounts, adding a passkey without TOTP. Passwordless sign-in: `pg_passkey_signin_begin(0)` and the check already handle it (user handle required, UV required) but no screen offers it.
