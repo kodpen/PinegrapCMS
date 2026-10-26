@@ -527,3 +527,29 @@ function test_passkeys_reauth_fields()
 	pg_assert_same(array('password' => false, 'code' => true), pg_passkey_reauth_fields(3, true), 'Google-only with two-step');
 	pg_assert_same(array('password' => false, 'code' => false), pg_passkey_reauth_fields('3', 0), 'Google-only without two-step');
 }
+
+// -- sign-in with a passkey alone ----------------------------------------------------
+
+// The account a passkey names must still be there, and a member whose
+// address is blocked is refused as the password sign-in refuses them; staff
+// are never stopped by the block list.
+function test_passkeys_passwordless_account_refusal()
+{
+	pg_assert_same('account', pg_passkey_passwordless_refusal(null, false));
+	pg_assert_same('account', pg_passkey_passwordless_refusal(array(), false));
+	pg_assert_same('', pg_passkey_passwordless_refusal(array('user_id' => 7, 'user_role' => 3), false));
+	pg_assert_same('blocked', pg_passkey_passwordless_refusal(array('user_id' => 7, 'user_role' => 3), true));
+	pg_assert_same('', pg_passkey_passwordless_refusal(array('user_id' => 7, 'user_role' => 2), true));
+	pg_assert_same('', pg_passkey_passwordless_refusal(array('user_id' => 7, 'user_role' => 0), true));
+}
+
+// A gone or blocked account reads like any refused passkey: the answer never
+// tells whose passkey it was.
+function test_passkeys_passwordless_refusal_words()
+{
+	$plain = pg_passkey_refusal('signature', 'signin');
+
+	pg_assert_same($plain, pg_passkey_refusal('account', 'signin'));
+	pg_assert_same($plain, pg_passkey_refusal('blocked', 'signin'));
+	pg_assert_true(pg_passkey_refusal('passwordless_off', 'signin') !== $plain, 'switched off has its own sentence');
+}

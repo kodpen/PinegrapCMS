@@ -72,6 +72,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
 	upgrade_2026_11_0_contact_iys_status();     // 11.0.39
 	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
+	upgrade_2026_11_0_passkey_signin();        // 11.0.41
 
 }
 
@@ -2411,5 +2412,19 @@ function upgrade_2026_11_0_marketplace_remote_products() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Marketplaces: the products a store sells on a marketplace can be read in and matched to this shop\'s products in bulk, with suggestions, on the new Marketplace products screen.');
+
+}
+
+// Sign-in with a passkey alone (2026.11.0, 11.0.41; includes/fn/passkeys.php).
+//
+// config.passkey_signin is the Security card's switch for the "Sign in with a
+// passkey" button on the sign-in screens (PASSKEY_SIGNIN). Off by default: an
+// upgraded site keeps its sign-in screen as it is until a manager turns the
+// button on.
+function upgrade_2026_11_0_passkey_signin() {
+
+	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");
+
+	install_note('Settings › Security: a switch offers sign-in with a passkey alone on the sign-in screens. It starts off.');
 
 }
