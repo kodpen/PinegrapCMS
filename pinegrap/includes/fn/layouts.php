@@ -172,3 +172,33 @@ function pg_layout_custom_page_ids(array $page_ids)
 
     return $out;
 }
+
+// The parameter the toolbar's style designer button (Ctrl+G) adds so the
+// visual designer opens on the page's layout tab, where the classic page
+// designer used to open: for a page that draws a custom layout, for the
+// layout editor's role (designers and administrators). Not on a hosted
+// site, which draws the generated layout and keeps the tab read only; the
+// button opens the canvas there.
+function pg_layout_tab_param($page_id, array $layout_page_ids, $role, $hosted)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || ((int) $role > 1) || $hosted) {
+        return '';
+    }
+
+    return in_array($page_id, array_map('intval', $layout_page_ids), true) ? '&layout=1' : '';
+}
+
+// The page whose layout tab the designer opens on load (?layout=1): the page
+// it lands on, when that page draws a custom layout; 0 otherwise.
+function pg_layout_open_page_id($flag, $page_id, array $layout_page_ids)
+{
+    $page_id = (int) $page_id;
+
+    if (!is_scalar($flag) || ((string) $flag === '') || ((string) $flag === '0') || ($page_id <= 0)) {
+        return 0;
+    }
+
+    return in_array($page_id, array_map('intval', $layout_page_ids), true) ? $page_id : 0;
+}

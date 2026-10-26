@@ -66575,6 +66575,20 @@ const StyleDesigner = (function () {
         if (design && design.startAction) {
             setTimeout(function () { _pgStartAction(design.startAction); }, 400);
         }
+        // Ctrl+G on a page that draws a custom layout (?layout=1): its layout
+        // tab, where the classic page designer used to open. The parameter
+        // leaves the address so a reload opens the canvas.
+        if (design && design.openLayout) {
+            setTimeout(function () {
+                try {
+                    var u = new URL(window.location.href);
+                    u.searchParams.delete('layout');
+                    history.replaceState(null, '', u.toString());
+                } catch (e) {}
+                var lp = _pgActivePage();
+                if (lp && lp.page_id === design.openLayout) _sdLayoutCodeOpen(lp, false);
+            }, 400);
+        }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);
         }
