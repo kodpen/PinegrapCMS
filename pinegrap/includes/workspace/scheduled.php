@@ -3971,10 +3971,13 @@ function ws_scheduled_notify($viewer, $row, $action, $context)
     $told = array();
 
     foreach (ws_scheduled_people($action['user_ids'] ?? array()) as $user_id) {
+        // A flow's box (no action row) gets a line of its own each time: the
+        // inbox keys a line by its channel, message and task, all 0 then.
         $inbox_id = ws_notify($user_id, 'scheduled_notice', array(
             'channel_id' => 0,
             'message_id' => (int) $row['message_id'],
             'actor_id'   => (int) $viewer['id'],
+            'separate'   => ((int) $row['id'] <= 0),
         ));
 
         if ($inbox_id > 0) {
@@ -4292,7 +4295,7 @@ function ws_scheduled_task($viewer, $row, $action, $context)
         return array('ok' => false, 'text' => lang(array('string' => 'The task could not be opened: {var:1}', 'vars' => $made['error'])), 'message_id' => 0);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($made['task_id']), $data['title']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($made['task_id']), $data['title']))), 'message_id' => 0, 'task_id' => (int) $made['task_id']);
 }
 
 /**
@@ -4330,11 +4333,22 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
                 'source' => (string) ($context['source'] ?? ''),
                 'at'     => date('c'),
             );
+
+            // A flow's box (steps.php): which flow, run and box called.
+            if (!empty($context['flow'])) {
+                $payload['flow'] = $context['flow'];
+            }
+    }
+
+    $headers = array('Content-Type: application/json; charset=utf-8');
+
+    if ((string) ($context['idempotency_key'] ?? '') !== '') {
+        $headers[] = 'Idempotency-Key: ' . preg_replace('/[^A-Za-z0-9_.:-]/', '', (string) $context['idempotency_key']);
     }
 
     $answer = api_http_request('POST', (string) $action['url'], array(
         'body'    => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        'headers' => array('Content-Type: application/json; charset=utf-8'),
+        'headers' => $headers,
         'timeout' => 10,
         'agent'   => 'workspace',
     ));
@@ -4370,7 +4384,9 @@ function ws_scheduled_web_check($action)
         'agent'    => 'uptime-check',
     ));
 
-    $url = (string) $action['url'];
+    // Only the host in the sentence: a flow's run shows it to whoever reads
+    // the run, and the address may carry a secret (user:pass@, a token).
+    $url = ws_scheduled_host((string) $action['url']);
     $status = (int) $answer['status'];
     $fail = function ($text) {
         return array('ok' => false, 'text' => $text, 'message_id' => 0);

@@ -137,6 +137,7 @@
     "Each Period": "Her Periyotta",
     "Each attribute must be an object of {attribute_id, option_id}.": "Her özellik {attribute_id, option_id} biçiminde bir nesne olmalı.",
     "Each block is its own form: a form element bound to the Account security form action, holding buttons bound to the action they take. A tree with no bound form is sent as one form.": "Her blok kendi formudur: Hesap güvenliği formu eylemine bağlı bir form öğesi ve içinde yaptıkları eyleme bağlı düğmeler. Bağlı formu olmayan ağaç tek form olarak gönderilir.",
+    "Each call carries an Idempotency-Key header, the same for one box of one run.": "Her çağrı, bir çalıştırmanın bir kutusu için aynı olan bir Idempotency-Key başlığı taşır.",
     "Each card says how long the visit takes and what it costs.": "Her kart muayenenin ne kadar sürdüğünü ve ücretini gösterir.",
     "Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.": "Telefonunuzu kaybederseniz her kod bir kez oturum açtırır. Güvenli bir yerde saklayın; bir daha gösterilmezler.",
     "Each comment follows the comment settings of its own page.": "Her yorum kendi sayfasının yorum ayarlarına uyar.",
