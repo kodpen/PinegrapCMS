@@ -262,3 +262,17 @@ function test_mfa_gate_mode()
 	pg_assert_same('setup', pg_mfa_gate_mode(false, false, true));
 	pg_assert_same('', pg_mfa_gate_mode(false, false, false));
 }
+
+// A passkey counts as a second step wherever a code does: a request that
+// carries only a password (api.php, ShipWorks) is refused for an account
+// with either, and the user screen shows two-step on, with its reset, for
+// an account whose only factor is a passkey.
+function test_mfa_password_only_paths_count_passkeys()
+{
+	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
+	pg_assert_contains("if (\$api_password_ok && pg_mfa_has_factor(\$cred['user_id']))", $auth, 'api.php password sign-in');
+	$shipworks = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipworks.php');
+	pg_assert_contains("pg_mfa_has_factor((int) \$user['id'])", $shipworks, 'ShipWorks');
+	$edit_user = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
+	pg_assert_contains("pg_mfa_table_exists() && pg_mfa_has_factor((int) \$_GET['id'])", $edit_user, 'user screen state and reset');
+}

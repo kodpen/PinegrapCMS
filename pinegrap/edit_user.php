@@ -966,7 +966,7 @@ if (!$_POST) {
     // panel. Absent until the 8.40 upgrade has created the tables. There is
     // no way to turn it on here: the key is confirmed on the person's own
     // device, from their account page.
-    $edit_user_mfa_on = pg_mfa_table_exists() && pg_mfa_enabled((int) $_GET['id']);
+    $edit_user_mfa_on = pg_mfa_table_exists() && pg_mfa_has_factor((int) $_GET['id']);
     $edit_user_mfa_self = ((int) $_GET['id'] === (int) USER_ID);
 
     $output_mfa_state = h($edit_user_mfa_on ? lang('On') : lang('Off'));
