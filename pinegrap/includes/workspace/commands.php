@@ -1727,7 +1727,8 @@ function ws_parse_schedule_offset($word)
  * What /schedule is given: when, then the message. When is a time from now
  * ("+30dk"), or a day word, a time of day ("14:00", "saat 14:00", "at
  * 14:00") or both, in that order, at the start of the line. A day alone is
- * at 09:00; a time alone is today's, or tomorrow's once it has gone by.
+ * at 09:00; a time alone is today's, or tomorrow's once it has gone by. The
+ * message is the rest as it was written, its line breaks included.
  *
  * @param string   $text the line after the command's name
  * @param int|null $now  the moment it is read at, for tests
@@ -1777,7 +1778,10 @@ function ws_command_parse_schedule($text, $now = null)
         break;
     }
 
-    $body = trim(implode(' ', array_slice($words, $taken)));
+    // Only the words read as the time come off the start: the message keeps
+    // its own line breaks and spaces (paragraphs, lists, quotes, code).
+    $rest = preg_split('/\s+/u', trim((string) $text), $taken + 1);
+    $body = trim((string) ($rest[$taken] ?? ''));
 
     if ($minutes > 0) {
         $at = $now + $minutes * 60;
@@ -2015,7 +2019,9 @@ function ws_command_timer_suggest($viewer, $text)
 /**
  * What /away is given, as ws_event_save() takes it: the first day, the last
  * day when a second day word follows, the rest as the title (Leave when
- * there is none). Days are read from today.
+ * there is none). The first day is read from today and the last from the
+ * first, so "friday monday" ends on the Monday after that Friday whatever
+ * day it is typed on.
  *
  * @param string      $text the line after the command's name
  * @param string|null $today Y-m-d, for tests
@@ -2026,7 +2032,7 @@ function ws_command_away_data($text, $today = null)
     $today = ($today === null) ? date('Y-m-d') : $today;
     $words = preg_split('/\s+/u', trim((string) $text));
     $start = ws_parse_date_word($words[0] ?? '', $today);
-    $end = ($start !== '') ? ws_parse_date_word($words[1] ?? '', $today) : '';
+    $end = ($start !== '') ? ws_parse_date_word($words[1] ?? '', $start) : '';
     $taken = ($start === '') ? 0 : (($end === '') ? 1 : 2);
 
     return array(

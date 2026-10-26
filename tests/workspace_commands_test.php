@@ -583,6 +583,20 @@ function test_workspace_command_schedule_offset()
 	pg_assert_same(0, ws_parse_schedule_offset('+0dk'), 'nothing');
 }
 
+// The message /schedule posts is the text as written after its time: line
+// breaks, a list, a quote and a code block stay, as they do when the clock
+// beside the send button schedules it. 2026-10-21 is a Wednesday.
+function test_workspace_command_schedule_keeps_the_message_as_written()
+{
+	$now = strtotime('2026-10-21 10:15:20');
+	$message = "Günaydın!\n\nGündem:\n- Satış\n- Stok\n> Önce rakamlar";
+
+	pg_assert_same($message, ws_command_parse_schedule('yarın 09:00 ' . $message, $now)['body'], 'a day and a time');
+	pg_assert_same($message, ws_command_parse_schedule("cuma saat 14:30\n" . $message, $now)['body'], '"saat", then the message on the next line');
+	pg_assert_same($message, ws_command_parse_schedule('+30dk ' . $message, $now)['body'], 'a time from now');
+	pg_assert_same("Kod:\n```\nfoo  bar\n```", ws_command_parse_schedule("16:00 Kod:\n```\nfoo  bar\n```", $now)['body'], 'a code block keeps its spaces');
+}
+
 // /timer (/süre) answers to its names and tells a stop word from a task.
 function test_workspace_command_timer_names_and_stop_words()
 {
@@ -613,6 +627,21 @@ function test_workspace_command_away_reads_its_days()
 	pg_assert_same($away('2026-10-22', '2026-10-22', ''), ws_command_away_data('yarın', '2026-10-21'), 'one day');
 	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('2.11 6.11', '2026-10-21'), 'two dates');
 	pg_assert_same($away('', '', 'Tatil'), ws_command_away_data('Tatil', '2026-10-21'), 'no day');
+}
+
+// /away reads its last day from its first, so two weekdays are a range that
+// starts on the first whatever day the line is typed on. 2026-10-26 is a
+// Monday, 2026-10-27 a Tuesday, 2026-10-31 a Saturday.
+function test_workspace_command_away_reads_its_last_day_from_its_first()
+{
+	$away = function ($start, $end, $title) {
+		return array('kind' => 'leave', 'scope' => 'people', 'start' => $start, 'end' => $end, 'title' => $title);
+	};
+
+	pg_assert_same($away('2026-10-30', '2026-11-02', 'Family visit'), ws_command_away_data('friday monday Family visit', '2026-10-26'), 'friday monday, typed on a Monday');
+	pg_assert_same($away('2026-11-02', '2026-11-06', ''), ws_command_away_data('pazartesi cuma', '2026-10-27'), 'pazartesi cuma, typed on a Tuesday');
+	pg_assert_same($away('2026-11-06', '2026-11-09', ''), ws_command_away_data('cuma pazartesi', '2026-10-31'), 'cuma pazartesi, typed on a Saturday');
+	pg_assert_same($away('2026-12-28', '2027-01-04', ''), ws_command_away_data('28.12 4.1', '2026-10-27'), 'a date without a year before the first day is in the next year');
 }
 
 // /meeting (/toplantı) reads when it starts as /schedule does, then an end
