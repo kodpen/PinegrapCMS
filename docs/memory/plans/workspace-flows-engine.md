@@ -39,4 +39,4 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md)
-- F4: a) #1835 post, email; b) #1857 notify, task_open, webhook, web_check; b2) task_digest, report, change, checkin, trigger; c) condition; d) anchor triggers; e) box dry-run. Then F5.
+- F4: a) #1835 post, email; b) #1857 notify, task_open, webhook, web_check; b2) #1923 task_digest, report, checkin, start_action; b3) change; c) condition; d) anchor triggers; e) box dry-run. Then F5.

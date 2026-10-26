@@ -61,7 +61,10 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	}
 
 	$js = _widget_lists_editor_js();
-	$cut = _widget_lists_editor_js_var($js, 'SW_LIST_SOURCES', '{') . _widget_lists_editor_js_var($js, 'SW_LIST_ORDERS')
+	// The order lists' rows carry the allow-listed entity values.
+	$cut = _widget_lists_editor_js_var($js, 'SW_PRODUCT_ENTITY_TOKENS') . _widget_lists_editor_js_var($js, 'SW_ORDER_LINE_ENTITY_TOKENS')
+		. _widget_lists_editor_js_var($js, 'SW_SHIP_TO_ENTITY_TOKENS')
+		. _widget_lists_editor_js_var($js, 'SW_LIST_SOURCES', '{') . _widget_lists_editor_js_var($js, 'SW_LIST_ORDERS')
 		. "\n    var SW_LIST_MAX_DEPTH = 4;\n";
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');

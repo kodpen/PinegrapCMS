@@ -55,7 +55,7 @@ function pg_sw_list_order_sources()
             'label'        => lang('Recipients of the order'),
             'arg'          => '',
             'arg_required' => false,
-            'tokens'       => array(
+            'tokens'       => array_merge(array(
                 array('__ship_to_key', lang('Recipient in the order')),
                 array('__shipping_name', lang('Recipient Full Name')),
                 array('__shipping_first_name', lang('Recipient First Name')),
@@ -72,7 +72,7 @@ function pg_sw_list_order_sources()
                 array('__shipping_method', lang('Shipping method / carrier')),
                 array('__arrival_date', lang('Estimated delivery date')),
                 array('__ship_to_item_count', lang('Number of items')),
-            ),
+            ), pg_sw_list_order_entity_tokens('ship_to')),
         ),
         'order.items' => array(
             'family'       => 'order',
@@ -80,7 +80,7 @@ function pg_sw_list_order_sources()
             'label'        => lang('Items of the order'),
             'arg'          => '',
             'arg_required' => false,
-            'tokens'       => array(
+            'tokens'       => array_merge(array(
                 array('__item_id', lang('Row ID (order_items.id)')),
                 array('__item_name', lang('Product name (products.name)')),
                 array('__item_number', lang('Stock code (SKU)')),
@@ -95,7 +95,7 @@ function pg_sw_list_order_sources()
                 array('__item_ship_to', lang('This item\'s shipping address')),
                 array('__item_has_form_data', lang('Has product form answers (1 or empty)')),
                 array('__item_has_gift_card', lang('Has gift cards (1 or empty)')),
-            ),
+            ), pg_sw_list_order_entity_tokens('order_line'), pg_sw_list_order_entity_tokens('product')),
         ),
         'order.parcels' => array(
             'family'       => 'order',
@@ -193,12 +193,66 @@ function _pg_sw_list_order_city_line($zip, $city, $state)
     return implode(' ', array_filter(array(trim((string)$zip), trim((string)$city), $state)));
 }
 
+// The allow-listed values (pg_sw_entity_fields($entity)) a row of the
+// order's lists carries beside its own tokens, as array(token, label), a
+// yes/no value with 'cond' after (a condition reads it, never a text
+// binding): the twin of the editor's SW_*_ENTITY_TOKENS list.
+function pg_sw_list_order_entity_tokens($entity)
+{
+    $labels = array(
+        'ship_to' => array(
+            '__ship_to_name'            => lang('Ship-to name'),
+            '__shipping_salutation'     => lang('Salutation (Mr/Ms)'),
+            '__shipping_address_type'   => lang('Address type (Residential address, Business address)'),
+            '__shipping_ship_date'      => lang('Ship date (shipped or planned)'),
+            '__shipping_delivered_date' => lang('Delivered date'),
+        ),
+        'order_line' => array(
+            '__item_shipped_qty'         => lang('Quantity shipped (when the shop shows it)'),
+            '__item_vat'                 => lang('Line VAT (with symbol)'),
+            '__item_payment_period'      => lang('Subscription payment period'),
+            '__item_payment_count'       => lang('Subscription number of payments'),
+            '__item_first_payment_date'  => lang('First payment date (subscriptions)'),
+            '__item_event_name'          => lang('Reserved event name'),
+            '__item_event_date'          => lang('Reserved event date and time'),
+            '__item_added_by_offer'      => lang('Added by an offer'),
+            '__item_discounted_by_offer' => lang('Discounted by an offer'),
+        ),
+        'product' => array(
+            '__keywords'            => lang('Keywords'),
+            '__length'              => lang('Length'),
+            '__width'               => lang('Width'),
+            '__height'              => lang('Height'),
+            '__minimum_quantity'    => lang('Minimum order quantity'),
+            '__maximum_quantity'    => lang('Maximum order quantity'),
+            '__preparation_days'    => lang('Preparation time (days)'),
+            '__extra_shipping_cost' => lang('Extra shipping cost (with symbol)'),
+            '__vat_rate'            => lang('VAT rate (number, without the % sign)'),
+            '__payment_period'      => lang('Subscription payment period'),
+            '__number_of_payments'  => lang('Subscription number of payments'),
+            '__is_free_shipping'    => lang('Ships free'),
+            '__is_gift_card'        => lang('Is a gift card'),
+            '__is_donation'         => lang('Is a donation'),
+        ),
+    );
+
+    $out = array();
+    foreach (pg_sw_entity_fields($entity) as $token => $spec) {
+        $row = array($token, isset($labels[$entity][$token]) ? (string)$labels[$entity][$token] : $token);
+        if ($spec[1] === 'yesno') $row[] = 'cond';
+        $out[] = $row;
+    }
+
+    return $out;
+}
+
 // One recipient's row from its ship_tos row (first_name, last_name,
 // company, phone_number, address_1, address_2, city, state, zip_code,
 // country, arrival_date, shipping_method: the order view's shipping
 // columns) as the order view's shipping tokens print them. $arrival
-// formats a Y-m-d arrival date. The item count is set by
-// pg_sw_list_order_rows().
+// formats a Y-m-d arrival date, and the shipped and delivered dates of its
+// allow-listed values (pg_sw_entity_fields('ship_to')), which ride along.
+// The item count is set by pg_sw_list_order_rows().
 function pg_sw_list_order_shipment_row($st, $arrival)
 {
     $g = function ($k) use ($st) { return isset($st[$k]) ? (string)$st[$k] : ''; };
@@ -225,16 +279,22 @@ function pg_sw_list_order_shipment_row($st, $arrival)
         '__shipping_method'       => $g('shipping_method'),
         '__arrival_date'          => ($date !== '' && $date !== '0000-00-00' && is_callable($arrival)) ? (string)$arrival($date) : '',
         '__ship_to_item_count'    => '0',
-    );
+    ) + pg_sw_entity_values('ship_to', $st, array(
+        'format_stamp' => function ($ts) use ($arrival) { return is_callable($arrival) ? (string)$arrival(date('Y-m-d', $ts)) : date('Y-m-d', $ts); },
+    ));
 }
 
 // One item's row from the order view's item (its $items entry), raw: the
 // pass escapes it once.
-// Its allow-listed line and product values ride along when the order view
-// read them ('entity').
+// Its allow-listed line and product values ride along, those the order
+// view read ('entity'), the rest empty: they are the list's own tokens.
 function pg_sw_list_order_item_row($item)
 {
     $g = function ($k) use ($item) { return isset($item[$k]) ? (string)$item[$k] : ''; };
+    $entity = array();
+    foreach (array_merge(pg_sw_entity_fields('order_line'), pg_sw_entity_fields('product')) as $token => $spec) {
+        $entity[$token] = isset($item['entity'][$token]) ? (string)$item['entity'][$token] : '';
+    }
     return array(
         '__item_id'                => (string)(int)$g('id'),
         '__item_name'              => $g('name'),
@@ -250,7 +310,7 @@ function pg_sw_list_order_item_row($item)
         '__item_ship_to'           => $g('ship_to'),
         '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
         '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
-    ) + ((isset($item['entity']) && is_array($item['entity'])) ? $item['entity'] : array());
+    ) + $entity;
 }
 
 // The rows of the order lists, as pg_sw_list_publish('order') files them:

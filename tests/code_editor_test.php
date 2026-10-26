@@ -398,3 +398,104 @@ function test_code_editor_find_all_regexp_words_and_limit()
 	pg_assert_same(array(true, 0), $result['bad'], 'an invalid pattern');
 	pg_assert_same(array(3, true), $result['cut'], 'three hits, more left out');
 }
+
+// Runs the facade's formatter under Node: _formatText() cut from the facade
+// on the bundle's window.PgCM. Null when there is no Node.
+function code_editor_test_format_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function _formatText(');
+	$to = ($from !== false) ? strpos($facade, "\n    }\n", $from) : false;
+
+	if ($to === false) {
+		return array('error' => '_formatText() was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeformat');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'global.window = global;' . "\n"
+		. '(0, eval)(require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js') . ', "utf8"));' . "\n"
+		. substr($facade, $from, $to - $from + 6) . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// CSS, JavaScript and JSON are formatted with the editor's indent unit; HTML
+// and an unknown language are not formatted (the designer's page view is
+// printed by its emitter already), and the result ends without a new line
+// when the text did.
+function test_code_editor_format_text_by_language()
+{
+	$result = code_editor_test_format_node(
+		'var cm = window.PgCM;' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' css: _formatText(cm, "css", "a{color:red;margin:0}", "    "),'
+		. ' js: _formatText(cm, "javascript", "function f(a){if(a){return 1}return 2}", "  "),'
+		. ' json: _formatText(cm, "json", "{\"a\":[1,2],\"b\":{\"c\":true}}", "\t"),'
+		. ' newline: _formatText(cm, "css", "a{color:red}\n", "    "),'
+		. ' html: _formatText(cm, "html", "<p><b>x</b></p>", "    "),'
+		. ' other: _formatText(cm, "php", "x", "    ") }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same("a {\n    color: red;\n    margin: 0\n}", $result['css'], 'css, four spaces');
+	pg_assert_same("function f(a) {\n  if (a) {\n    return 1\n  }\n  return 2\n}", $result['js'], 'javascript, two spaces');
+	pg_assert_same("{\n\t\"a\": [1, 2],\n\t\"b\": {\n\t\t\"c\": true\n\t}\n}", $result['json'], 'json, a tab');
+	pg_assert_same("a {\n    color: red\n}\n", $result['newline'], 'the closing new line stays');
+	pg_assert_same(null, $result['html'], 'html is not formatted');
+	pg_assert_same(null, $result['other'], 'an unknown language is not formatted');
+}
+
+// ed.format() changes nothing in a read-only editor or across a lock, and
+// replaces only the part that differs in one change through the lock
+// filter: one undo step that onChange hears like typing. Shift+Alt+F runs
+// it in both keymaps.
+function test_code_editor_format_command()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '        inst.format = function');
+	$format = ($from !== false) ? substr($facade, $from, strpos($facade, "\n        };\n", $from) - $from) : '';
+
+	pg_assert_true($format !== '', 'ed.format() is found');
+	pg_assert_contains('if (view.state.readOnly) return false;', $format, 'read-only refuses');
+	pg_assert_contains('if (!inst.canEdit(from, toA)) return false;', $format, 'a lock over the changed part refuses');
+	pg_assert_contains("userEvent: 'input.format'", $format, 'one change, as an edit');
+	pg_assert_false(strpos($format, 'filter: false') !== false, 'the lock filter is not bypassed');
+	pg_assert_false(strpos($format, 'addToHistory') !== false, 'the change is undoable');
+
+	$keys = strpos($facade, 'function keymapExtensions()');
+	$keymap = ($keys !== false) ? substr($facade, $keys, strpos($facade, "\n        }\n", $keys) - $keys) : '';
+	$vscode = strpos($keymap, 'if (useVscode)');
+	$shortcut = strpos($keymap, "{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }");
+
+	pg_assert_true(($vscode !== false) && ($shortcut !== false) && ($shortcut < $vscode), 'Shift+Alt+F comes before either keymap');
+}

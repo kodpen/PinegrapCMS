@@ -10794,21 +10794,7 @@ const StyleDesigner = (function () {
         // of which builder handled it.
         var hideLoop = false;
         var isList = _sdListIsSourced(node);
-        if (_sysWidgetRenderCfg && !isList) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            hideLoop = (_lwRt === 'form_item_view') ||
-                       (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                       (_lwRt === 'login_form') ||
-                       (_lwRt === 'forgot_password') ||
-                       (_lwRt === 'registration') ||
-                       (_lwRt === 'membership') ||
-                       (_lwRt === 'custom_form') ||
-                       (_lwRt === 'catalog_item_view') ||
-                       (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                       (_SW_ONE_SCREEN[_lwRt] === 1);
-        }
+        if (_sysWidgetRenderCfg && !isList) hideLoop = _sdLoopIsSingle(_sysWidgetRenderCfg);
 
         var isRecipient = (node.type === 'recipient_loop_area');
         var listBand = isList ? _sdListBand(node) : null;
@@ -12231,11 +12217,37 @@ const StyleDesigner = (function () {
         ]
     };
 
-    // The rows drawn after a list's card: none when the site draws nothing
-    // for it, inside a sample row, or with the sample switch off; at most
-    // the rows the list shows (props.limit) less the card.
+    // Whether a widget of `cfg` draws its main loop once: a single-record
+    // kind, whose loop holds the layout but repeats nothing.
+    function _sdLoopIsSingle(cfg) {
+        var rt = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (rt === 'form_item_view') ||
+               (rt === 'my_account' && cfg.show_submissions !== true) ||
+               (rt === 'login_form') ||
+               (rt === 'forgot_password') ||
+               (rt === 'registration') ||
+               (rt === 'membership') ||
+               (rt === 'custom_form') ||
+               (rt === 'catalog_item_view') ||
+               (rt === 'calendar_event_view') ||
+               (_SW_ACCOUNT_SINGLE[rt] === 1) ||
+               (_SW_ONE_SCREEN[rt] === 1);
+    }
+
+    // The rows drawn after a loop's card. A list: none when the site draws
+    // nothing for it, at most the rows it shows (props.limit) less the card.
+    // The main loop: two rows of the card's values, in a kind that repeats
+    // it and gets no real records (server ghosts) or sample comments. None
+    // inside a sample row or a sample comment, or with the sample switch off.
     function _sdListSampleRows(node) {
-        if (!_sdGhostsOn || _sdListSample || !_sdListIsSourced(node)) return [];
+        if (!_sdGhostsOn || _sdListSample || _sdCommentSample || !node || node.type !== 'loop_area') return [];
+        if (!_sdListIsSourced(node)) {
+            var cfg = _sysWidgetRenderCfg;
+            if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
+            var kind = _swKindOf(cfg);
+            if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
+            return [{}, {}];
+        }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
         var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
@@ -12554,20 +12566,7 @@ const StyleDesigner = (function () {
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
         // A list inside a record repeats its rows in every kind that draws it.
         if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            var _loopHide = (_lwRt === 'form_item_view') ||
-                            (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                            (_lwRt === 'login_form') ||
-                            (_lwRt === 'forgot_password') ||
-                            (_lwRt === 'registration') ||
-                            (_lwRt === 'membership') ||
-                            (_lwRt === 'custom_form') ||
-                            (_lwRt === 'catalog_item_view') ||
-                            (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                            (_SW_ONE_SCREEN[_lwRt] === 1);
-            if (_loopHide) {
+            if (_sdLoopIsSingle(_sysWidgetRenderCfg)) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
                 // one goes altogether; one holding the layout (a form item
@@ -14047,7 +14046,7 @@ const StyleDesigner = (function () {
 
     // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
-        '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
+        '__result_count': '12', '__page_count': '2', '__page_number': '1', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
@@ -33051,6 +33050,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-max-results" data-sw-id="' + sid + '" min="1" value="' + _maxResVal + '" placeholder="' + esc(_sdT('Unlimited')) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty for no limit. Paging happens within this ceiling.')) + '</div>'
                     ) +
+                    // Offset and the list's own page parameter
+                    // (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    (_isFormListView ? row(_sdT('Skip the first records'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
+                    ) + row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) : '') +
                     row(_sdT('Detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
@@ -36404,6 +36412,10 @@ const StyleDesigner = (function () {
                     v = _swPageVal(this);
                 } else if (kind === 'bool') {
                     v = !!this.checked;
+                } else if (kind === 'param') {
+                    // A query parameter name, '' when it cannot be used.
+                    v = _swUrlParamName(this.value);
+                    this.value = v;
                 } else {
                     v = ('' + this.value).slice(0, 255);
                 }
@@ -37048,7 +37060,11 @@ const StyleDesigner = (function () {
     // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
-        ['__result_count', _sdT('Number of results')]
+        ['__result_count', _sdT('Number of results')],
+        ['__page_number',   _sdT('Page shown')],
+        ['__page_count',    _sdT('Number of pages')],
+        ['__prev_page_url', _sdT('Previous page link')],
+        ['__next_page_url', _sdT('Next page link')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -37871,6 +37887,32 @@ const StyleDesigner = (function () {
         ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
     ];
 
+    // A recipient's allow-listed values (pg_sw_entity_fields('ship_to')),
+    // offered by the order view (its receipt e-mail too) for the first
+    // recipient and by a list of the order's recipients for each.
+    var SW_SHIP_TO_ENTITY_TOKENS = [
+        ['__ship_to_name',            _sdT('Ship-to name')],
+        ['__shipping_salutation',     _sdT('Salutation (Mr/Ms)')],
+        ['__shipping_address_type',   _sdT('Address type (Residential address, Business address)')],
+        ['__shipping_ship_date',      _sdT('Ship date (shipped or planned)')],
+        ['__shipping_delivered_date', _sdT('Delivered date')]
+    ];
+
+    // A saved recipient's allow-listed values (pg_sw_entity_fields(
+    // 'address_book')), offered by the address book's row loop.
+    var SW_ADDRESS_BOOK_ENTITY_TOKENS = [
+        ['__recipient_salutation',   _sdT('Salutation (Mr/Ms)')],
+        ['__recipient_first_name',   _sdT('First name')],
+        ['__recipient_last_name',    _sdT('Last name')],
+        ['__recipient_address_1',    _sdT('Address line 1')],
+        ['__recipient_address_2',    _sdT('Address line 2')],
+        ['__recipient_city',         _sdT('City')],
+        ['__recipient_state',        _sdT('State / Province')],
+        ['__recipient_zip',          _sdT('Zip Code')],
+        ['__recipient_country',      _sdT('Country')],
+        ['__recipient_address_type', _sdT('Address type (Residential address, Business address)')]
+    ];
+
     // Whether a palette entry is offered only as a condition (yes/no).
     function _swTokenCondOnly(t) {
         return !!(t && t[2] === 'cond');
@@ -38290,6 +38332,7 @@ const StyleDesigner = (function () {
             ['__recipient_edit_url',     _sdT('Edit address (href)')],
             ['__recipient_remove_url',   _sdT('Remove address (href)')]
         ]},
+        { label: _sdT('More recipient details (loop)'), tokens: SW_ADDRESS_BOOK_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url',         _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',              _sdT('Sign-in page address (signed-out view)')]
@@ -39029,6 +39072,7 @@ const StyleDesigner = (function () {
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More recipient details'), tokens: SW_SHIP_TO_ENTITY_TOKENS },
         { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
         { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
@@ -39993,7 +40037,10 @@ const StyleDesigner = (function () {
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
             ['no_filter_value',  _sdT('No value from the page address is applied')],
             ['has_records',      _sdT('The list found records')],
-            ['no_records',       _sdT('The list found nothing')]
+            ['no_records',       _sdT('The list found nothing')],
+            ['has_prev_page',    _sdT('A previous page exists')],
+            ['has_next_page',    _sdT('A next page exists')],
+            ['has_more_pages',   _sdT('The list runs over more than one page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -41440,6 +41487,7 @@ const StyleDesigner = (function () {
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                 _listRows.forEach(function (o) {
+                    if (o.cond && o.token !== currentVal) return;
                     html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
                 });
                 html += '</optgroup>';
@@ -53639,6 +53687,11 @@ const StyleDesigner = (function () {
         'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
         'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
+    // Twin of pg_sw_list_offset(): records a list skips, 0 to 100000.
+    function _swListOffset(cfg) {
+        var n = parseInt(cfg && cfg.offset, 10);
+        return (n > 0) ? Math.min(100000, n) : 0;
+    }
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
         var n = String(v == null ? '' : v).trim().toLowerCase();
@@ -54008,7 +54061,7 @@ const StyleDesigner = (function () {
                 ['__shipping_method',       _sdT('Shipping method / carrier')],
                 ['__arrival_date',          _sdT('Estimated delivery date')],
                 ['__ship_to_item_count',    _sdT('Number of items')]
-            ]
+            ].concat(SW_SHIP_TO_ENTITY_TOKENS)
         },
         'order.items': {
             label: _sdT('Items of the order'),
@@ -54029,7 +54082,7 @@ const StyleDesigner = (function () {
                 ['__item_ship_to',           _sdT('This item\'s shipping address')],
                 ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
                 ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
-            ]
+            ].concat(SW_ORDER_LINE_ENTITY_TOKENS, SW_PRODUCT_ENTITY_TOKENS)
         },
         'order.parcels': {
             label: _sdT('Parcels of the order'),
@@ -54271,7 +54324,8 @@ const StyleDesigner = (function () {
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
-    // the nearest list's first; a token a nearer list gives is that list's
+    // with cond: true on a yes/no value (offered as a condition only), the
+    // nearest list's first; a token a nearer list gives is that list's
     // (the site fills it so) and is not offered twice.
     function _sdListRowOptions(node) {
         var out = [], seen = {};
@@ -54280,19 +54334,19 @@ const StyleDesigner = (function () {
             (src ? src.rows : []).forEach(function (r) {
                 if (seen[r[0]]) return;
                 seen[r[0]] = true;
-                out.push({ token: r[0], label: r[1] });
+                out.push(r[2] === 'cond' ? { token: r[0], label: r[1], cond: true } : { token: r[0], label: r[1] });
             });
         });
         return out;
     }
 
     // The row tokens of the nearest list `node` is drawn in, as [token,
-    // label] pairs: the values a page link may take from the row
-    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    // label] pairs: the values a page link may take from the row, a yes/no
+    // value left out (_pg_sw_page_link_walk() reads the nearest list alone).
     function _sdPageLinkRowTokens(node) {
         var list = _sdListsAbove(node)[0];
         var src = list ? SW_LIST_SOURCES[list.props.source] : null;
-        return src ? src.rows.slice() : [];
+        return src ? src.rows.filter(function (r) { return r[2] !== 'cond'; }) : [];
     }
 
     // The label of a list row token, or '' for any other token.

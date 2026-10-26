@@ -36,6 +36,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   period      a recurring product's payment period, as translated words
 //   recurrence  a calendar event's recurrence type, as translated words
 //   refund      an order's refund status, as translated words
+//   place       an address type (residential, business), as translated words
 //   yesno       '1' or '' (a condition reads it; never shown as text)
 // Options: 'when' => columns that must all be non-zero, else the value is '';
 // 'is' => the value that means yes (yesno), else any non-zero value does;
@@ -148,6 +149,39 @@ function pg_sw_entity_fields($entity)
         );
     }
 
+    // A ship_tos row: a recipient of the order, in the order view and its
+    // receipt e-mail (the owner's own order). Its name and address lines are
+    // the order view's own __shipping_ tokens; these are the rest of the
+    // allow-list. The shipping cost, zone, offer and package data stay off.
+    if ($entity === 'ship_to') {
+        return array(
+            '__ship_to_name'            => array('ship_to_name', 'text'),
+            '__shipping_salutation'     => array('salutation', 'text'),
+            '__shipping_address_type'   => array('address_type', 'place'),
+            '__shipping_ship_date'      => array('ship_date', 'day'),
+            '__shipping_delivered_date' => array('delivery_date', 'day'),
+        );
+    }
+
+    // An address_book row with its country's name as 'country': a recipient
+    // the signed-in member saved, in the address book's row loop. Its
+    // ship-to name, full name, company, phone and one-line address are the
+    // widget's own __recipient_ tokens.
+    if ($entity === 'address_book') {
+        return array(
+            '__recipient_salutation'   => array('salutation', 'text'),
+            '__recipient_first_name'   => array('first_name', 'text'),
+            '__recipient_last_name'    => array('last_name', 'text'),
+            '__recipient_address_1'    => array('address_1', 'text'),
+            '__recipient_address_2'    => array('address_2', 'text'),
+            '__recipient_city'         => array('city', 'text'),
+            '__recipient_state'        => array('state', 'text'),
+            '__recipient_zip'          => array('zip_code', 'text'),
+            '__recipient_country'      => array('country', 'text'),
+            '__recipient_address_type' => array('address_type', 'place'),
+        );
+    }
+
     return array();
 }
 
@@ -157,7 +191,7 @@ function pg_sw_entity_fields($entity)
 // own name, so the value reads as empty.
 function pg_sw_entity_select($entity, $alias)
 {
-    $tables = array('product' => 'products', 'order_line' => 'order_items');
+    $tables = array('product' => 'products', 'order_line' => 'order_items', 'ship_to' => 'ship_tos');
     $table = isset($tables[$entity]) ? $tables[$entity] : '';
     if ($table === '') return '';
 
@@ -226,6 +260,16 @@ function pg_sw_entity_refund_words($status)
     return '';
 }
 
+// The words of an address type (ship_tos / address_book.address_type), in
+// the interface language; '' for none.
+function pg_sw_entity_place_words($type)
+{
+    if ($type === 'residential') return (string)lang('Residential address');
+    if ($type === 'business') return (string)lang('Business address');
+
+    return '';
+}
+
 // A number column as plain text: '12.5000' gives '12.5', '0.0000' gives ''.
 function pg_sw_entity_number($value)
 {
@@ -283,6 +327,8 @@ function pg_sw_entity_value($spec, $row, $ctx = array())
             return pg_sw_entity_recurrence_words((string)$value);
         case 'refund':
             return pg_sw_entity_refund_words((string)$value);
+        case 'place':
+            return pg_sw_entity_place_words((string)$value);
         case 'yesno':
             if (isset($opts['is'])) return ((string)$value === (string)$opts['is']) ? '1' : '';
             return !empty($value) ? '1' : '';
