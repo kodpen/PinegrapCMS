@@ -83,6 +83,7 @@ function pg_sw_type_labels()
         'order_preview'       => lang('Order Preview'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
+        'ad_region'           => lang('Ad Region'),
     );
 }
 
@@ -801,6 +802,9 @@ function pg_sw_raw_token_keys()
         '__comment_message_html',
         '__comment_stars_html',
         '__comment_seller_reply_html',
+        // Ad Region widget: the ad's own markup.
+        '__ad_content_html',
+        '__ad_caption_html',
     ));
 
     return $keys;
