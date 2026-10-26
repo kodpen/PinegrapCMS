@@ -2373,6 +2373,8 @@
     "The page name that you entered is already in use. Please enter a different page name.": "Girdiğiniz sayfa adı zaten kullanılıyor. Lütfen farklı bir sayfa adı girin.",
     "The page now": "Sayfanın şimdiki hâli",
     "The page on the canvas is replaced by this revision. Nothing is published until you save.": "Tuvaldeki sayfanın yerini bu sürüm alır. Kaydedene kadar hiçbir şey yayınlanmaz.",
+    "The page shown": "Gösterilen sayfa",
+    "The page shown (1 or empty)": "Gösterilen sayfa (1 veya boş)",
     "The page shown is not one of the menu's pages": "Gösterilen sayfa menünün sayfalarından biri değil",
     "The page shown is one of the menu's pages": "Gösterilen sayfa menünün sayfalarından biri",
     "The page shown is the last; the next link goes to the first": "Gösterilen sayfa sonuncu; sonraki bağlantısı ilk sayfaya gider",
