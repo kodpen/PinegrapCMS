@@ -1057,6 +1057,7 @@
     "Runs with the site's connection.": "Sitenin bağlantısıyla çalışır.",
     "Runs with your own account on @{var:1}.": "@{var:1} üzerinde kendi hesabınızla çalışır.",
     "raise": "artır",
+    "ran the accessibility check": "erişilebilirlik denetimini çalıştırdı",
     "ran the tool {var:1} of the MCP server @{var:2} with a form": "MCP sunucusu @{var:2} üzerindeki {var:1} aracını formla çalıştırdı",
     "ran the tool {var:1} of the MCP server @{var:2} with their own account": "@{var:2} MCP sunucusunun {var:1} aracını kendi hesabıyla çalıştırdı",
     "rate of the expense date": "gider tarihinin kuru",
