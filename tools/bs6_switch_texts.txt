@@ -1,0 +1,241 @@
+Hand fixes of the Bootstrap 6 switch found by their exact text, read by
+bs6_switch_texts() in tools/bs6_switch.php and applied by
+`php tools/bs6_migrate.php --switch` after every scripted fix, so each
+"from" is the text as the earlier fixes leave it. Every occurrence of a
+"from" is replaced; a "from" that is gone while its "to" is not there either
+is reported as missing (the text changed on development).
+
+The panel's own rules on the dropped modal boxes (.modal-dialog and
+.modal-content are the <dialog> itself in Bootstrap 6).
+
+@@ assets/css/backend.src.css
+<<<
+.pg-keys-modal .modal-dialog {
+  max-width: 30rem;
+}
+===
+.pg-keys-modal.dialog {
+  --bs-dialog-width: 30rem;
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.software_warning,
+.modal-content,
+===
+.software_warning,
+.dialog,
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal .modal-dialog {
+  max-width: min(1180px, calc(100vw - 3rem));
+}
+===
+.pg-settings-modal.dialog {
+  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+  .pg-settings-modal .modal-dialog {
+    max-width: none;
+  }
+
+===
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal .modal-content.pg-sm
+===
+.pg-settings-modal.pg-sm
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+#pg_settings_modal_extras .modal-content
+===
+#pg_settings_modal_extras .dialog
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.advanced-visuals.pg-settings-open .modal-backdrop {
+  --bs-backdrop-opacity: 0.25;
+}
+===
+.advanced-visuals.pg-settings-open .dialog {
+  --bs-dialog-backdrop-bg: rgba(0, 0, 0, 0.25);
+}
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+.ws-palette .modal-dialog {
+===
+.ws-palette.dialog {
+>>>
+
+The image editor's full-screen switch: the class goes on the <dialog>.
+
+@@ assets/js/image_editor_modal.js
+<<<
+            '#pgImageEditorModal .modal-dialog.modal-fullscreen .modal-content { height:100% !important; }' +
+===
+            '#pgImageEditorModal.dialog-fullscreen { height:100% !important; }' +
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+    // Bootstrap's own modal-fullscreen class does the layout; the work here is
+===
+    // Bootstrap's own dialog-fullscreen class does the layout; the work here is
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        var dialog = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        return !!(dialog && dialog.classList.contains('modal-fullscreen'));
+===
+        return !!(_modalEl && _modalEl.classList.contains('dialog-fullscreen'));
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        var dialog = _modalEl.querySelector('.modal-dialog');
+===
+        var dialog = _modalEl;
+>>>
+
+@@ assets/js/image_editor_modal.js
+<<<
+        dialog.classList.toggle('modal-fullscreen', !!on);
+        dialog.classList.toggle('modal-xl', !on);
+        dialog.classList.toggle('modal-dialog-centered', !on);
+===
+        dialog.classList.toggle('dialog-fullscreen', !!on);
+        dialog.classList.toggle('dialog-xl', !on);
+>>>
+
+The code editor's full-screen switch.
+
+@@ assets/js/codemirror_modal.js
+<<<
+            var dlg = _modalEl.querySelector('.modal-dialog');
+            if (dlg) dlg.classList.remove('modal-fullscreen');
+===
+            _modalEl.classList.remove('dialog-fullscreen');
+>>>
+
+@@ assets/js/codemirror_modal.js
+<<<
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (dlg) dlg.classList.toggle('modal-fullscreen');
+===
+        if (_modalEl) _modalEl.classList.toggle('dialog-fullscreen');
+>>>
+
+@@ assets/js/codemirror_modal.js
+<<<
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;
+        dlg.classList.remove('modal-fullscreen');
+===
+        if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;
+        _modalEl.classList.remove('dialog-fullscreen');
+>>>
+
+The workspace designer's windows: the size comes from the caller.
+
+@@ assets/js/workspace_editor.js
+<<<
+        var node = el('div', 'modal fade ws-designer');
+        node.tabIndex = -1;
+        node.setAttribute('aria-hidden', 'true');
+        node.innerHTML = '<div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down ' + (size || 'modal-lg') + '"><div class="modal-content">'
+            + '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div></div></div>';
+===
+        var node = el('dialog', 'dialog ws-designer dialog-scrollable sm-down:dialog-fullscreen ' + (size || 'dialog-lg'));
+        node.innerHTML = '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+, 'modal-xl')
+===
+, 'dialog-xl')
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+, 'modal-lg')
+===
+, 'dialog-lg')
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+        return modal ? (modal.querySelector('.modal-content') || modal) : document.body;
+===
+        return modal || document.body;
+>>>
+
+@@ assets/js/workspace_editor.js
+<<<
+win.node.querySelector('.modal-content')
+===
+win.node
+>>>
+
+The workspace search box and the flow's share window build their boxes
+apart: the <dialog> is the box.
+
+@@ assets/js/workspace_palette.js
+<<<
+        ui.node = el('div', 'modal fade ws-palette');
+        ui.node.id = 'ws-palette';
+        ui.node.tabIndex = -1;
+===
+        ui.node = el('dialog', 'dialog dialog-lg ws-palette ws-palette-dialog');
+        ui.node.id = 'ws-palette';
+>>>
+
+@@ assets/js/workspace_palette.js
+<<<
+        var dialog = el('div', 'modal-dialog modal-lg ws-palette-dialog');
+        var content = el('div', 'modal-content');
+===
+        var content = ui.node;
+>>>
+
+@@ assets/js/workspace_palette.js
+<<<
+        dialog.appendChild(content);
+        ui.node.appendChild(dialog);
+
+===
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        var modal = el('div', 'modal fade wsf-share-modal');
+        var dialog = el('div', 'modal-dialog modal-dialog-centered modal-dialog-scrollable');
+        var content = el('div', 'modal-content');
+===
+        var modal = el('dialog', 'dialog dialog-scrollable wsf-share-modal');
+        var content = modal;
+>>>
+
+@@ assets/js/workspace_flow.js
+<<<
+        dialog.appendChild(content);
+        modal.appendChild(dialog);
+
+===
+>>>
