@@ -15,7 +15,7 @@ description: marketplace_product_map.commission and marketplace_order_map.invoic
 
 ## Who writes them?
 - `commission`: the approval read of Trendyol listings (plan step 2b-ii).
-- `invoice_sent`: the "Send invoice link" form of an imported order (plan step 5a).
-- Until those steps land, nothing writes either column.
+- `invoice_sent`: the "Send invoice link" form of an imported order (`trendyol-invoice-link.md`), only after a 2xx, with `AND invoice_sent = 0`.
+- Until 2b-ii lands, nothing writes `commission`.
 
 Related: docs/memory/plans/marketplace-trendyol-hepsiburada.md, docs/memory/commerce/trendyol-listing-status.md, docs/memory/commerce/trendyol-orders.md

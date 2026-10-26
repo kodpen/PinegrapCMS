@@ -689,6 +689,81 @@ if ($_POST) {
 
 	}
 
+	// The link of an imported package's invoice, typed by the operator. The
+	// e-document PDF is served only behind the panel login, so no job can hand
+	// the marketplace a link of its own; the operator gives the address the
+	// buyer can open (an e-Archive portal, a shared PDF). A refusal is shown
+	// here and not kept in last_error, which takes the package out of the
+	// own-carrier shipping pass.
+	if ($action === 'invoice_link' && $account) {
+
+		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
+
+		$invoice_url = isset($_POST['invoice_url']) ? trim((string)$_POST['invoice_url']) : '';
+
+		$package = $map_id ? db_item("SELECT * FROM marketplace_order_map
+			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')
+			  AND (status = 'imported') AND (order_id > 0)") : null;
+
+		if (!mp_can($account['provider'], 'send_invoice_link')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!mp_invoice_sent_ready()) {
+
+			$liveform->add_warning(lang('The database has not been upgraded yet. Run the software update first.'));
+
+		} elseif (!$package) {
+
+			$liveform->add_warning(lang('That order is no longer in the imported orders.'));
+
+		} elseif (!empty($package['invoice_sent'])) {
+
+			$liveform->add_notice(lang(array(
+				'string' => 'The invoice link of order {var:1} was sent already.',
+				'vars'   => array(h((string)$package['remote_order_id']))
+			)));
+
+		} else {
+
+			$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+
+			if ($sent['ok']) {
+
+				db("UPDATE marketplace_order_map
+					SET invoice_sent = UNIX_TIMESTAMP(), updated_timestamp = UNIX_TIMESTAMP()
+					WHERE (id = '" . e($map_id) . "') AND (invoice_sent = 0)");
+
+				log_activity(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}: {var:3}',
+					'vars'   => array((string)$package['remote_order_id'], mp_provider_name($account['provider']), $invoice_url)
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}.',
+					'vars'   => array(h((string)$package['remote_order_id']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'The invoice link of order {var:1} was not sent: {var:2}',
+					'vars'   => array(h((string)$package['remote_order_id']), h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
 	// The webhook: the marketplace posts each order package to this site as it
 	// changes, instead of waiting for the next pull. The key is made here, kept
 	// in the account's encrypted credentials and never shown; the marketplace
@@ -862,6 +937,34 @@ if ($_POST) {
 			exit();
 
 	}
+
+}
+
+// The "Send invoice link" form under one imported order, folded until opened.
+// The operator types the address the buyer can open; the screen cannot offer
+// one of its own (see the invoice_link action).
+function mp_settings_invoice_form($account_id, $row) {
+
+	$map_id = (int)$row['id'];
+
+	return '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="link-secondary">' . lang('Send invoice link') . '</summary>
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-2 flex-wrap mt-2"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="invoice_link">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<label class="visually-hidden" for="invoice_url_' . $map_id . '">' . lang('Invoice link') . '</label>
+						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
+							name="invoice_url" maxlength="1000" required style="max-width:520px"
+							placeholder="https://">
+						<button type="submit" class="btn btn-sm btn-outline-secondary">' . lang('Send') . '</button>
+					</form>
+					<div class="form-text">'
+						. lang('The address of the e-Archive or e-Invoice PDF that the buyer can open without signing in. The marketplace keeps it with the order and it has to stay reachable for ten years. A link once sent cannot be changed from here.') . '</div>
+				</details>';
 
 }
 
@@ -1357,6 +1460,10 @@ if ($selected) {
 
 	$can_approve = $can_orders && mp_can($selected['provider'], 'approve_lines');
 
+	// The invoice link form needs the column its success is written to; a site
+	// whose files are newer than its database draws no form.
+	$can_invoice = $can_orders && mp_can($selected['provider'], 'send_invoice_link') && mp_invoice_sent_ready();
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -1787,14 +1894,20 @@ if ($selected) {
 						? '<span class="mp-pill on">' . h((string)$row['remote_status']) . '</span>'
 						: '<span class="mp-pill bad">' . h(lang('Failed')) . '</span>')
 					. (!empty($row['approved'])
-						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '') . '
+						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '')
+					. (!empty($row['invoice_sent'])
+						? ' <span class="mp-pill on" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
+							. lang('Invoice sent') . '</span>' : '') . '
 					' . ($row['last_error'] !== ''
 						? '<div class="mp-err">' . h(mb_substr((string)$row['last_error'], 0, 120)) . '</div>' : '') . '</span>
 				<span class="small opacity-75">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
 				<span>' . ($row['order_id']
 					? '<a class="btn btn-sm btn-link p-0" href="view_order.php?id=' . (int)$row['order_id'] . '" title="'
 						. lang('View Order') . '"><i class="bi bi-box-arrow-up-right"></i></a>'
-					: '') . '</span>
+					: '') . '</span>'
+				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
+					&& (mp_order_stage($selected, $row) !== 'cancelled'))
+					? mp_settings_invoice_form($selected_id, $row) : '') . '
 			</div>';
 
 			}

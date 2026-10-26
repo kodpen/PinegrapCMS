@@ -681,6 +681,7 @@
     "Send for review": "İncelemeye gönder",
     "Send hashes or all, not both.": "hashes ya da all gönderin, ikisini birden değil.",
     "Send ids, or all set to true.": "ids gönderin ya da all alanını true yapın.",
+    "Send invoice link": "Fatura bağlantısını gönder",
     "Send invoice_id or order_id, not both.": "invoice_id ya da order_id gönderin, ikisini birden değil.",
     "Send invoice_id, order_id, or account_id with the lines.": "invoice_id, order_id ya da satırlarla birlikte account_id gönderin.",
     "Send it back unworn within 30 days. Write to us from the contact page with your order number and we tell you how; the money goes back to the card you paid with.": "Takılmamış olarak 30 gün içinde geri gönderin. İletişim sayfasından sipariş numaranızla bize yazın, nasıl yapacağınızı anlatalım; para, ödeme yaptığınız karta geri döner.",
