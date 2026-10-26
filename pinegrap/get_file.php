@@ -1258,9 +1258,43 @@ if ($if_modified_since == $last_modified) {
     header('X-Sendfile: ' . FILE_DIRECTORY_PATH . '/' . $file['name']);
     exit();
     
-// else just output the file through PHP
+// else just output the file through PHP, or the one part of it a Range
+// header asks for: Safari plays a sound or a video only when it is answered
+// 206 Partial Content, and every player winds forward that way. The access
+// checks above have all run by now; a part is never more than the whole.
 } else {
-    header('Content-length: ' . filesize($file['path']));
+    if (!defined('PG_GET_FILE')) {
+        define('PG_GET_FILE', true);
+    }
+
+    require_once(dirname(__FILE__) . '/includes/http_range.php');
+
+    $size = (int) filesize($file['path']);
+
+    $range = pg_http_range_answer(
+        isset($_SERVER['HTTP_RANGE']) ? $_SERVER['HTTP_RANGE'] : '',
+        isset($_SERVER['HTTP_IF_RANGE']) ? $_SERVER['HTTP_IF_RANGE'] : '',
+        array($last_modified),
+        $size);
+
+    header('Accept-Ranges: bytes');
+
+    if ($range === false) {
+        http_response_code(416);
+        header('Content-Range: ' . pg_http_content_range(false, $size));
+        header('Content-length: 0');
+        exit();
+    }
+
+    if (is_array($range)) {
+        http_response_code(206);
+        header('Content-Range: ' . pg_http_content_range($range, $size));
+        header('Content-length: ' . ($range[1] - $range[0] + 1));
+        pg_http_send_file_part($file['path'], $range[0], $range[1] - $range[0] + 1);
+        exit();
+    }
+
+    header('Content-length: ' . $size);
     readfile($file['path']);
     exit();
 }
