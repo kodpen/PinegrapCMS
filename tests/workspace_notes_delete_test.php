@@ -68,6 +68,54 @@ function test_workspace_notes_delete_keeps_its_record_before_the_shares_go()
 	pg_assert_contains('WS_NOTE_DELETIONS_KEEP', $body, 'older records go at the same time');
 }
 
+function test_workspace_notes_delete_unshare_row_is_for_the_person()
+{
+	pg_assert_same(
+		array('note_id' => 40, 'user_id' => 7, 'channel_id' => 0, 'deleted_by' => 3, 'deleted_at' => 1700000000),
+		ws_note_unshare_deletion_row(array('id' => 40, 'user_id' => 3), array('user_id' => 7, 'channel_id' => 0), 3, 1700000000),
+		'the owner takes a person share back'
+	);
+	pg_assert_same(
+		array('note_id' => 40, 'user_id' => 7, 'channel_id' => 0, 'deleted_by' => 7, 'deleted_at' => 5),
+		ws_note_unshare_deletion_row(array('id' => 40), array('user_id' => '7'), 7, 5),
+		'the person leaves the note'
+	);
+	pg_assert_same(null, ws_note_unshare_deletion_row(array('id' => 40), array('user_id' => 0, 'channel_id' => 12), 3, 5), 'a channel share keeps nothing: its notes are not in the list');
+}
+
+function test_workspace_notes_delete_unkept_drops_the_notes_still_in_the_list()
+{
+	$deletions = array(
+		array('id' => 40, 'deleted_at' => 10),
+		array('id' => 41, 'deleted_at' => 11),
+		array('id' => 42, 'deleted_at' => 12),
+	);
+
+	pg_assert_same(array(
+		array('id' => 40, 'deleted_at' => 10),
+		array('id' => 42, 'deleted_at' => 12),
+	), ws_note_deletions_unkept($deletions, array('41', 99)), 'a note owned or shared again is not deleted for them');
+	pg_assert_same($deletions, ws_note_deletions_unkept($deletions, array()), 'deleted notes have no rows left and stay listed');
+	pg_assert_same(array(), ws_note_deletions_unkept(array(), array(40)), 'nothing deleted');
+}
+
+function test_workspace_notes_delete_unshare_keeps_its_record_before_the_share_goes()
+{
+	$source = workspace_notes_delete_test_source('includes/workspace/notes.php');
+	$start = strpos($source, 'function ws_note_unshare($viewer, $note, $share_id = 0)');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('ws_note_unshare_deletion_row($note, $share', $body, 'the row comes from the pure helper');
+	pg_assert_contains('ws_note_deletions_ready()', $body, 'only once the table exists');
+	pg_assert_true(strpos($body, 'INSERT INTO ws_note_deletions') < strpos($body, 'DELETE FROM ws_note_shares'), 'written before the share is deleted');
+
+	$start = strpos($source, 'function ws_note_deletions_since(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('ws_note_deletions_unkept($out, $kept)', $body, 'the notes still in the list are dropped');
+	pg_assert_contains("FROM ws_note_shares WHERE user_id = '", $body, 'by a person share only, not a channel the person reads');
+}
+
 function test_workspace_notes_delete_api_routes()
 {
 	$api = workspace_notes_delete_test_source('includes/workspace/api.php');

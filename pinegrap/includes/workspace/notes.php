@@ -846,9 +846,13 @@ function ws_notes_list_columns()
  *
  * @param string $search
  * @param int    $updated_since unix time; 0 for any
+ * @param string $shared_at     the share's time column (s.created_at) for
+ *                              notes shared with the person: a note shared
+ *                              again since counts as changed, as sharing
+ *                              does not move updated_at
  * @return string " AND ..." or ''
  */
-function ws_notes_filter_sql($search, $updated_since = 0)
+function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
 {
     $filter = '';
     $search = trim(mb_substr((string) $search, 0, 100));
@@ -859,7 +863,11 @@ function ws_notes_filter_sql($search, $updated_since = 0)
     }
 
     if ((int) $updated_since > 0) {
-        $filter .= " AND n.updated_at >= '" . (int) $updated_since . "'";
+        $changed = "n.updated_at >= '" . (int) $updated_since . "'";
+
+        $filter .= ($shared_at !== '')
+            ? " AND (" . $changed . " OR " . $shared_at . " >= '" . (int) $updated_since . "')"
+            : " AND " . $changed;
     }
 
     return $filter;
@@ -1000,7 +1008,7 @@ function ws_notes_page_rows($user_id, $options)
     if ($scope !== 'mine') {
         $from = " FROM ws_notes n
             INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'
-            WHERE n.user_id <> '" . $me . "'" . $filter;
+            WHERE n.user_id <> '" . $me . "'" . ws_notes_filter_sql((string) ($options['search'] ?? ''), (int) ($options['updated_since'] ?? 0), 's.created_at');
 
         $total += (int) db_value("SELECT COUNT(DISTINCT n.id)" . $from);
 
@@ -1215,7 +1223,9 @@ function ws_note_delete_check($viewer, $note)
 /**
  * The notes deleted since a moment that the person kept: their own, those
  * shared with them, and those shared in a channel they may read, each once,
- * the oldest deletion first.
+ * the oldest deletion first; with them the notes no longer shared with
+ * them (a share taken back), unless they own the note or it is shared with
+ * them again.
  *
  * @param array $viewer ws_viewer()
  * @param int   $since
@@ -1248,7 +1258,62 @@ function ws_note_deletions_since($viewer, $since)
         $out[] = array('id' => (int) $row['note_id'], 'deleted_at' => (int) $row['deleted_at']);
     }
 
+    if (empty($out)) {
+        return $out;
+    }
+
+    // A note that still exists is in the list again when the person owns
+    // it or a person share brings it to them; a deleted one has no rows.
+    $me = (int) $viewer['id'];
+    $ids = implode(',', array_column($out, 'id'));
+    $kept = array_merge(
+        (array) db_values("SELECT id FROM ws_notes WHERE user_id = '" . $me . "' AND id IN (" . $ids . ")"),
+        (array) db_values("SELECT note_id FROM ws_note_shares WHERE user_id = '" . $me . "' AND note_id IN (" . $ids . ")")
+    );
+
+    return ws_note_deletions_unkept($out, $kept);
+}
+
+/**
+ * The deletions a sync client is told of, without the notes the person
+ * still keeps in their list.
+ *
+ * @param array[] $deletions id, deleted_at
+ * @param int[]   $kept      note ids the person owns or has a person share of
+ * @return array[] id, deleted_at
+ */
+function ws_note_deletions_unkept($deletions, $kept)
+{
+    $kept = array_flip(array_map('intval', (array) $kept));
+    $out = array();
+
+    foreach ((array) $deletions as $deletion) {
+        if (!isset($kept[(int) $deletion['id']])) {
+            $out[] = $deletion;
+        }
+    }
+
     return $out;
+}
+
+/**
+ * The ws_note_deletions row a person share taken back keeps for the
+ * person, so that a sync client drops its copy; null for a channel share,
+ * whose notes never come in the person's list.
+ *
+ * @param array $note  id
+ * @param array $share the ws_note_shares row: user_id, channel_id
+ * @param int   $by    who took it back
+ * @param int   $now
+ * @return array|null note_id, user_id, channel_id, deleted_by, deleted_at
+ */
+function ws_note_unshare_deletion_row($note, $share, $by, $now)
+{
+    if ((int) ($share['user_id'] ?? 0) <= 0) {
+        return null;
+    }
+
+    return array('note_id' => (int) $note['id'], 'user_id' => (int) $share['user_id'], 'channel_id' => 0, 'deleted_by' => (int) $by, 'deleted_at' => (int) $now);
 }
 
 /**
@@ -1522,6 +1587,15 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
 
     if (!is_array($share) || (!$owner && ((int) $share['user_id'] !== (int) $viewer['id']))) {
         return array('ok' => false, 'error' => lang('That share could not be found.'));
+    }
+
+    // The note leaves the person's list, for the apps that keep notes in
+    // sync as for a deletion.
+    $row = ws_note_unshare_deletion_row($note, $share, (int) $viewer['id'], time());
+
+    if ($row && ws_note_deletions_ready()) {
+        db("INSERT INTO ws_note_deletions (note_id, user_id, channel_id, deleted_by, deleted_at)
+            VALUES ('" . $row['note_id'] . "', '" . $row['user_id'] . "', '" . $row['channel_id'] . "', '" . $row['deleted_by'] . "', '" . $row['deleted_at'] . "')");
     }
 
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
