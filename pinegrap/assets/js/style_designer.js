@@ -897,6 +897,8 @@ const StyleDesigner = (function () {
                                 // An old token a default part now draws gets
                                 // the part; the site draws the same.
                                 if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
+                                // Never on a template's placeholder (below).
+                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -38409,7 +38411,8 @@ const StyleDesigner = (function () {
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
-            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
+            ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -38910,6 +38913,85 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The blocks the server added after a widget whose layout placed none
+    // of their tokens, now parts added to the end of the tree once
+    // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    var SW_DEFAULT_TAILS = {
+        order_view: [
+            [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
+            [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
+        ]
+    };
+
+    // Whether `tree` places any of `tokens` (pg_sw_placed()): anywhere in
+    // the tree but a value condition, the name matched whole.
+    function _sdPartPlaced(tree, tokens) {
+        var copy = JSON.parse(JSON.stringify(tree || {}));
+        (function strip(n) {
+            if (!n || typeof n !== 'object') return;
+            var p = n.props || {};
+            if (p._bindings && typeof p._bindings === 'object') delete p._bindings.show_if;
+            if (p._bindParams && typeof p._bindParams === 'object') delete p._bindParams.show_if;
+            (n.children || []).forEach(strip);
+        })(copy);
+        var json = JSON.stringify(copy);
+        return tokens.some(function (t) {
+            return t !== '' && new RegExp('(^|[^A-Za-z0-9_])' + t + '(?![A-Za-z0-9_])').test(json);
+        });
+    }
+
+    // Adds to the end of `tree` each block of `kind` it does not place.
+    // Returns whether anything was added.
+    function _sdDefaultTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_TAILS[kind];
+        if (!tails || !tree || typeof tree !== 'object') return false;
+        var placed = JSON.parse(JSON.stringify(tree));
+        var due = tails.filter(function (t) { return !_sdPartPlaced(placed, t[0]); });
+        tree.children = tree.children || [];
+        due.forEach(function (t) { tree.children = tree.children.concat(t[1](cfg || null, placed)); });
+        return due.length > 0;
+    }
+
+    // A card added after the order view (pg_sw_part_order_card()).
+    function _sdPartOrderCard(cls, name, flag, heading, body) {
+        return _sdPartEl('div', 'container pb-4 ' + cls, name, { _bindings: { eo_visible_if: flag } }, [
+            _sdPartEl('div', 'card', _sdT('Card'), {}, [
+                _sdPartEl('div', 'card-header', _sdT('Card header'), {}, [
+                    _sdPartEl('h6', 'mb-0 fw-semibold', _sdT('Heading'), { text: heading })
+                ]),
+                _sdPartEl('div', 'card-body', _sdT('Card body'), {}, body)
+            ])
+        ]);
+    }
+
+    // The returns card (pg_sw_part_order_returns()).
+    function _sdPartOrderReturns() {
+        var block = function (token, name) { return _sdPartEl('div', '', name, { _bindings: { text: token } }); };
+        return [_sdPartOrderCard('pg-ov-returns-block', _sdT('Returns'), 'show_returns_card', _sdT('Returns'), [
+            block('__returns', _sdT('Return requests')),
+            block('__return_form', _sdT('Return request form'))
+        ])];
+    }
+
+    // The legal documents card (pg_sw_part_order_legal_documents()).
+    function _sdPartOrderLegal(tree) {
+        var link = function (label, token, flag) {
+            return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
+                _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
+            ]);
+        };
+        var body = [_sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
+            link(_sdT('Pre-Information Form'), '__legal_preinfo_url', 'has_legal_preinfo'),
+            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
+        ])];
+        if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
+            body.push(_sdPartEl('p', 'small text-muted mt-2 mb-0', _sdT('Right of Withdrawal'), {
+                text: '', _bindings: { text: '__withdrawal_text', eo_visible_if: 'has_withdrawal_deadline' }
+            }));
+        }
+        return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
+    }
+
     // One-time migration for trees saved before the "bind content, not layout"
     // rule. Walks the tree; whenever a structural tag carries a text/src/href
     // binding, the binding (and the cell's preview text) moves into a <span>
@@ -39080,6 +39162,7 @@ const StyleDesigner = (function () {
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
             ['cancel_flash_shipped',    _sdT('Could not cancel, already shipped (notice after the redirect)')],
             ['show_returns',            _sdT('There is a return to follow, or one can be requested')],
+            ['show_returns_card',       _sdT('Returns are on, and there is a return to follow or one can be requested')],
             ['can_request_return',      _sdT('A return can be requested')],
             ['has_returns',             _sdT('The order has return requests')]
         ],
@@ -56239,7 +56322,7 @@ const StyleDesigner = (function () {
                     ]);
                 };
 
-                return createNode('root', {}, [
+                var ovTree = createNode('root', {}, [
                     createNode('container', { fluid: false, cssClass: 'py-4' }, [
 
                         // ── Cancel status alert (appears after redirect) ─
@@ -56587,6 +56670,9 @@ const StyleDesigner = (function () {
                         ])
                     ])
                 ]);
+                // The legal documents and returns cards (_sdDefaultTails()).
+                _sdDefaultTails(ovTree, 'order_view', null);
+                return ovTree;
             }
 
             case 'express_order': {

@@ -19,6 +19,6 @@ description: Order view widget links to the legal documents kept with the order:
 - The links carry `target: '_blank'` as a prop, `rel` in `_attrs`, like every link of the tree; a window an older layout keeps in `_attrs` prints too (designer/link-target-in-attrs.md).
 
 ## What about layouts made before the links?
-- A layout that binds neither token gets `pg_legal_documents_order_view_block()` after the widget: a `container pb-4` card listing the kept copies, the shape of the returns block. A layout that binds a link places the links itself. Deleting the card from a new layout brings the block back; a designer who wants the links elsewhere binds a token there.
+- A layout that binds neither token is given the legal documents card at its end, real elements the designer can change ([[widget-default-parts-order]]): a `container pb-4` card listing the kept copies, the shape of the returns card. A layout that binds a link places the links itself. Deleting the card brings it back; a designer who wants the links elsewhere binds a token there.
 
 Related: docs/memory/commerce/order-legal-documents.md, order-withdrawal-deadline.md (the withdrawal line in the same card)
