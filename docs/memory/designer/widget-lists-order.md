@@ -4,8 +4,8 @@ description: Order view (receipt e-mail too) and my account lists (W10): recipie
 ---
 
 ## Which lists exist?
-- `pg_sw_list_order_sources()` (`includes/fn/widgets_lists_order.php`, engine [[widget-lists]]). Family `order` in `order_view` (the order receipt e-mail renders the same widget): `order.shipments` (ship_tos, `complete = 1`), `order.items`, `order.parcels` (`shipping_tracking_numbers`), `order.steps` (the `^^__timeline^^` events). Family `account` in `my_account`: `account.orders` (the order history's rows: complete, exported, cancelled, at most 50, newest first). None takes a field.
-- Opt-in: a tree without these lists renders byte-identical; `__timeline`, `__tracking_codes` and the `order_history` section stay.
+- `pg_sw_list_order_sources()` (`includes/fn/widgets_lists_order.php`, engine [[widget-lists]]). Family `order` in `order_view` (the order receipt e-mail renders the same widget): `order.shipments` (ship_tos, `complete = 1`), `order.items`, `order.parcels` (`shipping_tracking_numbers`), `order.steps` (the order's steps; the timeline part draws them, [[widget-default-parts]]). Family `account` in `my_account`: `account.orders` (the order history's rows: complete, exported, cancelled, at most 50, newest first). None takes a field.
+- Opt-in: a tree without these lists renders byte-identical; `__tracking_codes` and the `order_history` section stay.
 
 ## Which key does each read?
 - The order lists read `__ship_to_key`: the static value `0` (the whole order), a recipient's id inside a recipients list, so an items or parcels list there lists that recipient's. Recipients and steps have rows under 0 only: inside a recipient they draw nothing. An item or parcel without a recipient (digital) is under 0 only.

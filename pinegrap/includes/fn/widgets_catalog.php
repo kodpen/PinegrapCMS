@@ -610,6 +610,18 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
 // the same count, for a wrapper around the stars or a "(12)" label.
 // ============================================================================
 
+// Whether a product or group counts as new: its new_date (Y-m-d) lies within
+// the last 30 days and not in the future. An empty or zero date is not new.
+function pg_sw_catalog_is_new($new_date, $now = null)
+{
+    $new_date = (string)$new_date;
+    if ($new_date === '' || $new_date === '0000-00-00') return false;
+    $new_ts = strtotime($new_date);
+    $now    = ($now === null) ? time() : (int)$now;
+
+    return $new_ts && ($now - $new_ts) <= (30 * 86400) && $new_ts <= $now;
+}
+
 /**
  * The SELECT columns the rating is read from. A column the table does not
  * have fails the whole query (a listing would show "No products found"), so
@@ -1574,6 +1586,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  products.seo_score, $rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
+                 " . pg_sw_entity_select('product', 'products') . "
                  $xref_select
              FROM products
              $group_join
@@ -1709,14 +1722,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $category_name  = $fg ? $fg['name']       : '';
         }
 
-        // is_new: new_date is within the last 30 days. Empty/zero new_date → 0.
-        $is_new = 0;
-        if ($new_date_val !== '' && $new_date_val !== '0000-00-00') {
-            $new_ts = strtotime($new_date_val);
-            if ($new_ts && (time() - $new_ts) <= (30 * 86400) && $new_ts <= time()) {
-                $is_new = 1;
-            }
-        }
+        $is_new = pg_sw_catalog_is_new($new_date_val) ? 1 : 0;
 
         // Stock derivation — see the catalog_item_view twin for the full
         // reasoning. `inventory` is the TRACKING switch: when 0 the product has
@@ -1884,6 +1890,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             // catalog pages in get_catalog.php are untouched — those are live
             // on real sites.)
         );
+
+        // The product's allow-listed values (widgets_entity_fields.php).
+        $values += pg_sw_entity_values('product', $p, array('currency_symbol' => $currency_symbol));
 
         // Adaptive link captions — a product row ALWAYS opens the detail page,
         // so it takes the "detail" caption. (Group rows choose between the two
@@ -2380,7 +2389,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
-                       product_groups.display_type, product_groups.sort_order
+                       product_groups.display_type, product_groups.sort_order,
+                       product_groups.full_description, product_groups.details,
+                       product_groups.keywords, product_groups.featured, product_groups.new_date
                 FROM product_groups
                 WHERE product_groups.parent_id = '" . $_pg_parent_filter . "'
                   AND product_groups.enabled = 1
@@ -2393,7 +2404,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             );
         } else {
             $children = db_items(
-                "SELECT id, name, address_name, image_name, short_description, display_type, sort_order
+                "SELECT id, name, address_name, image_name, short_description, display_type, sort_order,
+                        full_description, details, keywords, featured, new_date
                  FROM product_groups
                  WHERE parent_id = '" . $_pg_parent_filter . "'
                    AND enabled = 1
@@ -2525,7 +2537,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     '__name'              => (string)$cg['name'],
                     '__address_name'      => (string)$cg['address_name'],
                     '__short_description' => (string)$cg['short_description'],
-                    '__description'       => '',
+                    '__description'       => (string)$cg['full_description'],
+                    '__details'           => (string)$cg['details'],
+                    '__keywords'          => trim((string)$cg['keywords']),
+                    // The group's own flags, the same 1/0 a product card has.
+                    '__featured'          => !empty($cg['featured']) ? '1' : '0',
+                    '__is_new'            => pg_sw_catalog_is_new((string)$cg['new_date']) ? '1' : '0',
                     '__detail_url'        => $cg_url,
                     '__display_type'      => (string)$cg['display_type'],
                     '__sort_order'        => (string)$cg['sort_order'],
@@ -4771,6 +4788,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
+                 " . pg_sw_entity_select('product', 'products') . "
              FROM products
              WHERE products.enabled = 1
                AND products.address_name = '" . e($product_address_name) . "'
@@ -4839,6 +4857,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.seo_score, $_civ_rating_cols,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
+                         " . pg_sw_entity_select('product', 'products') . "
                      FROM products
                      INNER JOIN products_groups_xref pgx ON pgx.product = products.id
                      WHERE products.enabled = 1
@@ -4862,6 +4881,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
+                 " . pg_sw_entity_select('product', 'products') . "
              FROM products
              WHERE products.enabled = 1
                AND products.id = '" . (int)$product_id_direct . "'
@@ -5392,14 +5412,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             }
         }
 
-        // is_new: new_date within the last 30 days — mirrors catalog_listing.
-        $is_new = 0;
-        if ($new_date_val !== '' && $new_date_val !== '0000-00-00') {
-            $new_ts = strtotime($new_date_val);
-            if ($new_ts && (time() - $new_ts) <= (30 * 86400) && $new_ts <= time()) {
-                $is_new = 1;
-            }
-        }
+        $is_new = pg_sw_catalog_is_new($new_date_val) ? 1 : 0;
 
         // Stock derivation — same logic as catalog_listing.
         //
@@ -5642,6 +5655,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             pg_sw_list_publish('product', pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0));
         }
     }
+
+    // The product's allow-listed values (widgets_entity_fields.php), empty
+    // when no product was found.
+    $values += pg_sw_entity_values('product', $p ? $p : null, array('currency_symbol' => $currency_symbol));
 
     // Both branches escape here, so the not-found map cannot drift from the
     // found one.

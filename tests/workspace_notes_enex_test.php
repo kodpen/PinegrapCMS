@@ -261,7 +261,7 @@ function test_workspace_notes_enex_stage_reads_an_export()
 			array(array($picture, 'image/jpeg', 'photo.JPG'), array($readme, 'text/plain', 'readme.txt')),
 			'<tag>ev</tag><tag>market</tag>'),
 		workspace_notes_enex_test_note('', '<div>No title</div>'),
-		workspace_notes_enex_test_note('Alışveriş: liste', '<div>Again</div>', array(), '<task><title>Pay</title><taskStatus>completed</taskStatus></task>'),
+		workspace_notes_enex_test_note('Alışveriş: liste', '<div>Again</div>', array(), '<guid>4f1c-77</guid><task><title>Pay</title><taskStatus>completed</taskStatus></task>'),
 	));
 
 	file_put_contents($dir . '/source-0.enex', $export);
@@ -292,6 +292,7 @@ function test_workspace_notes_enex_stage_reads_an_export()
 	$parsed = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 0, WS_NOTE_IMPORT_TEXT_MAX)), $paths[0], 0);
 
 	pg_assert_same('Alışveriş: liste', $parsed['title']);
+	pg_assert_same('Alışveriş: liste 2023-10-01T10:10:10Z', $parsed['source'], 'without a guid, known by its title and when it was made');
 	pg_assert_same(gmmktime(10, 10, 10, 10, 1, 2023), $parsed['created']);
 	pg_assert_same("- [x] Süt\n[photo.jpg](attachments/1/photo.jpg)\n\n[readme.txt](attachments/1/readme.txt)\n\n#ev #market", $parsed['body'], 'the picture where the note shows it, the other file at the end, the tags');
 
@@ -307,6 +308,7 @@ function test_workspace_notes_enex_stage_reads_an_export()
 	$again = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 4, WS_NOTE_IMPORT_TEXT_MAX)), $paths[4], 0);
 
 	pg_assert_same("Again\n\n- [x] Pay", $again['body'], 'a task of the newer editor as a checklist item');
+	pg_assert_same('4f1c-77', $again['source'], 'known by its guid when the export carries one');
 
 	workspace_notes_enex_test_remove($dir);
 }

@@ -1057,6 +1057,7 @@
     "Extra crawlers to reject. Checked after the built-in lists, so these can never override a search engine or a payment gateway.": "Reddedilecek ek botlar. Yerleşik listelerden sonra denetlenir, bu yüzden bir arama motorunu veya ödeme sağlayıcısını asla geçersiz kılamaz.",
     "Extra departures will run until 1 a.m. while the city's light festival lasts.": "Şehrin ışık festivali süresince ek seferler gece 01.00'e kadar devam edecek.",
     "Extra large": "Çok büyük",
+    "Extra shipping cost (with symbol)": "Ek kargo ücreti (simgeyle)",
     "Extra small": "Çok küçük",
     "Extra trains run all evening": "Akşam boyunca ek seferler var",
     "Extract here": "Buraya çıkart",

@@ -2654,52 +2654,6 @@ function _eo_render_cancel_status_alert($flash)
     return '';
 }
 
-// ── Order timeline HTML (order_view __timeline token) ────────────────────
-// Renders a vertical Bootstrap 5 + Bootstrap-Icons timeline of order
-// lifecycle events. Only events with a real timestamp are rendered — empty
-// rows are skipped so a not-yet-shipped order never shows a hollow
-// "Kargoya Verildi" stub. Each $events row:
-//   [ 'icon' => 'bi-...', 'color' => 'success|info|warning|danger|secondary',
-//     'label' => string,  'ts' => string (already formatted) ]
-//
-// The CSS lives inline (scoped to .pg-ov-timeline) so designers don't need
-// to ship extra stylesheets; widget render output is self-contained.
-function _eo_render_order_timeline($events)
-{
-    $events = array_values(array_filter((array)$events, function ($e) {
-        return is_array($e) && !empty($e['ts']);
-    }));
-    if (count($events) === 0) return '';
-
-    $css = '<style>'
-        . '.pg-ov-timeline{list-style:none;padding:0;margin:0;position:relative}'
-        . '.pg-ov-timeline::before{content:"";position:absolute;left:1.15rem;top:.5rem;bottom:.5rem;width:2px;background:#dee2e6}'
-        . '.pg-ov-timeline-item{position:relative;padding:.25rem 0 1rem 3rem;min-height:2.5rem}'
-        . '.pg-ov-timeline-item:last-child{padding-bottom:0}'
-        . '.pg-ov-timeline-icon{position:absolute;left:0;top:0;width:2.3rem;height:2.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}'
-        . '.pg-ov-timeline-label{font-weight:600;line-height:1.2}'
-        . '.pg-ov-timeline-ts{color:#6c757d;font-size:.875rem}'
-        . '</style>';
-
-    $html = $css . '<ul class="pg-ov-timeline">';
-    foreach ($events as $e) {
-        $icon  = isset($e['icon'])  ? (string)$e['icon']  : 'bi-circle-fill';
-        $color = isset($e['color']) ? (string)$e['color'] : 'secondary';
-        $label = isset($e['label']) ? (string)$e['label'] : '';
-        $ts    = isset($e['ts'])    ? (string)$e['ts']    : '';
-        $html .=
-              '<li class="pg-ov-timeline-item">'
-            .   '<span class="pg-ov-timeline-icon bg-' . h($color) . '">'
-            .     '<i class="bi ' . h($icon) . '"></i>'
-            .   '</span>'
-            .   '<div class="pg-ov-timeline-label">' . h($label) . '</div>'
-            .   '<div class="pg-ov-timeline-ts">' . h($ts) . '</div>'
-            . '</li>';
-    }
-    $html .= '</ul>';
-    return $html;
-}
-
 //   (a) the monolithic Phase-1 layout is in use (no eo_* tree bindings), OR
 //   (b) a saved tree references `#pg-eo-terms-modal` but doesn't actually
 //       contain the modal element (very old trees pre-real-modal).

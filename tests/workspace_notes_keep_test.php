@@ -200,6 +200,7 @@ function test_workspace_notes_keep_stage_reads_a_takeout()
 	$list = ws_note_import_parse(ws_note_import_text(ws_note_import_read($stage, 0, WS_NOTE_IMPORT_TEXT_MAX)), $paths[0], 0);
 
 	pg_assert_same('Alışveriş', $list['title']);
+	pg_assert_same('Takeout/Keep/Alışveriş.json', $list['source'], 'known by its JSON entry name');
 	pg_assert_same(1696150000, $list['created']);
 	pg_assert_same("- [x] Süt\n\n[a1.jpeg](attachments/1/a1.jpeg)\n[gone.png](attachments/1/gone.png)\n\n#ev", $list['body'], 'the checklist, then the pictures (the missing one keeps its link), then the label');
 

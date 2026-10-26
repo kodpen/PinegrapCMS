@@ -438,7 +438,7 @@ function ws_note_keep_add($archive, $lookup, $row, $note, &$context)
         $body = ltrim($body . "\n\n" . implode("\n", $links));
     }
 
-    $text = ws_note_enex_file(array('title' => $title, 'created' => $note['created'], 'updated' => $note['updated'], 'tags' => $note['tags']), $body);
+    $text = ws_note_enex_file(array('title' => $title, 'created' => $note['created'], 'updated' => $note['updated'], 'tags' => $note['tags'], 'id' => ws_note_source_id('keep', array('entry' => (string) $row[0]))), $body);
     $file_number = $context['next']++;
 
     if (@file_put_contents($context['dir'] . '/files/' . $file_number . '.txt', $text) === false) {
