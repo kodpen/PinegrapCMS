@@ -606,6 +606,7 @@ const StyleDesigner = (function () {
     // it. nodeOf(id, wrap) finds the node of a wrapper (_sdFindNodeForEl());
     // it is asked for open elements only, a closed one draws a node without
     // `show`.
+    /* @pg-site-output */
     function _sdCanvasOpenRestore(doc, open, nodeOf) {
         if (!doc) return;
         _sdCanvasOpenEach(doc, function (el, key, wrap) {
@@ -773,6 +774,7 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: type, props: p, children: children || [] };
     }
 
+    /* @pg-site-output */
     function colProps(xs) {
         return { xs: xs || '12', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '' };
     }
@@ -2714,6 +2716,7 @@ const StyleDesigner = (function () {
      * else it is ordinary markup. The label is an element the designer may
      * delete — the field then keeps the name given in the panel.
      */
+    /* @pg-site-output */
     function _cfPaletteBlock(kind) {
         var def = CF_PALETTE[kind] || CF_PALETTE.text;
         var id  = 'f_' + Math.random().toString(36).slice(2, 7);
@@ -2830,6 +2833,7 @@ const StyleDesigner = (function () {
 
     // The container every custom form starts with: a centred column. What
     // goes inside is the caller's.
+    /* @pg-site-output */
     function _cfFrame(children) {
         var loopArea = createNode('loop_area', {}, []); // present but hidden
         return createNode('root', {}, [
@@ -2845,6 +2849,7 @@ const StyleDesigner = (function () {
 
     // A new form: one input, the CAPTCHA, a button. The designer takes it
     // from there — including deleting the input.
+    /* @pg-site-output */
     function _cfStarterTree() {
         var first = _cfPaletteBlock('text');
         return _cfFrame([first, _cfPaletteBlock('captcha'), _cfPaletteBlock('submit')]);
@@ -2858,6 +2863,7 @@ const StyleDesigner = (function () {
      * and row id. Office-use-only fields are drawn too — the renderer hides
      * them from visitors.
      */
+    /* @pg-site-output */
     function _cfBuildFromFields(fields, formPageId, formName) {
         var blocks = [];
         var reId = function (nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); };
@@ -3213,6 +3219,7 @@ const StyleDesigner = (function () {
      * controls and indicators dark under data-bs-theme="dark" (and with
      * .carousel-dark, which the carousel ships with), so a dark slide would hide them.
      */
+    /* @pg-site-output */
     function makeCarouselSlide(idx, isActive) {
         var bg = CAROUSEL_SURFACES[(idx - 1) % CAROUSEL_SURFACES.length];
         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (isActive ? ' active' : ''), customName: _sdT('Slide {var}', idx) }, [
@@ -4680,6 +4687,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeRowToClasses(props, rest) {
         var cls = ['row'];
         if (props.gutter)  cls.push('g-' + props.gutter);
@@ -4710,6 +4718,7 @@ const StyleDesigner = (function () {
         });
         return { props: props, rest: rest };
     }
+    /* @pg-site-output */
     function _serializeColToClasses(props, rest) {
         var cls = [];
         if (props.xs === 'col')        cls.push('col');
@@ -4882,6 +4891,7 @@ const StyleDesigner = (function () {
     // with the site's languages (sdDesign.siteLanguages, source first) and
     // the page's own language current. On the site every item links to the
     // page in its language; here none goes anywhere.
+    /* @pg-site-output */
     function _sdLangSwitcherMarkup(p) {
         p = p || {};
         // Attribute-safe as well: names and classes end up inside quotes.
@@ -4908,6 +4918,7 @@ const StyleDesigner = (function () {
             '</div>';
     }
 
+    /* @pg-site-output */
     var COMPONENTS = {
         navbar: {
             label: _sdT('Navbar'), icon: 'bi-layout-navbar',
@@ -5101,6 +5112,7 @@ const StyleDesigner = (function () {
     };
 
     // ========================= CONTENT REGISTRY =========================
+    /* @pg-site-output */
     var CONTENT = {
         heading: {
             label: _sdT('Heading'), icon: 'bi-type-h1',
@@ -5660,6 +5672,7 @@ const StyleDesigner = (function () {
             }).join(' ');
         });
     }
+    /* @pg-site-output */
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -7937,6 +7950,7 @@ const StyleDesigner = (function () {
         return null;
     }
 
+    /* @pg-site-output */
     function addCompositeChild(node, type) {
         if (!node) return;
         saveState();
@@ -8215,6 +8229,7 @@ const StyleDesigner = (function () {
 
     // ── Node wrap / unwrap helpers (for table-responsive toggle) ──────────────
 
+    /* @pg-site-output */
     function wrapNode(node, wrapTag, wrapCls) {
         var par = findParent(node, tree);
         if (!par) return;
@@ -8321,6 +8336,7 @@ const StyleDesigner = (function () {
         render(); renderProperties();
     }
 
+    /* @pg-site-output */
     function splitCell(node) {
         if (!node || !node.props) return;
         var tr = findParent(node, tree);
@@ -12309,6 +12325,7 @@ const StyleDesigner = (function () {
         return _imgPW.indexOf('%') !== -1;
     }
 
+    /* @pg-site-output */
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -13356,6 +13373,7 @@ const StyleDesigner = (function () {
         return s;
     }
 
+    /* @pg-site-output */
     function buildInnerElement(doc, node) {
         switch (node.type) {
             case 'container':
@@ -14381,6 +14399,7 @@ const StyleDesigner = (function () {
         });
     }
 
+    /* @pg-site-output */
     function getNodeLabel(node) {
         if (node.props && node.props.customName) return node.props.customName;
         switch (node.type) {
@@ -16065,6 +16084,7 @@ const StyleDesigner = (function () {
         }
     }
 
+    /* @pg-site-output */
     function createFromPalette(type, extra) {
         switch (type) {
             case 'container': return createNode('container', { fluid: false, cssClass: '' }, []);
@@ -21837,6 +21857,7 @@ const StyleDesigner = (function () {
     }
 
     // ========================= NODE ACTIONS =========================
+    /* @pg-site-output */
     function onAddChild(node) {
         saveState();
         var n;
@@ -21971,6 +21992,7 @@ const StyleDesigner = (function () {
         render();
     }
 
+    /* @pg-site-output */
     function setQuickLayout(rowNode, layout) {
         saveState();
         rowNode.children = layout.map(function (w) { return createNode('col', colProps(String(w)), []); });
@@ -26363,6 +26385,7 @@ const StyleDesigner = (function () {
 
     // ========================= HTML TREE (bottom panel) =========================
     // Returns the real HTML tag info for each node
+    /* @pg-site-output */
     function getNodeHtmlTag(node) {
         var tag = 'div', cls = '', id = node.props.id || '';
         var selfClose = false, preview = '';
@@ -28030,6 +28053,7 @@ const StyleDesigner = (function () {
 
     // A new element around existing nodes: a plain element with the typed
     // tag and attributes, so the nodes inside keep what they are.
+    /* @pg-site-output */
     function _sdCodeNewSemantic(item) {
         var props = { tag: item.tag, cssClass: '' };
         var attrs = [];
@@ -28044,12 +28068,14 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: 'semantic', props: props, children: [] };
     }
 
+    /* @pg-site-output */
     function _sdCodeNewSpan(raw) {
         return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
     }
 
     // The place a new element keeps until the converter answers: its own
     // markup as Custom HTML, which prints the same text.
+    /* @pg-site-output */
     function _sdCodeNewHolder(html) {
         return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
     }
@@ -30523,6 +30549,7 @@ const StyleDesigner = (function () {
     // makes one (pg_di_node()): its words, with any inline markup, are the
     // text; address, target, rel and classes are its options; any other
     // attribute stays an attribute.
+    /* @pg-site-output */
     function _sdIlLinkNode(a) {
         var p = {
             contentType: 'link',
@@ -30596,6 +30623,7 @@ const StyleDesigner = (function () {
     // The text becomes an element of the same tag and classes holding a link
     // element for each link and a span for a separator. The node keeps its
     // id: its name, notes, attributes and place stay.
+    /* @pg-site-output */
     function _sdIlSplit(n) {
         var frag = _sdIlParse(n.props.text);
         if (!_sdIlOnlyLinks(frag)) return;
@@ -38688,6 +38716,7 @@ const StyleDesigner = (function () {
     //
     // Idempotent: after the move the cell has no binding left, so a second pass
     // finds nothing to do.
+    /* @pg-site-output */
     function _sdMigrateStructuralBindings(node) {
         if (!node || typeof node !== 'object') return false;
         var changed = false;
@@ -39410,6 +39439,7 @@ const StyleDesigner = (function () {
     // A heading, paragraph or span whose whole text is one link, split into
     // the element and a link element inside it: the text binding moves to
     // the link, the look (tag, classes, style) stays on the outer element.
+    /* @pg-site-output */
     function _sdSplitTextLink(node) {
         var a = node && node.props ? _sdSoleTextLink(node.props.text) : null;
         if (!a) return;
@@ -42157,6 +42187,7 @@ const StyleDesigner = (function () {
     // tree root is left out: a widget is already a bounded area, so
     // elements go straight into it. A column into a column comes in a new
     // row there. Returns `node` itself when nothing wraps it.
+    /* @pg-site-output */
     function _sdWrapForParent(parent, node, payload) {
         var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref' };
         var t = payload ? (map[payload.type] || payload.type) : node.type;
@@ -42438,6 +42469,7 @@ const StyleDesigner = (function () {
      * cloned — a designer who styled the first checkbox keeps that styling on
      * every choice, and does not lose it by adding a fifth answer.
      */
+    /* @pg-site-output */
     function _sdWriteChoices(n, list) {
         var kind = _sdChoiceKind(n);
         if (kind === 'select') {
@@ -45976,7 +46008,7 @@ const StyleDesigner = (function () {
                 if (!this.checked && idx !== -1) arr.splice(idx, 1);
                 n.props.cssClass = arr.join(' ');
                 var innerEl = getCanvasInnerEl(nodeId);
-                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked);
+                if (innerEl) innerEl.classList.toggle('carousel-dark', this.checked); /* @pg-site-output */
             });
         });
 
@@ -51573,6 +51605,7 @@ const StyleDesigner = (function () {
     // The bare tree a blank widget starts with: a root holding one empty
     // loop_area, the per-record repetition zone. Nodes dropped beside it
     // (heading, search box, pagination) render once.
+    /* @pg-site-output */
     function _swBlankTree() {
         var t = createNode('root', {}, [createNode('loop_area', {}, [])]);
         t._id = 'sw-root-' + gid();
@@ -52890,6 +52923,7 @@ const StyleDesigner = (function () {
     // A new list of `source` from the palette: a list without its field
     // yet (the panel asks for it) around one row, a badge showing the value
     // or a link opening the file. The row is the designer's to restyle.
+    /* @pg-site-output */
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
@@ -52928,6 +52962,7 @@ const StyleDesigner = (function () {
     // badge and the cancellation's reason. The member's orders: a list
     // group of links, a "Cancelled" badge on a cancelled one. Every word is
     // the designer's to restyle or translate.
+    /* @pg-site-output */
     function _sdOrderListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53049,6 +53084,7 @@ const StyleDesigner = (function () {
     // (dimmed on a day of another month), a "Today" badge and its events as
     // links. The others: a list of their own rows, the days list with its
     // events. Every word is the designer's to restyle or translate.
+    /* @pg-site-output */
     function _sdCalendarListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53122,6 +53158,7 @@ const StyleDesigner = (function () {
     // as a table of name and value, the products bought together as cards
     // in a grid (the list inside its row, at most four shown). Pictures
     // carry the product's short description as their text.
+    /* @pg-site-output */
     function _sdProductListStarter(source, bs) {
         var sem = function (tag, cls, name, props, kids) {
             var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
@@ -53792,6 +53829,7 @@ const StyleDesigner = (function () {
     // throughout, real <table> for totals with token-bound value cells.
     // Designers see what visitors see at /siparis the moment they drop
     // the widget. KEEP IN SYNC with functions.php:_eo_default_designer_tree.
+    /* @pg-site-output */
     function _buildExpressOrderStarterTree() {
         function sem(tag, cssClass, childrenOrText, extra) {
             var p = { tag: tag };
@@ -54496,6 +54534,7 @@ const StyleDesigner = (function () {
     }
     // `view`: 'list' (a card per submission) or 'item' (the one record).
     // Returns the children of the record's body.
+    /* @pg-site-output */
     function _swFormFieldNodes(fields, view) {
         var isList     = (view === 'list');
         var titleField = _swFormTitleField(fields);
@@ -54591,6 +54630,7 @@ const StyleDesigner = (function () {
     // ── Account widget starters: shared pieces ──────────────────────────────
     // A labelled control in an mb-3 wrapper, as the member widget starters
     // draw them. `o`: { required, autocomplete, attrs, colCss }.
+    /* @pg-site-output */
     function _swAcctField(label, id, type, name, o) {
         o = o || {};
         var attrs = [{ name: 'type', value: type }, { name: 'name', value: name }];
@@ -54605,6 +54645,7 @@ const StyleDesigner = (function () {
     }
     // A <select> the server fills with the site's choices (countries, time
     // zones, salutations); the starter carries one empty option.
+    /* @pg-site-output */
     function _swAcctSelect(label, id, name, colCss) {
         return createNode('semantic', { tag: 'div', cssClass: ((colCss || '') + ' mb-3').trim(), customName: label }, [
             createNode('semantic', { tag: 'label', cssClass: 'form-label', text: label, customName: _sdT('Label'),
@@ -54615,14 +54656,17 @@ const StyleDesigner = (function () {
             ])
         ]);
     }
+    /* @pg-site-output */
     function _swAcctSubmit(text, name) {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
             customName: name || _sdT('Save Button'), _attrs: [{ name: 'type', value: 'submit' }] });
     }
+    /* @pg-site-output */
     function _swAcctLinks(children) {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, children);
     }
     // What a visitor who is not signed in sees on a members-only account page.
+    /* @pg-site-output */
     function _swAcctSignedOut() {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center', customName: _sdT('Signed Out'),
             _bindings: { eo_visible_if: 'is_signed_out' } }, [
@@ -54635,6 +54679,7 @@ const StyleDesigner = (function () {
     // The centred card every account widget starter sits in. A widget that
     // repeats nothing still carries an empty loop_area, hidden, as the member
     // widgets do.
+    /* @pg-site-output */
     function _swAcctPage(cardName, md, lg, body, hasLoop) {
         var col = [
             createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: cardName }, [
@@ -54659,6 +54704,7 @@ const StyleDesigner = (function () {
     // script (pg_wishlist.js) shows it, filled for a saved product. A
     // product group's card has none. Starters only: the design templates
     // build their own cards.
+    /* @pg-site-output */
     function _sdWishlistHeart(action) {
         return createNode('component', { componentType: 'btn',
             btnElement: 'button', btnType: 'button',
@@ -54674,6 +54720,7 @@ const StyleDesigner = (function () {
 
     // `opts.formFields` — the chosen form's fields (list_form_fields rows).
     // Only the two form views read it; every other kind ignores it.
+    /* @pg-site-output */
     function _buildStarterTree(regionType, opts) {
         opts = opts || {};
         var _formFields = Array.isArray(opts.formFields) ? opts.formFields : null;
@@ -57981,6 +58028,7 @@ const StyleDesigner = (function () {
     //
     // (Future: drag-drop / delete invariants — cannot be deleted, cannot be
     //  moved outside the widget — to be added, following the loop_area pattern.)
+    /* @pg-site-output */
     function _ensureMessagesNode(tree) {
         if (!tree || !tree.children) return tree;
         var msgNode = createNode('content', { contentType: 'messages', cssClass: '' });
@@ -58487,6 +58535,7 @@ const StyleDesigner = (function () {
     // widgets are written whole, their loop areas as comment markers, so the
     // code view shows what the canvas shows. Without a sink nothing here
     // differs from before: generateHTML() passes none.
+    /* @pg-site-output */
     function _sdEmitNode(n, indent, base, sink) {
         var pad = '    '.repeat(indent);
         var h = '';
@@ -58802,6 +58851,7 @@ const StyleDesigner = (function () {
     // `treeOverride`: another tree drawn with this page's frame (a published
     // revision, for the History panel's compare); the page's own tree
     // otherwise.
+    /* @pg-site-output */
     function generateHTML(styleName, additionalBodyClasses, treeOverride) {
         var root = treeOverride || tree;
         if (!root) return '';
@@ -58894,6 +58944,7 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    /* @pg-site-output */
     function _sdThemeHeadHtml(indent) {
         return _sdThemeAssets().map(function (a) {
             return (indent || '') + (a.css
@@ -59324,6 +59375,7 @@ const StyleDesigner = (function () {
     // Without widgetHtml: the page markup with the widget markers left in.
     // With it: the finished preview document. `raw` is a markup from an
     // earlier call without widgetHtml, so the page is not generated twice.
+    /* @pg-site-output */
     function _sdPreviewDocHtml(widgetHtml, raw) {
         var html;
         if (typeof raw === 'string') {
@@ -66526,6 +66578,7 @@ const StyleDesigner = (function () {
     //   v  drawing key, _sdPalDrawing()
     // Built on first use: the descriptions are read through _sdT().
     var _sdPalInfoMap = null;
+    /* @pg-site-output */
     function _sdPalInfo() {
         if (_sdPalInfoMap) return _sdPalInfoMap;
         _sdPalInfoMap = {
