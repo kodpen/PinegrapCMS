@@ -26,6 +26,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - designable-comments.md: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as a designable system widget kind; what slice 20 (product and event threads) needs and where to start
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
+- designer-interactions.md: Plan (designer session): interaction builder for designer nodes cut into steps I1–I4: props._fx model, data-pg-fx-* attributes, pg_fx script, Interactions tab, canvas preview
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - designer-smart-completion.md: Plan (2026-10-24): deterministic smart completion for designer CSS/HTML/JS and class inputs, a per-element custom style rule, fixes first

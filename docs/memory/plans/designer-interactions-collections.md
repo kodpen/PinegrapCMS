@@ -12,15 +12,8 @@ description: Plan (approved 2026-10-19, watch list, designer session): interacti
 - Collections (proposed shape): a `collections` layer over the existing form engine rather than a new engine: a collection = a form with a schema flag, typed fields (text, rich text, number, date, image, file, reference to another collection or to products/pages, option set), slug field, taxonomy (tags/categories as reference collections), dynamic list/detail widgets reuse `form_list_view`/`form_item_view` with reference resolution and taxonomy filters; RSS, JSON-LD and translation keep working because the storage is still form records. Templates (blog, menu, events, staff) migrate to collections only by adding the flag; nothing breaks for existing sites.
 - Legacy: classic pages and legacy form pages are untouched.
 
-## How is the interactions half cut?
-- One interaction per node in `props._fx` (next to `_attrs`): `effect` (fade, slide-up/-down/-left/-right, scale, sticky, parallax), `trigger` (load, view, hover, click; none for sticky and parallax), `duration`, `delay` (ms), `easing` (ease, ease-in, ease-out, ease-in-out, linear), `stagger` (ms, load/view: the children move one after another instead of the node), `repeat` (view: again on every entry), `distance` (px), `offset` (sticky top, px), `speed` (parallax, percent). `pg_fx_normalize()` and its JS twin clamp and drop the rest; the page writes `data-pg-fx="<effect>"`, `data-pg-fx-trigger` and only the non-default values.
-- I1 — data model and front end: normalizer and attribute writer (PHP + editor twin) on content, semantic and grid nodes; `assets/js/pg_fx.src.js` (+ `.min.js` bundle); `pg_fx_inject()` (a head style that hides entrance targets until the script arms them, with a 3 s fail-safe, plus the script) in `get_page_content.php`; the Preview row; tests. No panel yet.
-- I2 — Interactions tab: per-node controls for every field, undo, translations, copy/paste keeps `_fx`; the code view gives `data-pg-fx-*` back to `_fx` (like `_sdCodeSetTitleAttr()`).
-- I3 — canvas preview: the canvas loads the script and binds again after every render (`window.pgFxBind`), follows the Animations pause (paused: final state, nothing hidden) and the drag hold; a "Play" button replays the selected node's interaction.
-- I4 — beyond plain nodes: palette components, system widget nodes and shared components carry `_fx` too (their own markup paths); memory file `designer/designer-interactions.md`.
-
 ## What remains?
-- Interactions: I1 (in progress), then I2, I3, I4 in order; each waits for the previous merge.
+- Interactions: cut into steps I1–I4 in `plans/designer-interactions.md`.
 - Collections: not cut yet; a later designer session writes their slices here. Dependencies to note: `designer/page-schedule.md` (collections items want scheduling too), `designer/responsive-images.md` (image fields), translations (reference labels).
 
 ## Open questions?
