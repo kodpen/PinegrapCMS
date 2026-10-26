@@ -643,6 +643,73 @@ function ws_api_flows_delete($params)
     api_ok(ws_api_flow_present($flow, ws_flow_version($flow['version_id']), false));
 }
 
+/**
+ * What one box of a flow's draft would do, as the API hands it out.
+ *
+ * @param array $try ws_flow_box_try(), ok
+ * @return array
+ */
+function ws_api_flow_box_try_present($try)
+{
+    return array(
+        'node_id' => (string) $try['node_id'],
+        'kind'    => (string) $try['kind'],
+        'label'   => (string) $try['label'],
+        'outcome' => ((string) $try['outcome'] !== '') ? (string) $try['outcome'] : null,
+        'refusal' => ((string) $try['refusal'] !== '') ? (string) $try['refusal'] : null,
+        'said'    => (string) $try['said'],
+        'texts'   => array_map(function ($text) {
+            return array('key' => (string) $text['key'], 'text' => (string) $text['text']);
+        }, $try['texts']),
+        'empty'   => array_values(array_map('strval', $try['empty'])),
+        'next'    => array_values(array_map('strval', $try['next'])),
+        'run_id'  => ((int) $try['run_id'] > 0) ? (int) $try['run_id'] : null,
+    );
+}
+
+// What ws_api_flow_box_try_present() returns.
+function ws_api_flow_box_try_schema()
+{
+    return array(
+        'node_id' => 'string',
+        'kind'    => 'string',
+        'label'   => 'string',
+        'outcome' => 'string?',
+        'refusal' => 'string?',
+        'said'    => 'string',
+        'texts'   => array(array('key' => 'string', 'text' => 'string')),
+        'empty'   => 'string[]',
+        'next'    => 'string[]',
+        'run_id'  => 'integer?',
+    );
+}
+
+// Trying a box reads the draft, which only whoever may change the flow reads,
+// and looks at counts and records with the owner's rights: no MCP tool, so an
+// assistant does not read through it what its own scopes keep back.
+function ws_api_flows_box_try($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $result = ws_flow_box_try($viewer, $flow, array(
+        'node_id' => (string) $params['node'],
+        'run_id'  => (int) ($params['run_id'] ?? 0),
+    ));
+
+    if (!$result['ok']) {
+        if ((int) $result['status'] === 404) {
+            api_fail_not_found(((string) $result['field'] === 'run_id') ? lang('Flow run') : lang('Flow box'));
+        }
+
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_box_try_present($result));
+}
+
 /* ---------------------------------------------------------------------------
    Runs (includes/workspace/flow_runs.php)
    --------------------------------------------------------------------------- */

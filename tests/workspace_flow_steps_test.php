@@ -489,4 +489,15 @@ function test_workspace_flow_steps_try_writes_nothing()
 
 	pg_assert_contains('ws_flow_graph_of($flow)', $try, 'the draft');
 	pg_assert_contains('ws_flow_run_for($viewer', $try, 'a run the person reaches');
+
+	// The canvas and the API ask the same function; the route is a read and
+	// no MCP tool.
+	pg_assert_contains("case 'ws_flow_box_try':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php'));
+	pg_assert_contains('ws_flow_box_try($viewer, $flow', ws_flow_steps_test_source('ws_api_flows_box_try'));
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+	$route = substr($api, strpos($api, "'id'          => 'workspace.flows.box_try'"), 400);
+
+	pg_assert_contains("'method'      => 'GET'", $route);
+	pg_assert_contains("'mcp'         => false", $route);
 }
