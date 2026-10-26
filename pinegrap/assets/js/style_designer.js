@@ -28774,6 +28774,62 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A classic page's custom layout (the PHP its system region draws) as a
+    // file tab: read, regenerated and saved through api.php's layout_code,
+    // which admits the classic layout editor's role (designers and
+    // administrators) and checks the form token. A text saved equal to the
+    // generated layout, white space aside, leaves the page unmodified.
+    // Regenerate puts the generated layout in the tab; nothing is saved
+    // until the tab is. Read only on a hosted site, which ignores the file.
+    function _sdLayoutCodeOpen(page, regenerate) {
+        if (!page || !(page.page_id > 0)) return;
+        var key = 'layout:' + page.page_id;
+        var readOnly = !!(_design && _design.layoutReadOnly);
+        if (regenerate && readOnly) return;
+        var post = function (sub, extra, cb) {
+            var body = { action: 'layout_code', sub_action: sub, page_id: page.page_id, token: _pgToken() };
+            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
+            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
+                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
+                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
+                })
+                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
+        };
+        if (regenerate && !window.confirm(_sdT('Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.'))) return;
+        var open = _sdCodeTabFind(key);
+        var spec = {
+            key: key,
+            title: _sdT('Layout (PHP)') + (page.page_name ? ': ' + page.page_name : ''),
+            icon: 'bi-filetype-php',
+            language: 'php',
+            readOnly: readOnly,
+            url: null,
+            load: function (cb) {
+                if (!regenerate) { post('read', null, cb); return; }
+                // A new tab starts from the generated text, unsaved.
+                post('regenerate', null, function (res) {
+                    cb(res);
+                    var tab = _sdCodeTabFind(key);
+                    if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
+                });
+            },
+            save: function (content, cb) { post('save', { content: content }, cb); }
+        };
+        _sdCodeTabOpen(spec);
+        if (!regenerate || !open) return;
+        if (!open.loaded) return;
+        post('regenerate', null, function (res) {
+            var tab = _sdCodeTabFind(key);
+            if (!tab || !tab.ed) return;
+            if (res.ok) tab.ed.setValue(res.content);
+            else sdToast(esc(res.message || ''), 'error', 5000);
+        });
+    }
+
     // Ctrl+S with the keyboard in a file tab saves that file, not the design.
     function _sdCodeSaveShortcut() {
         var tab = _sdCodeActiveTab();
@@ -32086,6 +32142,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
+            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
             designableHtml
         ) + commentsInfo;
@@ -43790,6 +43847,33 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // The system region of a page that draws a custom layout: its PHP in a
+    // code-view tab, for the classic layout editor's role (_design.layoutCode),
+    // and the generated layout to start again from.
+    function _sdLayoutPropsHtml() {
+        var p = _pgActivePage();
+        if (!_design || !_design.layoutCode || !p || !(p.page_id > 0)) return '';
+        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return '';
+        var h = '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-code">' +
+                    '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit layout (PHP)')) +
+                '</button>' +
+            '</div>';
+        if (!_design.layoutReadOnly) {
+            h += '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-regenerate">' +
+                        '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Regenerate layout')) +
+                    '</button>' +
+                '</div>';
+        }
+        h += '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_design.layoutReadOnly
+                    ? _sdT('This site draws the generated layout; a custom layout cannot be saved here.')
+                    : _sdT('This page draws its system region with a custom layout. Saved unchanged from the generated one, it keeps following the form\'s fields.')) +
+            '</div></div>';
+        return h;
+    }
+
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
 
     function buildRegionNames(type) {
@@ -46457,6 +46541,12 @@ const StyleDesigner = (function () {
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {
             if (selectedNode && selectedNode.props) _sdDregionCodeOpen(selectedNode.props.regionName);
         });
+        // A custom layout's PHP opens as a code-view tab, or starts again
+        // from the generated layout.
+        var layoutCodeBtn = document.getElementById('sd-layout-code');
+        if (layoutCodeBtn) layoutCodeBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), false); });
+        var layoutRegenBtn = document.getElementById('sd-layout-regenerate');
+        if (layoutRegenBtn) layoutRegenBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), true); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {

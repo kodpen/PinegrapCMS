@@ -208,6 +208,9 @@ function pg_panel_actions()
         // The general gate (role 1 or better) runs first; the handler then
         // admits administrators only, the right of edit_dynamic_region.php.
         'dynamic_region_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_dynamic_region_code', 'exempt' => false, 'token' => true, 'write' => true),
+        // A page's custom layout from the visual designer's code tab; the
+        // general gate (role 1 or better) is the classic layout editor's right.
+        'layout_code' => array('file' => 'designer.php', 'handler' => 'pg_panel_layout_code', 'exempt' => false, 'token' => true, 'write' => true),
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),

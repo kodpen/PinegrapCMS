@@ -1452,6 +1452,11 @@ function pg_page_cache_panel_sub_actions()
             'dirty' => array('save'),
             'clean' => array('read'),
         ),
+        'layout_code' => array(
+            'key' => 'sub_action',
+            'dirty' => array('save'),
+            'clean' => array('read', 'regenerate'),
+        ),
         'shared_component' => array(
             'key' => 'sub_action',
             'dirty' => array('create', 'from_designer_region', 'update', 'content_update', 'set_content_editable', 'update_config',
