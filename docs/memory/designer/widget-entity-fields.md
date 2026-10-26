@@ -10,7 +10,7 @@ description: W8, entity values a system widget may show (owner allow-list 2026-1
 - Rules and the owner's reasons: [[widget-designability-decisions]]. A token on the list is never removed.
 
 ## What is built?
-- Product, in the catalog card, the product detail and the favourites: `__keywords`, `__length`, `__width`, `__height`, `__minimum_quantity`, `__maximum_quantity`, `__preparation_days`, `__extra_shipping_cost`, `__vat_rate`, `__payment_period` and `__number_of_payments` (recurring products only), yes/no `__is_free_shipping`, `__is_gift_card`, `__is_donation`.
+- Product (#1809), in the catalog card, the product detail and the favourites: `__keywords`, `__length`, `__width`, `__height`, `__minimum_quantity`, `__maximum_quantity`, `__preparation_days`, `__extra_shipping_cost`, `__vat_rate`, `__payment_period` and `__number_of_payments` (recurring products only), yes/no `__is_free_shipping`, `__is_gift_card`, `__is_donation`.
 - Product group card (catalog listing): `__description` held `''` before; now the group's long description, with `__details`, `__keywords` and its own `__featured` / `__is_new` (`pg_sw_catalog_is_new()`, the products' 30-day rule).
 - Keywords of products and groups, and group details, are extracted for the site translation (`pg_tr_extract_catalog()`).
 
