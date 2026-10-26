@@ -1670,6 +1670,112 @@
         }
     }
 
+    // ── The composer's unsent text, kept on this browser ──
+    // One slot per site, viewer, channel and discussion, so two people on one
+    // browser or two sites on one host never read each other's text. Only
+    // the stored markup and its chips' labels are kept, never files.
+    var DRAFT_PREFIX = 'ws-draft:';
+    var DRAFT_DAYS = 14;
+    var DRAFT_KEEP = 50;
+
+    function draftKey(site, viewer, channelId, threadId) {
+        var thread = parseInt(threadId, 10) || 0;
+
+        return DRAFT_PREFIX + String(site || '') + '|' + (parseInt(viewer, 10) || 0)
+            + ':c' + (parseInt(channelId, 10) || 0) + (thread ? ':t' + thread : '');
+    }
+
+    // A kept value as { raw, labels, at } while it is younger than DRAFT_DAYS
+    // and holds words; null otherwise.
+    function draftFresh(stored, now) {
+        var value = null;
+
+        try {
+            value = JSON.parse(String(stored || ''));
+        } catch (error) {
+            return null;
+        }
+
+        if (!value || (typeof value.raw !== 'string') || (value.raw.trim() === '') || (typeof value.at !== 'number')) {
+            return null;
+        }
+
+        if (!(value.at > now - DRAFT_DAYS * 86400000)) {
+            return null;
+        }
+
+        var labels = (value.labels && (typeof value.labels === 'object') && !Array.isArray(value.labels)) ? value.labels : {};
+
+        return { raw: value.raw, labels: labels, at: value.at };
+    }
+
+    // The slots to remove from [{ key, at }]: every expired one, then the
+    // oldest beyond DRAFT_KEEP.
+    function draftPrune(entries, now) {
+        var limit = now - DRAFT_DAYS * 86400000;
+        var live = [];
+        var drop = [];
+
+        entries.forEach(function (entry) {
+            if (entry.at > limit) {
+                live.push(entry);
+            } else {
+                drop.push(entry.key);
+            }
+        });
+
+        live.sort(function (a, b) { return b.at - a.at; });
+        live.slice(DRAFT_KEEP).forEach(function (entry) { drop.push(entry.key); });
+
+        return drop;
+    }
+
+    function draftRead(key) {
+        try {
+            var value = draftFresh(window.localStorage.getItem(key), Date.now());
+
+            if (!value) {
+                window.localStorage.removeItem(key);
+            }
+
+            return value;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    // Keeps the text, or drops the slot when it is empty; the others are
+    // pruned first so a full storage still takes the newest.
+    function draftWrite(key, raw, labels) {
+        try {
+            var store = window.localStorage;
+
+            if (String(raw || '').trim() === '') {
+                store.removeItem(key);
+                return;
+            }
+
+            var now = Date.now();
+            var entries = [{ key: key, at: now }];
+
+            for (var i = 0; i < store.length; i++) {
+                var name = store.key(i);
+
+                if (name && (name !== key) && (name.indexOf(DRAFT_PREFIX) === 0)) {
+                    var kept = draftFresh(store.getItem(name), now);
+
+                    entries.push({ key: name, at: kept ? kept.at : 0 });
+                }
+            }
+
+            draftPrune(entries, now).forEach(function (name) { store.removeItem(name); });
+            store.setItem(key, JSON.stringify({ raw: raw, labels: labels || {}, at: now }));
+        } catch (error) {
+            // Blocked storage or a full quota: the box works the same,
+            // nothing is kept.
+        }
+    }
+
     // A box that floats like a context menu and closes like one: a click
     // elsewhere, Escape, a scroll or a resize. "above" places it over the
     // point instead of under it (for the composer, at the bottom).
@@ -11188,6 +11294,9 @@
         composer: function () {
             var self = this;
             var wrap = el('div', 'ws-composer-wrap');
+
+            // The box this one replaces writes its waiting draft first.
+            self.flushDraft();
             self.composerWrap = wrap;
 
             if (!self.channel.can_post) {
@@ -11439,8 +11548,11 @@
             input.addEventListener('input', function () {
                 self.autosize();
                 self.pickerCheck();
+                self.keepDraft();
             });
             input.addEventListener('click', function () { self.pickerCheck(); });
+            input.addEventListener('blur', function () { self.flushDraft(); });
+            self.restoreDraft();
 
             // The plain box handles its own keys; the rich one calls keys()
             // and sends on Enter itself.
@@ -11725,6 +11837,7 @@
 
             this.labels = [];
             this.argDismissed = null;
+            this.dropDraft();
 
             if (this.commandStrip) {
                 clear(this.commandStrip);
@@ -11740,6 +11853,117 @@
             if (this.tokens(this.inputText()) === sent) {
                 this.clearInput();
             }
+        },
+
+        // ── The unsent text of this box (draftKey(), draftWrite()) ──
+        // A channel's slot, or a discussion's beside its channel; none where
+        // nothing can be posted.
+        draftSlot: function () {
+            var channel = this.channel;
+
+            if (!channel || !channel.can_post) {
+                return '';
+            }
+
+            if (this.isThread) {
+                return draftKey(CFG.api_url, CFG.me, channel.thread ? channel.thread.channel_id : 0, channel.id);
+            }
+
+            return draftKey(CFG.api_url, CFG.me, channel.id, 0);
+        },
+
+        // The tags' labels of the box, so the chips come back with their names.
+        draftLabels: function () {
+            var labels = {};
+
+            if (this.rich) {
+                Array.prototype.forEach.call(this.rich.node.querySelectorAll('[data-token]'), function (chip) {
+                    labels[chip.getAttribute('data-token')] = chip.textContent;
+                });
+            } else {
+                (this.labels || []).forEach(function (item) { labels[item.token] = item.label; });
+            }
+
+            return labels;
+        },
+
+        // Saves the box once typing pauses, or at once from flushDraft().
+        // The slot is taken now, so a save after another channel opened
+        // still writes this one's. A box changing a sent or scheduled
+        // message keeps no draft.
+        keepDraft: function () {
+            var self = this;
+            var key = self.draftSlot();
+
+            if (!key || self.editing || self.editingScheduled) {
+                return;
+            }
+
+            clearTimeout(self.draftTimer);
+            self.draftPending = function () {
+                self.draftPending = null;
+
+                if (!self.input || self.editing || self.editingScheduled) {
+                    return;
+                }
+
+                draftWrite(key, self.inputEmpty() ? '' : self.tokens(self.inputText()), self.draftLabels());
+            };
+            self.draftTimer = setTimeout(function () {
+                if (self.draftPending) {
+                    self.draftPending();
+                }
+            }, 400);
+        },
+
+        flushDraft: function () {
+            clearTimeout(this.draftTimer);
+
+            if (this.draftPending) {
+                this.draftPending();
+            }
+        },
+
+        // The box was sent or emptied: its slot goes. Not while it changes a
+        // sent or scheduled message, which never held the draft.
+        dropDraft: function () {
+            if (this.editing || this.editingScheduled) {
+                return;
+            }
+
+            clearTimeout(this.draftTimer);
+            this.draftPending = null;
+
+            var key = this.draftSlot();
+
+            if (key) {
+                draftWrite(key, '', null);
+            }
+        },
+
+        // The kept text back into a box opened empty.
+        restoreDraft: function () {
+            var self = this;
+            var key = self.draftSlot();
+            var kept = (key && self.input && self.inputEmpty()) ? draftRead(key) : null;
+
+            if (!kept) {
+                return;
+            }
+
+            if (self.rich) {
+                self.rich.setMarkup(kept.raw, kept.labels);
+            } else {
+                self.labels = [];
+                Object.keys(kept.labels).forEach(function (token) {
+                    self.labels.push({ label: shownLabel(token.charAt(1), kept.labels[token]), token: token });
+                });
+                self.input.value = kept.raw.replace(/<[@#][a-z_]+:\d+>/g, function (token) {
+                    return kept.labels[token] ? shownLabel(token.charAt(1), kept.labels[token]) : token;
+                });
+            }
+
+            self.autosize();
         },
 
         // What was typed before the caret: the pickers read it. Chips and
@@ -14322,7 +14546,9 @@
             jumpCount: null,
             flashAfterOpen: null,
             pendingThread: null,
-            pendingScheduledEdit: null
+            pendingScheduledEdit: null,
+            draftTimer: null,
+            draftPending: null
         };
 
         Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
