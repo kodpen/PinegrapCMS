@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -308,7 +308,8 @@ function test_workspace_flow_steps_hook_address_is_kept_back()
 	pg_assert_contains('ws_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_flow_detail'));
 	pg_assert_contains('ws_api_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
 	pg_assert_contains('ws_api_flow_graph_present(ws_flow_graph_of($version), $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
-	pg_assert_contains("ws_api_flow_graph_present(\$graph, (string) \$run['access'] === 'edit')", ws_flow_steps_test_source('ws_api_flow_run_present'));
+	pg_assert_contains("ws_api_flow_graph_present(\$graph, \$edit)", ws_flow_steps_test_source('ws_api_flow_run_present'));
+	pg_assert_contains("\$edit = ((string) \$run['access'] === 'edit');", ws_flow_steps_test_source('ws_api_flow_run_present'));
 
 	pg_assert_contains("\$url = ws_scheduled_host((string) \$action['url']);", ws_flow_steps_test_source('ws_scheduled_web_check'));
 }
@@ -350,4 +351,79 @@ function test_workspace_flow_steps_digest_report_checkin_start()
 
 	// The action a box starts names no source action.
 	pg_assert_contains("'run_id'          => 0", ws_flow_steps_test_source('ws_step_run'));
+}
+
+// The change box: kept in its shape, a delete changing no fields, what it
+// lacks, and the change step it is.
+function test_workspace_flow_steps_change_config()
+{
+	pg_assert_same('change', ws_step_kinds()['change']['type'] ?? null);
+
+	$config = ws_step_config_normalize('change', array(
+		'record' => ' Product ',
+		'action' => 'update',
+		'id'     => '12',
+		'fields' => array('price' => '1500', 'enabled' => true, 'Bad Name!' => 'x', 'answers' => array('a' => 'one', 'b' => array('no'))),
+	));
+
+	pg_assert_same('product', $config['record']);
+	pg_assert_same('update', $config['action']);
+	pg_assert_same(12, $config['id']);
+	pg_assert_same(array('price' => '1500', 'enabled' => true, 'answers' => array('a' => 'one')), $config['fields']);
+	pg_assert_same(array(), ws_step_config_normalize('change', array('action' => 'delete', 'fields' => array('price' => 1)))['fields'], 'a delete changes no fields');
+	pg_assert_same('update', ws_step_config_normalize('change', array('action' => 'drop'))['action']);
+	pg_assert_same(30, count(ws_step_config_normalize('change', array('fields' => array_fill_keys(array_map(function ($n) {
+		return 'f' . $n;
+	}, range(1, 40)), 'x')))['fields']));
+
+	$problems = function ($config) {
+		return count(ws_step_config_problems('change', ws_step_config_normalize('change', $config), 'X'));
+	};
+
+	pg_assert_same(3, $problems(array()));
+	pg_assert_same(1, $problems(array('record' => 'product', 'id' => 3)), 'an update needs a field');
+	pg_assert_same(0, $problems(array('record' => 'product', 'id' => 3, 'action' => 'delete')));
+	pg_assert_same(0, $problems(array('record' => 'product', 'id' => 3, 'fields' => array('price' => 100))));
+
+	pg_assert_same(array('type' => 'change', 'record' => 'page', 'action' => 'delete', 'id' => 4, 'fields' => array()),
+		ws_step_action('change', ws_step_config_normalize('change', array('record' => 'page', 'action' => 'delete', 'id' => 4))));
+
+	// ws_scheduled_change() reads the channel of the action that runs it: a
+	// box has none, so no decision is posted under a scheduled action's name.
+	pg_assert_contains("'channel_id'  => 0", ws_flow_steps_test_source('ws_step_run'));
+}
+
+// Which record a change box changes, and to what, is read only by whoever
+// may change the flow: everybody else reads the kind of record, the action
+// and the names of the fields, on the screen, in the API and in a run; a
+// change box's sentence in a run names neither the record nor its values.
+function test_workspace_flow_steps_change_is_kept_back()
+{
+	$graph = ws_flow_graph_normalize(array('nodes' => array(
+		array('id' => 'start', 'kind' => 'manual'),
+		array('id' => 'set', 'kind' => 'change', 'config' => array('record' => 'contact', 'id' => 7, 'fields' => array('email' => 'jane@example.com', 'notes' => 'VIP'))),
+	)));
+
+	$reader = (array) ws_flow_graph_present($graph)['nodes'][1]['config'];
+	$editor = (array) ws_flow_graph_present($graph, true)['nodes'][1]['config'];
+
+	pg_assert_same('contact', $reader['record']);
+	pg_assert_same('update', $reader['action']);
+	pg_assert_same(0, $reader['id']);
+	pg_assert_same(array('email' => '', 'notes' => ''), $reader['fields']);
+	pg_assert_same(7, $editor['id']);
+	pg_assert_same('jane@example.com', $editor['fields']['email']);
+
+	$said = '“Jane” changed (E-mail: “a@example.com” → “jane@example.com”)';
+
+	pg_assert_same($said, ws_step_result_shown('change', 'done', $said, true));
+	pg_assert_same('post sentence', ws_step_result_shown('post', 'done', 'post sentence', false), 'other boxes as they are');
+	pg_assert_true(strpos(ws_step_result_shown('change', 'done', $said, false), 'jane') === false);
+	pg_assert_true(strpos(ws_step_result_shown('change', 'failed', $said, false), 'jane') === false);
+	pg_assert_same('', ws_step_result_shown('change', '', '', false), 'a box not run yet says nothing');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+	pg_assert_contains('ws_step_result_shown(', ws_flow_steps_test_source('ws_api_flow_run_step_present'));
+	pg_assert_contains("ws_api_flow_run_step_present(\$step, \$graph, \$edit)", ws_flow_steps_test_source('ws_api_flow_run_present'));
 }

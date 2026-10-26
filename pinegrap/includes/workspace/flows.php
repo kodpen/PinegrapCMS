@@ -1173,7 +1173,10 @@ function ws_flow_url_masked($url)
 /**
  * A graph as the screen and the API hand it out: a box's settings always an
  * object, even an end's empty ones. Only whoever may change the flow reads
- * the whole address of a webhook or web check box (ws_flow_url_masked()).
+ * the whole address of a webhook or web check box (ws_flow_url_masked()),
+ * and which record a change box changes and to what: the record may be one
+ * the reader may not open, and its values a customer's data. They read the
+ * kind of record, the action and the names of the fields.
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param bool  $edit  the reader may change the flow
@@ -1186,6 +1189,11 @@ function ws_flow_graph_present($graph, $edit = false)
         'nodes' => array_map(function ($node) use ($edit) {
             if (!$edit && in_array((string) $node['kind'], array('webhook', 'web_check'), true) && isset($node['config']['url'])) {
                 $node['config']['url'] = ws_flow_url_masked($node['config']['url']);
+            }
+
+            if (!$edit && ((string) $node['kind'] === 'change')) {
+                $node['config']['id'] = 0;
+                $node['config']['fields'] = array_fill_keys(array_keys((array) ($node['config']['fields'] ?? array())), '');
             }
 
             $node['config'] = (object) $node['config'];
@@ -1462,6 +1470,23 @@ function ws_flow_js_strings()
         'fl_start_target'     => lang('Scheduled action to start'),
         'fl_start_delay'      => lang('Minutes later'),
         'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
+        'fl_kind_change'      => lang('Change a record'),
+        'fl_change_pick'      => lang('Choose a kind of record'),
+        'fl_change_none'      => lang('No record chosen'),
+        'fl_change_kind'      => lang('Kind of record'),
+        'fl_change_action'    => lang('What is done'),
+        'fl_change_update'    => lang('Change its fields'),
+        'fl_change_delete'    => lang('Delete it'),
+        'fl_change_id'        => lang('Record number'),
+        'fl_change_id_help'   => lang('The number of the record, as its page or the record drawer shows it. It is checked with your rights as you publish and again each time the box runs.'),
+        'fl_change_hidden'    => lang('Which record, and the new values, are shown only to whoever may change the flow.'),
+        'fl_change_fields'    => lang('Fields to change'),
+        'fl_change_fields_help' => lang('Add each field the box writes, then its new value.'),
+        'fl_change_add'       => lang('Add a field'),
+        'fl_change_remove'    => lang('Remove'),
+        'fl_change_yes'       => lang('Yes'),
+        'fl_change_no'        => lang('No'),
+        'fl_change_answers'   => lang('A set of answers'),
         'fl_notify_nobody'    => lang('Nobody chosen yet'),
         'fl_notify_who'       => lang('Who is told'),
         'fl_notify_text'      => lang('What they are told'),
@@ -1666,7 +1691,7 @@ function ws_flow_js_config($viewer, $mode)
     // counts the person may read, the task e-mail's filters, and the
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
-    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array());
+    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array());
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
@@ -1677,6 +1702,11 @@ function ws_flow_js_config($viewer, $mode)
 
         $steps['digest_only'] = ws_scheduled_digest_filters();
         $steps['targets'] = ws_scheduled_targets($viewer);
+
+        // The kinds of record the person may change, with their actions and
+        // fields, as the scheduled form offers them.
+        $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null;
+        $steps['changes'] = (object) (is_array($scheduled) ? $scheduled['changes'] : array());
     }
 
     return $config + array(

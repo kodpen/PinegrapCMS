@@ -57,6 +57,7 @@ function ws_step_kinds()
         'report'    => array('label' => lang('Send a summary of counts'), 'type' => 'report', 'texts' => array('title'), 'lines' => array('title')),
         'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question')),
         'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array()),
+        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array()),
     );
 }
 
@@ -88,6 +89,10 @@ function ws_step_outcomes()
  * report:    title, metrics (up to 20 of key, param), channel_id, to
  * checkin:   channel_id, question
  * start_action: target_id (a scheduled action), delay (0-10080 minutes)
+ * change:    record (a kind of the change catalogue), action (update,
+ *            delete), id, fields (up to 30 of name => value; a value is a
+ *            number, yes/no, a text, or a set of texts, a submission's
+ *            answers; none for a delete)
  *
  * @param string $kind
  * @param mixed  $config
@@ -213,6 +218,39 @@ function ws_step_config_normalize($kind, $config)
                 'target_id' => $number($config['target_id'] ?? 0),
                 'delay'     => min(10080, $number($config['delay'] ?? 0)),
             );
+
+        case 'change':
+            $verb = (($config['action'] ?? '') === 'delete') ? 'delete' : 'update';
+            $fields = array();
+
+            foreach ((($verb === 'update') && is_array($config['fields'] ?? null)) ? $config['fields'] : array() as $name => $value) {
+                if (!is_string($name) || !preg_match('/^[a-z][a-z0-9_]{0,39}$/', $name) || (count($fields) >= 30)) {
+                    continue;
+                }
+
+                if (is_bool($value) || is_int($value) || is_float($value)) {
+                    $fields[$name] = $value;
+                } elseif (is_string($value)) {
+                    $fields[$name] = ws_flow_lines($value, 20000);
+                } elseif (is_array($value)) {
+                    $set = array();
+
+                    foreach ($value as $key => $item) {
+                        if (is_scalar($item) && (count($set) < 50)) {
+                            $set[(string) $key] = ws_flow_lines($item, 10000);
+                        }
+                    }
+
+                    $fields[$name] = $set;
+                }
+            }
+
+            return array(
+                'record' => (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_token($config['record'] ?? '', 32))),
+                'action' => $verb,
+                'id'     => $number($config['id'] ?? 0),
+                'fields' => $fields,
+            );
     }
 
     return array();
@@ -312,6 +350,21 @@ function ws_step_config_problems($kind, $config, $name)
         case 'start_action':
             if ((int) $config['target_id'] <= 0) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs the scheduled action it starts.', 'vars' => $name));
+            }
+
+            break;
+
+        case 'change':
+            if ($config['record'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the kind of record it changes.', 'vars' => $name));
+            }
+
+            if ((int) $config['id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the record it changes.', 'vars' => $name));
+            }
+
+            if (($config['action'] === 'update') && empty($config['fields'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs a field and its new value.', 'vars' => $name));
             }
 
             break;
@@ -444,6 +497,28 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 }
 
 /**
+ * What a box of a run says it did, as a reader of the run sees it. A change
+ * box's sentence names the record and the values it wrote, which only
+ * whoever may change the flow reads (ws_flow_graph_present() keeps them
+ * back the same way); everybody else reads that a change was made, or not.
+ * Pure.
+ *
+ * @param string $kind    the box's kind
+ * @param string $outcome the step's outcome, '' while it has none
+ * @param string $text    ws_flow_result_text()
+ * @param bool   $edit    the reader may change the flow
+ * @return string
+ */
+function ws_step_result_shown($kind, $outcome, $text, $edit)
+{
+    if ($edit || ((string) $kind !== 'change') || ((string) $text === '')) {
+        return (string) $text;
+    }
+
+    return ((string) $outcome === 'done') ? lang('The change was made.') : lang('The change could not be made.');
+}
+
+/**
  * How a step's end settles its box: done on done; a failure leaves on
  * failed where an arrow does, and fails the box where none does. Pure.
  *
@@ -498,10 +573,13 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $context = ws_flow_run_context($run);
 
     // What ws_scheduled_fill() reads of the action: the flow's name as the
-    // run started, and the run's number for {{run}}.
+    // run started, and the run's number for {{run}}. A change posts its
+    // decision under a scheduled action's card in that action's channel; a
+    // box has neither, its run's result says what it changed.
     $row = array(
         'id'          => 0,
         'message_id'  => 0,
+        'channel_id'  => 0,
         'name'        => (string) ($context['flow_name'] ?? ''),
         'run_count'   => max(0, (int) $run['id'] - 1),
         'last_run_at' => 0,
