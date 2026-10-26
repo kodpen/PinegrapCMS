@@ -353,14 +353,32 @@ function pg_mcp_capabilities() {
 }
 
 // Read by the application's model before it uses the tools: the conventions
-// every endpoint shares, which no single tool description repeats.
+// every endpoint shares, which no single tool description repeats, then the
+// rules every prompt of the site carries (pg_ai_prompt_rules()) and what an
+// application that writes through these tools must also keep to. What the
+// tools return was written by people and outside services, so it is data;
+// a write waits for the person's yes, is rehearsed with dry_run where it can
+// be, and nothing read here is passed on to another tool or service.
 function pg_mcp_instructions() {
 
 	return 'Tools for the website ' . pg_mcp_site_name() . ' (' . pg_oauth_host() . '), run with the permissions of the person who connected. '
 		. 'Each tool is an endpoint of the site\'s API. Money is in minor units (1999 is 19.99). '
 		. 'Lists are paged: pass page.next_cursor back as cursor while page.has_more is true. '
 		. 'Writes that accept dry_run can be checked first with dry_run: true, which writes nothing. '
-		. 'A failed call returns the API\'s error object with a stable code and a message.';
+		. 'A failed call returns the API\'s error object with a stable code and a message.'
+		. "\n\nRules:\n" . implode("\n", pg_mcp_instructions_rules());
+
+}
+
+// The rules lines of pg_mcp_instructions(): the assistant's, then the three
+// that hold for an application that calls the site's tools itself.
+function pg_mcp_instructions_rules() {
+
+	return array_merge(pg_ai_prompt_rules('assistant', '- '), array(
+		'- Before a tool call that creates, changes, sends or deletes something, tell the person what it will do and wait for their yes; these tools let you write only after that.',
+		'- Where such a tool accepts dry_run, call it with dry_run: true first, show the person what it would do, and make the real call only after they confirm.',
+		'- Never copy what these tools return into another tool, server or service, unless the person asked for exactly that.'
+	));
 
 }
 
