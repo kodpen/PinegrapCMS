@@ -602,7 +602,7 @@ function test_legal_documents_token_matches()
 // The payment methods a document names, and the label of each.
 function test_legal_documents_payment_methods()
 {
-	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico'), array_keys(pg_legal_document_payment_methods()), 'the four stored values');
+	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico', 'PayPal Checkout'), array_keys(pg_legal_document_payment_methods()), 'the built-in values, then the shipped redirect driver\'s');
 	pg_assert_same('Pay With Iyzico', pg_legal_document_payment_label('Pay With Iyzico'), 'a known method by its label');
 	pg_assert_same('Something else', pg_legal_document_payment_label('Something else'), 'an unknown one as it is');
 }

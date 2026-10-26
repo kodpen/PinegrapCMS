@@ -393,6 +393,8 @@
     "Pay with iyzico is offered": "iyzico ile ödeme sunuluyor",
     "PayPal": "PayPal",
     "PayPal Express Checkout": "PayPal Ekspres Ödeme",
+    "PayPal declined the payment. Please choose another way to pay.": "PayPal ödemeyi reddetti. Lütfen başka bir ödeme yöntemi seçin.",
+    "PayPal does not take payments in this currency.": "PayPal bu para biriminde ödeme almıyor.",
     "PayPal is offered": "PayPal sunuluyor",
     "PayPal logo address": "PayPal logosunun adresi",
     "Payable": "Ödenebilir",
