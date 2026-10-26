@@ -18,6 +18,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
+
 function pg_payment_pgtestmethods_capabilities()
 {
 	return array();
@@ -124,4 +126,24 @@ function test_payment_methods_driver_method_label()
 
 	pg_assert_same('Pg Methods Pay', pg_payment_method_label('Pay With Pg Methods'));
 	pg_assert_same('Unknown Method', pg_payment_method_label('Unknown Method'));
+}
+
+function test_payment_methods_driver_method_is_an_intermediary_on_the_e_archive()
+{
+	payment_methods_test_register();
+
+	pg_assert_same('ODEMEARACISI', erp_payment_method_code('Pay With Pg Methods'));
+	pg_assert_same('ODEMEARACISI', erp_payment_method_code('Pay With Iyzico'));
+	pg_assert_same('KREDIKARTI/BANKAKARTI', erp_payment_method_code('Credit/Debit Card'));
+	pg_assert_same('', erp_payment_method_code('Unknown Method'));
+}
+
+function test_payment_methods_legal_documents_name_driver_methods()
+{
+	payment_methods_test_register();
+
+	$methods = pg_legal_document_payment_methods();
+
+	pg_assert_same('Pg Methods Pay', $methods['Pay With Pg Methods'] ?? null);
+	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico'), array_slice(array_keys($methods), 0, 4));
 }

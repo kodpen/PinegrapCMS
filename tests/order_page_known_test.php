@@ -67,7 +67,8 @@ function test_order_page_known_steps_stop_before_the_order()
 	}
 
 	pg_assert_contains('!$is_gateway_return && !pg_order_page_known(', file_get_contents(PG_FUNCTIONS_DIR . '/express_order.php'), 'express order: gateway callback let through');
-	pg_assert_contains("'pay_with_iyzico_return'), true)\n    && !pg_order_page_known(", file_get_contents(PG_FUNCTIONS_DIR . '/order_preview.php'), 'order preview: gateway callback let through');
+	pg_assert_contains('!$is_gateway_return && !pg_order_page_known(', file_get_contents(PG_FUNCTIONS_DIR . '/order_preview.php'), 'order preview: gateway callback let through');
+	pg_assert_contains("\$is_gateway_return = pg_payment_is_return_mode(\$_GET['mode'] ?? '');", file_get_contents(PG_FUNCTIONS_DIR . '/order_preview.php'), 'order preview: every driver return');
 
 	// The step that already stopped keeps doing so.
 	pg_assert_contains("output_error(lang('A shipping address &amp; arrival page could not be found for the id that was passed.')", file_get_contents(PG_FUNCTIONS_DIR . '/shipping_address_and_arrival.php'), 'shipping address and arrival');

@@ -17,7 +17,7 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 
 ## Card or redirect?
 - `card`: takes over a Payment Gateway value (`config.ecommerce_payment_gateway`, an ENUM). `pg_payment_legacy_gateways()` = the eight values in the settings list and the ENUM (a test keeps them equal), frozen in `submit_order.php`. A driver may take one over (iyzico → `Iyzipay`); a new value needs a migration step appending it to the ENUM.
-- `redirect`: its own payment method (`orders.payment_method`, also an ENUM; `Credit/Debit Card`, `PayPal Express Checkout`, `Offline Payment` refused), own switch.
+- `redirect`: its own payment method (`orders.payment_method`, also an ENUM; built-in values refused), own switch; offered by `pg_payment_checkout_methods()` (`payment-method-lists.md`).
 - `pg_payment_driver_for_gateway()` / `_for_method()`; registration refuses a taken key, gateway or method. Optional `log_name` (log lines; default `label`), `csp` (hosts for the policy).
 
 ## Where are the settings?
