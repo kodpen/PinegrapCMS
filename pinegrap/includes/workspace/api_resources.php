@@ -3270,6 +3270,10 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
         'priority'          => (string) $task['priority'],
         'start_date'        => $task['start_date'] ?: null,
         'due_date'          => $task['due_date'] ?: null,
+        // The time on the due date and the e-mail reminder (reminders.php);
+        // null on a site whose tables do not have them yet.
+        'due_time'          => ((string) ($task['due_time'] ?? '') !== '') ? substr((string) $task['due_time'], 0, 5) : null,
+        'remind_minutes'    => (($task['remind_minutes'] ?? null) !== null) ? (int) $task['remind_minutes'] : null,
         'estimate_minutes'  => (int) $task['estimate_minutes'],
         'department_id'     => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
         'channel_id'        => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
@@ -3311,6 +3315,8 @@ function ws_api_task_schema()
         'priority'          => 'string',
         'start_date'        => 'string?',
         'due_date'          => 'string?',
+        'due_time'          => 'string?',
+        'remind_minutes'    => 'integer?',
         'estimate_minutes'  => 'integer',
         'department_id'     => 'integer?',
         'channel_id'        => 'integer?',
@@ -3435,7 +3441,7 @@ function ws_api_task_input($params)
 {
     $data = array();
 
-    foreach (array('title', 'description', 'status', 'priority', 'start_date', 'due_date', 'estimate_minutes', 'department_id', 'channel_id') as $field) {
+    foreach (array('title', 'description', 'status', 'priority', 'start_date', 'due_date', 'due_time', 'remind_minutes', 'estimate_minutes', 'department_id', 'channel_id') as $field) {
         if (array_key_exists($field, $params)) {
             $data[$field] = $params[$field];
         }

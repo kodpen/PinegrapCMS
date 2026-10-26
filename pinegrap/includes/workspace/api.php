@@ -220,6 +220,8 @@ function ws_api_routes()
         array('name' => 'priority', 'in' => 'body', 'type' => 'enum', 'values' => array('low', 'normal', 'high', 'urgent')),
         array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Empty clears it.'),
         array('name' => 'due_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Empty clears it.'),
+        array('name' => 'due_time', 'in' => 'body', 'type' => 'string', 'max_length' => 8, 'nullable' => true, 'description' => 'HH:MM on the due date, 24-hour. null or empty clears it: the task is then due on its date, and its reminder counts from 09:00.'),
+        array('name' => 'remind_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 86400, 'nullable' => true, 'description' => 'Minutes before the task is due that its people are reminded by e-mail, at most 86400 (60 days); 0 at the due time. Needs a due date. null or empty: no reminder.'),
         array('name' => 'estimate_minutes', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 100000, 'description' => 'Each person\'s share of the effort, in minutes. 0 counts the site default on the board.'),
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'See GET /workspace/departments. 0 for none.'),
         array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => 'User ids of the people on the task. The owner of the application may give work only to themselves unless they hold the assign right or lead the people\'s department.'),
