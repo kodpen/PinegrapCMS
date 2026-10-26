@@ -25052,7 +25052,7 @@ const StyleDesigner = (function () {
         // ── Class input: add on enter / space / blur + autocomplete ──
         var ci = document.getElementById('sd-class-input');
         if (ci) {
-            _attachClassAutocomplete(ci, n);
+            _attachClassAutocomplete(ci, n, function (cls) { addClassToken(cls, n); });
             ci.addEventListener('keydown', function (e) {
                 // Suggestion nav: ↑/↓/Tab/Enter handled inside autocomplete, only
                 // fall through to token commit if the dropdown isn't handling it.
@@ -25314,7 +25314,7 @@ const StyleDesigner = (function () {
                 renderProperties();
                 renderHtmlTree();
             }
-            _attachClassAutocomplete(ci, nodes[0]);
+            _attachClassAutocomplete(ci, nodes[0], _addMultiClass);
             ci.addEventListener('keydown', function(e) {
                 if (e.defaultPrevented) return;
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _addMultiClass(this.value); }
@@ -25323,148 +25323,83 @@ const StyleDesigner = (function () {
         }
     }
 
-    // ── Class autocomplete dropdown ────────────────────────────────────────────
-    // Wires a `<input class="sd-class-input">` element to a prefix-matching
-    // suggestion dropdown backed by window.PG_CLASS_SUGGESTIONS (Bootstrap
-    // utilities) plus every class already used anywhere in the current tree.
-    function _collectTreeClasses() {
-        var set = {};
+    // ── Class suggestions ──────────────────────────────────────────────────────
+    // The class inputs ask the smart completion's predictor (PgStyleSuggest,
+    // loaded on the first focus) with the element's context: its tag and
+    // classes on the canvas, its parents and how often the design uses each
+    // class. Until the predictor is there, the design's own classes are
+    // offered.
+    function _sdTreeClassCounts() {
+        var lists = [];
         _frWalk(tree, function (n) {
-            if (n.props && n.props.cssClass) {
-                n.props.cssClass.split(/\s+/).forEach(function (c) {
-                    if (c.trim()) set[c] = 1;
-                });
-            }
+            if (n.props && n.props.cssClass) lists.push(n.props.cssClass);
         });
-        return Object.keys(set);
+        return PgStyleSuggest.designClasses(lists);
     }
 
-    function _attachClassAutocomplete(input, node) {
-        if (!input || input._pgAutocompleteBound) return;
-        input._pgAutocompleteBound = true;
+    function _sdClassPredictCtx(node, design) {
+        // Only the selected node is resolved on the canvas; another node of
+        // a multiple selection is read from its props alone.
+        var el = node && node === selectedNode ? _selectedCanvasEl() : null;
+        var ctx = PgStyleSuggest.elementContext(el, {
+            skipClass: /^sd-/,
+            skipEl: function (p) { return !!(p.classList && p.classList.contains('sd-wrap')); }
+        });
+        String((node && node.props && node.props.cssClass) || '').split(/\s+/).forEach(function (c) {
+            if (c && ctx.classes.indexOf(c) === -1) ctx.classes.push(c);
+        });
+        ctx.design = { classes: design };
+        return ctx;
+    }
 
-        var pool = (window.PG_CLASS_SUGGESTIONS || []).slice();
-        // Include classes present in current tree (user-authored + imported)
-        pool = pool.concat(_collectTreeClasses());
-        // Dedupe, preserve order
-        var _seen = {};
-        pool = pool.filter(function (c) { if (_seen[c]) return false; _seen[c] = 1; return true; });
+    // One short reason beside a suggestion, from the predictor's codes.
+    function _sdClassHint(it) {
+        var has = function (code) { return (it.codes || []).indexOf(code) !== -1; };
+        if (has('fixed') && it.replace) return _sdT('Not for dark mode, use {var}', it.replace);
+        if (has('redundant')) return _sdT('Changes nothing here');
+        if (has('conflict') && it.conflicts && it.conflicts.length) return _sdT('Overrides {var}', it.conflicts.join(' '));
+        if (has('ctx')) return _sdT('Fits the parent');
+        if (has('state')) return _sdT('State of a class here');
+        if (has('bp') && it.bp) return _sdT('From {var} up', it.bp);
+        if (has('family')) return _sdT('Variant');
+        if (has('design')) return _sdT('Used in this design');
+        if (has('tag')) return _sdT('Common on this tag');
+        return '';
+    }
 
-        var dropdown = document.createElement('div');
-        dropdown.className = 'sd-class-ac-dropdown';
-        dropdown.style.display = 'none';
-        document.body.appendChild(dropdown);
-        var activeIdx = -1;
-        var currentMatches = [];
-
-        function positionDropdown() {
-            var r = input.getBoundingClientRect();
-            dropdown.style.left = r.left + 'px';
-            dropdown.style.top  = (r.bottom + 2) + 'px';
-            dropdown.style.minWidth = Math.max(200, r.width) + 'px';
-        }
-
-        function closeDropdown() { dropdown.style.display = 'none'; activeIdx = -1; currentMatches = []; }
-
-        function render(matches) {
-            if (!matches.length) { closeDropdown(); return; }
-            var html = '';
-            matches.forEach(function (m, i) {
-                html += '<div class="sd-class-ac-item' + (i === activeIdx ? ' active' : '') + '" data-idx="' + i + '">' + esc(m) + '</div>';
-            });
-            dropdown.innerHTML = html;
-            positionDropdown();
-            dropdown.style.display = 'block';
-            currentMatches = matches;
-        }
-
-        function filterNow() {
-            var q = input.value.trim();
-            if (!q) { closeDropdown(); return; }
-            var ql = q.toLowerCase();
-            // Exclude classes already on this node
-            var already = (node && node.props && node.props.cssClass)
-                ? node.props.cssClass.split(/\s+/).filter(Boolean)
-                : [];
-            var alreadySet = {};
-            already.forEach(function (c) { alreadySet[c] = 1; });
-
-            // Three-tier ranking:
-            //   1. exact    — typed string matches the class exactly  → top of list
-            //   2. prefix   — class starts with the typed string      → middle
-            //   3. contains — typed string appears anywhere inside    → bottom (capped tightly)
-            // This ensures e.g. typing "d-flex" shows "d-flex" first, not "d-md-flex".
-            var exact = [], prefix = [], contains = [];
-            for (var i = 0; i < pool.length; i++) {
-                var c = pool[i];
-                if (alreadySet[c]) continue;
-                var cl = c.toLowerCase();
-                if (cl === ql) {
-                    exact.push(c);              // exact match → always include, tier 1
-                } else if (cl.indexOf(ql) === 0) {
-                    if (prefix.length < 10) prefix.push(c);   // startsWith → tier 2 (up to 10)
-                } else if (cl.indexOf(ql) !== -1) {
-                    if (contains.length < 5) contains.push(c); // contains → tier 3 (up to 5)
+    function _attachClassAutocomplete(input, node, pick) {
+        if (!input || typeof PgStyleSuggest === 'undefined') return;
+        var design = null;
+        var handle = PgStyleSuggest.dropdown(input, {
+            openEmpty: true,
+            onFocus: function () {
+                design = _sdTreeClassCounts();
+                PgStyleSuggest.load(function () { if (handle) handle.refresh(); });
+            },
+            items: function (q) {
+                if (!design) design = _sdTreeClassCounts();
+                var ctx = _sdClassPredictCtx(node, design);
+                var P = PgStyleSuggest.get();
+                if (P) {
+                    return P.classes(q, ctx).map(function (it) {
+                        var codes = it.codes || [];
+                        return { label: it.label, hint: _sdClassHint(it), muted: codes.indexOf('fixed') !== -1 || codes.indexOf('redundant') !== -1 };
+                    });
                 }
-                // Stop iterating once all tiers are full
-                if (prefix.length >= 10 && contains.length >= 5) break;
-            }
-            var out = exact.concat(prefix).concat(contains).slice(0, 15);
-            // Never auto-select: user must explicitly navigate with arrow keys.
-            // Prevents Enter from committing a suggestion when the user typed their own value.
-            activeIdx = -1;
-            render(out);
-        }
-
-        function commit(cls) {
-            input.value = cls;
-            closeDropdown();
-            // Defer to next tick so the keydown Enter falls through and the
-            // existing blur/Enter handler commits it via addClassToken/_addMultiClass.
-            setTimeout(function () {
-                var ev = new Event('change', { bubbles: true });
-                input.dispatchEvent(ev);
-                input.focus();
-            }, 0);
-        }
-
-        input.addEventListener('input', filterNow);
-        input.addEventListener('focus', function () { if (input.value.trim()) filterNow(); });
-        input.addEventListener('blur',  function () { setTimeout(closeDropdown, 120); });
-
-        input.addEventListener('keydown', function (e) {
-            if (dropdown.style.display !== 'block' || !currentMatches.length) return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                activeIdx = (activeIdx + 1) % currentMatches.length;
-                render(currentMatches);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                activeIdx = (activeIdx - 1 + currentMatches.length) % currentMatches.length;
-                render(currentMatches);
-            } else if (e.key === 'Tab') {
-                // Tab commits the active (arrow-navigated) item, or falls back to the first match.
-                if (currentMatches.length) { e.preventDefault(); commit(currentMatches[activeIdx >= 0 ? activeIdx : 0]); }
-            } else if (e.key === 'Enter') {
-                if (activeIdx >= 0) { e.preventDefault(); commit(currentMatches[activeIdx]); }
-            } else if (e.key === 'Escape') {
-                e.preventDefault(); closeDropdown();
+                if (!q) return [];
+                var ql = q.toLowerCase();
+                return Object.keys(design).filter(function (c) {
+                    return c.toLowerCase().indexOf(ql) !== -1 && ctx.classes.indexOf(c) === -1;
+                }).sort().slice(0, 15).map(function (c) { return { label: c }; });
+            },
+            pick: function (it) {
+                input.value = '';
+                pick(it.label);
+                // The panel was drawn again; carry on in its new class input.
+                var next = document.getElementById('sd-class-input');
+                if (next && next !== input) next.focus();
             }
         });
-
-        dropdown.addEventListener('mousedown', function (e) {
-            var it = e.target.closest('.sd-class-ac-item');
-            if (!it) return;
-            e.preventDefault();  // keep focus in input
-            var idx = parseInt(it.dataset.idx, 10);
-            if (!isNaN(idx) && currentMatches[idx]) commit(currentMatches[idx]);
-        });
-
-        // Clean up dropdown if the input is removed from DOM (attrs panel re-render)
-        var obs = new MutationObserver(function () {
-            if (!document.body.contains(input)) { dropdown.remove(); obs.disconnect(); }
-        });
-        obs.observe(document.body, { childList: true, subtree: true });
     }
 
     // ========================= CSS STYLES PANEL (legacy — DEPRECATED) =====
@@ -28137,10 +28072,10 @@ const StyleDesigner = (function () {
     }
 
     // ========================= CODE VIEW: CLASS COMPLETION =========================
-    // Inside the value of a class attribute the editor offers the Bootstrap
-    // utilities the Attributes panel knows (PG_CLASS_SUGGESTIONS) and every
-    // class the document already uses, the latter read once per document
-    // version.
+    // Inside the value of a class attribute the editor offers every class
+    // the document already uses, read once per document version, and the
+    // Bootstrap classes of the smart completion's vocabulary once
+    // PgStyleSuggest has loaded it (the first completion starts the load).
     var _sdCodeDocClassesCache = { doc: null, list: [] };
     function _sdCodeDocClasses(state) {
         if (_sdCodeDocClassesCache.doc === state.doc) return _sdCodeDocClassesCache.list;
@@ -28172,7 +28107,13 @@ const StyleDesigner = (function () {
             options.push({ label: label, type: type });
         };
         _sdCodeDocClasses(context.state).forEach(function (c) { push(c, 'class'); });
-        (window.PG_CLASS_SUGGESTIONS || []).forEach(function (c) { push(c, 'keyword'); });
+        if (typeof PgStyleSuggest !== 'undefined') {
+            var P = PgStyleSuggest.get();
+            if (!P) PgStyleSuggest.load();
+            // Every match, not the panel's short list: the editor filters
+            // this list itself while the word grows (validFor).
+            else P.classes(typed, { limit: 5000 }).forEach(function (it) { push(it.label, 'keyword'); });
+        }
         return { from: word.from, options: options, validFor: /^[A-Za-z0-9_-]*$/ };
     }
 

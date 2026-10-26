@@ -221,6 +221,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests
+- style-suggest.md: assets/js/pg_style_suggest.js: the lazy loader of the predictor and vocabulary, the element context, the light dropdown, the Attributes class field and the code view's class list on it
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.

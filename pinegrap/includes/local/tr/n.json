@@ -1007,6 +1007,7 @@
     "Not enough data": "Yeterli veri yok",
     "Not enough stock. Available: {var:1}": "Yeterli stok yok. Mevcut: {var:1}",
     "Not entered": "Girilmedi",
+    "Not for dark mode, use {var}": "Koyu modda çalışmaz, {var} kullanın",
     "Not found": "Bulunamadı",
     "Not found.": "Bulunamadı.",
     "Not found?": "Bulamadınız mı?",
