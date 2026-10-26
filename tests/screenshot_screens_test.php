@@ -41,11 +41,11 @@ function test_screenshot_screens_point_at_panel_files()
 		pg_assert_true(is_file($panel . $file), 'panel file exists: ' . $file);
 
 		if (isset($screen['viewports'])) {
-			pg_assert_same(array(), array_diff($screen['viewports'], array('wide', 'phone')), 'viewports are wide or phone: ' . $name);
+			pg_assert_same(array(), array_diff($screen['viewports'], array('wide', 'tablet', 'phone')), 'viewports are wide, tablet or phone: ' . $name);
 		}
 
 		if (isset($screen['click']) && is_array($screen['click'])) {
-			pg_assert_same(array(), array_diff(array_keys($screen['click']), array('wide', 'phone')), 'click keyed by viewport: ' . $name);
+			pg_assert_same(array(), array_diff(array_keys($screen['click']), array('wide', 'tablet', 'phone')), 'click keyed by viewport: ' . $name);
 		}
 
 		if (isset($screen['cookies'])) {
