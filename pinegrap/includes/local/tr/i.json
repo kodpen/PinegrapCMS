@@ -5,6 +5,7 @@
     "I agree that the café keeps these details to prepare the quote and the order, as its privacy notice explains.": "Kafenin bu bilgileri, gizlilik bildiriminde açıklandığı şekilde teklifi ve siparişi hazırlamak için saklamasını kabul ediyorum.",
     "I agree that the practice keeps these details to arrange my care, as its privacy notice explains.": "Polikliniğin bu bilgileri, aydınlatma metninde açıklandığı şekilde, bakımımı düzenlemek için saklamasını kabul ediyorum.",
     "I agree to the <a href=\"{var:1}\" target=\"_blank\">terms and conditions</a>.": "<a href=\"{var:1}\" target=\"_blank\">Şartlar ve koşulları</a> kabul ediyorum.",
+    "I agree to the terms and conditions.": "Şartlar ve koşulları kabul ediyorum.",
     "I agree to the {var:1}.": "{var:1} kabul ediyorum.",
     "I am curious how others organize things. I keep one notebook for each area of my life, tags for the status of a note and a single inbox note for anything I have not sorted yet.": "Başkalarının nasıl düzen kurduğunu merak ediyorum. Ben hayatımın her alanı için bir defter, bir notun durumu için etiketler ve henüz ayıklamadığım her şey için tek bir gelen kutusu notu kullanıyorum.",
     "I am new to the app and a little confused by the words. Is a workspace just a big notebook? When should I make a new workspace instead of a new notebook?": "Uygulamada yeniyim ve terimler kafamı biraz karıştırıyor. Çalışma alanı büyük bir defterden mi ibaret? Ne zaman yeni bir defter yerine yeni bir çalışma alanı açmalıyım?",
@@ -444,7 +445,10 @@
     "Installing the design template…": "Tasarım şablonu kuruluyor…",
     "Installment": "Taksit",
     "Installment Charge": "Taksit Masrafı",
+    "Installment Table": "Taksit Tablosu",
+    "Installment choice (filled as the card number is typed)": "Taksit seçimi (kart numarası yazıldıkça dolar)",
     "Installment picker (Iyzipay BIN lookup)": "Taksit Seçici (Iyzipay BIN sorgusu)",
+    "Installment table by card family": "Kart ailesine göre taksit tablosu",
     "Installments": "Taksit",
     "Instalment": "Taksit",
     "Instalment Commission": "Taksit Komisyonu",
@@ -707,6 +711,7 @@
     "Item saved for later.": "Ürün sonraya kaydedildi.",
     "Item {var}": "Öğe {var}",
     "Items": "Ürün Adedi",
+    "Items are shipped": "Ürünler kargoyla gönderiliyor",
     "Items here are deleted permanently after {var:1} days.": "Buradaki öğeler {var:1} gün sonra kalıcı olarak silinir.",
     "Items in ZIP file have been imported.": "ZIP dosyasındaki öğeler içe aktarıldı.",
     "Items in a row with an even gap between them.": "Aralarında eşit boşluk olan, yan yana dizili öğeler.",
@@ -808,5 +813,6 @@
     "it is empty.": "sayfa boş.",
     "it is removed from all of them.": "hepsinden kaldırılacak.",
     "item(s)": "öğe",
-    "its own design": "kendi tasarımı"
+    "its own design": "kendi tasarımı",
+    "iyzico logo address": "iyzico logosunun adresi"
 }

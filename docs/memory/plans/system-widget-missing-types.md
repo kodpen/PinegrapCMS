@@ -1,6 +1,6 @@
 ---
 name: system-widget-missing-types
-description: Plan (2026-10-19, steps 1-3 done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
+description: Plan (2026-10-19, multi-step checkout done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 ---
 
 ## Which classic page types have no widget?
@@ -15,16 +15,13 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 | membership confirmation | `get_membership_confirmation_screen_content.php` | after the membership entrance |
 | affiliate sign up form / confirmation / welcome | `get_affiliate_*` | affiliate programme pages |
 | order form | `get_order_form.php` | a product group with quantity boxes, many products to the cart at once |
-| order preview | `get_order_preview.php` | last checkout step, below |
 - Region-level gaps (menu, ad region, tag cloud…): R6 in `legacy-retirement-prerequisites.md`.
 
 ## Which are covered?
-- Custom form confirmation (`form_item_view`), order receipt (`order_view`), login, logout, forgot/change/set password, registration and membership entrance, My Account and its sub-pages, view order, address book, e-mail preferences, catalog and detail, cart, express order, shipping address and arrival, calendar view and event, form list and item view, search results, error.
+- Custom form confirmation (`form_item_view`), order receipt (`order_view`), login, logout, forgot/change/set password, registration and membership entrance, My Account and its sub-pages, view order, address book, e-mail preferences, catalog and detail, cart, express order, the multi-step checkout (shipping address and arrival, shipping method, billing information, order preview), calendar view and event, form list and item view, search results, error.
 
-## Why does the classic multi-step checkout need widgets?
-- Owner (2026-10-19): almost every existing site checks out through it, so it cannot be left as a `system` node. "Frozen" (`feature-roadmap-2026-10.md`) means its code stays working, not that it gets no widget.
-- Four widgets, one per step, post to the classic handlers (`<step>.php`, the preview via `submit_order.php`) with their field names, as `express_order` does for `express_order.php`. The shopping cart widget already links into the flow (`next_page_id_with_shipping` / `_without_shipping`).
-- The order preview's totals are computed as `get_order_preview.php` computes them; only the checkout's rules change that calculation (`workflow/decisions-made-product.md`), the widget only draws what it returns.
+## Why did the classic multi-step checkout get widgets?
+- Owner (2026-10-19): almost every site checks out through it, so it cannot stay a `system` node ("frozen" means its code keeps working). The four widgets post to the classic handlers with their names; the order preview draws `get_order_preview()`'s own values (`workflow/decisions-made-product.md`).
 
 ## What does a converted page use until a widget exists?
 - A `region` node of type `system` (`<system></system>`) keeps the classic renderer running on the page, so the page works; only its inside is not designable. A custom layout (`layout_type = 'custom'`) keeps drawing through that node too; swapping it for a widget is Y5 of `legacy-layouts-in-designer.md`, opt-in per page. Retirement needs the owner's list of types that must be designable first.
@@ -37,8 +34,9 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
 
 ## Where to start?
-- The multi-step checkout first (every existing shop uses it), then the owner's list; one widget per PR.
+- The multi-step checkout is done. Next: the owner's list (open question above) picks the types and their order; none starts before it. One widget per PR.
 
 ## Which steps are there?
-1-3. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777); [[shipping-address-widget]] and siblings.
-4. Order preview: next, from `get_order_preview.php` and `order_preview.php`; give `pg_order_page_known()` its row branch as for billing. Then the owner's list.
+1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#PRNUM); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
+- Left from 4: what [[order-preview-widget]] lists under "What is left out?".
+5. The owner's list of the remaining types (table above).

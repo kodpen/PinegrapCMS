@@ -1113,6 +1113,16 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_billing_information($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'order_preview' — the last step of the classic checkout,
+            // posting to order_preview.php (widgets_order_preview.php). The
+            // visitor's last submit is read before rendering, as for the
+            // express order: the widget drops the form from the session.
+            if ($region_type === 'order_preview') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                $legal_values = pg_legal_documents_form_values('order_preview');
+                return pg_legal_documents_inject(_render_system_widget_order_preview($tree_json, $sid, $cfg, $mode), $legal_values);
+            }
+
             // Future region types handled here.
             // For now return empty — renders nothing rather than a broken page.
             return '';

@@ -80,6 +80,7 @@ function pg_sw_type_labels()
         'shipping_address_and_arrival' => lang('Shipping Address and Arrival'),
         'shipping_method'     => lang('Shipping Method'),
         'billing_information' => lang('Billing Information'),
+        'order_preview'       => lang('Order Preview'),
     );
 }
 
