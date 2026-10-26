@@ -3,7 +3,7 @@
 	"screens": [
 		{"name": "welcome", "path": "welcome.php", "kept": true},
 		{"name": "header", "path": "welcome.php", "crop": "#header", "kept": true},
-		{"name": "main-menu", "path": "welcome.php", "crop": "#menu", "click": {"phone": "#menu_mode_toggle"}, "kept": true},
+		{"name": "main-menu", "path": "welcome.php", "crop": "#menu", "click": {"tablet": "#menu_mode_toggle", "phone": "#menu_mode_toggle"}, "kept": true},
 		{"name": "main-menu-expanded", "path": "welcome.php", "crop": "#menu", "cookies": {"softwaremenustatus": "expanded"}, "viewports": ["wide"], "kept": true},
 		{"name": "footer", "path": "welcome.php", "crop": "#footer", "kept": true},
 		{"name": "workspace", "path": "workspace.php?channel={channel_id}", "kept": true},
