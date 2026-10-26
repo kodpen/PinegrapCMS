@@ -127,6 +127,10 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'checks', 'bs6_switch_checks');
 	}
 
+	foreach (bs6_switch_script_check_files($root) as $path) {
+		$plan[] = array($path, 'checks', 'bs6_switch_script_checks');
+	}
+
 	foreach (bs6_switch_shell_files($root) as $path) {
 		$plan[] = array($path, 'dialogs', 'bs6_switch_dialogs');
 		$plan[] = array($path, 'drawers', 'bs6_switch_drawers');
@@ -158,6 +162,25 @@ function bs6_switch_check_files($root)
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
 		if (bs6_codemod_converts($path) && strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), 'form-check') !== false) {
+			$paths[] = $path;
+		}
+	}
+
+	sort($paths);
+
+	return $paths;
+}
+
+// Scripts the codemod converts that build check markup with an element
+// helper (bs6_switch_script_checks()), sorted; the editor's script is left
+// out.
+function bs6_switch_script_check_files($root)
+{
+	$paths = array();
+
+	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
+		if (bs6_codemod_converts($path) && $path !== 'assets/js/style_designer.js' && preg_match('/\.js$/', $path)
+			&& strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), "'form-check") !== false) {
 			$paths[] = $path;
 		}
 	}
