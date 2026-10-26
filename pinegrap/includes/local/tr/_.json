@@ -1387,6 +1387,7 @@
     "{var}: inside the item loop, nothing is drawn": "{var}: kalem döngüsünün içinde, hiçbir şey çizilmez",
     "{var}: more than four lists deep, nothing is drawn": "{var}: dörtten fazla liste derinliğinde, hiçbir şey çizilmez",
     "{var}: outside a list of days, nothing is drawn": "{var}: bir gün listesinin dışında, hiçbir şey çizilmez",
+    "{var}: outside an item of the order, nothing is drawn": "{var}: siparişin bir kaleminin dışında hiçbir şey çizilmez",
     "{var}: outside the record, no record fills it": "{var}: kaydın dışında, onu hiçbir kayıt doldurmaz",
     "{var}: settings the site cannot read, nothing is drawn": "{var}: site ayarları okuyamıyor, hiçbir şey çizilmez",
     "{var}: this widget draws no such list": "{var}: bu widget böyle bir liste çizmez",

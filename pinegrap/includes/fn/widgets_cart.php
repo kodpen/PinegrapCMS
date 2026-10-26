@@ -1498,6 +1498,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // tree carries a loop_area, so this only ever happened to a tree from
     // before loop_area existed.
     if ($loop_template !== '' && $static_html !== '' && $cart_count > 0) {
+        // The row blocks the item template places (pg_sw_placed()).
+        $_cart_row_tree    = array('type' => 'root', 'children' => $split['loop_children']);
+        $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html'));
+        $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html'));
         foreach ($items as $idx => $item) {
             // Qty input emitted as an input-group with attached -/+ steppers.
             // JS (see _pg_qty_stepper_inline_js below) handles the click → input
@@ -1728,23 +1732,21 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             }
 
             // Auto-append form data when the row HAS form_data_html AND the
-            // designer hasn't placed `^^__item_form_data_html^^` in the
-            // loop_template. Without this fallback, products with order
+            // item template places no `__item_form_data_html`. Without this
+            // fallback, products with order
             // forms (a gift card's recipient email, message, delivery date)
             // would silently lose the data the visitor entered at add-to-
             // cart time on legacy cart trees that pre-date the new token.
             // Designer who DOES place the token retains full control over
             // where the form data appears within the row.
-            if (!empty($row_values['__item_form_data_html'])
-                && strpos($loop_template, '^^__item_form_data_html^^') === false) {
+            if (!empty($row_values['__item_form_data_html']) && !$_cart_form_placed) {
                 $row_html .= $row_values['__item_form_data_html'];
             }
             // Same fallback for the gift-card recipient block. Required here,
             // not merely convenient: `recipient_email_address` is validated
             // downstream, so a cart tree without the token would block checkout
             // with no visible cause.
-            if (!empty($row_values['__item_gift_card_html'])
-                && strpos($loop_template, '^^__item_gift_card_html^^') === false) {
+            if (!empty($row_values['__item_gift_card_html']) && !$_cart_gift_placed) {
                 $row_html .= $row_values['__item_gift_card_html'];
             }
             // And for the recurring schedule: without the controls the row

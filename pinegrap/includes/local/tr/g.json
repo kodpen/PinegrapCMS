@@ -92,6 +92,7 @@
     "Gift cards": "Hediye kartları",
     "Gift cards are automatically created when a Gift Card Product is ordered. You can also manually create Gift Cards.": "Bir Hediye Kartı Ürünü sipariş edildiğinde hediye kartları otomatik olarak oluşturulur. Ayrıca Hediye Kartlarını manuel olarak da oluşturabilirsiniz.",
     "Gift cards from $10, sent by e-mail or in an envelope from our counter, spent on anything in the shop.": "₺350'den başlayan hediye kartları; e-postayla ya da tezgâhımızdan zarf içinde gönderilir, mağazadaki her şeyde geçerlidir.",
+    "Gift cards of the item": "Kalemin hediye kartları",
     "Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.": "Bu siparişin {var:1} tutarındaki kısmı hediye kartlarıyla ödendi. Tutarları kartlara geri yükleyin; kartlar site günlüğünde yazılı.",
     "Gift cards pay part of the order": "Siparişin bir kısmını hediye kartları ödüyor",
     "Gift ideas for someone who loves their home": "Evini seven biri için hediye fikirleri",

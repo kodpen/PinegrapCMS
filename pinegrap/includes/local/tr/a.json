@@ -2135,6 +2135,7 @@
     "Another visitor record job is running (the cleanup, the move to InnoDB or a rebuild). Try again in a minute.": "Başka bir ziyaretçi kaydı işi çalışıyor (temizlik, InnoDB'ye taşıma ya da yeniden kurma). Bir dakika sonra yeniden deneyin.",
     "Another window is restoring a backup into this database right now. Wait for it to finish, then try again.": "Şu anda başka bir pencere bu veritabanına bir yedek geri yüklüyor. Bitmesini bekleyip yeniden deneyin.",
     "Answer": "Yanıt",
+    "Answer (HTML)": "Yanıt (HTML)",
     "Answer Body": "Cevap Gövdesi",
     "Answer goes to": "Yanıtın gideceği yer",
     "Answer in review": "Yanıt inceleniyor",
