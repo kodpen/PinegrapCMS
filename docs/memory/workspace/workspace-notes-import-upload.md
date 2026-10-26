@@ -32,5 +32,5 @@ description: The notes import's upload: picked list, checks, unreadable files, X
 - `ws_note_import_upload_error($name, $error, $file_max)`: add_file.php's sentences naming the file. No Site Log line; PARTIAL (a cancel) or a size code is not logged; codes 6-8 and a non-upload temp file go to `ws_note_import_log_failure()`. UPLOAD_ERR_NO_FILE reads as an empty upload, unlogged.
 
 ## Why is the session closed before staging?
-- Staging .enex or a zip can pass 30 s; the session lock held the person's other requests. The endpoint makes the token, keeps it in the session, `session_write_close()`, raises the time limit (guarded), then stages with it. A failed stage leaves a name with no folder: later steps say "The upload has expired. Start again."
-- Two uploads at once in one session: the newer removes the older's folder; the older fails ("The file could not be saved.", logged) or expires, its stage left to the 24 h sweep.
+- Staging .enex or a zip can pass 30 s; the session lock held the person's other requests. The endpoint makes the token, keeps it in the session, `session_write_close()`, raises the time limit (guarded), then stages with it. A failed stage: later steps say "The upload has expired. Start again."
+- Two uploads at once in one session: the newer removes the older's folder; the older fails or expires; the 24 h sweep takes its stage.
