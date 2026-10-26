@@ -1,6 +1,6 @@
 ---
 name: code-editor-format
-description: The code editor's format command: ed.format() and Shift+Alt+F for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it, how it lands in the undo history (PR #NNNN)
+description: The code editor's format command: ed.format() and Shift+Alt+F for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it, how it lands in the undo history (PR #1909)
 ---
 
 ## What does format do?
