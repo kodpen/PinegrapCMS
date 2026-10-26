@@ -1173,7 +1173,10 @@ function ws_flow_url_masked($url)
 /**
  * A graph as the screen and the API hand it out: a box's settings always an
  * object, even an end's empty ones. Only whoever may change the flow reads
- * the whole address of a webhook or web check box (ws_flow_url_masked()).
+ * the whole address of a webhook or web check box (ws_flow_url_masked()),
+ * and which record a change box changes and to what: the record may be one
+ * the reader may not open, and its values a customer's data. They read the
+ * kind of record, the action and the names of the fields.
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param bool  $edit  the reader may change the flow
@@ -1186,6 +1189,11 @@ function ws_flow_graph_present($graph, $edit = false)
         'nodes' => array_map(function ($node) use ($edit) {
             if (!$edit && in_array((string) $node['kind'], array('webhook', 'web_check'), true) && isset($node['config']['url'])) {
                 $node['config']['url'] = ws_flow_url_masked($node['config']['url']);
+            }
+
+            if (!$edit && ((string) $node['kind'] === 'change')) {
+                $node['config']['id'] = 0;
+                $node['config']['fields'] = array_fill_keys(array_keys((array) ($node['config']['fields'] ?? array())), '');
             }
 
             $node['config'] = (object) $node['config'];
