@@ -21,3 +21,6 @@ description: Decisions list, product part: express order and order preview total
 
 ## What does a personal data erasure keep?
 - Owner decision (2026-10-26, #1706), `core/personal-data-erasure.md`: an order keeps no e-mail address, only the person token, because refunds go through the PSP reference (`transaction_id`, `refund_reference`). An accepted contract keeps its text as proof (only IP and user agent go). An invoice of a person's ERP account, issued or not, gets the replaced buyer fields (the GİB copy is unchanged). The person's `audit_log` lines lose their personal fields but keep who did what and when.
+
+## Who may create, change or resume a scheduled action over the API?
+- Owner decision (2026-10-26, #1708, answer 1b): staff from their own team devices session only; the routes are no MCP tools (`'mcp' => false`); a key or OAuth connection is refused with 403. Why: an action runs in the name and with the rights of whoever saves it, so only the person may save it. Connected apps will propose a change card the person applies (S2b). `workspace/workspace-scheduled-actions-api.md`.

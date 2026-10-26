@@ -701,6 +701,18 @@ function api_validate_value($param, $raw) {
 
 			return $parsed;
 
+		case 'object':
+
+			// A JSON object, decoded as an array with keys. A list in its place
+			// is refused here, so the handler never reads 0, 1, 2 as field names.
+			if (!is_array($raw) || (!empty($raw) && array_values($raw) === $raw)) {
+
+				api_fail_validation(lang(array('string' => '{var:1} must be an object.', 'vars' => $name)), $name);
+
+			}
+
+			return $raw;
+
 		case 'list':
 
 			if (!is_array($raw)) {

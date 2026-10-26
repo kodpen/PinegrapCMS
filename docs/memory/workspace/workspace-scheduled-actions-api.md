@@ -1,12 +1,12 @@
 ---
 name: workspace-scheduled-actions-api
-description: Scheduled actions in the external API (api_scheduled.php): list, get, pause, cancel; staff only; no messages or flow anchors; sentences withheld for unread channels
+description: Scheduled actions in the external API (api_scheduled.php): list, get, pause, cancel; create, change, resume from the person's own session; no messages or flow anchors; sentences withheld
 ---
 
 ## Which routes are there?
 - `GET /workspace/scheduled-actions` (filters `status`, `channel_id`; at most 300, the panel's order), `GET /workspace/scheduled-actions/{id}` (with `history`, the latest 20 runs), `POST …/{id}/pause`, `POST …/{id}/cancel`. All four are MCP tools; key, OAuth and team devices sessions alike.
 - Declared in `ws_scheduled_api_routes()` (includes/workspace/api_scheduled.php), merged at the end of `ws_api_routes()`; object `WorkspaceScheduledAction`.
-- Resume, create and change are not in the API yet (plan S2, open question 1: who may create).
+- `POST …/{id}/resume`, `POST /workspace/scheduled-actions` (201) and `POST`/`PATCH …/{id}`: staff from their own team devices session only (`ws_api_own_words_only()`), `'mcp' => false`: an action runs in the name of whoever saves it (owner, #1708, `workflow/decisions-made-product.md`). Connected apps: a change card later (plan S2b).
 
 ## Who may call them?
 - Staff in the team only (`ws_can_schedule()` in `ws_api_scheduled_viewer()`), 403 for anybody else; 503 before the tables exist. Every staff member sees every action, as on the panel's screen.
@@ -21,3 +21,8 @@ description: Scheduled actions in the external API (api_scheduled.php): list, ge
 ## How do pause and cancel write?
 - `ws_scheduled_set_status_check()` (scheduled.php, shared with the panel's `ws_scheduled_status`) → `api_dry_run_stop()` → `ws_scheduled_set_status()`. Done or cancelled: 422. Pausing a paused one is accepted and changes nothing. Cancel drops the starts waiting in the queue.
 - The four route ids are lines of `workspace_flows_parity_table()` (group `api_routes`, slice 5).
+
+## How do create and change write?
+- `ws_scheduled_save_check()` (scheduled.php; refusals 403 / 404 / 422, also run by the panel's `ws_scheduled_save()`) → a rehearsal answers `ws_scheduled_preview()`'s words → `ws_scheduled_save()` inside `ws_api_as_owner()`.
+- Body: `name`, `rules` (list), `action` (the router's `object` type: a JSON object, a list refused), `follow` (list of {on, do}), `channel_id` on create only. A change keeps every field it leaves out (`ws_api_scheduled_change_data()`, pure); a resume goes through `ws_scheduled_set_status_check()`.
+- Tests: `tests/workspace_scheduled_api_test.php`; the three ids are lines of the parity table's `api_routes` group.

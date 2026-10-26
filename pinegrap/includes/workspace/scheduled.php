@@ -2859,6 +2859,65 @@ function ws_scheduled_targets($viewer)
 // ─── Writing ────────────────────────────────────────────────────────────
 
 /**
+ * May this scheduled action be created or changed as sent? The panel's save
+ * and the API meet the same refusals; nothing is written. A new one is made
+ * in a channel the person may post in, or in a note they may change.
+ *
+ * @param array $viewer
+ * @param array $data as ws_scheduled_save() takes it
+ * @return array ok, status (403 | 404 | 422 on a refusal), error, field,
+ *               row (columns to write), existing, channel, note_id
+ */
+function ws_scheduled_save_check($viewer, $data)
+{
+    $fail = function ($status, $error, $field = '') {
+        return array('ok' => false, 'status' => $status, 'error' => $error, 'field' => $field, 'row' => null, 'existing' => null, 'channel' => null, 'note_id' => 0);
+    };
+
+    if (!ws_can_schedule($viewer)) {
+        return $fail(403, lang('Only staff can schedule actions.'));
+    }
+
+    $id = (int) ($data['id'] ?? 0);
+    $existing = ($id > 0) ? ws_scheduled_action($id) : null;
+
+    if (($id > 0) && !$existing) {
+        return $fail(404, lang('That scheduled action could not be found.'));
+    }
+
+    if ($existing && !in_array($existing['status'], array('active', 'paused', 'failed'), true)) {
+        return $fail(422, lang('A scheduled action that is done or cancelled cannot be changed.'));
+    }
+
+    $checked = ws_scheduled_input($viewer, $data, $existing);
+
+    if (!$checked['ok']) {
+        return $fail(422, $checked['error'], $checked['field']);
+    }
+
+    $channel = null;
+    $note_id = 0;
+
+    if (!$existing && ((int) ($data['channel_id'] ?? 0) > 0)) {
+        $channel = ws_channel((int) $data['channel_id']);
+
+        if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+            return $fail(422, lang('You cannot post in that channel.'));
+        }
+    } elseif (!$existing && ((int) ($data['note_id'] ?? 0) > 0)) {
+        $note = function_exists('ws_note_for') ? ws_note_for($viewer, (int) $data['note_id'], 'edit') : null;
+
+        if (!$note) {
+            return $fail(422, lang('That note could not be found.'));
+        }
+
+        $note_id = (int) $note['id'];
+    }
+
+    return array('ok' => true, 'status' => 200, 'error' => '', 'field' => '', 'row' => $checked['row'], 'existing' => $existing, 'channel' => $channel, 'note_id' => $note_id);
+}
+
+/**
  * Creates or changes a scheduled action. A new one written in a channel
  * leaves a card there, the way a poll does; one written in a note belongs to
  * the note.
@@ -2873,27 +2932,13 @@ function ws_scheduled_save($viewer, $data)
         return array('ok' => false, 'error' => $error, 'field' => $field, 'id' => 0, 'message_id' => 0);
     };
 
-    if (!ws_can_schedule($viewer)) {
-        return $fail(lang('Only staff can schedule actions.'));
-    }
-
-    $id = (int) ($data['id'] ?? 0);
-    $existing = ($id > 0) ? ws_scheduled_action($id) : null;
-
-    if (($id > 0) && !$existing) {
-        return $fail(lang('That scheduled action could not be found.'));
-    }
-
-    if ($existing && !in_array($existing['status'], array('active', 'paused', 'failed'), true)) {
-        return $fail(lang('A scheduled action that is done or cancelled cannot be changed.'));
-    }
-
-    $checked = ws_scheduled_input($viewer, $data, $existing);
+    $checked = ws_scheduled_save_check($viewer, $data);
 
     if (!$checked['ok']) {
         return $fail($checked['error'], $checked['field']);
     }
 
+    $existing = $checked['existing'];
     $row = $checked['row'];
     $now = time();
     $json = function ($value) {
@@ -2934,24 +2979,8 @@ function ws_scheduled_save($viewer, $data)
         return array('ok' => true, 'error' => '', 'field' => '', 'id' => (int) $existing['id'], 'message_id' => (int) $existing['message_id']);
     }
 
-    $channel = null;
-    $note_id = 0;
-
-    if ((int) ($data['channel_id'] ?? 0) > 0) {
-        $channel = ws_channel((int) $data['channel_id']);
-
-        if (!$channel || !ws_can_post_channel($viewer, $channel)) {
-            return $fail(lang('You cannot post in that channel.'));
-        }
-    } elseif ((int) ($data['note_id'] ?? 0) > 0) {
-        $note = function_exists('ws_note_for') ? ws_note_for($viewer, (int) $data['note_id'], 'edit') : null;
-
-        if (!$note) {
-            return $fail(lang('That note could not be found.'));
-        }
-
-        $note_id = (int) $note['id'];
-    }
+    $channel = $checked['channel'];
+    $note_id = (int) $checked['note_id'];
 
     db("INSERT INTO ws_scheduled_actions (name, channel_id, note_id, created_by, rules, action, " . implode(', ', array_keys($follow_columns)) . ", status, next_run_at,
             updated_by, created_at, updated_at)

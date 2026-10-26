@@ -33,6 +33,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /** The most scheduled actions one listing answers, as on the panel's screen. */
 define('WS_API_SCHEDULED_LIST_MAX', 300);
 
+/** Who may create, change and resume, as the routes describe it. */
+define('WS_API_SCHEDULED_OWN_SESSION', 'For staff in the team, from their own team devices session (POST /auth/login) only: an application key or an OAuth connection is refused with 403, and it is no MCP tool, as a scheduled action runs in the name of the person who saves it.');
+
 /**
  * The routes, merged into ws_api_routes().
  *
@@ -97,7 +100,73 @@ function ws_scheduled_api_routes()
             'params'      => array($id),
         ),
 
+        array(
+            'id'          => 'workspace.scheduled_actions.resume',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-actions/{id}/resume',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_actions_resume',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceScheduledAction',
+            'summary'     => 'Resume a scheduled action',
+            'description' => 'Sets a paused or failed scheduled action to run again, from the next time it falls on from now (not a time that went by while it was paused); one only started by another action or an event waits to be started. One whose time has gone by for good, or one done or cancelled, is refused with 422. ' . WS_API_SCHEDULED_OWN_SESSION,
+            'params'      => array($id),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_actions.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-actions',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_actions_create',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'status'      => 201,
+            'returns'     => 'WorkspaceScheduledAction',
+            'summary'     => 'Create a scheduled action',
+            'description' => 'Creates a scheduled action, checked as the Scheduled actions form checks it; it runs as the person who creates it, with their rights at the time it runs. Made in a channel (channel_id), it leaves its card there. A rehearsal (X-Dry-Run) answers what it would do in words: when, conditions, action, follow and its next three times. ' . WS_API_SCHEDULED_OWN_SESSION,
+            'params'      => ws_api_scheduled_body_params(true),
+        ),
+
+        array(
+            'id'           => 'workspace.scheduled_actions.update',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/scheduled-actions/{id}',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_scheduled_actions_update',
+            'dry_run'      => true,
+            'mcp'          => false,
+            'returns'      => 'WorkspaceScheduledAction',
+            'summary'      => 'Change a scheduled action',
+            'description'  => 'Changes a scheduled action that is set to run, paused or failed, checked as the Scheduled actions form checks it; a field left out is kept as it is. A failed one is set to run again; a paused one stays paused. One done or cancelled is refused with 422. The channel it was made in does not change. A rehearsal (X-Dry-Run) answers what it would do in words. ' . WS_API_SCHEDULED_OWN_SESSION,
+            'params'       => array_merge(array($id), ws_api_scheduled_body_params(false)),
+        ),
+
     );
+}
+
+/**
+ * The fields of a scheduled action a create or a change sends.
+ *
+ * @param bool $create with the channel, and name, rules and step required
+ * @return array
+ */
+function ws_api_scheduled_body_params($create)
+{
+    $params = array(
+        array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 160, 'required' => $create, 'description' => 'What the action is called, up to 160 characters.'),
+        array('name' => 'rules', 'in' => 'body', 'type' => 'list', 'max_items' => 12, 'required' => $create, 'description' => 'When it runs and its conditions, as objects with a type: exactly one "when" of at {date YYYY-MM-DD, time HH:MM, repeat none|minutes|hourly|daily|workdays|weekly|monthly|yearly, every, days 1-7 for weekly, until}, trigger (started by another action), join {channel_id} or event {event, channel_id, and the event\'s filters}; besides it, conditions of weekdays {days}, hours {from, to}, workday, record {record, id, field, op, value} or metric {metric, param, op, value}. Replaces every rule.'),
+        array('name' => 'action', 'in' => 'body', 'type' => 'object', 'required' => $create, 'description' => 'The step, as an object with a type: post {channel_id, text}, notify {user_ids, text}, email {to, subject, body}, task {title, description, assignees, due_in, priority, channel_id}, approval, checkin, report, task_digest, change, webhook, web_check or trigger {target_id}, with the fields the Scheduled actions form sends for it. Texts take the placeholders the form lists, such as {{date}} and {{name}}.'),
+        array('name' => 'follow', 'in' => 'body', 'type' => 'list', 'max_items' => WS_SCHEDULED_MAX_FOLLOW, 'of' => array('on' => 'string', 'do' => 'object'), 'description' => 'What follows by how the step went, as objects of {on, do}: on done, failed, skipped or always; do a step as action takes it. Replaces every follow-up; an empty list takes them away.'),
+    );
+
+    if ($create) {
+        $params[] = array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The channel it is made in, where its card is posted; one the person may post in. Left out, it is made without a card.');
+    }
+
+    return $params;
 }
 
 /**
@@ -430,4 +499,110 @@ function ws_api_scheduled_actions_pause($params)
 function ws_api_scheduled_actions_cancel($params)
 {
     ws_api_scheduled_actions_set_status($params, 'cancelled');
+}
+
+function ws_api_scheduled_actions_resume($params)
+{
+    ws_api_own_words_only(ws_api_scheduled_own_session_refusal());
+    ws_api_scheduled_actions_set_status($params, 'active');
+}
+
+/**
+ * The refusal of a create, change or resume that does not come from the
+ * person's own team devices session.
+ *
+ * @return string
+ */
+function ws_api_scheduled_own_session_refusal()
+{
+    return lang('Only the person, in their own team devices session (POST /auth/login), can create, change or resume a scheduled action; an application key or an OAuth connection cannot do it for them.');
+}
+
+/**
+ * What a change sends to the panel's save (pure): the fields given, and the
+ * action's own name, rules, step and follow-ups for those left out.
+ *
+ * @param array $row    decoded
+ * @param array $params the route's values
+ * @return array id, name, rules, action, follow
+ */
+function ws_api_scheduled_change_data($row, $params)
+{
+    $data = array('id' => (int) $row['id']);
+
+    foreach (array('name' => '', 'rules' => array(), 'action' => null, 'follow' => array()) as $key => $none) {
+        $data[$key] = (array_key_exists($key, $params) && ($params[$key] !== null)) ? $params[$key] : ($row[$key] ?? $none);
+    }
+
+    return $data;
+}
+
+/**
+ * A create or a change: the panel's check, a rehearsal answered in the
+ * words of the form's preview, then the panel's save in the owner's name.
+ *
+ * @param array $viewer
+ * @param array $data   as ws_scheduled_save() takes it
+ * @param bool  $create
+ * @return int the action
+ */
+function ws_api_scheduled_save($viewer, $data, $create)
+{
+    $checked = ws_scheduled_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        if ((int) $checked['status'] === 403) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        if ((int) $checked['status'] === 404) {
+            api_fail_not_found(lang('Scheduled action'));
+        }
+
+        api_fail_validation($checked['error'], ($checked['field'] !== '') ? $checked['field'] : null);
+    }
+
+    if (api_dry_run_requested()) {
+        $preview = ws_scheduled_preview($viewer, $data);
+        unset($preview['ok'], $preview['error'], $preview['field']);
+
+        api_dry_run_stop($create ? 'create' : 'update', 'workspace_scheduled_action', array('id' => (int) $data['id'], 'name' => (string) $checked['row']['name']) + $preview);
+    }
+
+    $saved = ws_api_as_owner(function () use ($viewer, $data) {
+        return ws_scheduled_save($viewer, $data);
+    });
+
+    if (!$saved['ok']) {
+        api_fail_validation($saved['error'], ($saved['field'] !== '') ? $saved['field'] : null);
+    }
+
+    return (int) $saved['id'];
+}
+
+function ws_api_scheduled_actions_create($params)
+{
+    ws_api_own_words_only(ws_api_scheduled_own_session_refusal());
+    $viewer = ws_api_scheduled_viewer();
+
+    $id = ws_api_scheduled_save($viewer, array(
+        'id'         => 0,
+        'name'       => (string) ($params['name'] ?? ''),
+        'rules'      => (array) ($params['rules'] ?? array()),
+        'action'     => $params['action'] ?? null,
+        'follow'     => (array) ($params['follow'] ?? array()),
+        'channel_id' => (int) ($params['channel_id'] ?? 0),
+    ), true);
+
+    api_ok(ws_api_scheduled_action_present($viewer, ws_scheduled_action($id), true), 201);
+}
+
+function ws_api_scheduled_actions_update($params)
+{
+    ws_api_own_words_only(ws_api_scheduled_own_session_refusal());
+    $viewer = ws_api_scheduled_viewer();
+    $row = ws_api_scheduled_action_or_404($params['id']);
+    $id = ws_api_scheduled_save($viewer, ws_api_scheduled_change_data($row, $params), false);
+
+    api_ok(ws_api_scheduled_action_present($viewer, ws_scheduled_action($id), true));
 }

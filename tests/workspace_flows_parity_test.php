@@ -1009,7 +1009,8 @@ function workspace_flows_parity_rule_cases()
 }
 
 // What an action is made of: the keys the form sends (data.key, read by
-// ws_scheduled_input() and ws_scheduled_save()), those of a follow-up
+// ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check()),
+// those of a follow-up
 // (follow.key), the row the check gives back to be written (row.key) and
 // the columns ws_scheduled_decode() reads as JSON (column.key).
 function workspace_flows_parity_read_action()
@@ -1017,7 +1018,7 @@ function workspace_flows_parity_read_action()
 	$input = workspace_flows_parity_source('ws_scheduled_input');
 	$out = array();
 
-	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save'), 'data')) as $key) {
+	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save'), 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save_check'), 'data')) as $key) {
 		$out[] = 'data.' . $key;
 	}
 
@@ -2261,7 +2262,7 @@ function workspace_flows_parity_prefixed($prefix, $words)
 function workspace_flows_parity_groups()
 {
 	return array(
-		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input() and ws_scheduled_save(), the row it gives back, the columns of ws_scheduled_decode()'),
+		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check(), the row it gives back, the columns of ws_scheduled_decode()'),
 		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'request() of scheduledForm() in workspace.js and the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
 		'when'                => array('When', array(3), 'workspace_flows_parity_read_when', 'the "when" kinds of ws_scheduled_input()'),
 		'repeats'             => array('When', array(3), 'workspace_flows_parity_read_repeats', 'ws_scheduled_repeats()'),
@@ -2529,6 +2530,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'at most 5 outcome arrows'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
+			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_api_scheduled_body_params'), 'form', 'what the API\'s create and change routes tell about the limit; a flow\'s routes have their own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 		),
@@ -2652,6 +2654,8 @@ function workspace_flows_parity_table()
 			array(array('workspace.scheduled_actions.list', 'workspace.scheduled_actions.get'), 5, 'GET /workspace/flows and /workspace/flow-runs for a converted anchor; an action not converted stays listed (anchors never are)'),
 			array(array('workspace.scheduled_actions.pause'), 5, 'POST /workspace/flows/{id}/pause for a converted anchor'),
 			array(array('workspace.scheduled_actions.cancel'), 5, 'a converted anchor is cancelled with its flow (deleting or pausing the flow)'),
+			array(array('workspace.scheduled_actions.resume'), 5, 'POST /workspace/flows/{id}/publish makes a paused flow live again, its converted anchor with it'),
+			array(array('workspace.scheduled_actions.create', 'workspace.scheduled_actions.update'), 5, 'POST /workspace/flows and /workspace/flows/{id} with /publish, the person\'s own like these: a converted anchor is changed as its flow'),
 		),
 	);
 }
