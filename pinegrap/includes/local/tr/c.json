@@ -504,6 +504,7 @@
     "Changes reach the feeds at the next daily build. A feed you switch on is built when you save.": "Değişiklikler akışlara bir sonraki günlük oluşturmada yansır. Açtığınız akış kaydettiğinizde oluşturulur.",
     "Changes requested": "Değişiklik istendi",
     "Changes the price of a product. Shown to you, old and new, before it is written.": "Bir ürünün fiyatını değiştirir. Yazılmadan önce eskisi ve yenisi size gösterilir.",
+    "Changes to records are proposed as cards in the Workspace, for you to apply. Tick a write permission only if the application should change those records itself.": "Kayıtlardaki değişiklikler Çalışma Alanı'nda sizin uygulamanız için kart olarak önerilir. Uygulamanın bu kayıtları kendisi değiştirmesini istiyorsanız yalnızca o zaman bir yazma iznini işaretleyin.",
     "Changes {var:1} proposes": "{var:1} tarafından önerilen değişiklikler",
     "Changing an appointment": "Randevu değişikliği",
     "Changing its type here changes them as well, layouts included. A separate copy can be made for this page instead, and the other pages stay as they are.": "Türünü burada değiştirmek onları da değiştirir — düzenleri dahil. Bunun yerine bu sayfa için ayrı bir kopya oluşturulabilir; diğer sayfalar olduğu gibi kalır.",

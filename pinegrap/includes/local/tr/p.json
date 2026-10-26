@@ -489,6 +489,7 @@
     "Permission denied: You cannot access site settings.": "İzin reddedildi: Site ayarlarına erişemezsiniz.",
     "Permission denied: You cannot access users.": "Erişim reddedildi: Kullanıcı verilerine erişim yetkiniz yok.",
     "Permission denied: You cannot access visitor data.": "Erişim reddedildi: Ziyaretçi verilerine erişim yetkiniz yok.",
+    "Permission presets": "İzin hazır ayarları",
     "Permissions": "İzinler",
     "Permissions must be three digits, for example 755.": "İzinler üç haneli olmalıdır, örneğin 755.",
     "Permissions were changed for {var:1} item(s).": "{var:1} öğe için izinler değiştirildi.",

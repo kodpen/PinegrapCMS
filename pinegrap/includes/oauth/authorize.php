@@ -307,13 +307,14 @@ function pg_oauth_authorize() {
 		'code_challenge_method' => 'S256',
 		'scope'                 => $param('scope'),
 		'resource'              => $param('resource')
-	));
+	), $param('pg_oauth_preset'));
 
 }
 
 // The consent screen itself. $redirect_uri is where the answer goes; $hidden
-// is the request as it came, posted back with the person's choice.
-function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hidden) {
+// is the request as it came, posted back with the person's choice; $preset
+// the preset the person picked (pg_oauth_consent_presets()), "all" if none.
+function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hidden, $preset = '') {
 
 	pg_oauth_authorize_headers();
 
@@ -337,9 +338,34 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 			: '')
 		. '<code>' . h($destination['text']) . '</code>';
 
+	// The presets tick a set of what the application asked for: writing in
+	// the Workspace and the Tasks, so it can propose a record change as a
+	// card, and reads; a record write is ticked only by hand. Each preset is
+	// a link to this page, so it works without a script.
+	$groups = api_scope_groups();
+
+	$presets = pg_oauth_consent_presets($groups, api_assistant_scopes($groups, api_assistant_scopes_left_out()));
+
+	$preset = pg_oauth_consent_preset_key($preset, $presets);
+
+	$ticked = pg_oauth_consent_ticked($asked, $presets[$preset]['scopes']);
+
+	$preset_links = '';
+
+	foreach ($presets as $key => $entry) {
+
+		$active = ($key === $preset);
+
+		$preset_links .= '
+			<li class="nav-item"><a class="nav-link py-1 px-2' . ($active ? ' active' : '') . '"' . ($active ? ' aria-current="true"' : '')
+				. ' href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oauth.php/authorize?' . http_build_query($hidden + array('pg_oauth_preset' => $key), '', '&', PHP_QUERY_RFC3986)) . '">'
+				. h(lang($entry['label'])) . '</a></li>';
+
+	}
+
 	// One line per permission, grouped the way the API settings screen shows
-	// them, every box ticked to begin with: the person narrows what the
-	// application asked for, never widens it.
+	// them, the preset's boxes ticked to begin with: the person narrows what
+	// the application asked for, never widens it.
 	$rows = '';
 
 	foreach (api_scope_groups() as $group) {
@@ -363,7 +389,7 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 
 			$rows .= '
 				<div class="form-check mb-1">
-					<input class="form-check-input" type="checkbox" name="grant[]" value="' . h($scope) . '" id="' . h($id) . '" checked="checked"/>
+					<input class="form-check-input" type="checkbox" name="grant[]" value="' . h($scope) . '" id="' . h($id) . '"' . (in_array($scope, $ticked, true) ? ' checked="checked"' : '') . '/>
 					<label class="form-check-label" for="' . h($id) . '">' . h(lang($group['label'])) . ' <span class="text-muted">&middot; ' . h($label) . '</span></label>
 				</div>';
 
@@ -435,7 +461,9 @@ function pg_oauth_authorize_consent($client, $owner, $asked, $redirect_uri, $hid
 					<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oauth.php/authorize') . '">
 						' . $fields . '
 						<p class="fw-semibold mb-2">' . h(lang('It will be able to:')) . '</p>
-						<div class="border rounded p-3 mb-3">' . $rows . '</div>
+						<ul class="nav nav-pills small mb-2" aria-label="' . h(lang('Permission presets')) . '">' . $preset_links . '</ul>
+						<div class="border rounded p-3 mb-2">' . $rows . '</div>
+						<p class="small text-muted mb-3">' . h(lang('Changes to records are proposed as cards in the Workspace, for you to apply. Tick a write permission only if the application should change those records itself.')) . '</p>
 						<p class="small text-muted">' . h(lang('It never gets more than your own account may do. You can end the connection at any time on the Connected applications screen, in your account menu on the panel.')) . '</p>
 						<button type="submit" name="pg_oauth_action" value="allow" class="btn btn-primary w-100">' . h(lang('Allow')) . '</button>
 						<button type="submit" name="pg_oauth_action" value="deny" class="btn btn-outline-secondary w-100 mt-2">' . h(lang('Cancel')) . '</button>
