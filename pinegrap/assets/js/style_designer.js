@@ -11122,6 +11122,7 @@ const StyleDesigner = (function () {
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
+                    ad_region:            _sdT('Ad Region'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -32421,6 +32422,7 @@ const StyleDesigner = (function () {
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
+            var _isAdRegion        = (_regionType === 'ad_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32471,6 +32473,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isAdRegion) {
+                _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
                 _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
@@ -33607,6 +33611,25 @@ const StyleDesigner = (function () {
                     row(_sdT('Menu'),
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── ad_region settings ───────────────────────────────────────────
+            if (_isAdRegion) {
+                var _arNames = (regionData && regionData.ad_regions) || [];
+                var _arName = typeof _cfg.ad_region_name === 'string' ? _cfg.ad_region_name : '';
+                var _arOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _arNames.forEach(function (nm) {
+                    _arOpts += '<option value="' + esc(nm) + '"' + (nm === _arName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_arName !== '' && _arNames.indexOf(_arName) === -1) {
+                    _arOpts += '<option value="' + esc(_arName) + '" selected>' + esc(_sdT('{var} (not found)', _arName)) + '</option>';
+                }
+                systemSection += sect('bi-badge-ad', _sdT('Ad Region Settings'),
+                    row(_sdT('Ad Region'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ads, their order and the slideshow are set under Ads; without a region the widget draws no ad.')) + '</div>'
                     )
                 );
             }
@@ -37020,7 +37043,7 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37169,7 +37192,8 @@ const StyleDesigner = (function () {
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html'
+        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html',
+        '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
     function _sdAttrBindNameOk(name) {
@@ -38144,6 +38168,24 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // ad_region token palette — has loop_area (one row per ad shown).
+    // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
+    var SW_AD_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Ad Region'), tokens: [
+            ['__ad_region_name',  _sdT('Ad region name')],
+            ['__ad_count',        _sdT('Number of ads shown')],
+            ['__ad_ride',         _sdT('Slideshow start ("carousel" or "false", for data-bs-ride)')],
+            ['__ad_interval',     _sdT('Slideshow interval in milliseconds ("false" without a slideshow)')],
+            ['__ad_wrap',         _sdT('Slideshow starts again after the last ad ("true" or "false")')]
+        ]},
+        { label: _sdT('Ad (loop_area)'), tokens: [
+            ['__ad_name',         _sdT('Ad name')],
+            ['__ad_label',        _sdT('Ad label')],
+            ['__ad_content_html', _sdT('Ad content (HTML)')],
+            ['__ad_caption_html', _sdT('Ad caption (HTML)')]
+        ]}
+    ];
+
     // menu_sequence_region token palette — no loop_area. Mirrors
     // _render_system_widget_menu_sequence_region() in widgets_menu.php.
     var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
@@ -38179,7 +38221,8 @@ const StyleDesigner = (function () {
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
-        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -39350,6 +39393,12 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        ad_region: [
+            ['has_ads',         _sdT('The region has an ad to show')],
+            ['no_ads',          _sdT('No region is chosen, or it has no ad')],
+            ['has_several_ads', _sdT('More than one ad is shown')],
+            ['ad_has_caption',  _sdT('Row: the ad has a caption')]
         ],
         menu_sequence_region: [
             ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
@@ -51877,7 +51926,8 @@ const StyleDesigner = (function () {
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
-        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' }
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52056,6 +52106,9 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'ad_region') {
+            // The site's first ad region, so a new widget shows ads at once.
+            if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
         } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
@@ -58024,6 +58077,43 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'ad_region': {
+                // The ads of a region as a Bootstrap carousel: the loop
+                // repeats the ads (the server marks the first one active),
+                // the controls show with more than one ad, and the region's
+                // slideshow settings fill the carousel's data-bs-* values.
+                // Mirrors _render_system_widget_ad_region().
+                var arId = 'ads_' + Math.random().toString(36).slice(2, 7);
+                var arControl = function (dir, label) {
+                    return createNode('semantic', { tag: 'button', cssClass: 'carousel-control-' + dir, customName: label,
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + arId }, { name: 'data-bs-slide', value: dir }],
+                        _bindings: { eo_visible_if: 'has_several_ads' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
+                            _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                        createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: label, customName: _sdT('Label') })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: arId, customName: _sdT('Ad Region'),
+                        _attrs: [{ name: 'data-bs-ride', value: '{{__ad_ride}}' }, { name: 'data-bs-interval', value: '{{__ad_interval}}' },
+                                 { name: 'data-bs-wrap', value: '{{__ad_wrap}}' }],
+                        _bindings: { eo_visible_if: 'has_ads' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'carousel-inner', customName: _sdT('Ads') }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel-item', customName: _sdT('Ad') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: '', text: _sdT('Ad content (HTML)'), customName: _sdT('Ad Content'),
+                                        _bindings: { text: '__ad_content_html' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', text: _sdT('Ad caption (HTML)'), customName: _sdT('Caption'),
+                                        _bindings: { text: '__ad_caption_html', eo_visible_if: 'ad_has_caption' } })
+                                ])
+                            ])
+                        ]),
+                        arControl('prev', _sdT('Previous')),
+                        arControl('next', _sdT('Next'))
+                    ])
+                ]);
+            }
+
             case 'menu_sequence_region': {
                 // The pages before and after this one in a menu: two links
                 // at either end of a row, the previous one only when a page
@@ -58694,7 +58784,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
