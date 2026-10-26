@@ -166,7 +166,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'forms' => array('id' => 'form_ids'),
 			'watchers' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
 			'wishlist_items' => $user,
-			'stock_notify' => array('user_id' => 'user_ids', 'email_address' => 'emails'),
+			'stock_notify' => array('user_id' => 'user_ids', 'email_address' => 'emails', 'phone' => 'phones'),
 			'email_recipients' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'),
 			'mail_outbox' => array('recipient' => 'emails'),
 			'sms_outbox' => array('recipient' => 'phones'),

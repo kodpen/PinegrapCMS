@@ -5,9 +5,14 @@
  * Back-in-stock notices: a visitor asks to be told when a product they
  * cannot buy for want of stock is back, and gets one e-mail when it is.
  * Kept in stock_notify (2026.11.0, 11.0.14): the product, the address typed
- * (or the account's, read when the notice goes out), created_at, and
- * sent_at, stamped once the notice went out. phone stays empty until the
- * notice goes out by SMS too.
+ * (or the account's, read when the notice goes out), the mobile number typed
+ * (E.164 digits, '' for none), created_at, and sent_at, stamped once the
+ * notice went out.
+ *
+ * A number is taken only while the store sends the back-in-stock text
+ * message (pg_stock_notify_sms_on()); then a number alone is enough, and the
+ * notice is texted through the SMS queue as well as mailed. It answers the
+ * visitor's own request, so it is no marketing and needs no consent record.
  *
  * Asking (stock_notify.php, pg_stock_notify_request()): only for a product
  * the catalog shows that tracks stock, has none left and takes no back
@@ -45,7 +50,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('PG_STOCK_NOTIFY_WRITE_LIMIT', 10);
 define('PG_STOCK_NOTIFY_WRITE_WINDOW', 600);
 
-// The products one e-mail address may wait for at once.
+// The products one e-mail address, or one mobile number, may wait for at once.
 define('PG_STOCK_NOTIFY_PENDING_LIMIT', 50);
 
 // Notices taken per announcement: queued for the general job, or sent in the
@@ -138,22 +143,77 @@ function pg_stock_notify_email($value)
 }
 
 /**
+ * Whether the store texts the back-in-stock notice: its SMS message is
+ * switched on and an SMS account is set up. Only then does a request take a
+ * mobile number.
+ *
+ * @return bool
+ */
+function pg_stock_notify_sms_on()
+{
+    if (!function_exists('pg_sms_message_settings') || !function_exists('pg_sms_ready')) {
+        return false;
+    }
+
+    $settings = pg_sms_message_settings();
+
+    return !empty($settings['stock_back']['on']) && pg_sms_ready();
+}
+
+/**
+ * The mobile number a request keeps: E.164 digits (pg_sms_number()).
+ *
+ * @param mixed $value
+ * @return string '' when it is none
+ */
+function pg_stock_notify_phone($value)
+{
+    return is_string($value) ? pg_sms_number($value) : '';
+}
+
+/**
+ * Which of what the visitor typed is wrong: an address typed that is no
+ * address, a number typed that is no mobile number. Nothing typed is no
+ * error here; pg_stock_notify_request_status() asks for an address then.
+ *
+ * @param mixed $email the address as typed
+ * @param mixed $phone the number as typed; ignored unless $sms
+ * @param bool  $sms   pg_stock_notify_sms_on()
+ * @return string '', email or phone
+ */
+function pg_stock_notify_contact_error($email, $phone, $sms)
+{
+    if (is_string($email) && (trim($email) !== '') && (pg_stock_notify_email($email) === '')) {
+        return 'email';
+    }
+
+    if ($sms && is_string($phone) && (trim($phone) !== '') && (pg_stock_notify_phone($phone) === '')) {
+        return 'phone';
+    }
+
+    return '';
+}
+
+/**
  * What a request comes to, in the order it is checked.
  *
  * @param bool       $ready   pg_stock_notify_ready()
  * @param string     $email   pg_stock_notify_email()
  * @param array|null $product the product row, null when there is none
- * @param bool       $already the address waits for this product already
- * @param int        $waiting the products the address waits for
+ * @param bool       $already the address or the number waits for this
+ *                            product already
+ * @param int        $waiting the products the address or the number waits
+ *                            for, the larger count
+ * @param string     $phone   pg_stock_notify_phone(), '' for none
  * @return string added, already, limit, in_stock, product, email, unavailable
  */
-function pg_stock_notify_request_status($ready, $email, $product, $already, $waiting)
+function pg_stock_notify_request_status($ready, $email, $product, $already, $waiting, $phone = '')
 {
     if (!$ready) {
         return 'unavailable';
     }
 
-    if ($email === '') {
+    if (($email === '') && ($phone === '')) {
         return 'email';
     }
 
@@ -190,13 +250,23 @@ function pg_stock_notify_status_ok($status)
 /**
  * The sentence the visitor reads for an answer.
  *
- * @param string $status pg_stock_notify_request_status()
+ * @param string $status pg_stock_notify_request_status(), or phone
+ *                       (pg_stock_notify_contact_error())
+ * @param string $by     how the notice goes out: email, sms or both
  * @return string
  */
-function pg_stock_notify_status_message($status)
+function pg_stock_notify_status_message($status, $by = 'email')
 {
     switch ($status) {
         case 'added':
+            if ($by === 'sms') {
+                return lang('We will send you a text message when this product is back in stock.');
+            }
+
+            if ($by === 'both') {
+                return lang('We will e-mail you and send you a text message when this product is back in stock.');
+            }
+
             return lang('We will e-mail you when this product is back in stock.');
         case 'already':
             return lang('You have already asked to be told when this product is back in stock.');
@@ -206,6 +276,8 @@ function pg_stock_notify_status_message($status)
             return lang('Sorry, this product is not available right now.');
         case 'email':
             return lang('Please enter a valid e-mail address.');
+        case 'phone':
+            return lang('Please enter a valid mobile phone number.');
         case 'limit':
             return lang('You are already waiting for many products. Please try again later.');
         case 'unavailable':
@@ -218,18 +290,31 @@ function pg_stock_notify_status_message($status)
 /**
  * Keeps a request to be told when a product is back.
  *
- * @param int    $product_id
- * @param string $email   the address typed; '' takes the signed-in account's
- * @param int    $user_id the signed-in account, 0 for a guest
- * @return string pg_stock_notify_request_status()
+ * @param int         $product_id
+ * @param string      $email   the address typed; '' takes the signed-in
+ *                             account's
+ * @param int         $user_id the signed-in account, 0 for a guest
+ * @param string      $phone   the mobile number typed, taken only while
+ *                             pg_stock_notify_sms_on()
+ * @param string|null $by      set to how the notice goes out: email, sms or
+ *                             both
+ * @return string pg_stock_notify_request_status(), or phone
  */
-function pg_stock_notify_request($product_id, $email, $user_id)
+function pg_stock_notify_request($product_id, $email, $user_id, $phone = '', &$by = null)
 {
     $product_id = (int) $product_id;
     $user_id = max(0, (int) $user_id);
+    $by = 'email';
 
     if (!pg_stock_notify_ready()) {
         return 'unavailable';
+    }
+
+    $sms = pg_stock_notify_sms_on();
+    $error = pg_stock_notify_contact_error($email, $phone, $sms);
+
+    if ($error !== '') {
+        return $error;
     }
 
     if (($email === '') && ($user_id > 0) && defined('USER_EMAIL_ADDRESS')) {
@@ -237,30 +322,51 @@ function pg_stock_notify_request($product_id, $email, $user_id)
     }
 
     $email = pg_stock_notify_email($email);
+    $phone = $sms ? pg_stock_notify_phone($phone) : '';
     $product = null;
     $already = false;
     $waiting = 0;
 
-    if (($email !== '') && ($product_id > 0)) {
+    if ((($email !== '') || ($phone !== '')) && ($product_id > 0)) {
         $product = db_item("SELECT enabled, inventory, inventory_quantity, backorder FROM products WHERE id = '" . $product_id . "' LIMIT 1");
 
-        // The address typed, or the account's own requests whatever address
-        // it typed then.
+        // The address typed, the number typed, or the account's own requests
+        // whatever it typed then.
+        $who = array();
+
+        if ($email !== '') {
+            $who[] = "(email_address = '" . e($email) . "')";
+        }
+
+        if ($phone !== '') {
+            $who[] = "(phone = '" . e($phone) . "')";
+        }
+
+        if ($user_id > 0) {
+            $who[] = "(user_id = '" . $user_id . "')";
+        }
+
         $already = db_value(
             "SELECT id FROM stock_notify
             WHERE (product_id = '" . $product_id . "') AND (sent_at = 0)
-            AND ((email_address = '" . e($email) . "')" . (($user_id > 0) ? " OR (user_id = '" . $user_id . "')" : '') . ")
+            AND (" . implode(' OR ', $who) . ")
             LIMIT 1") !== null;
 
-        $waiting = (int) db_value("SELECT COUNT(*) FROM stock_notify WHERE (email_address = '" . e($email) . "') AND (sent_at = 0)");
+        foreach (array('email_address' => $email, 'phone' => $phone) as $column => $value) {
+            if ($value !== '') {
+                $waiting = max($waiting, (int) db_value("SELECT COUNT(*) FROM stock_notify WHERE (" . $column . " = '" . e($value) . "') AND (sent_at = 0)"));
+            }
+        }
     }
 
-    $status = pg_stock_notify_request_status(true, $email, $product ? $product : null, $already, $waiting);
+    $status = pg_stock_notify_request_status(true, $email, $product ? $product : null, $already, $waiting, $phone);
 
     if ($status === 'added') {
         db("INSERT INTO stock_notify (product_id, email_address, user_id, phone, created_at, sent_at)
-            VALUES ('" . $product_id . "', '" . e($email) . "', '" . $user_id . "', '', UNIX_TIMESTAMP(), 0)");
+            VALUES ('" . $product_id . "', '" . e($email) . "', '" . $user_id . "', '" . e($phone) . "', UNIX_TIMESTAMP(), 0)");
     }
+
+    $by = ($phone === '') ? 'email' : (($email === '') ? 'sms' : 'both');
 
     return $status;
 }
@@ -410,9 +516,12 @@ function pg_stock_notify_mail($name, $url)
  * Sends the notices of a product that is back: each waiting row is claimed
  * first and mailed only by the request that claimed it. One address that
  * waits on two rows (asked as a guest and from its account) gets one mail.
+ * A row with a mobile number is texted too, through the SMS queue
+ * (pg_sms_stock_back()), once per number; while the store's back-in-stock
+ * text message is off, the number is passed over.
  *
  * @param int $product_id
- * @return int the notices handed on
+ * @return int the mails and text messages handed on
  */
 function pg_stock_notify_send($product_id)
 {
@@ -432,7 +541,7 @@ function pg_stock_notify_send($product_id)
     $limit = $queued ? PG_STOCK_NOTIFY_SEND_QUEUED : PG_STOCK_NOTIFY_SEND_INLINE;
 
     $rows = db_items(
-        "SELECT stock_notify.id, stock_notify.email_address, user.user_email
+        "SELECT stock_notify.id, stock_notify.email_address, stock_notify.phone, user.user_email
         FROM stock_notify
         LEFT JOIN user ON (stock_notify.user_id > 0) AND (user.user_id = stock_notify.user_id)
         WHERE (stock_notify.product_id = '" . $product_id . "') AND (stock_notify.sent_at = 0)
@@ -441,9 +550,12 @@ function pg_stock_notify_send($product_id)
 
     $name = ((string) $product['short_description'] !== '') ? (string) $product['short_description'] : (string) $product['name'];
     $detail_page = function_exists('pg_sw_catalog_detail_page_name') ? (string) pg_sw_catalog_detail_page_name(0) : '';
-    $mail = pg_stock_notify_mail($name, pg_stock_notify_url(URL_SCHEME . HOSTNAME_SETTING . PATH, $detail_page, $product['address_name']));
+    $url = pg_stock_notify_url(URL_SCHEME . HOSTNAME_SETTING . PATH, $detail_page, $product['address_name']);
+    $mail = pg_stock_notify_mail($name, $url);
+    $sms = pg_stock_notify_sms_on();
 
     $mailed = array();
+    $texted = array();
     $sent = 0;
 
     foreach ($rows as $row) {
@@ -451,6 +563,16 @@ function pg_stock_notify_send($product_id)
 
         if (mysqli_affected_rows(db::$con) !== 1) {
             continue;
+        }
+
+        $phone = (string) $row['phone'];
+
+        if ($sms && ($phone !== '') && !isset($texted[$phone])) {
+            $texted[$phone] = true;
+
+            if (pg_sms_stock_back((int) $row['id'], $phone, $name, $url)) {
+                $sent++;
+            }
         }
 
         $to = pg_stock_notify_email((string) $row['email_address']);

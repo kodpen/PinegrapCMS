@@ -716,7 +716,7 @@ function pg_privacy_erase_tables()
         'forms'                        => array('find' => array('id' => 'form_ids'), 'action' => 'delete', 'fields' => array()),
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
-        'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
+        'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails', 'phone' => 'phones'), 'action' => 'delete', 'fields' => array()),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'sms_outbox'                   => array('find' => array('recipient' => 'phones'), 'action' => 'delete', 'fields' => array()),

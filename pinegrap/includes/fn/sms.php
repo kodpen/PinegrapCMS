@@ -161,6 +161,7 @@ function pg_sms_kinds()
         'test'      => false,
         'order'     => false,
         'shipping'  => false,
+        'stock'     => false,
         'otp'       => false,
         'reminder'  => false,
         'marketing' => true,

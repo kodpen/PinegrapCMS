@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The text messages an order sends on its own: received, shipped, delivered.
+ * The text messages the store sends on its own: an order received, shipped
+ * and delivered, and a product back in stock for a visitor who asked.
  *
  * Each event has a switch and a template on the Communication settings' SMS
  * Messages card. They are kept in connect_apps under 'sms_templates', beside
@@ -53,6 +54,12 @@ function pg_sms_message_events()
             'label'  => lang('Order delivered'),
             'text'   => lang('^^store^^: Your order ^^order_number^^ has been delivered.'),
             'fields' => array('store', 'name', 'order_number'),
+        ),
+        'stock_back' => array(
+            'kind'   => 'stock',
+            'label'  => lang('Back in stock'),
+            'text'   => lang('^^store^^: ^^product^^ is back in stock. ^^url^^'),
+            'fields' => array('store', 'product', 'url'),
         ),
     );
 }
@@ -280,7 +287,7 @@ function pg_sms_message_settings_fields()
 
     $html = '
                                         <input type="hidden" name="sms_msg_card" value="1"/>
-                                        <div class="col-12 form-text">' . lang('Sent to the billing phone number when the event happens, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
+                                        <div class="col-12 form-text">' . lang('Order messages go to the billing phone number, the back-in-stock message to the number given with the request, when it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
 
     if (!pg_sms_ready()) {
         $html .= '
@@ -453,4 +460,29 @@ function pg_sms_order_delivered($order_id, $ship_to_id)
     $order = pg_sms_message_order($order_id);
 
     return $order && pg_sms_message_queue('order_delivered', $order['phone'], $order['fields'], 'order:' . (int) $order_id . ':delivered:' . (int) $ship_to_id);
+}
+
+/**
+ * A product a visitor asked about is back: called by pg_stock_notify_send()
+ * for each request with a mobile number that it claimed. The visitor asked
+ * for this one message, so it is no marketing (kind stock).
+ *
+ * @param int    $notify_id the stock_notify row
+ * @param string $phone     the stored number, E.164 digits
+ * @param string $product   the product's name as visitors read it
+ * @param string $url       its address, '' for none
+ * @return bool
+ */
+function pg_sms_stock_back($notify_id, $phone, $product, $url)
+{
+    $phone = (string) $phone;
+
+    if ($phone === '') {
+        return false;
+    }
+
+    return pg_sms_message_queue('stock_back', pg_sms_dial($phone), array(
+        'product' => (string) $product,
+        'url'     => (string) $url,
+    ), 'stock:' . (int) $notify_id);
 }

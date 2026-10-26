@@ -899,6 +899,7 @@
     "Order is already cancelled.": "Sipariş zaten iptal edilmiş.",
     "Order item (loop_area)": "Sipariş kalemi (loop_area)",
     "Order items": "Sipariş kalemleri",
+    "Order messages go to the billing phone number, the back-in-stock message to the number given with the request, when it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient's consent recorded in İYS. Leave a text empty to send the built-in one.": "Sipariş mesajları fatura telefon numarasına, stok bildirimi mesajı ise talepte verilen numaraya gönderilir; numara bir cep telefonu olmalı ve SMS kurulmuş olmalıdır. Bunlar bilgilendirme mesajlarıdır: içine tanıtım, indirim veya kampanya koymayın, yoksa alıcının İYS'de kayıtlı onayı gerekir. Hazır metni göndermek için metni boş bırakın.",
     "Order not found message": "Sipariş bulunamadı mesajı",
     "Order not found.": "Sipariş bulunamadı.",
     "Order note (textarea)": "Sipariş notu (textarea)",

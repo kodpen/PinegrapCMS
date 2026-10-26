@@ -39654,6 +39654,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
+                vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -55565,8 +55566,10 @@ const StyleDesigner = (function () {
                         ]),
                         // Back-in-stock form: shown only while the product
                         // cannot be bought for want of stock (can_notify);
-                        // the address field (stock_notify_email) and the
-                        // button (stock_notify) post stock_notify.php.
+                        // the address field (stock_notify_email), the mobile
+                        // number field (stock_notify_phone, drawn only while
+                        // the store texts the notice) and the button
+                        // (stock_notify) post stock_notify.php.
                         createNode('semantic', { tag: 'div', cssClass: 'mt-3',
                             customName: _sdT('Back-in-stock notice'),
                             _bindings: { eo_visible_if: 'can_notify' } }, [
@@ -55579,6 +55582,11 @@ const StyleDesigner = (function () {
                                     _attrs: [{ name: 'placeholder', value: _sdT('Your e-mail address') },
                                              { name: 'aria-label', value: _sdT('Your e-mail address') }],
                                     _bindings: { value: 'stock_notify_email' } }),
+                                createNode('semantic', { tag: 'input',
+                                    cssClass: 'form-control', customName: _sdT('Mobile number'),
+                                    _attrs: [{ name: 'placeholder', value: _sdT('Your mobile number') },
+                                             { name: 'aria-label', value: _sdT('Your mobile number') }],
+                                    _bindings: { value: 'stock_notify_phone' } }),
                                 createNode('component', { componentType: 'btn',
                                     text: _sdT('Notify me'), variant: 'outline-primary', size: '', href: '#',
                                     _bindings: { action: 'stock_notify' } })

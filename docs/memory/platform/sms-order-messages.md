@@ -22,6 +22,9 @@ description: Order SMS (received, shipped, delivered): templates in connect_apps
 - An empty text is the built-in one (`lang()`, so the site's language when queued); the built-in text sent back unchanged is stored empty.
 - Fields `^^store^^` (ORGANIZATION_NAME), `^^name^^` (billing first name), `^^order_number^^`, `^^total^^` (received), `^^carrier^^`, `^^tracking_number^^` (all of the address's numbers in the save), `^^tracking_url^^` (first parcel's, `pg_shipment_view()`). A field the event lacks is refused on save; an empty value leaves no double space (`pg_sms_message_render()`). Templates at most 480 characters.
 
+## What else is texted?
+- The back-in-stock notice, event `stock_back` (kind `stock`) on the same card: [[back-in-stock-sms]].
+
 ## What is still open?
 - COD confirmation code at checkout and member OTP (Netgsm's OTP route or not): `plans/sms-and-iys.md` step 3b.
 

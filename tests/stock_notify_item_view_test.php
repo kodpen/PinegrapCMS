@@ -202,7 +202,43 @@ function test_stock_notify_item_view_variant_script()
 	pg_assert_contains('notifyPid.value = String(p.id)', $apply, 'and gives it the variant');
 }
 
-// The designer offers the flag and the two bindings, and its starter carries
+// The mobile number field: a tel field of the same form while the notice is
+// texted, and then the address is no longer required; dropped otherwise.
+function test_stock_notify_item_view_phone_field()
+{
+	$phone = array('type' => 'semantic', 'props' => array('tag' => 'input', 'cssClass' => 'form-control',
+		'_attrs' => array(array('name' => 'placeholder', 'value' => 'Your mobile number'), array('name' => 'type', 'value' => 'text')),
+		'_bindings' => array('value' => 'stock_notify_phone')), 'children' => array());
+
+	$tree = stock_notify_item_view_test_tree();
+	array_splice($tree['children'][0]['children'], 1, 0, array($phone));
+	_apply_catalog_item_view_bindings($tree, array('stock_notify_form' => 'pg-stock-notify-4', 'stock_notify_email' => '', 'stock_notify_sms' => true));
+
+	$group = $tree['children'][0]['children'];
+	pg_assert_same(5, count($group), 'the number field stays, the link is dropped');
+
+	$field = stock_notify_item_view_test_attrs($group[1]);
+	pg_assert_same('tel', $field['type'], 'a phone field');
+	pg_assert_same('phone', $field['name'], 'the name stock_notify.php reads');
+	pg_assert_same('tel', $field['autocomplete']);
+	pg_assert_same('pg-stock-notify-4', $field['form'], 'the same form');
+	pg_assert_same('Your mobile number', $field['placeholder'], "the designer's own attribute stays");
+	pg_assert_false(isset($field['required']), 'a number is optional');
+	pg_assert_same('can_notify', $group[1]['props']['_bindings']['eo_visible_if']);
+	pg_assert_false(isset(stock_notify_item_view_test_attrs($group[0])['required']), 'a number alone is enough, so the address is not required');
+
+	$off = stock_notify_item_view_test_tree();
+	array_splice($off['children'][0]['children'], 1, 0, array($phone));
+	_apply_catalog_item_view_bindings($off, array('stock_notify_form' => 'pg-stock-notify-5', 'stock_notify_email' => '', 'stock_notify_sms' => false));
+
+	$group = $off['children'][0]['children'];
+	pg_assert_same(4, count($group), 'no number field while the notice is not texted');
+	pg_assert_same('stock_notify_email', $group[0]['props']['_bindings']['value']);
+	pg_assert_same('required', stock_notify_item_view_test_attrs($group[0])['required'], 'the address is required again');
+	pg_assert_same('stock_notify', $group[1]['props']['_bindings']['action']);
+}
+
+// The designer offers the flag and the bindings, and its starter carries
 // the block.
 function test_stock_notify_item_view_designer()
 {
@@ -211,6 +247,7 @@ function test_stock_notify_item_view_designer()
 	pg_assert_contains("['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]", $js, 'the flag');
 	pg_assert_contains("if (isRealButton) aOpts.push(['stock_notify', _sdT('Notify me when back in stock')]);", $js, 'the button, on a real button only');
 	pg_assert_contains("vOpts.push(['stock_notify_email',", $js, 'the field');
+	pg_assert_contains("vOpts.push(['stock_notify_phone',", $js, 'the number field');
 
 	$start = strpos($js, "case 'catalog_item_view': {");
 	$starter = substr($js, (int) $start, 20000);
@@ -218,5 +255,6 @@ function test_stock_notify_item_view_designer()
 	pg_assert_true($start !== false, 'the starter is there');
 	pg_assert_contains("_bindings: { eo_visible_if: 'can_notify' }", $starter, 'shown only while it can be asked for');
 	pg_assert_contains("_bindings: { value: 'stock_notify_email' }", $starter, 'the field');
+	pg_assert_contains("_bindings: { value: 'stock_notify_phone' }", $starter, 'the number field');
 	pg_assert_contains("_bindings: { action: 'stock_notify' }", $starter, 'the button');
 }

@@ -85,15 +85,39 @@ function test_stock_notify_request_status()
 	pg_assert_same('limit', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT), 'too many waiting');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT - 1), 'one below the limit');
 	pg_assert_same('added', pg_stock_notify_request_status(true, 'a@example.com', $out, false, 0), 'first request');
+	pg_assert_same('added', pg_stock_notify_request_status(true, '', $out, false, 0, '905321234567'), 'a mobile number alone');
+	pg_assert_same('email', pg_stock_notify_request_status(true, '', $out, false, 0, ''), 'neither an address nor a number');
+	pg_assert_same('limit', pg_stock_notify_request_status(true, '', $out, false, PG_STOCK_NOTIFY_PENDING_LIMIT, '905321234567'), 'a number waits for too many');
+}
+
+// The number a request keeps, and which of what was typed is wrong.
+function test_stock_notify_phone_and_contact_error()
+{
+	pg_assert_same('905321234567', pg_stock_notify_phone('0532 123 45 67'), 'a Turkish mobile, E.164 digits');
+	pg_assert_same('447700900123', pg_stock_notify_phone('+44 7700 900123'), 'abroad with its plus');
+	pg_assert_same('', pg_stock_notify_phone('0212 123 45 67'), 'a landline is no mobile');
+	pg_assert_same('', pg_stock_notify_phone(array('05321234567')), 'an array');
+
+	pg_assert_same('', pg_stock_notify_contact_error('', '', true), 'nothing typed is asked for later');
+	pg_assert_same('', pg_stock_notify_contact_error('a@example.com', '05321234567', true), 'both right');
+	pg_assert_same('email', pg_stock_notify_contact_error('a@', '05321234567', true), 'a wrong address with a right number');
+	pg_assert_same('phone', pg_stock_notify_contact_error('', '12', true), 'a wrong number');
+	pg_assert_same('phone', pg_stock_notify_contact_error('a@example.com', '0212 123 45 67', true), 'a landline');
+	pg_assert_same('', pg_stock_notify_contact_error('a@example.com', '12', false), 'a number is not read while the notice is not texted');
 }
 
 // Every answer has a sentence for the visitor; a refusal is not a notice.
 function test_stock_notify_status_message()
 {
-	foreach (array('added', 'already', 'in_stock', 'product', 'email', 'limit', 'unavailable', 'nonsense') as $status) {
+	foreach (array('added', 'already', 'in_stock', 'product', 'email', 'phone', 'limit', 'unavailable', 'nonsense') as $status) {
 		$message = pg_stock_notify_status_message($status);
 		pg_assert_true(is_string($message) && ($message !== ''), 'a sentence for ' . $status);
 	}
+
+	pg_assert_same(lang('We will e-mail you when this product is back in stock.'), pg_stock_notify_status_message('added'), 'by e-mail');
+	pg_assert_same(lang('We will send you a text message when this product is back in stock.'), pg_stock_notify_status_message('added', 'sms'), 'by text message');
+	pg_assert_same(lang('We will e-mail you and send you a text message when this product is back in stock.'), pg_stock_notify_status_message('added', 'both'), 'both');
+	pg_assert_false(pg_stock_notify_status_ok('phone'), 'a wrong number is no request kept');
 
 	pg_assert_true(pg_stock_notify_status_ok('added'), 'added is good news');
 	pg_assert_true(pg_stock_notify_status_ok('already'), 'already is good news');
@@ -188,6 +212,31 @@ function test_stock_notify_send_claims_before_mailing()
 	pg_assert_contains('mysqli_affected_rows', $source, 'mails only the row it claimed');
 	pg_assert_contains("'queue'", $source, 'queued when the job runs');
 	pg_assert_contains('pg_stock_notify_product_back(', $source, 'reads the stock again first');
+
+	$text = strpos($source, 'pg_sms_stock_back(');
+	pg_assert_true(($text !== false) && ($claim < $text), 'texts only a row it claimed');
+	pg_assert_contains('pg_stock_notify_sms_on()', $source, 'only while the notice is texted');
+	pg_assert_contains('$texted[$phone]', $source, 'one text per number');
+}
+
+// The text message is queued, once per request, as a message of its own
+// kind that is no marketing.
+function test_stock_notify_sms_message()
+{
+	$kinds = pg_sms_kinds();
+	pg_assert_true(isset($kinds['stock']) && ($kinds['stock'] === false), 'a transactional kind');
+
+	$events = pg_sms_message_events();
+	pg_assert_same('stock', $events['stock_back']['kind'], 'the back-in-stock event');
+	pg_assert_false(pg_sms_message_normalize(null)['stock_back']['on'], 'off until switched on');
+
+	$source = pg_test_function_source('pg_sms_stock_back');
+	pg_assert_contains("pg_sms_message_queue('stock_back'", $source, 'through the event\'s switch and template');
+	pg_assert_contains('pg_sms_dial(', $source, 'the stored digits dialled with their plus');
+	pg_assert_contains("'stock:' . (int) \$notify_id", $source, 'a reference per request');
+
+	pg_assert_same('Shop: Blue Mug is back in stock. https://example.com/p/blue-mug', pg_sms_message_render('^^store^^: ^^product^^ is back in stock. ^^url^^', array('store' => 'Shop', 'product' => 'Blue Mug', 'url' => 'https://example.com/p/blue-mug')), 'filled');
+	pg_assert_same('Shop: Blue Mug is back in stock.', pg_sms_message_render('^^store^^: ^^product^^ is back in stock. ^^url^^', array('store' => 'Shop', 'product' => 'Blue Mug', 'url' => '')), 'no link leaves no gap');
 }
 
 // A failure while listening must not break the write that announced.
@@ -227,6 +276,9 @@ function test_stock_notify_outside_the_module()
 	pg_assert_contains("\$sections['stock_notify']", $collect, 'filled by the export');
 	pg_assert_contains("_pg_privacy_export_in('stock_notify.email_address', \$emails)", $collect, 'by the address typed');
 	pg_assert_contains("_pg_privacy_export_in('stock_notify.user_id', \$user_ids)", $collect, 'by the account');
+	pg_assert_contains("_pg_privacy_export_in('stock_notify.phone', \$phones)", $collect, 'by the mobile number');
+	$erase = pg_privacy_erase_tables();
+	pg_assert_same('phones', $erase['stock_notify']['find']['phone'] ?? '', 'erased by the mobile number');
 }
 
 // The endpoint refuses before it writes: the size of the body, the method,

@@ -786,30 +786,37 @@ function _pg_catalog_stock_states_differ($products)
  * Wires a control of the back-in-stock form (stock_notify.php): a button
  * bound to stock_notify submits the form $form_id names, a text input bound
  * to stock_notify_email becomes its address field, filled with the
- * signed-in visitor's address. The form is printed after the widget's own,
- * since a form cannot sit inside the add-to-cart form. A control with no
- * "Show only when" of its own takes can_notify, so it never shows for a
- * product that can be bought.
+ * signed-in visitor's address, and one bound to stock_notify_phone its
+ * mobile number field. The form is printed after the widget's own, since a
+ * form cannot sit inside the add-to-cart form. A control with no "Show only
+ * when" of its own takes can_notify, so it never shows for a product that
+ * can be bought.
+ *
+ * While the notice is texted ($sms) a number alone is enough, so the address
+ * is not required; the number field is dropped otherwise
+ * (_pg_catalog_stock_notify_dropped()).
  *
  * @param array  $node    a btn component, a <button> or an <input>
  * @param string $form_id
  * @param string $email   the signed-in visitor's address, '' for a guest
+ * @param bool   $sms     pg_stock_notify_sms_on()
  * @return bool false when the node cannot be the control it is bound as
  */
-function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
+function _pg_catalog_stock_notify_control(&$node, $form_id, $email, $sms = false)
 {
     $bindings = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
     $type = isset($node['type']) ? $node['type'] : '';
     $tag = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
     $is_button = ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn')
         || ($type === 'semantic' && $tag === 'button');
-    $field = isset($bindings['value']) && $bindings['value'] === 'stock_notify_email';
+    $phone = isset($bindings['value']) && $bindings['value'] === 'stock_notify_phone';
+    $field = $phone || (isset($bindings['value']) && $bindings['value'] === 'stock_notify_email');
 
     if ($field ? !($type === 'semantic' && $tag === 'input') : !$is_button) {
         return false;
     }
 
-    $managed = array('type' => 1, 'form' => 1, 'formaction' => 1, 'formmethod' => 1, 'name' => 1, 'required' => 1, 'autocomplete' => 1, 'maxlength' => 1);
+    $managed = array('type' => 1, 'form' => 1, 'formaction' => 1, 'formmethod' => 1, 'name' => 1, 'required' => 1, 'autocomplete' => 1, 'maxlength' => 1, 'inputmode' => 1);
     $kept = array();
     $value = '';
     foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
@@ -822,12 +829,19 @@ function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
         $kept[] = $a;
     }
 
-    if ($field) {
+    if ($phone) {
+        $kept[] = array('name' => 'type', 'value' => 'tel');
+        $kept[] = array('name' => 'name', 'value' => 'phone');
+        $kept[] = array('name' => 'autocomplete', 'value' => 'tel');
+        $kept[] = array('name' => 'inputmode', 'value' => 'tel');
+        $kept[] = array('name' => 'maxlength', 'value' => '30');
+        if ($value !== '') $kept[] = array('name' => 'value', 'value' => $value);
+    } elseif ($field) {
         $kept[] = array('name' => 'type', 'value' => 'email');
         $kept[] = array('name' => 'name', 'value' => 'email_address');
         $kept[] = array('name' => 'autocomplete', 'value' => 'email');
         $kept[] = array('name' => 'maxlength', 'value' => '100');
-        $kept[] = array('name' => 'required', 'value' => 'required');
+        if (!$sms) $kept[] = array('name' => 'required', 'value' => 'required');
         if ($value === '' && $email !== '') $value = $email;
         if ($value !== '') $kept[] = array('name' => 'value', 'value' => $value);
     } elseif ($type === 'component') {
@@ -854,22 +868,36 @@ function _pg_catalog_stock_notify_control(&$node, $form_id, $email)
 
 /**
  * Whether a node bound to the back-in-stock form is left out: the requests
- * have no table yet (no form), or the node cannot be the control it is bound
- * as (a link, a select). A switched-off feature draws nothing.
+ * have no table yet (no form), the node is the mobile number field while the
+ * notice is not texted, or it cannot be the control it is bound as (a link,
+ * a select). A switched-off feature draws nothing.
  *
  * @param array $node
- * @param array $context the item view's binding context (stock_notify_form)
+ * @param array $context the item view's binding context (stock_notify_form,
+ *                       stock_notify_sms)
  * @return bool
  */
 function _pg_catalog_stock_notify_dropped($node, $context)
 {
     $bindings = (is_array($node) && isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
-    if (!(isset($bindings['action']) && $bindings['action'] === 'stock_notify')
-        && !(isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+    if (!_pg_catalog_stock_notify_bound($bindings)) {
         return false;
     }
     if (empty($context['stock_notify_form'])) return true;
+    if (isset($bindings['value']) && $bindings['value'] === 'stock_notify_phone' && empty($context['stock_notify_sms'])) return true;
     return !_pg_catalog_stock_notify_control($node, (string)$context['stock_notify_form'], '');
+}
+
+/**
+ * Whether a node's bindings make it a control of the back-in-stock form.
+ *
+ * @param array $bindings
+ * @return bool
+ */
+function _pg_catalog_stock_notify_bound($bindings)
+{
+    return (isset($bindings['action']) && $bindings['action'] === 'stock_notify')
+        || (isset($bindings['value']) && in_array($bindings['value'], array('stock_notify_email', 'stock_notify_phone'), true));
 }
 
 /**
@@ -4305,13 +4333,13 @@ function _apply_catalog_item_view_bindings(&$node, $context)
         _pg_catalog_wishlist_heart($node, '^^__id^^', empty($context['wishlist_preview']));
     }
 
-    // ── Back-in-stock form: the address field and its button ─────────────
+    // ── Back-in-stock form: the address and number fields, the button ────
     // A control that cannot be one (a link, a select) is dropped below.
-    if ((isset($bindings['action']) && $bindings['action'] === 'stock_notify')
-        || (isset($bindings['value']) && $bindings['value'] === 'stock_notify_email')) {
+    if (_pg_catalog_stock_notify_bound($bindings)) {
         _pg_catalog_stock_notify_control($node,
             isset($context['stock_notify_form']) ? (string)$context['stock_notify_form'] : '',
-            isset($context['stock_notify_email']) ? (string)$context['stock_notify_email'] : '');
+            isset($context['stock_notify_email']) ? (string)$context['stock_notify_email'] : '',
+            !empty($context['stock_notify_sms']));
         return;
     }
 
@@ -4515,8 +4543,9 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   the variants differ in it; then both states stay, the one that is off
 //   hidden, and the script shows the state of the variant picked
 //   (_pg_catalog_variant_flags_keep()). can_notify: the product can be asked
-//   for when back in stock; a field bound to stock_notify_email and a button
-//   bound to stock_notify post the form printed after the widget's own
+//   for when back in stock; fields bound to stock_notify_email and
+//   stock_notify_phone (only while the notice is texted) and a button bound
+//   to stock_notify post the form printed after the widget's own
 //   (stock_notify.php) and take can_notify when they have no flag of their
 //   own (_pg_catalog_stock_notify_control()).
 //
@@ -4686,6 +4715,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // The back-in-stock form the field and the button belong to.
             'stock_notify_form'      => $_civ_notify_form,
             'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
+            // A mobile number field only while the notice is texted.
+            'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_sms_on(),
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($_civ_remuxed !== false) $tree_json = $_civ_remuxed;

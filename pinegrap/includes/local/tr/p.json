@@ -808,6 +808,7 @@
     "Please enter a valid end date & time.": "Lütfen geçerli bir bitiş tarihi ve saati girin.",
     "Please enter a valid end date.": "Lütfen geçerli bir bitiş tarihi girin.",
     "Please enter a valid expiration date.": "Lütfen geçerli bir son kullanma tarihi girin.",
+    "Please enter a valid mobile phone number.": "Lütfen geçerli bir cep telefonu numarası girin.",
     "Please enter a valid new date for {var:1}.": "Lütfen {var:1} için geçerli bir yeni tarih girin.",
     "Please enter a valid number of days.": "Lütfen geçerli bir gün sayısı girin.",
     "Please enter a valid number that is greater than 0 for the repeat number.": "Lütfen tekrar sayısı için 0'dan büyük geçerli bir sayı girin.",

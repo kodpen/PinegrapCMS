@@ -925,12 +925,18 @@ function pg_privacy_export_collect(array $found)
         );
     }
 
+    // The person's mobile numbers, as the SMS queue and the back-in-stock
+    // requests keep them.
+    $phones = pg_privacy_export_phones(array_merge($contacts, $sections['address_book']['rows'], $sections['orders']['rows'], $sections['ship_tos']['rows']));
+
     // Requests to be told when a product is back in stock, by the address
-    // typed or the account, with the product's SKU and name.
+    // typed, the mobile number typed or the account, with the product's SKU
+    // and name.
     if (pg_stock_notify_ready()) {
         $notify_where = _pg_privacy_export_any(array(
             _pg_privacy_export_in('stock_notify.user_id', $user_ids),
             _pg_privacy_export_in('stock_notify.email_address', $emails),
+            _pg_privacy_export_in('stock_notify.phone', $phones),
         ));
 
         $sections['stock_notify'] = _pg_privacy_export_select(
@@ -979,8 +985,6 @@ function pg_privacy_export_collect(array $found)
     }
 
     if (pg_schema_has('sms_outbox', 'recipient')) {
-        $phones = pg_privacy_export_phones(array_merge($contacts, $sections['address_book']['rows'], $sections['orders']['rows'], $sections['ship_tos']['rows']));
-
         $sections['sms'] = _pg_privacy_export_select("SELECT id, created_at, send_after, status, attempts, sent_at, kind, recipient, body, reference FROM sms_outbox WHERE " . _pg_privacy_export_in('recipient', $phones) . " ORDER BY id", $phones);
     }
 
