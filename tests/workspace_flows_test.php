@@ -142,7 +142,7 @@ function test_workspace_flows_each_problem_code()
 		'edges' => array(ws_flows_test_edge('start', 'finish'), ws_flows_test_edge('finish', 'start')))), 'into the start, from an end');
 
 	pg_assert_same(array('duplicate_id'), ws_flows_test_codes(array('nodes' => array($start, $end, $end), 'edges' => array(ws_flows_test_edge('start', 'finish')))));
-	pg_assert_same(array('unknown_kind'), ws_flows_test_codes(array('nodes' => array($start, ws_flows_test_node('odd', 'webhook')), 'edges' => array(ws_flows_test_edge('start', 'odd')))));
+	pg_assert_same(array('unknown_kind'), ws_flows_test_codes(array('nodes' => array($start, ws_flows_test_node('odd', 'telepathy')), 'edges' => array(ws_flows_test_edge('start', 'odd')))));
 
 	$bad_id = ws_flow_graph_check(array('nodes' => array($start, ws_flows_test_node('Step 1', 'end', 'Done')), 'edges' => array(ws_flows_test_edge('start', 'Step 1'))));
 	pg_assert_same(array('bad_id'), array_column($bad_id, 'code'));
