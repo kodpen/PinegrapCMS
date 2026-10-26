@@ -83,6 +83,8 @@ function pg_sw_type_labels()
         'order_preview'       => lang('Order Preview'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
+        'ad_region'           => lang('Ad Region'),
+        'tag_cloud_region'    => lang('Tag Cloud'),
     );
 }
 
@@ -799,8 +801,15 @@ function pg_sw_raw_token_keys()
         '__clear_filters_button',
         // Comments widget.
         '__comment_message_html',
-        '__comment_stars_html',
         '__comment_seller_reply_html',
+        // Order view: product form answers, information text and a gift
+        // card's message with its line breaks (widgets_lists_order.php).
+        '__field_value_html',
+        '__field_info_html',
+        '__gift_card_message_html',
+        // Ad Region widget: the ad's own markup.
+        '__ad_content_html',
+        '__ad_caption_html',
     ));
 
     return $keys;
@@ -1174,7 +1183,8 @@ function pg_sw_filter_value_html($value)
 }
 
 // The query string (without "?") that names a URL-filtered list page: the
-// applied parameters sorted by name, encoded as RFC 3986, then page_number
+// applied parameters sorted by name, encoded as RFC 3986, then the page
+// number under the list's page parameter (`page_param`, else page_number)
 // when the list showed a later page and $with_page. '' when no parameter
 // applies: a page without an address value keeps its bare canonical.
 function pg_sw_url_filter_query($state, $with_page = true)
@@ -1184,7 +1194,8 @@ function pg_sw_url_filter_query($state, $with_page = true)
     ksort($params, SORT_STRING);
     $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     $page  = (is_array($state) && isset($state['page_number'])) ? (int)$state['page_number'] : 0;
-    if ($with_page && $page > 1) $query .= '&page_number=' . $page;
+    $name  = (is_array($state) && isset($state['page_param'])) ? pg_sw_list_page_param(array('page_param' => $state['page_param'])) : 'page_number';
+    if ($with_page && $page > 1) $query .= '&' . $name . '=' . $page;
     return $query;
 }
 
@@ -1213,13 +1224,13 @@ function pg_sw_url_filter_value($filter_sql, $total_records)
 // searched page 2 is not page 2 of the list) and showed the page the
 // address asked for (a page past the last one is clamped to it, and that
 // page is not this address). 0 otherwise.
-function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active)
+function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param = 'page_number')
 {
     if (!is_array($filter_sql) || empty($filter_sql['params']) || $search_active) return 0;
     $current_page = (int)$current_page;
     if ((int)$total_pages <= 1 || $current_page <= 1) return 0;
-    if (!is_array($request) || !isset($request['page_number']) || !is_scalar($request['page_number'])) return 0;
-    return ((int)$request['page_number'] === $current_page) ? $current_page : 0;
+    if (!is_array($request) || !isset($request[$page_param]) || !is_scalar($request[$page_param])) return 0;
+    return ((int)$request[$page_param] === $current_page) ? $current_page : 0;
 }
 
 // Whether a URL-filtered list page stays out of search engines: a value
@@ -1237,7 +1248,8 @@ function pg_sw_url_filter_noindex($state)
 // an array: its applied parameters (the first value of a name wins),
 // whether one was compared inexactly, whether it found no record, its
 // title, whether that title is the list's own filter_title
-// (`title_configured`), and the page number it showed. An e-mail body and a
+// (`title_configured`), and the page number it showed (with `page_param`
+// when the list pages under a name of its own). An e-mail body and a
 // render inside another request (SEO pass, preview) add nothing.
 // Several lists on one page may read the same address (an archive and a
 // "most read" box): the page is `empty` only when every list that applied a
@@ -1268,7 +1280,11 @@ function pg_sw_url_filter_state($add = null)
         $state['title']            = $title;
         $state['title_configured'] = $configured;
     }
-    if ($state['page_number'] <= 1 && isset($add['page_number']) && (int)$add['page_number'] > 1) $state['page_number'] = (int)$add['page_number'];
+    if ($state['page_number'] <= 1 && isset($add['page_number']) && (int)$add['page_number'] > 1) {
+        $state['page_number'] = (int)$add['page_number'];
+        // The list's own page parameter names that page in the canonical.
+        if (isset($add['page_param']) && $add['page_param'] !== 'page_number') $state['page_param'] = (string)$add['page_param'];
+    }
     return $state;
 }
 
@@ -1576,8 +1592,15 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // URL parameters (shared across the page — if multiple system widgets render on
 // the same page they share `page_number` / `query` state; cleaner URLs at the
 // cost of per-widget independence):
-//   page_number   page index (1-based)
+//   page_number   page index (1-based); a list with a `page_param` of its own
+//                 pages under that name instead (pg_sw_list_page_param())
 //   query         search query string
+//
+// `offset` skips that many matched records before the first row; the count,
+// the pages and max_results all start after them. ^^__page_number^^,
+// ^^__page_count^^, ^^__prev_page_url^^, ^^__next_page_url^^ and the flags
+// has_prev_page, has_next_page, has_more_pages describe the pages
+// (pg_sw_list_paging()).
 //
 // NOTE: We deliberately avoid the bare key `page` because Pinegrap's router
 // uses `$_GET['page']` as the URL slug (set by .htaccess rewrite). A
@@ -1635,13 +1658,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $viewer_filter_watcher   = isset($cfg['viewer_filter_watcher'])   ? !empty($cfg['viewer_filter_watcher'])   : true;
     $viewer_filter_editor    = isset($cfg['viewer_filter_editor'])    ? !empty($cfg['viewer_filter_editor'])    : true;
 
-    // ── URL params (shared) ───────────────────────────────────────────────
-    // Note: `page` and `search` are page-wide. Multiple system widgets on the
-    // same page share state — acceptable trade-off for clean URLs in the
-    // current scope (typically one list widget per page).
-    $page_param   = 'page_number';
-    $query_param  = 'query';
-    $current_page = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
+    $offset_records = pg_sw_list_offset($cfg);
+
+    // ── URL params ────────────────────────────────────────────────────────
+    // The search text is page-wide; the page number too unless the list
+    // pages under a name of its own.
+    $page_param     = pg_sw_list_page_param($cfg);
+    $query_param    = 'query';
+    $requested_page = isset($_GET[$page_param]) ? $_GET[$page_param] : null;
     // The parameters the URL filters read; none in an e-mail or a preview.
     $request      = pg_sw_filter_request();
     $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
@@ -1658,7 +1682,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // Only the flags a list evaluates are marked: a flag from another widget
     // type (a pasted record block's record_found) leaves its element drawn,
     // as lists did before they had flags of their own.
-    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_filter_value', 'no_filter_value', 'has_records', 'no_records', 'has_prev_page', 'has_next_page', 'has_more_pages'));
     pg_sw_record_href_bindings($tree_decoded);
     // Links to another page with the record's values: a token each, and
     // their pages read once, before the surround and the rows are drawn.
@@ -1869,6 +1893,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // ^^__result_count^^ and its flags, set once the records are counted.
     $result_count      = 0;
     $result_count_html = '0';
+    $paging_tokens     = array();
 
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
@@ -1923,13 +1948,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // (the rows come from a template resolved the same way), so the pattern
     // never spans record HTML: a long span would exceed PCRE's backtrack
     // limit and empty the list, and a record's own text could close a span.
-    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, $page_link_bare) {
+    $stitch = function ($rows, $pagination) use ($static_html, $search_html, &$filter_value, &$flags, &$result_count_html, &$paging_tokens, $page_link_bare) {
         if ($static_html === '') return $search_html . $rows . $pagination;
         $html = _pg_sw_resolve_visibility(
             pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, array(
                 '__filter_value' => pg_sw_filter_value_html($filter_value),
                 '__result_count' => $result_count_html,
-            ) + $page_link_bare)),
+            ) + $paging_tokens + $page_link_bare)),
             $flags
         );
         if (strpos($html, '<!--pg-loop-before-->') !== false) {
@@ -1962,9 +1987,17 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            $sql_viewer_filter"
     );
     // The number a visitor can page through, as the classic list's "Found
-    // N results" and the search results widget count it: max_results caps it.
-    $result_count = ($max_results > 0) ? min($total_records, $max_results) : $total_records;
+    // N results" and the search results widget count it: what is left after
+    // the offset, capped by max_results.
+    $listed_records = max(0, $total_records - $offset_records);
+    $result_count = ($max_results > 0) ? min($listed_records, $max_results) : $listed_records;
     $result_count_html = h(pg_format_number($result_count, 0));
+
+    // The pages: a count strip draws no rows, so it has one page at most.
+    $total_pages  = $loop_empty ? min(1, $result_count) : (int)ceil($result_count / $items_per_page);
+    $current_page = pg_sw_list_current_page($requested_page, $total_pages);
+    $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
+    $paging_tokens = $paging['tokens'];
 
     // What the address applied, for this list's tokens and flags and for
     // the page's head (canonical, title, robots, feed link).
@@ -1992,7 +2025,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         'no_filter_value'  => empty($filter_sql['params']),
         'has_records'      => $result_count > 0,
         'no_records'       => $result_count === 0,
-    );
+    ) + $paging['flags'];
     // The flags are final: the per-record template is resolved once, before
     // any record is drawn into it.
     $loop_template = _pg_sw_resolve_visibility($loop_template, $flags);
@@ -2007,31 +2040,22 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         ));
     }
 
-    if ($total_records === 0) return $stitch($empty_html, '');
+    if ($result_count === 0) return $stitch($empty_html, '');
     // A count strip: the head state above is registered, no row is read.
     if ($loop_empty) return $stitch('', '');
 
-    // Apply the outer dataset cap BEFORE pagination math so the user only ever
-    // pages through the first $max_results rows. Final page's LIMIT may be
-    // shorter than $items_per_page (e.g. max=23, ipp=10 → page 3 returns 3).
-    if ($max_results > 0 && $total_records > $max_results) {
-        $total_records = $max_results;
-    }
-
-    $total_pages = (int)ceil($total_records / $items_per_page);
-    if ($current_page > $total_pages) $current_page = $total_pages;
     // A later page of an address-filtered list is its own address (the
     // classic list keeps page_number in its canonical too).
-    $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active);
+    $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param);
     if ($url_filter_page > 0) {
-        pg_sw_url_filter_state(array('page_number' => $url_filter_page));
+        pg_sw_url_filter_state(array('page_number' => $url_filter_page, 'page_param' => $page_param));
     }
-    $offset = ($current_page - 1) * $items_per_page;
-    $page_limit = $items_per_page;
-    if ($max_results > 0) {
-        $remaining = $max_results - $offset;
-        if ($remaining < $page_limit) $page_limit = max(0, $remaining);
-    }
+    // The pages run through the $result_count records after the offset, so
+    // max_results caps them: the last page's LIMIT may be shorter than
+    // $items_per_page (max=23, ipp=10 → page 3 reads 3).
+    $page_start = ($current_page - 1) * $items_per_page;
+    $page_limit = min($items_per_page, $result_count - $page_start);
+    $offset     = $offset_records + $page_start;
 
     // Resolve the detail page (if configured) once. Each row then links to
     // its own record there, matching the legacy form_list_view pattern:
@@ -2165,6 +2189,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $extra['__detail_url'] = $extra['form_item_view'];
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
         $extra['__result_count'] = $result_count_html;
+        $extra += $paging_tokens;
         // Links to another page, valued from this record.
         $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
             'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',
@@ -3229,7 +3254,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $form_row = db_item(
             "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
                     forms.reference_code, forms.submitted_timestamp, forms.address_name,
-                    forms.tracking_code, forms.complete
+                    forms.tracking_code, forms.complete, forms.quiz_score
                     {$standard_sql['select']}
              FROM forms
              {$standard_sql['join']}
@@ -3241,7 +3266,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         $form_row = db_item(
             "SELECT forms.id, forms.page_id, forms.user_id, forms.form_editor_user_id,
                     forms.reference_code, forms.submitted_timestamp, forms.address_name,
-                    forms.tracking_code, forms.complete
+                    forms.tracking_code, forms.complete, forms.quiz_score
                     {$standard_sql['select']}
              FROM forms
              {$standard_sql['join']}
@@ -3355,7 +3380,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__new_account_password' => '',
             '__new_account_set_password_url' => '',
             '__edit_url'             => '',
-        );
+        ) + pg_sw_entity_values('form_record', null);
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
         // as form_list_view's batch fetcher (single `form_id`) — file-upload
@@ -3419,6 +3444,13 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
                                             ? h(pg_sw_backend_edit_url('edit_submitted_form.php', (int)$form_row['id'])) : '',
         );
+
+        // The record's allow-listed values (widgets_entity_fields.php): the
+        // quiz score of a quiz form. This view shows one record to whoever
+        // may open it; the list view offers none of them.
+        $extra += array_map('h', pg_sw_entity_values('form_record', $form_row + array(
+            'quiz' => (int)db_value("SELECT quiz FROM custom_form_pages WHERE page_id = '" . $custom_form_page_id . "' LIMIT 1"),
+        )));
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
         if ($show_field_labels && is_array($data_rows)) {
@@ -3921,6 +3953,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's own allow-listed account values (pg_sw_entity_fields('account')).
+    $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
@@ -4962,6 +4996,65 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         'link'        => $channel_link,
         'description' => h($channel_desc),
         'items'       => $items,
+    );
+}
+
+// The query parameter a list pages under: its own `page_param` setting, a
+// name pg_sw_url_param_name() accepts (so never one the software reads
+// itself), else page_number, the name every list shared before and the one
+// running sites' addresses carry. Two lists with names of their own on one
+// page turn their pages apart.
+function pg_sw_list_page_param($cfg)
+{
+    $name = (is_array($cfg) && isset($cfg['page_param'])) ? pg_sw_url_param_name($cfg['page_param']) : '';
+    return ($name !== '') ? $name : 'page_number';
+}
+
+// How many of the matched records a list skips before its first row
+// (`offset`, 0 to 100000): a box shows the newest record, the list beside it
+// starts at the second.
+function pg_sw_list_offset($cfg)
+{
+    $n = (is_array($cfg) && isset($cfg['offset']) && is_scalar($cfg['offset'])) ? (int)$cfg['offset'] : 0;
+    return max(0, min(100000, $n));
+}
+
+// The page a list shows: the address value $requested as a whole number,
+// clamped to 1 .. $pages (a page past the last one is the last); 1 without
+// a usable value or without pages.
+function pg_sw_list_current_page($requested, $pages)
+{
+    $n = is_scalar($requested) ? (int)$requested : 1;
+    return max(1, min(max(1, (int)$pages), $n));
+}
+
+// The paging tokens and flags of a list showing page $current of $pages
+// under $page_param. Tokens, escaped once: ^^__page_number^^ (the page
+// shown), ^^__page_count^^, ^^__prev_page_url^^ and ^^__next_page_url^^
+// ('' on the first and the last page; the links keep every other query
+// parameter, as the pagination's do). Flags: has_prev_page,
+// has_next_page, has_more_pages (more than one page).
+function pg_sw_list_paging($page_param, $current, $pages)
+{
+    $current = (int)$current;
+    $pages   = (int)$pages;
+    $url = function ($n) use ($page_param) {
+        return h('?' . _pg_sw_build_query($page_param, $n));
+    };
+    $prev = ($current > 1);
+    $next = ($current < $pages);
+    return array(
+        'tokens' => array(
+            '__page_number'   => (string)$current,
+            '__page_count'    => (string)$pages,
+            '__prev_page_url' => $prev ? $url($current - 1) : '',
+            '__next_page_url' => $next ? $url($current + 1) : '',
+        ),
+        'flags' => array(
+            'has_prev_page'  => $prev,
+            'has_next_page'  => $next,
+            'has_more_pages' => ($pages > 1),
+        ),
     );
 }
 
@@ -6608,7 +6701,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         "SELECT ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                 ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                 ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                ship_tos.arrival_date,
+                ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
                 shipping_methods.name AS shipping_method
          FROM ship_tos
          LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
@@ -6704,13 +6797,25 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // per-row READ-ONLY blocks below: a product carrying an order form shows
     // what the visitor typed at checkout, a gift card shows the recipient
     // details. Both are output-only here — the order is already placed.
+    // The line's and its product's allow-listed values
+    // (pg_sw_entity_fields('order_line') and 'product'), read only when the
+    // tree names one.
+    $_ov_tree_cond  = pg_sw_cond_tree_json($tree_decoded);
+    $_ov_line_want  = pg_sw_entity_wanted('order_line', $_ov_tree_cond);
+    $_ov_prod_want  = pg_sw_entity_wanted('product', $_ov_tree_cond);
+    $_ov_entity_sql = ($_ov_line_want ? pg_sw_entity_select('order_line', 'oi') : '')
+                    . ($_ov_prod_want ? pg_sw_entity_select('product', 'p') : '');
+    $_ov_entity_ctx = array(
+        'currency_symbol' => $currency_symbol,
+        'format_stamp'    => function ($ts) use ($fmt_gc_date) { return $fmt_gc_date(date('Y-m-d', $ts)); },
+    );
     $item_rows = db_items(
         "SELECT oi.id AS item_id, oi.product_name,
                 oi.quantity, oi.price, oi.ship_to_id,
                 p.id AS product_id, p.address_name, p.image_name,
                 p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
-                p.gift_card AS product_is_gift_card,
+                p.gift_card AS product_is_gift_card" . $_ov_entity_sql . ",
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
                 st.address_1 AS st_address_1, st.city AS st_city,
                 st.state AS st_state, st.zip_code AS st_zip, st.country AS st_country
@@ -6747,42 +6852,25 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             ));
             $item_ship_to = implode(', ', $item_ship_parts);
 
-            // ── Read-only product-form data ────────────────────────────
-            // What the visitor typed into the product's order form at
-            // checkout (a gift-card message, a conference attendee name, …).
-            // Rendered as OUTPUT, never inputs — this order is placed.
-            $item_form_html = '';
-            if (!empty($r['product_has_form'])) {
-                $_ov_form_name = isset($r['form_name']) ? trim((string)$r['form_name']) : '';
-                $item_form_html = _pg_render_order_item_form_data_readonly(
-                    (int)$r['item_id'],
-                    (int)($r['product_id'] ?? 0),
-                    $qty,
-                    (string)($r['form_quantity_type'] ?? ''),
-                    $_ov_form_name !== '' ? (string)lang($_ov_form_name) : ''
-                );
-            }
-
-            // ── Read-only gift-card recipient details ──────────────────
-            // Separate mechanism from products.form (see the note on
-            // _pg_render_order_item_gift_card_readonly).
-            $item_gift_card_html = '';
-            if (!empty($r['product_is_gift_card'])) {
-                $item_gift_card_html = _pg_render_order_item_gift_card_readonly(
-                    (int)$r['item_id'],
-                    $qty,
-                    $unit_cents,
-                    $fmt_money,
-                    $fmt_gc_date
-                );
-            }
+            // Raw: the loop escapes them, the items list's pass does too.
+            $item_entity = array();
+            if ($_ov_line_want) $item_entity += pg_sw_entity_values('order_line', pg_sw_entity_order_line_event($r), $_ov_entity_ctx);
+            if ($_ov_prod_want) $item_entity += pg_sw_entity_values('product', !empty($r['product_id']) ? $r : null, $_ov_entity_ctx);
 
             $items[] = array(
                 'id'                => (int)$r['item_id'],
                 'product_id'        => (int)($r['product_id'] ?? 0),
                 'name'              => (string)$r['product_name'],
-                'form_data_html'    => $item_form_html,
-                'gift_card_html'    => $item_gift_card_html,
+                // What the visitor typed into the product's order form at
+                // checkout, and a gift card's recipient details: read only
+                // when the layout lists them (order.item_forms,
+                // order.item_gift_cards), drawn as printed values.
+                'has_form'          => !empty($r['product_has_form']),
+                'form_name'         => trim((string)($r['form_name'] ?? '')),
+                'form_quantity_type' => (string)($r['form_quantity_type'] ?? ''),
+                'is_gift_card'      => !empty($r['product_is_gift_card']),
+                'has_form_data'     => false,
+                'has_gift_card'     => false,
                 'item_number'       => (string)$r['product_name'],  // Product ID / SKU
                 'short_description' => (string)($r['short_description'] ?? ''),
                 'full_description'  => (string)($r['full_description'] ?? ''),
@@ -6795,6 +6883,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
                 'ship_to_id'        => (int)$r['ship_to_id'],
+                'entity'            => $item_entity,
             );
         }
     }
@@ -7204,7 +7293,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                         ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                         ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                        ship_tos.arrival_date, shipping_methods.name AS shipping_method
+                        ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
+                        shipping_methods.name AS shipping_method
                  FROM ship_tos
                  LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
                  WHERE ship_tos.order_id = '$oid_esc' AND ship_tos.complete = 1
@@ -7214,7 +7304,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 $_ov_shipments[] = pg_sw_list_order_shipment_row($_ov_st, $fmt_gc_date);
             }
         }
-        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events));
+        // First: it marks the items that have form answers or gift cards.
+        $_ov_item_rows = pg_sw_list_order_item_parts_read($items, $_ov_listed, $fmt_money, $fmt_gc_date);
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events) + $_ov_item_rows);
     }
 
     // Build loop output
@@ -7225,10 +7317,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // before loop_area existed.
     $loop_rendered = '';
     if ($loop_template !== '' && $static_html !== '' && count($items) > 0) {
-        // The row blocks the item template places (pg_sw_placed()).
-        $_ov_row_tree = array('type' => 'root', 'children' => $split['loop_children']);
-        $_ov_form_placed = pg_sw_placed($_ov_row_tree, array('__item_form_data_html'));
-        $_ov_gift_placed = pg_sw_placed($_ov_row_tree, array('__item_gift_card_html'));
         foreach ($items as $idx => $item) {
             $row_values = array(
                 // Existing tokens — kept for backward compatibility
@@ -7251,34 +7339,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_url'               => h($item['url']),
                 // Per-item shipping (one-liner; empty for digital products)
                 '__item_ship_to'           => h($item['ship_to']),
-                // Read-only product-form answers / gift-card details.
-                // Pre-built HTML → NOT h()'d. Empty for ordinary products,
-                // so the token quietly disappears on those rows.
-                // Kept as two separate tokens (mirroring shopping_cart)
-                // because a product can carry a form OR be a gift card and
-                // the designer may want them in different places.
-                '__item_form_data_html'    => (string)$item['form_data_html'],
-                '__item_gift_card_html'    => (string)$item['gift_card_html'],
-            );
+                // Whether the item's product form answers and gift cards
+                // have rows (the item form and gift card parts' boxes).
+                '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
+                '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
+            ) + array_map('h', $item['entity']);
             $row_html = pg_sw_fill_longest($loop_template, $row_values);
             $row_html = pg_sw_sweep_tokens($row_html);
-
-            // Auto-append the read-only form / gift-card blocks when the row
-            // HAS them and the designer hasn't placed the matching token in
-            // the loop template. Same fallback the shopping_cart widget uses:
-            // trees saved before these tokens existed would otherwise drop
-            // the data silently, and on an order receipt that data is often
-            // the whole point (who the gift card was sent to, which name was
-            // engraved). A designer who DOES place the token keeps control
-            // over where the block lands.
-            // Safe to concatenate here: the order_view loop row is a <div>,
-            // not a <tr> — see the starter tree in style_designer.js.
-            if ($row_values['__item_form_data_html'] !== '' && !$_ov_form_placed) {
-                $row_html .= $row_values['__item_form_data_html'];
-            }
-            if ($row_values['__item_gift_card_html'] !== '' && !$_ov_gift_placed) {
-                $row_html .= $row_values['__item_gift_card_html'];
-            }
 
             // Uniquify Bootstrap component IDs per item row
             $row_html = pg_sw_uniquify_row_ids($row_html, $widget_id, $idx);
@@ -7436,6 +7503,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // whole order.
         '__ship_to_key'             => '0',
     );
+    // The order's allow-listed values (pg_sw_entity_fields('order')), read
+    // in one more query only when the tree names one; dates as the widget's
+    // other dates read.
+    if (pg_sw_entity_wanted('order', pg_sw_cond_tree_json($tree_decoded))) {
+        $static_values += array_map('h', pg_sw_entity_values('order', pg_sw_entity_order_read((int)$order['id']), array(
+            'currency_symbol' => $currency_symbol,
+            'format_stamp'    => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
+        )));
+    }
+    // The first recipient's allow-listed values (pg_sw_entity_fields(
+    // 'ship_to')), read by the ship_tos query above.
+    $static_values += array_map('h', pg_sw_entity_values('ship_to', $ship_to, array(
+        'format_stamp' => function ($ts) use ($_fmt_ts) { return $_fmt_ts($ts, false); },
+    )));
     // The dates a format can read (^^__order_date^^%%d.m.Y H:i%%).
     $_ov_typed = _pg_sw_order_view_dates(
         $order_date_ts,

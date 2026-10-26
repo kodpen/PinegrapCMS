@@ -69,6 +69,7 @@
     "Variant attribute style": "Varyant attr stili",
     "Variant pickers (HTML — Color/Size/...)": "Varyant seçicileri (HTML — Renk/Beden/...)",
     "Variant products can be created from the product screen in one go now.": "Varyantlı ürünler artık ürün ekranından tek seferde oluşturulabiliyor.",
+    "Variant set ({var:1}) with {var:2} products was added through the API by the application {var:3} (key {var:4}).": "{var:2} ürünlü varyant seti ({var:1}), {var:3} uygulaması tarafından API üzerinden eklendi (anahtar {var:4}).",
     "Variant sets": "Varyant setleri",
     "Variants": "Varyantlar",
     "Variants to Create": "Oluşturulacak Varyantlar",

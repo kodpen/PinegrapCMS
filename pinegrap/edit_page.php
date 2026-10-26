@@ -1231,14 +1231,14 @@ if (!$_POST) {
         // delete stored SEO structure findings for this page.
         // Guarded on the table existing, because a page can be deleted on an
         // installation that has not run the upgrade that creates it.
-        if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+        if (pg_schema_has('seo_issue')) {
             db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
 
         // Both directions of the link graph: the rows this page produced and
         // the rows naming it as a destination. Leaving the latter would make
         // pages that linked here look connected to something that is gone.
-        if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+        if (pg_schema_has('seo_link')) {
             db("DELETE FROM seo_link WHERE (from_type = 'page') AND (from_id = '" . (int) ($_POST['id'] ?? 0) . "')");
             db("DELETE FROM seo_link WHERE (to_type = 'page') AND (to_id = '" . (int) ($_POST['id'] ?? 0) . "')");
         }
@@ -1469,182 +1469,16 @@ if (!$_POST) {
                     delete_tag_cloud_keywords_for_search_results_page($_POST['id']);
                 }
                 
-                $properties = pg_page_form_type_properties_from_post($_POST['type'], $_POST['id']);
+                $checked = pg_page_type_properties_for_save($_POST['type'], $_POST['id'], $user);
+                $properties = $checked['properties'];
 
-                switch ($_POST['type']) {
-                    case 'custom form':
-                        $new_contact_group_id = $properties['contact_group_id'];
-                        
-                        // if user has a user role, then verify that user has access to contact group that was selected
-                        if ($user['role'] == 3) {
-                            // get current contact group id
-                            $current_contact_group_id = db_value(
-                                "SELECT contact_group_id
-                                FROM custom_form_pages
-                                WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                            
-                            // if contact group is trying to be changed
-                            // and a contact group was selected
-                            // and user does not have access to contact group,
-                            // then don't allow contact group to be changed
-                            if (($new_contact_group_id != $current_contact_group_id) && ($new_contact_group_id) && (validate_contact_group_access($user, $new_contact_group_id) == false)) {
-                                $new_contact_group_id = $current_contact_group_id;
-                                $liveform->mark_error('', lang('The contact group for the custom form could not be changed, because you do not have access to the contact group you selected.'));
-                                log_activity(lang('access denied to change contact group for custom form because user did not have access to contact group'), $_SESSION['sessionusername']);
-                            }
-                        }
-
-                        $properties['contact_group_id'] = $new_contact_group_id;
-
-                        $new_private_folder_id = $properties['private_folder_id'];
-                        
-                        // If user has a user role, then verify that user has access to the selected private folder.
-                        if (USER_ROLE == 3) {
-                            $old_private_folder_id = db_value(
-                                "SELECT private_folder_id
-                                FROM custom_form_pages
-                                WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                            
-                            // If the user is trying to change the private folder to a folder
-                            // that he/she does not have edit access to,
-                            // then don't allow folder to be set and log activity.
-                            if (
-                                ($new_private_folder_id != $old_private_folder_id)
-                                && ($new_private_folder_id)
-                                && (check_edit_access($new_private_folder_id) == false)
-                            ) {
-                                $new_private_folder_id = $old_private_folder_id;
-                                $liveform->mark_error('', lang('The private folder for the custom form could not be changed, because you do not have edit access to the folder you selected.'));
-                                log_activity(lang('access denied to change private folder for custom form because user did not have edit access to folder'), $_SESSION['sessionusername']);
-                            }
-                        }
-
-                        $properties['private_folder_id'] = $new_private_folder_id;
-
-                        // If commerce is enabled then save offer properties.
-                        if (ECOMMERCE) {
-                            // If user does not have access to commerce, then get old values,
-                            // because we might need to save them.
-                            if (!USER_MANAGE_ECOMMERCE) {
-                                $old_properties = db_item(
-                                    "SELECT
-                                        offer,
-                                        offer_id
-                                    FROM custom_form_pages
-                                    WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-                            }
-
-                            // If the user has access to commerce or the user just disabled grant offer,
-                            // then save grant offer status.
-                            if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer'] ?? '')) {
-                                $properties['offer'] = $_POST['custom_form_offer'] ?? 0;
-
-                            // Otherwise the user does not have access to commerce, so save old value.
-                            } else {
-                                $properties['offer'] = ($old_properties['offer'] ?? '');
-                            }
-
-                            // If the user has access to commerce or the user just selected the blank offer,
-                            // then save the offer id from the user.
-                            if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer_id'] ?? '')) {
-                                $properties['offer_id'] = $_POST['custom_form_offer_id'] ?? '';
-
-                            // Otherwise the user does not have access to commerce, so save old value.
-                            } else {
-                                $properties['offer_id'] = ($old_properties['offer_id'] ?? '');
-                            }
-
-                            $properties['offer_days'] = $_POST['custom_form_offer_days'] ?? '';
-                            $properties['offer_eligibility'] = $_POST['custom_form_offer_eligibility'] ?? '';
-                        }
-                        
-                        break;
-                    
-                    case 'form list view':
-                    case 'form item view':
-                        $new_custom_form_page_id = $properties['custom_form_page_id'];
-                        $page_type_table_name = str_replace(' ', '_', $_POST['type']) . '_pages';
-                        
-                        // if user has a user role, then verify that user has access to custom form that was selected
-                        if ($user['role'] == 3) {
-                            // get current custom form
-                            $current_custom_form_page_id = db_value(
-                                "SELECT custom_form_page_id
-                                FROM $page_type_table_name
-                                WHERE
-                                    (page_id = '" . escape($_POST['id'] ?? '') . "')
-                                    AND (collection = 'a')");
-                            
-                            // get folder of new custom_form
-                            $new_custom_form_folder_id = db_value(
-                                "SELECT page_folder
-                                FROM page
-                                WHERE page_id = '" . escape($new_custom_form_page_id) . "'");
-                            
-                            // if custom form is trying to be changed and user does not have access to custom form, don't allow custom form to be changed
-                            if (($new_custom_form_page_id != $current_custom_form_page_id) && (check_edit_access($new_custom_form_folder_id) == false)) {
-                                $new_custom_form_page_id = $current_custom_form_page_id;
-
-                                if ($_POST['type'] == 'form list view') {
-                                    $liveform->mark_error('', lang('The custom form for the form list view could not be changed, because you do not have access to the custom form you selected.'));
-                                    log_activity(lang('access denied to change custom form for form list view because user did not have access to modify folder that custom form was in'), $_SESSION['sessionusername']);
-                                } else {
-                                    $liveform->mark_error('', lang('The custom form for the form item view could not be changed, because you do not have access to the custom form you selected.'));
-                                    log_activity(lang('access denied to change custom form for form item view because user did not have access to modify folder that custom form was in'), $_SESSION['sessionusername']);
-                                }
-                            }
-                        }
-                        
-                        $properties['custom_form_page_id'] = $new_custom_form_page_id;
-
-                        // if there is not a record for this form list view yet, then set default values
-                        if (
-                            ($_POST['type'] == 'form list view')
-                            && (db_value("SELECT COUNT(*) FROM form_list_view_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'") == 0)
-                        ) {
-                            $properties['search'] = 1;
-                            $properties['show_results_by_default'] = 1;
-                            $properties['maximum_number_of_results_per_page'] = 25;
-                        }
-                        
-                        break;
-                        
-                    case 'calendar view':
-                        // If the default_view property was changed, then forget the view
-                        // visitors last picked, so that the new default shows.
-                        $current_default_view = db_value(
-                            "SELECT default_view
-                            FROM calendar_view_pages
-                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-
-                        if ($current_default_view != $properties['default_view']) {
-                            unset($_SESSION['software']['calendar_views'][$_POST['id']]['view']);
-                        }
-                        
-                        break;
-                    
-                    case 'express order':
-                        // Get current form values before we update it, so that we know later
-                        // if we should forward the user to the form designer or not.
-                        $old_properties = db_item(
-                            "SELECT shipping_form, form FROM express_order_pages
-                            WHERE page_id = '" . e($_POST['id'] ?? '') . "'");
-
-                        break;
-
-                    case 'shipping address and arrival':
-                        // get current form value before we update it, so that we know later if we should forward the user to the form designer or not
-                        $current_shipping_address_and_arrival_form = db_value("SELECT form FROM shipping_address_and_arrival_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-                        
-                        break;
-
-                    case 'billing information':
-                        // Get current form value before we update it, so that we know later
-                        // if we should forward the user to the form designer or not.
-                        $current_billing_information_form = db_value("SELECT form FROM billing_information_pages WHERE page_id = '" . escape($_POST['id'] ?? '') . "'");
-
-                        break;
+                foreach ($checked['errors'] as $checked_error) {
+                    $liveform->mark_error('', $checked_error);
                 }
+
+                $old_properties = array('shipping_form' => $checked['before']['shipping_form'], 'form' => $checked['before']['form']);
+                $current_shipping_address_and_arrival_form = $checked['before']['shipping_address_and_arrival_form'];
+                $current_billing_information_form = $checked['before']['billing_information_form'];
 
                 pg_page_form_save_type_links($_POST['type'], $_POST['id'], $user);
                 

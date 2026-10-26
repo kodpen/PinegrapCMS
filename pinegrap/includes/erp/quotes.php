@@ -413,6 +413,28 @@ function erp_quote_set_status($quote_id, $to, $user_id)
 }
 
 /**
+ * Why the quote cannot become an invoice draft now, or ''. An open, expired
+ * or accepted quote can; an invoiced, rejected or cancelled one cannot.
+ * Shared by the quote screen (erp_quote_to_invoice()) and the Workspace's
+ * change card.
+ *
+ * @param array $quote  From erp_quote(): status, valid_until, invoice_status
+ * @return string
+ */
+function erp_quote_invoice_refusal($quote)
+{
+    $state = erp_quote_state($quote);
+
+    if (in_array($state, array('open', 'expired', 'accepted'), true)) {
+        return '';
+    }
+
+    return ($state === 'invoiced')
+        ? lang('The quote has already become an invoice.')
+        : lang('A rejected or cancelled quote is not invoiced. Open it again first.');
+}
+
+/**
  * Turn the quote into an invoice draft at the prices quoted, dated today.
  *
  * A quote in another currency leaves the draft without a rate, so the rate
@@ -430,12 +452,10 @@ function erp_quote_to_invoice($quote_id, $user_id)
         return array('success' => false, 'invoice_id' => 0, 'error' => lang('The quote could not be found.'));
     }
 
-    $state = erp_quote_state($quote);
+    $refusal = erp_quote_invoice_refusal($quote);
 
-    if (!in_array($state, array('open', 'expired', 'accepted'), true)) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => ($state === 'invoiced')
-            ? lang('The quote has already become an invoice.')
-            : lang('A rejected or cancelled quote is not invoiced. Open it again first.'));
+    if ($refusal !== '') {
+        return array('success' => false, 'invoice_id' => 0, 'error' => $refusal);
     }
 
     $data = json_decode((string) $quote['form_data'], true);

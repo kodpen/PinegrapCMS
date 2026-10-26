@@ -29,7 +29,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
     // turning blocking on is worth it.
     if ($user['role'] < 3) {
 
-        $td_available = (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'waf_log'")) > 0);
+        $td_available = pg_schema_has('waf_log');
 
         if (!$td_available) {
             $output_data = '

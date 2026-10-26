@@ -1127,6 +1127,18 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_menu_sequence_region($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'ad_region' — the ads of an ad region (widgets_ad_region.php).
+            if ($region_type === 'ad_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_ad_region($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'tag_cloud_region' — the keywords of a search results page (widgets_tag_cloud.php).
+            if ($region_type === 'tag_cloud_region') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_tag_cloud_region($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {
@@ -4325,6 +4337,7 @@ function pg_scroller_inject($content, $src = null)
  *   • Empty-element hiding rules (auto-hide discount tokens when blank)
  *   • Variant chooser visual states
  *   • The order view's timeline (.pg-ov-timeline)
+ *   • A comment's stars side by side (.pg-comment-stars)
  *
  * Called from EVERY system widget render (catalog_listing, catalog_item_view,
  * shopping_cart, …) — not just carousel. The price block + discount
@@ -4340,7 +4353,7 @@ function _pg_widget_layout_css_once()
     $base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
           . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
           . '/assets/css/';
-    $v = '4';   // bump on layout css changes
+    $v = '5';   // bump on layout css changes
     return '<link rel="stylesheet" href="' . h($base) . 'pg_carousel_layout.css?v=' . $v . '">';
 }
 

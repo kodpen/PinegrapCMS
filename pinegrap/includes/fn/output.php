@@ -3083,6 +3083,8 @@ function output_menu($properties = false)
             if (pg_not_found_log_ready()) {
                 $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_not_found_log.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sign-dead-end bi-me-2\'>' . lang('404 Log') . '</a>';
             }
+            // PAGES > Accessibility report (view_accessibility.php, managers and up).
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-universal-access bi-me-2\'>' . lang('Accessibility report') . '</a>';
         }
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
         if ($user['role'] < 3) {
@@ -3720,6 +3722,7 @@ function output_menu($properties = false)
         case 'add_short_link.php':
         case 'edit_short_link.php':
         case 'view_not_found_log.php':
+        case 'view_accessibility.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
@@ -4552,7 +4555,7 @@ function license_check($properties = false)
                 $response = @curl_exec($ch);
                 $curl_errno = curl_errno($ch);
                 $curl_error = curl_error($ch);
-                curl_close($ch);
+                unset($ch);
             } else {
                 // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
                 // The certificate is verified here as well, against the same CA bundle
@@ -5307,10 +5310,22 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
         // Ctrl+G handler clicks it by that name, and page_designer.js turns it
         // into "Close Page Designer" while the designer is open.
         if ($style_type == 'system') {
+
+            // A converted classic page that draws a custom layout: Ctrl+G
+            // opened the classic page designer on that layout, so it lands
+            // on the designer's layout tab. The URL then differs from "Edit
+            // Page Style", which still opens the canvas, and both stay.
+            $layout_tab = '';
+
+            if ($style_page !== '') {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+                $layout_tab = pg_layout_tab_param($page_id, pg_layout_custom_page_ids(array($page_id)), $user['role'], pg_hosted());
+            }
+
             $actions[] = array(
                 'icon'  => 'easel',
                 'label' => lang('Open Style Designer'),
-                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . '&send_to=' . $send_to,
+                'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . $layout_tab . '&send_to=' . $send_to,
                 'class' => 'page_designer_button');
         } else {
             $actions[] = array(

@@ -237,6 +237,9 @@ function pg_designer_screen_render($ctx)
     foreach ($js_pages as $jp) {
         if ($jp['page_id'] > 0) $tab_page_ids[] = $jp['page_id'];
     }
+    $layout_pages = ((int)$user['role'] <= 1) ? pg_layout_custom_page_ids($tab_page_ids) : array();
+    $active_page_id = 0;
+    foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $active_page_id = (int)$jp['page_id']; break; } }
     $tab_layout = pg_designer_tab_layout_normalize(isset($style['tab_layout']) ? $style['tab_layout'] : '', $tab_page_ids);
 
     $design_js = json_encode(array(
@@ -266,8 +269,11 @@ function pg_designer_screen_render($ctx)
         // (designers and administrators); the endpoint (layout_code) checks
         // the same. Read only on a hosted site, which ignores the file.
         'layoutCode'    => ((int)$user['role'] <= 1),
-        'layoutPages'   => ((int)$user['role'] <= 1) ? pg_layout_custom_page_ids($tab_page_ids) : array(),
+        'layoutPages'   => $layout_pages,
         'layoutReadOnly' => pg_hosted(),
+        // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
+        // the page whose layout tab opens once the editor is up, or 0.
+        'openLayout'    => pg_layout_open_page_id(isset($_GET['layout']) ? $_GET['layout'] : '', $active_page_id, $layout_pages),
         // A classic page's type fields: read and saved by edit_page.php in
         // JSON (?properties=1), with the rights of that screen.
         'pageTypeUrl'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php',
@@ -1501,7 +1507,7 @@ function pg_designer_components_card($user)
     $none = array('button' => '', 'panel' => '');
     require_once(dirname(__FILE__) . '/designer_access.php');
     if (!pg_designer_is_full($user)) return $none;
-    if (!db_value("SHOW TABLES LIKE 'shared_components'")) return $none;
+    if (!pg_schema_has('shared_components')) return $none;
 
     $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
     if (!is_array($comp_rows) || count($comp_rows) === 0) return $none;
@@ -2340,6 +2346,7 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Page Type') . ': <span id="sd-page-type-name">—</span></h3>
             <p class="sd-set-help">' . lang('This page draws its system region from its page type. These settings are stored with their own button, at once, not with the next Save or Publish.') . '</p>
             <div id="sd-page-type-fields" class="sd-page-type-fields"></div>
+            <div id="sd-page-type-links" class="d-flex flex-wrap gap-2 mt-2"></div>
             <div class="d-flex align-items-center gap-2 mt-3">
                 <button type="button" class="btn btn-sm btn-primary" id="sd-page-type-save" disabled><span class="bi bi-floppy me-1" aria-hidden="true"></span>' . lang('Save') . '</button>
                 <span class="sd-set-status" id="sd-page-type-status" aria-live="polite"></span>

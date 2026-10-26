@@ -337,7 +337,191 @@
         };
     }
 
-    // A text split into lines of words and the blocks among them.
+    // Lists and quotes: blocks of the box (<ul>, <ol>, <blockquote> straight
+    // in it), an item a line (<li>, a <div> in a quote). One level: an item
+    // holds no list. An item read from a stored text keeps the mark it was
+    // written with (data-ws-mark), so a line nobody touched is written back
+    // as it was ("* " stays "* ", its indentation stays).
+    var LISTS = {
+        bullet: { tool: 'bullets', tag: 'UL', item: 'LI', className: 'ws-list', mark: '- ' },
+        number: { tool: 'numbers', tag: 'OL', item: 'LI', className: 'ws-list', mark: '1. ' },
+        quote: { tool: 'quote', tag: 'BLOCKQUOTE', item: 'DIV', className: 'ws-quote', mark: '> ' }
+    };
+
+    // One line as an item of a list or a line of a quote, or null: the twin
+    // of ws_list_line() (includes/workspace/render.php). mark is the line
+    // up to its words, words the rest as written. [^\n] and the explicit
+    // white space stand for PCRE's "." and "\S", which JavaScript reads
+    // wider.
+    function listLine(line) {
+        var text = String(line || '');
+        var rtrim = function (words) { return words.replace(/[ \t\n\r\0\x0B]+$/, ''); };
+        var shape = function (kind, number, indent, words) {
+            return { kind: kind, number: number, indent: indent.length, text: rtrim(words), mark: text.slice(0, text.length - words.length), words: words };
+        };
+        var match = /^([ \t]*)>(?:[ \t]+([^\n]*))?$/.exec(text);
+
+        if (match) {
+            return shape('quote', 0, match[1], match[2] || '');
+        }
+
+        if (/^[ \t]*[-*][ \t]\[[ xX]\](?:[ \t]|$)/.test(text) || /^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/.test(text)) {
+            return null;
+        }
+
+        match = /^([ \t]*)[-*][ \t]+([^ \t\n\x0B\f\r][^\n]*)$/.exec(text);
+
+        if (match) {
+            return shape('bullet', 0, match[1], match[2]);
+        }
+
+        match = /^([ \t]*)([1-9][0-9]{0,2})\.[ \t]+([^ \t\n\x0B\f\r][^\n]*)$/.exec(text);
+
+        return match ? shape('number', parseInt(match[2], 10), match[1], match[3]) : null;
+    }
+
+    // The lines of running text grouped into text and lists: the twin of
+    // ws_text_blocks(). Only a shape that cannot have meant anything else is
+    // a list; every other shape stays text, as the server draws it. lines:
+    // each line, or null for one that ends a paragraph (a block's).
+    function textBlocks(lines) {
+        var out = [];
+        var count = lines.length;
+        var blank = function (line) { return (line === null) || (String(line).trim() === ''); };
+        var text = function (index) {
+            var last = out[out.length - 1];
+
+            if (last && (last.kind === 'text')) {
+                last.lines.push(index);
+            } else {
+                out.push({ kind: 'text', lines: [index] });
+            }
+        };
+        var i = 0;
+
+        while (i < count) {
+            if (blank(lines[i])) {
+                text(i++);
+                continue;
+            }
+
+            var end = i;
+
+            while ((end + 1 < count) && !blank(lines[end + 1])) {
+                end++;
+            }
+
+            var first = null;
+            var items = [];
+            var k;
+
+            for (k = i; (k <= end) && (first === null); k++) {
+                if (listLine(lines[k])) {
+                    first = k;
+                }
+            }
+
+            if (first !== null) {
+                var lead = listLine(lines[first]);
+
+                for (k = first; k <= end; k++) {
+                    var item = listLine(lines[k]);
+
+                    if (!item || (item.kind !== lead.kind) || ((lead.kind !== 'quote') && (item.indent !== lead.indent))
+                        || ((item.kind === 'number') && (item.number !== items.length + 1))) {
+                        items = [];
+                        break;
+                    }
+
+                    items.push(item);
+                }
+
+                if (((lead.kind === 'number') && (items.length < 2))
+                    || ((lead.kind === 'quote') && (items.map(function (one) { return one.text; }).join('') === ''))) {
+                    items = [];
+                }
+            }
+
+            if (!items.length) {
+                first = end + 1;
+            }
+
+            for (k = i; k < first; k++) {
+                text(k);
+            }
+
+            if (items.length) {
+                var at = [];
+
+                for (k = first; k <= end; k++) {
+                    at.push(k);
+                }
+
+                out.push({ kind: items[0].kind, lines: at, items: items });
+            }
+
+            i = end + 1;
+        }
+
+        return out;
+    }
+
+    // A list written back, an item a line. items: { mark, words }, words as
+    // markup. An item keeps its mark; one the box made takes the mark of the
+    // item before it (its indent too, which the server needs to see one
+    // list), numbers are counted again from 1, an empty item is left out, a
+    // line break in an item makes an item of its own. In a quote an empty
+    // line stays between two lines with words.
+    function listMarkup(kind, items) {
+        var lines = [];
+        var model = '';
+
+        (items || []).forEach(function (item) {
+            if (item.mark) {
+                model = model || item.mark;
+            }
+        });
+
+        model = model || LISTS[kind].mark;
+
+        items.forEach(function (item) {
+            var mark = item.mark || model;
+
+            String(item.words).replace(/\n+$/, '').split('\n').forEach(function (words) {
+                if (words.trim() === '') {
+                    if (kind === 'quote') {
+                        lines.push({ empty: item.mark || '>' });
+                    }
+
+                    return;
+                }
+
+                if (kind === 'number') {
+                    var parts = /^([ \t]*)([0-9]+)\.([ \t]+)$/.exec(mark) || ['', '', '1', ' '];
+                    var number = lines.length + 1;
+
+                    mark = (parseInt(parts[2], 10) === number) ? mark : parts[1] + number + '.' + parts[3];
+                }
+
+                // A lone ">" read from a quote takes a space before words.
+                lines.push(mark + (/[ \t]$/.test(mark) ? '' : ' ') + words);
+                model = mark;
+            });
+        });
+
+        while (lines.length && lines[0].empty) {
+            lines.shift();
+        }
+
+        while (lines.length && lines[lines.length - 1].empty) {
+            lines.pop();
+        }
+
+        return lines.map(function (line) { return line.empty || line; }).join('\n');
+    }
+
+    // A text split into lines of words and the blocks among them; the lines
+    // of a list or a quote one block.
     function parseBlocks(markup) {
         var lines = String(markup || '').replace(/\r\n?/g, '\n').split('\n');
         var out = [];
@@ -399,7 +583,24 @@
             out.push({ kind: 'text', markup: line });
         }
 
-        return out;
+        var lines = out.map(function (block) { return (block.kind === 'text') ? block.markup : null; });
+        var grouped = [];
+
+        textBlocks(lines).forEach(function (group) {
+            if (group.kind === 'text') {
+                group.lines.forEach(function (index) { grouped.push(out[index]); });
+                return;
+            }
+
+            grouped.push({
+                kind: 'list',
+                list: group.kind,
+                markup: group.lines.map(function (index) { return lines[index]; }).join('\n'),
+                items: group.items
+            });
+        });
+
+        return grouped;
     }
 
     // ── Nodes → markup ─────────────────────────────────────────────────
@@ -451,6 +652,21 @@
             var lead = (sofar === '' || /\n$/.test(sofar)) ? '' : '\n';
 
             return singleLine ? '' : lead + block + '\n';
+        }
+
+        var kind = listKind(node);
+
+        if (kind && !singleLine) {
+            var items = Array.prototype.map.call(node.childNodes, function (item) {
+                return { mark: (item.nodeType === 1) ? (item.getAttribute('data-ws-mark') || '') : '', words: serializeNode(item, '', false) };
+            });
+            var written = listMarkup(kind, items);
+            var start = (sofar === '' || /\n$/.test(sofar)) ? '' : '\n';
+
+            // Words straight after a list would end it on the server, which
+            // draws a list only where nothing follows it in its paragraph:
+            // an empty line keeps it one.
+            return (written === '') ? start : start + written + '\n' + (wordsAfter(node) ? '\n' : '');
         }
 
         var tag = node.tagName;
@@ -511,6 +727,33 @@
         }
 
         return inner;
+    }
+
+    // Which list an element of the box is (bullet, number, quote), or ''.
+    function listKind(node) {
+        if (!node || (node.nodeType !== 1)) {
+            return '';
+        }
+
+        for (var kind in LISTS) {
+            if (Object.prototype.hasOwnProperty.call(LISTS, kind) && (LISTS[kind].tag === node.tagName)) {
+                return kind;
+            }
+        }
+
+        return '';
+    }
+
+    // The next line-filling node after a list: a line break, a card or
+    // nothing ends its line anyway.
+    function wordsAfter(list) {
+        var next = list.nextSibling;
+
+        while (next && (((next.nodeType === 3) && (next.nodeValue.replace(/\u200b/g, '') === '')) || ((next.nodeType === 1) && next.hasAttribute('data-ws-skip')))) {
+            next = next.nextSibling;
+        }
+
+        return !!next && !((next.nodeType === 1) && ((next.tagName === 'BR') || next.classList.contains('ws-rich-block')));
     }
 
     function serialize(root, singleLine) {
@@ -1016,6 +1259,19 @@
         }
 
         var spot = range.cloneRange();
+        var lastItem = (range.startContainer === surface) ? boundaryItem(surface, range.startContainer, range.startOffset) : null;
+
+        // A caret straight after a list that ends the box types into its
+        // last item.
+        if (lastItem) {
+            spot.selectNodeContents(lastItem);
+            spot.collapse(false);
+
+            if (isBreak(lastItem.lastChild)) {
+                spot.setStartBefore(lastItem.lastChild);
+                spot.collapse(true);
+            }
+        }
 
         if (outer) {
             var tail = document.createRange();
@@ -1214,7 +1470,8 @@
             return true;
         }
 
-        if (range.collapsed) {
+        // One <code> holds no line: none is made over two items.
+        if (range.collapsed || (itemAt(surface, range.startContainer) !== itemAt(surface, range.endContainer))) {
             return false;
         }
 
@@ -1401,6 +1658,429 @@
         }
 
         return changed(surface, function () { return applyMark(surface, name); });
+    }
+
+    // ── Lists and quotes in the box ────────────────────────────────────
+    //
+    // A line of the box is an item, or the box's own children up to a <br>.
+    // Lists are made and taken apart on the nodes, never with execCommand():
+    // the browsers' list commands nest, restyle and keep undo steps of their
+    // own.
+
+    function itemNode(kind, mark) {
+        var item = el(LISTS[kind].item.toLowerCase());
+
+        if (mark) {
+            item.setAttribute('data-ws-mark', mark);
+        }
+
+        return item;
+    }
+
+    function isBreak(node) {
+        return !!node && (node.nodeType === 1) && (node.tagName === 'BR');
+    }
+
+    function indexIn(node) {
+        return Array.prototype.indexOf.call(node.parentNode.childNodes, node);
+    }
+
+    // Words, a chip or a card in a piece of the box.
+    function hasWords(node) {
+        return ((node.textContent || '').replace(/[\s ​]/g, '') !== '')
+            || !!(node.querySelector && node.querySelector('[data-token], .ws-rich-block'));
+    }
+
+    // An item with nothing in it keeps a line break for the caret to stand on.
+    function fillEmpty(item) {
+        if (!hasWords(item) && !item.querySelector('br')) {
+            item.appendChild(el('br'));
+        }
+
+        return item;
+    }
+
+    // The item of a list a node is in, or null.
+    function itemAt(surface, node) {
+        for (var at = node; at && (at !== surface); at = at.parentNode) {
+            if ((at.nodeType === 1) && at.parentNode && (at.parentNode.parentNode === surface) && listKind(at.parentNode)) {
+                return at;
+            }
+        }
+
+        return null;
+    }
+
+    // The item a boundary stands in. One right after a list that ends the box
+    // is drawn, and typed into, at the end of its last item.
+    function boundaryItem(surface, container, offset) {
+        var item = itemAt(surface, container);
+
+        if (item || (container !== surface)) {
+            return item;
+        }
+
+        var before = surface.childNodes[offset - 1];
+
+        return (listKind(before) && !surface.childNodes[offset]) ? before.lastElementChild : null;
+    }
+
+    function atItemStart(item, range) {
+        if (!item.contains(range.startContainer)) {
+            return false;
+        }
+
+        var head = document.createRange();
+
+        head.setStart(item, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+
+        return plainOf(head.cloneContents()).replace(/​/g, '') === '';
+    }
+
+    // The lines of the box in order: { item }, or { nodes, br } for a line
+    // of its own children (fixed when it holds a card or a block of the
+    // browser's, which no list takes); after a final break an empty line.
+    function boxLines(surface) {
+        var all = [];
+        var line = null;
+
+        Array.prototype.forEach.call(surface.childNodes, function (child) {
+            if (listKind(child)) {
+                line = null;
+                Array.prototype.forEach.call(child.children, function (item) { all.push({ item: item }); });
+                return;
+            }
+
+            if (!line) {
+                line = { nodes: [], br: null };
+                all.push(line);
+            }
+
+            if (isBreak(child)) {
+                line.br = child;
+                line = null;
+                return;
+            }
+
+            if ((child.nodeType === 1) && (child.classList.contains('ws-rich-block') || BLOCKS.test(child.tagName))) {
+                line.fixed = true;
+            }
+
+            line.nodes.push(child);
+        });
+
+        if (!line && (!all.length || !all[all.length - 1].item)) {
+            all.push({ nodes: [], br: null });
+        }
+
+        return all;
+    }
+
+    // Which of boxLines() a boundary of the selection stands on.
+    function lineIndex(surface, all, container, offset) {
+        var item = boundaryItem(surface, container, offset);
+        var node = container;
+
+        if (!item && (container === surface)) {
+            var before = surface.childNodes[offset - 1];
+
+            node = (before && !isBreak(before) && !listKind(before)) ? before : (surface.childNodes[offset] || null);
+            item = listKind(node) ? node.firstElementChild : null;
+        }
+
+        for (var i = 0; i < all.length; i++) {
+            var line = all[i];
+
+            if (item ? (line.item === item) : (line.nodes && node && line.nodes.concat(line.br ? [line.br] : []).some(function (one) { return one === node || one.contains(node); }))) {
+                return i;
+            }
+        }
+
+        return all.length - 1;
+    }
+
+    // The selection by its nodes, put back once they have moved: a range
+    // inside a node taken out of the box would be lost.
+    function holdSelection() {
+        var range = selectionRange();
+        var end = function (container, offset) {
+            return (container.nodeType === 3) ? { node: container, offset: offset } : { node: container.childNodes[offset] || null, parent: container };
+        };
+
+        return range ? { start: end(range.startContainer, range.startOffset), end: end(range.endContainer, range.endOffset), backward: selectionBackward() } : null;
+    }
+
+    function putSelection(surface, held, fallback) {
+        var spot = function (one) {
+            if (one.node) {
+                if (!surface.contains(one.node) || (one.node === surface)) {
+                    return null;
+                }
+
+                return (one.node.nodeType === 3) ? [one.node, Math.min(one.offset, one.node.nodeValue.length)] : [one.node.parentNode, indexIn(one.node)];
+            }
+
+            return (surface.contains(one.parent) && ((one.parent === surface) || one.parent.parentNode)) ? [one.parent, one.parent.childNodes.length] : null;
+        };
+        var start = held ? spot(held.start) : null;
+        var end = held ? spot(held.end) : null;
+
+        if (!start || !end) {
+            start = end = fallback;
+        }
+
+        if (start) {
+            select(start[0], start[1], end[0], end[1], held && held.backward);
+        }
+    }
+
+    // A line made an item: it joins a list of its kind just before it, and
+    // one just after it joins too. Answers the item.
+    function toItem(surface, line, kind) {
+        var spot = document.createTextNode('');
+        var item = itemNode(kind, '');
+
+        surface.insertBefore(spot, line.nodes[0] || line.br || null);
+        line.nodes.forEach(function (node) { item.appendChild(node); });
+
+        if (line.br) {
+            line.br.remove();
+        }
+
+        var list = spot.previousSibling;
+
+        if (listKind(list) !== kind) {
+            list = el(LISTS[kind].tag.toLowerCase(), LISTS[kind].className);
+            surface.insertBefore(list, spot);
+        }
+
+        list.appendChild(fillEmpty(item));
+
+        var next = spot.nextSibling;
+
+        if (listKind(next) === kind) {
+            while (next.firstChild) {
+                list.appendChild(next.firstChild);
+            }
+
+            next.remove();
+        }
+
+        spot.remove();
+
+        return item;
+    }
+
+    // An item taken out of its list as a line of the box, the items after it
+    // a list of their own below it. Answers the line ({ nodes, br }).
+    function liftItem(surface, item) {
+        var list = item.parentNode;
+
+        if (item.nextElementSibling) {
+            var rest = list.cloneNode(false);
+
+            while (item.nextSibling) {
+                rest.appendChild(item.nextSibling);
+            }
+
+            surface.insertBefore(rest, list.nextSibling);
+        }
+
+        var next = list.nextSibling;
+        var nodes = hasWords(item) ? Array.prototype.slice.call(item.childNodes) : [];
+
+        // The break an item ends with is no line of its own.
+        while (nodes.length && isBreak(nodes[nodes.length - 1])) {
+            nodes.pop();
+        }
+
+        nodes.forEach(function (node) { surface.insertBefore(node, next); });
+        item.remove();
+
+        if (!list.children.length) {
+            list.remove();
+        }
+
+        // A break ends the line before it and this one, unless a list ends
+        // it; an empty line is a break of its own.
+        var first = nodes[0] || next;
+        var before = first ? first.previousSibling : surface.lastChild;
+        var br = null;
+
+        if (before && !isBreak(before) && !listKind(before)) {
+            surface.insertBefore(el('br'), first || null);
+        }
+
+        if (!nodes.length || (next && !listKind(next))) {
+            br = el('br');
+            surface.insertBefore(br, next);
+        }
+
+        return { nodes: nodes, br: br };
+    }
+
+    function lineStart(surface, line) {
+        var first = line.nodes[0] || line.br;
+
+        return first ? [surface, indexIn(first)] : null;
+    }
+
+    // The toolbar's bullets, numbers and quote: the lines the selection
+    // touches made items of that kind, or, when all of them are already,
+    // lines again. Cards and blocks stay as they are.
+    function toggleList(surface, kind) {
+        var range = selectionRange();
+
+        if (!range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var all = boxLines(surface);
+        var from = lineIndex(surface, all, range.startContainer, range.startOffset);
+        var to = range.collapsed ? from : lineIndex(surface, all, range.endContainer, range.endOffset);
+        var lines = all.slice(from, to + 1).filter(function (line) { return !line.fixed; });
+        var same = function (line) { return !!line.item && (listKind(line.item.parentNode) === kind); };
+        var off = lines.length && lines.every(same);
+        var held = holdSelection();
+        var fallback = null;
+
+        if (!lines.length) {
+            return false;
+        }
+
+        lines.forEach(function (line) {
+            if (same(line) && !off) {
+                return;
+            }
+
+            var lifted = line.item ? liftItem(surface, line.item) : line;
+
+            if (off) {
+                fallback = fallback || lineStart(surface, lifted);
+                return;
+            }
+
+            var item = toItem(surface, lifted, kind);
+
+            fallback = fallback || [item, 0];
+        });
+
+        putSelection(surface, held, fallback);
+
+        return true;
+    }
+
+    // Enter in an item: the words after the caret go on in a new item of
+    // the same mark; an empty item ends the list there. A selection goes
+    // first: over two items it leaves both, the caret at the later one.
+    function itemEnter(surface) {
+        var range = selectionRange();
+        var item = range ? boundaryItem(surface, range.startContainer, range.startOffset) : null;
+
+        if (!item) {
+            return false;
+        }
+
+        if (!range.collapsed) {
+            var last = boundaryItem(surface, range.endContainer, range.endOffset);
+
+            range.deleteContents();
+
+            if (last && (last !== item) && last.parentNode && item.parentNode) {
+                fillEmpty(item);
+                select(fillEmpty(last), 0, last, 0);
+                return true;
+            }
+
+            range = selectionRange();
+        }
+
+        if (!hasWords(item)) {
+            var line = liftItem(surface, item);
+            var spot = lineStart(surface, line);
+
+            select(spot[0], spot[1], spot[0], spot[1]);
+            return true;
+        }
+
+        var tail = document.createRange();
+        var next = item.cloneNode(false);
+
+        if (item.contains(range.startContainer)) {
+            tail.setStart(range.startContainer, range.startOffset);
+        } else {
+            tail.setStart(item, item.childNodes.length);
+        }
+
+        tail.setEnd(item, item.childNodes.length);
+        next.appendChild(tail.extractContents());
+        item.parentNode.insertBefore(fillEmpty(next), item.nextSibling);
+        fillEmpty(item);
+        select(next, 0, next, 0);
+
+        return true;
+    }
+
+    // The caret taken out of the marks around it, the mark split there, so
+    // that what goes in next (a person or record picked) stands between its
+    // halves: in <code> a chip was lost, in bold its mark showed as
+    // characters. Answers where to insert: { parent, before }.
+    function outOfMarks(surface, range) {
+        var node = range.startContainer;
+        var offset = range.startOffset;
+        var outer = null;
+
+        for (var at = node; at && (at !== surface) && !(at.parentNode && listKind(at.parentNode)); at = at.parentNode) {
+            if (markName(at)) {
+                outer = at;
+            }
+        }
+
+        if (outer) {
+            var tail = document.createRange();
+            var copy = outer.cloneNode(false);
+            var parent = outer.parentNode;
+
+            tail.setStart(node, offset);
+            tail.setEnd(outer, outer.childNodes.length);
+            copy.appendChild(tail.extractContents());
+
+            if (filled(copy)) {
+                parent.insertBefore(copy, outer.nextSibling);
+            }
+
+            var after = outer.nextSibling;
+
+            if (!filled(outer)) {
+                outer.remove();
+            }
+
+            return { parent: parent, before: after };
+        }
+
+        if (node.nodeType === 3) {
+            return { parent: node.parentNode, before: (offset === 0) ? node : ((offset < node.nodeValue.length) ? node.splitText(offset) : node.nextSibling) };
+        }
+
+        return { parent: node, before: node.childNodes[offset] || null };
+    }
+
+    // A selection from the box's first words to its last.
+    function wholeBox(surface, range) {
+        if (!range || range.collapsed || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var head = document.createRange();
+        var tail = document.createRange();
+
+        head.setStart(surface, 0);
+        head.setEnd(range.startContainer, range.startOffset);
+        tail.setStart(range.endContainer, range.endOffset);
+        tail.setEnd(surface, surface.childNodes.length);
+
+        return !hasWords(head.cloneContents()) && !hasWords(tail.cloneContents());
     }
 
     // ── The format bar and the link tip ────────────────────────────────
@@ -1910,6 +2590,18 @@
 
         // Undo and redo from the menu or the keyboard of the browser.
         node.addEventListener('beforeinput', function (event) {
+            // Select all and delete in a box with a list left an empty item
+            // behind: the box is emptied instead.
+            if (/^delete/.test(event.inputType || '') && node.querySelector('ul, ol, blockquote') && wholeBox(node, selectionRange())) {
+                event.preventDefault();
+                self.change(function () {
+                    node.innerHTML = '';
+                    select(node, 0, node, 0);
+                    return true;
+                });
+                return;
+            }
+
             if (event.inputType === 'historyUndo' || event.inputType === 'historyRedo') {
                 event.preventDefault();
 
@@ -1930,6 +2622,10 @@
                 return;
             }
 
+            if (self.listKey(event)) {
+                return;
+            }
+
             if (event.key !== 'Enter' || event.isComposing || event.defaultPrevented) {
                 return;
             }
@@ -1940,7 +2636,14 @@
                 return;
             }
 
+            // In an item the list goes on: Shift+Enter in the composer, whose
+            // Enter sends.
             event.preventDefault();
+
+            if (self.listEnter()) {
+                return;
+            }
+
             lineBreak();
             self.tidy();
         });
@@ -1991,7 +2694,7 @@
 
         isEmpty: function () {
             return (this.node.textContent || '').replace(/[\s ​]/g, '') === ''
-                && !this.node.querySelector('[data-token], .ws-rich-block');
+                && !this.node.querySelector('[data-token], .ws-rich-block, ul, ol, blockquote');
         },
 
         // An emptied box keeps no stray <br>, so the placeholder shows again.
@@ -2299,7 +3002,102 @@
                 range = (this.savedRange && this.node.contains(this.savedRange.startContainer)) ? this.savedRange : null;
             }
 
-            return marksAt(this.node, range);
+            var state = marksAt(this.node, range);
+            var item = range ? boundaryItem(this.node, range.startContainer, range.startOffset) : null;
+
+            Object.keys(LISTS).forEach(function (kind) {
+                var name = LISTS[kind].tool;
+
+                state[name] = !!item && (listKind(item.parentNode) === kind);
+            });
+
+            return state;
+        },
+
+        // A list or a quote (bullets, numbers, quote) on the lines of the
+        // selection, or off them; a step of the box's undo.
+        list: function (name) {
+            var self = this;
+            var kind = Object.keys(LISTS).filter(function (one) { return LISTS[one].tool === name; })[0];
+
+            if (!kind) {
+                return false;
+            }
+
+            self.restore();
+
+            return self.change(function () { return toggleList(self.node, kind); });
+        },
+
+        // Shift+Tab, and Backspace at an item's start, take the item out of
+        // its list; Tab puts a line straight after a list back into it.
+        // Elsewhere Tab moves the focus: there is no level below an item.
+        // true when handled.
+        listKey: function (event) {
+            var self = this;
+            var range = selectionRange();
+
+            if (!range || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || !self.node.contains(range.startContainer)
+                || ((event.key !== 'Tab') && (event.key !== 'Backspace'))) {
+                return false;
+            }
+
+            var item = boundaryItem(self.node, range.startContainer, range.startOffset);
+
+            if ((event.key === 'Tab') && !event.shiftKey) {
+                var all = boxLines(self.node);
+                var line = item ? null : all[lineIndex(self.node, all, range.startContainer, range.startOffset)];
+                var first = line ? (line.nodes[0] || line.br) : null;
+                var list = first ? first.previousSibling : null;
+
+                if (!line || line.fixed || !listKind(list)) {
+                    return false;
+                }
+
+                event.preventDefault();
+                self.change(function () {
+                    var held = holdSelection();
+
+                    putSelection(self.node, held, [toItem(self.node, line, listKind(list)), 0]);
+                    return true;
+                });
+
+                return true;
+            }
+
+            if (!item || !((event.key === 'Tab') || (!event.shiftKey && range.collapsed && atItemStart(item, range)))) {
+                return false;
+            }
+
+            event.preventDefault();
+            self.change(function () {
+                var held = holdSelection();
+
+                putSelection(self.node, held, lineStart(self.node, liftItem(self.node, item)));
+                return true;
+            });
+
+            return true;
+        },
+
+        // Whether the caret stands in an item of a list or a quote.
+        inListItem: function () {
+            var range = selectionRange();
+
+            return !!range && this.node.contains(range.startContainer) && !!boundaryItem(this.node, range.startContainer, range.startOffset);
+        },
+
+        // Enter in an item (itemEnter()); true when the caret was in one.
+        listEnter: function () {
+            var self = this;
+
+            if (!self.inListItem()) {
+                return false;
+            }
+
+            self.change(function () { return itemEnter(self.node); });
+
+            return true;
         },
 
         // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z (Cmd on a Mac), whatever the
@@ -2355,6 +3153,15 @@
                     if (index < blocks.length - 1) {
                         node.appendChild(el('br'));
                     }
+                } else if (block.kind === 'list') {
+                    // A list ends its line itself: no break after it.
+                    var list = el(LISTS[block.list].tag.toLowerCase(), LISTS[block.list].className);
+
+                    block.items.forEach(function (one) {
+                        list.appendChild(fillEmpty(inlineNodes(one.words, labels, itemNode(block.list, one.mark))));
+                    });
+
+                    node.appendChild(list);
                 } else {
                     node.appendChild(blockNode(block.kind, block.markup));
                     node.appendChild(el('br'));
@@ -2501,9 +3308,18 @@
             }
 
             if (item.token) {
-                var holder = el('span');
-                holder.appendChild(chipNode(item.token, item.shown, item.icon || ''));
-                command('insertHTML', holder.innerHTML + ' ');
+                var range = selectionRange();
+                var chip = chipNode(item.token, item.shown, item.icon || '');
+                var space = document.createTextNode('\u00a0');
+
+                range.deleteContents();
+
+                var spot = outOfMarks(this.node, range);
+
+                spot.parent.insertBefore(chip, spot.before);
+                spot.parent.insertBefore(space, chip.nextSibling);
+                select(space, 1, space, 1);
+                this.node.dispatchEvent(new Event('input', { bubbles: true }));
             } else if (item.text) {
                 command('insertText', item.text);
             } else if (!selection.isCollapsed) {
@@ -2541,12 +3357,28 @@
         insertBlock: function (kind, markup) {
             this.restore();
 
-            var before = this.beforeCaret();
-            var holder = el('span');
+            // A card stands on a line of its own, below a list it was put in.
+            var caret = selectionRange();
+            var item = caret ? boundaryItem(this.node, caret.startContainer, caret.startOffset) : null;
 
-            holder.appendChild(blockNode(kind, markup));
+            if (item) {
+                // As nodes: insertHTML at the box level next to a list is
+                // drawn into the list.
+                var list = item.parentNode;
+                var card = blockNode(kind, markup);
+                var end = el('br');
 
-            command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
+                this.node.insertBefore(card, list.nextSibling);
+                this.node.insertBefore(end, card.nextSibling);
+                select(this.node, indexIn(end) + 1, this.node, indexIn(end) + 1);
+            } else {
+                var before = this.beforeCaret();
+                var holder = el('span');
+
+                holder.appendChild(blockNode(kind, markup));
+
+                command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
+            }
 
             // A line after the card to write on.
             if (!this.node.lastChild || this.node.lastChild.nodeType !== 1 || this.node.lastChild.tagName !== 'BR') {
@@ -2727,6 +3559,9 @@
         strike: { icon: 'bi-type-strikethrough', label: 'tool_strike', keys: 'Control+Shift+X', mark: 'strike' },
         code: { icon: 'bi-code', label: 'tool_code', keys: 'Control+E', mark: 'code' },
         link: { icon: 'bi-link-45deg', label: 'tool_link', keys: 'Control+K', mark: 'link' },
+        bullets: { icon: 'bi-list-ul', label: 'tool_bullets', list: 'bullet' },
+        numbers: { icon: 'bi-list-ol', label: 'tool_numbers', list: 'number' },
+        quote: { icon: 'bi-quote', label: 'tool_quote', list: 'quote' },
         checklist: { icon: 'bi-ui-checks', label: 'tool_checklist', block: 'checklist' },
         table: { icon: 'bi-table', label: 'tool_table', block: 'table' },
         calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
@@ -2763,7 +3598,8 @@
      *
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
-     *     strike, code, link, checklist, table, calc, codeblock;
+     *     strike, code, link, bullets, numbers, quote, checklist, table,
+     *     calc, codeblock;
      *   - a node the caller made (attach, emoji, voice, send), put in as it is;
      *   - an array of those, drawn as a group of options.groupClass.
      * options: className (the row's class), groupClass, label (the row's name
@@ -2807,6 +3643,11 @@
                 pressed[spec.mark] = node;
             }
 
+            if (spec.list) {
+                node.setAttribute('aria-pressed', 'false');
+                pressed[name] = node;
+            }
+
             if ((name === 'undo') || (name === 'redo')) {
                 steps[name] = node;
             }
@@ -2818,6 +3659,8 @@
                     editor.redo();
                 } else if (spec.mark) {
                     editor.format(spec.mark);
+                } else if (spec.list) {
+                    editor.list(name);
                 } else {
                     insertFrom(editor, spec.block, opts);
                 }

@@ -12,7 +12,7 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 - `submit_order()` right after the `order.created` webhook (the order has its number): `pg_sms_order_received()`, reference `order:<id>:received`.
 - `update_order()` (order screen, Workspace, API `ship`) per address that gained a tracking number and whose customer is told (the same `shipped` flag that keeps the e-mail back): `pg_sms_order_shipped()`, reference `order:<id>:shipped:<ship_to_id>`. One text per address: a number added later is deduped by the reference while the queue row is kept (sent rows: 7 days).
 - `pg_shipment_delivered()` when it announces and `notify` is true: `pg_sms_order_delivered()`, reference `order:<id>:delivered:<ship_to_id>`.
-- Not texted: marketplace orders (`mp_order_apply_tracking()`, delivery with `notify` false; the marketplace tells its buyer) and ShipWorks' direct insert.
+- Not texted: marketplace orders (`orders.type` 'marketplace'; the marketplace tells its buyer, and the phone may be its relay) and ShipWorks' direct insert. `pg_sms_message_order()` answers null for such an order (`pg_sms_order_texted()`), so no event texts one, whoever adds the tracking: before, a number typed on the order screen (or a bulk mark) texted the buyer, while only the marketplace import's own path stayed silent.
 - `expires_at` is two days after queueing: a queue held up longer drops stale order news.
 
 ## Why not inside `pg_shipment_record()`?

@@ -339,7 +339,9 @@ function ws_inbox_describe($viewer, $row)
             $readable = $notice && ((int) $notice['channel_id'] > 0) && ((int) $notice['message_id'] > 0) && ws_can_read_channel($viewer, ws_channel((int) $notice['channel_id']));
 
             return array(
-                'title' => $notice ? (string) $notice['name'] : lang('Scheduled action'),
+                // A flow's box writes a notice of no action (its text names the
+                // flow).
+                'title' => $notice ? (($notice['name'] !== null) ? (string) $notice['name'] : lang('Flow')) : lang('Scheduled action'),
                 'body'  => $notice ? (string) $notice['text'] : '',
                 'url'   => $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
                 'icon'  => 'bi-alarm',

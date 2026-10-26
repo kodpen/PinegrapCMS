@@ -52,7 +52,7 @@ function pg_dashboard_widget_23($request, $user)
             return $response;
         }
 
-        $pf_available = (mysqli_num_rows(mysqli_query(db::$con, "SHOW TABLES LIKE 'perf_stats'")) > 0);
+        $pf_available = pg_schema_has('perf_stats');
 
         if (!$pf_available) {
             $output_data = '

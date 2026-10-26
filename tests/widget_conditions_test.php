@@ -38,7 +38,8 @@ function test_widget_conditions_vectors()
 }
 
 // The vectors leave out a single separator with three digits after it:
-// the site language decides those, and the editor's twin cannot know it.
+// the site language decides those (the editor's twin is checked on them
+// with each decimal point in widget_condition_eval_test.php).
 function test_widget_conditions_vectors_language_free()
 {
 	$ops = pg_sw_cond_ops();

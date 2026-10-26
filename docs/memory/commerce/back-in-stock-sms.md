@@ -4,7 +4,7 @@ description: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, 
 ---
 
 ## Is it a marketing message?
-- No: owner decision (2026-10-26, #1864, `workflow/decisions-made-product.md`). The customer asked for this one notice, it goes once, so it is transactional: kind `stock` in `pg_sms_kinds()` (not commercial, Netgsm `iysfilter` 0). The template names the store, the product and its address only; no campaign, discount or other product, or it would need İYS consent.
+- No: owner decision (2026-10-26, #1864, `workflow/decisions-made-messages.md`). The customer asked for this one notice, it goes once, so it is transactional: kind `stock` in `pg_sms_kinds()` (not commercial, Netgsm `iysfilter` 0). The template names the store, the product and its address only; no campaign, discount or other product, or it would need İYS consent.
 
 ## When does a request keep a number?
 - `pg_stock_notify_sms_on()`: the `stock_back` event of the SMS Messages card is on and `pg_sms_ready()`. Off, the form draws no number field and `pg_stock_notify_request($product_id, $email, $user_id, $phone)` ignores a number sent anyway.

@@ -121,3 +121,19 @@ function test_sms_messages_builtin_texts_use_known_fields()
 		pg_assert_true(isset(pg_sms_kinds()[$definition['kind']]) && !pg_sms_kinds()[$definition['kind']], $event);
 	}
 }
+
+// A marketplace's order is not texted by the shop: the marketplace tells its
+// own buyer, and the phone on the order may be the marketplace's relay. The
+// order screen, a bulk mark or an import adding tracking to such an order
+// sends nothing.
+function test_sms_messages_marketplace_order_is_not_texted()
+{
+	pg_assert_false(pg_sms_order_texted(array('type' => 'marketplace')), 'a marketplace order');
+	pg_assert_true(pg_sms_order_texted(array('type' => 'online')), 'a web order');
+	pg_assert_true(pg_sms_order_texted(array('type' => 'offline')), 'an order taken by the shop');
+	pg_assert_true(pg_sms_order_texted(array()), 'a row without the type');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php');
+	pg_assert_contains('if (!$order || !pg_sms_order_texted($order)) {', $source, 'every order message reads the order through the check');
+}
+

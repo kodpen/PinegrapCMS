@@ -715,7 +715,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
         '__username'       => h(defined('USER_USERNAME') ? (string)USER_USERNAME : ''),
         '__email_address'  => h(defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : ''),
         '__my_account_url' => h($account_url),
-    ));
+    ) + pg_sw_entity_account_tokens((int)USER_ID, $tree_json));
 }
 
 // ============================================================================
@@ -994,6 +994,8 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                     ((string)$r['state'] !== (string)$r['city']) ? (string)$r['state'] : ''), 'strlen'))),
                 $country,
             ), 'strlen'));
+            // Then the recipient's allow-listed values (pg_sw_entity_fields(
+            // 'address_book')); its type only where the form asks for it.
             $html = _pg_sw_fill_tokens($template, array(
                 '__recipient_id'           => (string)$rid,
                 '__recipient_name'         => h((string)$r['ship_to_name']),
@@ -1005,7 +1007,10 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
                 '__recipient_edit_url'     => h($self . (strpos($self, '?') === false ? '?' : '&') . 'id=' . $rid),
                 '__recipient_remove_url'   => h(_pg_acct_software_path() . '/remove_recipient.php?id=' . $rid
                                               . '&token=' . urlencode($token) . '&send_to=' . urlencode($self)),
-            ));
+            ) + array_map('h', pg_sw_entity_values('address_book', array(
+                'country'      => $country,
+                'address_type' => $type_on ? (string)$r['address_type'] : '',
+            ) + $r)));
             $rows .= pg_sw_uniquify_row_ids(pg_sw_sweep_tokens($html), $widget_id, $rid);
         }
     }
@@ -1843,6 +1848,9 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 
     $tokens = $values;
     foreach ($links as $k => $v) $tokens[$k] = h($v);
+    // The member's own allow-listed account values: read only when the
+    // tree binds one, as the region sits on every page.
+    if ($signed_in) $tokens += pg_sw_entity_account_tokens((int)USER_ID, $tree_json);
     return _pg_member_apply_tokens($rendered, $tokens);
 }
 
@@ -2173,6 +2181,7 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
     $member = array();
     $links  = array();
     $reset  = '';
+    $user_id = 0;
     if ($acct !== null) {
         $kind = isset($acct['kind']) ? (string)$acct['kind'] : '';
         $user_id = isset($acct['user_id']) ? (int)$acct['user_id'] : 0;
@@ -2218,5 +2227,8 @@ function _render_system_widget_account_email($tree_json, $widget_id, $cfg = arra
 
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
-    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']));
+    // The addressee's allow-listed account values; none in the unknown-
+    // address answer of a reset or the preview.
+    $account = ($kind !== '' && $kind !== 'preview') ? pg_sw_entity_account_tokens($user_id, $tree_json) : array();
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']) + $account);
 }

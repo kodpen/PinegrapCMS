@@ -150,9 +150,10 @@ function translate_api_routes()
             'path'        => '/translations',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_write',
+            'dry_run'     => true,
             'returns'     => 'TranslationWriteResult',
             'summary'     => 'Write translations',
-            'description' => 'Writes translations for one language in bulk, keyed on the hash from GET /translations/strings - the way a translation tool hands finished work back. A translation is refused when it drops a tag or a token of its text (rejected names the hash and the reason); a hash the site no longer has is stale and skipped; an empty text is skipped. What is written is reviewed unless status says machine, and shows on the pages at once. A reviewed translation already there is kept unless overwrite is true.',
+            'description' => 'Writes translations for one language in bulk, keyed on the hash from GET /translations/strings - the way a translation tool hands finished work back. A translation is refused when it drops a tag or a token of its text (rejected names the hash and the reason); a hash the site no longer has is stale and skipped; an empty text is skipped. What is written is reviewed unless status says machine, and shows on the pages at once. A reviewed translation already there is kept unless overwrite is true. A dry run judges every item and answers the same counts, writing none.',
             'params'      => array(
                 array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code.'),
                 array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('hash' => 'string', 'text' => 'string'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {hash, text}.'),
@@ -167,9 +168,10 @@ function translate_api_routes()
             'path'        => '/translations/refresh',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_refresh',
+            'dry_run'     => true,
             'returns'     => 'TranslationRefreshResult',
             'summary'     => 'Read the texts off the pages again',
-            'description' => 'The texts GET /translations/strings lists are the ones read off the site the last time its pages were gone through: by "Update translations" on the Translations screen, by translate-on-save, or by this endpoint. Call it after the pages changed and before reading what is pending, so the list holds the wording they have now - a changed text gets a new hash and the old one becomes stale. page_id reads one page with its title, description and the components and menus it uses; group reads the catalogue (catalog) or the forms (forms); neither reads the whole site, which takes longer. Nothing is sent to an engine. pending says, for every target language, how many texts of the scope have no translation yet.',
+            'description' => 'The texts GET /translations/strings lists are the ones read off the site the last time its pages were gone through: by "Update translations" on the Translations screen, by translate-on-save, or by this endpoint. Call it after the pages changed and before reading what is pending, so the list holds the wording they have now - a changed text gets a new hash and the old one becomes stale. page_id reads one page with its title, description and the components and menus it uses; group reads the catalogue (catalog) or the forms (forms); neither reads the whole site, which takes longer. Nothing is sent to an engine. pending says, for every target language, how many texts of the scope have no translation yet. A dry run checks the scope and reads nothing.',
             'params'      => array(
                 array('name' => 'page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Only this page.'),
                 array('name' => 'group', 'in' => 'body', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'Only the products and product groups (catalog), or only the forms (forms).'),
@@ -182,9 +184,10 @@ function translate_api_routes()
             'path'        => '/translations/status',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_status',
+            'dry_run'     => true,
             'returns'     => 'TranslationStatusResult',
             'summary'     => 'Review translations, or take them back',
-            'description' => 'Changes the state of translations without sending their text, keyed on the hash from GET /translations/strings. reviewed marks a translation as checked by a person; machine sends it back to unreviewed; pending takes the translation away, so the source text shows on the pages again and the text waits to be translated. A hash with no translation to change is counted as unchanged; a hash the site no longer has is stale. all: true with status reviewed marks every machine translation of the language as reviewed in one go - page_id or group narrows it - and leaves out the ones the check flagged as suspicious, as Approve all on the Translations screen does.',
+            'description' => 'Changes the state of translations without sending their text, keyed on the hash from GET /translations/strings. reviewed marks a translation as checked by a person; machine sends it back to unreviewed; pending takes the translation away, so the source text shows on the pages again and the text waits to be translated. A hash with no translation to change is counted as unchanged; a hash the site no longer has is stale. all: true with status reviewed marks every machine translation of the language as reviewed in one go - page_id or group narrows it - and leaves out the ones the check flagged as suspicious, as Approve all on the Translations screen does. A dry run answers how many would change and changes none.',
             'params'      => array(
                 array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code.'),
                 array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('reviewed', 'machine', 'pending'), 'required' => true),
@@ -215,9 +218,10 @@ function translate_api_routes()
             'path'        => '/translations/glossary',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_glossary_save',
+            'dry_run'     => true,
             'returns'     => 'TranslationGlossaryTerm',
             'summary'     => 'Add or change a glossary term',
-            'description' => 'With id, changes that term. Without it, the term with the same wording in the same language is changed when there is one and a new term is added otherwise, so a repeated call does not leave two behind. A kept term (keep true) stays as written in every translation and may hold for every language; a translated term needs translation and belongs to one language. It applies to the texts sent to an engine from then on. Terms are removed on the Translations screen.',
+            'description' => 'With id, changes that term. Without it, the term with the same wording in the same language is changed when there is one and a new term is added otherwise, so a repeated call does not leave two behind. A kept term (keep true) stays as written in every translation and may hold for every language; a translated term needs translation and belongs to one language. It applies to the texts sent to an engine from then on. Terms are removed on the Translations screen. A dry run makes every check and says whether a term would be added or changed.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The term to change.'),
                 array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'description' => 'A target language code. Not needed with all_languages.'),
@@ -251,10 +255,11 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/claim',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_claim',
+            'dry_run'     => true,
             'mcp'         => false,
             'returns'     => 'TranslationJob',
             'summary'     => 'Take a job',
-            'description' => 'Marks the job as being worked on. 409 already_claimed when another run has it and is still posting, 409 closed when it is finished or cancelled. A run that went quiet for half an hour no longer holds its job.',
+            'description' => 'Marks the job as being worked on. 409 already_claimed when another run has it and is still posting, 409 closed when it is finished or cancelled. A run that went quiet for half an hour no longer holds its job. A dry run makes the same checks and takes nothing.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -282,10 +287,11 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/results',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_results',
+            'dry_run'     => true,
             'mcp'         => false,
             'returns'     => 'TranslationJobResults',
             'summary'     => 'Bring translations back',
-            'description' => 'The translations of up to 100 items of the job, keyed on hash. Each is checked against its text - the tags and tokens have to be there - and written as a machine translation that shows on the pages at once. rejected names what was refused and why; a refused item is asked once more and then given up. {hash, skip: true, reason} gives an item up without an answer. A hash that is not in the job is stale. The job closes by itself when every item is answered.',
+            'description' => 'The translations of up to 100 items of the job, keyed on hash. Each is checked against its text - the tags and tokens have to be there - and written as a machine translation that shows on the pages at once. rejected names what was refused and why; a refused item is asked once more and then given up. {hash, skip: true, reason} gives an item up without an answer. A hash that is not in the job is stale. The job closes by itself when every item is answered. A dry run judges every answer and answers the same counts, writing none.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'results', 'in' => 'body', 'type' => 'list', 'of' => array('hash' => 'string', 'text' => 'string', 'skip' => 'boolean', 'reason' => 'string'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {hash, text} or {hash, skip, reason}.'),
@@ -298,10 +304,11 @@ function translate_api_routes()
             'path'        => '/translations/jobs/{id}/fail',
             'scope'       => 'translations:write',
             'handler'     => 'translate_api_jobs_fail',
+            'dry_run'     => true,
             'mcp'         => false,
             'returns'     => 'TranslationJob',
             'summary'     => 'Give a job up',
-            'description' => 'Closes the job as not done with the reason, which the Translations screen shows. What was already written stays.',
+            'description' => 'Closes the job as not done with the reason, which the Translations screen shows. What was already written stays. A dry run checks the job is still open and closes nothing.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 250, 'required' => true),
@@ -674,25 +681,46 @@ function translate_api_pages_get($params)
  */
 function translate_api_write_one($string, $language, $text, $engine, $status, $user_id, $force)
 {
-    $clean = pg_tr_sanitize_incoming((string) $text, $string['format']);
+    $checked = translate_api_write_check($string, $language, $text, $status, $force);
 
-    if (trim($clean) === '') {
-        return array('ok' => false, 'reason' => 'empty', 'suspicious' => false);
+    if (!$checked['ok']) {
+        return array('ok' => false, 'reason' => $checked['reason'], 'suspicious' => false);
     }
 
-    $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
-
-    if (!$check['ok']) {
-        return array('ok' => false, 'reason' => (string) $check['error'], 'suspicious' => false);
-    }
-
-    $written = pg_tr_save_translation((int) $string['id'], $language, $clean, $engine, $status, $user_id, $check['suspicious'] ? 1 : 0, $force);
+    $written = pg_tr_save_translation((int) $string['id'], $language, $checked['clean'], $engine, $status, $user_id, $checked['suspicious'] ? 1 : 0, $force);
 
     if ($written === false) {
         return array('ok' => false, 'reason' => 'reviewed_kept', 'suspicious' => false);
     }
 
-    return array('ok' => true, 'reason' => '', 'suspicious' => (bool) $check['suspicious']);
+    return array('ok' => true, 'reason' => '', 'suspicious' => $checked['suspicious']);
+}
+
+/**
+ * What translate_api_write_one() would make of an answer, without writing
+ * it: empty, refused by the check, a reviewed translation kept, or written.
+ *
+ * @return array('ok' => bool, 'reason' => string, 'suspicious' => bool, 'clean' => string)
+ */
+function translate_api_write_check($string, $language, $text, $status, $force)
+{
+    $clean = pg_tr_sanitize_incoming((string) $text, $string['format']);
+
+    if (trim($clean) === '') {
+        return array('ok' => false, 'reason' => 'empty', 'suspicious' => false, 'clean' => '');
+    }
+
+    $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'reason' => (string) $check['error'], 'suspicious' => false, 'clean' => '');
+    }
+
+    if (pg_tr_reviewed_kept((int) $string['id'], $language, $status, $force)) {
+        return array('ok' => false, 'reason' => 'reviewed_kept', 'suspicious' => false, 'clean' => '');
+    }
+
+    return array('ok' => true, 'reason' => '', 'suspicious' => (bool) $check['suspicious'], 'clean' => $clean);
 }
 
 // What translate_api_write() answers with.
@@ -730,6 +758,7 @@ function translate_api_write($params)
 
     $strings = pg_tr_strings_by_hash(array_map(function ($item) { return $item['hash']; }, $items));
     $result = array('language' => $language, 'written' => 0, 'skipped' => 0, 'stale' => array(), 'rejected' => array());
+    $dry = api_dry_run_requested();
 
     foreach ($items as $item) {
         if (!isset($strings[$item['hash']])) {
@@ -742,7 +771,10 @@ function translate_api_write($params)
             continue;
         }
 
-        $one = translate_api_write_one($strings[$item['hash']], $language, $item['text'], 'api', $status, $user_id, $force);
+        // A rehearsal judges each item the way the write does and writes none.
+        $one = $dry
+            ? translate_api_write_check($strings[$item['hash']], $language, $item['text'], $status, $force)
+            : translate_api_write_one($strings[$item['hash']], $language, $item['text'], 'api', $status, $user_id, $force);
 
         if ($one['ok']) {
             $result['written']++;
@@ -752,6 +784,8 @@ function translate_api_write($params)
             $result['rejected'][] = array('hash' => $item['hash'], 'reason' => $one['reason']);
         }
     }
+
+    api_dry_run_stop('updated', 'translations', $result);
 
     if ($result['written'] > 0) {
         log_activity(lang(array('string' => 'translations were written through the API ({var:1}, {var:2} text(s))', 'vars' => array($language, $result['written']))), (string) ($app['name'] ?? 'API'));
@@ -816,6 +850,9 @@ function translate_api_refresh($params)
     translate_api_boot();
 
     $scope = translate_api_scope_of($params);
+
+    api_dry_run_stop('refreshed', 'translations', array('scope' => $scope));
+
     $extracted = pg_tr_scope_extract($scope);
     $owners = pg_tr_scope_owners($scope);
     $languages = array();
@@ -871,7 +908,11 @@ function translate_api_status($params)
             api_fail_validation(lang('all only marks translations as reviewed. Send hashes to change other states.'), 'all');
         }
 
-        $result['changed'] = pg_tr_review_all($language, translate_api_scope_of($params), $user_id);
+        $scope = translate_api_scope_of($params);
+
+        api_dry_run_stop('updated', 'translations', array('changed' => (int) db_value("SELECT COUNT(*) FROM translations t WHERE " . pg_tr_review_all_where($language, $scope))) + $result);
+
+        $result['changed'] = pg_tr_review_all($language, $scope, $user_id);
 
         if ($result['changed'] > 0) {
             log_activity(lang(array('string' => 'machine translations were marked as reviewed ({var:1}, {var:2} text(s))', 'vars' => array($language, $result['changed']))), (string) ($app['name'] ?? 'API'));
@@ -905,6 +946,7 @@ function translate_api_status($params)
     }
 
     $current = array();
+    $dry = api_dry_run_requested();
 
     if ($ids) {
         foreach ((array) db_items("SELECT string_id, status FROM translations WHERE language = '" . e($language) . "' AND string_id IN (" . implode(',', $ids) . ")") as $translation) {
@@ -926,6 +968,12 @@ function translate_api_status($params)
             continue;
         }
 
+        // A rehearsal counts what the real call would change and changes none.
+        if ($dry) {
+            $result['changed']++;
+            continue;
+        }
+
         if ($status === 'pending') {
             // The same as emptying the box on the Translations screen: the
             // source shows again and the text waits for a translation.
@@ -937,6 +985,8 @@ function translate_api_status($params)
 
         $result['changed']++;
     }
+
+    api_dry_run_stop('updated', 'translations', $result);
 
     if ($result['changed'] > 0) {
         log_activity(lang(array('string' => 'translation states were changed through the API ({var:1}, {var:2}, {var:3} text(s))', 'vars' => array($language, $status, $result['changed']))), (string) ($app['name'] ?? 'API'));
@@ -1049,6 +1099,13 @@ function translate_api_glossary_save($params)
 
     $values = "language = '" . e($language) . "', term = '" . e($term) . "', translation = '" . e($translation) . "',
         keep = '" . ($keep ? 1 : 0) . "', case_sensitive = '$case_sensitive', note = '" . e($note) . "'";
+
+    api_dry_run_stop(is_array($existing) ? 'updated' : 'created', 'translation_glossary_term', array(
+        'id'       => is_array($existing) ? (int) $existing['id'] : null,
+        'language' => $language,
+        'term'     => $term,
+        'keep'     => $keep,
+    ));
 
     if (is_array($existing)) {
         $id = (int) $existing['id'];
@@ -1204,6 +1261,8 @@ function translate_api_jobs_claim($params)
         api_fail(409, 'closed', lang('This job is already closed.'));
     }
 
+    api_dry_run_stop('claimed', 'translation_job', array('id' => (int) $job['id'], 'status' => (string) $job['status']));
+
     // One run wins when two reach for the same job; a run that went quiet
     // loses it.
     db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "'
@@ -1346,8 +1405,14 @@ function translate_api_jobs_results($params)
 
     $strings = pg_tr_strings_by_hash(array_map(function ($answer) { return $answer['hash']; }, $answers));
 
+    // A rehearsal judges every answer the way the write does and leaves the
+    // job, its items and the translations as they are.
+    $dry = api_dry_run_requested();
+
     // The run has the job from here on, whatever its state was.
-    db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
+    if (!$dry) {
+        db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
+    }
 
     foreach ($answers as $answer) {
         if (!isset($strings[$answer['hash']])) {
@@ -1370,15 +1435,23 @@ function translate_api_jobs_results($params)
         }
 
         if ($answer['skip']) {
-            pg_tr_job_item_done($job_id, $string_id, 'skipped', ($answer['reason'] !== '') ? $answer['reason'] : 'skipped by the run');
+            if (!$dry) {
+                pg_tr_job_item_done($job_id, $string_id, 'skipped', ($answer['reason'] !== '') ? $answer['reason'] : 'skipped by the run');
+            }
+
             $result['skipped']++;
             continue;
         }
 
-        $accepted = pg_tr_accept_result($string, $language, $answer['text'], 'claude', (int) $job['created_by']);
+        $accepted = $dry
+            ? pg_tr_result_judge($string, $language, $answer['text'])
+            : pg_tr_accept_result($string, $language, $answer['text'], 'claude', (int) $job['created_by']);
 
         if ($accepted['ok']) {
-            pg_tr_job_item_done($job_id, $string_id, 'done');
+            if (!$dry) {
+                pg_tr_job_item_done($job_id, $string_id, 'done');
+            }
+
             $result['written']++;
             continue;
         }
@@ -1386,14 +1459,22 @@ function translate_api_jobs_results($params)
         // A refused answer is asked once more, with the reason beside the
         // item; the second refusal gives the item up.
         if ((string) $item['error'] === '') {
-            db("UPDATE translation_job_items SET error = '" . e(mb_substr((string) $accepted['error'], 0, 255)) . "'
-                WHERE job_id = '$job_id' AND string_id = '$string_id' AND status = 'waiting'");
+            if (!$dry) {
+                db("UPDATE translation_job_items SET error = '" . e(mb_substr((string) $accepted['error'], 0, 255)) . "'
+                    WHERE job_id = '$job_id' AND string_id = '$string_id' AND status = 'waiting'");
+            }
+
             $result['rejected'][] = array('hash' => $answer['hash'], 'reason' => (string) $accepted['error'], 'retry' => true);
         } else {
-            pg_tr_job_item_done($job_id, $string_id, 'failed', $accepted['error']);
+            if (!$dry) {
+                pg_tr_job_item_done($job_id, $string_id, 'failed', $accepted['error']);
+            }
+
             $result['rejected'][] = array('hash' => $answer['hash'], 'reason' => (string) $accepted['error'], 'retry' => false);
         }
     }
+
+    api_dry_run_stop('updated', 'translation_job', array('id' => $job_id) + $result);
 
     pg_tr_job_close_if_complete($job_id);
 
@@ -1409,6 +1490,8 @@ function translate_api_jobs_fail($params)
     if (!in_array($job['status'], array('queued', 'sent', 'running'), true)) {
         api_fail(409, 'closed', lang('This job is already closed.'));
     }
+
+    api_dry_run_stop('failed', 'translation_job', array('id' => (int) $job['id']));
 
     pg_tr_job_fail($job['id'], (string) $params['reason']);
 

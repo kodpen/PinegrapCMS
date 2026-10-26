@@ -23,6 +23,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php');
 
 // A function's source without its comments.
 function ws_flow_steps_test_source($name)
@@ -59,7 +61,7 @@ function test_workspace_flow_steps_are_kinds()
 {
 	$kinds = ws_flow_kinds();
 
-	foreach (array('post', 'email') as $kind) {
+	foreach (array('post', 'email', 'notify', 'task_open', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'start_action') as $kind) {
 		pg_assert_true($kinds[$kind]['step'], $kind);
 		pg_assert_false($kinds[$kind]['trigger'], $kind);
 		pg_assert_same(array('done', 'failed'), $kinds[$kind]['outcomes'], $kind);
@@ -185,4 +187,167 @@ function test_workspace_flow_steps_owner_rights()
 	$step = ws_flow_steps_test_source('ws_flow_step_run');
 
 	pg_assert_true(strpos($step, 'ws_can_schedule($owner)', strpos($step, "['step']")) < strpos($step, 'ws_step_run('), 'the owner is on the staff');
+}
+
+// Each step box is the scheduled action's step of its type; the task opened
+// without waiting is a task step, never the task box that waits.
+function test_workspace_flow_steps_types()
+{
+	pg_assert_same(array('type' => 'task', 'title' => 'T'), ws_step_action('task_open', array('title' => 'T')));
+	pg_assert_same('webhook', ws_step_action('webhook', array())['type']);
+
+	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
+
+	foreach ($steps as $kind => $info) {
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger'), true), $kind);
+		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
+	}
+
+	pg_assert_false(ws_flow_kinds()['task']['step'], 'the task box waits');
+}
+
+// The settings of the four steps of this slice, kept in their shape.
+function test_workspace_flow_steps_more_config()
+{
+	pg_assert_same(array('user_ids' => array(3, 5), 'text' => 'Look'), ws_step_config_normalize('notify', array('user_ids' => array('3', 5, 3, -1, 'x'), 'text' => " Look\n")));
+	pg_assert_same(50, count(ws_step_config_normalize('notify', array('user_ids' => range(1, 80)))['user_ids']));
+
+	$task = ws_step_config_normalize('task_open', array('title' => 'Call', 'due_in' => '4000', 'priority' => 'odd', 'assignees' => range(1, 30)));
+
+	pg_assert_same(3650, $task['due_in']);
+	pg_assert_same('normal', $task['priority']);
+	pg_assert_same(20, count($task['assignees']));
+	pg_assert_same('', ws_step_config_normalize('task_open', array('due_in' => ''))['due_in']);
+
+	pg_assert_same('generic', ws_step_config_normalize('webhook', array('format' => 'xml'))['format']);
+	pg_assert_same('discord', ws_step_config_normalize('webhook', array('format' => 'discord'))['format']);
+
+	$check = ws_step_config_normalize('web_check', array('mode' => 'ssl', 'days' => 0, 'max_ms' => 999999, 'redirect' => 1));
+
+	pg_assert_same('ssl', $check['mode']);
+	pg_assert_same(14, $check['days']);
+	pg_assert_same(60000, $check['max_ms']);
+	pg_assert_true($check['redirect']);
+	pg_assert_same('status', ws_step_config_normalize('web_check', array())['mode']);
+}
+
+// What these boxes lack: people and text, a title, an https address, and
+// a chat message's text.
+function test_workspace_flow_steps_more_problems()
+{
+	pg_assert_same(2, count(ws_step_config_problems('notify', ws_step_config_normalize('notify', array()), 'N')));
+	pg_assert_same(1, count(ws_step_config_problems('task_open', ws_step_config_normalize('task_open', array()), 'T')));
+	pg_assert_same(0, count(ws_step_config_problems('task_open', ws_step_config_normalize('task_open', array('title' => 'x')), 'T')));
+	pg_assert_same(1, count(ws_step_config_problems('webhook', ws_step_config_normalize('webhook', array('url' => 'http://example.com')), 'W')));
+	pg_assert_same(0, count(ws_step_config_problems('webhook', ws_step_config_normalize('webhook', array('url' => 'https://example.com/h')), 'W')), 'the details of the run need no text');
+	pg_assert_same(1, count(ws_step_config_problems('webhook', ws_step_config_normalize('webhook', array('url' => 'https://example.com/h', 'format' => 'text')), 'W')));
+	pg_assert_same(0, count(ws_step_config_problems('web_check', ws_step_config_normalize('web_check', array('url' => 'https://example.com')), 'C')));
+
+	// A notice's text is filled on one line.
+	$action = ws_step_fill_action('notify', array('type' => 'notify', 'text' => '{{node.a.text}}'), array('a' => array('text' => "one\ntwo")));
+
+	pg_assert_same('one two', $action['text']);
+}
+
+// A webhook box's key is one per run, box and pass; the call sends it, and
+// the details of the run name the flow. A task opened keeps its id, and a
+// notice of a flow is a line of its own titled as a flow's.
+function test_workspace_flow_steps_effects()
+{
+	pg_assert_same('pg-flow-12-hook-0', ws_step_idempotency_key(12, 'hook', 0));
+	pg_assert_same(ws_step_idempotency_key(12, 'hook', 0), ws_step_idempotency_key('12', 'hook', '0'));
+
+	$hook = ws_flow_steps_test_source('ws_scheduled_webhook');
+
+	pg_assert_contains("'Idempotency-Key: '", $hook);
+	pg_assert_contains("\$payload['flow'] = \$context['flow']", $hook);
+	pg_assert_contains("'headers' => \$headers", $hook);
+
+	pg_assert_contains("'task_id' => (int) \$made['task_id']", ws_flow_steps_test_source('ws_scheduled_task'));
+	pg_assert_contains("'separate'   => ((int) \$row['id'] <= 0)", ws_flow_steps_test_source('ws_scheduled_notify'));
+	pg_assert_contains("lang('Flow')", ws_flow_steps_test_source('ws_inbox_describe'));
+
+	$run = ws_flow_steps_test_source('ws_step_run');
+
+	pg_assert_contains("'idempotency_key' => ws_step_idempotency_key(", $run);
+	pg_assert_contains("array('message_id', 'task_id')", $run);
+}
+
+// A hook's address carries its secret: only whoever may change the flow
+// reads it whole, on the screen, in the API and in a run's graph; everybody
+// else reads its host. A web check's sentence names the host only.
+function test_workspace_flow_steps_hook_address_is_kept_back()
+{
+	pg_assert_same('https://hooks.slack.com/…', ws_flow_url_masked('https://hooks.slack.com/services/T0/B0/secret'));
+	pg_assert_same('https://example.com/…', ws_flow_url_masked('https://user:pass@Example.com:8443/x?token=1'));
+	pg_assert_same('', ws_flow_url_masked(''));
+
+	$graph = ws_flow_graph_normalize(array('nodes' => array(
+		array('id' => 'start', 'kind' => 'manual'),
+		array('id' => 'hook', 'kind' => 'webhook', 'config' => array('url' => 'https://hooks.slack.com/services/T0/B0/secret', 'format' => 'text', 'text' => 'Hi')),
+		array('id' => 'look', 'kind' => 'web_check', 'config' => array('url' => 'https://user:pass@example.com/health')),
+		array('id' => 'say', 'kind' => 'post', 'config' => array('channel_id' => 4, 'body' => 'https://keep.example.com/x')),
+	)));
+	$url = function ($present, $index) {
+		return ((array) $present['nodes'][$index]['config'])['url'] ?? null;
+	};
+
+	$reader = ws_flow_graph_present($graph);
+	$editor = ws_flow_graph_present($graph, true);
+
+	pg_assert_same('https://hooks.slack.com/…', $url($reader, 1));
+	pg_assert_same('https://example.com/…', $url($reader, 2));
+	pg_assert_same('https://hooks.slack.com/services/T0/B0/secret', $url($editor, 1));
+	pg_assert_same('https://keep.example.com/x', ((array) $reader['nodes'][3]['config'])['body'], 'other boxes as they are');
+	pg_assert_true(is_object($reader['nodes'][1]['config']), 'settings stay an object');
+
+	// Every presenter passes whether the reader may change the flow.
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
+
+	pg_assert_contains('ws_flow_graph_present($live, $edit)', ws_flow_steps_test_source('ws_flow_detail'));
+	pg_assert_contains('ws_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_flow_detail'));
+	pg_assert_contains('ws_api_flow_graph_present($draft, $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
+	pg_assert_contains('ws_api_flow_graph_present(ws_flow_graph_of($version), $edit)', ws_flow_steps_test_source('ws_api_flow_present'));
+	pg_assert_contains("ws_api_flow_graph_present(\$graph, (string) \$run['access'] === 'edit')", ws_flow_steps_test_source('ws_api_flow_run_present'));
+
+	pg_assert_contains("\$url = ws_scheduled_host((string) \$action['url']);", ws_flow_steps_test_source('ws_scheduled_web_check'));
+}
+
+// The task e-mail, the summary of counts, the check-in and the start of a
+// scheduled action, kept in their shape; a box that starts an action is the
+// trigger step.
+function test_workspace_flow_steps_digest_report_checkin_start()
+{
+	$digest = ws_step_config_normalize('task_digest', array('mode' => 'channel', 'channel_id' => '9', 'only' => 'soon', 'ai' => true, 'subject' => "A\nB"));
+
+	pg_assert_same('channel', $digest['mode']);
+	pg_assert_same(9, $digest['channel_id']);
+	pg_assert_same('open', $digest['only']);
+	pg_assert_false($digest['ai'], 'no recap without what they missed');
+	pg_assert_same('A B', $digest['subject']);
+	pg_assert_same('mine', ws_step_config_normalize('task_digest', array())['mode']);
+
+	$report = ws_step_config_normalize('report', array('metrics' => array('tasks_open', array('key' => 'Stock_Low!', 'param' => '5'), array('key' => '')), 'to' => array('a@example.com')));
+
+	pg_assert_same(array(array('key' => 'tasks_open', 'param' => 0), array('key' => 'stock_low', 'param' => 5)), $report['metrics']);
+	pg_assert_same('a@example.com', $report['to']);
+	pg_assert_same(20, count(ws_step_config_normalize('report', array('metrics' => array_fill(0, 30, 'tasks_open')))['metrics']));
+
+	pg_assert_same(array('target_id' => 3, 'delay' => 10080), ws_step_config_normalize('start_action', array('target_id' => '3', 'delay' => 99999)));
+	pg_assert_same(array('type' => 'trigger', 'target_id' => 3, 'delay' => 0), ws_step_action('start_action', array('target_id' => 3, 'delay' => 0)));
+
+	$problems = function ($kind, $config) {
+		return count(ws_step_config_problems($kind, ws_step_config_normalize($kind, $config), 'X'));
+	};
+
+	pg_assert_same(1, $problems('task_digest', array('mode' => 'channel')));
+	pg_assert_same(0, $problems('task_digest', array()));
+	pg_assert_same(2, $problems('report', array()));
+	pg_assert_same(0, $problems('report', array('metrics' => array('tasks_open'), 'to' => 'a@example.com')));
+	pg_assert_same(1, $problems('checkin', array()));
+	pg_assert_same(1, $problems('start_action', array()));
+	pg_assert_same(0, $problems('start_action', array('target_id' => 2)));
+
+	// The action a box starts names no source action.
+	pg_assert_contains("'run_id'          => 0", ws_flow_steps_test_source('ws_step_run'));
 }

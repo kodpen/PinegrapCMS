@@ -1,6 +1,6 @@
 ---
 name: legacy-layouts-in-designer
-description: Plan (2026-10-19, Y1 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
+description: Plan (2026-10-19; Y1-Y3, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 ---
 
 ## What is a layout, and why is it the hardest part of the retirement?
@@ -17,16 +17,15 @@ description: Plan (2026-10-19, Y1 done): how a classic page's custom layout (lay
 - Y1 Queries: done (#1804): `pg_page_visual_design_sql()`, the SQL twin of `pg_page_is_visual_design()`, in every design page query (`designer/multi-page-design-model.md`).
 - Y2 Page-type pane, classic pages (`page_type` not `standard`): `pg_page_form_type_fields()` + Layout Type via `edit_page.php?properties=1`; roles as today.
   - Y2a done (#1819): pane, endpoint, Layout Type, type not changeable; email a friend, folder view, photo gallery, search results, update address book, custom form confirmation, catalog, catalog detail, order form, shipping method, order receipt, affiliate sign up form, calendar event view.
-  - Y2b: the other ten types (rich text, scripts, access checks, form redirect); may it change the type?
+  - Y2b done (#1851): the other ten types; form editor links instead of the redirect; the type stays unchangeable.
 - Y3 Layout as a code tab: done (#1823, `designer/layout-code-tab.md`): the `system` node of a `layout_type = 'custom'` page opens "Layout (PHP)" in the code editor like a CSS/JS file (R4 pattern). Read and save moved to `includes/fn/`; whitespace-equal → unmodified stays; Regenerate button; designer role; read-only on hosted; the field-change warning (`add_field.php:956`) stays.
 - Y4 Canvas preview (optional): the placeholder shows the region drawn by the server for the signed-in user (`designer/legacy_region_preview`), read-only.
 - Y5 Replace with widget, opt-in per page: a system widget of the matching type with its default tree beside the region; the designer restyles it by hand and removes the `system` node when they say so. Classic `/<page>/<group>` addresses vs widget routes need 301s. Never automatic.
-- Y6 Retirement check: every `layout_modified` page of a converted style opens its layout tab; Ctrl+G (`page_designer_button`, `includes/fn/output.php:4980`) lands there.
+- Y6 Retirement check: done (#1881, `designer/layout-code-tab.md`): Ctrl+G opens the page's layout tab.
 
 ## Open questions?
-- `page_type = 'standard'` with `layout_type = 'custom'` (2 starter pages, no layout exists): normalise to `system` on conversion?
-- Hosted product: layout tab read-only, or hidden?
+- `page_type = 'standard'` with `layout_type = 'custom'` (2 starter pages, no layout exists): normalise to `system` on conversion? Harmless meanwhile: a standard page never calls `render_layout()` and gets no tab.
 - The master-frame question (one tree per page vs one shared component) is in `legacy-page-designer-retirement.md`; it decides L1, not the layouts.
 
 ## Where to start?
-- Y1 done. Y3 builds on the code editor's file tabs (#522). Y2-Y3 before L4; Y5 after `system-widget-missing-types.md`.
+- Y4 (optional) and Y5 remain; Y5 after `system-widget-missing-types.md`.

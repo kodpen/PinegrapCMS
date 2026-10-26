@@ -1,6 +1,6 @@
 ---
 name: merge-flow-tools
-description: Plan (2026-10-25, not started): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
+description: Plan (2026-10-25, step 2 done): merge_train.php (lock, build, fast-forward landing), CI guards (changelog, trailers, size), filtered install matrix, generated fn-module map, lang cache, merge queue
 ---
 
 ## Why?
@@ -11,7 +11,7 @@ description: Plan (2026-10-25, not started): merge_train.php (lock, build, fast-
 
 ## What are the steps (one PR each)?
 1. `tools/merge_train.php`: `--start` refuses while an open `merge-train/*` PR exists (the lock); `--list` prints the eligible PRs (green head, `ready` label or quiet for an hour, product lines) in train order; `--build` fetches `refs/pull/<n>/head`, merges each with `--no-ff --no-commit`, runs `tr_resolve.php`, `memory_index.php` and `build_js.php` on conflicts and writes `changelog.txt` from the Changelog section of each body; `--land` checks `merge-base --is-ancestor` and pushes fast-forward. The pure parts (train order, the Changelog section parser, the product-line count) in `includes/`-free `tools/` code with `tests/merge_train_test.php`.
-2. CI guards in `php-checks.yml`: a PR whose head is not `merge-train/*` fails when it changes `pinegrap/changelog.txt`; a commit on the PR with a `Co-Authored-By:` or `Claude-Session:` trailer or an author other than `Erdal Güral` fails; more than 1,000 product lines prints a warning annotation, never a failure. `tools/pre_push.sh` gets the trailer and author check too.
+2. CI guards in `php-checks.yml`: a PR whose head is not `merge-train/*` fails when it changes `pinegrap/changelog.txt`; a commit on the PR with a `Co-Authored-By:` or `Claude-Session:` trailer or an author other than `Erdal Güral` fails; more than 1,000 product lines prints a warning annotation, never a failure. `tools/pre_push.sh` gets the trailer and author check too. Done in #1878 (`workflow/branch-guards.md`).
 3. `install-check.yml` runs its six-database matrix only when `pinegrap/install/**`, the migration files or `tools/` change, and always on a `merge-train/*` head; today it runs on every PR, docs-only ones included.
 4. `docs/memory/core/fn-module-map-additions.md` is append-only like the old `tr.json` (8 commits in three days): generate it with `tools/memory_index.php` from a `module:` frontmatter field of the memory files, and drop the hand-written file.
 5. A compiled language cache: `lang()` decodes about 2.8 MB of JSON on every request, from one file or from the shards alike (the shards about 20 ms, the old single file 16 ms: [[lang-files]]). Write `data/temp/lang_<code>.php` (an array, kept by opcache) from the language files, rebuilt when their mtime changes. Independent of the split.

@@ -61,12 +61,15 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	}
 
 	$js = _widget_lists_editor_js();
-	$cut = _widget_lists_editor_js_var($js, 'SW_LIST_SOURCES', '{') . _widget_lists_editor_js_var($js, 'SW_LIST_ORDERS')
+	// The order lists' rows carry the allow-listed entity values.
+	$cut = _widget_lists_editor_js_var($js, 'SW_PRODUCT_ENTITY_TOKENS') . _widget_lists_editor_js_var($js, 'SW_ORDER_LINE_ENTITY_TOKENS')
+		. _widget_lists_editor_js_var($js, 'SW_SHIP_TO_ENTITY_TOKENS')
+		. _widget_lists_editor_js_var($js, 'SW_LIST_SOURCES', '{') . _widget_lists_editor_js_var($js, 'SW_LIST_ORDERS')
 		. "\n    var SW_LIST_MAX_DEPTH = 4;\n";
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdOrderListKeyless', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdOrderListKeyless', '_sdOrderItemListKey', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -632,8 +635,13 @@ var ship9  = N('loop_area', { source: 'order.shipments' }, [card9]);
 var box9   = N('semantic', { tag: 'div' }, [ship9]);
 var row9   = N('semantic', { tag: 'article' });
 var inLoop9 = N('loop_area', { source: 'order.parcels' }, []);
-var main9  = N('loop_area', {}, [row9, inLoop9]);
-var root9  = N('root', {}, [box9, main9]);
+var fields9 = N('loop_area', { source: 'order.item_form_fields' }, []);
+var forms9 = N('loop_area', { source: 'order.item_forms' }, [N('semantic', { tag: 'fieldset' }, [fields9])]);
+var cards9 = N('loop_area', { source: 'order.item_gift_cards' }, []);
+var main9  = N('loop_area', {}, [row9, inLoop9, forms9]);
+var strayCards9 = N('loop_area', { source: 'order.item_gift_cards' }, []);
+item9.children = [cards9];
+var root9  = N('root', {}, [box9, main9, strayCards9]);
 _sharedCache[9] = { tree: root9, system_region_config: JSON.stringify({ regionType: 'order_view' }) };
 var acc10  = N('semantic', { tag: 'div' });
 var root10 = N('root', {}, [acc10]);
@@ -653,6 +661,8 @@ console.log(JSON.stringify({
     calendar: _sdListPlaceOk(palette('order.items'), box8),
     account:  _sdListPlaceOk(palette('account.orders'), acc10),
     accountNoItems: _sdListPlaceOk(palette('order.items'), acc10),
+    formsInLoop: _sdListPlaceOk(palette('order.item_forms'), row9),
+    itemBands: [band(forms9), band(fields9), band(cards9), band(strayCards9)],
     depth: [_sdListStarterDepth('order.shipments'), _sdListNesting(ships), _sdListStarterDepth('order.items')],
     sources: sources,
     bands: [band(ship9), band(its9), band(steps9), band(inLoop9)],
@@ -676,6 +686,11 @@ JS;
 	pg_assert_same(false, $a['bands'][1][0]);
 	pg_assert_same(array(true, 'Steps of the order: inside a list of the recipients, nothing is drawn'), $a['bands'][2]);
 	pg_assert_same(array(true, 'Parcels of the order: inside the item loop, nothing is drawn'), $a['bands'][3]);
+	// An item's lists read the item they stand in.
+	pg_assert_true($a['formsInLoop'], 'an item\'s forms in the item loop');
+	pg_assert_same(array(false, false, false), array_map(function ($b) { return $b[0]; }, array_slice($a['itemBands'], 0, 3)),
+		'forms and their fields in the loop, gift cards in a list of the items');
+	pg_assert_same(array(true, 'Gift cards of the item: outside an item of the order, nothing is drawn'), $a['itemBands'][3]);
 
 	// The starters as the site draws them.
 	$scope = pg_sw_finish_open(array('sid' => 49, 'kind' => 'order_view', 'email' => true));

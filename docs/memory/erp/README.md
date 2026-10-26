@@ -35,6 +35,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-accounting-rules.md: ERP accounting rules (4.103): withholding in the VAT difference, the exemption code of zero-rated lines, the expense category VAT default, and the accountant questions file.
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
 - erp-alerts.md: ERP bell and device notices (4.91): money in, low stock, quotes running out (and their Workspace follow-up), refused automatic invoice; the actor rule, who gets banners, what a new notice needs.
+- erp-api-dry-run.md: Which ERP API writes take X-Dry-Run (MCP dry_run); the account (PR #1850), receipt (PR #1870) and expense (PR #1891) rehearsals: their checks, the *_check() functions, the tests
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
@@ -94,7 +95,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
 - erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
 - erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
-- erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
+- erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
 - erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes

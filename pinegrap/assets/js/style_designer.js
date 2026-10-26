@@ -898,7 +898,10 @@ const StyleDesigner = (function () {
                                 // the part; the site draws the same.
                                 if (mcfg) _sdDefaultParts(parsed, _swKindOf(mcfg), mcfg);
                                 // Never on a template's placeholder (below).
-                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
+                                if (mcfg && !_swIsTemplatePlaceholder(parsed)) {
+                                    _sdDefaultLoopTails(parsed, _swKindOf(mcfg), mcfg);
+                                    _sdDefaultTails(parsed, _swKindOf(mcfg), mcfg);
+                                }
                             }
                             // A template's widget whose layout was never written
                             // (the loss above): it still holds the placeholder and
@@ -4500,6 +4503,8 @@ const StyleDesigner = (function () {
     var SAVE_STATE_RUN_MS = 700;
 
     function saveState(coalesceKey) {
+        // Editing a tried layout keeps it first (_sdLgKeep()).
+        if (_sdLgState && !_sdLgDrawing) _sdLgKeep();
         var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
         var now = Date.now();
 
@@ -4543,6 +4548,8 @@ const StyleDesigner = (function () {
     }
 
     function undo() {
+        // A tried layout is not in the history: undo takes it off.
+        if (_sdLgCancel()) return;
         if (!undoStack.length) return;
         redoStack.push({
             tree:   JSON.stringify(tree),
@@ -4563,6 +4570,7 @@ const StyleDesigner = (function () {
     }
 
     function redo() {
+        if (_sdLgCancel()) return;
         if (!redoStack.length) return;
         undoStack.push({
             tree:   JSON.stringify(tree),
@@ -9167,6 +9175,8 @@ const StyleDesigner = (function () {
         if (!cached || !cached.tree || !cached.system_region_config) return false;
         var cfg = cached.system_region_config;
         if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; } }
+        // A node that the value conditions' state leaves out.
+        if (_sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) return true;
         // A comments widget's node that the state on the canvas leaves out.
         var _cmtKind = _swKindOf(cfg);
         if (_cmtKind === 'comments' || _cmtKind === 'comments_recent') {
@@ -10784,21 +10794,7 @@ const StyleDesigner = (function () {
         // of which builder handled it.
         var hideLoop = false;
         var isList = _sdListIsSourced(node);
-        if (_sysWidgetRenderCfg && !isList) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            hideLoop = (_lwRt === 'form_item_view') ||
-                       (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                       (_lwRt === 'login_form') ||
-                       (_lwRt === 'forgot_password') ||
-                       (_lwRt === 'registration') ||
-                       (_lwRt === 'membership') ||
-                       (_lwRt === 'custom_form') ||
-                       (_lwRt === 'catalog_item_view') ||
-                       (_lwRt === 'calendar_event_view') ||
-                       (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                       (_SW_ONE_SCREEN[_lwRt] === 1);
-        }
+        if (_sysWidgetRenderCfg && !isList) hideLoop = _sdLoopIsSingle(_sysWidgetRenderCfg);
 
         var isRecipient = (node.type === 'recipient_loop_area');
         var listBand = isList ? _sdListBand(node) : null;
@@ -10864,6 +10860,7 @@ const StyleDesigner = (function () {
                 _tagLoopRow(childEl);
                 if (childEl) frag.appendChild(childEl);
             });
+            _sdListGhostEls(node).forEach(function (g) { _tagLoopRow(g); frag.appendChild(g); });
         } else {
             // Empty loop_area inside a table — real <tr>/<td> drop target so
             // designers can still drag a template row in (mirrors the
@@ -11122,6 +11119,8 @@ const StyleDesigner = (function () {
                     order_preview:        _sdT('Order Preview'),
                     menu_region:          _sdT('Menu'),
                     menu_sequence_region: _sdT('Menu Sequence'),
+                    ad_region:            _sdT('Ad Region'),
+                    tag_cloud_region:     _sdT('Tag Cloud'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -11146,6 +11145,15 @@ const StyleDesigner = (function () {
                     if (selectedNode) _sdCommentsCanvasState = _sdCommentsStateFor(cached.tree, selectedNode, _sysCfg);
                     band.appendChild(_sdStateChips(doc, node, _sdCommentsCanvasStates(_sysCfg), _sdCommentsStateOf(_sysCfg),
                         _sdSetCommentsCanvasState, 'sd-chips-wrap'));
+                }
+                // A tree with value conditions draws one state of its values;
+                // an element picked from the layer tree, in a state that
+                // draws it.
+                var _condStates = _sdCondCanvasStates(cached.tree);
+                if (_condStates.length) {
+                    if (selectedNode) _sdCondCanvasState = _sdCondStateFor(cached.tree, selectedNode);
+                    band.appendChild(_sdStateChips(doc, node, _condStates, _sdCondStateOf(cached.tree),
+                        _sdSetCondCanvasState, 'sd-chips-wrap'));
                 }
                 inner.appendChild(band);
             }
@@ -12178,6 +12186,101 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Sample rows of a list ─────────────────────────────────────────────
+    // A list inside a record (a loop_area with props.source) is designed on
+    // one row; the canvas follows it with sample rows built from the same
+    // nodes, so the row reads as repeated and a condition on a row value
+    // (the timeline's icon per kind) shows each of its cases. Ghost DOM as
+    // the sample comments: no node id, no toolbar, inert, never in the tree.
+    // A row's values come first in _displayValueForBinding(); a token the
+    // row leaves out reads the card's sample. Off with the sample switch.
+    var _sdListSample = null;
+
+    // The sample rows after the card, by list source: each the values that
+    // differ from the card's. A source not named here gets two rows of the
+    // card's values.
+    var SD_LIST_SAMPLE_ROWS = {
+        'order.steps': [
+            { __step_kind: 'paid', __step_label: _sdT('Payment Received'), __step_date: '20.10.2026 10:05' },
+            { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
+            { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
+        ],
+        'calendar.weekdays': [
+            { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
+            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
+        ],
+        'product.attributes': [
+            { __attr_name: _sdT('Size'), __attr_value: 'M' }
+        ],
+        'security.passkeys': [
+            { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
+        ]
+    };
+
+    // Whether a widget of `cfg` draws its main loop once: a single-record
+    // kind, whose loop holds the layout but repeats nothing.
+    function _sdLoopIsSingle(cfg) {
+        var rt = (cfg && typeof cfg.regionType === 'string' && cfg.regionType !== '') ? cfg.regionType : 'form_list_view';
+        return (rt === 'form_item_view') ||
+               (rt === 'my_account' && cfg.show_submissions !== true) ||
+               (rt === 'login_form') ||
+               (rt === 'forgot_password') ||
+               (rt === 'registration') ||
+               (rt === 'membership') ||
+               (rt === 'custom_form') ||
+               (rt === 'catalog_item_view') ||
+               (rt === 'calendar_event_view') ||
+               (_SW_ACCOUNT_SINGLE[rt] === 1) ||
+               (_SW_ONE_SCREEN[rt] === 1);
+    }
+
+    // The rows drawn after a loop's card. A list: none when the site draws
+    // nothing for it, at most the rows it shows (props.limit) less the card.
+    // The main loop: two rows of the card's values, in a kind that repeats
+    // it and gets no real records (server ghosts) or sample comments. None
+    // inside a sample row or a sample comment, or with the sample switch off.
+    function _sdListSampleRows(node) {
+        if (!_sdGhostsOn || _sdListSample || _sdCommentSample || !node || node.type !== 'loop_area') return [];
+        if (!_sdListIsSourced(node)) {
+            var cfg = _sysWidgetRenderCfg;
+            if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
+            var kind = _swKindOf(cfg);
+            if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
+            return [{}, {}];
+        }
+        var src = SW_LIST_SOURCES[node.props.source];
+        if (!src || _sdListBand(node).off) return [];
+        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var limit = parseInt(node.props.limit, 10);
+        return (limit > 0) ? rows.slice(0, limit - 1) : rows;
+    }
+
+    // The ghost elements of a list's sample rows, in order.
+    function _sdListGhostEls(node) {
+        var out = [];
+        _sdListSampleRows(node).forEach(function (row) {
+            _sdListSample = row;
+            try {
+                (node.children || []).forEach(function (child) {
+                    var el = buildNodeEl(child);
+                    if (!el || el.nodeType !== 1) return;
+                    el.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+                    [el].concat(Array.prototype.slice.call(el.querySelectorAll('*'))).forEach(function (x) {
+                        ['data-sd-id', 'id', 'draggable', 'contenteditable'].forEach(function (a) { x.removeAttribute(a); });
+                        x.classList.remove('sd-selected');
+                    });
+                    el.classList.add('sd-ghost', 'sd-list-sample');
+                    el.setAttribute('aria-hidden', 'true');
+                    el.setAttribute('inert', '');
+                    out.push(el);
+                });
+            } finally {
+                _sdListSample = null;
+            }
+        });
+        return out;
+    }
+
     // In the e-mail state, a widget an e-mail draws no comment from
     // (_sdCommentsEmailDrawsComment()) is left out, as the e-mail leaves it
     // out; this note takes its place and says what the card needs. Editor
@@ -12432,10 +12535,12 @@ const StyleDesigner = (function () {
         }
 
         // A value condition (Bind Data, "Show only when a value…") is named
-        // on the element; the page and Preview decide it.
+        // on the element; the state the band chose decides whether it is
+        // drawn (_sdCondCanvasShows()).
         if (_sysWidgetRenderCfg && node.props && node.props._bindings && node.props._bindings.show_if) {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+            if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -12461,20 +12566,7 @@ const StyleDesigner = (function () {
         // _sysWidgetRenderCfg is set by buildSharedRefEl before rendering the tree.
         // A list inside a record repeats its rows in every kind that draws it.
         if (node.type === 'loop_area' && _sysWidgetRenderCfg && !_sdListIsSourced(node)) {
-            var _lwRt = (typeof _sysWidgetRenderCfg.regionType === 'string' && _sysWidgetRenderCfg.regionType !== '')
-                ? _sysWidgetRenderCfg.regionType : 'form_list_view';
-            var _loopHide = (_lwRt === 'form_item_view') ||
-                            (_lwRt === 'my_account' && _sysWidgetRenderCfg.show_submissions !== true) ||
-                            (_lwRt === 'login_form') ||
-                            (_lwRt === 'forgot_password') ||
-                            (_lwRt === 'registration') ||
-                            (_lwRt === 'membership') ||
-                            (_lwRt === 'custom_form') ||
-                            (_lwRt === 'catalog_item_view') ||
-                            (_lwRt === 'calendar_event_view') ||
-                            (_SW_ACCOUNT_SINGLE[_lwRt] === 1) ||
-                            (_SW_ONE_SCREEN[_lwRt] === 1);
-            if (_loopHide) {
+            if (_sdLoopIsSingle(_sysWidgetRenderCfg)) {
                 // A single-record widget renders its loop_area once, so the
                 // "repeated for every record" band would mislead. An empty
                 // one goes altogether; one holding the layout (a form item
@@ -12855,6 +12947,8 @@ const StyleDesigner = (function () {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                // A list's sample rows after its card (_sdListGhostEls()).
+                if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
             if (_isBtnLike && _vtxt && _textPos !== 'start') innerEl.appendChild(_vtxt);
             // Non-button-like semantic: legacy behavior — text as plain text node AFTER children.
@@ -13782,15 +13876,6 @@ const StyleDesigner = (function () {
     // Preview only: never saved to the tree, never sent to the server.
     /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
-        // Mirrors pg_comments_stars_html(): five stars, four of them filled.
-        '__comment_stars_html': function () {
-            var star = function (d, cls) {
-                return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi ' + cls + '" viewBox="0 0 16 16" aria-hidden="true"><path d="' + d + '"/></svg>';
-            };
-            var fill = star('M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z', 'bi-star-fill');
-            return '<span class="pg-comment-stars" role="img" aria-label="' + esc(_sdT('Rated {var:1} out of 5', 4)) + '">' +
-                   fill + fill + fill + fill + star('M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z', 'bi-star') + '</span>';
-        },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -13863,8 +13948,9 @@ const StyleDesigner = (function () {
                    '<div class="alert alert-info small py-2 my-2">' + esc(_sdT('Your return was approved. You can send the goods back now.')) + '</div>' +
                    '</div></div>';
         },
-        // Mirrors _pg_render_order_item_form_data_readonly() — fieldset +
-        // legend + stacked label/value pairs.
+        // A product form's answers: fieldset, legend and stacked
+        // label/value pairs (the order view draws them with the item form
+        // part, pg_sw_part_order_item_form()).
         '__item_form_data_html': function () {
             return '<div class="pg-ov-item-form mt-2">' +
                    '<fieldset class="pg-ov-item-form-block border rounded p-3 mt-2">' +
@@ -13935,7 +14021,8 @@ const StyleDesigner = (function () {
                    '<div><button type="button" class="btn btn-primary btn-sm" disabled>' + esc(_sdT('Add')) + '</button></div>' +
                    '</div></div>';
         },
-        // Mirrors _pg_render_order_item_gift_card_readonly().
+        // A gift card's details (the order view's gift card part,
+        // pg_sw_part_order_item_gift_card()).
         '__item_gift_card_html': function () {
             return '<div class="pg-ov-item-gift-card mt-2">' +
                    '<fieldset class="pg-ov-item-gift-card-block border rounded p-3 mt-2">' +
@@ -13959,7 +14046,7 @@ const StyleDesigner = (function () {
 
     // Numeric / count tokens — return a small number instead of lorem.
     var _SD_NUMERIC_TOKENS = {
-        '__result_count': '12', '__page_count': '2', '__result_number': '1', '__event_count': '4',
+        '__result_count': '12', '__page_count': '2', '__page_number': '1', '__result_number': '1', '__event_count': '4',
         '__item_qty': '1', '__item_quantity': '1',
         '__cart_count': '3', '__cart_count_label': _sdT('3 items'),
         '__inventory_quantity': '12', '__item_inventory_quantity': '12',
@@ -14147,6 +14234,10 @@ const StyleDesigner = (function () {
             Object.prototype.hasOwnProperty.call(_sdCommentSample.values, fieldName)) {
             var _sample = _sdCommentSample.values[fieldName];
             return (typeof _sample === 'function') ? _sample() : _sample;
+        }
+        // A list's sample row (_sdListGhostEls()).
+        if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
+            return _sdListSample[fieldName];
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
@@ -27256,6 +27347,7 @@ const StyleDesigner = (function () {
         host.className = 'sd-html-code';
         host.innerHTML =
             '<div class="sd-code-tabs" id="sd-code-tabs"></div>' +
+            '<div class="sd-code-find d-none" id="sd-code-find"></div>' +
             '<div class="sd-code-panes" id="sd-code-panes">' +
                 '<div class="sd-code-pane pg-code-editor sd-code-pane-active" data-key="page" id="sd-code-pane-page"></div>' +
             '</div>';
@@ -27325,7 +27417,8 @@ const StyleDesigner = (function () {
             lockTitle: _sdCodeLockTitle,
             onSelection: _sdCodeOnSelection,
             onChange: _sdCodeOnChange,
-            onLockHit: _sdCodeOnLockHit
+            onLockHit: _sdCodeOnLockHit,
+            keys: [_sdCodeFindKey()]
         }).then(function (ed) {
             _sdCode.loading = false;
             _sdCode.ed = ed;
@@ -28681,7 +28774,7 @@ const StyleDesigner = (function () {
             readOnly: true,
             phrases: _sdCodePhrases(),
             labels: { syntaxError: _sdT('Syntax error') },
-            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }],
+            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }, _sdCodeFindKey()],
             onChange: function () {
                 if (!tab.loaded || tab.dirty) return;
                 tab.dirty = true;
@@ -28859,6 +28952,7 @@ const StyleDesigner = (function () {
                 '</button>';
         });
         html += '<span class="sd-code-tabs-spacer"></span>';
+        html += '<button type="button" class="sd-code-tab sd-code-find-toggle' + (_sdCodeFind && _sdCodeFind.open ? ' sd-code-tab-active' : '') + '" id="sd-code-find-toggle" title="' + esc(_sdT('Search in all tabs (Ctrl+Shift+F)')) + '"><span class="bi bi-search"></span></button>';
         if (active && active.key !== 'page' && active.spec) {
             if (active.spec.url) {
                 html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
@@ -28878,6 +28972,7 @@ const StyleDesigner = (function () {
                 if (e.button === 1 && this.getAttribute('data-key') !== 'page') { e.preventDefault(); _sdCodeTabClose(this.getAttribute('data-key')); }
             });
         });
+        strip.querySelector('#sd-code-find-toggle').addEventListener('click', function () { _sdCodeFindShow(!_sdCodeFind.open); });
         var save = strip.querySelector('#sd-code-file-save');
         if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
         var url = strip.querySelector('#sd-code-url');
@@ -28885,6 +28980,142 @@ const StyleDesigner = (function () {
             url.addEventListener('change', function () { active.spec.url.onSave(this.value.trim()); });
             url.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
         }
+    }
+
+    // ===================== CODE VIEW: SEARCH IN ALL TABS =====================
+    // One search over the page and every loaded file tab: a bar under the
+    // strip lists the hits by tab, a hit opens its tab and selects it. The
+    // texts are read from the editors as they are now (unsaved changes
+    // included); PgCodeEditor.findAll() does the matching. Enter / Shift+
+    // Enter in the field walk the hits, Escape closes the bar.
+    var _sdCodeFind = { open: false, query: { search: '', caseSensitive: false, wholeWord: false, regexp: false }, hits: [], at: -1, timer: 0 };
+    var _SD_CODE_FIND_LIMIT = 500;   // hits per tab
+
+    function _sdCodeFindKey() {
+        return { key: 'Mod-Shift-f', run: function () { _sdCodeFindShow(true); return true; } };
+    }
+
+    function _sdCodeFindShow(on) {
+        var bar = document.getElementById('sd-code-find');
+        if (!bar) return;
+        _sdCodeFind.open = !!on;
+        bar.classList.toggle('d-none', !on);
+        _sdCodeTabsRender();
+        if (!on) { bar.innerHTML = ''; _sdCodeFind.hits = []; return; }
+        // A one-line selection in the active tab is what is looked for.
+        var tab = _sdCodeActiveTab();
+        if (tab && tab.ed) {
+            var sel = tab.ed.selection();
+            var picked = sel.to > sel.from ? tab.ed.sliceDoc(sel.from, sel.to) : '';
+            if (picked && picked.indexOf('\n') === -1) _sdCodeFind.query.search = picked;
+        }
+        var q = _sdCodeFind.query;
+        var opt = function (name, label, icon) {
+            return '<button type="button" class="sd-code-find-opt' + (q[name] ? ' active' : '') + '" data-opt="' + name + '" title="' + esc(label) + '" aria-pressed="' + (q[name] ? 'true' : 'false') + '">' + icon + '</button>';
+        };
+        bar.innerHTML =
+            '<div class="sd-code-find-row">' +
+                '<span class="bi bi-search"></span>' +
+                '<input type="search" class="sd-code-find-input" id="sd-code-find-input" placeholder="' + esc(_sdT('Search in all tabs')) + '" value="' + esc(q.search) + '" spellcheck="false">' +
+                opt('caseSensitive', _sdT('match case'), 'Aa') + opt('wholeWord', _sdT('by word'), 'ab') + opt('regexp', _sdT('regexp'), '.*') +
+                '<span class="sd-code-find-count" id="sd-code-find-count"></span>' +
+                '<button type="button" class="sd-code-find-opt" data-close="1" title="' + esc(_sdT('Close')) + '">&times;</button>' +
+            '</div>' +
+            '<div class="sd-code-find-results" id="sd-code-find-results"></div>';
+        var input = bar.querySelector('#sd-code-find-input');
+        input.addEventListener('input', function () {
+            q.search = this.value;
+            clearTimeout(_sdCodeFind.timer);
+            _sdCodeFind.timer = setTimeout(_sdCodeFindRun, 200);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _sdCodeFindShow(false); return; }
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            clearTimeout(_sdCodeFind.timer);
+            if (q.search !== '' && !_sdCodeFind.hits.length) _sdCodeFindRun();
+            var n = _sdCodeFind.hits.length;
+            if (n) _sdCodeFindPick(((_sdCodeFind.at + (e.shiftKey ? -1 : 1)) % n + n) % n, true);
+        });
+        bar.querySelectorAll('.sd-code-find-opt').forEach(function (b) {
+            b.addEventListener('click', function () {
+                if (this.getAttribute('data-close')) { _sdCodeFindShow(false); return; }
+                var name = this.getAttribute('data-opt');
+                q[name] = !q[name];
+                this.classList.toggle('active', q[name]);
+                this.setAttribute('aria-pressed', q[name] ? 'true' : 'false');
+                _sdCodeFindRun();
+            });
+        });
+        bar.querySelector('#sd-code-find-results').addEventListener('click', function (e) {
+            var hit = e.target.closest('[data-hit]');
+            if (hit) _sdCodeFindPick(parseInt(hit.getAttribute('data-hit'), 10), false);
+        });
+        input.focus();
+        input.select();
+        _sdCodeFindRun();
+    }
+
+    function _sdCodeFindRun() {
+        var list = document.getElementById('sd-code-find-results');
+        var count = document.getElementById('sd-code-find-count');
+        if (!list || !count) return;
+        var q = _sdCodeFind.query;
+        var hits = [], html = '', error = '', truncated = false, tabs = 0;
+        if (q.search !== '' && typeof PgCodeEditor !== 'undefined') {
+            _sdCode.tabs.forEach(function (t) {
+                if (!t.ed || (t.key !== 'page' && !t.loaded) || error) return;
+                var r = PgCodeEditor.findAll(t.ed.getValue(), q, _SD_CODE_FIND_LIMIT);
+                if (r.error) { error = r.error; return; }
+                if (!r.matches.length) return;
+                truncated = truncated || r.truncated;
+                tabs++;
+                var title = t.key === 'page' ? _sdT('Page') : t.title;
+                html += '<div class="sd-code-find-tab"><span class="bi ' + esc(t.icon) + '"></span>' + esc(title) + '<span class="sd-code-find-n">' + r.matches.length + '</span></div>';
+                r.matches.forEach(function (m) {
+                    html += '<div class="sd-code-find-hit" data-hit="' + hits.length + '"><span class="sd-code-find-ln">' + m.line + '</span>' + _sdCodeFindPreview(m) + '</div>';
+                    hits.push({ key: t.key, from: m.from, to: m.to, text: m.text });
+                });
+            });
+        }
+        _sdCodeFind.hits = error ? [] : hits;
+        _sdCodeFind.at = -1;
+        if (error) {
+            count.textContent = _sdT('Invalid regular expression');
+            list.innerHTML = '';
+        } else {
+            count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
+            list.innerHTML = html;
+        }
+        count.classList.toggle('text-danger', !!error);
+    }
+
+    // The hit's line, cut to the words around the match, the match marked.
+    function _sdCodeFindPreview(m) {
+        var line = m.lineText, end = Math.min(line.length, m.col + m.text.length);
+        var start = Math.max(0, m.col - 40);
+        var before = line.slice(start, m.col).replace(/^\s+/, '');
+        var after = line.slice(end, end + 80);
+        return '<span class="sd-code-find-text">' + (start > 0 ? '&hellip;' : '') + esc(before) +
+            '<mark>' + esc(line.slice(m.col, end)) + '</mark>' + esc(after) + (end + 80 < line.length ? '&hellip;' : '') + '</span>';
+    }
+
+    // Opens the hit's tab and selects it; a text that changed since the
+    // search (typed, a canvas edit, a closed tab) is searched again first.
+    function _sdCodeFindPick(i, keepFocus) {
+        var hit = _sdCodeFind.hits[i];
+        if (!hit) return;
+        var tab = _sdCodeTabFind(hit.key);
+        if (!tab || !tab.ed || tab.ed.sliceDoc(hit.from, hit.to) !== hit.text) { _sdCodeFindRun(); return; }
+        _sdCodeFind.at = i;
+        if (_sdCode.active !== hit.key) _sdCodeTabActivate(hit.key);
+        tab.ed.goTo(hit.from, hit.to, { focus: !keepFocus });
+        var list = document.getElementById('sd-code-find-results');
+        if (!list) return;
+        list.querySelectorAll('.sd-code-find-hit.active').forEach(function (el) { el.classList.remove('active'); });
+        var row = list.querySelector('[data-hit="' + i + '"]');
+        if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+        if (keepFocus) { var input = document.getElementById('sd-code-find-input'); if (input) input.focus(); }
     }
 
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
@@ -32149,6 +32380,7 @@ const StyleDesigner = (function () {
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
+            _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
     }
@@ -32235,6 +32467,9 @@ const StyleDesigner = (function () {
             'order.items':        _sdT('One row for every item of the order; inside a list of the recipients, that recipient\'s items. The receipt e-mail draws it too.'),
             'order.parcels':      _sdT('One row for every tracking number of the order; inside a list of the recipients, that recipient\'s. A parcel whose carrier is not known has no tracking link: a condition on "Shipment tracking link" shows the number without one.'),
             'order.steps':        _sdT('One row for every step of the order: created, paid, shipped, delivered, cancelled. A shipping or delivery date still to come is estimated; a condition on "Estimated" marks it.'),
+            'order.item_forms':   _sdT('One row for every product form of the item the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
+            'order.item_form_fields': _sdT('One row for every field of the product form the row stands in, with the buyer\'s answer; an information field gives its text. A condition on "Information field" tells them apart.'),
+            'order.item_gift_cards': _sdT('One row for every gift card of the item the row stands in that was filled in: its amount, recipient, sender, message and delivery date.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
@@ -32421,6 +32656,8 @@ const StyleDesigner = (function () {
             var _isOrderPreview    = (_regionType === 'order_preview');
             var _isMenuRegion      = (_regionType === 'menu_region');
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
+            var _isAdRegion        = (_regionType === 'ad_region');
+            var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -32471,6 +32708,10 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
             } else if (_isOrderPreview) {
                 _sourceInfoHtml = _sdT('The last step of the classic checkout: the visitor reviews the recipients, items, totals and billing details of the order, picks a payment method and places the order. Every figure and payment method is the one the classic order preview page computes; a part the order does not need (a discount, the surcharge, gift cards, a payment method) is left out with its controls.');
+            } else if (_isTagCloud) {
+                _sourceInfoHtml = _sdT('The 25 keywords used most by what a search results page searches (its catalog items, or the site\'s pages), in alphabetical order, each a link to that page searching for it. The keywords are written on the products and pages; the more often a keyword is used, the higher its weight (1 to 5), which the design shows by its size.');
+            } else if (_isAdRegion) {
+                _sourceInfoHtml = _sdT('The ads of an ad region, read on every visit: they are written, ordered and given captions under Ads, by the users who may edit that region. A static region shows one ad picked at random; a dynamic one every ad, in its order, turning by the region\'s slideshow settings. Nothing is drawn while ads are switched off.');
             } else if (_isMenuSequence) {
                 _sourceInfoHtml = _sdT('Links to the page before and after the one shown, in the order of a menu\'s pages: each item before the items under it, a page once. On the last page the next link goes back to the first; on a page the menu does not link to, the links are not drawn. The menu is edited under Menus.');
             } else if (_isMenuRegion) {
@@ -32616,25 +32857,12 @@ const StyleDesigner = (function () {
                     '</div>'
                 );
 
-            // ── Universal "Load the Default Layout" card ────────────────
-            // Every system widget type has a `_buildStarterTree(regionType)`
-            // implementation. Surface it here as a one-click reset so the
-            // operator can recover a sane layout after destructive edits
-            // (or after switching regionType to a new kind). The EO panel
-            // also exposes its own version further below — for backward
-            // compat the EO-specific button stays; this universal one is
-            // primarily for widget types that lacked a reset before.
-            if (_regionType !== '') {
+            // ── Layout gallery: the default layout and the other widgets'
+            // of this kind, tried on the canvas before one is kept
+            // (_sdLgSectionHtml()). Widgets never open to content editors.
+            if (_regionType !== '' && _collab.mayEdit && !_sdIsContentLevel()) {
                 systemSection += sect('bi-magic', _sdT('Layout Template'),
-                    row('',
-                        '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-load-default" ' +
-                            'data-sw-id="' + sid + '" data-region-type="' + esc(_regionType) + '">' +
-                            '<i class="bi bi-arrow-clockwise me-1"></i>' + esc(_sdT('Load the Default Layout')) + '' +
-                        '</button>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
-                            _sdT('<strong>Replaces</strong> the current canvas design with the standard layout prepared for <strong>{var}</strong>. Undo (Ctrl+Z) brings it back.', esc(_regionType)) +
-                        '</div>'
-                    )
+                    row('', _sdLgSectionHtml(sid, _swKindOf(_sdLgCfg(sid)) || _regionType))
                 );
             }
 
@@ -32822,6 +33050,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-max-results" data-sw-id="' + sid + '" min="1" value="' + _maxResVal + '" placeholder="' + esc(_sdT('Unlimited')) + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty for no limit. Paging happens within this ceiling.')) + '</div>'
                     ) +
+                    // Offset and the list's own page parameter
+                    // (pg_sw_list_offset(), pg_sw_list_page_param()).
+                    (_isFormListView ? row(_sdT('Skip the first records'),
+                        '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000" value="' + _swListOffset(_cfg) + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The list starts after this many records, for example beside a box that shows the newest one.')) + '</div>'
+                    ) + row(_sdT('Page number in the address'),
+                        '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="page_param" data-sw-cfg-kind="param" maxlength="32" value="' + esc(_swUrlParamName(_cfg.page_param)) + '" placeholder="page_number">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
+                    ) : '') +
                     row(_sdT('Detail page'),
                         '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
@@ -33607,6 +33844,44 @@ const StyleDesigner = (function () {
                     row(_sdT('Menu'),
                         '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── tag_cloud_region settings ────────────────────────────────────
+            if (_isTagCloud) {
+                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
+                var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _tcNames.forEach(function (nm) {
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
+                    _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
+                }
+                systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
+                    row(_sdT('Search Results Page'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
+                    )
+                );
+            }
+
+            // ── ad_region settings ───────────────────────────────────────────
+            if (_isAdRegion) {
+                var _arNames = (regionData && regionData.ad_regions) || [];
+                var _arName = typeof _cfg.ad_region_name === 'string' ? _cfg.ad_region_name : '';
+                var _arOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
+                _arNames.forEach(function (nm) {
+                    _arOpts += '<option value="' + esc(nm) + '"' + (nm === _arName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                });
+                if (_arName !== '' && _arNames.indexOf(_arName) === -1) {
+                    _arOpts += '<option value="' + esc(_arName) + '" selected>' + esc(_sdT('{var} (not found)', _arName)) + '</option>';
+                }
+                systemSection += sect('bi-badge-ad', _sdT('Ad Region Settings'),
+                    row(_sdT('Ad Region'),
+                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ads, their order and the slideshow are set under Ads; without a region the widget draws no ad.')) + '</div>'
                     )
                 );
             }
@@ -36137,6 +36412,10 @@ const StyleDesigner = (function () {
                     v = _swPageVal(this);
                 } else if (kind === 'bool') {
                     v = !!this.checked;
+                } else if (kind === 'param') {
+                    // A query parameter name, '' when it cannot be used.
+                    v = _swUrlParamName(this.value);
+                    this.value = v;
                 } else {
                     v = ('' + this.value).slice(0, 255);
                 }
@@ -36491,59 +36770,6 @@ const StyleDesigner = (function () {
         // properties panel (context-aware). The widget-level dropdown was a
         // second control writing the same setting.
 
-        // ── Universal "Load the Default Layout" handler ───────────────────
-        // Works for every system widget type that has a _buildStarterTree
-        // entry (form_list_view, catalog_*, my_account, login_form,
-        // forgot_password, search_results, registration, shopping_cart,
-        // order_view, express_order, membership, custom_form, calendar_view).
-        // Uses the LOCAL builder — no API round-trip needed since the
-        // starter tree is fully constructed in JS.
-        var loadDefEl = document.getElementById('sd-sw-load-default');
-        if (loadDefEl) {
-            loadDefEl.addEventListener('click', function () {
-                var sid = parseInt(this.dataset.swId, 10);
-                if (!sid) return;
-                var rt = (this.getAttribute('data-region-type') || '').trim();
-                if (!rt) { sdToast(_sdT('Choose the content type first.'), 'warning'); return; }
-                if (!_sharedCache[sid]) {
-                    sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
-                    return;
-                }
-                if (typeof _buildStarterTree !== 'function') {
-                    sdToast(_sdT('The layout template builder function was not found.'), 'error');
-                    return;
-                }
-                if (!window.confirm(_sdT('The current canvas design will be replaced completely. Continue? (Ctrl+Z undoes it.)'))) return;
-                // A form view with a form chosen starts from that form's
-                // fields — the same layout picking the form produces.
-                var _fv = _swFormViewConfig(sid);
-                if ((rt === 'form_list_view' || rt === 'form_item_view') && _fv.formId) {
-                    _fetchFormFields(_fv.formId, function (fields) { _swApplyFormLayout(sid, rt, fields); }, true);
-                    return;
-                }
-                var newTree = _buildStarterTree(rt);
-                if (!newTree) {
-                    sdToast(_sdT('There is no default layout for this widget type.'), 'warning');
-                    return;
-                }
-                // Re-id every node so the canvas doesn\'t end up with stale
-                // duplicates of pre-existing _id values.
-                (function reId(nd) {
-                    nd._id = (typeof gid === 'function') ? gid() : ('n' + Math.random().toString(36).slice(2, 10));
-                    if (Array.isArray(nd.children)) nd.children.forEach(reId);
-                })(newTree);
-                if (typeof saveState === 'function') saveState();
-                _sharedCache[sid].tree = newTree;
-                _sharedDirty[sid] = true;
-                // A custom form's starter controls are its fields from this
-                // moment: named the way a drop would name them.
-                if (typeof _cfEnsureNames === 'function' && rt === 'custom_form') _cfEnsureNames(newTree, sid);
-                if (typeof render === 'function') render();
-                if (typeof renderProperties === 'function') renderProperties();
-                sdToast(_sdT('The default layout was loaded.'), 'success');
-            });
-        }
-
         // ── order_view settings ───────────────────────────────────────────────
 
         // date_format (select)
@@ -36834,7 +37060,11 @@ const StyleDesigner = (function () {
     // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
-        ['__result_count', _sdT('Number of results')]
+        ['__result_count', _sdT('Number of results')],
+        ['__page_number',   _sdT('Page shown')],
+        ['__page_count',    _sdT('Number of pages')],
+        ['__prev_page_url', _sdT('Previous page link')],
+        ['__next_page_url', _sdT('Next page link')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
@@ -36901,9 +37131,14 @@ const StyleDesigner = (function () {
         ['__ai_perplexity_url', _sdT('Summarize with Perplexity (address)')],
         ['__ai_google_url',     _sdT('Summarize with Google AI Mode (address)')]
     ];
+    // A form record's allow-listed values (pg_sw_entity_fields('form_record')),
+    // in the record's own view only: a list would show other people's scores.
+    var SW_FORM_RECORD_ENTITY_TOKENS = [
+        ['__quiz_score', _sdT('Quiz score (percent, quiz forms)')]
+    ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
-    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS);
+    ], SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS, SW_FORM_ITEM_VIEW_AI_TOKENS, SW_FORM_RECORD_ENTITY_TOKENS);
 
     // The format a date binding prints in, as the classic screens take it:
     // ^^submitted_date_and_time^^%%d.m.Y%%. The value lives on the node under
@@ -37015,7 +37250,8 @@ const StyleDesigner = (function () {
         language_switcher: 1, comments: 1, catalog_listing: 1, catalog_item_view: 1,
         shopping_cart: 1, express_order: 1, order_view: 1,
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
-        order_preview: 1, menu_region: 1, menu_sequence_region: 1
+        order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
+        tag_cloud_region: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -37148,6 +37384,160 @@ const StyleDesigner = (function () {
         return !/^__(page_link|link_label)_\d+$/.test(t);
     }
 
+    // The test of a value condition, twin of pg_sw_cond_eval() and its
+    // helpers (includes/fn/widgets_conditions.php); the canvas decides with
+    // it what a state draws. tests/widget_condition_eval_test.php runs the
+    // vectors of tests/fixtures/widget_condition_vectors.json through both.
+
+    // White space as the server reads it (pg_sw_cond_plain()): a set written
+    // out, since JavaScript's \s is not PCRE's.
+    var SD_COND_WS = /[\t\n\x0B\f\r \u0085\u00A0\u1680\u180E\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+/g;
+
+    // Runs of white space as one space, none at either end.
+    function _sdCondPlain(s) {
+        return String(s == null ? '' : s).replace(SD_COND_WS, ' ').replace(/^ +| +$/g, '');
+    }
+
+    // What a visitor reads in a value: tags dropped, entities decoded
+    // (pg_sw_cond_text()).
+    function _sdCondText(html) {
+        var s = String(html == null ? '' : html).replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, '');
+        if (s.indexOf('&') !== -1 && typeof document !== 'undefined') {
+            var ta = document.createElement('textarea');
+            ta.innerHTML = s;
+            s = ta.value;
+        }
+        return _sdCondPlain(s);
+    }
+
+    // Folded for comparison (pg_sw_cond_fold()): lower case, the dot of a
+    // capital İ dropped, the dotless ı read as i.
+    function _sdCondFold(s) {
+        return String(s).toLowerCase().replace(/\u0307/g, '').replace(/\u0131/g, 'i');
+    }
+
+    // Whether a figure is grouped as an amount (pg_sw_cond_figure_ok()).
+    function _sdCondFigureOk(figure) {
+        var parts = String(figure).split(/([., ])/);
+        var groups = [], seps = [];
+        parts.forEach(function (part, i) { (i % 2 ? seps : groups).push(part); });
+        var n = seps.length;
+        if (n === 0) return true;
+        var last = seps[n - 1];
+        if (last !== ' ' && seps.filter(function (s) { return s === last; }).length === 1) {
+            if (n === 1) return true;
+            seps.pop();
+            groups.pop();
+        }
+        if (seps.some(function (s) { return s !== seps[0]; }) || groups[0].length > 3) return false;
+        for (var i = 1; i < groups.length; i++) {
+            if (groups[i].length !== 3) return false;
+        }
+        return true;
+    }
+
+    // The number a figure stands for (pg_parse_amount() on digits and
+    // separators): one separator with three digits after it is the decimal
+    // point only when the site writes one so (`decimal`, its language).
+    function _sdCondFigureNumber(figure, decimal) {
+        var v = String(figure).replace(/ /g, '');
+        var dot = v.lastIndexOf('.'), comma = v.lastIndexOf(',');
+        var point = '';
+        if (dot !== -1 && comma !== -1) {
+            point = dot > comma ? '.' : ',';
+        } else if (dot !== -1 || comma !== -1) {
+            var sep = dot !== -1 ? '.' : ',';
+            if (v.split(sep).length === 2) {
+                point = (v.length - v.lastIndexOf(sep) - 1 === 3) ? (decimal === sep ? sep : '') : sep;
+            }
+        }
+        if (point === '') return parseFloat(v.replace(/[.,]/g, '')) || 0;
+        var at = v.lastIndexOf(point);
+        return parseFloat(v.slice(0, at).replace(/[.,]/g, '') + '.' + v.slice(at + 1).replace(/[.,]/g, '')) || 0;
+    }
+
+    // The amount a value shows, {number, units}, or null (pg_sw_cond_amount()).
+    function _sdCondAmount(s, decimal) {
+        s = _sdCondPlain(s);
+        if (s === '') return null;
+        var unit = '\\p{Sc}|[A-Z]{1,2}\\$|[A-Z]{3}|TL';
+        var m = new RegExp('^(-?) ?(?:(' + unit + ') ?)?([0-9]+(?:[., ][0-9]+)*) ?(' + unit + '|%)?$', 'u').exec(s);
+        if (!m || !_sdCondFigureOk(m[3])) return null;
+        var number = _sdCondFigureNumber(m[3], decimal);
+        var units = [];
+        if (m[2]) units.push(m[2]);
+        if (m[4]) units.push(m[4]);
+        return { number: m[1] === '-' ? -number : number, units: units };
+    }
+
+    // The number a value shows, or null (pg_sw_cond_number()).
+    function _sdCondNumber(s, decimal) {
+        var a = _sdCondAmount(s, decimal);
+        return a === null ? null : a.number;
+    }
+
+    // Whether eq and neq compare two amounts as numbers
+    // (pg_sw_cond_comparable()).
+    function _sdCondComparable(a, b) {
+        if (a === null || b === null) return false;
+        if (!a.units.length || !b.units.length) return true;
+        return a.units.some(function (u) { return b.units.indexOf(u) !== -1; });
+    }
+
+    // Whether a number is whole and exact (pg_sw_cond_is_whole()).
+    function _sdCondIsWhole(n) {
+        return typeof n === 'number' && isFinite(n) && Math.abs(n) < 9007199254740992 && Math.floor(n) === n;
+    }
+
+    // The test (pg_sw_cond_eval()). `decimal` is the site's decimal point;
+    // missing, the one software_money_format carries, else '.'.
+    function _sdCondEval(op, value, operand, decimal) {
+        if (decimal == null) {
+            decimal = (typeof software_money_format !== 'undefined' && software_money_format && software_money_format.decimal) || '.';
+        }
+        value = _sdCondPlain(value);
+        operand = _sdCondPlain(operand);
+        var a, b;
+        switch (String(op)) {
+            case 'not_empty':
+                return value !== '';
+            case 'empty':
+                return value === '';
+            case 'eq':
+            case 'neq':
+                a = _sdCondAmount(value, decimal);
+                b = _sdCondAmount(operand, decimal);
+                var same = _sdCondComparable(a, b)
+                    ? Math.abs(a.number - b.number) < 0.000001
+                    : _sdCondFold(value) === _sdCondFold(operand);
+                return op === 'eq' ? same : !same;
+            case 'contains':
+            case 'not_contains':
+                var found = operand === '' || _sdCondFold(value).indexOf(_sdCondFold(operand)) !== -1;
+                return op === 'contains' ? found : !found;
+            case 'starts':
+                var prefix = Array.from(_sdCondFold(operand));
+                return Array.from(_sdCondFold(value)).slice(0, prefix.length).join('') === prefix.join('');
+            case 'gt':
+            case 'gte':
+            case 'lt':
+            case 'lte':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (a === null || b === null) return false;
+                if (op === 'gt') return a > b;
+                if (op === 'gte') return a >= b;
+                if (op === 'lt') return a < b;
+                return a <= b;
+            case 'multiple_of':
+                a = _sdCondNumber(value, decimal);
+                b = _sdCondNumber(operand, decimal);
+                if (!_sdCondIsWhole(a) || !_sdCondIsWhole(b) || b <= 0) return false;
+                return a % b === 0;
+        }
+        return false;
+    }
+
     // Values of the record in an attribute ({{token}} in an Attributes
     // panel entry or a title): the attributes that never take one and the
     // tokens whose value is markup. Twins of pg_sw_attr_denied_names() and
@@ -37164,7 +37554,9 @@ const StyleDesigner = (function () {
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
-        '__comment_message_html', '__comment_stars_html', '__comment_seller_reply_html'
+        '__comment_message_html', '__comment_seller_reply_html',
+        '__field_value_html', '__field_info_html', '__gift_card_message_html',
+        '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
     function _sdAttrBindNameOk(name) {
@@ -37227,8 +37619,8 @@ const StyleDesigner = (function () {
 
     // The canvas chip of a node with a condition: "Only when: <value's
     // name> <operator> <compared text>", the three as numbered parts so a
-    // language can order them. The canvas does not evaluate it; the page
-    // and Preview do.
+    // language can order them. Whether the canvas draws the node is the
+    // state's (_sdCondCanvasShows()).
     function _sdCondSentence(node) {
         var b = (node && node.props && node.props._bindings) || {};
         if (!b.show_if) return '';
@@ -37240,6 +37632,130 @@ const StyleDesigner = (function () {
             entry ? entry[1] : String(params.op),
             value
         ]).replace(/\s+/g, ' ').trim();
+    }
+
+    // ── Canvas states of value conditions ────────────────────────────────
+    // A widget whose tree holds a value condition draws one state at a time,
+    // chosen on its band: its sample values, every value empty, or every
+    // element (as before W19). A code token's values are states of their own:
+    // the order view's status stages, so one status badge shows. The canvas
+    // tests each condition with _sdCondEval(), as the page does. Editor only.
+    var _sdCondCanvasState = 'sample';
+
+    // Tokens whose value is a code the canvas offers one state per value of
+    // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
+    function _sdCondCodeStates(token) {
+        if (token !== '__order_status_stage') return null;
+        var labels = { complete: _sdT('Completed'), pending: _sdT('Pending'), shipped: _sdT('Shipped'),
+                       cancelled: _sdT('Cancelled'), refunded: _sdT('Refunded'), 'default': _sdT('Other') };
+        return SD_OV_STATUS_STAGES.map(function (stage) { return [stage, labels[stage]]; });
+    }
+
+    // The tokens the value conditions of `tree` read.
+    function _sdCondTreeTokens(tree) {
+        var out = [];
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var t = n.props && n.props._bindings ? n.props._bindings.show_if : '';
+            if (t && typeof t === 'string' && out.indexOf(t) === -1) out.push(t);
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return out;
+    }
+
+    // The states the band offers for `tree`, [[key, label]]: none without a
+    // condition; a code token's values (code:<token>:<value>) in place of
+    // the sample values; then every value empty and every element.
+    function _sdCondCanvasStates(tree) {
+        var tokens = _sdCondTreeTokens(tree);
+        if (!tokens.length) return [];
+        var states = [];
+        tokens.forEach(function (t) {
+            (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
+        });
+        if (!states.length) states.push(['sample', _sdT('Sample values')]);
+        states.push(['empty', _sdT('Empty values')]);
+        states.push(['all', _sdT('All elements')]);
+        return states;
+    }
+
+    // The state drawn for `tree`: the one chosen when the tree offers it,
+    // else its first.
+    function _sdCondStateOf(tree) {
+        var states = _sdCondCanvasStates(tree);
+        for (var i = 0; i < states.length; i++) {
+            if (states[i][0] === _sdCondCanvasState) return _sdCondCanvasState;
+        }
+        return states.length ? states[0][0] : 'all';
+    }
+
+    // The value `token` reads in `state` for `node`: empty in the empty
+    // state; a code token its state's value (the first one otherwise); a
+    // flag set; else the text the canvas previews for it.
+    function _sdCondCanvasValue(token, node, state) {
+        if (state === 'empty') return '';
+        var codes = _sdCondCodeStates(token);
+        if (codes) {
+            var prefix = 'code:' + token + ':';
+            return state.indexOf(prefix) === 0 ? state.slice(prefix.length) : codes[0][0];
+        }
+        if (_SD_FLAG_TOKENS[token]) return '1';
+        var v = _displayValueForBinding('text', token, node);
+        return _sdCondText(typeof v === 'function' ? v() : v);
+    }
+
+    // Whether the canvas draws `node` in `state` by its own condition. An
+    // invalid condition draws nothing, as on the page (pg_sw_cond_spec());
+    // one on a required control is ignored there, and here.
+    function _sdCondCanvasShows(node, state) {
+        var b = node && node.props && node.props._bindings;
+        if (!b || !b.show_if || state === 'all') return true;
+        if (_sdCondHoldsRequired(node)) return true;
+        var token = String(b.show_if).replace(/[^a-z0-9_\-]/gi, '');
+        if (!token || !_sdCondTokenAllowed(token)) return false;
+        var params = (node.props._bindParams && node.props._bindParams.show_if) || {};
+        var entry = _sdCondOp(params.op || 'not_empty');
+        if (!entry) return false;
+        var operand = entry[2] ? String(params.value == null ? '' : params.value).trim() : '';
+        if (entry[2] && operand === '') return false;
+        return _sdCondEval(entry[0], _sdCondCanvasValue(token, node, state), operand);
+    }
+
+    // The state that draws `target` of `root`'s tree: the one drawn when it
+    // does, else the first that does, else every element. A node outside
+    // the tree keeps the state.
+    function _sdCondStateFor(root, target) {
+        var current = _sdCondStateOf(root);
+        var path = null;
+        (function walk(n, trail) {
+            if (path || !n) return;
+            var here = trail.concat([n]);
+            if (n === target) { path = here; return; }
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
+        })(root, []);
+        if (!path) return current;
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state); }); };
+        if (shows(current)) return current;
+        var states = _sdCondCanvasStates(root);
+        for (var i = 0; i < states.length; i++) {
+            if (shows(states[i][0])) return states[i][0];
+        }
+        return 'all';
+    }
+
+    // Switch the state the canvas draws. A selection the new state hides
+    // moves up to the widget (refNode), or the next render would switch back.
+    function _sdSetCondCanvasState(state, refNode) {
+        _sdCondCanvasState = state;
+        if (refNode && selectedNode && selectedNode !== refNode) {
+            var sid = parseInt(refNode.props && refNode.props.sharedId, 10) || 0;
+            var cached = sid ? _sharedCache[sid] : null;
+            if (cached && cached.tree && _sdCondStateFor(cached.tree, selectedNode) !== _sdCondStateOf(cached.tree)) {
+                selectedNode = refNode;
+                selectedNodes = [];
+            }
+        }
+        render();
     }
 
     // The "Show only when a value…" row of Bind Data, on any element of a
@@ -37313,6 +37829,88 @@ const StyleDesigner = (function () {
         ['__event_reservations_open', _sdT('Takes reservations'), 'cond'],
         ['__event_spots_limited',     _sdT('Places are limited'), 'cond'],
         ['__event_is_recurring',      _sdT('Is a recurring event'), 'cond']
+    ];
+
+    // An order's allow-listed values (pg_sw_entity_fields('order')), offered
+    // by the order view (its receipt e-mail too): the owner's own order only.
+    var SW_ORDER_ENTITY_TOKENS = [
+        ['__order_po_number',            _sdT('PO number')],
+        ['__order_custom_field_1',       _sdT('Custom field 1')],
+        ['__order_custom_field_1_label', _sdT('Custom field 1 label (from the billing information page)')],
+        ['__order_custom_field_2',       _sdT('Custom field 2')],
+        ['__order_custom_field_2_label', _sdT('Custom field 2 label (from the billing information page)')],
+        ['__billing_fax',                _sdT('Fax')],
+        ['__order_gift_card_discount',   _sdT('Gift card discount (with symbol)')],
+        ['__order_currency',             _sdT('Currency code')],
+        ['__order_paid_date',            _sdT('Payment date')],
+        ['__order_cancelled_date',       _sdT('Cancellation date')],
+        ['__order_cancellation_reason',  _sdT('Cancellation reason')],
+        ['__order_refund_status',        _sdT('Refund status (Refunded, Refund in progress)')],
+        ['__order_refunded_amount',      _sdT('Refunded amount (with symbol)')],
+        ['__order_refunded_date',        _sdT('Refund date')],
+        ['__order_is_tax_exempt',        _sdT('Is tax exempt'), 'cond']
+    ];
+
+    // An order line's allow-listed values (pg_sw_entity_fields('order_line')),
+    // offered by the order view's item loop beside the line's product values.
+    var SW_ORDER_LINE_ENTITY_TOKENS = [
+        ['__item_shipped_qty',         _sdT('Quantity shipped (when the shop shows it)')],
+        ['__item_vat',                 _sdT('Line VAT (with symbol)')],
+        ['__item_payment_period',      _sdT('Subscription payment period')],
+        ['__item_payment_count',       _sdT('Subscription number of payments')],
+        ['__item_first_payment_date',  _sdT('First payment date (subscriptions)')],
+        ['__item_event_name',          _sdT('Reserved event name')],
+        ['__item_event_date',          _sdT('Reserved event date and time')],
+        ['__item_added_by_offer',      _sdT('Added by an offer'), 'cond'],
+        ['__item_discounted_by_offer', _sdT('Discounted by an offer'), 'cond']
+    ];
+
+    // An account's allow-listed values (pg_sw_entity_fields('account')),
+    // offered by my account, the profile, the login region and the account
+    // e-mails: the member's own account, or the e-mail's addressee.
+    var SW_MEMBER_ENTITY_TOKENS = [
+        ['__member_reward_points',    _sdT('Reward points (while the reward program runs)')],
+        ['__member_expiry_date',      _sdT('Membership expiration date')],
+        ['__member_salutation',       _sdT('Salutation (Mr/Ms)')],
+        ['__member_nickname',         _sdT('Nickname')],
+        ['__member_company',          _sdT('Company')],
+        ['__member_job_title',        _sdT('Job title')],
+        ['__member_website',          _sdT('Website')],
+        ['__member_mobile_phone',     _sdT('Mobile phone')],
+        ['__member_business_phone',   _sdT('Work phone')],
+        ['__member_home_phone',       _sdT('Home phone')],
+        ['__member_business_city',    _sdT('Business city')],
+        ['__member_business_country', _sdT('Business country')],
+        ['__member_time_zone',        _sdT('Time zone')],
+        ['__member_tax_number',       _sdT('Tax number')],
+        ['__member_tax_office',       _sdT('Tax office')],
+        ['__member_affiliate_code',   _sdT('Affiliate code (approved affiliates)')]
+    ];
+
+    // A recipient's allow-listed values (pg_sw_entity_fields('ship_to')),
+    // offered by the order view (its receipt e-mail too) for the first
+    // recipient and by a list of the order's recipients for each.
+    var SW_SHIP_TO_ENTITY_TOKENS = [
+        ['__ship_to_name',            _sdT('Ship-to name')],
+        ['__shipping_salutation',     _sdT('Salutation (Mr/Ms)')],
+        ['__shipping_address_type',   _sdT('Address type (Residential address, Business address)')],
+        ['__shipping_ship_date',      _sdT('Ship date (shipped or planned)')],
+        ['__shipping_delivered_date', _sdT('Delivered date')]
+    ];
+
+    // A saved recipient's allow-listed values (pg_sw_entity_fields(
+    // 'address_book')), offered by the address book's row loop.
+    var SW_ADDRESS_BOOK_ENTITY_TOKENS = [
+        ['__recipient_salutation',   _sdT('Salutation (Mr/Ms)')],
+        ['__recipient_first_name',   _sdT('First name')],
+        ['__recipient_last_name',    _sdT('Last name')],
+        ['__recipient_address_1',    _sdT('Address line 1')],
+        ['__recipient_address_2',    _sdT('Address line 2')],
+        ['__recipient_city',         _sdT('City')],
+        ['__recipient_state',        _sdT('State / Province')],
+        ['__recipient_zip',          _sdT('Zip Code')],
+        ['__recipient_country',      _sdT('Country')],
+        ['__recipient_address_type', _sdT('Address type (Residential address, Business address)')]
     ];
 
     // Whether a palette entry is offered only as a condition (yes/no).
@@ -37452,6 +38050,7 @@ const StyleDesigner = (function () {
             ['member',                   _sdT('Active member (1/0)')],
             ['not_logged_in',            _sdT('Signed-out message')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Account Pages (href)'), tokens: [
             ['__profile_url',           _sdT('Profile page (the link drops when there is none)')],
             ['__email_preferences_url', _sdT('Email preferences page (the link drops when there is none)')],
@@ -37689,6 +38288,7 @@ const StyleDesigner = (function () {
             ['__username',       _sdT('User name')],
             ['__email_address',  _sdT('Email')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url', _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',      _sdT('Sign-in page address (signed-out view)')]
@@ -37732,6 +38332,7 @@ const StyleDesigner = (function () {
             ['__recipient_edit_url',     _sdT('Edit address (href)')],
             ['__recipient_remove_url',   _sdT('Remove address (href)')]
         ]},
+        { label: _sdT('More recipient details (loop)'), tokens: SW_ADDRESS_BOOK_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__my_account_url',         _sdT('My account page address (the link drops when there is none)')],
             ['__login_url',              _sdT('Sign-in page address (signed-out view)')]
@@ -37813,6 +38414,7 @@ const StyleDesigner = (function () {
             ['__user_avatar_url', _sdT('Picture (their photo, else the picture of their initials)')],
             ['__user_badge',      _sdT('Badge label')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__login_url',       _sdT('Sign-in page address (signed out; brings the visitor back to this page)')],
             ['__register_url',    _sdT('Registration page address (signed out; the link drops when there is none)')],
@@ -37890,7 +38492,8 @@ const StyleDesigner = (function () {
             ['__comment_date',              _sdT('Date ("2 days ago"; empty when the page hides dates)')],
             ['__comment_datetime',          _sdT('Date and time (takes a format)')],
             ['__comment_rating',            _sdT('Rating (1-5)')],
-            ['__comment_stars_html',        _sdT('Stars (HTML)')],
+            ['__comment_rating_label',      _sdT('Rating (words)')],
+            ['__comment_stars_text',        _sdT('Stars (characters)')],
             ['__comment_badge',             _sdT('Badge label')],
             ['__comment_status',            _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_file_name',         _sdT('Attachment name')],
@@ -37929,7 +38532,8 @@ const StyleDesigner = (function () {
             ['__comment_date',         _sdT('Date ("2 days ago"; empty when its page hides dates)')],
             ['__comment_datetime',     _sdT('Date and time (takes a format)')],
             ['__comment_rating',       _sdT('Rating (1-5)')],
-            ['__comment_stars_html',   _sdT('Stars (HTML)')],
+            ['__comment_rating_label', _sdT('Rating (words)')],
+            ['__comment_stars_text',   _sdT('Stars (characters)')],
             ['__comment_badge',        _sdT('Badge label')],
             ['__comment_status',       _sdT('Status ("Awaiting approval", "Not Published")')],
             ['__comment_label',        _sdT('Comment label of its page ("Reply", "Feedback")')],
@@ -37979,6 +38583,7 @@ const StyleDesigner = (function () {
             ['__user_email',       _sdT('Email')],
             ['__username',         _sdT('User name')]
         ]},
+        { label: _sdT('More account details'), tokens: SW_MEMBER_ENTITY_TOKENS },
         { label: _sdT('Links (href)'), tokens: [
             ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
             ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
@@ -38139,6 +38744,41 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // tag_cloud_region token palette — has loop_area (one row per keyword).
+    // Mirrors _render_system_widget_tag_cloud_region() in widgets_tag_cloud.php.
+    var SW_TAG_CLOUD_TOKEN_GROUPS = [
+        { label: _sdT('Tag Cloud'), tokens: [
+            ['__search_page_name', _sdT('Search results page name')],
+            ['__tag_total',        _sdT('Number of keywords shown')]
+        ]},
+        { label: _sdT('Keyword (loop_area)'), tokens: [
+            ['__tag_name',         _sdT('Keyword')],
+            ['__tag_keyword',      _sdT('Keyword as stored (untranslated)')],
+            ['__tag_url',          _sdT('Search link of the keyword')],
+            ['__tag_count',        _sdT('Number of items with the keyword')],
+            ['__tag_size',         _sdT('Font size in percent (100 to 200)')],
+            ['__tag_weight',       _sdT('Weight from 1 (used least) to 5 (used most)')]
+        ]}
+    ];
+
+    // ad_region token palette — has loop_area (one row per ad shown).
+    // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
+    var SW_AD_REGION_TOKEN_GROUPS = [
+        { label: _sdT('Ad Region'), tokens: [
+            ['__ad_region_name',  _sdT('Ad region name')],
+            ['__ad_count',        _sdT('Number of ads shown')],
+            ['__ad_ride',         _sdT('Slideshow start ("carousel" or "false", for data-bs-ride)')],
+            ['__ad_interval',     _sdT('Slideshow interval in milliseconds ("false" without a slideshow)')],
+            ['__ad_wrap',         _sdT('Slideshow starts again after the last ad ("true" or "false")')]
+        ]},
+        { label: _sdT('Ad (loop_area)'), tokens: [
+            ['__ad_name',         _sdT('Ad name')],
+            ['__ad_label',        _sdT('Ad label')],
+            ['__ad_content_html', _sdT('Ad content (HTML)')],
+            ['__ad_caption_html', _sdT('Ad caption (HTML)')]
+        ]}
+    ];
+
     // menu_sequence_region token palette — no loop_area. Mirrors
     // _render_system_widget_menu_sequence_region() in widgets_menu.php.
     var SW_MENU_SEQUENCE_TOKEN_GROUPS = [
@@ -38174,7 +38814,9 @@ const StyleDesigner = (function () {
         billing_information: SW_BILLING_INFORMATION_TOKEN_GROUPS,
         order_preview:     SW_ORDER_PREVIEW_TOKEN_GROUPS,
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
-        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS
+        menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
+        ad_region:         SW_AD_REGION_TOKEN_GROUPS,
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -38429,6 +39071,10 @@ const StyleDesigner = (function () {
             ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
+        { label: _sdT('More order details'), tokens: SW_ORDER_ENTITY_TOKENS },
+        { label: _sdT('More recipient details'), tokens: SW_SHIP_TO_ENTITY_TOKENS },
+        { label: _sdT('More item details (loop)'), tokens: SW_ORDER_LINE_ENTITY_TOKENS },
+        { label: _sdT('Item\'s product details (loop)'), tokens: SW_PRODUCT_ENTITY_TOKENS },
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
             ['__item_name',              _sdT('Product name (products.name)')],
@@ -38443,12 +39089,10 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
-            // Read-only output blocks — the visitor's checkout answers. The
-            // server auto-appends these to the row when the designer hasn't
-            // placed the token, so binding is only needed to control WHERE
-            // they land.
-            ['__item_form_data_html',    _sdT('Product form answers (read-only HTML)')],
-            ['__item_gift_card_html',    _sdT('Gift card details (read-only HTML)')],
+            // The item form and gift card parts' boxes show by these; their
+            // rows are the order.item_forms and order.item_gift_cards lists.
+            ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+            ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')],
             ['__tracking_codes',         _sdT('Every parcel\'s tracking code (HTML)')]
         ]}
     ];
@@ -38789,7 +39433,16 @@ const StyleDesigner = (function () {
     var SW_DEFAULT_PARTS = {
         order_view: {
             '__timeline':           function (cfg) { return _sdPartOrderTimeline(cfg); },
-            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); }
+            '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
+            '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
+            '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); }
+        },
+        comments: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
+        },
+        // A list of recent comments is a comments widget on the server.
+        comments_recent: {
+            '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         }
     };
 
@@ -38931,6 +39584,31 @@ const StyleDesigner = (function () {
     // The blocks the server added after a widget whose layout placed none
     // of their tokens, now parts added to the end of the tree once
     // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
+    // A comment's stars (pg_sw_part_comment_stars()): five drawings said
+    // once as "Rated N out of 5", the first N filled by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStars() {
+        var stars = [];
+        for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
+        var p = _sdPartWhen('__comment_rating', 'not_empty');
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: '{{__comment_rating_label}}' }];
+        return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
+    }
+
+    // The star at `place`, filled or empty (pg_sw_part_comment_star()): the
+    // drawing _pg_comments_star_svg() draws, shown by the rating.
+    /* @pg-site-output */
+    function _sdPartCommentStar(filled, place) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi '
+            + (filled ? 'bi-star-fill' : 'bi-star') + '" viewBox="0 0 16 16" aria-hidden="true"><path d="'
+            + (filled ? 'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z' : 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z') + '"/></svg>';
+        var p = _sdPartWhen('__comment_rating', filled ? 'gte' : 'lt', String(place));
+        p.contentType = 'svg';
+        p.html = svg;
+        p.customName = filled ? _sdT('Filled star') : _sdT('Empty star');
+        return createNode('content', p, []);
+    }
+
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
@@ -38965,6 +39643,122 @@ const StyleDesigner = (function () {
         tree.children = tree.children || [];
         due.forEach(function (t) { tree.children = tree.children.concat(t[1](cfg || null, placed)); });
         return due.length > 0;
+    }
+
+    // The blocks the server added after each row of the main loop whose row
+    // placed none of their tokens, now parts added to the end of the main
+    // loop once (pg_sw_default_loop_tail_parts()): kind => [tokens that
+    // place it, part].
+    var SW_DEFAULT_LOOP_TAILS = {
+        order_view: [
+            [['__item_form_data_html', 'order.item_forms'], function () { return _sdPartOrderItemForm(); }],
+            [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
+        ]
+    };
+
+    // The main loop of a widget tree (pg_sw_main_loop_ref()): its first
+    // loop_area without a source, lists not searched. null for none.
+    function _sdMainLoop(node) {
+        if (!node || typeof node !== 'object' || _sdListIsSourced(node)) return null;
+        if (node.type === 'loop_area') return node;
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            var found = _sdMainLoop(kids[i]);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    // Adds to the end of the main loop of `tree` each row block of `kind`
+    // its row does not place (pg_sw_default_loop_tails()). Returns whether
+    // anything was added.
+    function _sdDefaultLoopTails(tree, kind, cfg) {
+        var tails = SW_DEFAULT_LOOP_TAILS[kind];
+        var loop = tails ? _sdMainLoop(tree) : null;
+        if (!loop) return false;
+        var row = { type: 'root', children: loop.children || [] };
+        var due = tails.filter(function (t) { return !_sdPartPlaced(row, t[0]); });
+        loop.children = loop.children || [];
+        due.forEach(function (t) { loop.children = loop.children.concat(t[1](cfg || null)); });
+        return due.length > 0;
+    }
+
+    // The props of an element showing `token`, `sample` on the canvas,
+    // drawn only when `token` passes `op` when one is given
+    // (pg_sw_part_value()).
+    function _sdPartValue(token, sample, op) {
+        var p = { text: sample, _bindings: { text: token } };
+        if (op) {
+            p._bindings.show_if = token;
+            p._bindParams = { show_if: { op: op } };
+        }
+        return p;
+    }
+
+    // The heading of an item's form or gift card (pg_sw_part_order_item_legend()).
+    /* @pg-site-output */
+    function _sdPartItemLegend(props, name, number, count) {
+        var num = _sdPartWhen(count, 'gt', '1');
+        num.text = ' (^^' + number + '^^ / ^^' + count + '^^)';
+        return _sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), props, [
+            _sdPartEl('span', '', _sdT('Name'), name),
+            _sdPartEl('span', '', _sdT('Number'), num)
+        ]);
+    }
+
+    // One label above its value (pg_sw_part_order_item_line()).
+    /* @pg-site-output */
+    function _sdPartItemLine(label, props, children) {
+        return _sdPartEl('div', 'mb-2', label, {}, [
+            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), { text: label }),
+            _sdPartEl('div', 'pg-ov-form-value', label, props, children || [])
+        ]);
+    }
+
+    // The answers of an item's product form (pg_sw_part_order_item_form()).
+    /* @pg-site-output */
+    function _sdPartOrderItemForm() {
+        var box = _sdPartWhen('__item_has_form_data', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-form', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-form mt-2', _sdT('Product Form Answers'), box, [
+            createNode('loop_area', { source: 'order.item_forms' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-form-block border rounded p-3 mt-2', _sdT('Form'), {}, [
+                    _sdPartItemLegend(_sdPartWhen('__form_has_legend', 'not_empty'),
+                        _sdPartValue('__form_name', _sdT('Order Form')), '__form_number', '__form_count'),
+                    createNode('loop_area', { source: 'order.item_form_fields' }, [
+                        _sdPartEl('div', 'mb-2', _sdT('Field'), _sdPartWhen('__field_is_info', 'empty'), [
+                            _sdPartEl('div', 'form-label mb-0 fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'))),
+                            _sdPartEl('div', 'pg-ov-form-value', _sdT('Answer'), _sdPartValue('__field_value_html', _sdT('Answer')))
+                        ]),
+                        _sdPartEl('div', 'mb-2 small', _sdT('Information'), _sdPartWhen('__field_is_info', 'not_empty'), [
+                            _sdPartEl('div', 'fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'), 'not_empty')),
+                            _sdPartEl('div', 'text-muted', _sdT('Information'), _sdPartValue('__field_info_html', ''))
+                        ])
+                    ])
+                ])
+            ])
+        ])];
+    }
+
+    // An item's gift cards (pg_sw_part_order_item_gift_card()).
+    /* @pg-site-output */
+    function _sdPartOrderItemGiftCard() {
+        var box = _sdPartWhen('__item_has_gift_card', 'not_empty');
+        box._attrs = [{ name: 'data-pg-ov-item-gift-card', value: '{{__item_id}}' }];
+        return [_sdPartEl('div', 'pg-ov-item-gift-card mt-2', _sdT('Gift Card Details'), box, [
+            createNode('loop_area', { source: 'order.item_gift_cards' }, [
+                _sdPartEl('fieldset', 'pg-ov-item-gift-card-block border rounded p-3 mt-2', _sdT('Gift card'), {}, [
+                    _sdPartItemLegend({}, { text: _sdT('Gift card') }, '__gift_card_number', '__gift_card_count'),
+                    _sdPartItemLine(_sdT('Amount'), {}, [
+                        _sdPartEl('strong', '', _sdT('Amount'), _sdPartValue('__gift_card_amount', _sdMoney(100)))
+                    ]),
+                    _sdPartItemLine(_sdT('Recipient Email'), _sdPartValue('__gift_card_email', 'name@example.com')),
+                    _sdPartItemLine(_sdT('Your Name'), _sdPartValue('__gift_card_from_name', _sdT('Name'))),
+                    _sdPartItemLine(_sdT('Message'), _sdPartValue('__gift_card_message_html', _sdT('Message'))),
+                    _sdPartItemLine(_sdT('Delivery Date'), _sdPartValue('__gift_card_delivery', _sdDateSample(false)))
+                ])
+            ])
+        ])];
     }
 
     // A card added after the order view (pg_sw_part_order_card()).
@@ -39243,7 +40037,10 @@ const StyleDesigner = (function () {
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
             ['no_filter_value',  _sdT('No value from the page address is applied')],
             ['has_records',      _sdT('The list found records')],
-            ['no_records',       _sdT('The list found nothing')]
+            ['no_records',       _sdT('The list found nothing')],
+            ['has_prev_page',    _sdT('A previous page exists')],
+            ['has_next_page',    _sdT('A next page exists')],
+            ['has_more_pages',   _sdT('The list runs over more than one page')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -39345,6 +40142,16 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        tag_cloud_region: [
+            ['has_tags',        _sdT('The search results page has a keyword to show')],
+            ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
+        ],
+        ad_region: [
+            ['has_ads',         _sdT('The region has an ad to show')],
+            ['no_ads',          _sdT('No region is chosen, or it has no ad')],
+            ['has_several_ads', _sdT('More than one ad is shown')],
+            ['ad_has_caption',  _sdT('Row: the ad has a caption')]
         ],
         menu_sequence_region: [
             ['in_sequence',     _sdT('The page shown is one of the menu\'s pages')],
@@ -40222,6 +41029,7 @@ const StyleDesigner = (function () {
                 SW_ORDER_VIEW_TOKEN_GROUPS.forEach(function (g) {
                     html += '<optgroup label="' + esc(g.label) + '">';
                     g.tokens.forEach(function (t) {
+                        if (_swTokenCondOnly(t) && t[0] !== currentVal) return;
                         html += '<option value="' + esc(t[0]) + '"' + (t[0] === currentVal ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
                     });
                     html += '</optgroup>';
@@ -40680,6 +41488,7 @@ const StyleDesigner = (function () {
             if (_listRows.length) {
                 html += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                 _listRows.forEach(function (o) {
+                    if (o.cond && o.token !== currentVal) return;
                     html += '<option value="' + esc(o.token) + '"' + (o.token === currentVal ? ' selected' : '') + '>' + esc(o.label) + '</option>';
                 });
                 html += '</optgroup>';
@@ -43961,6 +44770,63 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // The classic data-driven regions, the widget kind that draws each and
+    // the widget setting that names the region (the same name the region
+    // node holds).
+    var SD_REGION_WIDGETS = {
+        menu:          { kind: 'menu_region',          key: 'menu_name' },
+        menu_sequence: { kind: 'menu_sequence_region', key: 'menu_name' },
+        ad:            { kind: 'ad_region',            key: 'ad_region_name' },
+        tag_cloud:     { kind: 'tag_cloud_region',     key: 'search_page_name' }
+    };
+
+    function _sdRegionWidgetPropsHtml(n) {
+        if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-region-make-widget">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a widget showing the same region in its place, in a layout you design; the items stay where they are edited today. Inside a shared component every page that places it changes; elsewhere only this page.')) +
+            '</div></div>';
+    }
+
+    // A new widget of the region's kind, named after the region, takes the
+    // region node's place, in the page tree or in the shared component the
+    // node sits in; one undo step.
+    function _sdRegionMakeWidget(regionNode) {
+        var map = (regionNode && regionNode.type === 'region' && regionNode.props) ? SD_REGION_WIDGETS[regionNode.props.regionType] : null;
+        if (!map || !regionNode.props.regionName) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var regionName = regionNode.props.regionName;
+        var cfg = _swTypeDefaults({}, map.kind);
+        cfg[map.key] = regionName;
+        var start = _sdAnyParent(regionNode);
+        var name = _swAutoName(map.kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(map.kind), function (newId, newName) {
+            // The node may have gone meanwhile (another tab, an undo); the
+            // widget is then listed in the design, unplaced.
+            var hit = _sdAnyParent(regionNode);
+            var parent = hit ? hit.parent : null;
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) {
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                return;
+            }
+            saveState();
+            if (hit.sid) _sharedDirty[hit.sid] = true;
+            var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
+            parent.children.splice(idx, 1, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+        });
+    }
+
     // The system region of a page that draws a custom layout: its PHP in a
     // code-view tab, for the classic layout editor's role (_design.layoutCode),
     // and the generated layout to start again from.
@@ -46650,6 +47516,9 @@ const StyleDesigner = (function () {
         // A designer region becomes a shared component on this page.
         var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
         if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
+        // A menu, menu sequence, ad or tag cloud region becomes its widget.
+        var regionWidgetBtn = document.getElementById('sd-region-make-widget');
+        if (regionWidgetBtn) regionWidgetBtn.addEventListener('click', function () { _sdRegionMakeWidget(selectedNode); });
         // A dynamic region's PHP code opens as a code-view tab.
         var dregionCodeBtn = document.getElementById('sd-dregion-code');
         if (dregionCodeBtn) dregionCodeBtn.addEventListener('click', function () {
@@ -50930,6 +51799,7 @@ const StyleDesigner = (function () {
         if (!show || _sdPageType.pageId !== p.page_id) {
             _sdPageType.pageId = 0;
             box.innerHTML = '';
+            _sdPageTypeLinks([]);
             var status = document.getElementById('sd-page-type-status');
             if (status) status.textContent = '';
             var save = document.getElementById('sd-page-type-save');
@@ -50962,17 +51832,36 @@ const StyleDesigner = (function () {
                 if (window.jQuery) window.jQuery(box).html(data.html || '');
                 else box.innerHTML = data.html || '';
                 // The classic screen prints every type's rows hidden for its
-                // type picker; the pane keeps the page's own type, so only
-                // the shown rows stay and post.
+                // type picker; the pane keeps the page's own type, so the
+                // hidden rows of the other types go. Its own rows stay, shown
+                // or hidden by their switches (show_or_hide_*()).
+                var prefix = String(data.page_type || '').replace(/ /g, '_') + '_';
                 box.querySelectorAll('#options_row .card-body > .row > [style*="display: none"]').forEach(function (row) {
+                    if (row.id === 'layout_type_row' || row.id.indexOf(prefix) === 0) return;
                     row.remove();
                 });
+                // The notices point at the classic screen's "Save & Continue";
+                // the pane links to the form's editor once it is saved.
+                box.querySelectorAll('[id$="_form_notice"]').forEach(function (el) { el.classList.add('d-none'); });
                 var options = box.querySelector('#options_row');
                 if (options) options.classList.remove('collapse');
                 if (typeof pgInitInjected === 'function') pgInitInjected(box);
+                _sdPageTypeLinks(data.links);
                 if (save) save.disabled = !_collab.mayEdit;
             })
             .catch(function () { failed(''); _sdPageType.pageId = 0; });
+    }
+
+    // The editors of the page type's own forms and views, as the classic
+    // screen's button bar offers them; they open beside the designer.
+    function _sdPageTypeLinks(links) {
+        var box = document.getElementById('sd-page-type-links');
+        if (!box) return;
+        var back = '&send_to=' + encodeURIComponent(window.location.href);
+        box.innerHTML = (links || []).map(function (l) {
+            return '<a class="btn btn-sm btn-outline-light" target="_blank" rel="noopener" href="' + esc(l.url + back) + '">' +
+                '<span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(l.label) + '</a>';
+        }).join('');
     }
 
     function _sdPageTypeSave() {
@@ -51002,13 +51891,20 @@ const StyleDesigner = (function () {
         var done = function (ok, message) {
             _sdPageType.busy = false;
             save.disabled = !_collab.mayEdit;
-            if (status) status.textContent = ok ? _sdT('Saved.') : (message || _sdT('Network error'));
+            if (status) status.textContent = message || (ok ? _sdT('Saved.') : _sdT('Network error'));
             if (!ok) sdToast(esc(message || _sdT('Network error')), 'danger', 5000);
         };
         fetch(_sdPageTypeUrl(p.page_id), { method: 'POST', body: body, credentials: 'same-origin',
                                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.json(); })
-            .then(function (data) { done(!!(data && data.ok), data && data.message); })
+            .then(function (data) {
+                var ok = !!(data && data.ok);
+                // What a basic user may not change was kept as stored; the
+                // server says which.
+                if (ok && data.warnings && data.warnings.length) sdToast(esc(data.warnings.join(' ')), 'warning', 8000);
+                if (ok) _sdPageTypeLinks(data.links);
+                done(ok, data && data.message);
+            })
             .catch(function () { done(false, ''); });
     }
 
@@ -51873,7 +52769,9 @@ const StyleDesigner = (function () {
         { type: 'billing_information', label: _sdT('Billing Information'), slug: _sdT('billing'), icon: 'bi-receipt' },
         { type: 'order_preview',     label: _sdT('Order Preview'),     slug: _sdT('order-preview'),     icon: 'bi-bag-check' },
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
-        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' }
+        { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
+        { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -52052,6 +52950,12 @@ const StyleDesigner = (function () {
             // A sign-up link to the site's registration page, unless the
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
+        } else if (newType === 'tag_cloud_region') {
+            // The site's first search results page, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
+        } else if (newType === 'ad_region') {
+            // The site's first ad region, so a new widget shows ads at once.
+            if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
         } else if (newType === 'menu_region' || newType === 'menu_sequence_region') {
             // The site's first menu, so a new widget shows items at once.
             if (cfg.menu_name === undefined) cfg.menu_name = ((regionData && regionData.menu_regions) || [])[0] || '';
@@ -52784,6 +53688,11 @@ const StyleDesigner = (function () {
         'recurrence_number', 'folder_id', 'comments', 'comment', 'comments_page', 'reply_to',
         'order_id', 'oid', 'cancelled', 'token', 'password', 'add_watcher', 'connect_to_contact'
     ];
+    // Twin of pg_sw_list_offset(): records a list skips, 0 to 100000.
+    function _swListOffset(cfg) {
+        var n = parseInt(cfg && cfg.offset, 10);
+        return (n > 0) ? Math.min(100000, n) : 0;
+    }
     // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
     function _swUrlParamName(v) {
         var n = String(v == null ? '' : v).trim().toLowerCase();
@@ -53153,7 +54062,7 @@ const StyleDesigner = (function () {
                 ['__shipping_method',       _sdT('Shipping method / carrier')],
                 ['__arrival_date',          _sdT('Estimated delivery date')],
                 ['__ship_to_item_count',    _sdT('Number of items')]
-            ]
+            ].concat(SW_SHIP_TO_ENTITY_TOKENS)
         },
         'order.items': {
             label: _sdT('Items of the order'),
@@ -53171,8 +54080,10 @@ const StyleDesigner = (function () {
                 ['__item_image',             _sdT('Image URL')],
                 ['__item_image_alt',         _sdT('Image alt text')],
                 ['__item_url',               _sdT('Product detail page URL')],
-                ['__item_ship_to',           _sdT('This item\'s shipping address')]
-            ]
+                ['__item_ship_to',           _sdT('This item\'s shipping address')],
+                ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],
+                ['__item_has_gift_card',     _sdT('Has gift cards (1 or empty)')]
+            ].concat(SW_ORDER_LINE_ENTITY_TOKENS, SW_PRODUCT_ENTITY_TOKENS)
         },
         'order.parcels': {
             label: _sdT('Parcels of the order'),
@@ -53194,6 +54105,43 @@ const StyleDesigner = (function () {
                 ['__step_kind',        _sdT('Kind of step (created, paid, shipped, delivered, cancelled)')],
                 ['__step_note',        _sdT('Note (the reason of a cancellation)')],
                 ['__step_is_estimate', _sdT('Estimated (1 or empty)')]
+            ]
+        },
+        'order.item_forms': {
+            label: _sdT('Product forms of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__form_key',        _sdT('Form in the order')],
+                ['__form_name',       _sdT('Form name')],
+                ['__form_number',     _sdT('Number of the form')],
+                ['__form_count',      _sdT('Number of forms')],
+                ['__form_has_legend', _sdT('Has a heading (1 or empty)')]
+            ]
+        },
+        'order.item_form_fields': {
+            label: _sdT('Fields of the product form'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__field_label',      _sdT('Label')],
+                ['__field_value_html', _sdT('Answer (HTML)')],
+                ['__field_info_html',  _sdT('Information (HTML)')],
+                ['__field_is_info',    _sdT('Information field (1 or empty)')]
+            ]
+        },
+        'order.item_gift_cards': {
+            label: _sdT('Gift cards of the item'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__gift_card_number',       _sdT('Number of the gift card')],
+                ['__gift_card_count',        _sdT('Number of gift cards')],
+                ['__gift_card_amount',       _sdT('Amount')],
+                ['__gift_card_email',        _sdT('Recipient Email')],
+                ['__gift_card_from_name',    _sdT('Your Name')],
+                ['__gift_card_message_html', _sdT('Message (HTML)')],
+                ['__gift_card_delivery',     _sdT('Delivery Date')]
             ]
         },
         'account.orders': {
@@ -53377,7 +54325,8 @@ const StyleDesigner = (function () {
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
-    // the nearest list's first; a token a nearer list gives is that list's
+    // with cond: true on a yes/no value (offered as a condition only), the
+    // nearest list's first; a token a nearer list gives is that list's
     // (the site fills it so) and is not offered twice.
     function _sdListRowOptions(node) {
         var out = [], seen = {};
@@ -53386,19 +54335,19 @@ const StyleDesigner = (function () {
             (src ? src.rows : []).forEach(function (r) {
                 if (seen[r[0]]) return;
                 seen[r[0]] = true;
-                out.push({ token: r[0], label: r[1] });
+                out.push(r[2] === 'cond' ? { token: r[0], label: r[1], cond: true } : { token: r[0], label: r[1] });
             });
         });
         return out;
     }
 
     // The row tokens of the nearest list `node` is drawn in, as [token,
-    // label] pairs: the values a page link may take from the row
-    // (_pg_sw_page_link_walk() reads the nearest list alone).
+    // label] pairs: the values a page link may take from the row, a yes/no
+    // value left out (_pg_sw_page_link_walk() reads the nearest list alone).
     function _sdPageLinkRowTokens(node) {
         var list = _sdListsAbove(node)[0];
         var src = list ? SW_LIST_SOURCES[list.props.source] : null;
-        return src ? src.rows.slice() : [];
+        return src ? src.rows.filter(function (r) { return r[2] !== 'cond'; }) : [];
     }
 
     // The label of a list row token, or '' for any other token.
@@ -53583,8 +54532,23 @@ const StyleDesigner = (function () {
     // its key: a list of the recipients or the steps inside a list of the
     // recipients (they list the whole order alone).
     function _sdOrderListKeyless(source, node) {
+        var key = _sdOrderItemListKey(source);
+        if (key) {
+            // An item's lists read the item they stand in: the items loop's
+            // row or a list of the items (the fields, a form's row).
+            return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
+                && (key !== 'order.items' || !_sdInMainLoopAt(node));
+        }
         if (source !== 'order.shipments' && source !== 'order.steps') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
+    }
+
+    // For a list of an order item, the list whose row gives its key
+    // (order.items: the item, as the items loop's row does); '' for any
+    // other source.
+    function _sdOrderItemListKey(source) {
+        var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms' };
+        return keys.hasOwnProperty(source) ? keys[source] : '';
     }
 
     // A new calendar list. The month grid: a table, its heads from the days
@@ -53773,8 +54737,8 @@ const StyleDesigner = (function () {
         // in the event loop.
         if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
         // The order and cart lists read the order or the cart, not an item
-        // row: never in the items loop.
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target)) return false;
+        // row: never in the items loop, but for the lists of an item.
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(target) && !_sdOrderItemListKey(source)) return false;
         // The passkeys are the account's, not a device row's.
         if (kind === 'account_security' && _sdInMainLoopAt(target)) return false;
         var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
@@ -53862,8 +54826,12 @@ const StyleDesigner = (function () {
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
-        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
-        if (_sdOrderListKeyless(spec.source, node)) return { off: true, text: _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        if ((kind === 'order_view' || kind === 'shopping_cart') && _sdInMainLoopAt(node) && !_sdOrderItemListKey(spec.source)) return { off: true, text: _sdT('{var}: inside the item loop, nothing is drawn', src.label) };
+        if (_sdOrderListKeyless(spec.source, node)) {
+            return { off: true, text: _sdOrderItemListKey(spec.source)
+                ? _sdT('{var}: outside an item of the order, nothing is drawn', src.label)
+                : _sdT('{var}: inside a list of the recipients, nothing is drawn', src.label) };
+        }
         if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
             return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
         }
@@ -56455,27 +57423,12 @@ const StyleDesigner = (function () {
                                     text: _sdMoney(0), cssClass: 'fw-semibold mb-0',
                                     _bindings: { text: '__item_total' } })
                             ])
-                        ]),
-                        // What the visitor filled in at checkout — printed, not
-                        // editable. Empty (and therefore invisible) on ordinary
-                        // products; the server only fills these for rows whose
-                        // product carries an order form / is a gift card.
-                        // Sits OUTSIDE the flex strip on purpose: inside it the
-                        // block would become a flex item and squeeze the columns.
-                        //
-                        // Bound to a <div>, NOT a paragraph: the server emits a
-                        // <fieldset> here and a block element inside <p> makes
-                        // the browser close the <p> early — the designer's
-                        // classes stay on an empty shell while the content
-                        // orphans out beside it. Same pattern the express order
-                        // tree uses for __item_form_html.
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Product Form Answers'),
-                            _bindings: { text: '__item_form_data_html' } }),
-                        createNode('semantic', { tag: 'div', cssClass: '',
-                            customName: _sdT('Gift Card Details'),
-                            _bindings: { text: '__item_gift_card_html' } })
-                    ])
+                        ])
+                        // What the visitor filled in at checkout and a gift
+                        // card's details, printed: the item form and gift card
+                        // parts, outside the flex strip so they do not squeeze
+                        // its columns.
+                    ].concat(_sdPartOrderItemForm(), _sdPartOrderItemGiftCard()))
                 ]);
 
                 // Totals breakdown row helper — label left, amount right.
@@ -58029,6 +58982,66 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'tag_cloud_region': {
+                // The keywords of a search results page as a row of links:
+                // the loop repeats the keywords in alphabetical order, each
+                // drawn by the link of its weight (1 used least, 5 used
+                // most), larger as the weight grows, as the classic cloud
+                // sizes them. Mirrors _render_system_widget_tag_cloud_region().
+                var tcSizes = ['fs-6', 'fs-5', 'fs-4', 'fs-3', 'fs-2'];
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'nav', cssClass: 'd-flex flex-wrap align-items-baseline column-gap-3 row-gap-1', customName: _sdT('Tag Cloud'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Tag Cloud') }],
+                        _bindings: { eo_visible_if: 'has_tags' } }, [
+                        createNode('loop_area', {}, [
+                            createNode('semantic', { tag: 'span', cssClass: '', customName: _sdT('Keyword') }, tcSizes.map(function (cls, i) {
+                                return createNode('semantic', { tag: 'a', cssClass: cls + ' text-decoration-none', text: _sdT('Keyword'), href: '#',
+                                    customName: _sdT('Weight {var}', String(i + 1)),
+                                    _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
+                                    _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
+                            }))
+                        ])
+                    ])
+                ]);
+            }
+
+            case 'ad_region': {
+                // The ads of a region as a Bootstrap carousel: the loop
+                // repeats the ads (the server marks the first one active),
+                // the controls show with more than one ad, and the region's
+                // slideshow settings fill the carousel's data-bs-* values.
+                // Mirrors _render_system_widget_ad_region().
+                var arId = 'ads_' + Math.random().toString(36).slice(2, 7);
+                var arControl = function (dir, label) {
+                    return createNode('semantic', { tag: 'button', cssClass: 'carousel-control-' + dir, customName: label,
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + arId }, { name: 'data-bs-slide', value: dir }],
+                        _bindings: { eo_visible_if: 'has_several_ads' } }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
+                            _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+                        createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: label, customName: _sdT('Label') })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: arId, customName: _sdT('Ad Region'),
+                        _attrs: [{ name: 'data-bs-ride', value: '{{__ad_ride}}' }, { name: 'data-bs-interval', value: '{{__ad_interval}}' },
+                                 { name: 'data-bs-wrap', value: '{{__ad_wrap}}' }],
+                        _bindings: { eo_visible_if: 'has_ads' } }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'carousel-inner', customName: _sdT('Ads') }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel-item', customName: _sdT('Ad') }, [
+                                    createNode('semantic', { tag: 'div', cssClass: '', text: _sdT('Ad content (HTML)'), customName: _sdT('Ad Content'),
+                                        _bindings: { text: '__ad_content_html' } }),
+                                    createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', text: _sdT('Ad caption (HTML)'), customName: _sdT('Caption'),
+                                        _bindings: { text: '__ad_caption_html', eo_visible_if: 'ad_has_caption' } })
+                                ])
+                            ])
+                        ]),
+                        arControl('prev', _sdT('Previous')),
+                        arControl('next', _sdT('Next'))
+                    ])
+                ]);
+            }
+
             case 'menu_sequence_region': {
                 // The pages before and after this one in a menu: two links
                 // at either end of a row, the previous one only when a page
@@ -58458,7 +59471,7 @@ const StyleDesigner = (function () {
                                             createNode('semantic', { tag: 'div', cssClass: 'small text-danger mb-2', text: _sdT('Awaiting approval'),
                                                 customName: _sdT('Comment Status'), _bindings: { text: '__comment_status', eo_visible_if: 'comment_is_pending' } }),
                                             createNode('semantic', { tag: 'div', cssClass: 'text-warning mb-1', customName: _sdT('Stars'),
-                                                _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                                _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-1', customName: _sdT('Name Line') }, [
                                                 createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('Jane Cooper'),
                                                     _bindings: { text: '__comment_name' } }),
@@ -58636,7 +59649,7 @@ const StyleDesigner = (function () {
                                             _bindings: { text: '__comment_date' } })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'text-warning small mt-1', customName: _sdT('Stars'),
-                                        _bindings: { text: '__comment_stars_html', eo_visible_if: 'comment_has_rating' } }),
+                                        _bindings: { eo_visible_if: 'comment_has_rating' } }, _sdPartCommentStars()),
                                     createNode('semantic', { tag: 'p', cssClass: 'small mb-0 mt-1', text: _sdT('Comment text'), customName: _sdT('Excerpt'),
                                         _bindings: { text: '__comment_excerpt' } })
                                 ])
@@ -58699,7 +59712,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -58748,6 +59761,372 @@ const StyleDesigner = (function () {
             formId:     parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0
         };
     }
+
+    // ── Layout gallery ────────────────────────────────────────────────────
+    // The layouts a system widget can take: the default one and those of
+    // the other widgets of the same kind on this site. Try puts a copy on
+    // the canvas without marking anything unsaved; Keep makes it the
+    // widget's layout as one undo step; Cancel puts the old one back. A
+    // layout from another widget is copied with fresh node ids, never
+    // linked, and the widget's settings stay as they are.
+    var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
+    var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
+    var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
+    var _sdLgDrawing = false; // the gallery's own redraw is not an edit
+
+    function _sdLgApi(body, cb) {
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        body.token = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var resp = null;
+            try { resp = JSON.parse(xhr.responseText); } catch (e) {}
+            cb(resp && resp.status === 'success' ? resp : null);
+        };
+        xhr.send(JSON.stringify(body));
+    }
+
+    function _sdLgCfg(sid) {
+        var cfg = null;
+        try { cfg = JSON.parse((_sharedCache[sid] && _sharedCache[sid].system_region_config) || 'null'); } catch (e) {}
+        return (cfg && typeof cfg === 'object') ? cfg : {};
+    }
+
+    function _sdLgFormId(cfg) {
+        return parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0;
+    }
+
+    // The sorted field names of a form, or of a custom form's controls.
+    function _sdLgNames(list) {
+        var out = [];
+        (list || []).forEach(function (f) { if (f && f.name) out.push(String(f.name).toLowerCase()); });
+        out.sort();
+        return out.filter(function (n, i) { return n !== out[i - 1]; }).join('|');
+    }
+
+    function _sdLgReId(nd) {
+        nd._id = gid();
+        if (Array.isArray(nd.children)) nd.children.forEach(_sdLgReId);
+        return nd;
+    }
+
+    // A stored tree read the way prefetchShared() reads one, so the copy
+    // matches what the canvas would draw for the other widget.
+    function _sdLgPrepare(json, kind, cfg) {
+        var t = null;
+        try { t = JSON.parse(json); } catch (e) {}
+        if (!t || typeof t !== 'object') return null;
+        _sdTreeObjects(t);
+        _normalizeToggleableShowState(t);
+        _sdMigrateStructuralBindings(t);
+        _cfMigrateWidgetTree(t, null);
+        if (_SW_NO_MESSAGES[kind]) _sdDropMessagesNodes(t);
+        _sdDefaultParts(t, kind, cfg);
+        return t;
+    }
+
+    // Reads the other widgets of this kind once per widget. Form views keep
+    // only widgets whose form has the same field names as this one's.
+    function _sdLgLoadSite(sid, kind) {
+        var have = _sdLgSite[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgSite[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgSite[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        _sdLgApi({ action: 'shared_component', sub_action: 'list' }, function (resp) {
+            var cands = [];
+            ((resp && resp.items) || []).forEach(function (it) {
+                var id = parseInt(it.id, 10);
+                if (!id || id === sid || !it.system_region_config) return;
+                var cfg = null;
+                try { cfg = JSON.parse(it.system_region_config); } catch (e) {}
+                if (_swKindOf(cfg) === kind) cands.push({ id: id, name: it.name || '', cfg: cfg });
+            });
+            cands = cands.slice(0, 40);
+            if (!cands.length) { done(); return; }
+            _sdLgApi({ action: 'shared_component', sub_action: 'prefetch',
+                       ids: cands.map(function (c) { return c.id; }) }, function (pre) {
+                var trees = {};
+                ((pre && pre.items) || []).forEach(function (it) { trees[parseInt(it.id, 10)] = it.tree_json; });
+                cands.forEach(function (c) {
+                    var t = trees[c.id] ? _sdLgPrepare(trees[c.id], kind, c.cfg) : null;
+                    if (!t || _isDefaultEmptyTree(t) || _swIsTemplatePlaceholder(t)) return;
+                    entry.items.push({ id: c.id, name: c.name, tree: t, formId: _sdLgFormId(c.cfg) });
+                });
+                if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+                // Same field names, or the layout's bindings point nowhere.
+                var ids = [_sdLgFormId(_sdLgCfg(sid))];
+                entry.items.forEach(function (it) { if (ids.indexOf(it.formId) === -1) ids.push(it.formId); });
+                var left = ids.length;
+                ids.forEach(function (fid) {
+                    _fetchFormFields(fid, function () {
+                        if (--left) return;
+                        var mine = _sdLgNames(_formFieldsCache[ids[0]]);
+                        entry.items = entry.items.filter(function (it) {
+                            return it.formId > 0 && ids[0] > 0 && _sdLgNames(_formFieldsCache[it.formId]) === mine;
+                        });
+                        done();
+                    });
+                });
+            });
+        });
+    }
+
+    // The site layouts that fit this widget now: a custom form's controls
+    // are its fields, so only a layout with the same control names; never
+    // one equal to the widget's own, and each distinct layout once.
+    function _sdLgSiteItems(sid, kind) {
+        var entry = _sdLgSite[sid];
+        return (entry && entry.kind === kind) ? _sdLgFit(sid, kind, entry.items) : [];
+    }
+
+    function _sdLgFit(sid, kind, items) {
+        var cur = _sharedCache[sid] && _sharedCache[sid].tree;
+        if (_sdLgState && _sdLgState.sid === sid) {
+            try { cur = JSON.parse(_sdLgState.original); } catch (e) {}
+        }
+        var seen = {};
+        if (cur) seen[_sdSharedTreeJSON(_sdLgStrip(cur))] = true;
+        var mineNames = (kind === 'custom_form' && cur) ? _sdLgNames(_cfControls(cur)) : null;
+        return items.filter(function (it) {
+            if (mineNames !== null && _sdLgNames(_cfControls(it.tree)) !== mineNames) return false;
+            var key = _sdSharedTreeJSON(_sdLgStrip(it.tree));
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+    }
+
+    // The design's template, when it was made from one: the saved row's,
+    // else the one being opened.
+    function _sdLgTemplateId() {
+        var el = document.querySelector('[name="style_template"]');
+        var v = el ? String(el.value || '') : '';
+        if (!v && _design && _design.template && typeof _design.template.id === 'string') v = _design.template.id;
+        return v;
+    }
+
+    // The layouts the design's template ships for this kind
+    // (pg_sw_template_layouts()), once per widget. A form view keeps only
+    // those made for a form with the same field names as this one's.
+    function _sdLgLoadTemplate(sid, kind, tplId) {
+        var have = _sdLgTpl[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgTpl[sid] = { kind: kind, loading: true, items: [] };
+        var done = function () {
+            entry.loading = false;
+            if (_sdLgTpl[sid] !== entry || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        };
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        _sdLgApi({ action: 'shared_component', sub_action: 'template_layouts', kind: kind,
+                   style_id: styleId, template: tplId }, function (resp) {
+            var cfg = _sdLgCfg(sid);
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                var t = l && l.tree ? _sdLgPrepare(JSON.stringify(l.tree), kind, cfg) : null;
+                if (!t || _isDefaultEmptyTree(t)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), tree: t,
+                                   fields: Array.isArray(l.fields) ? _sdLgNames(l.fields.map(function (n) { return { name: n }; })) : null });
+            });
+            if (kind !== 'form_list_view' && kind !== 'form_item_view') { done(); return; }
+            var fid = _sdLgFormId(cfg);
+            _fetchFormFields(fid, function () {
+                var mine = fid ? _sdLgNames(_formFieldsCache[fid]) : null;
+                entry.items = entry.items.filter(function (it) { return mine !== null && it.fields === mine; });
+                done();
+            });
+        });
+    }
+
+    // A tree without its node ids, for comparing two layouts.
+    function _sdLgStrip(t) {
+        return JSON.parse(JSON.stringify(t, function (k, v) { return k === '_id' ? undefined : v; }));
+    }
+
+    // The section of the widget panel.
+    function _sdLgSectionHtml(sid, kind) {
+        _sdLgLoadSite(sid, kind);
+        var trying = (_sdLgState && _sdLgState.sid === sid) ? _sdLgState.key : '';
+        var rowHtml = function (key, name, icon) {
+            var on = (trying === key);
+            return '<div class="d-flex align-items-center gap-2 py-1 border-bottom">' +
+                       '<span class="bi ' + icon + ' text-muted"></span>' +
+                       '<span class="flex-grow-1 text-truncate" style="font-size:.78rem">' + esc(name) + '</span>' +
+                       (on
+                           ? '<span class="badge text-bg-primary">' + esc(_sdT('On the canvas')) + '</span>'
+                           : '<button type="button" class="btn btn-sm btn-outline-primary py-0" data-lg-try="' + esc(key) + '" data-sw-id="' + sid + '">' + esc(_sdT('Try')) + '</button>') +
+                   '</div>';
+        };
+        var head = function (text) {
+            return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
+        };
+        var muted = function (text) {
+            return '<div class="text-muted py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+        };
+        var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Only the template this design was made from: its layouts carry
+        // that template's styles.
+        var tplId = _sdLgTemplateId();
+        if (tplId) {
+            _sdLgLoadTemplate(sid, kind, tplId);
+            h += head(_sdT('From the template'));
+            var tEntry = _sdLgTpl[sid];
+            if (!tEntry || tEntry.loading) {
+                h += muted(_sdT('Loading…'));
+            } else {
+                var tItems = _sdLgFit(sid, kind, tEntry.items);
+                if (!tItems.length) h += muted(_sdT('The design\'s template has no layout for this widget that fits here.'));
+                tItems.forEach(function (it) { h += rowHtml('tpl:' + it.key, it.label, 'bi-grid-1x2'); });
+            }
+        }
+        h += head(_sdT('On this site'));
+        var entry = _sdLgSite[sid];
+        if (!entry || entry.loading) {
+            h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('Loading…')) + '</div>';
+        } else {
+            var items = _sdLgSiteItems(sid, kind);
+            if (!items.length) h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('No other widget of this kind has a layout that fits this one.')) + '</div>';
+            items.forEach(function (it) { h += rowHtml('site:' + it.id, it.name || ('#' + it.id), 'bi-window-stack'); });
+        }
+        h += '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
+                 esc(_sdT('Try shows a layout on the canvas; nothing changes until you keep it. A layout from another widget is copied, and this widget\'s settings stay. Undo (Ctrl+Z) brings the previous layout back.')) +
+             '</div>';
+        return h;
+    }
+
+    // The bar at the foot of the window while a layout is tried.
+    function _sdLgBar() {
+        var bar = document.getElementById('sd-lg-bar');
+        if (!_sdLgState) { if (bar) bar.remove(); return; }
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'sd-lg-bar';
+            bar.setAttribute('role', 'status');
+            bar.className = 'd-flex align-items-center gap-2 px-3 py-2 rounded shadow bg-dark text-white';
+            bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1080;max-width:calc(100vw - 32px);font-size:.82rem';
+            document.body.appendChild(bar);
+        }
+        bar.innerHTML = '<span class="bi bi-eye"></span>' +
+            '<span class="text-truncate">' + esc(_sdT('Trying the layout: {var}', _sdLgState.label)) + '</span>' +
+            '<button type="button" class="btn btn-sm btn-primary" data-lg-act="keep">' + esc(_sdT('Keep')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-light" data-lg-act="cancel">' + esc(_sdT('Cancel')) + '</button>';
+    }
+
+    function _sdLgRedraw() {
+        _sdLgBar();
+        _sdLgDrawing = true;
+        try {
+            if (typeof render === 'function') render();
+            if (typeof renderProperties === 'function') renderProperties();
+        } finally { _sdLgDrawing = false; }
+    }
+
+    function _sdLgShow(sid, key, label, newTree) {
+        var c = _sharedCache[sid];
+        if (!c || !newTree) return;
+        if (_sdLgState && _sdLgState.sid !== sid) _sdLgCancel(true);
+        if (!_sdLgState) _sdLgState = { sid: sid, original: JSON.stringify(c.tree) };
+        _sdLgState.key = key;
+        _sdLgState.label = label;
+        _sdLgReId(newTree);
+        if (_swKindOf(_sdLgCfg(sid)) === 'custom_form') _cfEnsureNames(newTree, null);
+        c.tree = newTree;
+        _sdLgRedraw();
+    }
+
+    function _sdLgTry(sid, key) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (_sdIsContentLevel()) { _sdContentNudge('shared'); return; }
+        if (!_sharedCache[sid]) {
+            sdToast(_sdT('The widget is not in the cache. Refresh the page and try again.'), 'error');
+            return;
+        }
+        var cfg = _sdLgCfg(sid), kind = _swKindOf(cfg);
+        if (key === 'default') {
+            var label = _sdT('Default layout');
+            var fid = _sdLgFormId(cfg);
+            // A form view with a form chosen starts from that form's fields.
+            if ((kind === 'form_list_view' || kind === 'form_item_view') && fid) {
+                _fetchFormFields(fid, function (fields) {
+                    _sdLgShow(sid, key, label, _buildStarterTree(kind, { formFields: fields || [] }));
+                });
+                return;
+            }
+            var t = _buildStarterTree(cfg.regionType || kind);
+            if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
+            _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('tpl:') === 0) {
+            var tk = String(key).slice(4);
+            var te = _sdLgTpl[sid];
+            var ti = te ? _sdLgFit(sid, kind, te.items).filter(function (x) { return x.key === tk; })[0] : null;
+            if (ti) _sdLgShow(sid, key, ti.label, JSON.parse(JSON.stringify(ti.tree)));
+            return;
+        }
+        var id = parseInt(String(key).replace('site:', ''), 10);
+        var it = _sdLgSiteItems(sid, kind).filter(function (x) { return x.id === id; })[0];
+        if (!it) return;
+        _sdLgShow(sid, key, it.name || ('#' + it.id), JSON.parse(JSON.stringify(it.tree)));
+    }
+
+    // Keep: the old layout goes into the undo history, the tried one stays.
+    function _sdLgKeep() {
+        var st = _sdLgState;
+        if (!st) return;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            var tried = c.tree;
+            c.tree = JSON.parse(st.original);
+            saveState();
+            c.tree = tried;
+            _sharedDirty[st.sid] = true;
+            if (_swKindOf(_sdLgCfg(st.sid)) === 'custom_form') _cfEnsureNames(tried, st.sid);
+        }
+        _sdLgBar();
+    }
+
+    function _sdLgCancel(quiet) {
+        var st = _sdLgState;
+        if (!st) return false;
+        _sdLgState = null;
+        var c = _sharedCache[st.sid];
+        if (c) {
+            c.tree = JSON.parse(st.original);
+            var max = reindex(c.tree);
+            if (max > nodeIdCounter) nodeIdCounter = max;
+        }
+        if (quiet) _sdLgBar(); else _sdLgRedraw();
+        return true;
+    }
+
+    document.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-lg-try],[data-lg-act]') : null;
+        if (!t) return;
+        e.preventDefault();
+        if (t.hasAttribute('data-lg-try')) {
+            _sdLgTry(parseInt(t.getAttribute('data-sw-id'), 10), t.getAttribute('data-lg-try'));
+            return;
+        }
+        if (t.getAttribute('data-lg-act') === 'keep') {
+            var sid = _sdLgState && _sdLgState.sid;
+            _sdLgKeep();
+            if (typeof renderProperties === 'function') renderProperties();
+            if (sid) sdToast(_sdT('The layout was kept. Undo (Ctrl+Z) brings the previous one back.'), 'success');
+        } else {
+            _sdLgCancel();
+        }
+    });
 
     // Returns true when the cached tree has never been edited: just the bare
     // root → lone empty loop_area that _createSystemWidgetNode creates.
@@ -60177,7 +61556,7 @@ const StyleDesigner = (function () {
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
         // The preview's own harness, ahead of the page's scripts.
-        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + _sdPreviewPlayHarness(_siteUrl) + '</head>'; });
 
         return html;
     }
@@ -60297,6 +61676,88 @@ const StyleDesigner = (function () {
         return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
 
+    // The open tabs a Preview link plays, by lower-cased page name: the
+    // name typed on each tab (saved or not) first, then a renamed tab's
+    // saved name; '' is the home page's tab. Locked tabs do not open, so
+    // their links go to the site.
+    function _sdPreviewPlayMap() {
+        var map = {}, nameEl = document.getElementById('sd-page-name');
+        var add = function (name, key) {
+            name = String(name == null ? '' : name).trim().toLowerCase();
+            if (!Object.prototype.hasOwnProperty.call(map, name)) map[name] = key;
+        };
+        var open = _pages.filter(function (p) { return p && p.access !== 'locked'; });
+        open.forEach(function (p) {
+            var n = (p.key === _activeKey && nameEl) ? nameEl.value : p.page_name;
+            if (String(n || '').trim()) add(n, p.key);
+        });
+        open.forEach(function (p) { if (p.savedName) add(p.savedName, p.key); });
+        open.forEach(function (p) { if (p.page_home) add('', p.key); });
+        return map;
+    }
+
+    // The Preview as a prototype: a plain click on a link to a page of an
+    // open tab asks the editor to play that tab (_sdPreviewPlay()), any
+    // other web link opens the site in a new tab, so the preview window
+    // stays. A link one path segment below the site address is a page link.
+    // The hotspots button outlines the links (page links solid, site links
+    // dashed); its state lives in the window's sessionStorage, so it
+    // survives the live preview's reloads.
+    /* @pg-site-output */
+    function _sdPreviewPlayHarness(siteUrl) {
+        var json = function (v) { return JSON.stringify(v).replace(/</g, '\\u003c'); };
+        var js = '(function(){var S=' + json(siteUrl) + ',M=' + json(_sdPreviewPlayMap()) + ',C=' + json(_activeKey) + ',' +
+                'L=' + json(_sdT('Hotspots')) + ',T=' + json(_sdT('Outline the links you can click')) + ',K="pgPreviewHotspots";' +
+            'function link(e){if(!e.target||!e.target.closest)return null;var a=e.target.closest("a[href]");' +
+                'if(!a||(a.getAttribute("href")||"").charAt(0)==="#"||!/^https?:$/.test(a.protocol))return null;return a;}' +
+            'function tab(a){var u=a.href;if(u.indexOf(S)!==0)return null;' +
+                'var r=u.slice(S.length).split(/[?#]/)[0];if(r.indexOf("/")!==-1)return null;' +
+                'try{r=decodeURIComponent(r);}catch(x){}r=r.trim().toLowerCase();' +
+                'return Object.prototype.hasOwnProperty.call(M,r)?M[r]:null;}' +
+            'window.addEventListener("click",function(e){if(e.defaultPrevented||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;' +
+                'var a=link(e);if(!a)return;var k=tab(a);e.preventDefault();' +
+                'if(k!==null&&k===C){window.scrollTo(0,0);return;}' +
+                'if(k!==null&&window.opener){try{window.opener.postMessage({pgPreviewPlay:k},location.origin);return;}catch(x){}}' +
+                'window.open(a.href,"_blank","noopener");});' +
+            'function on(){try{return sessionStorage.getItem(K)==="1";}catch(x){return false;}}' +
+            'function mark(){var l=document.querySelectorAll("a[href]");for(var i=0;i<l.length;i++){var a=l[i];' +
+                'if(a.hasAttribute("data-bs-toggle")||!/^https?:$/.test(a.protocol)||(a.getAttribute("href")||"").charAt(0)==="#")continue;' +
+                'a.setAttribute("data-pg-pv",tab(a)!==null?"tab":"site");}}' +
+            'function show(b,v){document.documentElement.classList.toggle("pg-pv-hot",v);b.setAttribute("aria-pressed",v?"true":"false");' +
+                'b.style.background=v?"#0d6efd":"#fff";b.style.color=v?"#fff":"#212529";if(v)mark();}' +
+            'function init(){var st=document.createElement("style");' +
+                'st.textContent="html.pg-pv-hot a[data-pg-pv]{outline:2px solid rgba(13,110,253,.8)!important;outline-offset:2px!important}' +
+                    'html.pg-pv-hot a[data-pg-pv=site]{outline-style:dashed!important;outline-color:rgba(108,117,125,.9)!important}";' +
+                'document.head.appendChild(st);var b=document.createElement("button");b.type="button";b.id="pg-pv-hotspots";' +
+                'b.textContent=L;b.title=T;b.style.cssText="position:fixed;left:12px;bottom:12px;z-index:2147483647;' +
+                    'font:13px/1.2 system-ui,sans-serif;padding:6px 10px;border:1px solid #adb5bd;border-radius:6px;' +
+                    'box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer";' +
+                'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var v=!on();' +
+                    'try{sessionStorage.setItem(K,v?"1":"0");}catch(x){}show(b,v);});' +
+                'document.body.appendChild(b);show(b,on());}' +
+            'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();' +
+            '})();';
+        return '    <script id="pg-preview-play">' + js + '<\/script>\n';
+    }
+
+    // A page link clicked in the Preview (_sdPreviewPlayHarness()): the
+    // editor opens that tab and the preview draws it at once, from the top.
+    function _sdPreviewPlay(key) {
+        var p = _pgPageByKey(key);
+        if (!p || p.access === 'locked') return;
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        if (key !== _activeKey) return;
+        _sdLive.top = true;
+        clearTimeout(_sdLive.timer);
+        _sdLivePreviewRefresh();
+    }
+
+    window.addEventListener('message', function (e) {
+        if (!_sdPreviewWin || e.source !== _sdPreviewWin || e.origin !== location.origin) return;
+        var d = e.data;
+        if (d && typeof d.pgPreviewPlay === 'string') _sdPreviewPlay(d.pgPreviewPlay);
+    });
+
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
     function _sdPreviewWidgetPayload(raw) {
@@ -60403,7 +61864,8 @@ const StyleDesigner = (function () {
     //     drawing the widgets queues exactly one more pass.
     // busy counts the preview_widgets requests in flight (the live pass and
     // an explicit Preview may overlap once).
-    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null };
+    // top: the next document starts at the top (a page played from a link).
+    var _sdLive = { timer: 0, busy: 0, again: false, sig: null, widgetHtml: null, top: false };
 
     // Whether the preview window is still open; forgets it once closed.
     function _sdLivePreviewOpen() {
@@ -60463,11 +61925,13 @@ const StyleDesigner = (function () {
     // operator was reading. A window that has followed a link to another
     // site cannot be read; it is simply brought back to the preview.
     function _sdLivePreviewWrite(html) {
+        var top = _sdLive.top;
+        _sdLive.top = false;
         if (html === _sdPreviewSent) return;
         var w = _sdPreviewWin;
         var x = 0, y = 0, oldDoc = null;
         try {
-            if (w.location.href === _sdPreviewUrl) {
+            if (!top && w.location.href === _sdPreviewUrl) {
                 x = w.scrollX || 0;
                 y = w.scrollY || 0;
                 oldDoc = w.document;
@@ -61394,6 +62858,8 @@ const StyleDesigner = (function () {
     // Returns false if validation found hard errors (caller should cancel form submit).
     // Returns true (or undefined) on success.
     function prepareFormData() {
+        // A tried layout is never saved: only Keep makes it the widget's.
+        _sdLgCancel(true);
         // D4 / D6: Validate + clean tree before serialising
         var vr = _validateTree(tree);
 
@@ -61613,6 +63079,7 @@ const StyleDesigner = (function () {
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
         var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        _sdLgCancel(true);
         // Saving a draft is not publishing it, and the reply says which it
         // was. Read before the save serialises and flushes: one save writes
         // the whole design, so a change waiting on a page on the site (or in
@@ -65975,6 +67442,20 @@ const StyleDesigner = (function () {
         if (design && design.startAction) {
             setTimeout(function () { _pgStartAction(design.startAction); }, 400);
         }
+        // Ctrl+G on a page that draws a custom layout (?layout=1): its layout
+        // tab, where the classic page designer used to open. The parameter
+        // leaves the address so a reload opens the canvas.
+        if (design && design.openLayout) {
+            setTimeout(function () {
+                try {
+                    var u = new URL(window.location.href);
+                    u.searchParams.delete('layout');
+                    history.replaceState(null, '', u.toString());
+                } catch (e) {}
+                var lp = _pgActivePage();
+                if (lp && lp.page_id === design.openLayout) _sdLayoutCodeOpen(lp, false);
+            }, 400);
+        }
         if (design && design.autoPasteHtml) {
             setTimeout(function () { if (typeof _pgPasteHtmlOpen === 'function') _pgPasteHtmlOpen(''); }, 400);
         }
@@ -68541,16 +70022,10 @@ const StyleDesigner = (function () {
     // safety), like choices, files and buttons.
     var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
 
-    // Asked twice by the software itself: the registration and membership
-    // forms post to pg_member_register() / pg_member_activate(), which
-    // require the address again; a design cannot drop the field.
-    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
-
     // What a field asks for: its autocomplete purpose, or its name without a
     // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
     function _sdEntryPurpose(el) {
         var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
-        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
         var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
         name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')

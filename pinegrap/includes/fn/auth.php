@@ -1464,7 +1464,7 @@ function pg_login_set_device_cookie($user_id, $remember)
 // for a second factor cannot be opened by a password alone).
 function pg_post_password_signin($user_id, $username)
 {
-    if (function_exists('pg_mfa_enabled') && pg_mfa_enabled($user_id)) {
+    if (function_exists('pg_mfa_has_factor') && pg_mfa_has_factor($user_id)) {
         return false;
     }
     pg_session_sign_in($user_id, $username);
@@ -3765,7 +3765,7 @@ function initialize_user()
             if (is_array($user) && isset($user['id'])
                 && function_exists('pg_mfa_required_for_user')
                 && pg_mfa_required_for_user($user['id'])
-                && !pg_mfa_enabled($user['id'])) {
+                && !pg_mfa_has_factor($user['id'])) {
 
                 pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
                 setcookie('software[auth]', '', time() - 1000, '/');
@@ -3807,11 +3807,11 @@ function initialize_user()
             $api_password_ok = is_array($cred) && isset($cred['user_id'])
                 && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
 
-            if ($api_password_ok && pg_mfa_enabled($cred['user_id'])) {
+            if ($api_password_ok && pg_mfa_has_factor($cred['user_id'])) {
 
                 // The password was right, but the account asks for a second
-                // step and a request carrying a password has nowhere to give
-                // one. No user is loaded (USER_LOGGED_IN stays false) and
+                // step (a code or a passkey) and a request carrying a password
+                // has nowhere to give one. No user is loaded (USER_LOGGED_IN stays false) and
                 // API_AUTHENTICATED is not set, so the request cannot act and
                 // cannot waive the CSRF token; api.php answers mfa_required.
                 // The failure counter is still cleared: this was not a guess.

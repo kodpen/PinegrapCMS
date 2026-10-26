@@ -51,60 +51,41 @@ if (defined('CLOUDFLARE_API_TOKEN') && defined('CLOUDFLARE_ZONE_ID')) {
 
 // ========= CONFIG HELPERS =========
 $CF_API_BASE   = 'https://api.cloudflare.com/client/v4/';
-// cf_request: REST helper
+// cf_request: REST helper. pg_curl_run() identifies this installation
+// (sent with no User-Agent, a request looks like an anonymous client to the
+// receiving server's firewall and gets rejected), verifies the certificate
+// with pg_curl_tls() and goes through PROXY_ADDRESS when one is set.
 function cf_request($method, $path, $body = null, $apiBase = '', $token = '') {
     $url = rtrim($apiBase, '/') . '/' . ltrim($path, '/');
-    $ch = curl_init($url);
-    // Identify this installation on outgoing requests. Sent with no
-    // User-Agent, a request looks like an anonymous client to the receiving
-    // server's firewall and gets rejected — which is how Pinegrap ended up
-    // blocking its own licence and update checks.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    $headers = [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json'
-    ];
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER     => $headers,
-        CURLOPT_CUSTOMREQUEST  => strtoupper($method),
-        CURLOPT_TIMEOUT        => 20
+    $answer = pg_curl_run($method, $url, [
+        'body'    => ($body !== null) ? json_encode($body) : null,
+        'headers' => [
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json'
+        ],
+        'timeout' => 20,
+        'connect_timeout' => 20
     ]);
-    if ($body !== null) {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-    }
-    $response = curl_exec($ch);
-    $status   = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    unset($ch);
     return [
-        'status' => $status,
-        'json'   => json_decode($response, true)
+        'status' => $answer['status'],
+        'json'   => json_decode($answer['body'], true)
     ];
 }
 
-// cf_graphql: GraphQL helper
+// cf_graphql: GraphQL helper, sent like cf_request().
 function cf_graphql($body, $token) {
-    $ch = curl_init('https://api.cloudflare.com/client/v4/graphql');
-    // Identify this installation on outgoing requests. Sent with no
-    // User-Agent, a request looks like an anonymous client to the receiving
-    // server's firewall and gets rejected — which is how Pinegrap ended up
-    // blocking its own licence and update checks.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POSTFIELDS     => json_encode($body),
-        CURLOPT_HTTPHEADER     => [
+    $answer = pg_curl_run('POST', 'https://api.cloudflare.com/client/v4/graphql', [
+        'body'    => json_encode($body),
+        'headers' => [
             'Authorization: Bearer '.$token,
             'Content-Type: application/json'
         ],
-        CURLOPT_TIMEOUT        => 20
+        'timeout' => 20,
+        'connect_timeout' => 20
     ]);
-    $response = curl_exec($ch);
-    $status   = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    unset($ch);
     return [
-        'status' => $status,
-        'json'   => json_decode($response, true)
+        'status' => $answer['status'],
+        'json'   => json_decode($answer['body'], true)
     ];
 }
 

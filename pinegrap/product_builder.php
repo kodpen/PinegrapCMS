@@ -912,7 +912,7 @@ function pg_pb_mode($variants)
  * @param array $group keys: name, parent_id, enabled, short_description,
  *                     full_description, details, code, keywords, images,
  *                     address_name, title, meta_description,
- *                     attribute_meta
+ *                     attribute_meta, user (absent: USER_ID, the operator)
  * @return int group id
  */
 function pg_pb_create_group($group)
@@ -963,7 +963,7 @@ function pg_pb_create_group($group)
         'title'             => trim(isset($group['title']) ? $group['title'] : ''),
         'meta_description'  => trim(isset($group['meta_description']) ? $group['meta_description'] : ''),
         'attributes'        => '1',
-        'user'              => defined('USER_ID') ? USER_ID : 0,
+        'user'              => isset($group['user']) ? (int) $group['user'] : (defined('USER_ID') ? USER_ID : 0),
         'timestamp'         => time(),
     )));
 
@@ -1173,15 +1173,20 @@ function pg_pb_store_image_code_template($code)
  * rendered when barcodes are off, and a control that is not rendered is not a
  * permission check.
  */
-function pg_pb_apply_barcode($product_id, $barcode)
+function pg_pb_apply_barcode($product_id, $barcode, $auto = NULL)
 {
     if (!defined('BARCODE_ENABLED') or !BARCODE_ENABLED) {
         return;
     }
 
+    // The automatic switch is the screen's unless the caller says otherwise.
+    if ($auto === NULL) {
+        $auto = !empty($_POST['pg_pb_barcode_auto']);
+    }
+
     $barcode = trim((string) $barcode);
 
-    if (($barcode === '') && empty($_POST['pg_pb_barcode_auto'])) {
+    if (($barcode === '') && !$auto) {
         return;
     }
 
@@ -1242,13 +1247,20 @@ function pg_pb_save_new_product()
             }
         }
 
-        $group_id = pg_pb_create_group(array(
-            'name'              => $short_description !== '' ? $short_description : $product_name,
-            'parent_id'         => isset($_POST['parent_group_id']) ? (int) $_POST['parent_group_id'] : 0,
-            'enabled'           => !empty($_POST['enabled']),
+        // The rows' typed prices in minor units; the set's rules price every
+        // row not typed over on the server: the browser's figures are a
+        // preview of that computation.
+        foreach ($variants as $index => $variant) {
+            $variants[$index]['price'] = pg_pb_price_to_cents($variant['price']);
+        }
+
+        $created = pg_catalog_variant_set_create(array(
+            'name'              => $product_name,
             'short_description' => $short_description,
             'full_description'  => $full_description,
             'details'           => $details,
+            'parent_id'         => isset($_POST['parent_group_id']) ? (int) $_POST['parent_group_id'] : 0,
+            'enabled'           => !empty($_POST['enabled']),
             'code'              => isset($_POST['code']) ? $_POST['code'] : '',
             'keywords'          => isset($_POST['keywords']) ? $_POST['keywords'] : '',
             'images'            => $images,
@@ -1263,112 +1275,23 @@ function pg_pb_save_new_product()
             'form_name'               => isset($_POST['form_name']) ? $_POST['form_name'] : '',
             'form_label_column_width' => isset($_POST['form_label_column_width']) ? $_POST['form_label_column_width'] : '',
             'form_quantity_type'      => isset($_POST['form_quantity_type']) ? $_POST['form_quantity_type'] : '',
-        ));
 
-        $product_ids = array();
+            'common'      => $common,
+            'zone_ids'    => $zone_ids,
+            'price_base'  => pg_pb_price_to_cents(isset($_POST['price']) ? $_POST['price'] : 0),
+            'price_rules' => pg_pb_price_rules_from_post(),
+            'variants'    => $variants,
+        ), NULL, array('ai_fields' => $ai_posted));
 
-        // Prices from the option rules, when the set was given any. The rules
-        // are applied here rather than trusted from the rows: the browser's
-        // figures are a preview of this computation.
-        $price_rules = pg_pb_price_rules_from_post();
-        $price_base  = pg_pb_price_to_cents(isset($_POST['price']) ? $_POST['price'] : 0);
-
-        foreach ($variants as $variant) {
-
-            $product = $common;
-
-            $product['name']              = $variant['name'];
-            $product['short_description'] = $variant['short_description'];
-            $product['price']             = pg_pb_price_to_cents($variant['price']);
-
-            if ($price_rules && !$variant['price_manual']) {
-
-                $selection = array();
-
-                foreach ($variant['attributes'] as $pair) {
-                    $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
-                }
-
-                $priced = pg_variant_price_compute($price_base, $price_rules, $selection);
-
-                $product['price'] = $priced['cents'];
-            }
-            $product['full_description']  = prepare_rich_text_editor_content_for_input($full_description);
-            $product['details']           = prepare_rich_text_editor_content_for_input($details);
-            $product['title']             = isset($_POST['title']) ? trim($_POST['title']) : '';
-            $product['meta_description']  = isset($_POST['meta_description']) ? trim($_POST['meta_description']) : '';
-            $product['inventory']         = $variant['inventory'];
-            $product['inventory_quantity'] = $variant['inventory_quantity'];
-
-            // The shared field is hidden while a set is being built, so whatever
-            // is posted in it is stale. The row wins, empty included.
-            $product['gtin']              = $variant['gtin'];
-
-            // Each variant needs its own catalog address: short description
-            // first, product name otherwise. Inherited from the variant wizard
-            // that this screen replaced.
-            //
-            // This was left empty on the assumption that a variant is only ever
-            // reached through its group. It is not: the address is what builds
-            // the product's own URL in the sitemap, the RSS feed and the
-            // JSON-LD, and an empty one sends prepare_catalog_item_address_name
-            // looking for duplicates of "" — so the whole set ends up sharing
-            // one blank address with [1], [2] appended.
-            $product['address_name'] = ($variant['short_description'] !== '')
-                ? $variant['short_description']
-                : $variant['name'];
-
-            // Per-variant recurring overrides. Filtered against $common, which
-            // is what carries the store's gateway gates: if "start" is not in
-            // there because the gateway is ClearCommerce, a posted start is
-            // dropped rather than written to a column the screen never showed.
-            if (!empty($variant['recurring'])) {
-                foreach ($variant['recurring'] as $recurring_column => $recurring_value) {
-                    if (array_key_exists($recurring_column, $common)) {
-                        $product[$recurring_column] = $recurring_value;
-                    }
-                }
-            }
-
-            if ($ai_posted !== NULL) {
-                $product['ai_fields'] = pg_ai_fields_after_save(
-                    'product',
-                    pg_ai_fields_for_variant($ai_posted, $short_description, $product['short_description']),
-                    NULL,
-                    pg_ai_fields_values('product', $product));
-            }
-
-            // A variant with no images of its own falls back to the set's
-            // images, so the cart and the catalog never show a blank tile.
-            $variant_images = $variant['images'] ? $variant['images'] : $images;
-
-            // The variant set is the only group a variant belongs to. Putting
-            // every variant in a browsable category as well would list the same
-            // shirt five times in that category — the group is what the catalog
-            // is meant to show, and it reaches the category through its
-            // parent_id. That is why the category picker is hidden in group
-            // mode rather than quietly ignored.
-            $variant_product_id = pg_pb_create_product($product, array(
-                'images'     => $variant_images,
-                'group_ids'  => array($group_id),
-                'zone_ids'   => $zone_ids,
-                'attributes' => $variant['attributes'],
-            ));
-
-            pg_pb_apply_barcode($variant_product_id, $variant['barcode']);
-
-            $product_ids[] = $variant_product_id;
-        }
-
-        if ($price_rules) {
-            pg_variant_price_rules_store($group_id, $price_rules, $price_base);
+        if ($created['errors']) {
+            output_error(h($created['errors'][0]['message']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
         return array(
             'mode'        => 'group',
-            'group_id'    => $group_id,
-            'product_ids' => $product_ids,
-            'name'        => $short_description !== '' ? $short_description : $product_name,
+            'group_id'    => $created['group_id'],
+            'product_ids' => $created['product_ids'],
+            'name'        => $created['name'],
             'form'        => !empty($_POST['product_form']),
         );
     }
@@ -1451,7 +1374,7 @@ function pg_pb_form_template_ready()
         return $ready;
     }
 
-    $ready = (bool) db_item("SHOW COLUMNS FROM form_fields LIKE 'product_group_id'");
+    $ready = pg_schema_has('form_fields', 'product_group_id');
 
     return $ready;
 }
@@ -1978,11 +1901,11 @@ function pg_pb_delete_product($product_id)
     // Stored SEO structure findings. Guarded on the table existing, because
     // a product can be deleted on an installation that has not run the
     // upgrade that creates it.
-    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+    if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'product') AND (entity_id = '$product_id')");
     }
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = 'product') AND (from_id = '$product_id')");
         db("DELETE FROM seo_link WHERE (to_type = 'product') AND (to_id = '$product_id')");
     }
@@ -2093,11 +2016,11 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
 
     // Stored SEO structure findings, guarded the same way as the product
     // path above.
-    if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
+    if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'product_group') AND (entity_id = '$group_id')");
     }
 
-    if (db_item("SHOW TABLES LIKE 'seo_link'")) {
+    if (pg_schema_has('seo_link')) {
         db("DELETE FROM seo_link WHERE (from_type = 'product_group') AND (from_id = '$group_id')");
         db("DELETE FROM seo_link WHERE (to_type = 'product_group') AND (to_id = '$group_id')");
     }

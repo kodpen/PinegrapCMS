@@ -6,7 +6,8 @@
  * (includes/workspace/templates.php): the check of a template's tasks and
  * notes (ws_template_body_clean()), the dates counted from the day a template
  * is applied, the checklist taken out of a task's description and put back,
- * and the built-in templates passing their own check.
+ * the built-in templates passing their own check, and the colour and icon a
+ * template gives a channel made from it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,6 +23,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // templates are normalised with.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_icons.php');
 
 // A body as the template screen sends it is kept field by field, unknown
 // keys dropped and numbers held in their ranges.
@@ -147,4 +149,27 @@ function test_workspace_templates_builtin_are_clean()
 
 	pg_assert_same(5, count($builtin['builtin:new_customer']['body']['tasks']));
 	pg_assert_same(array(0, 1), $builtin['builtin:month_end']['body']['tasks'][2]['depends_on']);
+}
+
+// A new channel takes the template's colour and icon only where its creator
+// chose none; an icon outside the channel list stays on the template.
+function test_workspace_templates_channel_look()
+{
+	$template = array('color' => 7, 'icon' => 'bi-globe');
+
+	pg_assert_same(array('color' => 7, 'icon' => 'bi-globe'), ws_template_channel_look(array('color' => 0, 'icon' => ''), $template), 'nothing chosen');
+	pg_assert_same(array('icon' => 'bi-globe'), ws_template_channel_look(array('color' => 3, 'icon' => ''), $template), 'colour chosen');
+	pg_assert_same(array('color' => 7), ws_template_channel_look(array('color' => 0, 'icon' => 'bi-people'), $template), 'icon chosen');
+	pg_assert_same(array('color' => 7, 'icon' => 'bi-globe'), ws_template_channel_look(array('color' => 0, 'icon' => 'bi-retired-one'), $template), 'an unknown stored icon is none');
+	pg_assert_same(array(), ws_template_channel_look(array('color' => 0, 'icon' => ''), array('color' => 0, 'icon' => 'bi-alarm-fill')), 'icon outside the list, no colour');
+	pg_assert_same(array('icon' => 'bi-globe'), ws_template_channel_look(array('color' => 0, 'icon' => ''), array('color' => 0, 'icon' => ' BI-GLOBE ')), 'case and spaces');
+}
+
+// The built-in templates' icons are in the channel list, so they reach the
+// channels made from them.
+function test_workspace_templates_builtin_icons_are_listed()
+{
+	foreach (ws_templates_builtin() as $id => $template) {
+		pg_assert_same($template['icon'], ws_channel_icon_clean($template['icon']), $id);
+	}
 }
