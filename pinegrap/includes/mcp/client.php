@@ -554,7 +554,17 @@ function pg_mcp_client_sse_stop($id) {
 // A request id of its own for every message of this run.
 function pg_mcp_client_next_id() {
 
-	static $id = 0;
+	// A random start: two requests of the site that join the same MCP
+	// session (a page and a background run) would otherwise both count
+	// from 1, and a server matching answers by id within the session
+	// could take one for the other.
+	static $id = null;
+
+	if ($id === null) {
+
+		$id = random_int(0, 1000000000);
+
+	}
 
 	return ++$id;
 
