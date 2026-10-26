@@ -85,18 +85,19 @@ function pg_sw_list_sources()
                 array('__file_ext', lang('File type')),
             ),
         ),
-    ) + pg_sw_list_product_sources();
+    ) + pg_sw_list_product_sources() + pg_sw_list_calendar_sources();
 }
 
 // The sources a widget kind offers (source => descriptor): the form record
 // sources in the two form views, the product sources in the catalog detail
 // view and, but for the products bought together (a cross-sell lookup per
-// card), in the catalog listing (widgets_lists_product.php), each kind
-// publishing its records' data; none in any other kind.
+// card), in the catalog listing (widgets_lists_product.php), the calendar
+// grid sources in the calendar view (widgets_lists_calendar.php), each kind
+// publishing its data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
     $families = array('form_list_view' => 'form_record', 'form_item_view' => 'form_record',
-                      'catalog_item_view' => 'product', 'catalog_listing' => 'product');
+                      'catalog_item_view' => 'product', 'catalog_listing' => 'product', 'calendar_view' => 'calendar');
     $except   = array('catalog_listing' => array('product.related' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
@@ -315,6 +316,8 @@ function pg_sw_list_wanted($family)
 // its records in the translation).
 // 'product': $data_rows = source => product id => rows, as
 // pg_sw_list_product_read() builds them.
+// 'calendar': $data_rows = source => key => rows, as
+// pg_sw_list_calendar_rows() builds them.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {
     $scope = pg_sw_finish_scope();
@@ -322,7 +325,7 @@ function pg_sw_list_publish($family, $data_rows, $options = array())
     $sid = (int)$scope['sid'];
 
     $published = &_pg_sw_list_published();
-    if ($family === 'product') {
+    if ($family === 'product' || $family === 'calendar') {
         $published[$sid][$family] = array('rows' => is_array($data_rows) ? $data_rows : array());
     } elseif ($family === 'form_record') {
         $published[$sid][$family] = array(
@@ -494,8 +497,8 @@ function pg_sw_list_file_rows($records, $arg)
 // asks for: $wanted = key => arg => true; returns key => arg => rows. One
 // call per source per level, so a provider that reads the database later
 // asks once for all of them. The form record providers read what the
-// renderer published; a product list its rows as published, whatever the
-// arg.
+// renderer published; a product or calendar list its rows as published,
+// whatever the arg.
 function pg_sw_list_source_rows($source, $wanted, $published)
 {
     $sources = pg_sw_list_sources();
@@ -505,7 +508,7 @@ function pg_sw_list_source_rows($source, $wanted, $published)
     if ($data === null) return array();
 
     $out = array();
-    if ($family === 'product') {
+    if ($family === 'product' || $family === 'calendar') {
         $rows = (isset($data['rows'][$source]) && is_array($data['rows'][$source])) ? $data['rows'][$source] : array();
         foreach ($wanted as $key => $args) {
             foreach (array_keys((array)$args) as $arg) {

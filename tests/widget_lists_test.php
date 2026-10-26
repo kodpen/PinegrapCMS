@@ -199,7 +199,8 @@ function test_widget_lists_descriptor_parity()
 	$args = array('form_record.values' => 'section', 'form_record.split' => 'tags', 'form_record.files' => '');
 	foreach (pg_sw_list_sources() as $source => $d) {
 		pg_assert_same(array('family', 'key', 'label', 'arg', 'arg_required', 'tokens'), array_keys($d), $source . ' shape');
-		// The product sources: widget_lists_product_test.php.
+		// The product and calendar sources: widget_lists_product_test.php,
+		// widget_lists_calendar_test.php.
 		if ($d['family'] !== 'form_record') continue;
 		pg_assert_true(isset($args[$source]), $source . ' has a fixture');
 		$tokens = array();

@@ -66,6 +66,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists_product.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists_calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php');

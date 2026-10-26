@@ -22280,7 +22280,11 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } },
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
-                { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } }
+                { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
+                { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
+                { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
+                { label: _sdT('Events of the day'), type: 'loop_area', icon: 'bi-calendar-event', extra: { listSource: 'calendar.events' } }
             ]},
             { title: _sdT('Regions'), icon: 'bi-puzzle', items: Object.keys(regionLabels).map(function(k) {
                 return { label: regionLabels[k], type: 'region', icon: regionIcons[k] || 'bi-box', extra: { regionType: k },
@@ -31678,7 +31682,8 @@ const StyleDesigner = (function () {
 
         var src = SW_LIST_SOURCES[p.source];
         if (src) {
-            // A product list takes no field: it lists what the product holds.
+            // A product or calendar list takes no field: it lists what the
+            // product or the calendar holds.
             var formId = src.arg ? _getSystemWidgetCustomFormPageId(n) : 0;
             var fields = formId ? _formFieldsCache[formId] : null;
             var fieldCtl = '';
@@ -31725,7 +31730,11 @@ const StyleDesigner = (function () {
             'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.'),
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
-            'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.')
+            'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
+            'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
+            'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
+            'calendar.events':    _sdT('One row for every event of the day, inside a list of the days of the calendar. An event lasting several days is on each of them.')
         };
         if (about[p.source]) html += note(about[p.source], false);
         html += note(_sdT('A list without rows draws nothing. The canvas shows its row once.'), false);
@@ -51787,6 +51796,63 @@ const StyleDesigner = (function () {
                 ['__related_price',             _sdT('Price')],
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
+        },
+        // The calendar grid sources (pg_sw_list_calendar_sources()): the
+        // monthly and weekly views' heads, weeks, days and a day's events;
+        // none takes a field.
+        'calendar.weekdays': {
+            label: _sdT('Days of the week'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__weekday_name',  _sdT('Day name')],
+                ['__weekday_short', _sdT('Short day name')]
+            ]
+        },
+        'calendar.weeks': {
+            label: _sdT('Weeks of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__week_key',    _sdT('Week in the calendar')],
+                ['__week_number', _sdT('Week number')]
+            ]
+        },
+        'calendar.days': {
+            label: _sdT('Days of the calendar'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__day_key',         _sdT('Day key')],
+                ['__day_number',      _sdT('Day number')],
+                ['__day_date',        _sdT('Date')],
+                ['__day_weekday',     _sdT('Weekday')],
+                ['__day_is_today',    _sdT('Today (1 or empty)')],
+                ['__day_is_outside',  _sdT('Day of another month (1 or empty)')],
+                ['__day_event_count', _sdT('Number of events')]
+            ]
+        },
+        'calendar.events': {
+            label: _sdT('Events of the day'),
+            arg: '', argRequired: false,
+            kinds: ['calendar_view'],
+            rows: [
+                ['__event_title',          _sdT('Event title')],
+                ['__event_url',            _sdT('Event detail URL')],
+                ['__event_excerpt',        _sdT('Event summary')],
+                ['__event_date',           _sdT('Event date')],
+                ['__event_day',            _sdT('Day of the month')],
+                ['__event_month',          _sdT('Month name')],
+                ['__event_weekday',        _sdT('Day of the week')],
+                ['__event_time',           _sdT('Start time')],
+                ['__event_end_time',       _sdT('End time')],
+                ['__event_time_range',     _sdT('Time range ("All day" for all-day events)')],
+                ['__event_date_range',     _sdT('Full date and time range')],
+                ['__event_location',       _sdT('Location')],
+                ['__event_calendar_names', _sdT('Calendars')],
+                ['__event_is_all_day',     _sdT('All-day event (1 or empty)')],
+                ['__event_ical_url',       _sdT('Add to my calendar — .ics file (href)')]
+            ]
         }
     };
 
@@ -51806,7 +51872,18 @@ const StyleDesigner = (function () {
         __related_url: '#',
         __related_image_url: '',
         __related_price: '99.90',
-        __related_original_price: ''
+        __related_original_price: '',
+        __weekday_name:  _sdT('Monday'),
+        __weekday_short: _sdT('Mon'),
+        __week_key:      '1',
+        __week_number:   '40',
+        __day_key:       '20261005',
+        __day_number:    '5',
+        __day_date:      '05.10.2026',
+        __day_weekday:   _sdT('Monday'),
+        __day_is_today:  '',
+        __day_is_outside: '',
+        __day_event_count: '1'
     };
 
     // The orders a list's rows take (props.order).
@@ -51925,12 +52002,93 @@ const StyleDesigner = (function () {
     function _sdListStarter(source) {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
+        if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         var row = (source === 'form_record.files')
             ? createNode('semantic', { tag: 'a', cssClass: bs ? 'd-block' : '', text: _sdT('File Name'), href: '#', target: '_blank',
                 customName: _sdT('Attachment link'), _bindings: { href: '__file_url', text: '__file_name' } }, [])
             : createNode('semantic', { tag: 'span', cssClass: bs ? 'badge text-bg-light border me-1' : '', text: _sdT('Value'),
                 customName: _sdT('List row'), _bindings: { text: '__value_text' } }, []);
         return createNode('loop_area', { source: source }, [row]);
+    }
+
+    // How many lists deep a new list of `source` lands (_sdListStarter()):
+    // a month grid is weeks > days > events, a days list holds its events.
+    function _sdListStarterDepth(source) {
+        return (source === 'calendar.weeks') ? 3 : ((source === 'calendar.days') ? 2 : 1);
+    }
+
+    // A new calendar list. The month grid: a table, its heads from the days
+    // of the week, a row per week, a cell per day holding the day's number
+    // (dimmed on a day of another month), a "Today" badge and its events as
+    // links. The others: a list of their own rows, the days list with its
+    // events. Every word is the designer's to restyle or translate.
+    function _sdCalendarListStarter(source, bs) {
+        var sem = function (tag, cls, name, props, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+            return createNode('semantic', p, kids || []);
+        };
+        var when = function (token, op) {
+            return { _bindings: { show_if: token }, _bindParams: { show_if: { op: op } } };
+        };
+        var merge = function (a, b) {
+            var o = {};
+            Object.keys(a).forEach(function (k) { o[k] = a[k]; });
+            Object.keys(b).forEach(function (k) {
+                if (o[k] && typeof o[k] === 'object') {
+                    Object.keys(b[k]).forEach(function (kk) { o[k][kk] = b[k][kk]; });
+                } else {
+                    o[k] = b[k];
+                }
+            });
+            return o;
+        };
+        var events = function () {
+            return sem('ul', 'list-unstyled small mb-0', _sdT('Events of the day'), {}, [createNode('loop_area', { source: 'calendar.events' }, [
+                sem('li', 'text-truncate', _sdT('Event'), {}, [
+                    sem('span', 'me-1 text-body-secondary', _sdT('Start time'), merge({ text: '10:00', _bindings: { text: '__event_time' } }, when('__event_time', 'not_empty'))),
+                    sem('a', 'link-underline link-underline-opacity-0', _sdT('Event title'), { text: _sdT('Event title'), href: '#', _bindings: { href: '__event_url', text: '__event_title' } })
+                ])
+            ])]);
+        };
+        var dayHead = function () {
+            return sem('div', 'd-flex align-items-center gap-1 small mb-1', _sdT('Day number'), {}, [
+                sem('span', 'fw-semibold', _sdT('Day number'), merge({ text: '5', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'empty'))),
+                sem('span', 'text-body-tertiary', _sdT('Day of another month'), merge({ text: '30', _bindings: { text: '__day_number' } }, when('__day_is_outside', 'not_empty'))),
+                sem('span', 'badge text-bg-primary', _sdT('Today'), merge({ text: _sdT('Today') }, when('__day_is_today', 'not_empty')))
+            ]);
+        };
+        if (source === 'calendar.weeks') {
+            return sem('div', 'table-responsive', _sdT('Month grid'), {}, [
+                sem('table', 'table table-bordered table-sm mb-0', _sdT('Month grid'), {}, [
+                    sem('thead', '', _sdT('Days of the week'), {}, [sem('tr', '', _sdT('Days of the week'), {}, [
+                        createNode('loop_area', { source: 'calendar.weekdays' }, [
+                            sem('th', 'text-center small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _attrs: [{ name: 'scope', value: 'col' }], _bindings: { text: '__weekday_short' } })
+                        ])
+                    ])]),
+                    sem('tbody', '', _sdT('Weeks of the calendar'), {}, [
+                        createNode('loop_area', { source: 'calendar.weeks' }, [
+                            sem('tr', '', _sdT('Week'), {}, [
+                                createNode('loop_area', { source: 'calendar.days' }, [
+                                    sem('td', 'align-top p-1', _sdT('Day'), {}, [dayHead(), events()])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]);
+        }
+        if (source === 'calendar.weekdays') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'small fw-semibold', _sdT('Day name'), { text: _sdT('Mon'), _bindings: { text: '__weekday_short' } })
+            ]);
+        }
+        if (source === 'calendar.days') {
+            return createNode('loop_area', { source: source }, [
+                sem('div', 'border p-1', _sdT('Day'), {}, [dayHead(), events()])
+            ]);
+        }
+        return events();
     }
 
     // A new product list: the images as pictures in a row, the attributes
@@ -52039,7 +52197,10 @@ const StyleDesigner = (function () {
         if (!kind) return false;
         if (_sdKindLists(kind).indexOf(source) === -1 && !(list && _isInsideSystemWidget(list) === sid)) return false;
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(target)) return false;
-        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : 1);
+        // The calendar's grid lists read the calendar, not an event: never
+        // in the event loop.
+        if (kind === 'calendar_view' && _sdInMainLoopAt(target)) return false;
+        var depth = (_sdListIsSourced(target) ? 1 : 0) + _sdListsAbove(target).length + (list ? _sdListNesting(list) : _sdListStarterDepth(source));
         return depth <= SW_LIST_MAX_DEPTH;
     }
 
@@ -52123,6 +52284,10 @@ const StyleDesigner = (function () {
         var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
+        if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
+        if (spec.source === 'calendar.events' && !_sdListsAbove(node).some(function (l) { return l.props.source === 'calendar.days'; })) {
+            return { off: true, text: _sdT('{var}: outside a list of days, nothing is drawn', src.label) };
+        }
         if (_sdListsAbove(node).length >= SW_LIST_MAX_DEPTH) return { off: true, text: _sdT('{var}: more than four lists deep, nothing is drawn', src.label) };
         var name = src.label;
         if (spec.arg) {
