@@ -1049,3 +1049,121 @@ function bs6_switch_own_classes($source)
 
 	return array('source' => $out, 'status' => $count > 0 ? 'applied' : 'done', 'left' => 0);
 }
+
+/**
+ * Checkbox, radio and switch markup built by the panel scripts' element
+ * helpers (`el('div', 'form-check')`, `el('input', 'form-check-input')`,
+ * `el('label', 'form-check-label')`), where the attribute fix of
+ * bs6_switch_checks() cannot see a tag:
+ *   wrapper  form-check to form-field (form-check-inline to the inline
+ *            grid, form-check-sm dropped: v5 drew nothing for it)
+ *   input    form-check-input to check or radio, by the `x.type = '…'` the
+ *            script sets within the next lines; a switch's input loses the
+ *            class and goes into a .switch box where it is appended
+ *            (`wrap.appendChild(el('div', 'switch')).appendChild(input)`)
+ *   label    form-check-label dropped
+ * An input whose type is not found is left for a hand.
+ */
+function bs6_switch_script_checks($source)
+{
+	$site_output = bs6_site_output_ranges($source);
+	$inline = implode(' ', bs6_map_token('me-3')['tokens']);
+	$edits = array();
+	$left = 0;
+	$helper = '((?:[A-Za-z_$][\w$]*\.)?(?:el|element|make))\(\s*([\'"])';
+
+	if (preg_match_all('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . '(?:div|label|span)\3\s*,\s*([\'"])([^\'"]*(?<![\w-])form-check(?:-inline)?(?![\w-])[^\'"]*)\4/', $source, $wraps, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		foreach ($wraps as $wrap) {
+			if ($site_output && bs6_in_ranges($wrap[0][1], $site_output)) {
+				continue;
+			}
+
+			$tokens = bs6_shell_tokens($wrap[5][0]);
+			$is_switch = in_array('form-switch', $tokens, true);
+			$out = array();
+
+			foreach ($tokens as $token) {
+				if ($token === 'form-check') {
+					$out[] = 'form-field';
+				} elseif ($token === 'form-check-inline') {
+					$out[] = 'd-inline-grid ' . $inline;
+				} elseif (!in_array($token, array('form-switch', 'form-check-sm'), true)) {
+					$out[] = $token;
+				}
+			}
+
+			$edits[] = array($wrap[5][1], $wrap[5][1] + strlen($wrap[5][0]), implode(' ', $out));
+
+			// The input made after it, before the next wrapper.
+			$from = $wrap[0][1] + strlen($wrap[0][0]);
+			$window = substr($source, $from, 1500);
+			$next = preg_match('/(?<![\w-])form-check(?![\w-])/', $window, $stop, PREG_OFFSET_CAPTURE) ? $stop[0][1] : strlen($window);
+			$window = substr($window, 0, $next);
+
+			if (!preg_match('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input\4/', $window, $input, PREG_OFFSET_CAPTURE)) {
+				continue;
+			}
+
+			$name = $input[1][0];
+			$class_at = $from + $input[0][1] + strlen($input[0][0]) - strlen('form-check-input') - 1;
+
+			if ($is_switch) {
+				$append = '/\b' . preg_quote($wrap[1][0], '/') . '\.appendChild\(\s*' . preg_quote($name, '/') . '\s*\)/';
+
+				if (!preg_match($append, $source, $call, PREG_OFFSET_CAPTURE, $from)) {
+					$left++;
+					continue;
+				}
+
+				$edits[] = array($class_at, $class_at + strlen('form-check-input'), '');
+				$edits[] = array($call[0][1], $call[0][1] + strlen($call[0][0]), $wrap[1][0] . '.appendChild(' . $wrap[2][0] . '(' . $wrap[3][0] . 'div' . $wrap[3][0] . ', ' . $wrap[3][0] . 'switch' . $wrap[3][0] . ')).appendChild(' . $name . ')');
+				continue;
+			}
+
+			if (!preg_match('/\b' . preg_quote($name, '/') . '\.type\s*=\s*([\'"])(checkbox|radio)\1/', substr($source, $from, 1500), $type)) {
+				$left++;
+				continue;
+			}
+
+			$edits[] = array($class_at, $class_at + strlen('form-check-input'), $type[2] === 'checkbox' ? 'check' : 'radio');
+		}
+	}
+
+	// Inputs made without a wrapper of their own (a list row's label).
+	$done = array();
+	foreach ($edits as $edit) {
+		$done[$edit[0]] = true;
+	}
+
+	if (preg_match_all('/\b([A-Za-z_$][\w$]*)\s*=\s*' . $helper . 'input\3\s*,\s*([\'"])form-check-input\4/', $source, $inputs, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		foreach ($inputs as $input) {
+			$class_at = $input[0][1] + strlen($input[0][0]) - strlen('form-check-input') - 1;
+
+			if (isset($done[$class_at]) || ($site_output && bs6_in_ranges($class_at, $site_output))) {
+				continue;
+			}
+
+			if (!preg_match('/\b' . preg_quote($input[1][0], '/') . '\.type\s*=\s*([\'"])(checkbox|radio)\1/', substr($source, $class_at, 1500), $type)) {
+				$left++;
+				continue;
+			}
+
+			$edits[] = array($class_at, $class_at + strlen('form-check-input'), $type[2] === 'checkbox' ? 'check' : 'radio');
+		}
+	}
+
+	if (preg_match_all('/' . $helper . '(?:label|span)\2\s*,\s*([\'"])((?:[^\'"]*\s)?form-check-label(?:\s[^\'"]*)?)\3/', $source, $labels, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		foreach ($labels as $label) {
+			if (!$site_output || !bs6_in_ranges($label[0][1], $site_output)) {
+				$tokens = array_values(array_diff(bs6_shell_tokens($label[4][0]), array('form-check-label')));
+				$edits[] = array($label[4][1], $label[4][1] + strlen($label[4][0]), implode(' ', $tokens));
+			}
+		}
+	}
+
+	if (!$edits) {
+		return array('source' => $source, 'status' => 'done', 'left' => $left);
+	}
+
+	return array('source' => bs6_shell_apply($source, $edits), 'status' => 'applied', 'left' => $left);
+}
