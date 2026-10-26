@@ -1978,7 +1978,7 @@ function output_header($properties = false)
 
         $output_software_sidebar = '
         <div class="software-sidebar position-fixed d-print-none bg-software-navbar backdrop">
-            <nav id="menu" class="menu z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
+            <nav id="menu" class="z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
                     ' . output_menu(array('toolbar' => $toolbar)) . '
@@ -2172,7 +2172,7 @@ function output_header($properties = false)
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown no-arrow  no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
-                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                        <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="dropdown-menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
@@ -2525,7 +2525,7 @@ function pg_account_menu($user, $options = array())
 
     return '
                     <li class="nav-item dropdown no-arrow pg-account">
-                        <button type="button" id="user_menu_toggle" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
+                        <button type="button" id="user_menu_toggle" class="btn btn-secondary pg-acctbtn dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="user_menu" title="' . h(lang('My Menu')) . '">
                             <span class="pg-avwrap">
                                 <span class="pg-avatar"><img src="' . h($picture) . '" alt="" width="28" height="28"></span>' . $badge . '
                             </span>

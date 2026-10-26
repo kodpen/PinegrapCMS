@@ -4,12 +4,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 ---
 
 ## Which steps run before the switch (on 5.3.8, nothing visible changes)?
-- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B5 (`bootstrap-6-panel-done.md`).
-- B4 Collisions: drop `class="menu"` from `#menu`, rename `<span class="btn-text">` and the own `.submenu`; `data-bs-display="static"` on the account and notification toggles.
-  - Slice 1 (#1738): `btn-text` to `pg-btn-label` in 129 panel files (`tools/bs6_rename_collisions.php`), `view_folders.php` `.submenu` to `.pg-submenu`.
-  - Slice 2 (#1751): the same rename on the gift card, shipping method and ERP screens and `erp_export.php`.
-  - Slice 3 (#1762): `add_page.php`, `edit_page.php` and the `#create_button` selectors in `backend.src.js`.
-  - Left (last slice, once #1706 lands): drop `class="menu"` from `#menu` and put `data-bs-display="static"` on the account and notification toggles in `includes/fn/output.php` (check the CSS and scripts that select `.menu` first); `php tools/bs6_rename_collisions.php --write edit_contact.php`.
+- Done: B0a, B0b, B1a, B1b, B2a, B2b, B3, B4, B5 (`bootstrap-6-panel-done.md`).
 - B6 Wrappers with a switchable engine (v5 engine now): `pgChips`, `pgCombobox`, `pgDatePicker`, `pgDateTimeField`; call sites move to `data-pg-*` hooks.
   - Slice 1 (#1733): `pg_fields.js`, liveform `data-pg-*`, `pg_fields_script()`; gift cards, shipping methods, ERP screens (`ui/pg-field-wrappers.md`). Slice 2 (#1741): firewall card, `edit_page.php`, `mass_edit.php`, `view_contacts.php`. Slice 3 (#1750): `pgInitInjected()`, ACL expiry pickers. Slice 4 (#1764): menus, product groups, zones, verified addresses, product builder selects, campaigns, arrival dates, featured items, add contact, key code, commerce end-of-day time; no `select2`/`timepicker` class is left in panel markup. Slice 5 (#1775): generic inits gone, shipping cut-off rows, submitted form pickers, `view_order.php` tracking chips, API settings IP chips. Slice 6 (#1787): `pgFields.destroy()`/`switchKind()`, calendar all-day switch, comment publish date. Left: `fn/content.php` pickers (#1781 holds it), `edit_contact.php` (#1706 holds it), `view_order.php` ship and delivery dates (they use bare `{dateFormat}`, so the hook would bring the translated wording: a visible change), `offer_editor.js`, the Google category select2 in `product_builder.js` (server search), the visual editor's keyword box (`designer_screen.php`).
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the 54 site-output members of style_designer.js with a CI test, the chrome look pinned in style_designer.css, editor calls through `pgUI`.
